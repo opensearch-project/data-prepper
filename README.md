@@ -1,4 +1,4 @@
-## My Project
+## Simple Ingest Transformation Utility Pipeline (SITUP)
 
 TODO: Fill this README out!
 
