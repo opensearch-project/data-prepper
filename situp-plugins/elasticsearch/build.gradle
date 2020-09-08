@@ -1,0 +1,77 @@
+buildscript {
+    ext {
+        es_version = System.getProperty("es.version", "7.8.0")
+        es_group = "org.elasticsearch"
+        distribution = 'oss-zip'
+    }
+
+    repositories {
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+
+    dependencies {
+        classpath "${es_group}.gradle:build-tools:${es_version}"
+    }
+}
+
+plugins {
+    id 'java'
+    id 'jacoco'
+}
+apply plugin: 'elasticsearch.testclusters'
+apply plugin: 'elasticsearch.build'
+apply plugin: 'elasticsearch.rest-test'
+
+// To pass elasticsearch plugin check
+ext {
+    licenseFile = rootProject.file('LICENSE')
+    noticeFile = rootProject.file('NOTICE')
+}
+
+dependencies {
+    compile project(':situp-api')
+    compile project(':situp-plugins:common')
+    implementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:${es_version}"
+    implementation "org.elasticsearch:elasticsearch:${es_version}"
+    implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${versionMap.jackson_dataformat_yaml}"
+    implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
+    testImplementation("junit:junit:${versionMap.junit}") {
+        exclude group:'org.hamcrest' // workaround for jarHell
+    }
+    testImplementation "org.elasticsearch.test:framework:${es_version}"
+}
+
+// Workaround for Werror
+compileJava.options.warnings = false
+
+// Resolve dependency conflict between ES sink and main project
+configurations.all {
+    resolutionStrategy {
+        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.1'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.11.1'
+        force 'com.fasterxml.jackson.core:jackson-core:2.11.1'
+        force 'com.google.guava:guava:29.0-jre'
+        force 'org.apache.bval:bval-jsr:2.0.4'
+        force 'junit:junit:4.13'
+    }
+}
+
+integTest {}
+
+testClusters.integTest {
+    testDistribution = "OSS"
+}
+
+integTest.runner {
+    systemProperty 'tests.security.manager', 'false'
+}
+
+checkstyleMain.ignoreFailures = true
+checkstyleTest.ignoreFailures = true
+forbiddenApis.ignoreFailures = true
+testingConventions.enabled = false
+licenseHeaders.enabled = false
+dependencyLicenses.enabled = false
+thirdPartyAudit.enabled = false
+validateNebulaPom.enabled = false
