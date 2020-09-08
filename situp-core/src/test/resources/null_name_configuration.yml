@@ -1,0 +1,14 @@
+pipeline:
+  source:
+    test-plugin:
+      someProperty: "someValue"
+    buffer:
+      test-plugin:
+        someProperty: "someValue"
+    processor:
+      test-plugin:
+        someProperty: "someValue"
+    sink:
+      test-plugin:
+        someProperty: "someValue"
+

@@ -1,0 +1,15 @@
+# this configuration file is solely for testing formatting
+pipeline:
+  name: test-pipeline
+  source:
+    test-plugin:
+      someProperty: "someValue"
+  buffer:
+    test-plugin: #to check non object nodes for plugins
+  processor:
+    test-plugin:
+      someProperty: "someValue"
+  sink:
+    test-plugin:
+      someProperty: "someValue"
+

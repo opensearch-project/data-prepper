@@ -1,0 +1,13 @@
+# this configuration file is solely for testing formatting
+pipeline:
+  name: test-pipeline
+  buffer:
+    test-plugin:
+      someProperty: "someValue"
+  processor:
+    test-plugin:
+      someProperty: "someValue"
+  sink:
+    test-plugin:
+      someProperty: "someValue"
+

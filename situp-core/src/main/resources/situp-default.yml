@@ -1,0 +1,8 @@
+pipeline:
+  name: otel-es-raw-pipeline
+  source:
+    apm_trace_source:
+  sink:
+    amazon_es:
+      hosts: ["https://search-sample-app-test-lqwynrnd2ikcuzfsrdilv4stbq.us-west-2.es.amazonaws.com"]
+

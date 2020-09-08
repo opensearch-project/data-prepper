@@ -1,0 +1,5 @@
+rootProject.name = 'transformation-instance'
+
+include 'situp-api'
+include 'situp-plugins'
+include 'situp-core'

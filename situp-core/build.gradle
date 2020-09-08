@@ -1,0 +1,34 @@
+plugins {
+    id 'jacoco'
+}
+
+dependencies {
+    compile project(':situp-api')
+    compile project(':situp-plugins')
+    implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${versionMap.jackson_dataformat_yaml}"
+    implementation "javax.validation:validation-api:${versionMap.validation_api}"
+    implementation "org.apache.bval:bval-extras:${versionMap.bval_extras}"
+    implementation "org.apache.bval:bval-jsr:${versionMap.bval_jsr}"
+    implementation "org.reflections:reflections:${versionMap.reflections}"
+    testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
+}
+sourceSets {
+    main {
+        resources {
+            srcDirs += "../shared-resources"
+        }
+    }
+}
+
+jar {
+    manifest {
+        attributes('Implementation-Title': project.name,
+                'Implementation-Version': project.version,
+                'Main-Class': 'com.amazon.situp.SitupExecute')
+    }
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+
+}
