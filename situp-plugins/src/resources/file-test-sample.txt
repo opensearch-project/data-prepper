@@ -1,4 +1,0 @@
-this is a sample text
-this text will be processed
-if processed by string processor
-it will be shifted to upper case

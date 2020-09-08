@@ -4,7 +4,7 @@ plugins {
 
 dependencies {
     compile project(':situp-api')
-    compile project(':situp-plugins')
+    compile project(':situp-plugins:common')
     implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${versionMap.jackson_dataformat_yaml}"
     implementation "javax.validation:validation-api:${versionMap.validation_api}"
