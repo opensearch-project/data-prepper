@@ -42,7 +42,7 @@ import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.IND
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.INDEX_TYPE;
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.TEMPLATE_FILE;
 
-@SitupPlugin(name = "amazon_es", type = PluginType.SINK)
+@SitupPlugin(name = "elasticsearch", type = PluginType.SINK)
 public class ElasticsearchSink implements Sink<Record<String>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchSink.class);

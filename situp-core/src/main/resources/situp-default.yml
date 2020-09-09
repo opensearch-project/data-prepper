@@ -3,6 +3,6 @@ pipeline:
   source:
     apm_trace_source:
   sink:
-    amazon_es:
+    elasticsearch:
       hosts: ["https://search-sample-app-test-lqwynrnd2ikcuzfsrdilv4stbq.us-west-2.es.amazonaws.com"]
 
