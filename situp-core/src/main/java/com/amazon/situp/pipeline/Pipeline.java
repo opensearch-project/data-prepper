@@ -17,6 +17,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -27,16 +29,17 @@ import java.util.concurrent.TimeUnit;
 public class Pipeline {
     private static final Logger LOG = LoggerFactory.getLogger(Pipeline.class);
     private static final List<Processor> EMPTY_PROCESSOR_LIST = new ArrayList<>(0);
-    private static final int DEFAULT_TERMINATION_IN_MILLISECONDS = 5000;
+    private static final int PROCESSOR_DEFAULT_TERMINATION_IN_MILLISECONDS = 5000;
+    private static final int SOURCE_DEFAULT_TERMINATION_IN_MILLISECONDS = 2000;
     private boolean stopRequested;
 
     private final String name;
     private final Source source;
     private final Buffer buffer;
     private final List<Processor> processors;
-    private final Collection<Sink> sinks;
+    private final List<Sink> sinks;
     private final int processorThreads;
-    private final ExecutorService processorExecutorService;
+    private final ExecutorService processorSinkExecutorService;
     private final ExecutorService sourceExecutorService;
 
     /**
@@ -51,7 +54,7 @@ public class Pipeline {
     public Pipeline(
             @Nonnull final String name,
             @Nonnull final Source source,
-            @Nonnull final Collection<Sink> sinks,
+            @Nonnull final List<Sink> sinks,
             final int processorThreads) {
         this(name, source, new UnboundedInMemoryBuffer(), EMPTY_PROCESSOR_LIST, sinks, processorThreads);
     }
@@ -75,7 +78,7 @@ public class Pipeline {
             @Nonnull final Source source,
             @Nullable final Buffer buffer,
             @Nullable final List<Processor> processors,
-            @Nonnull final Collection<Sink> sinks,
+            @Nonnull final List<Sink> sinks,
             final int processorThreads) {
         this.name = name;
         this.source = source;
@@ -83,8 +86,9 @@ public class Pipeline {
         this.processors = processors != null ? processors : EMPTY_PROCESSOR_LIST;
         this.sinks = sinks;
         this.processorThreads = processorThreads;
-        this.processorExecutorService = Executors.newFixedThreadPool(processorThreads,
-                new PipelineThreadFactory("situp-processor"));
+        int coreThreads = sinks.size() + processorThreads; //TODO We may have to update this after benchmark tests
+        this.processorSinkExecutorService = Executors.newFixedThreadPool(coreThreads,
+                new PipelineThreadFactory("situp-processor-sink"));
         sourceExecutorService = Executors.newSingleThreadExecutor(new PipelineThreadFactory("situp-source"));
         stopRequested = false;
     }
@@ -144,28 +148,50 @@ public class Pipeline {
         LOG.info("Attempting to terminate the pipeline execution");
         stopRequested = true;
         source.stop();
-        processorExecutorService.shutdown();
-        try {
-            if (!processorExecutorService.awaitTermination(DEFAULT_TERMINATION_IN_MILLISECONDS, TimeUnit.MILLISECONDS)) {
-                processorExecutorService.shutdownNow();
-            }
-        } catch (InterruptedException ex) {
-            LOG.info("Encountered interruption terminating the pipeline execution, Attempting to force the termination");
-            processorExecutorService.shutdownNow();
-        }
+        completelyShutdown(sourceExecutorService, SOURCE_DEFAULT_TERMINATION_IN_MILLISECONDS);
+        completelyShutdown(processorSinkExecutorService, PROCESSOR_DEFAULT_TERMINATION_IN_MILLISECONDS);
     }
 
     private void executeWithStart() {
         LOG.info("Submitting request to initiate the pipeline execution");
         sourceExecutorService.submit(() -> source.start(buffer));
         try {
+            LOG.info("Submitting request to initiate the pipeline processing");
             for (int i = 0; i < processorThreads; i++) {
-                processorExecutorService.execute(new ProcessWorker(buffer, processors, sinks, this));
+                processorSinkExecutorService.execute(new ProcessWorker(buffer, processors, sinks, this));
             }
         } catch (Exception ex) {
-            processorExecutorService.shutdown();
+            processorSinkExecutorService.shutdown();
             LOG.error("Encountered exception during pipeline execution", ex);
             throw ex;
         }
+    }
+
+    private void completelyShutdown(final ExecutorService executorService, int timeoutForTerminationInMillis) {
+        executorService.shutdown();
+        try {
+            if (!executorService.awaitTermination(timeoutForTerminationInMillis, TimeUnit.MILLISECONDS)) {
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException ex) {
+            LOG.info("Encountered interruption terminating the pipeline execution, Attempting to force the termination");
+            executorService.shutdownNow();
+        }
+    }
+
+    /**
+     * Submits the provided collection of records to output to each sink. Collects the future from each sink and returns
+     * them as list of futures
+     * @param records records that needs to published to each sink
+     * @return List of Future, each future for each sink
+     */
+    public List<Future<Boolean>> publishToSinks(final Collection<Record> records) {
+        final int sinksSize = sinks.size();
+        List<Future<Boolean>> sinkFutures = new ArrayList<>(sinksSize);
+        for (int i = 0; i < sinksSize; i++) {
+            int finalI = i;
+            sinkFutures.add(processorSinkExecutorService.submit(() -> sinks.get(finalI).output(records)));
+        }
+        return sinkFutures;
     }
 }

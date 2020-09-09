@@ -108,7 +108,7 @@ public class Situp {
                 .collect(Collectors.toList());
 
         final List<PluginSetting> sinkPluginSettings = pipelineConfiguration.getSink().getPluginSettings();
-        final Collection<Sink> sinks = sinkPluginSettings.stream().map(SinkFactory::newSink).collect(Collectors.toList());
+        final List<Sink> sinks = sinkPluginSettings.stream().map(SinkFactory::newSink).collect(Collectors.toList());
 
         final int processorThreads = getConfiguredThreadsOrDefault(processorConfiguration);
 
