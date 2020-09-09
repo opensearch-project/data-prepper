@@ -1,0 +1,23 @@
+
+
+plugins {
+    id 'java'
+}
+
+group 'com.amazon'
+version '0.1-beta'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    testCompile project(':situp-plugins:common').sourceSets.test.output
+    implementation 'org.lmdbjava:lmdbjava:0.8.1'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.10.0'
+    compile project(':situp-api')
+    compile project(':situp-plugins:common')
+}
