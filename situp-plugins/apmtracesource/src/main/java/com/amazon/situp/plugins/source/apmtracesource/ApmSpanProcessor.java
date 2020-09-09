@@ -36,7 +36,7 @@ public class ApmSpanProcessor {
     final ArrayNode instrumentationLibrarySpans = (ArrayNode) jsonNode.path(INSTRUMENTATION_LIBRARY_SPANS);
     //Get Resource attributes, if not present we will store the spans without resources objects.
     final ArrayList<ObjectNode> resourceNodes = jsonNode.path(RESOURCE).path(ATTRIBUTES).isArray() ?
-        processKeyValueList((ArrayNode) jsonNode.path(RESOURCE).path(ATTRIBUTES), String.format("%s.%s", RESOURCE, ATTRIBUTES))
+        processKeyValueList((ArrayNode) jsonNode.path(RESOURCE).path(ATTRIBUTES), String.format("%s.%s", RESOURCE, ATTRIBUTES), ".")
         : new ArrayList<>(Collections.emptyList());
     for (int i = 0; i < instrumentationLibrarySpans.size(); i++) {
       final ArrayNode spans = (ArrayNode) instrumentationLibrarySpans.get(i).path(SPANS);
@@ -49,7 +49,7 @@ public class ApmSpanProcessor {
         processDate(spanNode);
         //Get Span Attributes. Skipping Events/Links for now
         if (spanNode.path(ATTRIBUTES).isArray())
-          processKeyValueList((ArrayNode) spanNode.remove(ATTRIBUTES), ATTRIBUTES).forEach(spanNode::setAll);
+          processKeyValueList((ArrayNode) spanNode.remove(ATTRIBUTES), ATTRIBUTES, ".").forEach(spanNode::setAll);
         resourceNodes.forEach(spanNode::setAll);
         if (!instrumentationLibrarySpans.get(i).path(INSTRUMENTATION_LIBRARY).isMissingNode())
           spanNode.setAll((ObjectNode) instrumentationLibrarySpans.get(i).path(INSTRUMENTATION_LIBRARY));
@@ -79,11 +79,11 @@ public class ApmSpanProcessor {
 
   //Note the current version has zero dependency on opentelemetry-proto so we are going to
   //assume attributesKeyValue is processed like below.
-  private static ArrayList<ObjectNode> processKeyValueList(final ArrayNode resourceAttributes, final String prefix) {
+  private static ArrayList<ObjectNode> processKeyValueList(final ArrayNode resourceAttributes, final String prefix, final String fieldNameSeprator) {
     final ArrayList<ObjectNode> objectNodes = new ArrayList<>(Collections.emptyList());
     for (int i = 0; i < resourceAttributes.size(); i++) {
       final ObjectNode objectNode = OBJECT_MAPPER.createObjectNode();
-      final String newKey = String.format("%s.%s", prefix, resourceAttributes.get(i).get("key").asText());
+      final String newKey = String.format("%s%s%s", prefix,fieldNameSeprator, resourceAttributes.get(i).get("key").asText());
       switch (resourceAttributes.get(i).get("value").fieldNames().next()) {
         case "stringValue":
           objectNodes.add(objectNode.put(newKey, resourceAttributes.get(i).get("value").get("stringValue").asText()));
@@ -102,7 +102,7 @@ public class ApmSpanProcessor {
           break;
         case "keyValueList":
           //TBD: This flatten is something we will not do, but keeping it here.
-          objectNodes.addAll(processKeyValueList((ArrayNode) resourceAttributes.get(i).get("value"), newKey));
+          objectNodes.addAll(processKeyValueList((ArrayNode) resourceAttributes.get(i).get("value"), newKey, "_"));
           break;
       }
     }
