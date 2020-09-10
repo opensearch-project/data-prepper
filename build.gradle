@@ -22,4 +22,34 @@ subprojects {
     }
 
     build.dependsOn test
+    if(it.pluginManager.hasPlugin('java')) {
+        //by default jacocoTestReport is OnlyIf false which means if there are no tests -
+        //report is not generated
+        apply plugin: 'jacoco'
+        jacocoTestReport {
+            dependsOn test // tests are required to run before generating the report
+            reports {
+                xml.enabled false
+                csv.enabled false
+                html.destination file("${buildDir}/reports/jacocoHtml")
+            }
+        }
+        jacocoTestCoverageVerification {
+            dependsOn jacocoTestReport
+            violationRules {
+                rule {
+                    limit {
+                        minimum = 0.90 //TODO increase this
+                    }
+                }
+            }
+        }
+        test {
+            useJUnit()
+            finalizedBy jacocoTestReport // report is always generated after tests run
+        }
+        jacocoTestReport {
+            dependsOn test // tests are required to run before generating the report
+        }
+    }
 }

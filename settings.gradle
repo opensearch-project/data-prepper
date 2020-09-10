@@ -1,4 +1,4 @@
-rootProject.name = 'transformation-instance'
+rootProject.name = 'situp'
 
 include 'situp-api'
 include 'situp-plugins'
