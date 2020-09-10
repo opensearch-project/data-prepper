@@ -18,6 +18,7 @@ public class ConnectionPipelineComponentIT extends ESRestTestCase {
             .withPassword("")
             .build();
     RestHighLevelClient client = connectionConfiguration.createClient();
+    assertNotNull(client);
     client.close();
   }
 }

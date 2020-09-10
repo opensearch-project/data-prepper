@@ -13,7 +13,10 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.test.rest.ESRestTestCase;
 
 import javax.ws.rs.HttpMethod;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,6 +32,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
   public static List<String> HOSTS = Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
       .map(ip -> "http://" + ip).collect(Collectors.toList());
   private static final String DEFAULT_TEMPLATE_FILE = "test-index-template.json";
+  private static final String DEFAULT_RAW_SPAN_FILE = "raw-span-1.json";
 
   public void testInstantiateSinkRawSpanDefault() throws IOException {
     PluginSetting pluginSetting = generatePluginSetting(IndexConstants.RAW, null, null);
@@ -56,20 +60,13 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
   }
 
   public void testOutputRawSpanDefault() throws IOException, InterruptedException {
-    String testDoc = "{\"traceId\":\"bQ/2NNEmtuwsGAOR5ntCNw==\",\"spanId\":\"mnO/qUT5ye4=\"," +
-            "\"name\":\"io.opentelemetry.auto.servlet-3.0\",\"kind\":\"SERVER\",\"status\":{}," +
-            "\"startTime\":\"2020-08-20T05:40:46.041011600Z\",\"endTime\":\"2020-08-20T05:40:46.089556800Z\"," +
-            "\"attributes.http.status_code\":200,\"attributes.net.peer.port\":41168," +
-            "\"attributes.servlet.path\":\"/logs\",\"attributes.http.response_content_length\":7," +
-            "\"attributes.http.user_agent\":\"curl/7.54.0\",\"attributes.http.flavor\":\"HTTP/1.1\"," +
-            "\"attributes.servlet.context\":\"\",\"attributes.http.url\":\"http://0.0.0.0:8087/logs\"," +
-            "\"attributes.net.peer.ip\":\"172.29.0.1\",\"attributes.http.method\":\"POST\"," +
-            "\"attributes.http.client_ip\":\"172.29.0.1\"," +
-            "\"resource.attributes.service.name\":\"analytics-service\"," +
-            "\"resource.attributes.telemetry.sdk.language\":\"java\"," +
-            "\"resource.attributes.telemetry.sdk.name\":\"opentelemetry\"," +
-            "\"resource.attributes.telemetry.sdk.version\":\"0.8.0-SNAPSHOT\"}";
-
+    final StringBuilder jsonBuilder = new StringBuilder();
+    try (InputStream inputStream = Objects.requireNonNull(
+            getClass().getClassLoader().getResourceAsStream(DEFAULT_RAW_SPAN_FILE))){
+      BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+      bufferedReader.lines().forEach(jsonBuilder::append);
+    }
+    String testDoc = jsonBuilder.toString();
     ObjectMapper mapper = new ObjectMapper();
     @SuppressWarnings("unchecked")
     Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
