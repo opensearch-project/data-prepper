@@ -17,7 +17,7 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
     testCompile project(':situp-plugins:common').sourceSets.test.output
     implementation 'org.lmdbjava:lmdbjava:0.8.1'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.10.0'
+    implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
     compile project(':situp-api')
     compile project(':situp-plugins:common')
 }
