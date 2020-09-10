@@ -1,6 +1,8 @@
 package com.amazon.situp.processor.state;
 
+import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 
 /**
  * Holds state for processors as a key/value mapping
@@ -28,6 +30,14 @@ public interface ProcessorState<T> {
      * @return All the data in the processor state in the form of a Map
      */
     Map<String, T> getAll();
+
+    /**
+     * Iterate over the processor state with a bifunction
+     * @param fn BiFunction with which to iterate over the processor state
+     * @param <R> Type parameter for return value of BiFunction
+     * @return Result of iteration as a list of objects of type R
+     */
+    public<R> List<R> iterate(BiFunction<String, T, R> fn);
 
     /**
      * Clears the data in the processor state
