@@ -2,6 +2,7 @@ package com.amazon.situp.plugins.sink.elasticsearch;
 
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpStatus;
 import org.apache.http.util.EntityUtils;
 import org.elasticsearch.client.Request;
@@ -12,8 +13,12 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.test.rest.ESRestTestCase;
 
 import javax.ws.rs.HttpMethod;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,10 +26,13 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static org.apache.http.HttpStatus.SC_OK;
+
 public class ElasticsearchSinkIT extends ESRestTestCase {
   public static List<String> HOSTS = Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
       .map(ip -> "http://" + ip).collect(Collectors.toList());
   private static final String DEFAULT_TEMPLATE_FILE = "test-index-template.json";
+  private static final String DEFAULT_RAW_SPAN_FILE = "raw-span-1.json";
 
   public void testInstantiateSinkRawSpanDefault() throws IOException {
     PluginSetting pluginSetting = generatePluginSetting(IndexConstants.RAW, null, null);
@@ -32,14 +40,14 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
     Request request = new Request(HttpMethod.HEAD, indexAlias);
     Response response = client().performRequest(request);
-    assertEquals(HttpStatus.SC_OK, response.getStatusLine().getStatusCode());
+    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
     sink.stop();
 
     // roll over initial index
     request = new Request(HttpMethod.POST, String.format("%s/_rollover", indexAlias));
     request.setJsonEntity("{ \"conditions\" : { } }\n");
     response = client().performRequest(request);
-    assertEquals(HttpStatus.SC_OK, response.getStatusLine().getStatusCode());
+    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
 
     // Instantiate sink again
     sink = new ElasticsearchSink(pluginSetting);
@@ -52,14 +60,18 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
   }
 
   public void testOutputRawSpanDefault() throws IOException, InterruptedException {
-    String traceId = UUID.randomUUID().toString();
-    String spanId1 = UUID.randomUUID().toString();
-    String spanId2 = UUID.randomUUID().toString();
-    List<Record<String>> testRecords = Arrays.asList(
-        generateDummyRawSpanRecord(traceId, spanId1, "2020-08-05", "2020-08-06"),
-        generateDummyRawSpanRecord(
-                traceId, spanId2, "2020-08-30T00:00:00.000000000Z", "2020-08-30T00:00:00.000123456Z")
-    );
+    final StringBuilder jsonBuilder = new StringBuilder();
+    try (InputStream inputStream = Objects.requireNonNull(
+            getClass().getClassLoader().getResourceAsStream(DEFAULT_RAW_SPAN_FILE))){
+      BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+      bufferedReader.lines().forEach(jsonBuilder::append);
+    }
+    String testDoc = jsonBuilder.toString();
+    ObjectMapper mapper = new ObjectMapper();
+    @SuppressWarnings("unchecked")
+    Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
+
+    List<Record<String>> testRecords = Collections.singletonList(new Record<>(testDoc));
     PluginSetting pluginSetting = generatePluginSetting(IndexConstants.RAW, null, null);
     ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     boolean success = sink.output(testRecords);
@@ -69,11 +81,9 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
 
     String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
     assertTrue(success);
-    assertEquals(Integer.valueOf(2), getDocumentCount(expIndexAlias, "traceId", traceId));
-    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", spanId1));
-    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "spanId", spanId2));
-    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "startTime", "2020-08-05T00:00:00.000Z"));
-    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "endTime", "2020-08-30T00:00:00.000123456Z"));
+    List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
+    assertEquals(1, retSources.size());
+    assertEquals(expData, retSources.get(0));
   }
 
   public void testInstantiateSinkRawSpanCustom() throws IOException {
@@ -84,14 +94,14 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     Request request = new Request(HttpMethod.HEAD, testIndexAlias);
     Response response = client().performRequest(request);
-    assertEquals(HttpStatus.SC_OK, response.getStatusLine().getStatusCode());
+    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
     sink.stop();
 
     // roll over initial index
     request = new Request(HttpMethod.POST, String.format("%s/_rollover", testIndexAlias));
     request.setJsonEntity("{ \"conditions\" : { } }\n");
     response = client().performRequest(request);
-    assertEquals(HttpStatus.SC_OK, response.getStatusLine().getStatusCode());
+    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
 
     // Instantiate sink again
     sink = new ElasticsearchSink(pluginSetting);
@@ -134,7 +144,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.SERVICE_MAP);
     Request request = new Request(HttpMethod.HEAD, indexAlias);
     Response response = client().performRequest(request);
-    assertEquals(HttpStatus.SC_OK, response.getStatusLine().getStatusCode());
+    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
     sink.stop();
   }
 
@@ -146,7 +156,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     Request request = new Request(HttpMethod.HEAD, testIndexAlias);
     Response response = client().performRequest(request);
-    assertEquals(HttpStatus.SC_OK, response.getStatusLine().getStatusCode());
+    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
     sink.stop();
   }
 
@@ -158,7 +168,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     Request request = new Request(HttpMethod.HEAD, testIndexAlias);
     Response response = client().performRequest(request);
-    assertEquals(HttpStatus.SC_OK, response.getStatusLine().getStatusCode());
+    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
     sink.stop();
   }
 
@@ -213,5 +223,20 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     Response response = client().performRequest(request);
     String responseBody = EntityUtils.toString(response.getEntity());
     return (Integer)createParser(XContentType.JSON.xContent(), responseBody).map().get("count");
+  }
+
+  private List<Map<String, Object>> getSearchResponseDocSources(String index) throws IOException {
+    Request request = new Request(HttpMethod.GET, index + "/_search");
+    Response response = client().performRequest(request);
+    String responseBody = EntityUtils.toString(response.getEntity());
+
+    @SuppressWarnings("unchecked")
+    List<Object> hits = (List<Object>) ((Map<String, Object>)createParser(XContentType.JSON.xContent(),
+            responseBody).map().get("hits")).get("hits");
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> sources = hits.stream()
+            .map(hit -> (Map<String, Object>)((Map<String, Object>) hit).get("_source"))
+            .collect(Collectors.toList());
+    return sources;
   }
 }

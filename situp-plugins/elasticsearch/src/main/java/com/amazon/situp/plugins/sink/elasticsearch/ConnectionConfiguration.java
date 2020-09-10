@@ -8,6 +8,7 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
+import org.elasticsearch.client.RestHighLevelClient;
 
 import java.util.List;
 
@@ -96,7 +97,7 @@ public class ConnectionConfiguration {
     this.connectTimeout = builder.connectTimeout;
   }
 
-  public RestClient createClient() {
+  public RestHighLevelClient createClient() {
     final HttpHost[] httpHosts = new HttpHost[hosts.size()];
     int i = 0;
     for (final String host : hosts) {
@@ -107,26 +108,26 @@ public class ConnectionConfiguration {
     if (username != null) {
       final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
       credentialsProvider.setCredentials(
-          AuthScope.ANY, new UsernamePasswordCredentials(username, password));
+              AuthScope.ANY, new UsernamePasswordCredentials(username, password));
       restClientBuilder.setHttpClientConfigCallback(
-          httpAsyncClientBuilder ->
-              httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
+              httpAsyncClientBuilder ->
+                      httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
     }
     restClientBuilder.setRequestConfigCallback(
-        new RestClientBuilder.RequestConfigCallback() {
-          @Override
-          public RequestConfig.Builder customizeRequestConfig(
-              RequestConfig.Builder requestConfigBuilder) {
-            if (connectTimeout != null) {
-              requestConfigBuilder.setConnectTimeout(connectTimeout);
-            }
-            if (socketTimeout != null) {
-              requestConfigBuilder.setSocketTimeout(socketTimeout);
-            }
-            return requestConfigBuilder;
-          }
-        });
-    return restClientBuilder.build();
+            new RestClientBuilder.RequestConfigCallback() {
+              @Override
+              public RequestConfig.Builder customizeRequestConfig(
+                      RequestConfig.Builder requestConfigBuilder) {
+                if (connectTimeout != null) {
+                  requestConfigBuilder.setConnectTimeout(connectTimeout);
+                }
+                if (socketTimeout != null) {
+                  requestConfigBuilder.setSocketTimeout(socketTimeout);
+                }
+                return requestConfigBuilder;
+              }
+            });
+    return new RestHighLevelClient(restClientBuilder);
   }
 
 

@@ -5,33 +5,36 @@ import com.amazon.situp.model.annotations.SitupPlugin;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.sink.Sink;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpStatus;
-import org.apache.http.StatusLine;
-import org.apache.http.entity.BufferedHttpEntity;
-import org.elasticsearch.client.Request;
-import org.elasticsearch.client.Response;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.common.Strings;
+import org.elasticsearch.action.admin.indices.alias.Alias;
+import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
+import org.elasticsearch.action.bulk.BulkItemResponse;
+import org.elasticsearch.action.bulk.BulkProcessor;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.client.indices.CreateIndexRequest;
+import org.elasticsearch.client.indices.PutIndexTemplateRequest;
+
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
-import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.Collection;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.CONNECT_TIMEOUT;
 import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.HOSTS;
@@ -48,7 +51,8 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchSink.class);
 
   private final ElasticsearchSinkConfiguration esSinkConfig;
-  private RestClient restClient;
+  private RestHighLevelClient restHighLevelClient;
+  private BulkProcessor bulkProcessor;
 
   public ElasticsearchSink(final PluginSetting pluginSetting) {
     this.esSinkConfig = readESConfig(pluginSetting);
@@ -64,8 +68,8 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     final IndexConfiguration indexConfiguration = readIndexConfig(pluginSetting);
 
     return new ElasticsearchSinkConfiguration.Builder(connectionConfiguration)
-        .withIndexConfiguration(indexConfiguration)
-        .build();
+            .withIndexConfiguration(indexConfiguration)
+            .build();
   }
 
   private ConnectionConfiguration readConnectionConfiguration(final PluginSetting pluginSetting){
@@ -110,11 +114,48 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   }
 
   public void start() throws IOException {
-    restClient = esSinkConfig.getConnectionConfiguration().createClient();
+    restHighLevelClient = esSinkConfig.getConnectionConfiguration().createClient();
     if (esSinkConfig.getIndexConfiguration().getTemplateURL() != null) {
       createIndexTemplate();
     }
     checkAndCreateIndex();
+    bulkProcessor = initBulkProcessor(restHighLevelClient);
+  }
+
+  private BulkProcessor initBulkProcessor(RestHighLevelClient client) {
+    BulkProcessor.Listener listener = new BulkProcessor.Listener() {
+      @Override
+      public void beforeBulk(long executionId, BulkRequest request) {
+
+      }
+
+      @Override
+      public void afterBulk(long executionId, BulkRequest request,
+                            BulkResponse response) {
+        if (response.hasFailures()) {
+          for (BulkItemResponse bulkItemResponse : response) {
+            if (bulkItemResponse.isFailed()) {
+              BulkItemResponse.Failure failure =
+                      bulkItemResponse.getFailure();
+              LOG.warn("Document [{}] has failure: {}", bulkItemResponse.getId(), failure);
+            }
+          }
+        }
+      }
+
+      @Override
+      public void afterBulk(long executionId, BulkRequest request,
+                            Throwable failure) {
+        LOG.error(failure.getMessage(), failure);
+      }
+    };
+
+    // TODO: customize retry backoff, concurrency settings, etc.
+    return BulkProcessor.builder(
+            (request, bulkListener) -> client.bulkAsync(
+                    request, RequestOptions.DEFAULT, bulkListener), listener)
+            .setGlobalIndex(esSinkConfig.getIndexConfiguration().getIndexAlias())
+            .build();
   }
 
   @Override
@@ -122,120 +163,69 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     if (records.isEmpty()) {
       return false;
     }
-    StringBuilder bulkRequest = new StringBuilder();
     for (final Record<String> record: records) {
       String document = record.getData();
+      IndexRequest indexRequest = new IndexRequest().source(document, XContentType.JSON);
       try {
-        XContentBuilder xcontentBuilder = XContentFactory.jsonBuilder();
-        xcontentBuilder.startObject().startObject("index");
-        String spanId = getSpanIdFromRecord(document);
+        Map<String, Object> docMap = getMapFromJson(document);
+        String spanId = (String)docMap.get("spanId");
         if (spanId != null) {
-          xcontentBuilder.field("_id", spanId);
+          indexRequest = indexRequest.id(spanId);
         }
-        xcontentBuilder.endObject().endObject();
-        bulkRequest.append(Strings.toString(xcontentBuilder)).append("\n").append(document).append("\n");
+        bulkProcessor.add(indexRequest);
       } catch (IOException e) {
         throw new RuntimeException(e.getMessage(), e);
       }
     }
-    Response response;
-    HttpEntity responseEntity;
-    final String endPoint = String.format("/%s/_bulk", esSinkConfig.getIndexConfiguration().getIndexAlias());
-    final Request request = new Request(HttpMethod.POST, endPoint);
-    request.setJsonEntity(bulkRequest.toString());
-    try {
-      response = restClient.performRequest(request);
-      responseEntity = new BufferedHttpEntity(response.getEntity());
-      // TODO: apply retry predicate here
-      responseEntity = handleRetry(HttpMethod.POST, endPoint, responseEntity);
-      checkForErrors(responseEntity);
 
-      // TODO: what if partial success?
-      return true;
-    } catch (IOException e) {
-      LOG.error(e.getMessage(), e);
-      return false;
-    }
+    return true;
   }
 
   // TODO: need to be invoked by pipeline
   public void stop() {
-    if (restClient != null) {
-      try {
-        restClient.close();
-      } catch (IOException e) {
-        throw new RuntimeException(e.getMessage(), e);
+    try {
+      boolean terminated = bulkProcessor.awaitClose(30L, TimeUnit.SECONDS);
+      if (!terminated) {
+        LOG.warn("Timed out for flushing remaining requests");
       }
+      // client needs to be closed separately
+      restHighLevelClient.close();
+    } catch (InterruptedException e) {
+      LOG.error(e.getMessage(), e);
+      bulkProcessor.close();
+    } catch (IOException e) {
+      LOG.error(e.getMessage(), e);
     }
   }
 
   private void createIndexTemplate() throws IOException {
-    // TODO: add logic here to create index template
-    // QUES: how to identify index template file with index pattern accordingly?
-    Response response;
-    HttpEntity responseEntity;
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
-    final String endPoint = String.format("/_template/%s-index-template", indexAlias);
+    PutIndexTemplateRequest putIndexTemplateRequest = new PutIndexTemplateRequest(indexAlias + "-index-template");
+    putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias + "-*"));
     final URL jsonURL = esSinkConfig.getIndexConfiguration().getTemplateURL();
     final String templateJson = readTemplateURL(jsonURL);
-    final Request request = new Request(HttpMethod.POST, endPoint);
-    final XContentParser parser = XContentFactory.xContent(XContentType.JSON)
-        .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, templateJson);
-    Map<String, Object> template = parser.map();
-    String jsonEntity;
-    if (esSinkConfig.getIndexConfiguration().getIndexType().equals(IndexConstants.RAW)) {
-      // Add -* prefix for rollover
-      jsonEntity = Strings.toString(
-          XContentFactory.jsonBuilder().startObject()
-              .field("index_patterns", indexAlias + "-*")
-              .field("settings", template.getOrDefault("settings", new HashMap<>()))
-              .field("mappings", template.getOrDefault("mappings", new HashMap<>())).endObject());
-    } else {
-      jsonEntity = Strings.toString(
-          XContentFactory.jsonBuilder().startObject()
-              .field("index_patterns", indexAlias)
-              .field("settings", template.getOrDefault("settings", new HashMap<>()))
-              .field("mappings", template.getOrDefault("mappings", new HashMap<>())).endObject());
-    }
-    request.setJsonEntity(jsonEntity);
-    response = restClient.performRequest(request);
-    responseEntity = new BufferedHttpEntity(response.getEntity());
-    // TODO: apply retry predicate here
-    responseEntity = handleRetry(HttpMethod.POST, endPoint, responseEntity);
-    checkForErrors(responseEntity);
+    putIndexTemplateRequest.source(templateJson, XContentType.JSON);
+    restHighLevelClient.indices().putTemplate(putIndexTemplateRequest, RequestOptions.DEFAULT);
   }
 
   private void checkAndCreateIndex() throws IOException {
     // Check alias exists
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
-    Request request = new Request(HttpMethod.HEAD, "/" + indexAlias);
-    Response response = restClient.performRequest(request);
-    final StatusLine statusLine = response.getStatusLine();
-    if (statusLine.getStatusCode() == HttpStatus.SC_NOT_FOUND) {
+    GetAliasesRequest getAliasesRequest = new GetAliasesRequest().aliases(indexAlias);
+    boolean exists = restHighLevelClient.indices().existsAlias(getAliasesRequest, RequestOptions.DEFAULT);
+    if (!exists) {
       // TODO: use date as suffix?
       String initialIndexName;
+      CreateIndexRequest createIndexRequest;
       if (esSinkConfig.getIndexConfiguration().getIndexType().equals(IndexConstants.RAW)) {
         initialIndexName = indexAlias + "-000001";
-        request = new Request(HttpMethod.PUT, "/" + initialIndexName);
-        String jsonContent = Strings.toString(
-            XContentFactory.jsonBuilder().startObject()
-                .startObject("aliases")
-                .startObject(indexAlias)
-                .field("is_write_index", true)
-                .endObject()
-                .endObject()
-                .endObject()
-        );
-        request.setJsonEntity(jsonContent);
+        createIndexRequest = new CreateIndexRequest(initialIndexName);
+        createIndexRequest.alias(new Alias(indexAlias).writeIndex(true));
       } else {
         initialIndexName = indexAlias;
-        request = new Request(HttpMethod.PUT, "/" + initialIndexName);
+        createIndexRequest = new CreateIndexRequest(initialIndexName);
       }
-      response = restClient.performRequest(request);
-      HttpEntity responseEntity = new BufferedHttpEntity(response.getEntity());
-      // TODO: apply retry predicate here
-      responseEntity = handleRetry(HttpMethod.POST, initialIndexName, responseEntity);
-      checkForErrors(responseEntity);
+      restHighLevelClient.indices().create(createIndexRequest, RequestOptions.DEFAULT);
     }
   }
 
@@ -249,18 +239,9 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     return templateJsonBuffer.toString();
   }
 
-  private String getSpanIdFromRecord(String documentJson) throws IOException {
+  private Map<String, Object> getMapFromJson(String documentJson) throws IOException {
     final XContentParser parser = XContentFactory.xContent(XContentType.JSON)
             .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, documentJson);
-    return (String)parser.map().get("spanId");
-  }
-
-  private HttpEntity handleRetry(String method, String endpoint, HttpEntity requestBody) {
-    // TODO: add logic here
-    return null;
-  }
-
-  private void checkForErrors(HttpEntity responseEntity) {
-    // TODO: add logic to find errors in the response entity.
+    return parser.map();
   }
 }
