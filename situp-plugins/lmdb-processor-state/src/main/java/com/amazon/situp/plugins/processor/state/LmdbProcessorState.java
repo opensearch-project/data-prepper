@@ -24,6 +24,13 @@ public class LmdbProcessorState<T> implements ProcessorState<T> {
     private final Env<ByteBuffer> env;
     private final Class<T> clazz; //Needed for deserialization
 
+    /**
+     * Constructor for LMDB processor state. See LMDB-Java for more info:
+     * https://github.com/lmdbjava/lmdbjava
+     * @param dbPath The directory in which to store the LMDB data files
+     * @param dbName Name of the database
+     * @param clazz Class type for value storage
+     */
     public LmdbProcessorState(final File dbPath, final String dbName, final Class<T> clazz) {
         //TODO: These need to be configurable
         env = Env.create()
