@@ -164,14 +164,16 @@ public class ElasticsearchSink implements Sink<Record<String>> {
             if (bulkItemResponse.isFailed()) {
               BulkItemResponse.Failure failure =
                       bulkItemResponse.getFailure();
-              if (dlqWriter != null) {
-                try {
+              try {
+                if (dlqWriter != null) {
                   dlqWriter.write(
                           String.format("Document [%s] has failure: %s\n",
                                   docWriteRequest.toString(), failure.getMessage()));
-                } catch (IOException e) {
-                  LOG.error("DLQ failed for Document [{}]", docWriteRequest.toString());
+                } else {
+                  LOG.warn("Document [{}] has failure: {}", docWriteRequest.toString(), failure);
                 }
+              } catch (IOException e) {
+                LOG.error("DLQ failed for Document [{}]", docWriteRequest.toString());
               }
             }
           }
@@ -182,14 +184,16 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       public void afterBulk(long executionId, BulkRequest request,
                             Throwable failure) {
         for (DocWriteRequest<?> docWriteRequest: request.requests()) {
-          if (dlqWriter != null) {
-            try {
+          try {
+            if (dlqWriter != null) {
               dlqWriter.write(
                       String.format("Document [%s] has failure: %s\n",
                               docWriteRequest.toString(), failure.getMessage()));
-            } catch (IOException e) {
-              LOG.error("DLQ failed for Document [{}]", docWriteRequest.toString());
+            } else {
+              LOG.error("Document [{}] has failure: {}", docWriteRequest.toString(), failure);
             }
+          } catch (IOException e) {
+            LOG.error("DLQ failed for Document [{}]", docWriteRequest.toString());
           }
         }
       }
