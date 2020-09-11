@@ -12,7 +12,7 @@ pipeline:
   sink:
     elasticsearch:
       hosts: ["http://localhost:9200"]
-      dlq_file: <absolute-path>/<filename>
+      dlq_file: /your/local/dlq-file
 ``` 
 
 ### Hosts
@@ -21,7 +21,7 @@ A list of IP addresses of elasticsearch nodes.
 
 ### DLQ file (Optional)
 
-A String of file path for DLQ failed output records.
+A String of absolute file path for DLQ failed output records.
 
 ## Compatibility
 
