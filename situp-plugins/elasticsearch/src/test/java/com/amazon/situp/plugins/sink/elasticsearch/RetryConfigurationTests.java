@@ -7,7 +7,7 @@ import static org.junit.Assert.assertNull;
 
 public class RetryConfigurationTests {
     @Test
-    public void testDefault() {
+    public void testDefaultConfigurationIsNotNull() {
         RetryConfiguration retryConfiguration = new RetryConfiguration.Builder().build();
         assertNull(retryConfiguration.getDlqFile());
     }
