@@ -1,5 +1,6 @@
 package com.amazon.situp.plugins.sink.elasticsearch;
 
+import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.junit.Test;
 
 import java.io.File;
@@ -24,6 +25,7 @@ public class IndexConfigurationTests {
     assertEquals(RAW, indexConfiguration.getIndexType());
     assertEquals(TYPE_TO_DEFAULT_ALIAS.get(RAW), indexConfiguration.getIndexAlias());
     assertEquals(expTemplateFile, indexConfiguration.getTemplateURL());
+    assertEquals(ByteSizeUnit.MB.toBytes(5), indexConfiguration.getBatchSize());
   }
 
   @Test
@@ -69,23 +71,33 @@ public class IndexConfigurationTests {
   }
 
   @Test
-  public void testCustom() throws MalformedURLException {
+  public void testValidCustom() throws MalformedURLException {
     String fakeTemplateFilePath = "src/resources/dummy.json";
     String testIndexAlias = "foo";
     IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
-        .withIndexType(CUSTOM)
-        .withIndexAlias(testIndexAlias)
-        .withTemplateFile(fakeTemplateFilePath)
-        .build();
+            .withIndexType(CUSTOM)
+            .withIndexAlias(testIndexAlias)
+            .withTemplateFile(fakeTemplateFilePath)
+            .withBatchSize(ByteSizeUnit.MB.toBytes(10))
+            .build();
 
     assertEquals(CUSTOM, indexConfiguration.getIndexType());
     assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
     assertEquals(new File(fakeTemplateFilePath).toURI().toURL(), indexConfiguration.getTemplateURL());
+    assertEquals(ByteSizeUnit.MB.toBytes(10), indexConfiguration.getBatchSize());
+  }
 
+  @Test
+  public void testInvalidCustom() {
+    // Missing index alias
     IndexConfiguration.Builder invalidBuilder = new IndexConfiguration.Builder()
-        .withIndexType(CUSTOM)
-        .withTemplateFile(fakeTemplateFilePath);
+            .withIndexType(CUSTOM);
     Exception exception = assertThrows(IllegalStateException.class, invalidBuilder::build);
     assertEquals("Missing required properties:indexAlias", exception.getMessage());
+
+    // Invalid batch size
+    exception = assertThrows(
+            IllegalArgumentException.class, () -> new IndexConfiguration.Builder().withBatchSize(-2));
+    assertEquals("batchSize cannot be less than -1 bytes.", exception.getMessage());
   }
 }

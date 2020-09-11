@@ -17,6 +17,8 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.PutIndexTemplateRequest;
 
+import org.elasticsearch.common.unit.ByteSizeUnit;
+import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.common.xcontent.XContentFactory;
@@ -41,6 +43,7 @@ import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguratio
 import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.PASSWORD;
 import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.SOCKET_TIMEOUT;
 import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.USERNAME;
+import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.BATCH_SIZE;
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.INDEX_ALIAS;
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.INDEX_TYPE;
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.TEMPLATE_FILE;
@@ -110,6 +113,10 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     if (templateFile != null) {
       builder = builder.withTemplateFile(templateFile);
     }
+    final Long batchSize = (Long)pluginSetting.getAttributeFromSettings(BATCH_SIZE);
+    if (batchSize != null) {
+      builder = builder.withBatchSize(batchSize);
+    }
     return builder.build();
   }
 
@@ -155,6 +162,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
             (request, bulkListener) -> client.bulkAsync(
                     request, RequestOptions.DEFAULT, bulkListener), listener)
             .setGlobalIndex(esSinkConfig.getIndexConfiguration().getIndexAlias())
+            .setBulkSize(new ByteSizeValue(esSinkConfig.getIndexConfiguration().getBatchSize(), ByteSizeUnit.BYTES))
             .build();
   }
 

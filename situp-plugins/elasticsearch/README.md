@@ -12,11 +12,16 @@ pipeline:
   sink:
     elasticsearch:
       hosts: ["http://localhost:9200"]
+      batch_size: 4194304
 ``` 
 
 ### Hosts
 
 A list of IP addresses of elasticsearch nodes.
+
+### Batch size (Optional)
+
+A long of batch size in bulk requests in bytes. Default to 5242880 (5MB). Set to -1 to disable.
 
 ## Compatibility
 
