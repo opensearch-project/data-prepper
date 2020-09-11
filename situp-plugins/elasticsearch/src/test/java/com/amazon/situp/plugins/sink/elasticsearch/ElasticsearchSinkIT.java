@@ -14,7 +14,6 @@ import org.elasticsearch.test.rest.ESRestTestCase;
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -29,7 +28,6 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static com.amazon.situp.plugins.sink.elasticsearch.RetryConfiguration.DLQ_FILE;
 import static org.apache.http.HttpStatus.SC_OK;
 
 public class ElasticsearchSinkIT extends ESRestTestCase {
@@ -97,7 +95,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     File tempDirectory = Files.createTempDirectory("").toFile();
     // add dlq file path into setting
     String expDLQFile = tempDirectory.getAbsolutePath() + "/test-dlq.txt";
-    pluginSetting.getSettings().put(DLQ_FILE, expDLQFile);
+    pluginSetting.getSettings().put(RetryConfiguration.DLQ_FILE, expDLQFile);
 
     ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     boolean success = sink.output(testRecords);
