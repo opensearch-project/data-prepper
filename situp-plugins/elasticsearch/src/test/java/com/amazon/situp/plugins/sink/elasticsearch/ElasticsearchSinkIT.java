@@ -3,7 +3,6 @@ package com.amazon.situp.plugins.sink.elasticsearch;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.HttpStatus;
 import org.apache.http.util.EntityUtils;
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.Response;
@@ -14,9 +13,13 @@ import org.elasticsearch.test.rest.ESRestTestCase;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -26,6 +29,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static com.amazon.situp.plugins.sink.elasticsearch.RetryConfiguration.DLQ_FILE;
 import static org.apache.http.HttpStatus.SC_OK;
 
 public class ElasticsearchSinkIT extends ESRestTestCase {
@@ -60,13 +64,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
   }
 
   public void testOutputRawSpanDefault() throws IOException, InterruptedException {
-    final StringBuilder jsonBuilder = new StringBuilder();
-    try (InputStream inputStream = Objects.requireNonNull(
-            getClass().getClassLoader().getResourceAsStream(DEFAULT_RAW_SPAN_FILE))){
-      BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-      bufferedReader.lines().forEach(jsonBuilder::append);
-    }
-    String testDoc = jsonBuilder.toString();
+    String testDoc = readDocFromFile(DEFAULT_RAW_SPAN_FILE);
     ObjectMapper mapper = new ObjectMapper();
     @SuppressWarnings("unchecked")
     Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
@@ -84,6 +82,40 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
     assertEquals(1, retSources.size());
     assertEquals(expData, retSources.get(0));
+  }
+
+  public void testOutputRawSpanWithDLQ() throws IOException, InterruptedException {
+    // TODO: write test case
+    String testDoc1 = readDocFromFile("raw-span-error.json");
+    String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE);
+    ObjectMapper mapper = new ObjectMapper();
+    @SuppressWarnings("unchecked")
+    Map<String, Object> expData = mapper.readValue(testDoc2, Map.class);
+    List<Record<String>> testRecords = Arrays.asList(new Record<>(testDoc1), new Record<>(testDoc2));
+    PluginSetting pluginSetting = generatePluginSetting(IndexConstants.RAW, null, null);
+    // generate temporary directory for dlq file
+    File tempDirectory = Files.createTempDirectory("").toFile();
+    // add dlq file path into setting
+    String expDLQFile = tempDirectory.getAbsolutePath() + "/test-dlq.txt";
+    pluginSetting.getSettings().put(DLQ_FILE, expDLQFile);
+
+    ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
+    boolean success = sink.output(testRecords);
+    sink.stop();
+    // wait for documents to be populated
+    Thread.sleep(1000);
+
+    assertTrue(success);
+    StringBuilder content = new StringBuilder();
+    Files.lines(Paths.get(expDLQFile)).forEach(content::append);
+    assertTrue(content.toString().contains(testDoc1));
+    String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
+    List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
+    assertEquals(1, retSources.size());
+    assertEquals(expData, retSources.get(0));
+
+    // clean up temporary directory
+    assertTrue(deleteDirectory(tempDirectory));
   }
 
   public void testInstantiateSinkRawSpanCustom() throws IOException {
@@ -196,6 +228,16 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     );
   }
 
+  private String readDocFromFile(String filename) throws IOException {
+    final StringBuilder jsonBuilder = new StringBuilder();
+    try (InputStream inputStream = Objects.requireNonNull(
+            getClass().getClassLoader().getResourceAsStream(filename))){
+      BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+      bufferedReader.lines().forEach(jsonBuilder::append);
+    }
+    return jsonBuilder.toString();
+  }
+
   private Boolean checkIsWriteIndex(String responseBody, String aliasName, String indexName) throws IOException {
     @SuppressWarnings("unchecked")
     Map<String, Object> indexBlob = (Map<String, Object>)createParser(XContentType.JSON.xContent(), responseBody).map().get(indexName);
@@ -238,5 +280,15 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
             .map(hit -> (Map<String, Object>)((Map<String, Object>) hit).get("_source"))
             .collect(Collectors.toList());
     return sources;
+  }
+
+  private boolean deleteDirectory(File directoryToBeDeleted) {
+    File[] allContents = directoryToBeDeleted.listFiles();
+    if (allContents != null) {
+      for (File file : allContents) {
+        deleteDirectory(file);
+      }
+    }
+    return directoryToBeDeleted.delete();
   }
 }
