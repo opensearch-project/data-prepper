@@ -8,6 +8,7 @@ public class ElasticsearchSinkConfiguration {
    */
   private final ConnectionConfiguration connectionConfiguration;
   private final IndexConfiguration indexConfiguration;
+  private final RetryConfiguration retryConfiguration;
 
   public ConnectionConfiguration getConnectionConfiguration() {
     return connectionConfiguration;
@@ -17,9 +18,14 @@ public class ElasticsearchSinkConfiguration {
     return indexConfiguration;
   }
 
+  public RetryConfiguration getRetryConfiguration() {
+    return retryConfiguration;
+  }
+
   public static class Builder {
     private ConnectionConfiguration connectionConfiguration;
     private IndexConfiguration indexConfiguration = new IndexConfiguration.Builder().build();
+    private RetryConfiguration retryConfiguration = new RetryConfiguration.Builder().build();
 
     public Builder(final ConnectionConfiguration connectionConfiguration) {
       checkArgument(connectionConfiguration != null, "connectionConfiguration cannot be null");
@@ -32,6 +38,12 @@ public class ElasticsearchSinkConfiguration {
       return this;
     }
 
+    public Builder withRetryConfiguration(final RetryConfiguration retryConfiguration) {
+      checkArgument(retryConfiguration != null, "retryConfiguration cannot be null");
+      this.retryConfiguration = retryConfiguration;
+      return this;
+    }
+
     public ElasticsearchSinkConfiguration build() {
       return new ElasticsearchSinkConfiguration(this);
     }
@@ -40,5 +52,6 @@ public class ElasticsearchSinkConfiguration {
   private ElasticsearchSinkConfiguration(final Builder builder) {
     this.connectionConfiguration = builder.connectionConfiguration;
     this.indexConfiguration = builder.indexConfiguration;
+    this.retryConfiguration = builder.retryConfiguration;
   }
 }
