@@ -5,6 +5,7 @@ import com.amazon.situp.model.annotations.SitupPlugin;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.sink.Sink;
+import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.alias.Alias;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
@@ -26,10 +27,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -44,11 +49,14 @@ import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguratio
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.INDEX_ALIAS;
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.INDEX_TYPE;
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.TEMPLATE_FILE;
+import static com.amazon.situp.plugins.sink.elasticsearch.RetryConfiguration.DLQ_FILE;
 
 @SitupPlugin(name = "elasticsearch", type = PluginType.SINK)
 public class ElasticsearchSink implements Sink<Record<String>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchSink.class);
+
+  private BufferedWriter dlqWriter;
 
   private final ElasticsearchSinkConfiguration esSinkConfig;
   private RestHighLevelClient restHighLevelClient;
@@ -66,9 +74,11 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private ElasticsearchSinkConfiguration readESConfig(final PluginSetting pluginSetting) {
     final ConnectionConfiguration connectionConfiguration = readConnectionConfiguration(pluginSetting);
     final IndexConfiguration indexConfiguration = readIndexConfig(pluginSetting);
+    final RetryConfiguration retryConfiguration = readRetryConfig(pluginSetting);
 
     return new ElasticsearchSinkConfiguration.Builder(connectionConfiguration)
             .withIndexConfiguration(indexConfiguration)
+            .withRetryConfiguration(retryConfiguration)
             .build();
   }
 
@@ -113,10 +123,23 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     return builder.build();
   }
 
+  private RetryConfiguration readRetryConfig(final PluginSetting pluginSetting) {
+    RetryConfiguration.Builder builder = new RetryConfiguration.Builder();
+    final String dlqFile = (String)pluginSetting.getAttributeFromSettings(DLQ_FILE);
+    if (dlqFile != null) {
+      builder = builder.withDlqFile(dlqFile);
+    }
+    return builder.build();
+  }
+
   public void start() throws IOException {
     restHighLevelClient = esSinkConfig.getConnectionConfiguration().createClient();
     if (esSinkConfig.getIndexConfiguration().getTemplateURL() != null) {
       createIndexTemplate();
+    }
+    String dlqFile = esSinkConfig.getRetryConfiguration().getDlqFile();
+    if ( dlqFile != null) {
+      dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
     checkAndCreateIndex();
     bulkProcessor = initBulkProcessor(restHighLevelClient);
@@ -133,11 +156,23 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       public void afterBulk(long executionId, BulkRequest request,
                             BulkResponse response) {
         if (response.hasFailures()) {
-          for (BulkItemResponse bulkItemResponse : response) {
+          BulkItemResponse[] itemResponses = response.getItems();
+          List<DocWriteRequest<?>> docWriteRequests = request.requests();
+          for (int i = 0; i < itemResponses.length; i++) {
+            BulkItemResponse bulkItemResponse = itemResponses[i];
+            DocWriteRequest<?> docWriteRequest = docWriteRequests.get(i);
             if (bulkItemResponse.isFailed()) {
               BulkItemResponse.Failure failure =
                       bulkItemResponse.getFailure();
-              LOG.warn("Document [{}] has failure: {}", bulkItemResponse.getId(), failure);
+              if (dlqWriter != null) {
+                try {
+                  dlqWriter.write(
+                          String.format("Document [%s] has failure: %s\n",
+                                  docWriteRequest.toString(), failure.getMessage()));
+                } catch (IOException e) {
+                  LOG.error("DLQ failed for Document [{}]", docWriteRequest.toString());
+                }
+              }
             }
           }
         }
@@ -146,7 +181,17 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       @Override
       public void afterBulk(long executionId, BulkRequest request,
                             Throwable failure) {
-        LOG.error(failure.getMessage(), failure);
+        for (DocWriteRequest<?> docWriteRequest: request.requests()) {
+          if (dlqWriter != null) {
+            try {
+              dlqWriter.write(
+                      String.format("Document [%s] has failure: %s\n",
+                              docWriteRequest.toString(), failure.getMessage()));
+            } catch (IOException e) {
+              LOG.error("DLQ failed for Document [{}]", docWriteRequest.toString());
+            }
+          }
+        }
       }
     };
 
@@ -190,6 +235,10 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       }
       // client needs to be closed separately
       restHighLevelClient.close();
+      // dlqWriter stream should be closed
+      if (dlqWriter != null) {
+        dlqWriter.close();
+      }
     } catch (InterruptedException e) {
       LOG.error(e.getMessage(), e);
       bulkProcessor.close();
