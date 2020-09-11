@@ -73,6 +73,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     boolean success = sink.output(testRecords);
     sink.stop();
     // wait for documents to be populated
+    // TODO: better wait strategy?
     Thread.sleep(1000);
 
     String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
@@ -101,6 +102,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     boolean success = sink.output(testRecords);
     sink.stop();
     // wait for documents to be populated
+    // TODO: better wait strategy?
     Thread.sleep(1000);
 
     assertTrue(success);
@@ -159,6 +161,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     boolean success = sink.output(testRecords);
     sink.stop();
     // wait for documents to be populated
+    // TODO: better wait strategy?
     Thread.sleep(1000);
 
     assertTrue(success);
