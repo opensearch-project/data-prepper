@@ -13,7 +13,7 @@ public class RetryConfigurationTests {
     }
 
     @Test
-    public void testWithFile() {
+    public void testConfigurationWithCustomDlqFilePath() {
         String fakeDlqFilePath = "foo.txt";
         RetryConfiguration retryConfiguration = new RetryConfiguration.Builder()
                 .withDlqFile(fakeDlqFilePath)
