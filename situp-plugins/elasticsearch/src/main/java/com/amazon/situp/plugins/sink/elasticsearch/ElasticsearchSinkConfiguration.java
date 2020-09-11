@@ -1,6 +1,6 @@
 package com.amazon.situp.plugins.sink.elasticsearch;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class ElasticsearchSinkConfiguration {
   /**
@@ -28,18 +28,18 @@ public class ElasticsearchSinkConfiguration {
     private RetryConfiguration retryConfiguration = new RetryConfiguration.Builder().build();
 
     public Builder(final ConnectionConfiguration connectionConfiguration) {
-      checkArgument(connectionConfiguration != null, "connectionConfiguration cannot be null");
+      checkNotNull(connectionConfiguration, "connectionConfiguration cannot be null");
       this.connectionConfiguration = connectionConfiguration;
     }
 
     public Builder withIndexConfiguration(final IndexConfiguration indexConfiguration) {
-      checkArgument(indexConfiguration != null, "indexConfiguration cannot be null");
+      checkNotNull(indexConfiguration, "indexConfiguration cannot be null");
       this.indexConfiguration = indexConfiguration;
       return this;
     }
 
     public Builder withRetryConfiguration(final RetryConfiguration retryConfiguration) {
-      checkArgument(retryConfiguration != null, "retryConfiguration cannot be null");
+      checkNotNull(retryConfiguration, "retryConfiguration cannot be null");
       this.retryConfiguration = retryConfiguration;
       return this;
     }
