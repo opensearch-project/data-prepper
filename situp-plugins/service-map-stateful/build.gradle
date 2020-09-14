@@ -1,0 +1,21 @@
+plugins {
+    id 'java'
+}
+
+group 'com.amazon'
+version '0.1-beta'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile project(':situp-api')
+    compile project(':situp-plugins:common')
+    compile project(':situp-plugins:lmdb-processor-state')
+    implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
+    implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
+    testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
+}
