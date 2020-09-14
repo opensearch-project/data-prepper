@@ -38,16 +38,12 @@ public class BlockingBufferTest {
         assertThat(blockingBuffer, notNullValue());
     }
 
-    @Test
+    @Test(expected = NullPointerException.class)
     public void testInsertNull() {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_SIZE, TEST_TIMEOUT,
                 TEST_BATCH_SIZE);
         assertThat(blockingBuffer, notNullValue());
-        try {
-            blockingBuffer.write(null);
-        } catch (NullPointerException ex) {
-            assertTrue(true);
-        }
+        blockingBuffer.write(null);
     }
 
     @Test
