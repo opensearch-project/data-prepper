@@ -12,7 +12,7 @@ pipeline:
   sink:
     elasticsearch:
       hosts: ["http://localhost:9200"]
-      bulk_size: 4194304
+      bulk_size: 4
 ``` 
 
 ### Hosts
@@ -21,7 +21,7 @@ A list of IP addresses of elasticsearch nodes.
 
 ### Bulk size (Optional)
 
-A long of bulk size in bulk requests in bytes. Default to 5242880 (5MB). Set to < 0 to disable.
+A long of bulk size in bulk requests in MB. Default to 5 MB. Set to < 0 to disable.
 
 ## Compatibility
 

@@ -15,6 +15,7 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.PutIndexTemplateRequest;
 
+import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.common.xcontent.XContentFactory;
@@ -136,7 +137,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     }
     boolean success = true;
     BulkRequest bulkRequest = bulkRequestSupplier.get();
-    long bulkSize = esSinkConfig.getIndexConfiguration().getBulkSize();
+    long bulkSize = ByteSizeUnit.MB.toBytes(esSinkConfig.getIndexConfiguration().getBulkSize());
     for (final Record<String> record: records) {
       String document = record.getData();
       IndexRequest indexRequest = new IndexRequest().source(document, XContentType.JSON);

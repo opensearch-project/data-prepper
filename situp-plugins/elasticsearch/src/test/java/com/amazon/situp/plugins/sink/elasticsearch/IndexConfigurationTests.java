@@ -78,13 +78,20 @@ public class IndexConfigurationTests {
             .withIndexType(CUSTOM)
             .withIndexAlias(testIndexAlias)
             .withTemplateFile(fakeTemplateFilePath)
-            .withBulkSize(ByteSizeUnit.MB.toBytes(10))
+            .withBulkSize(10)
             .build();
 
     assertEquals(CUSTOM, indexConfiguration.getIndexType());
     assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
     assertEquals(new File(fakeTemplateFilePath).toURI().toURL(), indexConfiguration.getTemplateURL());
-    assertEquals(ByteSizeUnit.MB.toBytes(10), indexConfiguration.getBulkSize());
+    assertEquals(10, indexConfiguration.getBulkSize());
+
+    indexConfiguration = new IndexConfiguration.Builder()
+            .withIndexType(CUSTOM)
+            .withIndexAlias(testIndexAlias)
+            .withBulkSize(-1)
+            .build();
+    assertEquals(-1, indexConfiguration.getBulkSize());
   }
 
   @Test
