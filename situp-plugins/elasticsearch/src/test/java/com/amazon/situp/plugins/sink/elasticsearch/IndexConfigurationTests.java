@@ -25,7 +25,7 @@ public class IndexConfigurationTests {
     assertEquals(RAW, indexConfiguration.getIndexType());
     assertEquals(TYPE_TO_DEFAULT_ALIAS.get(RAW), indexConfiguration.getIndexAlias());
     assertEquals(expTemplateFile, indexConfiguration.getTemplateURL());
-    assertEquals(ByteSizeUnit.MB.toBytes(5), indexConfiguration.getBatchSize());
+    assertEquals(ByteSizeUnit.MB.toBytes(5), indexConfiguration.getBulkSize());
   }
 
   @Test
@@ -78,13 +78,13 @@ public class IndexConfigurationTests {
             .withIndexType(CUSTOM)
             .withIndexAlias(testIndexAlias)
             .withTemplateFile(fakeTemplateFilePath)
-            .withBatchSize(ByteSizeUnit.MB.toBytes(10))
+            .withBulkSize(ByteSizeUnit.MB.toBytes(10))
             .build();
 
     assertEquals(CUSTOM, indexConfiguration.getIndexType());
     assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
     assertEquals(new File(fakeTemplateFilePath).toURI().toURL(), indexConfiguration.getTemplateURL());
-    assertEquals(ByteSizeUnit.MB.toBytes(10), indexConfiguration.getBatchSize());
+    assertEquals(ByteSizeUnit.MB.toBytes(10), indexConfiguration.getBulkSize());
   }
 
   @Test
@@ -94,10 +94,5 @@ public class IndexConfigurationTests {
             .withIndexType(CUSTOM);
     Exception exception = assertThrows(IllegalStateException.class, invalidBuilder::build);
     assertEquals("Missing required properties:indexAlias", exception.getMessage());
-
-    // Invalid batch size
-    exception = assertThrows(
-            IllegalArgumentException.class, () -> new IndexConfiguration.Builder().withBatchSize(-2));
-    assertEquals("batchSize cannot be less than -1 bytes.", exception.getMessage());
   }
 }

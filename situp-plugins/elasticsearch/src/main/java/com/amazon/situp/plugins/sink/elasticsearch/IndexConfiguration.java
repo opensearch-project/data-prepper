@@ -15,12 +15,12 @@ public class IndexConfiguration {
   public static final String INDEX_TYPE = "index_type";
   public static final String INDEX_ALIAS = "index_alias";
   public static final String TEMPLATE_FILE = "template_file";
-  public static final String BATCH_SIZE = "batch_size";
+  public static final String BULK_SIZE = "bulk_size";
 
   private final String indexType;
   private final String indexAlias;
   private final URL templateURL;
-  private final long batchSize;
+  private final long bulkSize;
 
   public String getIndexType() {
     return indexType;
@@ -34,15 +34,15 @@ public class IndexConfiguration {
     return templateURL;
   }
 
-  public long getBatchSize() {
-    return batchSize;
+  public long getBulkSize() {
+    return bulkSize;
   }
 
   public static class Builder {
     private String indexType = IndexConstants.RAW;
     private String indexAlias;
     private String templateFile;
-    private long batchSize = ByteSizeUnit.MB.toBytes(5);
+    private long bulkSize = ByteSizeUnit.MB.toBytes(5);
 
     public Builder withIndexType(final String indexType) {
       checkArgument(indexType != null, "indexType cannot be null.");
@@ -64,9 +64,8 @@ public class IndexConfiguration {
       return this;
     }
 
-    public Builder withBatchSize(final long batchSize) {
-      checkArgument(batchSize >= -1, "batchSize cannot be less than -1 bytes.");
-      this.batchSize = batchSize;
+    public Builder withBulkSize(final long bulkSize) {
+      this.bulkSize = bulkSize;
       return this;
     }
 
@@ -105,6 +104,6 @@ public class IndexConfiguration {
       }
     }
     this.indexAlias = indexAlias;
-    this.batchSize = builder.batchSize;
+    this.bulkSize = builder.bulkSize;
   }
 }
