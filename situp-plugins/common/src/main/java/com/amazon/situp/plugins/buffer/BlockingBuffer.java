@@ -39,6 +39,12 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
     private final int batchSize;
     private final BlockingQueue<T> blockingQueue;
 
+    /**
+     * Creates a BlockingBuffer with the given (fixed) capacity. Uses the given timeout for
+     * @param bufferCapacity the capacity of the buffer
+     * @param timeout the timeout for writing
+     * @param batchSize the batch size for {@link #readBatch()}
+     */
     public BlockingBuffer(final int bufferCapacity, final int timeout, final int batchSize) {
         this.bufferCapacity = bufferCapacity;
         this.timeout = timeout;
@@ -50,6 +56,8 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
      * Mandatory constructor for SITUP Component - This constructor is used by SITUP
      * runtime engine to construct an instance of {@link BlockingBuffer} using an instance of
      * {@link PluginSetting} which has access to pluginSetting metadata from pipeline pluginSetting file.
+     * Buffer settings like `buffer-size`, `timeout`, `batch-size` are optional and can be passed via
+     * {@link PluginSetting}, if not present default values will be used to create the buffer.
      *
      * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
      */
@@ -63,7 +71,7 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
         try {
             blockingQueue.offer(record, timeout, TimeUnit.MILLISECONDS);
         } catch (InterruptedException ex) {
-            LOG.error("Buffer is full, failed to write record", ex);
+            LOG.error("Buffer is full, interrupted while waiting to write the record", ex);
         }
     }
 
@@ -72,7 +80,7 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
         try {
             return blockingQueue.poll(timeout, TimeUnit.MILLISECONDS);
         } catch (InterruptedException ex) {
-            LOG.error("Buffer is empty, failed to retrieve record", ex);
+            LOG.error("Buffer is empty, interrupted while waiting for the record", ex);
             return null;
         }
     }
