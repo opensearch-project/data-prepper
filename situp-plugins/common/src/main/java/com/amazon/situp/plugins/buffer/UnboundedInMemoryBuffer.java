@@ -80,11 +80,6 @@ public class UnboundedInMemoryBuffer<T extends Record<?>> implements Buffer<T> {
         return records;
     }
 
-    @Override
-    public void writeBatch(Collection<T> records) {
-        queue.addAll(records);
-    }
-
     private static Integer getAttributeOrDefault(final String attribute, final PluginSetting pluginSetting) {
         final Object attributeObject = pluginSetting.getAttributeFromSettings(attribute);
         return attributeObject == null ? DEFAULT_BATCH_SIZE : (Integer) attributeObject;

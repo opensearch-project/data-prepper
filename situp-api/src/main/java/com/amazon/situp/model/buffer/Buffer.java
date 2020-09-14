@@ -29,5 +29,4 @@ public interface Buffer<T extends Record<?>> {
      */
     Collection<T> readBatch();
 
-    void writeBatch(Collection<T> records);
 }
