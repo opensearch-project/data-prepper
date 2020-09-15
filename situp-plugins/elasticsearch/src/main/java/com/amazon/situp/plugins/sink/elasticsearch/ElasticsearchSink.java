@@ -5,8 +5,10 @@ import com.amazon.situp.model.annotations.SitupPlugin;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.sink.Sink;
+import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.alias.Alias;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
+import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
@@ -190,11 +192,15 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private boolean flushBatch(final BulkRequest bulkRequest) {
     try {
       final BulkResponse bulkResponse = restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+      boolean hasFailures = bulkResponse.hasFailures();
       // TODO: apply retry here
-      // TODO: what if partial success?
-      return !bulkResponse.hasFailures();
+      if (hasFailures) {
+        handleFailures(bulkRequest.requests(), bulkResponse.getItems());
+      }
+
+      return !hasFailures;
     } catch (IOException e) {
-      LOG.error(e.getMessage(), e);
+      handleFailures(bulkRequest.requests(), e);
       return false;
     }
   }
@@ -263,5 +269,36 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     final XContentParser parser = XContentFactory.xContent(XContentType.JSON)
             .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, documentJson);
     return parser.map();
+  }
+
+  private void handleFailures(final List<DocWriteRequest<?>> docWriteRequests, final BulkItemResponse[] itemResponses) {
+    assert docWriteRequests.size() == itemResponses.length;
+    for (int i = 0; i < itemResponses.length; i++) {
+      BulkItemResponse bulkItemResponse = itemResponses[i];
+      DocWriteRequest<?> docWriteRequest = docWriteRequests.get(i);
+      if (bulkItemResponse.isFailed()) {
+        BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
+        logFailure(docWriteRequest, failure.getCause());
+      }
+    }
+  }
+
+  private void handleFailures(final List<DocWriteRequest<?>> docWriteRequests, final Throwable failure) {
+    for (DocWriteRequest<?> docWriteRequest: docWriteRequests) {
+      logFailure(docWriteRequest, failure);
+    }
+  }
+
+  private void logFailure(final DocWriteRequest<?> docWriteRequest, final Throwable failure) {
+    if (dlqWriter != null) {
+      try {
+        dlqWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
+                docWriteRequest.toString(), failure.getMessage()));
+      } catch (IOException e) {
+        LOG.error("DLQ failed for Document [{}]", docWriteRequest.toString());
+      };
+    } else {
+      LOG.warn("Document [{}] has failure: {}", docWriteRequest.toString(), failure);
+    }
   }
 }
