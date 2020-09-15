@@ -60,18 +60,21 @@ import static com.amazon.situp.plugins.sink.elasticsearch.RetryConfiguration.DLQ
 public class ElasticsearchSink implements Sink<Record<String>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchSink.class);
+  // Pulled from BulkRequest to make estimation of bytes consistent
+  private static final int REQUEST_OVERHEAD = 50;
 
   private BufferedWriter dlqWriter;
-
   private final ElasticsearchSinkConfiguration esSinkConfig;
   private RestHighLevelClient restHighLevelClient;
   private Supplier<BulkRequest> bulkRequestSupplier;
+  private final long bulkSize;
 
   public ElasticsearchSink(final PluginSetting pluginSetting) {
     this.esSinkConfig = readESConfig(pluginSetting);
+    this.bulkSize = ByteSizeUnit.MB.toBytes(esSinkConfig.getIndexConfiguration().getBulkSize());
     try {
       start();
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
   }
@@ -146,41 +149,37 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     if (esSinkConfig.getIndexConfiguration().getTemplateURL() != null) {
       createIndexTemplate();
     }
-    String dlqFile = esSinkConfig.getRetryConfiguration().getDlqFile();
+    final String dlqFile = esSinkConfig.getRetryConfiguration().getDlqFile();
     if ( dlqFile != null) {
       dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
     checkAndCreateIndex();
-    bulkRequestSupplier = initBulkRequestSupplier();
-  }
-
-  private Supplier<BulkRequest> initBulkRequestSupplier() {
-    return () -> new BulkRequest(esSinkConfig.getIndexConfiguration().getIndexAlias());
+    bulkRequestSupplier = () -> new BulkRequest(esSinkConfig.getIndexConfiguration().getIndexAlias());
   }
 
   @Override
-  public boolean output(Collection<Record<String>> records) {
+  public boolean output(final Collection<Record<String>> records) {
     if (records.isEmpty()) {
       return false;
     }
     boolean success = true;
     BulkRequest bulkRequest = bulkRequestSupplier.get();
-    long bulkSize = ByteSizeUnit.MB.toBytes(esSinkConfig.getIndexConfiguration().getBulkSize());
     for (final Record<String> record: records) {
-      String document = record.getData();
-      IndexRequest indexRequest = new IndexRequest().source(document, XContentType.JSON);
+      final String document = record.getData();
+      final IndexRequest indexRequest = new IndexRequest().source(document, XContentType.JSON);
       try {
-        Map<String, Object> docMap = getMapFromJson(document);
-        String spanId = (String)docMap.get("spanId");
+        final Map<String, Object> docMap = getMapFromJson(document);
+        final String spanId = (String)docMap.get("spanId");
         if (spanId != null) {
-          indexRequest = indexRequest.id(spanId);
+          indexRequest.id(spanId);
         }
-        bulkRequest.add(indexRequest);
-        if (bulkSize >= 0 && bulkRequest.estimatedSizeInBytes() >= bulkSize) {
+        final long estimatedBytesBeforeAdd = bulkRequest.estimatedSizeInBytes() + calcEstimatedSizeInBytes(indexRequest);
+        if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.numberOfActions() > 0) {
           success = success && flushBatch(bulkRequest);
           bulkRequest = bulkRequestSupplier.get();
         }
-      } catch (IOException e) {
+        bulkRequest.add(indexRequest);
+      } catch (final IOException e) {
         throw new RuntimeException(e.getMessage(), e);
       }
     }
@@ -193,17 +192,22 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     return success;
   }
 
+  private long calcEstimatedSizeInBytes(final IndexRequest indexRequest) {
+    // From BulkRequest#internalAdd(IndexRequest request)
+    return (indexRequest.source() != null ? indexRequest.source().length() : 0) + REQUEST_OVERHEAD;
+  }
+
   private boolean flushBatch(final BulkRequest bulkRequest) {
     try {
       final BulkResponse bulkResponse = restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT);
-      boolean hasFailures = bulkResponse.hasFailures();
+      final boolean hasFailures = bulkResponse.hasFailures();
       // TODO: apply retry here
       if (hasFailures) {
         handleFailures(bulkRequest.requests(), bulkResponse.getItems());
       }
 
       return !hasFailures;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       handleFailures(bulkRequest.requests(), e);
       return false;
     }
@@ -215,14 +219,14 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     if (restHighLevelClient != null) {
       try {
         restHighLevelClient.close();
-      } catch (IOException e) {
+      } catch (final IOException e) {
         throw new RuntimeException(e.getMessage(), e);
       }
     }
     if (dlqWriter != null) {
       try {
         dlqWriter.close();
-      } catch (IOException e) {
+      } catch (final IOException e) {
         LOG.error(e.getMessage(), e);
       }
     }
@@ -230,7 +234,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
 
   private void createIndexTemplate() throws IOException {
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
-    PutIndexTemplateRequest putIndexTemplateRequest = new PutIndexTemplateRequest(indexAlias + "-index-template");
+    final PutIndexTemplateRequest putIndexTemplateRequest = new PutIndexTemplateRequest(indexAlias + "-index-template");
     putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias + "-*"));
     final URL jsonURL = esSinkConfig.getIndexConfiguration().getTemplateURL();
     final String templateJson = readTemplateURL(jsonURL);
@@ -241,12 +245,12 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private void checkAndCreateIndex() throws IOException {
     // Check alias exists
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
-    GetAliasesRequest getAliasesRequest = new GetAliasesRequest().aliases(indexAlias);
-    boolean exists = restHighLevelClient.indices().existsAlias(getAliasesRequest, RequestOptions.DEFAULT);
+    final GetAliasesRequest getAliasesRequest = new GetAliasesRequest().aliases(indexAlias);
+    final boolean exists = restHighLevelClient.indices().existsAlias(getAliasesRequest, RequestOptions.DEFAULT);
     if (!exists) {
       // TODO: use date as suffix?
-      String initialIndexName;
-      CreateIndexRequest createIndexRequest;
+      final String initialIndexName;
+      final CreateIndexRequest createIndexRequest;
       if (esSinkConfig.getIndexConfiguration().getIndexType().equals(IndexConstants.RAW)) {
         initialIndexName = indexAlias + "-000001";
         createIndexRequest = new CreateIndexRequest(initialIndexName);
@@ -261,22 +265,22 @@ public class ElasticsearchSink implements Sink<Record<String>> {
 
   private String readTemplateURL(final URL templateURL) throws IOException {
     final StringBuilder templateJsonBuffer = new StringBuilder();
-    InputStream is = templateURL.openStream();
-    try (BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
+    final InputStream is = templateURL.openStream();
+    try (final BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
       reader.lines().forEach(line -> templateJsonBuffer.append(line).append("\n"));
     }
     is.close();
     return templateJsonBuffer.toString();
   }
 
-  private Map<String, Object> getMapFromJson(String documentJson) throws IOException {
+  private Map<String, Object> getMapFromJson(final String documentJson) throws IOException {
     final XContentParser parser = XContentFactory.xContent(XContentType.JSON)
             .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, documentJson);
     return parser.map();
   }
 
   private BulkResponse handleRetry() throws InterruptedException {
-    RetryUtils retryUtils = new RetryUtils(BackoffPolicy.exponentialBackoff().iterator());
+    final RetryUtils retryUtils = new RetryUtils(BackoffPolicy.exponentialBackoff().iterator());
     while (retryUtils.next()) {
       // TODO: apply retry logic
     }
@@ -286,17 +290,17 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private void handleFailures(final List<DocWriteRequest<?>> docWriteRequests, final BulkItemResponse[] itemResponses) {
     assert docWriteRequests.size() == itemResponses.length;
     for (int i = 0; i < itemResponses.length; i++) {
-      BulkItemResponse bulkItemResponse = itemResponses[i];
-      DocWriteRequest<?> docWriteRequest = docWriteRequests.get(i);
+      final BulkItemResponse bulkItemResponse = itemResponses[i];
+      final DocWriteRequest<?> docWriteRequest = docWriteRequests.get(i);
       if (bulkItemResponse.isFailed()) {
-        BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
+        final BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
         logFailure(docWriteRequest, failure.getCause());
       }
     }
   }
 
   private void handleFailures(final List<DocWriteRequest<?>> docWriteRequests, final Throwable failure) {
-    for (DocWriteRequest<?> docWriteRequest: docWriteRequests) {
+    for (final DocWriteRequest<?> docWriteRequest: docWriteRequests) {
       logFailure(docWriteRequest, failure);
     }
   }
@@ -306,7 +310,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       try {
         dlqWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
                 docWriteRequest.toString(), failure.getMessage()));
-      } catch (IOException e) {
+      } catch (final IOException e) {
         LOG.error("DLQ failed for Document [{}]", docWriteRequest.toString());
       };
     } else {
