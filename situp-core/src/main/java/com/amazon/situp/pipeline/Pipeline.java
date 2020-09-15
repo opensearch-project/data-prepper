@@ -139,6 +139,10 @@ public class Pipeline {
         return processors;
     }
 
+    public int getReadBatchTimeoutInMillis() {
+        return readBatchTimeoutInMillis;
+    }
+
     /**
      * Executes the current pipeline i.e. reads the data from {@link Source}, executes optional {@link Processor} on the
      * read data and outputs to {@link Sink}.
@@ -164,7 +168,7 @@ public class Pipeline {
         try {
             LOG.info("Submitting request to initiate the pipeline processing");
             for (int i = 0; i < processorThreads; i++) {
-                processorSinkExecutorService.execute(new ProcessWorker(buffer, processors, sinks, this, readBatchTimeoutInMillis));
+                processorSinkExecutorService.execute(new ProcessWorker(buffer, processors, sinks, this));
             }
         } catch (Exception ex) {
             processorSinkExecutorService.shutdown();

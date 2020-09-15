@@ -82,17 +82,13 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
     @Override
     public Collection<T> read(int timeoutInMillis) {
         final List<T> records = new ArrayList<>();
-        final Stopwatch stopwatch = Stopwatch.createUnstarted();
-        int totalMillisRemaining = timeoutInMillis;
-        stopwatch.reset();
-        stopwatch.start();
+        final Stopwatch stopwatch = Stopwatch.createStarted();
         try {
-            while(totalMillisRemaining > 0 && records.size() < batchSize) {
-                final T record = blockingQueue.poll(totalMillisRemaining, TimeUnit.MILLISECONDS);
+            while(stopwatch.elapsed(TimeUnit.MILLISECONDS) < timeoutInMillis && records.size() < batchSize) {
+                final T record = blockingQueue.poll(timeoutInMillis, TimeUnit.MILLISECONDS);
                 if (record != null) { //record can be null, avoiding adding nulls
                     records.add(record);
                 }
-                totalMillisRemaining -= stopwatch.elapsed(TimeUnit.MILLISECONDS);
             }
         } catch (InterruptedException ex) {
             LOG.warn("Retrieving records from buffer to batch size timed out, returning already retrieved records", ex);
