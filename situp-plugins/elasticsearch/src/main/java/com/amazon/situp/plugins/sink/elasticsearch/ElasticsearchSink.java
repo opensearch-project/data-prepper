@@ -8,7 +8,6 @@ import com.amazon.situp.model.sink.Sink;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.alias.Alias;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
-import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -38,9 +37,9 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.CONNECT_TIMEOUT;
@@ -61,7 +60,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   // Pulled from BulkRequest to make estimation of bytes consistent
   private static final int REQUEST_OVERHEAD = 50;
 
-  private BufferedWriter dlqWriter;
+  private Optional<BufferedWriter> dlqWriter;
   private final ElasticsearchSinkConfiguration esSinkConfig;
   private RestHighLevelClient restHighLevelClient;
   private Supplier<BulkRequest> bulkRequestSupplier;
@@ -148,8 +147,10 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       createIndexTemplate();
     }
     final String dlqFile = esSinkConfig.getRetryConfiguration().getDlqFile();
+    dlqWriter = Optional.empty();
     if ( dlqFile != null) {
-      dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+      dlqWriter = Optional.of(
+              Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND));
     }
     checkAndCreateIndex();
     bulkRequestSupplier = () -> new BulkRequest(esSinkConfig.getIndexConfiguration().getIndexAlias());
@@ -221,13 +222,15 @@ public class ElasticsearchSink implements Sink<Record<String>> {
         throw new RuntimeException(e.getMessage(), e);
       }
     }
-    if (dlqWriter != null) {
-      try {
-        dlqWriter.close();
-      } catch (final IOException e) {
-        LOG.error(e.getMessage(), e);
-      }
-    }
+    dlqWriter.ifPresent(
+            bufferedWriter -> {
+              try {
+                bufferedWriter.close();
+              } catch (final IOException e) {
+                LOG.error(e.getMessage(), e);
+              }
+            }
+    );
   }
 
   private void createIndexTemplate() throws IOException {
@@ -296,15 +299,15 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   }
 
   private void logFailure(final DocWriteRequest<?> docWriteRequest, final Throwable failure) {
-    if (dlqWriter != null) {
+    if (dlqWriter.isPresent()) {
       try {
-        dlqWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
+        dlqWriter.get().write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
                 docWriteRequest.toString(), failure.getMessage()));
-      } catch (final IOException e) {
+      } catch (IOException e) {
         LOG.error("DLQ failed for Document [{}]", docWriteRequest.toString());
-      };
+      }
     } else {
       LOG.warn("Document [{}] has failure: {}", docWriteRequest.toString(), failure);
-    }
+    };
   }
 }
