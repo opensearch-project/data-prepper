@@ -5,11 +5,8 @@ import com.amazon.situp.model.annotations.SitupPlugin;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.sink.Sink;
-import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.alias.Alias;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
-import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.bulk.BulkProcessor;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
@@ -39,7 +36,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.CONNECT_TIMEOUT;
 import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.HOSTS;
@@ -60,7 +56,6 @@ public class ElasticsearchSink implements Sink<Record<String>> {
 
   private final ElasticsearchSinkConfiguration esSinkConfig;
   private RestHighLevelClient restHighLevelClient;
-  private BulkProcessor bulkProcessor;
 
   public ElasticsearchSink(final PluginSetting pluginSetting) {
     this.esSinkConfig = readESConfig(pluginSetting);
@@ -142,69 +137,6 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
     checkAndCreateIndex();
-    bulkProcessor = initBulkProcessor(restHighLevelClient);
-  }
-
-  private BulkProcessor initBulkProcessor(RestHighLevelClient client) {
-    BulkProcessor.Listener listener = new BulkProcessor.Listener() {
-      @Override
-      public void beforeBulk(long executionId, BulkRequest request) {
-
-      }
-
-      @Override
-      public void afterBulk(long executionId, BulkRequest request,
-                            BulkResponse response) {
-        if (response.hasFailures()) {
-          BulkItemResponse[] itemResponses = response.getItems();
-          List<DocWriteRequest<?>> docWriteRequests = request.requests();
-          for (int i = 0; i < itemResponses.length; i++) {
-            BulkItemResponse bulkItemResponse = itemResponses[i];
-            DocWriteRequest<?> docWriteRequest = docWriteRequests.get(i);
-            if (bulkItemResponse.isFailed()) {
-              BulkItemResponse.Failure failure =
-                      bulkItemResponse.getFailure();
-              try {
-                if (dlqWriter != null) {
-                  dlqWriter.write(
-                          String.format("Document [%s] has failure: %s\n",
-                                  docWriteRequest.toString(), failure.getMessage()));
-                } else {
-                  LOG.warn("Document [{}] has failure: {}", docWriteRequest.toString(), failure);
-                }
-              } catch (IOException e) {
-                LOG.error("DLQ failed for Document [{}]", docWriteRequest.toString());
-              }
-            }
-          }
-        }
-      }
-
-      @Override
-      public void afterBulk(long executionId, BulkRequest request,
-                            Throwable failure) {
-        for (DocWriteRequest<?> docWriteRequest: request.requests()) {
-          try {
-            if (dlqWriter != null) {
-              dlqWriter.write(
-                      String.format("Document [%s] has failure: %s\n",
-                              docWriteRequest.toString(), failure.getMessage()));
-            } else {
-              LOG.error("Document [{}] has failure: {}", docWriteRequest.toString(), failure);
-            }
-          } catch (IOException e) {
-            LOG.error("DLQ failed for Document [{}]", docWriteRequest.toString());
-          }
-        }
-      }
-    };
-
-    // TODO: customize retry backoff, concurrency settings, etc.
-    return BulkProcessor.builder(
-            (request, bulkListener) -> client.bulkAsync(
-                    request, RequestOptions.DEFAULT, bulkListener), listener)
-            .setGlobalIndex(esSinkConfig.getIndexConfiguration().getIndexAlias())
-            .build();
   }
 
   @Override
@@ -212,6 +144,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     if (records.isEmpty()) {
       return false;
     }
+    BulkRequest bulkRequest = new BulkRequest(esSinkConfig.getIndexConfiguration().getIndexAlias());
     for (final Record<String> record: records) {
       String document = record.getData();
       IndexRequest indexRequest = new IndexRequest().source(document, XContentType.JSON);
@@ -221,33 +154,38 @@ public class ElasticsearchSink implements Sink<Record<String>> {
         if (spanId != null) {
           indexRequest = indexRequest.id(spanId);
         }
-        bulkProcessor.add(indexRequest);
+        bulkRequest.add(indexRequest);
       } catch (IOException e) {
         throw new RuntimeException(e.getMessage(), e);
       }
     }
 
-    return true;
+    try {
+      BulkResponse bulkResponse = restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+      // TODO: apply retry here
+      // TODO: what if partial success?
+      return !bulkResponse.hasFailures();
+    } catch (IOException e) {
+      LOG.error(e.getMessage(), e);
+      return false;
+    }
   }
 
   // TODO: need to be invoked by pipeline
   public void stop() {
-    try {
-      boolean terminated = bulkProcessor.awaitClose(30L, TimeUnit.SECONDS);
-      if (!terminated) {
-        LOG.warn("Timed out for flushing remaining requests");
+    if (restHighLevelClient != null) {
+      try {
+        restHighLevelClient.close();
+      } catch (IOException e) {
+        throw new RuntimeException(e.getMessage(), e);
       }
-      // client needs to be closed separately
-      restHighLevelClient.close();
-      // dlqWriter stream should be closed
-      if (dlqWriter != null) {
+    }
+    if (dlqWriter != null) {
+      try {
         dlqWriter.close();
+      } catch (IOException e) {
+        LOG.error(e.getMessage(), e);
       }
-    } catch (InterruptedException e) {
-      LOG.error(e.getMessage(), e);
-      bulkProcessor.close();
-    } catch (IOException e) {
-      LOG.error(e.getMessage(), e);
     }
   }
 
