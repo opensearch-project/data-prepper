@@ -17,6 +17,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 @SitupPlugin(name = "stdin", type = PluginType.SOURCE)
 public class StdInSource implements Source<Record<String>> {
+    private static final int WRITE_TIMEOUT = 5_000;
     private final Scanner reader;
     private boolean isStopRequested;
 
@@ -43,7 +44,7 @@ public class StdInSource implements Source<Record<String>> {
         String line = reader.nextLine();
         while (!"exit".equalsIgnoreCase(line) && !isStopRequested) {
             final Record<String> record = new Record<>(line);
-            buffer.write(record);
+            buffer.write(record, WRITE_TIMEOUT);
             line = reader.nextLine();
         }
     }

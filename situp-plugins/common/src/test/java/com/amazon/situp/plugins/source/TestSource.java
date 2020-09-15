@@ -15,7 +15,8 @@ import java.util.stream.Stream;
 @SitupPlugin(name = "test-source", type = PluginType.SOURCE)
 public class TestSource implements Source<Record<String>> {
     public static final List<Record<String>> TEST_DATA = Stream.of("THIS", "IS", "TEST", "DATA")
-                                                            .map(Record::new).collect(Collectors.toList());
+            .map(Record::new).collect(Collectors.toList());
+    private static final int WRITE_TIMEOUT = 5_000;
     private boolean isStopRequested;
 
     public TestSource(final Configuration configuration) {
@@ -30,7 +31,7 @@ public class TestSource implements Source<Record<String>> {
     public void start(Buffer<Record<String>> buffer) {
         final Iterator<Record<String>> iterator = TEST_DATA.iterator();
         while (iterator.hasNext() && !isStopRequested) {
-            buffer.write(iterator.next());
+            buffer.write(iterator.next(), WRITE_TIMEOUT);
         }
     }
 

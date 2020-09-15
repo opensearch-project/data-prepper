@@ -37,11 +37,9 @@ public class ProcessWorker implements Runnable {
     @Override
     public void run() {
         try {
-            boolean isHalted = false;
             do {
-                isHalted = isHalted || pipeline.isStopRequested();
                 Thread.sleep(0);
-                Collection records = readBuffer.readBatch();
+                Collection records = readBuffer.read(pipeline.getReadBatchTimeoutInMillis());
                 if (records != null && !records.isEmpty()) {
                     LOG.debug("Pipeline Worker: Processing {} records from buffer", records.size());
                     for (final Processor processor : processors) {
@@ -51,7 +49,8 @@ public class ProcessWorker implements Runnable {
                 } else {
                     isQueueEmpty = true;
                 }
-            } while (!isHalted || !isBufferEmpty()); //If pipeline is stopped, we try to empty the already buffered records ?
+            } while (!pipeline.isStopRequested() || !isBufferEmpty()); //If pipeline is stopped, we try to empty the
+            // already buffered records ?
         } catch (final Exception ex) {
             LOG.error("Encountered exception during pipeline processing", ex); //do not halt the execution
         }
