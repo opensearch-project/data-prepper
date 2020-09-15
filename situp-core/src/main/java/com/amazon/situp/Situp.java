@@ -9,6 +9,7 @@ import com.amazon.situp.model.source.Source;
 import com.amazon.situp.parser.PipelineParser;
 import com.amazon.situp.parser.model.PipelineConfiguration;
 import com.amazon.situp.pipeline.Pipeline;
+import com.amazon.situp.plugins.buffer.BlockingBuffer;
 import com.amazon.situp.plugins.buffer.BufferFactory;
 import com.amazon.situp.plugins.processor.ProcessorFactory;
 import com.amazon.situp.plugins.sink.SinkFactory;
@@ -69,7 +70,7 @@ public class Situp {
      * @return true if the execute successfully initiates the SITUP
      */
     public boolean execute(final String configurationFileLocation) {
-        LOG.info("Using {} configuration file",configurationFileLocation);
+        LOG.info("Using {} configuration file", configurationFileLocation);
         final PipelineParser pipelineParser = new PipelineParser(configurationFileLocation);
         final PipelineConfiguration pipelineConfiguration = pipelineParser.parseConfiguration();
         execute(pipelineConfiguration);
@@ -86,6 +87,7 @@ public class Situp {
 
     /**
      * Executes SITUP engine for the provided {@link PipelineConfiguration}.
+     *
      * @param pipelineConfiguration to be used for {@link Pipeline} execution
      * @return true if the execute successfully initiates the SITUP
      * {@link com.amazon.situp.pipeline.Pipeline} execute.
@@ -101,7 +103,8 @@ public class Situp {
     private Pipeline buildPipelineFromConfiguration(final PipelineConfiguration pipelineConfiguration) {
         final Source source = SourceFactory.newSource(getFirstSettingsIfExists(pipelineConfiguration.getSource()));
         final PluginSetting bufferPluginSetting = getFirstSettingsIfExists(pipelineConfiguration.getBuffer());
-        final Buffer buffer = bufferPluginSetting == null ? null : BufferFactory.newBuffer(bufferPluginSetting);
+        final Buffer buffer = bufferPluginSetting == null ?
+                new BlockingBuffer() : BufferFactory.newBuffer(bufferPluginSetting);
 
         final Configuration processorConfiguration = pipelineConfiguration.getProcessor();
         final List<PluginSetting> processorPluginSettings = processorConfiguration.getPluginSettings();
