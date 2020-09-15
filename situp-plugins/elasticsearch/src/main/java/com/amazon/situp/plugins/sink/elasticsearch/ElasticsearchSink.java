@@ -15,6 +15,7 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.PutIndexTemplateRequest;
 
+import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.common.xcontent.XContentFactory;
@@ -36,12 +37,14 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.CONNECT_TIMEOUT;
 import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.HOSTS;
 import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.PASSWORD;
 import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.SOCKET_TIMEOUT;
 import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.USERNAME;
+import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.BULK_SIZE;
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.INDEX_ALIAS;
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.INDEX_TYPE;
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.TEMPLATE_FILE;
@@ -56,6 +59,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
 
   private final ElasticsearchSinkConfiguration esSinkConfig;
   private RestHighLevelClient restHighLevelClient;
+  private Supplier<BulkRequest> bulkRequestSupplier;
 
   public ElasticsearchSink(final PluginSetting pluginSetting) {
     this.esSinkConfig = readESConfig(pluginSetting);
@@ -115,6 +119,10 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     if (templateFile != null) {
       builder = builder.withTemplateFile(templateFile);
     }
+    final Long batchSize = (Long)pluginSetting.getAttributeFromSettings(BULK_SIZE);
+    if (batchSize != null) {
+      builder = builder.withBulkSize(batchSize);
+    }
     return builder.build();
   }
 
@@ -137,6 +145,11 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
     checkAndCreateIndex();
+    bulkRequestSupplier = initBulkRequestSupplier();
+  }
+
+  private Supplier<BulkRequest> initBulkRequestSupplier() {
+    return () -> new BulkRequest(esSinkConfig.getIndexConfiguration().getIndexAlias());
   }
 
   @Override
@@ -144,7 +157,9 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     if (records.isEmpty()) {
       return false;
     }
-    BulkRequest bulkRequest = new BulkRequest(esSinkConfig.getIndexConfiguration().getIndexAlias());
+    boolean success = true;
+    BulkRequest bulkRequest = bulkRequestSupplier.get();
+    long bulkSize = ByteSizeUnit.MB.toBytes(esSinkConfig.getIndexConfiguration().getBulkSize());
     for (final Record<String> record: records) {
       String document = record.getData();
       IndexRequest indexRequest = new IndexRequest().source(document, XContentType.JSON);
@@ -155,13 +170,26 @@ public class ElasticsearchSink implements Sink<Record<String>> {
           indexRequest = indexRequest.id(spanId);
         }
         bulkRequest.add(indexRequest);
+        if (bulkSize >= 0 && bulkRequest.estimatedSizeInBytes() >= bulkSize) {
+          success = success && flushBatch(bulkRequest);
+          bulkRequest = bulkRequestSupplier.get();
+        }
       } catch (IOException e) {
         throw new RuntimeException(e.getMessage(), e);
       }
     }
 
+    // Flush the remaining requests
+    if (bulkRequest.numberOfActions() > 0) {
+      success = success && flushBatch(bulkRequest);
+    }
+
+    return success;
+  }
+
+  private boolean flushBatch(final BulkRequest bulkRequest) {
     try {
-      BulkResponse bulkResponse = restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+      final BulkResponse bulkResponse = restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT);
       // TODO: apply retry here
       // TODO: what if partial success?
       return !bulkResponse.hasFailures();
@@ -173,6 +201,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
 
   // TODO: need to be invoked by pipeline
   public void stop() {
+    // Close the client
     if (restHighLevelClient != null) {
       try {
         restHighLevelClient.close();

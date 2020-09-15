@@ -71,7 +71,6 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     PluginSetting pluginSetting = generatePluginSetting(IndexConstants.RAW, null, null);
     ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     boolean success = sink.output(testRecords);
-    sink.stop();
     // wait for documents to be populated
     // TODO: better wait strategy?
     Thread.sleep(1000);
@@ -81,6 +80,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
     assertEquals(1, retSources.size());
     assertEquals(expData, retSources.get(0));
+    sink.stop();
   }
 
   public void testOutputRawSpanWithDLQ() throws IOException, InterruptedException {
@@ -159,7 +159,6 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     PluginSetting pluginSetting = generatePluginSetting(IndexConstants.RAW, testIndexAlias, testTemplateFile);
     ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     boolean success = sink.output(testRecords);
-    sink.stop();
     // wait for documents to be populated
     // TODO: better wait strategy?
     Thread.sleep(1000);
@@ -169,6 +168,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     // startTime field should no longer be detected as datetime according to test-index-template.json
     assertEquals(Integer.valueOf(0), getDocumentCount(testIndexAlias, "startTime", "2020-08-05T00:00:00.000Z"));
     assertEquals(Integer.valueOf(1), getDocumentCount(testIndexAlias, "endTime", "2020-09-01"));
+    sink.stop();
   }
 
   public void testInstantiateSinkServiceMapDefault() throws IOException {
