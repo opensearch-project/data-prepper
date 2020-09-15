@@ -16,9 +16,12 @@ import com.amazon.situp.plugins.source.SourceFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static com.amazon.situp.model.processor.Processor.ATTRIBUTE_DELAY;
+import static com.amazon.situp.model.processor.Processor.ATTRIBUTE_WORKERS;
+import static com.amazon.situp.model.processor.Processor.DEFAULT_READ_BATCH_DELAY;
 
 /**
  * SITUP is the entry point into the execution engine. An instance of this class is provided by
@@ -30,7 +33,6 @@ public class Situp {
     private static final Logger LOG = LoggerFactory.getLogger(Situp.class);
 
     private static final String DEFAULT_CONFIG_LOCATION = "situp-core/src/main/resources/situp-default.yml";
-    private static final String PROCESSOR_THREADS_ATTRIBUTE = "threads";
     private Pipeline transformationPipeline;
 
     private static volatile Situp situp;
@@ -111,8 +113,9 @@ public class Situp {
         final List<Sink> sinks = sinkPluginSettings.stream().map(SinkFactory::newSink).collect(Collectors.toList());
 
         final int processorThreads = getConfiguredThreadsOrDefault(processorConfiguration);
+        final int readBatchDelay = getConfiguredDelayOrDefault(processorConfiguration);
 
-        return new Pipeline(pipelineConfiguration.getName(), source, buffer, processors, sinks, processorThreads);
+        return new Pipeline(pipelineConfiguration.getName(), source, buffer, processors, sinks, processorThreads, readBatchDelay);
     }
 
     private PluginSetting getFirstSettingsIfExists(final Configuration configuration) {
@@ -121,8 +124,13 @@ public class Situp {
     }
 
     private int getConfiguredThreadsOrDefault(final Configuration processorConfiguration) {
-        int processorThreads = processorConfiguration.getAttributeValueAsInteger(PROCESSOR_THREADS_ATTRIBUTE);
+        int processorThreads = processorConfiguration.getAttributeValueAsInteger(ATTRIBUTE_WORKERS);
         return processorThreads <= 0 ? getDefaultProcessorThreads() : processorThreads;
+    }
+
+    private int getConfiguredDelayOrDefault(final Configuration processorConfiguration) {
+        int readBatchDelay = processorConfiguration.getAttributeValueAsInteger(ATTRIBUTE_DELAY);
+        return readBatchDelay <= 0 ? DEFAULT_READ_BATCH_DELAY : readBatchDelay;
     }
 
     /**

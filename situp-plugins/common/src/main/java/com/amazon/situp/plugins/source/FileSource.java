@@ -22,6 +22,7 @@ public class FileSource implements Source<Record<String>> {
     private final String filePathToRead;
     private boolean isStopRequested;
     private static final String SAMPLE_FILE_PATH = "src/resources/file-test-sample.txt";
+    private static final int WRITE_TIMEOUT = 5_000;
 
     /**
      * Mandatory constructor for SITUP Component - This constructor is used by SITUP
@@ -51,7 +52,7 @@ public class FileSource implements Source<Record<String>> {
         try (BufferedReader reader = Files.newBufferedReader(Paths.get(filePathToRead), StandardCharsets.UTF_8)) {
             String line;
             while ((line = reader.readLine()) != null && !isStopRequested) {
-                buffer.write(new Record<>(line));
+                buffer.write(new Record<>(line), WRITE_TIMEOUT);
             }
         } catch (IOException ex) {
             throw new RuntimeException(format("Error processing the input file %s", filePathToRead), ex);

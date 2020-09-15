@@ -21,17 +21,20 @@ public class ProcessWorker implements Runnable {
     private final List<Processor> processors;
     private final Collection<Sink> sinks;
     private final Pipeline pipeline;
+    private final int readBatchTimeoutInMillis;
     private boolean isQueueEmpty = false;
 
     public ProcessWorker(
             final Buffer readBuffer,
             final List<Processor> processors,
             final Collection<Sink> sinks,
-            final Pipeline pipeline) {
+            final Pipeline pipeline,
+            final int readBatchTimeoutInMillis) {
         this.readBuffer = readBuffer;
         this.processors = processors;
         this.sinks = sinks;
         this.pipeline = pipeline;
+        this.readBatchTimeoutInMillis = readBatchTimeoutInMillis;
     }
 
     @Override
@@ -41,7 +44,7 @@ public class ProcessWorker implements Runnable {
             do {
                 isHalted = isHalted || pipeline.isStopRequested();
                 Thread.sleep(0);
-                Collection records = readBuffer.readBatch();
+                Collection records = readBuffer.read(readBatchTimeoutInMillis);
                 if (records != null && !records.isEmpty()) {
                     LOG.debug("Pipeline Worker: Processing {} records from buffer", records.size());
                     for (final Processor processor : processors) {
