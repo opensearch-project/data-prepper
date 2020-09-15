@@ -50,12 +50,17 @@ public class ElasticsearchSink implements Sink<Record<String>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchSink.class);
 
+  // Pulled from BulkRequest to make estimation of bytes consistent
+  private static final int REQUEST_OVERHEAD = 50;
+
   private final ElasticsearchSinkConfiguration esSinkConfig;
   private RestHighLevelClient restHighLevelClient;
   private Supplier<BulkRequest> bulkRequestSupplier;
+  private final long bulkSize;
 
   public ElasticsearchSink(final PluginSetting pluginSetting) {
     this.esSinkConfig = readESConfig(pluginSetting);
+    this.bulkSize = ByteSizeUnit.MB.toBytes(esSinkConfig.getIndexConfiguration().getBulkSize());
     try {
       start();
     } catch (final IOException e) {
@@ -123,11 +128,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       createIndexTemplate();
     }
     checkAndCreateIndex();
-    bulkRequestSupplier = initBulkRequestSupplier();
-  }
-
-  private Supplier<BulkRequest> initBulkRequestSupplier() {
-    return () -> new BulkRequest(esSinkConfig.getIndexConfiguration().getIndexAlias());
+    bulkRequestSupplier = () -> new BulkRequest(esSinkConfig.getIndexConfiguration().getIndexAlias());
   }
 
   @Override
@@ -137,21 +138,21 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     }
     boolean success = true;
     BulkRequest bulkRequest = bulkRequestSupplier.get();
-    final long bulkSize = ByteSizeUnit.MB.toBytes(esSinkConfig.getIndexConfiguration().getBulkSize());
     for (final Record<String> record: records) {
       final String document = record.getData();
-      IndexRequest indexRequest = new IndexRequest().source(document, XContentType.JSON);
+      final IndexRequest indexRequest = new IndexRequest().source(document, XContentType.JSON);
       try {
         final Map<String, Object> docMap = getMapFromJson(document);
         final String spanId = (String)docMap.get("spanId");
         if (spanId != null) {
-          indexRequest = indexRequest.id(spanId);
+          indexRequest.id(spanId);
         }
-        bulkRequest.add(indexRequest);
-        if (bulkSize >= 0 && bulkRequest.estimatedSizeInBytes() >= bulkSize) {
+        final long estimatedBytesBeforeAdd = bulkRequest.estimatedSizeInBytes() + calcEstimatedSizeInBytes(indexRequest);
+        if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.numberOfActions() > 0) {
           success = success && flushBatch(bulkRequest);
           bulkRequest = bulkRequestSupplier.get();
         }
+        bulkRequest.add(indexRequest);
       } catch (final IOException e) {
         throw new RuntimeException(e.getMessage(), e);
       }
@@ -163,6 +164,11 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     }
 
     return success;
+  }
+
+  private long calcEstimatedSizeInBytes(final IndexRequest indexRequest) {
+    // From BulkRequest#internalAdd(IndexRequest request)
+    return (indexRequest.source() != null ? indexRequest.source().length() : 0) + REQUEST_OVERHEAD;
   }
 
   private boolean flushBatch(final BulkRequest bulkRequest) {
