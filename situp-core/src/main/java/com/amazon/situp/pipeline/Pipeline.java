@@ -80,15 +80,15 @@ public class Pipeline {
     public Pipeline(
             @Nonnull final String name,
             @Nonnull final Source source,
-            @Nullable final Buffer buffer,
-            @Nullable final List<Processor> processors,
+            @Nonnull final Buffer buffer,
+            @Nonnull final List<Processor> processors,
             @Nonnull final List<Sink> sinks,
             final int processorThreads,
             final int readBatchTimeoutInMillis) {
         this.name = name;
         this.source = source;
-        this.buffer = buffer != null ? buffer : new BlockingBuffer();
-        this.processors = processors != null ? processors : EMPTY_PROCESSOR_LIST;
+        this.buffer = buffer;
+        this.processors = processors;
         this.sinks = sinks;
         this.processorThreads = processorThreads;
         this.readBatchTimeoutInMillis = readBatchTimeoutInMillis;
