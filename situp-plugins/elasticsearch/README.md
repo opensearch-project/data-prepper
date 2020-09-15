@@ -22,7 +22,8 @@ A list of IP addresses of elasticsearch nodes.
 
 ### DLQ file (Optional)
 
-A String of absolute file path for DLQ failed output records.
+A String of absolute file path for DLQ failed output records. 
+If not provided, failed records will be written into the default log file.
 
 ### Bulk size (Optional)
 
