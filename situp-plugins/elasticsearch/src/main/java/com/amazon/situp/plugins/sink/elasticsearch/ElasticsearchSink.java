@@ -144,6 +144,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     if (dlqFile != null) {
       builder = builder.withDlqFile(dlqFile);
     }
+    @SuppressWarnings("unchecked")
     final List<Integer> retryStatus = (List<Integer>) pluginSetting.getAttributeFromSettings(RETRY_STATUS);
     if (retryStatus != null) {
       builder = builder.withRetryStatus(retryStatus);
