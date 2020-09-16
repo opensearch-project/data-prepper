@@ -15,11 +15,11 @@ public class RetryUtilsTests {
         final RetryUtils retryUtils = new RetryUtils(
                 BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(start), testNumOfRetries).iterator());
         final long startTime = System.currentTimeMillis();
-        for (int i=0; i < testNumOfRetries; i++) {
+        for (int i = 0; i < testNumOfRetries; i++) {
             assertTrue(retryUtils.hasNext());
             assertTrue(retryUtils.next());
             final long currTime = System.currentTimeMillis();
-            assertTrue(currTime - startTime > start + 10 * ((int) Math.exp(0.8d * i) - 1));
+            assertTrue(currTime - startTime >= start + 10 * ((int) Math.exp(0.8d * i) - 1));
         }
         assertFalse(retryUtils.hasNext());
         assertFalse(retryUtils.next());
