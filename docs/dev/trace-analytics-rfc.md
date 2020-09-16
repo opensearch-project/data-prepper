@@ -12,12 +12,66 @@ To support the trace analytics feature we will build a new service called SITUP,
 
 ![Kibana Notebooks Architecture](images/HighLevelDesign.jpg)
 
-SITUP will collect OpenTelemetry format trace data and store them in two elasticsearch indices,
 
-* apm-trace-raw-v1 -  This index will store the trace data from user services. The data in this index will be closer to the source with minimal additional processing.
-* apm-service-map-v1 -  This index will process the trace data from user services and detect the relationship between services. 
+## 3. SITUP
 
-These two indices will be used by the Kibana plugin to provide instant dashboards like below,
+Simple Ingest Transformation Utility Pipeline (SITUP) is an ingestion service which provides users to ingest and transform data before stored in elasticsearch. 
+
+### 3.1 General SITUP design
+
+#### 3.1.1 Concepts 
+
+![Situp Pipeline](images/SitupPipeline.png)
+
+Below are the fundamental concepts of Simple Ingest Transformation Utility Pipeline (SITUP),
+
+*Pipeline:*
+A SITUP pipeline has four key components source, buffer, processor, and sink. A single instance of SITUP can have one or more pipelines. A pipeline definition contains two required components source and sink. By default, the SITUP pipeline will use the default buffer and no processor. All the components are pluggable and enable a user to plugin their custom implementations. Please note that custom implementations will have implications on guarantees however the basic interfaces will remain the same.
+
+*Source:*
+The source is the input component of a pipeline, it defines the mechanism through which a SITUP pipeline will consume records. The source component could consume records either by receiving over http/s or reading from external endpoints like Kafka, SQS, Cloudwatch, etc.  The source will have its own configuration options based on the type like the format of the records (string/JSON/cloudwatch logs/open telemetry trace), security, concurrency threads, etc. The source component will consume records and write them to the buffer component. 
+
+*Buffer:*
+The buffer component will act as the layer between the source and sink. The buffer could either be in-memory or disk-based. The default buffer will be in-memory queue bounded by the number of records/size of records.
+
+*Sink:*
+Sink in the output component of the pipeline, it defines the one or more destinations to which a SITUP pipeline will publish the records. A sink destination could be either service like elastic search, s3. The sink will have its own configuration options based on the destination type like security, request batching, etc. A sink can be another SITUP pipeline, this would provide users the benefit chain multiple SITUP pipelines.
+
+*Processor:*
+Processor component of the pipeline, these are intermediary processing units using which users can filter, transform, and enrich the records into the desired format before publishing to the sink. The processor is an optional component of the pipeline, if not defined the records will be published in the format as defined in the source. You can have more than one processor and they are executed in the order they are defined in the pipeline spec.
+
+
+SITUP will be an ODFE community-driven project, the end goal is to make multiple Source, Sink, and Processor plugins available.
+
+#### 3.1.2 Trace Analytics
+
+In the first release of SITUP, we will support only one SITUP pipeline for the Trace Analytics feature. Below is how the Trace Analytics feature pipeline would look.
+
+![Trace Analytics Pipeline](images/TraceAnalyticsFeature.jpg)
+
+##### OpenTelemetry Trace Source
+
+The OpenTelemetry source will be accepting trace data from the OpenTelemetry collector. The source will depend on [OpenTelemetry Protocol](https://github.com/open-telemetry/opentelemetry-specification/tree/master/specification/protocol). This would
+mean we will support transport over gRPC, HTTP/Proto and HTTP/JSON. The source will support industry-standard encryption (TLS/HTTPS). 
+
+##### Processors
+
+We are building two processors for the Trace Analytics feature,
+* *otel-trace-raw-processor* -  This processor will be responsible for converting the trace data in OpenTelemetry specification to elasticsearch friendly docs. These elasticsearch friendly docs will have minimal additional fields like duration which are not part of the original specification. These additional fields are to make the instant kibana dashboards user-friendly.
+* *service-map-processor* -  This processor will perform the required preprocessing on the trace data and build metadata to display the service-map kibana dashboards.
+
+
+##### Elasticsearch sink
+
+We will build a generic sink that will write the data to elasticsearch as the destination. The elasticsearch sink will have configuration options related to elasticsearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc. 
+For the trace analytics feature, the sink will have specific configurations which will make the sink to use indices and index templates specific to the feature. Trace analytics specific elasticsearch indices are,
+                                                                                                                                                                 
+* *apm-trace-raw-v1* -  This index will store the output from otel-trace-raw-processor. 
+* *apm-service-map-v1* - This index will store the output from the service-map-processor.
+
+## 4. Kibana
+
+These two indices mentioned above will be used by the Kibana plugin to provide the following instant dashboards,
 
 ![Kibana Notebooks Architecture](images/DashboardView.png)
 
