@@ -39,7 +39,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Supplier;
 
 import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.CONNECT_TIMEOUT;
@@ -60,7 +59,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   // Pulled from BulkRequest to make estimation of bytes consistent
   private static final int REQUEST_OVERHEAD = 50;
 
-  private Optional<BufferedWriter> dlqWriter;
+  private BufferedWriter dlqWriter;
   private final ElasticsearchSinkConfiguration esSinkConfig;
   private RestHighLevelClient restHighLevelClient;
   private Supplier<BulkRequest> bulkRequestSupplier;
@@ -89,21 +88,21 @@ public class ElasticsearchSink implements Sink<Record<String>> {
 
   private ConnectionConfiguration readConnectionConfiguration(final PluginSetting pluginSetting){
     @SuppressWarnings("unchecked")
-    final List<String> hosts = (List<String>)pluginSetting.getAttributeFromSettings(HOSTS);
+    final List<String> hosts = (List<String>) pluginSetting.getAttributeFromSettings(HOSTS);
     ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(hosts);
-    final String username = (String)pluginSetting.getAttributeFromSettings(USERNAME);
+    final String username = (String) pluginSetting.getAttributeFromSettings(USERNAME);
     if (username != null) {
       builder = builder.withUsername(username);
     }
-    final String password = (String)pluginSetting.getAttributeFromSettings(PASSWORD);
+    final String password = (String) pluginSetting.getAttributeFromSettings(PASSWORD);
     if (password != null) {
       builder = builder.withPassword(password);
     }
-    final Integer socketTimeout = (Integer)pluginSetting.getAttributeFromSettings(SOCKET_TIMEOUT);
+    final Integer socketTimeout = (Integer) pluginSetting.getAttributeFromSettings(SOCKET_TIMEOUT);
     if (socketTimeout != null) {
       builder = builder.withSocketTimeout(socketTimeout);
     }
-    final Integer connectTimeout = (Integer)pluginSetting.getAttributeFromSettings(CONNECT_TIMEOUT);
+    final Integer connectTimeout = (Integer) pluginSetting.getAttributeFromSettings(CONNECT_TIMEOUT);
     if (connectTimeout != null) {
       builder = builder.withConnectTimeout(connectTimeout);
     }
@@ -113,19 +112,19 @@ public class ElasticsearchSink implements Sink<Record<String>> {
 
   private IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
     IndexConfiguration.Builder builder = new IndexConfiguration.Builder();
-    final String indexType = (String)pluginSetting.getAttributeFromSettings(INDEX_TYPE);
+    final String indexType = (String) pluginSetting.getAttributeFromSettings(INDEX_TYPE);
     if (indexType != null) {
       builder = builder.withIndexType(indexType);
     }
-    final String indexAlias = (String)pluginSetting.getAttributeFromSettings(INDEX_ALIAS);
+    final String indexAlias = (String) pluginSetting.getAttributeFromSettings(INDEX_ALIAS);
     if (indexAlias != null) {
       builder = builder.withIndexAlias(indexAlias);
     }
-    final String templateFile = (String)pluginSetting.getAttributeFromSettings(TEMPLATE_FILE);
+    final String templateFile = (String) pluginSetting.getAttributeFromSettings(TEMPLATE_FILE);
     if (templateFile != null) {
       builder = builder.withTemplateFile(templateFile);
     }
-    final Long batchSize = (Long)pluginSetting.getAttributeFromSettings(BULK_SIZE);
+    final Long batchSize = (Long) pluginSetting.getAttributeFromSettings(BULK_SIZE);
     if (batchSize != null) {
       builder = builder.withBulkSize(batchSize);
     }
@@ -134,7 +133,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
 
   private RetryConfiguration readRetryConfig(final PluginSetting pluginSetting) {
     RetryConfiguration.Builder builder = new RetryConfiguration.Builder();
-    final String dlqFile = (String)pluginSetting.getAttributeFromSettings(DLQ_FILE);
+    final String dlqFile = (String) pluginSetting.getAttributeFromSettings(DLQ_FILE);
     if (dlqFile != null) {
       builder = builder.withDlqFile(dlqFile);
     }
@@ -147,10 +146,8 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       createIndexTemplate();
     }
     final String dlqFile = esSinkConfig.getRetryConfiguration().getDlqFile();
-    dlqWriter = Optional.empty();
     if ( dlqFile != null) {
-      dlqWriter = Optional.of(
-              Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND));
+      dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
     checkAndCreateIndex();
     bulkRequestSupplier = () -> new BulkRequest(esSinkConfig.getIndexConfiguration().getIndexAlias());
@@ -168,7 +165,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       final IndexRequest indexRequest = new IndexRequest().source(document, XContentType.JSON);
       try {
         final Map<String, Object> docMap = getMapFromJson(document);
-        final String spanId = (String)docMap.get("spanId");
+        final String spanId = (String) docMap.get("spanId");
         if (spanId != null) {
           indexRequest.id(spanId);
         }
@@ -222,15 +219,13 @@ public class ElasticsearchSink implements Sink<Record<String>> {
         throw new RuntimeException(e.getMessage(), e);
       }
     }
-    dlqWriter.ifPresent(
-            bufferedWriter -> {
-              try {
-                bufferedWriter.close();
-              } catch (final IOException e) {
-                LOG.error(e.getMessage(), e);
-              }
-            }
-    );
+    if (dlqWriter != null) {
+      try {
+        dlqWriter.close();
+      } catch (final IOException e) {
+        LOG.error(e.getMessage(), e);
+      }
+    }
   }
 
   private void createIndexTemplate() throws IOException {
@@ -299,11 +294,11 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   }
 
   private void logFailure(final DocWriteRequest<?> docWriteRequest, final Throwable failure) {
-    if (dlqWriter.isPresent()) {
+    if (dlqWriter != null) {
       try {
-        dlqWriter.get().write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
+        dlqWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
                 docWriteRequest.toString(), failure.getMessage()));
-      } catch (IOException e) {
+      } catch (final IOException e) {
         LOG.error("DLQ failed for Document [{}]", docWriteRequest.toString());
       }
     } else {
