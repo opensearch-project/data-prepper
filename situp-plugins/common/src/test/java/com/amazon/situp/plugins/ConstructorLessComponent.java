@@ -11,7 +11,7 @@ public class ConstructorLessComponent implements Source<Record<String>> {
 
     @Override
     public void start(Buffer<Record<String>> buffer) {
-        buffer.write(new Record<>("Junit Testing"));
+        buffer.write(new Record<>("Junit Testing"), 1_000);
     }
 
     @Override

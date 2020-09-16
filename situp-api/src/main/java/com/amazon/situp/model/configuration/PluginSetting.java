@@ -7,9 +7,7 @@ public class PluginSetting {
     private final String name;
     private final Map<String, Object> settings;
 
-    public PluginSetting(
-            final String name,
-            final Map<String, Object> settings) {
+    public PluginSetting(final String name, final Map<String, Object> settings) {
         this.name = name;
         this.settings = settings;
     }
@@ -23,7 +21,7 @@ public class PluginSetting {
     }
 
     /**
-     * Retrieves the value of the provided attribute (if exists), null otherwise.
+     * Returns the value of the specified attribute, or null if this settings contains no value for the attribute.
      * TODO: Add more methods to return specific Strings/integers instead of Objects
      *
      * @param attribute name of the attribute
@@ -31,6 +29,18 @@ public class PluginSetting {
      */
     public Object getAttributeFromSettings(final String attribute) {
         return settings.get(attribute);
+    }
+
+    /**
+     * Returns the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
+     * the attribute.
+     * @param attribute name of the attribute
+     * @param defaultValue default value for the setting
+     * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
+     * the attribute
+     */
+    public Object getAttributeOrDefault(final String attribute, final Object defaultValue) {
+        return settings.getOrDefault(attribute, defaultValue);
     }
 
 }

@@ -20,9 +20,9 @@ public class BufferFactoryTests {
      */
     @Test
     public void testNewBufferClassByNameThatExists() {
-        final PluginSetting unboundedBufferConfiguration = new PluginSetting("unbounded-inmemory", new HashMap<>());
-        final Buffer actualBuffer = BufferFactory.newBuffer(unboundedBufferConfiguration);
-        final Buffer expectedBuffer = new UnboundedInMemoryBuffer();
+        final PluginSetting boundedBlocking = new PluginSetting("bounded-blocking", new HashMap<>());
+        final Buffer actualBuffer = BufferFactory.newBuffer(boundedBlocking);
+        final Buffer expectedBuffer = new BlockingBuffer();
         assertNotNull(actualBuffer);
         assertEquals(expectedBuffer.getClass().getSimpleName(), actualBuffer.getClass().getSimpleName());
     }

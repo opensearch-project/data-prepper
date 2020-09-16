@@ -1,10 +1,9 @@
 package com.amazon.situp;
 
-import com.amazon.situp.model.annotations.SitupPlugin;
-import com.amazon.situp.model.record.Record;
-import com.amazon.situp.model.buffer.Buffer;
-import com.amazon.situp.model.configuration.Configuration;
 import com.amazon.situp.model.PluginType;
+import com.amazon.situp.model.annotations.SitupPlugin;
+import com.amazon.situp.model.buffer.Buffer;
+import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.source.Source;
 
 import java.util.Iterator;
@@ -18,10 +17,6 @@ public class TestSource implements Source<Record<String>> {
             .map(Record::new).collect(Collectors.toList());
     private boolean isStopRequested;
 
-    public TestSource(final Configuration configuration) {
-        this();
-    }
-
     public TestSource() {
         isStopRequested = false;
     }
@@ -30,7 +25,7 @@ public class TestSource implements Source<Record<String>> {
     public void start(Buffer<Record<String>> buffer) {
         final Iterator<Record<String>> iterator = TEST_DATA.iterator();
         while (iterator.hasNext() && !isStopRequested) {
-            buffer.write(iterator.next());
+            buffer.write(iterator.next(), 1_000);
         }
     }
 

@@ -6,7 +6,7 @@ import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.sink.Sink;
 import com.amazon.situp.model.source.Source;
 import com.amazon.situp.pipeline.common.PipelineThreadFactory;
-import com.amazon.situp.plugins.buffer.UnboundedInMemoryBuffer;
+import com.amazon.situp.plugins.buffer.BlockingBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,12 +18,11 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Pipeline is a data transformation flow which reads data from {@link Source}, optionally transforms the data
- * using {@link Processor} and outputs the transformed (or original) data to {@link Sink}.
+ * Pipeline is a data transformation flow which reads data from {@link Source}, optionally transforms the data using
+ * {@link Processor} and outputs the transformed (or original) data to {@link Sink}.
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class Pipeline {
@@ -39,32 +38,36 @@ public class Pipeline {
     private final List<Processor> processors;
     private final List<Sink> sinks;
     private final int processorThreads;
+    private final int readBatchTimeoutInMillis;
     private final ExecutorService processorSinkExecutorService;
     private final ExecutorService sourceExecutorService;
 
     /**
-     * Constructs a {@link Pipeline} object with provided {@link Source}, {@link #name}, {@link Collection} of
-     * {@link Sink} and default {@link Buffer}, {@link Processor}.
+     * Constructs a {@link Pipeline} object with provided {@link #name}, {@link Source}, {@link Collection} of
+     * {@link Sink}, processorThreads, readBatchTimeout and default {@link Buffer}, {@link Processor}.
      *
      * @param name             name of the pipeline
      * @param source           source from where the pipeline reads the records
      * @param sinks            collection of sink's to which the transformed records need to be posted
      * @param processorThreads configured or default threads to parallelize processor work
+     * @param readBatchTimeoutInMillis configured or default timeout for reading batch of records from buffer
+     *
      */
     public Pipeline(
             @Nonnull final String name,
             @Nonnull final Source source,
             @Nonnull final List<Sink> sinks,
-            final int processorThreads) {
-        this(name, source, new UnboundedInMemoryBuffer(), EMPTY_PROCESSOR_LIST, sinks, processorThreads);
+            final int processorThreads,
+            final int readBatchTimeoutInMillis) {
+        this(name, source, new BlockingBuffer(), EMPTY_PROCESSOR_LIST, sinks, processorThreads, readBatchTimeoutInMillis);
     }
 
     /**
      * Constructs a {@link Pipeline} object with provided {@link Source}, {@link #name}, {@link Collection} of
-     * {@link Sink}, {@link Buffer} and list of {@link Processor}. On {@link #execute()} the engine will read
-     * records {@link Record} from provided {@link Source}, buffers the records in {@link Buffer}, applies List of
-     * {@link Processor} sequentially (in the given order) and outputs the processed records to collection of {@link
-     * Sink}
+     * {@link Sink}, {@link Buffer} and list of {@link Processor}. On {@link #execute()} the engine will read records
+     * {@link Record} from provided {@link Source}, buffers the records in {@link Buffer}, applies List of
+     * {@link Processor} sequentially (in the given order) and outputs the processed records to collection of
+     * {@link Sink}
      *
      * @param name             name of the pipeline
      * @param source           source from where the pipeline reads the records
@@ -72,20 +75,23 @@ public class Pipeline {
      * @param processors       processor that is applied to records
      * @param sinks            sink to which the transformed records are posted
      * @param processorThreads configured or default threads to parallelize processor work
+     * @param readBatchTimeoutInMillis configured or default timeout for reading batch of records from buffer
      */
     public Pipeline(
             @Nonnull final String name,
             @Nonnull final Source source,
-            @Nullable final Buffer buffer,
-            @Nullable final List<Processor> processors,
+            @Nonnull final Buffer buffer,
+            @Nonnull final List<Processor> processors,
             @Nonnull final List<Sink> sinks,
-            final int processorThreads) {
+            final int processorThreads,
+            final int readBatchTimeoutInMillis) {
         this.name = name;
         this.source = source;
-        this.buffer = buffer != null ? buffer : new UnboundedInMemoryBuffer();
-        this.processors = processors != null ? processors : EMPTY_PROCESSOR_LIST;
+        this.buffer = buffer;
+        this.processors = processors;
         this.sinks = sinks;
         this.processorThreads = processorThreads;
+        this.readBatchTimeoutInMillis = readBatchTimeoutInMillis;
         int coreThreads = sinks.size() + processorThreads; //TODO We may have to update this after benchmark tests
         this.processorSinkExecutorService = Executors.newFixedThreadPool(coreThreads,
                 new PipelineThreadFactory("situp-processor-sink"));
@@ -131,6 +137,10 @@ public class Pipeline {
      */
     List<Processor> getProcessors() {
         return processors;
+    }
+
+    public int getReadBatchTimeoutInMillis() {
+        return readBatchTimeoutInMillis;
     }
 
     /**
@@ -182,6 +192,7 @@ public class Pipeline {
     /**
      * Submits the provided collection of records to output to each sink. Collects the future from each sink and returns
      * them as list of futures
+     *
      * @param records records that needs to published to each sink
      * @return List of Future, each future for each sink
      */

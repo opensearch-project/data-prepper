@@ -1,3 +1,6 @@
 plugins {
     id 'jacoco'
 }
+dependencies {
+    testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
+}
