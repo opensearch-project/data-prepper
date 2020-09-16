@@ -20,10 +20,6 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.amazon.situp.model.processor.Processor.ATTRIBUTE_DELAY;
-import static com.amazon.situp.model.processor.Processor.ATTRIBUTE_WORKERS;
-import static com.amazon.situp.model.processor.Processor.DEFAULT_READ_BATCH_DELAY;
-
 /**
  * SITUP is the entry point into the execution engine. An instance of this class is provided by
  * {@link #getInstance()} method and the same can eb used to trigger execution via {@link #execute()} of the
@@ -32,6 +28,10 @@ import static com.amazon.situp.model.processor.Processor.DEFAULT_READ_BATCH_DELA
  */
 public class Situp {
     private static final Logger LOG = LoggerFactory.getLogger(Situp.class);
+
+    private static final String ATTRIBUTE_WORKERS = "workers";
+    private static final String ATTRIBUTE_DELAY = "delay";
+    private static final int DEFAULT_READ_BATCH_DELAY = 3_000;
 
     private static final String DEFAULT_CONFIG_LOCATION = "situp-core/src/main/resources/situp-default.yml";
     private Pipeline transformationPipeline;

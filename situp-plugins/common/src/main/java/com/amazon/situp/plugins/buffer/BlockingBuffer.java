@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * A bounded BlockingBuffer is an implementation of {@link Buffer} using {@link LinkedBlockingQueue}, it is bounded
@@ -29,19 +30,20 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(BlockingBuffer.class);
 
     private static final int DEFAULT_BUFFER_CAPACITY = 512;
-    private static final String ATTRIBUTE_BUFFER_CAPACITY = "buffer-size";
+    private static final int DEFAULT_BATCH_SIZE = 8;
+    private static final String ATTRIBUTE_BUFFER_CAPACITY = "buffer_size";
+    private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
 
-    private final int bufferCapacity;
     private final int batchSize;
     private final BlockingQueue<T> blockingQueue;
 
     /**
      * Creates a BlockingBuffer with the given (fixed) capacity.
+     *
      * @param bufferCapacity the capacity of the buffer
-     * @param batchSize the batch size for {@link #read(int)}
+     * @param batchSize      the batch size for {@link #read(int)}
      */
     public BlockingBuffer(final int bufferCapacity, final int batchSize) {
-        this.bufferCapacity = bufferCapacity;
         this.batchSize = batchSize;
         this.blockingQueue = new LinkedBlockingQueue<>(bufferCapacity);
     }
@@ -56,7 +58,8 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
      * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
      */
     public BlockingBuffer(final PluginSetting pluginSetting) {
-        this(getBufferCapacityFromSettings(pluginSetting), getBatchSizeFromSettings(pluginSetting));
+        this(getAttributeValue(pluginSetting, ATTRIBUTE_BUFFER_CAPACITY, DEFAULT_BUFFER_CAPACITY),
+                getAttributeValue(pluginSetting, ATTRIBUTE_BATCH_SIZE, DEFAULT_BATCH_SIZE));
     }
 
     public BlockingBuffer() {
@@ -64,11 +67,12 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
     }
 
     @Override
-    public void write(T record, int timeoutInMillis) {
+    public void write(T record, int timeoutInMillis) throws TimeoutException {
         try {
             blockingQueue.offer(record, timeoutInMillis, TimeUnit.MILLISECONDS);
         } catch (InterruptedException ex) {
             LOG.error("Buffer is full, interrupted while waiting to write the record", ex);
+            throw new TimeoutException("Buffer is full, timed out waiting for a slot");
         }
     }
 
@@ -76,6 +80,7 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
      * Retrieves and removes the batch of records from the head of the queue. The batch size is defined/determined by
      * the configuration attribute {@link #ATTRIBUTE_BATCH_SIZE} or the @param timeoutInMillis. The timeoutInMillis
      * is also used for retrieving each record
+     *
      * @param timeoutInMillis how long to wait before giving up
      * @return The earliest batch of records in the buffer which are still not read.
      */
@@ -84,10 +89,13 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
         final List<T> records = new ArrayList<>();
         final Stopwatch stopwatch = Stopwatch.createStarted();
         try {
-            while(stopwatch.elapsed(TimeUnit.MILLISECONDS) < timeoutInMillis && records.size() < batchSize) {
+            while (stopwatch.elapsed(TimeUnit.MILLISECONDS) < timeoutInMillis && records.size() < batchSize) {
                 final T record = blockingQueue.poll(timeoutInMillis, TimeUnit.MILLISECONDS);
                 if (record != null) { //record can be null, avoiding adding nulls
                     records.add(record);
+                }
+                if (records.size() < batchSize) {
+                    blockingQueue.drainTo(records, batchSize - records.size());
                 }
             }
         } catch (InterruptedException ex) {
@@ -97,16 +105,8 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
         return records;
     }
 
-    private static int getBufferCapacityFromSettings(final PluginSetting pluginSetting) {
-        return getAttributeOrDefault(ATTRIBUTE_BUFFER_CAPACITY, pluginSetting, DEFAULT_BUFFER_CAPACITY);
-    }
-
-    private static int getBatchSizeFromSettings(final PluginSetting pluginSetting) {
-        return getAttributeOrDefault(ATTRIBUTE_BATCH_SIZE, pluginSetting, DEFAULT_BATCH_SIZE);
-    }
-
-    private static Integer getAttributeOrDefault(final String attribute, final PluginSetting pluginSetting, int defaultValue) {
-        final Object attributeObject = pluginSetting.getAttributeFromSettings(attribute);
-        return attributeObject == null ? defaultValue : (Integer) attributeObject;
+    private static int getAttributeValue(final PluginSetting pluginSetting, final String attributeName,
+                                         final int defaultValue) {
+        return (Integer) pluginSetting.getAttributeOrDefault(attributeName, defaultValue);
     }
 }
