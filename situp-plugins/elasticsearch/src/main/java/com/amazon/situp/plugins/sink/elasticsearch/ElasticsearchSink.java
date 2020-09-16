@@ -8,6 +8,7 @@ import com.amazon.situp.model.sink.Sink;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.alias.Alias;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
+import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -17,12 +18,14 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.PutIndexTemplateRequest;
 
+import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.transport.RemoteTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +42,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 
 import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.CONNECT_TIMEOUT;
@@ -51,6 +55,7 @@ import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.IND
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.INDEX_TYPE;
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.TEMPLATE_FILE;
 import static com.amazon.situp.plugins.sink.elasticsearch.RetryConfiguration.DLQ_FILE;
+import static com.amazon.situp.plugins.sink.elasticsearch.RetryConfiguration.RETRY_STATUS;
 
 @SitupPlugin(name = "elasticsearch", type = PluginType.SINK)
 public class ElasticsearchSink implements Sink<Record<String>> {
@@ -64,10 +69,12 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private RestHighLevelClient restHighLevelClient;
   private Supplier<BulkRequest> bulkRequestSupplier;
   private final long bulkSize;
+  private final Set<Integer> retryStatus;
 
   public ElasticsearchSink(final PluginSetting pluginSetting) {
     this.esSinkConfig = readESConfig(pluginSetting);
     this.bulkSize = ByteSizeUnit.MB.toBytes(esSinkConfig.getIndexConfiguration().getBulkSize());
+    this.retryStatus = esSinkConfig.getRetryConfiguration().getRetryStatus();
     try {
       start();
     } catch (final IOException e) {
@@ -137,6 +144,10 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     if (dlqFile != null) {
       builder = builder.withDlqFile(dlqFile);
     }
+    final List<Integer> retryStatus = (List<Integer>) pluginSetting.getAttributeFromSettings(RETRY_STATUS);
+    if (retryStatus != null) {
+      builder = builder.withRetryStatus(retryStatus);
+    }
     return builder.build();
   }
 
@@ -194,19 +205,117 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   }
 
   private boolean flushBatch(final BulkRequest bulkRequest) {
+    final BulkResponse bulkResponse;
     try {
-      final BulkResponse bulkResponse = restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT);
-      final boolean hasFailures = bulkResponse.hasFailures();
-      // TODO: apply retry here
-      if (hasFailures) {
-        handleFailures(bulkRequest.requests(), bulkResponse.getItems());
+      bulkResponse = restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+    } catch (final Exception bulkException) {
+      // Captures exception in bulk API, check exception and retry, then log failure if any after retry
+      Tuple<BulkRequest, BulkResponse> tuple = Tuple.tuple(bulkRequest, null);
+      if (canRetry(bulkException)) {
+        try {
+          tuple = handleRetry(bulkRequest, null);
+        } catch (final Exception retryException) {
+          handleFailures(bulkRequest.requests(), retryException);
+          return false;
+        }
+      } else {
+        handleFailures(tuple.v1().requests(), bulkException);
+        return false;
       }
 
-      return !hasFailures;
-    } catch (final IOException e) {
-      handleFailures(bulkRequest.requests(), e);
-      return false;
+      if (tuple.v2().hasFailures()) {
+        // Response has failure after retry
+        handleFailures(tuple.v1().requests(), tuple.v2().getItems());
+        return false;
+      } else {
+        // Retry success
+        return true;
+      }
     }
+
+    // Receives BulkResponse back, check failure and retry, then log failure if any after retry
+    if (!bulkResponse.hasFailures()) {
+      return true;
+    } else {
+      Tuple<BulkRequest, BulkResponse> tuple = Tuple.tuple(bulkRequest, bulkResponse);
+      if (canRetry(bulkResponse)) {
+        try {
+          tuple = handleRetry(bulkRequest, bulkResponse);
+        } catch (final Exception retryException) {
+          handleFailures(bulkRequest.requests(), retryException);
+          return false;
+        }
+      }
+
+      if (tuple.v2().hasFailures()) {
+        handleFailures(tuple.v1().requests(), tuple.v2().getItems());
+        return false;
+      } else {
+        return true;
+      }
+    }
+  }
+
+  private Tuple<BulkRequest, BulkResponse> handleRetry(
+          final BulkRequest request, final BulkResponse response) throws Exception {
+    final RetryUtils retryUtils = new RetryUtils(BackoffPolicy.exponentialBackoff().iterator());
+    Tuple<BulkRequest, BulkResponse> tuple = Tuple.tuple(request, response);
+    BulkRequest bulkRequestForRetry = createBulkRequestForRetry(request, response);
+    while (retryUtils.next()) {
+      try {
+        tuple = retry(bulkRequestForRetry);
+      } catch (final Exception e) {
+        if (retryUtils.hasNext()) {
+          continue;
+        } else {
+          throw e;
+        }
+      }
+      if (!tuple.v2().hasFailures()) {
+        return tuple;
+      } else {
+        bulkRequestForRetry = createBulkRequestForRetry(tuple.v1(), tuple.v2());
+      }
+    }
+    return tuple;
+  }
+
+  private BulkRequest createBulkRequestForRetry(final BulkRequest request, final BulkResponse response) {
+    if (response == null) {
+      // retry due to Exception
+      return request;
+    } else {
+      final BulkRequest requestToReissue = bulkRequestSupplier.get();
+      int index = 0;
+      for (final BulkItemResponse bulkItemResponse : response.getItems()) {
+        if (bulkItemResponse.isFailed()) {
+          requestToReissue.add(request.requests().get(index));
+        }
+        index++;
+      }
+      return requestToReissue;
+    }
+  }
+
+  private boolean canRetry(final BulkResponse response) {
+    for (final BulkItemResponse bulkItemResponse : response) {
+      if (bulkItemResponse.isFailed()) {
+        if (retryStatus.contains(bulkItemResponse.status().getStatus())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private boolean canRetry(final Exception e) {
+    return (e instanceof RemoteTransportException &&
+                    retryStatus.contains(((RemoteTransportException) e).status().getStatus()));
+  }
+
+  private Tuple<BulkRequest, BulkResponse> retry(final BulkRequest request) throws Exception{
+    final BulkResponse response = restHighLevelClient.bulk(request, RequestOptions.DEFAULT);
+    return Tuple.tuple(request, response);
   }
 
   // TODO: need to be invoked by pipeline
