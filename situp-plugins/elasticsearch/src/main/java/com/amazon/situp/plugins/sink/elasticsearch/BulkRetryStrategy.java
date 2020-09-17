@@ -45,14 +45,14 @@ public final class BulkRetryStrategy {
 
     public Tuple<BulkRequest, BulkResponse> handleRetry(final BulkRequest request, final BulkResponse response)
             throws Exception {
-        final RetryUtils retryUtils = new RetryUtils(BackoffPolicy.exponentialBackoff().iterator());
+        final BackOffUtils backOffUtils = new BackOffUtils(BackoffPolicy.exponentialBackoff().iterator());
         Tuple<BulkRequest, BulkResponse> tuple = Tuple.tuple(request, response);
         BulkRequest bulkRequestForRetry = createBulkRequestForRetry(request, response);
-        while (retryUtils.next()) {
+        while (backOffUtils.next()) {
             try {
                 tuple = retry(bulkRequestForRetry);
             } catch (final Exception e) {
-                if (retryUtils.hasNext()) {
+                if (backOffUtils.hasNext()) {
                     continue;
                 } else {
                     throw e;

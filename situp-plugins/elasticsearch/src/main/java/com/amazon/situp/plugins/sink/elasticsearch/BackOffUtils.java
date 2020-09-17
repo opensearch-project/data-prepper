@@ -4,12 +4,12 @@ import org.elasticsearch.common.unit.TimeValue;
 
 import java.util.Iterator;
 
-public final class RetryUtils {
+public final class BackOffUtils {
     private final Iterator<TimeValue> iterator;
 
     private long currTime = 0;
 
-    public RetryUtils(final Iterator<TimeValue> iterator) {
+    public BackOffUtils(final Iterator<TimeValue> iterator) {
         this.iterator = iterator;
     }
 

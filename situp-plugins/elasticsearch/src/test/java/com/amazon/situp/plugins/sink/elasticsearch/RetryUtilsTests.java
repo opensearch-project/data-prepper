@@ -16,7 +16,7 @@ public class RetryUtilsTests {
         final int testNumOfRetries = 3;
         final Iterator<TimeValue> timeValueIterator =
                 BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(start), testNumOfRetries).iterator();
-        final RetryUtils retryUtils = new RetryUtils(
+        final BackOffUtils retryUtils = new BackOffUtils(
                 BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(start), testNumOfRetries).iterator());
         final long startTime = System.currentTimeMillis();
         for (int i = 0; i < testNumOfRetries; i++) {
