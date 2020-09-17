@@ -16,6 +16,9 @@ import org.lmdbjava.Dbi;
 import org.lmdbjava.DbiFlags;
 import org.lmdbjava.Env;
 import org.lmdbjava.EnvFlags;
+import org.lmdbjava.KeyRange;
+import org.lmdbjava.KeyRangeType;
+import org.lmdbjava.PutFlags;
 import org.lmdbjava.Txn;
 
 public class LmdbProcessorState<T> implements ProcessorState<T> {
@@ -68,6 +71,9 @@ public class LmdbProcessorState<T> implements ProcessorState<T> {
         }
     }
 
+    //TODO: Test performance with single puts as above, and also with a putAll function which takes in a batch
+    // of items to put into the lmdb
+
     @Override
     public T get(String key) {
         try (Txn<ByteBuffer> txn = env.txnRead()) {
@@ -109,6 +115,22 @@ public class LmdbProcessorState<T> implements ProcessorState<T> {
         try (Txn<ByteBuffer> txn = env.txnRead()) {
             final List<R> returnVal = new ArrayList<>();
             for (CursorIterable.KeyVal<ByteBuffer> byteBufferKeyVal : db.iterate(txn)) {
+                final R val = fn.apply(StandardCharsets.UTF_8.decode(byteBufferKeyVal.key()).toString(),
+                        byteBufferToObject(byteBufferKeyVal.val()));
+                returnVal.add(val);
+            }
+            return returnVal;
+        }
+    }
+
+    public<R> List<R> iterate(BiFunction<String, T, R> fn, final String starKeyRange, String endKeyRange) {
+        final KeyRange<ByteBuffer> keyRange = new KeyRange<>(
+                KeyRangeType.FORWARD_CLOSED,
+                toDirectByteBuffer(starKeyRange.getBytes(StandardCharsets.UTF_8)),
+                toDirectByteBuffer(endKeyRange.getBytes(StandardCharsets.UTF_8)));
+        try (Txn<ByteBuffer> txn = env.txnRead()) {
+            final List<R> returnVal = new ArrayList<>();
+            for (CursorIterable.KeyVal<ByteBuffer> byteBufferKeyVal : db.iterate(txn, keyRange)) {
                 final R val = fn.apply(StandardCharsets.UTF_8.decode(byteBufferKeyVal.key()).toString(),
                         byteBufferToObject(byteBufferKeyVal.val()));
                 returnVal.add(val);

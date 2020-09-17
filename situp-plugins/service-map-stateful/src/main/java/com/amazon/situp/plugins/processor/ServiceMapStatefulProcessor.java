@@ -5,10 +5,13 @@ import com.amazon.situp.model.processor.Processor;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.plugins.processor.state.LmdbProcessorState;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -17,56 +20,108 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 
 public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpans>, Record<String>> {
-    //TODO: Remove this once we have a common class for holding otel attribute tags
-    public static class ServiceMapSpanTags {
-        public static final String SERVICE_NAME_KEY = "resource.name";
-    }
-
-    private static class ServiceMapStateData {
-        public String serviceName;
-        public String parentSpanId;
-        public String spanKind;
-
-        public ServiceMapStateData() {
-        }
-
-        public ServiceMapStateData(final String serviceName, final String parentSpanId,
-                                   final String spanKind) {
-            this.serviceName = serviceName;
-            this.parentSpanId = parentSpanId;
-            this.spanKind = spanKind;
-        }
-    }
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Collection<Record<String>> EMPTY_COLLECTION = Collections.emptySet();
+    private static final String MIN_SPAN_ID = "+++++++++++=";
+    private static final String MAX_SPAN_ID = "zzzzzzzzzzz=";
+    private static final int SPAN_ID_LEN = 12;
 
-    private final int windowDuration;
-    private LmdbProcessorState<ServiceMapStateData> previousWindow;
-    private LmdbProcessorState<ServiceMapStateData> currentWindow;
-    private long previousTimestamp;
-    private File databasePath;
-    private int dbNum = 0;
+    //Static fields that need to be shared between instances of the class
+    private static int numProcessors;
+    private static AtomicInteger processorsCreated = new AtomicInteger(0);
+    private static long previousTimestamp;
+    private static long windowDurationMillis;
+    private static CountDownLatch edgeEvaluationLatch = new CountDownLatch(numProcessors);
+    private static CountDownLatch windowRotationLatch = new CountDownLatch(1);
+    private static final KeyRangeSplitter keyRangeSplitter =
+            new KeyRangeSplitter(MIN_SPAN_ID, MAX_SPAN_ID, StandardCharsets.UTF_8, SPAN_ID_LEN);
+    private volatile static LmdbProcessorState<ServiceMapStateData> previousWindow;
+    private volatile static LmdbProcessorState<ServiceMapStateData> currentWindow;
+    private static File databasePath;
+    private static int dbNum = 0;
 
-    public ServiceMapStatefulProcessor(final int windowDuration, final File databasePath) {
-        this.databasePath = databasePath;
-        this.windowDuration = windowDuration;
-        this.currentWindow = new LmdbProcessorState<>(databasePath, getNewDbName(), ServiceMapStateData.class);
-        this.previousWindow = new LmdbProcessorState<>(databasePath, getNewDbName(), ServiceMapStateData.class);
-        previousTimestamp = System.currentTimeMillis();
-    }
+    private final int thisProcessorId;
+    private String iterationStartIndex;
+    private String iterationStopIndex;
 
-    private String getNewDbName() {
-        dbNum++;
-        return "db-" + dbNum;
-    }
+    public ServiceMapStatefulProcessor(final long windowDurationMillis, final File databasePath, final int numProcessors) {
 
-    private boolean windowDurationHasPassed() {
-        if ((System.currentTimeMillis() - previousTimestamp) / 1000 >= windowDuration) {
+        this.thisProcessorId = processorsCreated.getAndIncrement();
+        if(isMasterInstance()) {
+            //TODO: Read num processors from config when its available
+            this.numProcessors = numProcessors;
             previousTimestamp = System.currentTimeMillis();
-            return true;
+            this.databasePath = databasePath;
+            this.windowDurationMillis = windowDurationMillis;
+            this.currentWindow = new LmdbProcessorState<>(databasePath, getNewDbName(), ServiceMapStateData.class);
+            this.previousWindow = new LmdbProcessorState<>(databasePath, getNewDbName(), ServiceMapStateData.class);
         }
-        return false;
+        iterationStartIndex = keyRangeSplitter.getBoundary(thisProcessorId, ServiceMapStatefulProcessor.numProcessors);
+        iterationStopIndex = keyRangeSplitter.getBoundary(thisProcessorId +1, ServiceMapStatefulProcessor.numProcessors);
+    }
+
+    /**
+     * Adds the data for spans from the ResourceSpans object to the current window
+     * @param records Input records that will be modified/processed
+     * @return If the window is reached, returns a list of ServiceMapRelationship objects representing the edges to be
+     * added to the service map index. Otherwise, returns an empty set.
+     */
+    @Override
+    public Collection<Record<String>> execute(Collection<Record<ResourceSpans>> records) {
+        final Collection<Record<String>> relationships = windowDurationHasPassed() ? evaluateEdges() : EMPTY_COLLECTION;
+        records.forEach(resourceSpansRecord -> {
+            final String resourceName = resourceSpansRecord.getData().getResource().getAttributesList().stream().filter(
+                    keyValue -> keyValue.getKey().equals(ServiceMapSpanTags.SERVICE_NAME_KEY)
+            ).findFirst().get().getValue().getStringValue();
+            resourceSpansRecord.getData().getInstrumentationLibrarySpansList().forEach(
+                    instrumentationLibrarySpans -> instrumentationLibrarySpans.getSpansList().forEach(span ->
+                            currentWindow.put(
+                                    span.getSpanId().toString(Charsets.UTF_8),
+                                    new ServiceMapStateData(
+                                            resourceName,
+                                            span.getParentSpanId().toString(Charsets.UTF_8),
+                                            span.getKind().name())
+                            )
+                    )
+            );
+        });
+        return relationships;
+    }
+
+    /**
+     * This function parses the current and previous windows to find the edges, and rotates the window state objects.
+     * @return Set of Record<String> containing json representation of ServiceMapRelationships found
+     */
+    private Collection<Record<String>> evaluateEdges() {
+        try {
+            final Stream<ServiceMapRelationship> previousStream = previousWindow.iterate(previousWindowFunction, iterationStartIndex, iterationStopIndex).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
+            final Stream<ServiceMapRelationship> currentStream = currentWindow.iterate(currentWindowFunction, iterationStartIndex, iterationStopIndex).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
+            final Collection<Record<String>> serviceDependencyRecords =
+                    Stream.concat(previousStream, currentStream).filter(Objects::nonNull)
+                            .map(serviceDependency -> {
+                                try {
+                                    return new Record<>(OBJECT_MAPPER.writeValueAsString(serviceDependency));
+                                } catch (JsonProcessingException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            })
+                            .collect(Collectors.toSet());
+
+            doneEvaluatingEdges();
+            waitForEvaluationFinish();
+
+            if(isMasterInstance()) {
+                rotateWindows();
+                resetWorkState();
+            } else {
+                waitForRotationFinish();
+            }
+
+            return serviceDependencyRecords;
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -80,9 +135,9 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
             final ServiceMapStateData parentStateData = currentWindow.get(serviceMapStateData.parentSpanId);
             if (parentStateData != null && !parentStateData.serviceName.equals(serviceMapStateData.serviceName)) {
                 return Arrays.asList(
-                        new ServiceMapRelationship(parentStateData.serviceName, parentStateData.spanKind, serviceMapStateData.serviceName, null),
+                        ServiceMapRelationship.newDestinationRelationship(parentStateData.serviceName, parentStateData.spanKind, serviceMapStateData.serviceName),
                         //This extra edge is added for compatibility of the index for both stateless and stateful processors
-                        new ServiceMapRelationship(serviceMapStateData.serviceName, serviceMapStateData.spanKind, null, serviceMapStateData.serviceName)
+                        ServiceMapRelationship.newTargetRelationship(serviceMapStateData.serviceName, serviceMapStateData.spanKind, serviceMapStateData.serviceName)
                 ).stream();
             } else {
                 return null;
@@ -103,9 +158,9 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
             }
             if (parentStateData != null && !parentStateData.serviceName.equals(serviceMapStateData.serviceName)) {
                 return Arrays.asList(
-                        new ServiceMapRelationship(parentStateData.serviceName, parentStateData.spanKind, serviceMapStateData.serviceName, null),
+                        ServiceMapRelationship.newDestinationRelationship(parentStateData.serviceName, parentStateData.spanKind, serviceMapStateData.serviceName),
                         //This extra edge is added for compatibility of the index for both stateless and stateful processors
-                        new ServiceMapRelationship(serviceMapStateData.serviceName, serviceMapStateData.spanKind, null, serviceMapStateData.serviceName)
+                        ServiceMapRelationship.newTargetRelationship(serviceMapStateData.serviceName, serviceMapStateData.spanKind, serviceMapStateData.serviceName)
                 ).stream();
             } else {
                 return null;
@@ -114,61 +169,8 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
     };
 
     /**
-     * This function parses the current and previous windows to find the edges, and rotates the window state objects.
-     * @return
+     * Delete current state held in the processor
      */
-    private Collection<Record<String>> findEdgesAndRotateWindows() {
-        final Stream<ServiceMapRelationship> previousStream = previousWindow.iterate(previousWindowFunction).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
-        final Stream<ServiceMapRelationship> currentStream = currentWindow.iterate(currentWindowFunction).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
-        final Collection<Record<String>> serviceDependencyRecords =
-                Stream.concat(previousStream, currentStream).filter(Objects::nonNull)
-                        .map(serviceDependency -> {
-                            try {
-                                return new Record<>(OBJECT_MAPPER.writeValueAsString(serviceDependency));
-                            } catch (JsonProcessingException e) {
-                                throw new RuntimeException(e);
-                            }
-                        })
-                        .collect(Collectors.toSet());
-
-        previousWindow.clear();
-        previousWindow.close();
-        previousWindow = currentWindow;
-        currentWindow = new LmdbProcessorState(databasePath, getNewDbName(), ServiceMapStateData.class);
-        return serviceDependencyRecords;
-    }
-
-    /**
-     * Adds the data for spans from the ResourceSpans object to the current window
-     * @param records Input records that will be modified/processed
-     * @return If the window is reached, returns a list of ServiceMapRelationship objects representing the edges to be
-     * added to the service map index. Otherwise, returns an empty set.
-     */
-    @Override
-    public Collection<Record<String>> execute(Collection<Record<ResourceSpans>> records) {
-        records.forEach(resourceSpansRecord -> {
-            final String resourceName = resourceSpansRecord.getData().getResource().getAttributesList().stream().filter(
-                    keyValue -> keyValue.getKey().equals(ServiceMapSpanTags.SERVICE_NAME_KEY)
-            ).findFirst().get().getValue().getStringValue();
-            resourceSpansRecord.getData().getInstrumentationLibrarySpansList().forEach(
-                    instrumentationLibrarySpans -> instrumentationLibrarySpans.getSpansList().forEach(span ->
-                            currentWindow.put(
-                                    span.getSpanId().toString(Charsets.UTF_8),
-                                    new ServiceMapStateData(
-                                            resourceName,
-                                            span.getParentSpanId().toString(Charsets.UTF_8),
-                                            span.getKind().name())
-                            )
-                    )
-            );
-        });
-        if (windowDurationHasPassed()) {
-            return findEdgesAndRotateWindows();
-        } else {
-            return EMPTY_COLLECTION;
-        }
-    }
-
     public void deleteState() {
         previousWindow.clear();
         currentWindow.clear();
@@ -178,5 +180,104 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
     public void shutdown() {
         previousWindow.close();
         currentWindow.close();
+    }
+
+    /**
+     * Indicate/notify that this instance has finished evaluating edges
+     */
+    private void doneEvaluatingEdges() {
+        edgeEvaluationLatch.countDown();
+    }
+
+    /**
+     * Wait on all instances to finish evaluating edges
+     * @throws InterruptedException
+     */
+    private void waitForEvaluationFinish() throws InterruptedException {
+        edgeEvaluationLatch.await();
+    }
+
+    /**
+     * Indicate that window rotation is complete
+     */
+    private void doneRotatingWindows() {
+        windowRotationLatch.countDown();
+    }
+
+    /**
+     * Wait on window rotation to complete
+     * @throws InterruptedException
+     */
+    private void waitForRotationFinish() throws InterruptedException {
+        windowRotationLatch.await();
+    }
+
+    /**
+     * Reset state that indicates whether edge evaluation and window rotation is complete
+     */
+    private void resetWorkState() {
+        windowRotationLatch = new CountDownLatch(1);
+        edgeEvaluationLatch = new CountDownLatch(numProcessors);
+    }
+
+    /**
+     * Rotate windows for processor state
+     */
+    private void rotateWindows() {
+        if(isMasterInstance()) {
+            previousWindow.clear();
+            previousWindow.close();
+        }
+        previousWindow = currentWindow;
+        currentWindow = new LmdbProcessorState(databasePath, getNewDbName(), ServiceMapStateData.class);
+        previousTimestamp = System.currentTimeMillis();
+        doneRotatingWindows();
+    }
+
+    /**
+     * @return Next database name
+     */
+    private String getNewDbName() {
+        dbNum++;
+        return "db-" + dbNum;
+    }
+
+    /**
+     * @return Boolean indicating whether the window duration has lapsed
+     */
+    private boolean windowDurationHasPassed() {
+        if ((System.currentTimeMillis() - previousTimestamp)  >= windowDurationMillis) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Master instance is needed to do things like window rotation that should only be done once
+     * @return Boolean indicating whether this object is the master ServiceMapStatefulProcessor instance
+     */
+    private boolean isMasterInstance() {
+        return thisProcessorId == 0;
+    }
+
+    //TODO: Remove this once we have a common class for holding otel attribute tags
+    public static class ServiceMapSpanTags {
+        public static final String SERVICE_NAME_KEY = "resource.name";
+    }
+
+    private static class ServiceMapStateData {
+        public String serviceName;
+        public String parentSpanId;
+        public String spanKind;
+
+        public ServiceMapStateData() {
+        }
+
+        public ServiceMapStateData(final String serviceName, final String parentSpanId,
+                                   final String spanKind) {
+            this.serviceName = serviceName;
+            this.parentSpanId = parentSpanId;
+            this.spanKind = spanKind;
+        }
     }
 }

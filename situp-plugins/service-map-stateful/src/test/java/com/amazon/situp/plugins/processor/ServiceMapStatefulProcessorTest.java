@@ -1,15 +1,25 @@
 package com.amazon.situp.plugins.processor;
 
 import com.google.common.base.Charsets;
+import com.google.common.primitives.Longs;
 import com.google.protobuf.ByteString;
 import com.amazon.situp.model.record.Record;
+import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -102,50 +112,73 @@ public class ServiceMapStatefulProcessorTest {
      *                                                                                    |--Id=5, service = nothing--|
      */
     @Test
-    public void testSimpleSpansProcessing() throws IOException {
-        final ServiceMapStatefulProcessor serviceMapStateful = new ServiceMapStatefulProcessor(1, temporaryFolder.newFolder());
-        try {
-            //Fake span data
+    public void testServiceMapProcessor()  throws Exception {
 
-            //Frontend service client span
-            ResourceSpans spans1 = getResourceSpans(FRONTEND_SERVICE, "span1", "1", "1", Span.SpanKind.SPAN_KIND_CLIENT);
-            //Backend service server and client spans
-            ResourceSpans spans2 = getResourceSpans(BACKEND_SERVICE, "span2", "2", "1", Span.SpanKind.SPAN_KIND_SERVER);
-            ResourceSpans spans3 = getResourceSpans(BACKEND_SERVICE, "span3", "3", "2", Span.SpanKind.SPAN_KIND_CLIENT);
-            //Database service server span
-            ResourceSpans spans4 = getResourceSpans(DATABASE_SERVICE, "span4" ,"4","3", Span.SpanKind.SPAN_KIND_SERVER );
-            //Checkoue service server span
-            ResourceSpans spans5 = getResourceSpans(CHECKOUT_SERVICE, "span5","5", "3", Span.SpanKind.SPAN_KIND_SERVER);
-            //Other service span
-            ResourceSpans spans6 = getResourceSpans(OTHER_SERVICE, "span6","6","7", Span.SpanKind.SPAN_KIND_UNSPECIFIED);
+        ExecutorService threadpool = Executors.newCachedThreadPool();
+        final File path = temporaryFolder.newFolder();
+        //This processor will iterate over the front half of key range
+        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, 2);
+        //This processor will iterate over back half of the key range
+        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, 2);
 
-            //Expected relationships
-            final ServiceMapRelationship relationship1 = new ServiceMapRelationship(FRONTEND_SERVICE, Span.SpanKind.SPAN_KIND_CLIENT.name(), BACKEND_SERVICE, null);
-            final ServiceMapRelationship relationship2 = new ServiceMapRelationship(BACKEND_SERVICE, Span.SpanKind.SPAN_KIND_CLIENT.name(), DATABASE_SERVICE, null);
-            final ServiceMapRelationship relationship3 = new ServiceMapRelationship(BACKEND_SERVICE, Span.SpanKind.SPAN_KIND_CLIENT.name(), CHECKOUT_SERVICE, null);
-            final ServiceMapRelationship targetRelationship1 = new ServiceMapRelationship(BACKEND_SERVICE, Span.SpanKind.SPAN_KIND_SERVER.name(), null, BACKEND_SERVICE);
-            final ServiceMapRelationship targetRelationship2 = new ServiceMapRelationship(DATABASE_SERVICE, Span.SpanKind.SPAN_KIND_SERVER.name(), null, DATABASE_SERVICE);
-            final ServiceMapRelationship targetRelationship3 = new ServiceMapRelationship(CHECKOUT_SERVICE, Span.SpanKind.SPAN_KIND_SERVER.name(), null, CHECKOUT_SERVICE);
+        //Frontend service client span
+        ResourceSpans spans1 = getResourceSpans(FRONTEND_SERVICE, "span1", "11", "11", Span.SpanKind.SPAN_KIND_CLIENT);
+        //Backend service server and client spans
+        ResourceSpans spans2 = getResourceSpans(BACKEND_SERVICE, "span2", "22", "11", Span.SpanKind.SPAN_KIND_SERVER);
+        ResourceSpans spans3 = getResourceSpans(BACKEND_SERVICE, "span3", "33", "22", Span.SpanKind.SPAN_KIND_CLIENT);
+        //Database service server span
+        ResourceSpans spans4 = getResourceSpans(DATABASE_SERVICE, "span4" ,"qq","33", Span.SpanKind.SPAN_KIND_SERVER );
+        //Checkoue service server span
+        ResourceSpans spans5 = getResourceSpans(CHECKOUT_SERVICE, "span5","rr", "33", Span.SpanKind.SPAN_KIND_SERVER);
+        //Other service span
+        ResourceSpans spans6 = getResourceSpans(OTHER_SERVICE, "span6","ss","7", Span.SpanKind.SPAN_KIND_UNSPECIFIED);
 
-            //Sleep for 1.2 seconds, to close out the original window
-            Thread.sleep(1200);
+        final ServiceMapRelationship relationship1 = ServiceMapRelationship.newDestinationRelationship(FRONTEND_SERVICE, Span.SpanKind.SPAN_KIND_CLIENT.name(), BACKEND_SERVICE);
+        final ServiceMapRelationship relationship2 = ServiceMapRelationship.newDestinationRelationship(BACKEND_SERVICE, Span.SpanKind.SPAN_KIND_CLIENT.name(), DATABASE_SERVICE);
+        final ServiceMapRelationship relationship3 = ServiceMapRelationship.newDestinationRelationship(BACKEND_SERVICE, Span.SpanKind.SPAN_KIND_CLIENT.name(), CHECKOUT_SERVICE);
+        final ServiceMapRelationship targetRelationship1 = ServiceMapRelationship.newTargetRelationship(BACKEND_SERVICE, Span.SpanKind.SPAN_KIND_SERVER.name(), BACKEND_SERVICE);
+        final ServiceMapRelationship targetRelationship2 = ServiceMapRelationship.newTargetRelationship(DATABASE_SERVICE, Span.SpanKind.SPAN_KIND_SERVER.name(), DATABASE_SERVICE);
+        final ServiceMapRelationship targetRelationship3 = ServiceMapRelationship.newTargetRelationship(CHECKOUT_SERVICE, Span.SpanKind.SPAN_KIND_SERVER.name(), CHECKOUT_SERVICE);
 
-            //Process Span 1, should result in no relationships found
-            final Collection<Record<String>> emptyRelationships = serviceMapStateful.execute(Arrays.asList(
+        //Sleep for 1.2 seconds, to close out the original window
+        Thread.sleep(110);
+
+        //Process Span 1, should result in no relationships found
+        Future<Collection<Record<String>>> emptyFuture1 = threadpool.submit(() -> {
+            return serviceMapStateful1.execute(Arrays.asList(
                     new Record<>(spans1)
             ));
+        });
+        Future<Collection<Record<String>>> emptyFuture2 = threadpool.submit(() -> {
+            return serviceMapStateful2.execute(Collections.emptyList());
+        });
 
-            Assert.assertTrue(emptyRelationships.isEmpty());
+        Assert.assertTrue(emptyFuture1.get().isEmpty());
+        Assert.assertTrue(emptyFuture2.get().isEmpty());
 
-            //Sleep for 1.2 seconds, to move on to the next window
-            Thread.sleep(1200);
+        //Sleep for 1.2 seconds, to move on to the next window
+        Thread.sleep(110);
 
-            //Process spans 2, 3, and 4. This should lead to detection of 4 relationships
-            final Set<ServiceMapRelationship> relationships1 = serviceMapStateful.execute(Arrays.asList(
+
+        emptyFuture1 = threadpool.submit(() -> {
+            return serviceMapStateful2.execute(Arrays.asList(
                     new Record<>(spans2),
-                    new Record<>(spans3),
                     new Record<>(spans4)
-            ))
+            ));
+        });
+        emptyFuture2 = threadpool.submit(()-> {
+            return serviceMapStateful1.execute(Arrays.asList(
+                    new Record<>(spans3),
+                    new Record<>(spans5)));
+        });
+
+        Assert.assertTrue(emptyFuture1.get().isEmpty());
+        Assert.assertTrue(emptyFuture2.get().isEmpty());
+
+        Thread.sleep(110);
+
+        Future<Set<ServiceMapRelationship>> frontHalfFuture = threadpool.submit(() -> {
+            return serviceMapStateful1.execute(Collections.emptyList())
                     .stream()
                     .map(record -> {
                         try {
@@ -154,21 +187,11 @@ public class ServiceMapStatefulProcessorTest {
                             throw new RuntimeException(e);
                         }
                     }).collect(Collectors.toSet());
+        });
 
-            Assert.assertEquals(4, relationships1.size());
-            Assert.assertTrue(relationships1.contains(relationship1));
-            Assert.assertTrue(relationships1.contains(relationship2));
-            Assert.assertTrue(relationships1.contains(targetRelationship1));
-            Assert.assertTrue(relationships1.contains(targetRelationship2));
-
-            //Sleep for 1.2 seconds, so close out the window. The original window with span 1 is now expired and deleted
-            Thread.sleep(1200);
-
-            //Process spans 5 and 6. Should lead to detection of 2 relationships
-            final Set<ServiceMapRelationship> relationships2 = serviceMapStateful.execute(Arrays.asList(
-                    new Record<>(spans5),
-                    new Record<>(spans6)
-            )).stream()
+        Future<Set<ServiceMapRelationship>> backHalfFuture = threadpool.submit(() -> {
+            return serviceMapStateful2.execute(Collections.emptyList())
+                    .stream()
                     .map(record -> {
                         try {
                             return OBJECT_MAPPER.readValue(record.getData(), ServiceMapRelationship.class);
@@ -176,27 +199,31 @@ public class ServiceMapStatefulProcessorTest {
                             throw new RuntimeException(e);
                         }
                     }).collect(Collectors.toSet());
+        });
+        //Should contain edges found where the child span id is in the front half of key range
+        Set<ServiceMapRelationship> frontHalfRelationships = frontHalfFuture.get();
+        //Should contain edges where the child span id is in the back half of the key range
+        Set<ServiceMapRelationship> backHalfRelationships = backHalfFuture.get();
 
-            Assert.assertEquals(2, relationships2.size());
-            Assert.assertTrue(relationships2.contains(relationship3));
-            Assert.assertTrue(relationships2.contains(targetRelationship3));
+        Assert.assertTrue(frontHalfRelationships.contains(relationship1));
+        Assert.assertTrue(frontHalfRelationships.contains(targetRelationship1));
 
-            //As extra verification, evaluate the actual service map edges that result from the above responses
-            //from the processor.
-            Set<ServiceMapSourceDest> serviceMapSourceDests = evaluateEdges(new HashSet<ServiceMapRelationship>(){{
-                addAll(relationships1);
-                addAll(relationships2);
-            }});
-            Assert.assertEquals(3, serviceMapSourceDests.size());
-            Assert.assertTrue(serviceMapSourceDests.contains(new ServiceMapSourceDest(FRONTEND_SERVICE, BACKEND_SERVICE)));
-            Assert.assertTrue(serviceMapSourceDests.contains(new ServiceMapSourceDest(BACKEND_SERVICE, DATABASE_SERVICE)));
-            Assert.assertTrue(serviceMapSourceDests.contains(new ServiceMapSourceDest(BACKEND_SERVICE, CHECKOUT_SERVICE)));
+        Assert.assertTrue(backHalfRelationships.contains(relationship2));
+        Assert.assertTrue(backHalfRelationships.contains(targetRelationship2));
 
+        Assert.assertTrue(backHalfRelationships.contains(relationship3));
+        Assert.assertTrue(backHalfRelationships.contains(targetRelationship3));
 
-        } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail();
-        }
+        //As extra verification, evaluate the actual service map edges that result from the above responses
+        //from the processor.
+        Set<ServiceMapSourceDest> serviceMapSourceDests = evaluateEdges(new HashSet<ServiceMapRelationship>(){{
+            addAll(frontHalfRelationships);
+            addAll(backHalfRelationships);
+        }});
+        Assert.assertEquals(3, serviceMapSourceDests.size());
+        Assert.assertTrue(serviceMapSourceDests.contains(new ServiceMapSourceDest(FRONTEND_SERVICE, BACKEND_SERVICE)));
+        Assert.assertTrue(serviceMapSourceDests.contains(new ServiceMapSourceDest(BACKEND_SERVICE, DATABASE_SERVICE)));
+        Assert.assertTrue(serviceMapSourceDests.contains(new ServiceMapSourceDest(BACKEND_SERVICE, CHECKOUT_SERVICE)));
     }
 
     private static class ServiceMapSourceDest {
