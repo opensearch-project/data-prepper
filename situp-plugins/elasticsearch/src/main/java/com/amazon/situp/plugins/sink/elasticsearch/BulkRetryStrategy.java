@@ -1,31 +1,40 @@
 package com.amazon.situp.plugins.sink.elasticsearch;
 
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.common.collect.Tuple;
-import org.elasticsearch.transport.RemoteTransportException;
+import org.elasticsearch.rest.RestStatus;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Supplier;
 
 public final class BulkRetryStrategy {
-    private final Set<Integer> retryStatus;
+    private static final Set<Integer> NON_RETRY_STATUS = new HashSet<>(
+            Arrays.asList(
+                    RestStatus.BAD_REQUEST.getStatus(),
+                    RestStatus.NOT_FOUND.getStatus(),
+                    RestStatus.CONFLICT.getStatus()
+            ));
+
     private final RequestFunction<BulkRequest, BulkResponse> requestFunction;
     private final Supplier<BulkRequest> bulkRequestSupplier;
 
     public BulkRetryStrategy(final RequestFunction<BulkRequest, BulkResponse> requestFunction,
-                             final Supplier<BulkRequest> bulkRequestSupplier, final Set<Integer> retryStatus) {
+                             final Supplier<BulkRequest> bulkRequestSupplier) {
         this.requestFunction = requestFunction;
         this.bulkRequestSupplier = bulkRequestSupplier;
-        this.retryStatus = retryStatus;
     }
 
     public boolean canRetry(final BulkResponse response) {
         for (final BulkItemResponse bulkItemResponse : response) {
             if (bulkItemResponse.isFailed()) {
-                if (retryStatus.contains(bulkItemResponse.status().getStatus())) {
+                if (!NON_RETRY_STATUS.contains(bulkItemResponse.status().getStatus())) {
                     return true;
                 }
             }
@@ -34,8 +43,9 @@ public final class BulkRetryStrategy {
     }
 
     public boolean canRetry(final Exception e) {
-        return (e instanceof RemoteTransportException &&
-                retryStatus.contains(((RemoteTransportException) e).status().getStatus()));
+        return (e instanceof IOException ||
+                (e instanceof ElasticsearchException &&
+                        !NON_RETRY_STATUS.contains(((ElasticsearchException) e).status().getStatus())));
     }
 
     public Tuple<BulkRequest, BulkResponse> retry(final BulkRequest request) throws Exception {

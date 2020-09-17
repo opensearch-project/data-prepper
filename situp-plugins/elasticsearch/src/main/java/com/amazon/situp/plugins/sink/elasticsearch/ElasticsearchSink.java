@@ -161,7 +161,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     bulkRequestSupplier = () -> new BulkRequest(esSinkConfig.getIndexConfiguration().getIndexAlias());
     bulkRetryStrategy = new BulkRetryStrategy(
             bulkRequest -> restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT),
-            bulkRequestSupplier, esSinkConfig.getRetryConfiguration().getRetryStatus());
+            bulkRequestSupplier);
   }
 
   @Override
