@@ -49,7 +49,7 @@ public final class BulkRetryStrategy {
                         !NON_RETRY_STATUS.contains(((ElasticsearchException) e).status().getStatus())));
     }
 
-    public Tuple<BulkRequest, BulkResponse> retry(final BulkRequest request) throws Exception {
+    private Tuple<BulkRequest, BulkResponse> retry(final BulkRequest request) throws Exception {
         final BulkResponse response = requestFunction.apply(request);
         return Tuple.tuple(request, response);
     }
