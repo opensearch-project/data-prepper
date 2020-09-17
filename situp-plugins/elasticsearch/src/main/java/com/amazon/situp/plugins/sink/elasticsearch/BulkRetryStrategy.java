@@ -6,6 +6,7 @@ import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.common.collect.Tuple;
+import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.rest.RestStatus;
 
 import java.io.IOException;
@@ -55,7 +56,9 @@ public final class BulkRetryStrategy {
 
     public Tuple<BulkRequest, BulkResponse> handleRetry(final BulkRequest request, final BulkResponse response)
             throws Exception {
-        final BackOffUtils backOffUtils = new BackOffUtils(BackoffPolicy.exponentialBackoff().iterator());
+        // Exponential backoff run forever
+        final BackOffUtils backOffUtils = new BackOffUtils(
+                BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(50), Integer.MAX_VALUE).iterator());
         Tuple<BulkRequest, BulkResponse> tuple = Tuple.tuple(request, response);
         BulkRequest bulkRequestForRetry = createBulkRequestForRetry(request, response);
         while (backOffUtils.next()) {
