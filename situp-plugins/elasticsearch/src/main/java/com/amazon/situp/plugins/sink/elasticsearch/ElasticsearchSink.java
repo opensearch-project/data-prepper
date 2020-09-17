@@ -52,7 +52,6 @@ import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.IND
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.INDEX_TYPE;
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.TEMPLATE_FILE;
 import static com.amazon.situp.plugins.sink.elasticsearch.RetryConfiguration.DLQ_FILE;
-import static com.amazon.situp.plugins.sink.elasticsearch.RetryConfiguration.RETRY_STATUS;
 
 @SitupPlugin(name = "elasticsearch", type = PluginType.SINK)
 public class ElasticsearchSink implements Sink<Record<String>> {
@@ -139,11 +138,6 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     final String dlqFile = (String) pluginSetting.getAttributeFromSettings(DLQ_FILE);
     if (dlqFile != null) {
       builder = builder.withDlqFile(dlqFile);
-    }
-    @SuppressWarnings("unchecked")
-    final List<Integer> retryStatus = (List<Integer>) pluginSetting.getAttributeFromSettings(RETRY_STATUS);
-    if (retryStatus != null) {
-      builder = builder.withRetryStatus(retryStatus);
     }
     return builder.build();
   }
