@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -36,10 +37,18 @@ public class BlockingBufferTest {
     }
 
     @Test(expected = NullPointerException.class)
-    public void testInsertNull() {
+    public void testInsertNull() throws TimeoutException {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_SIZE, TEST_BATCH_SIZE);
         assertThat(blockingBuffer, notNullValue());
         blockingBuffer.write(null, TEST_WRITE_TIMEOUT);
+    }
+
+    @Test(expected = TimeoutException.class)
+    public void testNoEmptySpace() throws TimeoutException {
+        final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(1, TEST_BATCH_SIZE);
+        assertThat(blockingBuffer, notNullValue());
+        blockingBuffer.write(new Record<>("FILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
+        blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT);
     }
 
     @Test
@@ -51,7 +60,7 @@ public class BlockingBufferTest {
     }
 
     @Test
-    public void testBatchRead() {
+    public void testBatchRead() throws Exception {
         final PluginSetting completePluginSetting = completePluginSettingForBlockingBuffer();
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(completePluginSetting);
         assertThat(blockingBuffer, notNullValue());

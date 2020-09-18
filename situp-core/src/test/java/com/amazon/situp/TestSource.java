@@ -8,6 +8,7 @@ import com.amazon.situp.model.source.Source;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -24,9 +25,13 @@ public class TestSource implements Source<Record<String>> {
     @Override
     public void start(Buffer<Record<String>> buffer) {
         final Iterator<Record<String>> iterator = TEST_DATA.iterator();
-        while (iterator.hasNext() && !isStopRequested) {
-            buffer.write(iterator.next(), 1_000);
-        }
+            while (iterator.hasNext() && !isStopRequested) {
+                try {
+                    buffer.write(iterator.next(), 1_000);
+                } catch (TimeoutException e) {
+                    throw new RuntimeException("Timed out writing to buffer");
+                }
+            }
     }
 
     @Override

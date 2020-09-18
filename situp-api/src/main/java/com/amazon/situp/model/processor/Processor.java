@@ -9,9 +9,6 @@ import java.util.Collection;
  * transform and enrich the records into desired format before publishing to the sink.
  */
 public interface Processor<InputRecord extends Record<?>, OutputRecord extends Record<?>> {
-    String ATTRIBUTE_WORKERS = "workers";
-    String ATTRIBUTE_DELAY = "delay";
-    int DEFAULT_READ_BATCH_DELAY = 3_000;
 
     /**
      * execute the processor logic which could potentially modify the incoming record. The level to which the record has
