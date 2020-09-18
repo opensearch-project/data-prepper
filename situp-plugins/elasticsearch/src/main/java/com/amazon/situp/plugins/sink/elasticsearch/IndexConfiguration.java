@@ -17,6 +17,8 @@ public class IndexConfiguration {
   public static final String INDEX_ALIAS = "index_alias";
   public static final String TEMPLATE_FILE = "template_file";
   public static final String BULK_SIZE = "bulk_size";
+  public static final String DEFAULT_INDEX_TYPE = IndexConstants.RAW;
+  public static final long DEFAULT_BULK_SIZE = 5L;
 
   private final String indexType;
   private final String indexAlias;
@@ -40,10 +42,10 @@ public class IndexConfiguration {
   }
 
   public static class Builder {
-    private String indexType = IndexConstants.RAW;
+    private String indexType = DEFAULT_INDEX_TYPE;
     private String indexAlias;
     private String templateFile;
-    private long bulkSize = 5L;
+    private long bulkSize = DEFAULT_BULK_SIZE;
 
     public Builder withIndexType(final String indexType) {
       checkArgument(indexType != null, "indexType cannot be null.");
@@ -110,10 +112,8 @@ public class IndexConfiguration {
 
   public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
     IndexConfiguration.Builder builder = new IndexConfiguration.Builder();
-    final String indexType = (String) pluginSetting.getAttributeFromSettings(INDEX_TYPE);
-    if (indexType != null) {
-      builder = builder.withIndexType(indexType);
-    }
+    final String indexType = (String) pluginSetting.getAttributeOrDefault(INDEX_TYPE, DEFAULT_INDEX_TYPE);
+    builder = builder.withIndexType(indexType);
     final String indexAlias = (String) pluginSetting.getAttributeFromSettings(INDEX_ALIAS);
     if (indexAlias != null) {
       builder = builder.withIndexAlias(indexAlias);
@@ -122,10 +122,8 @@ public class IndexConfiguration {
     if (templateFile != null) {
       builder = builder.withTemplateFile(templateFile);
     }
-    final Long batchSize = (Long) pluginSetting.getAttributeFromSettings(BULK_SIZE);
-    if (batchSize != null) {
-      builder = builder.withBulkSize(batchSize);
-    }
+    final Long batchSize = (Long) pluginSetting.getAttributeOrDefault(BULK_SIZE, DEFAULT_BULK_SIZE);
+    builder = builder.withBulkSize(batchSize);
     return builder.build();
   }
 }

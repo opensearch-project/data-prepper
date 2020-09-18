@@ -135,10 +135,18 @@ public class IndexConfigurationTests {
   private PluginSetting generatePluginSetting(
           final String indexType, final String indexAlias, final String templateFilePath, final Long bulkSize) {
     final Map<String, Object> metadata = new HashMap<>();
-    metadata.put("index_type", indexType);
-    metadata.put("index_alias", indexAlias);
-    metadata.put("template_file", templateFilePath);
-    metadata.put("bulk_size", bulkSize);
+    if (indexType != null) {
+      metadata.put("index_type", indexType);
+    }
+    if (indexAlias != null) {
+      metadata.put("index_alias", indexAlias);
+    }
+    if (templateFilePath != null) {
+      metadata.put("template_file", templateFilePath);
+    }
+    if (bulkSize != null) {
+      metadata.put("bulk_size", bulkSize);
+    }
 
     return new PluginSetting("elasticsearch", metadata);
   }
