@@ -10,6 +10,9 @@ import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
@@ -33,6 +36,7 @@ import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.mockito.Mockito;
 
 public class ServiceMapStatefulProcessorTest {
 
@@ -113,13 +117,14 @@ public class ServiceMapStatefulProcessorTest {
      */
     @Test
     public void testServiceMapProcessor()  throws Exception {
-
+        final Clock clock = Mockito.mock(Clock.class);
+        Mockito.when(clock.millis()).thenReturn(1L);
         ExecutorService threadpool = Executors.newCachedThreadPool();
         final File path = temporaryFolder.newFolder();
         //This processor will iterate over the front half of key range
-        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, 2);
+        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, 2, clock);
         //This processor will iterate over back half of the key range
-        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, 2);
+        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, 2, clock);
 
         //Frontend service client span
         ResourceSpans spans1 = getResourceSpans(FRONTEND_SERVICE, "span1", "11", "11", Span.SpanKind.SPAN_KIND_CLIENT);
@@ -141,7 +146,7 @@ public class ServiceMapStatefulProcessorTest {
         final ServiceMapRelationship targetRelationship3 = ServiceMapRelationship.newTargetRelationship(CHECKOUT_SERVICE, Span.SpanKind.SPAN_KIND_SERVER.name(), CHECKOUT_SERVICE);
 
         //Sleep for 1.2 seconds, to close out the original window
-        Thread.sleep(110);
+        Mockito.when(clock.millis()).thenReturn(110L);
 
         //Process Span 1, should result in no relationships found
         Future<Collection<Record<String>>> emptyFuture1 = threadpool.submit(() -> {
@@ -157,7 +162,7 @@ public class ServiceMapStatefulProcessorTest {
         Assert.assertTrue(emptyFuture2.get().isEmpty());
 
         //Sleep for 1.2 seconds, to move on to the next window
-        Thread.sleep(110);
+        Mockito.when(clock.millis()).thenReturn(220L);
 
 
         emptyFuture1 = threadpool.submit(() -> {
@@ -175,7 +180,7 @@ public class ServiceMapStatefulProcessorTest {
         Assert.assertTrue(emptyFuture1.get().isEmpty());
         Assert.assertTrue(emptyFuture2.get().isEmpty());
 
-        Thread.sleep(110);
+        Mockito.when(clock.millis()).thenReturn(330L);
 
         Future<Set<ServiceMapRelationship>> frontHalfFuture = threadpool.submit(() -> {
             return serviceMapStateful1.execute(Collections.emptyList())
@@ -224,6 +229,15 @@ public class ServiceMapStatefulProcessorTest {
         Assert.assertTrue(serviceMapSourceDests.contains(new ServiceMapSourceDest(FRONTEND_SERVICE, BACKEND_SERVICE)));
         Assert.assertTrue(serviceMapSourceDests.contains(new ServiceMapSourceDest(BACKEND_SERVICE, DATABASE_SERVICE)));
         Assert.assertTrue(serviceMapSourceDests.contains(new ServiceMapSourceDest(BACKEND_SERVICE, CHECKOUT_SERVICE)));
+    }
+
+    @Test
+    public void getMinMax() {
+        final byte[] minBytes = new byte[]{-128, -128, -128, -128, -128, -128, -128, -128};
+        final byte[] maxBytes = new byte[]{127, 127, 127, 127, 127, 127, 127, 127};
+
+        System.out.println("Min: " + new String(minBytes, StandardCharsets.UTF_8));
+        System.out.println("Max: " + new String(maxBytes, StandardCharsets.UTF_8));
     }
 
     private static class ServiceMapSourceDest {

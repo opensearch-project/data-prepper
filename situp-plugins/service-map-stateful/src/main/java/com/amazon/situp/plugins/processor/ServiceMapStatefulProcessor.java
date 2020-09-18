@@ -6,6 +6,9 @@ import com.amazon.situp.model.record.Record;
 import com.amazon.situp.plugins.processor.state.LmdbProcessorState;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -40,18 +43,20 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
     private volatile static LmdbProcessorState<ServiceMapStateData> currentWindow;
     private static File databasePath;
     private static int dbNum = 0;
+    private static Clock clock;
 
     private final int thisProcessorId;
     private String iterationStartIndex;
     private String iterationStopIndex;
 
-    public ServiceMapStatefulProcessor(final long windowDurationMillis, final File databasePath, final int numProcessors) {
-
+    public ServiceMapStatefulProcessor(final long windowDurationMillis, final File databasePath, final int numProcessors,
+                                       final Clock clock) {
+        this.clock = clock;
         this.thisProcessorId = processorsCreated.getAndIncrement();
         if(isMasterInstance()) {
             //TODO: Read num processors from config when its available
             this.numProcessors = numProcessors;
-            previousTimestamp = System.currentTimeMillis();
+            previousTimestamp = this.clock.millis();
             this.databasePath = databasePath;
             this.windowDurationMillis = windowDurationMillis;
             this.currentWindow = new LmdbProcessorState<>(databasePath, getNewDbName(), ServiceMapStateData.class);
@@ -230,7 +235,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
         }
         previousWindow = currentWindow;
         currentWindow = new LmdbProcessorState(databasePath, getNewDbName(), ServiceMapStateData.class);
-        previousTimestamp = System.currentTimeMillis();
+        previousTimestamp = clock.millis();
         doneRotatingWindows();
     }
 
@@ -246,7 +251,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
      * @return Boolean indicating whether the window duration has lapsed
      */
     private boolean windowDurationHasPassed() {
-        if ((System.currentTimeMillis() - previousTimestamp)  >= windowDurationMillis) {
+        if ((clock.millis() - previousTimestamp)  >= windowDurationMillis) {
             return true;
         }
         return false;
