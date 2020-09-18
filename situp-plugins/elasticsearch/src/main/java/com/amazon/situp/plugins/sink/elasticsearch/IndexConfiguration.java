@@ -1,5 +1,6 @@
 package com.amazon.situp.plugins.sink.elasticsearch;
 
+import com.amazon.situp.model.configuration.PluginSetting;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 
 import java.io.File;
@@ -105,5 +106,22 @@ public class IndexConfiguration {
     }
     this.indexAlias = indexAlias;
     this.bulkSize = builder.bulkSize;
+  }
+
+  public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
+    IndexConfiguration.Builder builder = new IndexConfiguration.Builder();
+    final String indexType = (String) pluginSetting.getAttributeOrDefault(INDEX_TYPE, IndexConstants.RAW);
+    builder = builder.withIndexType(indexType);
+    final String indexAlias = (String) pluginSetting.getAttributeFromSettings(INDEX_ALIAS);
+    if (indexAlias != null) {
+      builder = builder.withIndexAlias(indexAlias);
+    }
+    final String templateFile = (String) pluginSetting.getAttributeFromSettings(TEMPLATE_FILE);
+    if (templateFile != null) {
+      builder = builder.withTemplateFile(templateFile);
+    }
+    final Long batchSize = (Long) pluginSetting.getAttributeOrDefault(BULK_SIZE, ByteSizeUnit.MB.toBytes(5));
+    builder = builder.withBulkSize(batchSize);
+    return builder.build();
   }
 }
