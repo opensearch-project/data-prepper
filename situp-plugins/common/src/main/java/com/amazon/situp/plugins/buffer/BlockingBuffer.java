@@ -25,10 +25,9 @@ import java.util.concurrent.TimeoutException;
  * record is null. {@link #read(int)} retrieves and removes the batch of records from the head of the queue. The
  * batch size is defined/determined by the configuration attribute {@link #ATTRIBUTE_BATCH_SIZE} or the timeout parameter
  */
-@SitupPlugin(name = "bounded-blocking", type = PluginType.BUFFER)
+@SitupPlugin(name = "bounded_blocking", type = PluginType.BUFFER)
 public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(BlockingBuffer.class);
-
     private static final int DEFAULT_BUFFER_CAPACITY = 512;
     private static final int DEFAULT_BATCH_SIZE = 8;
     private static final String ATTRIBUTE_BUFFER_CAPACITY = "buffer_size";
@@ -69,7 +68,10 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
     @Override
     public void write(T record, int timeoutInMillis) throws TimeoutException {
         try {
-            blockingQueue.offer(record, timeoutInMillis, TimeUnit.MILLISECONDS);
+            boolean isSuccess = blockingQueue.offer(record, timeoutInMillis, TimeUnit.MILLISECONDS);
+            if (!isSuccess) {
+                throw new TimeoutException("Buffer is full, timed out waiting for a slot");
+            }
         } catch (InterruptedException ex) {
             LOG.error("Buffer is full, interrupted while waiting to write the record", ex);
             throw new TimeoutException("Buffer is full, timed out waiting for a slot");
