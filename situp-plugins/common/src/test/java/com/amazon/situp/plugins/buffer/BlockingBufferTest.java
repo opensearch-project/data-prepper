@@ -4,10 +4,8 @@ import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
@@ -17,7 +15,8 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class BlockingBufferTest {
-    private static final String ATTRIBUTE_BATCH_SIZE = "batch-size";
+    private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
+    private static final String ATTRIBUTE_BUFFER_SIZE = "buffer_size";
     private static final int TEST_BATCH_SIZE = 3;
     private static final int TEST_BUFFER_SIZE = 13;
     private static final int TEST_WRITE_TIMEOUT = 1_00;
@@ -86,10 +85,10 @@ public class BlockingBufferTest {
     }
 
     private PluginSetting completePluginSettingForBlockingBuffer() {
-        final String pluginName = "bounded-blocking";
+        final String pluginName = "bounded_blocking";
         final Map<String, Object> settings = new HashMap<>();
-        settings.put("buffer-size", TEST_BUFFER_SIZE);
-        settings.put("batch-size", TEST_BATCH_SIZE);
+        settings.put(ATTRIBUTE_BUFFER_SIZE, TEST_BUFFER_SIZE);
+        settings.put(ATTRIBUTE_BATCH_SIZE, TEST_BATCH_SIZE);
         return new PluginSetting(pluginName, settings);
     }
 }
