@@ -10,6 +10,8 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.util.JsonFormat;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -31,8 +33,9 @@ public class OTelTraceRawProcessor implements Processor<Record<ResourceSpans>, R
     private static final BigDecimal MILLIS_TO_NANOS = new BigDecimal(1_000_000);
     private static final BigDecimal SEC_TO_MILLIS = new BigDecimal(1_000);
 
+    private static final Logger log = LoggerFactory.getLogger(OTelTraceRawProcessor.class);
 
-    public String getJsonFromProtobufObj(Record<ResourceSpans> resourceSpans) throws InvalidProtocolBufferException {
+    public static String getJsonFromProtobufObj(Record<ResourceSpans> resourceSpans) throws InvalidProtocolBufferException {
         return JsonFormat.printer().print(resourceSpans.getData());
     }
 
@@ -127,18 +130,13 @@ public class OTelTraceRawProcessor implements Processor<Record<ResourceSpans>, R
     public Collection<Record<String>> execute(Collection<Record<ResourceSpans>> records) {
         final List<Record<String>> finalRecords = new LinkedList<>();
         for (Record<ResourceSpans> rs : records) {
-            String jsonString = null;
-            try {
-                jsonString = getJsonFromProtobufObj(rs);
-                System.out.println("Resulting JSON=" + jsonString);
-            } catch (InvalidProtocolBufferException e) {
-                e.printStackTrace();
-            }
+            String jsonString;
             ArrayList<String> esDocs = null;
             try {
+                jsonString = getJsonFromProtobufObj(rs);
                 esDocs = decodeResourceSpan(jsonString);
-            } catch (JsonProcessingException e) {
-                e.printStackTrace();
+            } catch (InvalidProtocolBufferException | JsonProcessingException e) {
+                log.warn("Unable to process invalid records", e);
             }
             finalRecords.add(new Record(esDocs));
         }
