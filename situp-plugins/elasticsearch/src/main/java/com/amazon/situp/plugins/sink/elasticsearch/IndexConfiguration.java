@@ -43,7 +43,7 @@ public class IndexConfiguration {
     private String indexType = IndexConstants.RAW;
     private String indexAlias;
     private String templateFile;
-    private long bulkSize = ByteSizeUnit.MB.toBytes(5);
+    private long bulkSize = 5L;
 
     public Builder withIndexType(final String indexType) {
       checkArgument(indexType != null, "indexType cannot be null.");
@@ -110,8 +110,10 @@ public class IndexConfiguration {
 
   public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
     IndexConfiguration.Builder builder = new IndexConfiguration.Builder();
-    final String indexType = (String) pluginSetting.getAttributeOrDefault(INDEX_TYPE, IndexConstants.RAW);
-    builder = builder.withIndexType(indexType);
+    final String indexType = (String) pluginSetting.getAttributeFromSettings(INDEX_TYPE);
+    if (indexType != null) {
+      builder = builder.withIndexType(indexType);
+    }
     final String indexAlias = (String) pluginSetting.getAttributeFromSettings(INDEX_ALIAS);
     if (indexAlias != null) {
       builder = builder.withIndexAlias(indexAlias);
@@ -120,8 +122,10 @@ public class IndexConfiguration {
     if (templateFile != null) {
       builder = builder.withTemplateFile(templateFile);
     }
-    final Long batchSize = (Long) pluginSetting.getAttributeOrDefault(BULK_SIZE, ByteSizeUnit.MB.toBytes(5));
-    builder = builder.withBulkSize(batchSize);
+    final Long batchSize = (Long) pluginSetting.getAttributeFromSettings(BULK_SIZE);
+    if (batchSize != null) {
+      builder = builder.withBulkSize(batchSize);
+    }
     return builder.build();
   }
 }
