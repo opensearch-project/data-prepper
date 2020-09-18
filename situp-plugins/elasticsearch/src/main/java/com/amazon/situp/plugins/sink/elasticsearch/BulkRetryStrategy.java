@@ -60,6 +60,7 @@ public final class BulkRetryStrategy {
     public Tuple<BulkRequest, BulkResponse> handleRetry(final BulkRequest request, final BulkResponse response)
             throws Exception {
         // Exponential backoff run forever
+        // TODO: replace with custom backoff policy setting including maximum interval between retries
         final BackOffUtils backOffUtils = new BackOffUtils(
                 BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(50), Integer.MAX_VALUE).iterator());
         Tuple<BulkRequest, BulkResponse> tuple = Tuple.tuple(request, response);
