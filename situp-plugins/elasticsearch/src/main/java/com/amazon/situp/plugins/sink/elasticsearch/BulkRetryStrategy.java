@@ -1,6 +1,7 @@
 package com.amazon.situp.plugins.sink.elasticsearch;
 
 import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -13,6 +14,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 public final class BulkRetryStrategy {
@@ -24,20 +26,21 @@ public final class BulkRetryStrategy {
             ));
 
     private final RequestFunction<BulkRequest, BulkResponse> requestFunction;
+    private final BiConsumer<DocWriteRequest<?>, Throwable> logFailure;
     private final Supplier<BulkRequest> bulkRequestSupplier;
 
     public BulkRetryStrategy(final RequestFunction<BulkRequest, BulkResponse> requestFunction,
+                             final BiConsumer<DocWriteRequest<?>, Throwable> logFailure,
                              final Supplier<BulkRequest> bulkRequestSupplier) {
         this.requestFunction = requestFunction;
+        this.logFailure = logFailure;
         this.bulkRequestSupplier = bulkRequestSupplier;
     }
 
     public boolean canRetry(final BulkResponse response) {
         for (final BulkItemResponse bulkItemResponse : response) {
-            if (bulkItemResponse.isFailed()) {
-                if (!NON_RETRY_STATUS.contains(bulkItemResponse.status().getStatus())) {
-                    return true;
-                }
+            if (bulkItemResponse.isFailed() && !NON_RETRY_STATUS.contains(bulkItemResponse.status().getStatus())) {
+                return true;
             }
         }
         return false;
@@ -89,7 +92,12 @@ public final class BulkRetryStrategy {
             int index = 0;
             for (final BulkItemResponse bulkItemResponse : response.getItems()) {
                 if (bulkItemResponse.isFailed()) {
-                    requestToReissue.add(request.requests().get(index));
+                    if (!NON_RETRY_STATUS.contains(bulkItemResponse.status().getStatus())) {
+                        requestToReissue.add(request.requests().get(index));
+                    } else {
+                        // log non-retryable failed request
+                        logFailure.accept(request.requests().get(index), bulkItemResponse.getFailure().getCause());
+                    }
                 }
                 index++;
             }

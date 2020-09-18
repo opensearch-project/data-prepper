@@ -155,6 +155,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     bulkRequestSupplier = () -> new BulkRequest(esSinkConfig.getIndexConfiguration().getIndexAlias());
     bulkRetryStrategy = new BulkRetryStrategy(
             bulkRequest -> restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT),
+            this::logFailure,
             bulkRequestSupplier);
   }
 
@@ -210,44 +211,38 @@ public class ElasticsearchSink implements Sink<Record<String>> {
           tuple = bulkRetryStrategy.handleRetry(bulkRequest, null);
         } catch (final Exception retryException) {
           handleFailures(bulkRequest.requests(), retryException);
-          return false;
+          return true;
         }
       } else {
         handleFailures(tuple.v1().requests(), bulkException);
-        return false;
+        return true;
       }
 
       if (tuple.v2().hasFailures()) {
         // Response has failure after retry
         handleFailures(tuple.v1().requests(), tuple.v2().getItems());
-        return false;
-      } else {
-        // Retry success
-        return true;
       }
+
+      return true;
     }
 
     // Receives BulkResponse back, check failure and retry, then log failure if any after retry
-    if (!bulkResponse.hasFailures()) {
-      return true;
-    } else {
+    if (bulkResponse.hasFailures()) {
       Tuple<BulkRequest, BulkResponse> tuple = Tuple.tuple(bulkRequest, bulkResponse);
       if (bulkRetryStrategy.canRetry(bulkResponse)) {
         try {
           tuple = bulkRetryStrategy.handleRetry(bulkRequest, bulkResponse);
         } catch (final Exception retryException) {
           handleFailures(bulkRequest.requests(), retryException);
-          return false;
+          return true;
         }
       }
 
       if (tuple.v2().hasFailures()) {
         handleFailures(tuple.v1().requests(), tuple.v2().getItems());
-        return false;
-      } else {
-        return true;
       }
     }
+    return true;
   }
 
   // TODO: need to be invoked by pipeline
