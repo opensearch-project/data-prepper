@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.concurrent.TimeoutException;
 
 public class ApmTraceRequestProcessor implements ServerRequestProcessor<FullHttpRequest> {
   private static Logger LOG = LoggerFactory.getLogger(ApmTraceRequestProcessor.class);
@@ -29,7 +30,15 @@ public class ApmTraceRequestProcessor implements ServerRequestProcessor<FullHttp
     try {
       final ArrayList<String> records = ApmSpanProcessor.decodeResourceSpan(body);
       LOG.debug("ApmTraceSource: Processing {} records into buffer",records.size());
-      records.stream().map(Record::new).forEach(buffer::write);
+      //Adding 2 minutes as timeout to avoid build failure - needs to be updated separately
+      records.stream().map(Record::new).forEach(record -> {
+          try {
+              buffer.write(record, 120_000);
+          } catch (TimeoutException e) {
+              //temporary to avoid build issues - TODO - Address timing out
+              throw new RuntimeException("Timed out writing to buffer");
+          }
+      });
     } catch (JsonProcessingException e) {
       return HttpResponseStatus.BAD_REQUEST;
     }

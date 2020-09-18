@@ -9,6 +9,7 @@ import com.amazon.situp.model.source.Source;
 import com.amazon.situp.parser.PipelineParser;
 import com.amazon.situp.parser.model.PipelineConfiguration;
 import com.amazon.situp.pipeline.Pipeline;
+import com.amazon.situp.plugins.buffer.BlockingBuffer;
 import com.amazon.situp.plugins.buffer.BufferFactory;
 import com.amazon.situp.plugins.processor.ProcessorFactory;
 import com.amazon.situp.plugins.sink.SinkFactory;
@@ -16,7 +17,6 @@ import com.amazon.situp.plugins.source.SourceFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,8 +29,11 @@ import java.util.stream.Collectors;
 public class Situp {
     private static final Logger LOG = LoggerFactory.getLogger(Situp.class);
 
+    private static final String ATTRIBUTE_WORKERS = "workers";
+    private static final String ATTRIBUTE_DELAY = "delay";
+    private static final int DEFAULT_READ_BATCH_DELAY = 3_000;
+
     private static final String DEFAULT_CONFIG_LOCATION = "situp-core/src/main/resources/situp-default.yml";
-    private static final String PROCESSOR_THREADS_ATTRIBUTE = "threads";
     private Pipeline transformationPipeline;
 
     private static volatile Situp situp;
@@ -67,7 +70,7 @@ public class Situp {
      * @return true if the execute successfully initiates the SITUP
      */
     public boolean execute(final String configurationFileLocation) {
-        LOG.info("Using {} configuration file",configurationFileLocation);
+        LOG.info("Using {} configuration file", configurationFileLocation);
         final PipelineParser pipelineParser = new PipelineParser(configurationFileLocation);
         final PipelineConfiguration pipelineConfiguration = pipelineParser.parseConfiguration();
         execute(pipelineConfiguration);
@@ -84,6 +87,7 @@ public class Situp {
 
     /**
      * Executes SITUP engine for the provided {@link PipelineConfiguration}.
+     *
      * @param pipelineConfiguration to be used for {@link Pipeline} execution
      * @return true if the execute successfully initiates the SITUP
      * {@link com.amazon.situp.pipeline.Pipeline} execute.
@@ -99,7 +103,8 @@ public class Situp {
     private Pipeline buildPipelineFromConfiguration(final PipelineConfiguration pipelineConfiguration) {
         final Source source = SourceFactory.newSource(getFirstSettingsIfExists(pipelineConfiguration.getSource()));
         final PluginSetting bufferPluginSetting = getFirstSettingsIfExists(pipelineConfiguration.getBuffer());
-        final Buffer buffer = bufferPluginSetting == null ? null : BufferFactory.newBuffer(bufferPluginSetting);
+        final Buffer buffer = bufferPluginSetting == null ?
+                new BlockingBuffer() : BufferFactory.newBuffer(bufferPluginSetting);
 
         final Configuration processorConfiguration = pipelineConfiguration.getProcessor();
         final List<PluginSetting> processorPluginSettings = processorConfiguration.getPluginSettings();
@@ -111,8 +116,9 @@ public class Situp {
         final List<Sink> sinks = sinkPluginSettings.stream().map(SinkFactory::newSink).collect(Collectors.toList());
 
         final int processorThreads = getConfiguredThreadsOrDefault(processorConfiguration);
+        final int readBatchDelay = getConfiguredDelayOrDefault(processorConfiguration);
 
-        return new Pipeline(pipelineConfiguration.getName(), source, buffer, processors, sinks, processorThreads);
+        return new Pipeline(pipelineConfiguration.getName(), source, buffer, processors, sinks, processorThreads, readBatchDelay);
     }
 
     private PluginSetting getFirstSettingsIfExists(final Configuration configuration) {
@@ -121,8 +127,13 @@ public class Situp {
     }
 
     private int getConfiguredThreadsOrDefault(final Configuration processorConfiguration) {
-        int processorThreads = processorConfiguration.getAttributeValueAsInteger(PROCESSOR_THREADS_ATTRIBUTE);
+        int processorThreads = processorConfiguration.getAttributeValueAsInteger(ATTRIBUTE_WORKERS);
         return processorThreads <= 0 ? getDefaultProcessorThreads() : processorThreads;
+    }
+
+    private int getConfiguredDelayOrDefault(final Configuration processorConfiguration) {
+        int readBatchDelay = processorConfiguration.getAttributeValueAsInteger(ATTRIBUTE_DELAY);
+        return readBatchDelay <= 0 ? DEFAULT_READ_BATCH_DELAY : readBatchDelay;
     }
 
     /**
