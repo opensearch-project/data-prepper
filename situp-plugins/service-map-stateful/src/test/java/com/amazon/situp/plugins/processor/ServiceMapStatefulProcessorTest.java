@@ -1,20 +1,11 @@
 package com.amazon.situp.plugins.processor;
 
-import com.google.common.base.Charsets;
-import com.google.common.primitives.Longs;
 import com.google.protobuf.ByteString;
 import com.amazon.situp.model.record.Record;
 import java.io.File;
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -37,6 +28,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.mockito.Mockito;
+
 
 public class ServiceMapStatefulProcessorTest {
 
@@ -80,8 +72,8 @@ public class ServiceMapStatefulProcessorTest {
      * @return ResourceSpans object with a single span constructed according to the parameters
      * @throws UnsupportedEncodingException
      */
-    public ResourceSpans getResourceSpans(final String serviceName, final String spanName, final String
-            spanId, final String parentId, final Span.SpanKind spanKind) throws UnsupportedEncodingException {
+    public ResourceSpans getResourceSpans(final String serviceName, final String spanName, final byte[]
+            spanId, final byte[] parentId, final Span.SpanKind spanKind) throws UnsupportedEncodingException {
         return ResourceSpans.newBuilder()
                 .setResource(
                         Resource.newBuilder()
@@ -97,8 +89,8 @@ public class ServiceMapStatefulProcessorTest {
                                         Span.newBuilder()
                                                 .setName(spanName)
                                                 .setKind(spanKind)
-                                                .setSpanId(ByteString.copyFrom(spanId, Charsets.UTF_8.name()))
-                                                .setParentSpanId(ByteString.copyFrom(parentId, Charsets.UTF_8.name()))
+                                                .setSpanId(ByteString.copyFrom(spanId))
+                                                .setParentSpanId(ByteString.copyFrom(parentId))
                                                 .build()
                                 )
                                 .build()
@@ -106,14 +98,23 @@ public class ServiceMapStatefulProcessorTest {
                 .build();
     }
 
+    private static final byte[] SPAN_ID_1 = new byte[]{-120, 0, -120, 0, -120, 0, -120, 0};
+    private static final byte[] SPAN_ID_2 = new byte[]{-50, 0, -50, 0, -50, 0, -50, 0};
+    private static final byte[] SPAN_ID_3 = new byte[]{-10, 0, -10, 0, -10, 0, -10, 0};
+    private static final byte[] SPAN_ID_4 = new byte[]{10, 10, 10, 10, 10, 10, 10, 10};
+    private static final byte[] SPAN_ID_5 = new byte[]{20, 20, 20, 20, 20, 20, 20, 20};
+    private static final byte[] SPAN_ID_6 = new byte[]{30, 30, 30, 30, 30, 30, 30, 30};
+    private static final byte[] SPAN_ID_7 = new byte[]{40, 40, 40, 40, 40, 40, 40, 40};
+
+
     /**
      * Test with the following fake trace setup
      *
      * |----  Service = frontend ------------------------------------------------|
      *   |--  Service = backend --------------------------------------------|
-     *     |-- Service = database --|    |-- Id=4, service = checkout---|
+     *     |-- Service = database --|    |-- Service = checkout---|
      *
-     *                                                                                    |--Id=5, service = nothing--|
+     *                                                                                    |--Service = other--|
      */
     @Test
     public void testServiceMapProcessor()  throws Exception {
@@ -127,16 +128,16 @@ public class ServiceMapStatefulProcessorTest {
         final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, 2, clock);
 
         //Frontend service client span
-        ResourceSpans spans1 = getResourceSpans(FRONTEND_SERVICE, "span1", "11", "11", Span.SpanKind.SPAN_KIND_CLIENT);
+        ResourceSpans spans1 = getResourceSpans(FRONTEND_SERVICE, "span1", SPAN_ID_1, SPAN_ID_1, Span.SpanKind.SPAN_KIND_CLIENT);
         //Backend service server and client spans
-        ResourceSpans spans2 = getResourceSpans(BACKEND_SERVICE, "span2", "22", "11", Span.SpanKind.SPAN_KIND_SERVER);
-        ResourceSpans spans3 = getResourceSpans(BACKEND_SERVICE, "span3", "33", "22", Span.SpanKind.SPAN_KIND_CLIENT);
+        ResourceSpans spans2 = getResourceSpans(BACKEND_SERVICE, "span2", SPAN_ID_2, SPAN_ID_1, Span.SpanKind.SPAN_KIND_SERVER);
+        ResourceSpans spans3 = getResourceSpans(BACKEND_SERVICE, "span3", SPAN_ID_3, SPAN_ID_2, Span.SpanKind.SPAN_KIND_CLIENT);
         //Database service server span
-        ResourceSpans spans4 = getResourceSpans(DATABASE_SERVICE, "span4" ,"qq","33", Span.SpanKind.SPAN_KIND_SERVER );
+        ResourceSpans spans4 = getResourceSpans(DATABASE_SERVICE, "span4" ,SPAN_ID_4,SPAN_ID_3, Span.SpanKind.SPAN_KIND_SERVER );
         //Checkoue service server span
-        ResourceSpans spans5 = getResourceSpans(CHECKOUT_SERVICE, "span5","rr", "33", Span.SpanKind.SPAN_KIND_SERVER);
+        ResourceSpans spans5 = getResourceSpans(CHECKOUT_SERVICE, "span5",SPAN_ID_5, SPAN_ID_3, Span.SpanKind.SPAN_KIND_SERVER);
         //Other service span
-        ResourceSpans spans6 = getResourceSpans(OTHER_SERVICE, "span6","ss","7", Span.SpanKind.SPAN_KIND_UNSPECIFIED);
+        ResourceSpans spans6 = getResourceSpans(OTHER_SERVICE, "span6",SPAN_ID_6,SPAN_ID_7, Span.SpanKind.SPAN_KIND_UNSPECIFIED);
 
         final ServiceMapRelationship relationship1 = ServiceMapRelationship.newDestinationRelationship(FRONTEND_SERVICE, Span.SpanKind.SPAN_KIND_CLIENT.name(), BACKEND_SERVICE);
         final ServiceMapRelationship relationship2 = ServiceMapRelationship.newDestinationRelationship(BACKEND_SERVICE, Span.SpanKind.SPAN_KIND_CLIENT.name(), DATABASE_SERVICE);
@@ -145,7 +146,7 @@ public class ServiceMapStatefulProcessorTest {
         final ServiceMapRelationship targetRelationship2 = ServiceMapRelationship.newTargetRelationship(DATABASE_SERVICE, Span.SpanKind.SPAN_KIND_SERVER.name(), DATABASE_SERVICE);
         final ServiceMapRelationship targetRelationship3 = ServiceMapRelationship.newTargetRelationship(CHECKOUT_SERVICE, Span.SpanKind.SPAN_KIND_SERVER.name(), CHECKOUT_SERVICE);
 
-        //Sleep for 1.2 seconds, to close out the original window
+        //Set clock to close out original window
         Mockito.when(clock.millis()).thenReturn(110L);
 
         //Process Span 1, should result in no relationships found
@@ -161,7 +162,7 @@ public class ServiceMapStatefulProcessorTest {
         Assert.assertTrue(emptyFuture1.get().isEmpty());
         Assert.assertTrue(emptyFuture2.get().isEmpty());
 
-        //Sleep for 1.2 seconds, to move on to the next window
+        //Set clock to move on to the next window
         Mockito.when(clock.millis()).thenReturn(220L);
 
 
@@ -174,12 +175,13 @@ public class ServiceMapStatefulProcessorTest {
         emptyFuture2 = threadpool.submit(()-> {
             return serviceMapStateful1.execute(Arrays.asList(
                     new Record<>(spans3),
-                    new Record<>(spans5)));
+                    new Record<>(spans5),
+                    new Record<>(spans6)));
         });
-
         Assert.assertTrue(emptyFuture1.get().isEmpty());
         Assert.assertTrue(emptyFuture2.get().isEmpty());
 
+        //Set clock to move onto the next window
         Mockito.when(clock.millis()).thenReturn(330L);
 
         Future<Set<ServiceMapRelationship>> frontHalfFuture = threadpool.submit(() -> {
@@ -205,19 +207,19 @@ public class ServiceMapStatefulProcessorTest {
                         }
                     }).collect(Collectors.toSet());
         });
-        //Should contain edges found where the child span id is in the front half of key range
+        //Should iterate over the front half of the elements
         Set<ServiceMapRelationship> frontHalfRelationships = frontHalfFuture.get();
-        //Should contain edges where the child span id is in the back half of the key range
+        //Should itearte over the back half of the elements
         Set<ServiceMapRelationship> backHalfRelationships = backHalfFuture.get();
 
-        Assert.assertTrue(frontHalfRelationships.contains(relationship1));
-        Assert.assertTrue(frontHalfRelationships.contains(targetRelationship1));
+        Assert.assertTrue(backHalfRelationships.contains(relationship1));
+        Assert.assertTrue(backHalfRelationships.contains(targetRelationship1));
 
-        Assert.assertTrue(backHalfRelationships.contains(relationship2));
-        Assert.assertTrue(backHalfRelationships.contains(targetRelationship2));
+        Assert.assertTrue(frontHalfRelationships.contains(relationship2));
+        Assert.assertTrue(frontHalfRelationships.contains(targetRelationship2));
 
-        Assert.assertTrue(backHalfRelationships.contains(relationship3));
-        Assert.assertTrue(backHalfRelationships.contains(targetRelationship3));
+        Assert.assertTrue(frontHalfRelationships.contains(relationship3));
+        Assert.assertTrue(frontHalfRelationships.contains(targetRelationship3));
 
         //As extra verification, evaluate the actual service map edges that result from the above responses
         //from the processor.
@@ -229,15 +231,6 @@ public class ServiceMapStatefulProcessorTest {
         Assert.assertTrue(serviceMapSourceDests.contains(new ServiceMapSourceDest(FRONTEND_SERVICE, BACKEND_SERVICE)));
         Assert.assertTrue(serviceMapSourceDests.contains(new ServiceMapSourceDest(BACKEND_SERVICE, DATABASE_SERVICE)));
         Assert.assertTrue(serviceMapSourceDests.contains(new ServiceMapSourceDest(BACKEND_SERVICE, CHECKOUT_SERVICE)));
-    }
-
-    @Test
-    public void getMinMax() {
-        final byte[] minBytes = new byte[]{-128, -128, -128, -128, -128, -128, -128, -128};
-        final byte[] maxBytes = new byte[]{127, 127, 127, 127, 127, 127, 127, 127};
-
-        System.out.println("Min: " + new String(minBytes, StandardCharsets.UTF_8));
-        System.out.println("Max: " + new String(maxBytes, StandardCharsets.UTF_8));
     }
 
     private static class ServiceMapSourceDest {

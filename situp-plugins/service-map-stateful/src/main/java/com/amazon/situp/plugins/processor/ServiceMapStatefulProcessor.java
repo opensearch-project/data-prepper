@@ -1,14 +1,10 @@
 package com.amazon.situp.plugins.processor;
 
-import com.google.common.base.Charsets;
 import com.amazon.situp.model.processor.Processor;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.plugins.processor.state.LmdbProcessorState;
 import java.io.File;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -26,10 +22,6 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Collection<Record<String>> EMPTY_COLLECTION = Collections.emptySet();
-    private static final String MIN_SPAN_ID = "+++++++++++=";
-    private static final String MAX_SPAN_ID = "zzzzzzzzzzz=";
-    private static final int SPAN_ID_LEN = 12;
-
     //Static fields that need to be shared between instances of the class
     private static int numProcessors;
     private static AtomicInteger processorsCreated = new AtomicInteger(0);
@@ -37,8 +29,6 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
     private static long windowDurationMillis;
     private static CountDownLatch edgeEvaluationLatch = new CountDownLatch(numProcessors);
     private static CountDownLatch windowRotationLatch = new CountDownLatch(1);
-    private static final KeyRangeSplitter keyRangeSplitter =
-            new KeyRangeSplitter(MIN_SPAN_ID, MAX_SPAN_ID, StandardCharsets.UTF_8, SPAN_ID_LEN);
     private volatile static LmdbProcessorState<ServiceMapStateData> previousWindow;
     private volatile static LmdbProcessorState<ServiceMapStateData> currentWindow;
     private static File databasePath;
@@ -46,8 +36,6 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
     private static Clock clock;
 
     private final int thisProcessorId;
-    private String iterationStartIndex;
-    private String iterationStopIndex;
 
     public ServiceMapStatefulProcessor(final long windowDurationMillis, final File databasePath, final int numProcessors,
                                        final Clock clock) {
@@ -62,8 +50,6 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
             this.currentWindow = new LmdbProcessorState<>(databasePath, getNewDbName(), ServiceMapStateData.class);
             this.previousWindow = new LmdbProcessorState<>(databasePath, getNewDbName(), ServiceMapStateData.class);
         }
-        iterationStartIndex = keyRangeSplitter.getBoundary(thisProcessorId, ServiceMapStatefulProcessor.numProcessors);
-        iterationStopIndex = keyRangeSplitter.getBoundary(thisProcessorId +1, ServiceMapStatefulProcessor.numProcessors);
     }
 
     /**
@@ -79,19 +65,32 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
             final String resourceName = resourceSpansRecord.getData().getResource().getAttributesList().stream().filter(
                     keyValue -> keyValue.getKey().equals(ServiceMapSpanTags.SERVICE_NAME_KEY)
             ).findFirst().get().getValue().getStringValue();
+
             resourceSpansRecord.getData().getInstrumentationLibrarySpansList().forEach(
-                    instrumentationLibrarySpans -> instrumentationLibrarySpans.getSpansList().forEach(span ->
-                            currentWindow.put(
-                                    span.getSpanId().toString(Charsets.UTF_8),
-                                    new ServiceMapStateData(
-                                            resourceName,
-                                            span.getParentSpanId().toString(Charsets.UTF_8),
-                                            span.getKind().name())
-                            )
-                    )
+                    instrumentationLibrarySpans -> {
+                        instrumentationLibrarySpans.getSpansList().forEach(
+                                span -> {
+                                    currentWindow.put(
+                                            span.getSpanId().toByteArray(),
+                                            new ServiceMapStateData(
+                                                    resourceName,
+                                                    span.getParentSpanId().toByteArray(),
+                                                    span.getKind().name()));
+                                });
+                    }
             );
         });
         return relationships;
+    }
+
+    private long[] getRange(long elements) {
+        if(elements == 0) {
+            return new long[]{0,-1};
+        }
+        long step = (long) Math.ceil(((double) elements / (double) numProcessors));
+        long lower = (long) thisProcessorId * step;
+        long upper = Math.min(lower + step, elements);
+        return new long[]{lower, upper};
     }
 
     /**
@@ -100,8 +99,10 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
      */
     private Collection<Record<String>> evaluateEdges() {
         try {
-            final Stream<ServiceMapRelationship> previousStream = previousWindow.iterate(previousWindowFunction, iterationStartIndex, iterationStopIndex).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
-            final Stream<ServiceMapRelationship> currentStream = currentWindow.iterate(currentWindowFunction, iterationStartIndex, iterationStopIndex).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
+            final long[] previousRange = getRange(previousWindow.size());
+            final long[] currentRange = getRange(currentWindow.size());
+            final Stream<ServiceMapRelationship> previousStream = previousWindow.iterate(previousWindowFunction, previousRange[0], previousRange[1]).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
+            final Stream<ServiceMapRelationship> currentStream = currentWindow.iterate(currentWindowFunction, currentRange[0], currentRange[1]).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
             final Collection<Record<String>> serviceDependencyRecords =
                     Stream.concat(previousStream, currentStream).filter(Objects::nonNull)
                             .map(serviceDependency -> {
@@ -134,9 +135,9 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
      * window. It only needs to find parents that live in the current window (and not the previous window) because these
      * spans have already been checked against the "previous" window.
      */
-    private final BiFunction<String, ServiceMapStateData, Stream<ServiceMapRelationship>> previousWindowFunction = new BiFunction<String, ServiceMapStateData, Stream<ServiceMapRelationship>>() {
+    private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> previousWindowFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
         @Override
-        public Stream<ServiceMapRelationship> apply(String s, ServiceMapStateData serviceMapStateData) {
+        public Stream<ServiceMapRelationship> apply(byte[] s, ServiceMapStateData serviceMapStateData) {
             final ServiceMapStateData parentStateData = currentWindow.get(serviceMapStateData.parentSpanId);
             if (parentStateData != null && !parentStateData.serviceName.equals(serviceMapStateData.serviceName)) {
                 return Arrays.asList(
@@ -149,14 +150,13 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
             }
         }
     };
-
     /**
      * This function is used to iterate over the current window and find parent/child relationships in the current and
      * previous windows.
      */
-    private final BiFunction<String, ServiceMapStateData, Stream<ServiceMapRelationship>> currentWindowFunction = new BiFunction<String, ServiceMapStateData, Stream<ServiceMapRelationship>>() {
+    private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> currentWindowFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
         @Override
-        public Stream<ServiceMapRelationship> apply(String s, ServiceMapStateData serviceMapStateData) {
+        public Stream<ServiceMapRelationship> apply(byte[] s, ServiceMapStateData serviceMapStateData) {
             ServiceMapStateData parentStateData = previousWindow.get(serviceMapStateData.parentSpanId);
             if (parentStateData == null) {
                 parentStateData = currentWindow.get(serviceMapStateData.parentSpanId);
@@ -272,13 +272,13 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
 
     private static class ServiceMapStateData {
         public String serviceName;
-        public String parentSpanId;
+        public byte[] parentSpanId;
         public String spanKind;
 
         public ServiceMapStateData() {
         }
 
-        public ServiceMapStateData(final String serviceName, final String parentSpanId,
+        public ServiceMapStateData(final String serviceName, final byte[] parentSpanId,
                                    final String spanKind) {
             this.serviceName = serviceName;
             this.parentSpanId = parentSpanId;
