@@ -7,7 +7,7 @@ dependencies {
     compile project(':situp-api')
     compile project(':situp-plugins:common')
     implementation 'io.netty:netty-all:4.1.51.Final'
-    implementation 'io.opentelemetry:opentelemetry-proto:0.8.0'
+    implementation 'io.opentelemetry:opentelemetry-proto:0.6.0'
     implementation 'com.google.protobuf:protobuf-java-util:3.11.0'
     implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${versionMap.jackson_dataformat_yaml}"
