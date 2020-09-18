@@ -1,5 +1,6 @@
 package com.amazon.situp.plugins.sink.elasticsearch;
 
+import com.amazon.situp.model.configuration.PluginSetting;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 
 import java.io.File;
@@ -16,6 +17,8 @@ public class IndexConfiguration {
   public static final String INDEX_ALIAS = "index_alias";
   public static final String TEMPLATE_FILE = "template_file";
   public static final String BULK_SIZE = "bulk_size";
+  public static final String DEFAULT_INDEX_TYPE = IndexConstants.RAW;
+  public static final long DEFAULT_BULK_SIZE = 5L;
 
   private final String indexType;
   private final String indexAlias;
@@ -39,10 +42,10 @@ public class IndexConfiguration {
   }
 
   public static class Builder {
-    private String indexType = IndexConstants.RAW;
+    private String indexType = DEFAULT_INDEX_TYPE;
     private String indexAlias;
     private String templateFile;
-    private long bulkSize = ByteSizeUnit.MB.toBytes(5);
+    private long bulkSize = DEFAULT_BULK_SIZE;
 
     public Builder withIndexType(final String indexType) {
       checkArgument(indexType != null, "indexType cannot be null.");
@@ -105,5 +108,22 @@ public class IndexConfiguration {
     }
     this.indexAlias = indexAlias;
     this.bulkSize = builder.bulkSize;
+  }
+
+  public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
+    IndexConfiguration.Builder builder = new IndexConfiguration.Builder();
+    final String indexType = (String) pluginSetting.getAttributeOrDefault(INDEX_TYPE, DEFAULT_INDEX_TYPE);
+    builder = builder.withIndexType(indexType);
+    final String indexAlias = (String) pluginSetting.getAttributeFromSettings(INDEX_ALIAS);
+    if (indexAlias != null) {
+      builder = builder.withIndexAlias(indexAlias);
+    }
+    final String templateFile = (String) pluginSetting.getAttributeFromSettings(TEMPLATE_FILE);
+    if (templateFile != null) {
+      builder = builder.withTemplateFile(templateFile);
+    }
+    final Long batchSize = (Long) pluginSetting.getAttributeOrDefault(BULK_SIZE, DEFAULT_BULK_SIZE);
+    builder = builder.withBulkSize(batchSize);
+    return builder.build();
   }
 }

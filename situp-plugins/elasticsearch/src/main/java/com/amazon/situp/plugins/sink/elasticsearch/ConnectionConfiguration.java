@@ -1,5 +1,6 @@
 package com.amazon.situp.plugins.sink.elasticsearch;
 
+import com.amazon.situp.model.configuration.PluginSetting;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -97,6 +98,30 @@ public class ConnectionConfiguration {
     this.connectTimeout = builder.connectTimeout;
   }
 
+  public static ConnectionConfiguration readConnectionConfiguration(final PluginSetting pluginSetting){
+    @SuppressWarnings("unchecked")
+    final List<String> hosts = (List<String>) pluginSetting.getAttributeFromSettings(HOSTS);
+    ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(hosts);
+    final String username = (String) pluginSetting.getAttributeFromSettings(USERNAME);
+    if (username != null) {
+      builder = builder.withUsername(username);
+    }
+    final String password = (String) pluginSetting.getAttributeFromSettings(PASSWORD);
+    if (password != null) {
+      builder = builder.withPassword(password);
+    }
+    final Integer socketTimeout = (Integer) pluginSetting.getAttributeFromSettings(SOCKET_TIMEOUT);
+    if (socketTimeout != null) {
+      builder = builder.withSocketTimeout(socketTimeout);
+    }
+    final Integer connectTimeout = (Integer) pluginSetting.getAttributeFromSettings(CONNECT_TIMEOUT);
+    if (connectTimeout != null) {
+      builder = builder.withConnectTimeout(connectTimeout);
+    }
+
+    return builder.build();
+  }
+
   public RestHighLevelClient createClient() {
     final HttpHost[] httpHosts = new HttpHost[hosts.size()];
     int i = 0;
@@ -114,21 +139,15 @@ public class ConnectionConfiguration {
                       httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
     }
     restClientBuilder.setRequestConfigCallback(
-            new RestClientBuilder.RequestConfigCallback() {
-              @Override
-              public RequestConfig.Builder customizeRequestConfig(
-                      RequestConfig.Builder requestConfigBuilder) {
-                if (connectTimeout != null) {
-                  requestConfigBuilder.setConnectTimeout(connectTimeout);
-                }
-                if (socketTimeout != null) {
-                  requestConfigBuilder.setSocketTimeout(socketTimeout);
-                }
-                return requestConfigBuilder;
+            requestConfigBuilder -> {
+              if (connectTimeout != null) {
+                requestConfigBuilder.setConnectTimeout(connectTimeout);
               }
+              if (socketTimeout != null) {
+                requestConfigBuilder.setSocketTimeout(socketTimeout);
+              }
+              return requestConfigBuilder;
             });
     return new RestHighLevelClient(restClientBuilder);
   }
-
-
 }

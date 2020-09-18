@@ -13,11 +13,21 @@ public class ConnectionPipelineComponentIT extends ESRestTestCase {
           .map(ip -> "http://" + ip).collect(Collectors.toList());
 
   public void testCreateClientSimple() throws IOException {
-    ConnectionConfiguration connectionConfiguration = new ConnectionConfiguration.Builder(HOSTS)
+    final ConnectionConfiguration connectionConfiguration = new ConnectionConfiguration.Builder(HOSTS)
             .withUsername("")
             .withPassword("")
             .build();
-    RestHighLevelClient client = connectionConfiguration.createClient();
+    final RestHighLevelClient client = connectionConfiguration.createClient();
+    assertNotNull(client);
+    client.close();
+  }
+
+  public void testCreateClientTimeout() throws IOException {
+    final ConnectionConfiguration connectionConfiguration = new ConnectionConfiguration.Builder(HOSTS)
+            .withConnectTimeout(5)
+            .withSocketTimeout(10)
+            .build();
+    final RestHighLevelClient client = connectionConfiguration.createClient();
     assertNotNull(client);
     client.close();
   }

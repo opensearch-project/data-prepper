@@ -41,17 +41,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.CONNECT_TIMEOUT;
-import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.HOSTS;
-import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.PASSWORD;
-import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.SOCKET_TIMEOUT;
-import static com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration.USERNAME;
-import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.BULK_SIZE;
-import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.INDEX_ALIAS;
-import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.INDEX_TYPE;
-import static com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration.TEMPLATE_FILE;
-import static com.amazon.situp.plugins.sink.elasticsearch.RetryConfiguration.DLQ_FILE;
-
 @SitupPlugin(name = "elasticsearch", type = PluginType.SINK)
 public class ElasticsearchSink implements Sink<Record<String>> {
 
@@ -66,78 +55,13 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private final long bulkSize;
 
   public ElasticsearchSink(final PluginSetting pluginSetting) {
-    this.esSinkConfig = readESConfig(pluginSetting);
+    this.esSinkConfig = ElasticsearchSinkConfiguration.readESConfig(pluginSetting);
     this.bulkSize = ByteSizeUnit.MB.toBytes(esSinkConfig.getIndexConfiguration().getBulkSize());
     try {
       start();
     } catch (final IOException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
-  }
-
-  private ElasticsearchSinkConfiguration readESConfig(final PluginSetting pluginSetting) {
-    final ConnectionConfiguration connectionConfiguration = readConnectionConfiguration(pluginSetting);
-    final IndexConfiguration indexConfiguration = readIndexConfig(pluginSetting);
-    final RetryConfiguration retryConfiguration = readRetryConfig(pluginSetting);
-
-    return new ElasticsearchSinkConfiguration.Builder(connectionConfiguration)
-            .withIndexConfiguration(indexConfiguration)
-            .withRetryConfiguration(retryConfiguration)
-            .build();
-  }
-
-  private ConnectionConfiguration readConnectionConfiguration(final PluginSetting pluginSetting){
-    @SuppressWarnings("unchecked")
-    final List<String> hosts = (List<String>) pluginSetting.getAttributeFromSettings(HOSTS);
-    ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(hosts);
-    final String username = (String) pluginSetting.getAttributeFromSettings(USERNAME);
-    if (username != null) {
-      builder = builder.withUsername(username);
-    }
-    final String password = (String) pluginSetting.getAttributeFromSettings(PASSWORD);
-    if (password != null) {
-      builder = builder.withPassword(password);
-    }
-    final Integer socketTimeout = (Integer) pluginSetting.getAttributeFromSettings(SOCKET_TIMEOUT);
-    if (socketTimeout != null) {
-      builder = builder.withSocketTimeout(socketTimeout);
-    }
-    final Integer connectTimeout = (Integer) pluginSetting.getAttributeFromSettings(CONNECT_TIMEOUT);
-    if (connectTimeout != null) {
-      builder = builder.withConnectTimeout(connectTimeout);
-    }
-
-    return builder.build();
-  }
-
-  private IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
-    IndexConfiguration.Builder builder = new IndexConfiguration.Builder();
-    final String indexType = (String) pluginSetting.getAttributeFromSettings(INDEX_TYPE);
-    if (indexType != null) {
-      builder = builder.withIndexType(indexType);
-    }
-    final String indexAlias = (String) pluginSetting.getAttributeFromSettings(INDEX_ALIAS);
-    if (indexAlias != null) {
-      builder = builder.withIndexAlias(indexAlias);
-    }
-    final String templateFile = (String) pluginSetting.getAttributeFromSettings(TEMPLATE_FILE);
-    if (templateFile != null) {
-      builder = builder.withTemplateFile(templateFile);
-    }
-    final Long batchSize = (Long) pluginSetting.getAttributeFromSettings(BULK_SIZE);
-    if (batchSize != null) {
-      builder = builder.withBulkSize(batchSize);
-    }
-    return builder.build();
-  }
-
-  private RetryConfiguration readRetryConfig(final PluginSetting pluginSetting) {
-    RetryConfiguration.Builder builder = new RetryConfiguration.Builder();
-    final String dlqFile = (String) pluginSetting.getAttributeFromSettings(DLQ_FILE);
-    if (dlqFile != null) {
-      builder = builder.withDlqFile(dlqFile);
-    }
-    return builder.build();
   }
 
   public void start() throws IOException {
