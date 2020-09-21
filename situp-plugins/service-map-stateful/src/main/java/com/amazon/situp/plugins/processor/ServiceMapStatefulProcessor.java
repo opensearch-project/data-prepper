@@ -32,7 +32,6 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
     private volatile static LmdbProcessorState<ServiceMapStateData> previousWindow;
     private volatile static LmdbProcessorState<ServiceMapStateData> currentWindow;
     private static File databasePath;
-    private static int dbNum = 0;
     private static Clock clock;
 
     private final int thisProcessorId;
@@ -243,8 +242,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
      * @return Next database name
      */
     private String getNewDbName() {
-        dbNum++;
-        return "db-" + dbNum;
+        return "db-" + clock.millis();
     }
 
     /**

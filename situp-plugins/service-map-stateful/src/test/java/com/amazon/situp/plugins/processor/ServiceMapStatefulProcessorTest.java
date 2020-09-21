@@ -212,12 +212,13 @@ public class ServiceMapStatefulProcessorTest {
         //Should itearte over the back half of the elements
         Set<ServiceMapRelationship> backHalfRelationships = backHalfFuture.get();
 
+        Assert.assertEquals(2, backHalfRelationships.size());
         Assert.assertTrue(backHalfRelationships.contains(relationship1));
         Assert.assertTrue(backHalfRelationships.contains(targetRelationship1));
 
+        Assert.assertEquals(4, frontHalfRelationships.size());
         Assert.assertTrue(frontHalfRelationships.contains(relationship2));
         Assert.assertTrue(frontHalfRelationships.contains(targetRelationship2));
-
         Assert.assertTrue(frontHalfRelationships.contains(relationship3));
         Assert.assertTrue(frontHalfRelationships.contains(targetRelationship3));
 
