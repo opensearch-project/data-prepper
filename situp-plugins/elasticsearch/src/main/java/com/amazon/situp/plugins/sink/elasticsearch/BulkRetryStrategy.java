@@ -66,16 +66,16 @@ public final class BulkRetryStrategy {
         return Tuple.tuple(request, response);
     }
 
-    public void handleRetry(
+    private void handleRetry(
             final BulkRequest request, final BulkResponse response, final boolean initialAttempt,
             final BackOffUtils backOffUtils) throws InterruptedException {
-        Tuple<BulkRequest, BulkResponse> tuple = Tuple.tuple(request, response);
         final BulkRequest bulkRequestForRetry = createBulkRequestForRetry(request, response);
         if (initialAttempt || backOffUtils.hasNext()) {
             if (!initialAttempt) {
                 // Wait for backOff duration
                 backOffUtils.next();
             }
+            final Tuple<BulkRequest, BulkResponse> tuple;
             try {
                 tuple = retry(bulkRequestForRetry);
             } catch (final Exception e) {
