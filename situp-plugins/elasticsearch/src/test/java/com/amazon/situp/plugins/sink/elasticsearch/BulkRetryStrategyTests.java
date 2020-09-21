@@ -47,7 +47,7 @@ public class BulkRetryStrategyTests {
     }
 
     @Test
-    public void testHandleRetryDueToException() throws Exception {
+    public void testExecute() throws Exception {
         final String testIndex = "bar";
         final FakeClient client = new FakeClient(testIndex);
         final FakeLogger logger = new FakeLogger();
@@ -59,44 +59,15 @@ public class BulkRetryStrategyTests {
         testBulkRequest.add(new IndexRequest(testIndex).id("3"));
         testBulkRequest.add(new IndexRequest(testIndex).id("4"));
 
-        final Tuple<BulkRequest, BulkResponse> res = bulkRetryStrategy.handleRetry(testBulkRequest, null);
+        bulkRetryStrategy.execute(testBulkRequest);
 
         assertEquals(3, client.attempt);
-        assertEquals(2, res.v2().getItems().length);
-        assertFalse(res.v2().hasFailures());
-        assertEquals("3", res.v1().requests().get(0).id());
-        assertEquals("4", res.v1().requests().get(1).id());
+        assertEquals(2, client.finalResponse.getItems().length);
+        assertFalse(client.finalResponse.hasFailures());
+        assertEquals("3", client.finalRequest.requests().get(0).id());
+        assertEquals("4", client.finalRequest.requests().get(1).id());
         assertTrue(logger.msg.contains("[bar][_doc][2]"));
-    }
-
-    @Test
-    public void testHandleRetryDueToFailure() throws Exception {
-        final String testIndex = "bar";
-        final FakeClient client = new FakeClient(testIndex);
-        final FakeLogger logger = new FakeLogger();
-        final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
-                client::bulk, logger::logFailure, BulkRequest::new);
-        final BulkRequest testBulkRequest = new BulkRequest();
-        testBulkRequest.add(new IndexRequest(testIndex).id("0"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("1"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("2"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("3"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("4"));
-
-        final BulkItemResponse[] initBulkItemResponses = new BulkItemResponse[]{
-                successItemResponse(testIndex), tooManyRequestItemResponse(testIndex),
-                tooManyRequestItemResponse(testIndex), tooManyRequestItemResponse(testIndex),
-                tooManyRequestItemResponse(testIndex)};
-        final BulkResponse initBulkResponse = new BulkResponse(initBulkItemResponses, 10);
-
-        final Tuple<BulkRequest, BulkResponse> res = bulkRetryStrategy.handleRetry(testBulkRequest, initBulkResponse);
-
-        assertEquals(3, client.attempt);
-        assertEquals(2, res.v2().getItems().length);
-        assertFalse(res.v2().hasFailures());
-        assertEquals("3", res.v1().requests().get(0).id());
-        assertEquals("4", res.v1().requests().get(1).id());
-        assertTrue(logger.msg.contains("[bar][_doc][2]"));
+        assertFalse(logger.msg.contains("[bar][_doc][1]"));
     }
 
     private static BulkItemResponse successItemResponse(final String index) {
@@ -131,12 +102,15 @@ public class BulkRetryStrategyTests {
 
         int attempt = 0;
         String index;
+        BulkRequest finalRequest;
+        BulkResponse finalResponse;
 
         public FakeClient(final String index) {
             this.index = index;
         }
 
         public BulkResponse bulk(final BulkRequest bulkRequest) throws IOException {
+            finalRequest = bulkRequest;
             final int requestSize = bulkRequest.requests().size();
             if (attempt == 0) {
                 attempt++;
@@ -147,10 +121,12 @@ public class BulkRetryStrategyTests {
             } else if (attempt == 2) {
                 assert requestSize == 4;
                 attempt++;
-                return bulkFirstResponse(bulkRequest);
+                finalResponse = bulkFirstResponse(bulkRequest);
+                return finalResponse;
             } else {
                 assert requestSize == 2;
-                return bulkSecondResponse(bulkRequest);
+                finalResponse = bulkSecondResponse(bulkRequest);
+                return finalResponse;
             }
         }
 

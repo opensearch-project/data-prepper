@@ -13,6 +13,7 @@ import org.elasticsearch.rest.RestStatus;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
@@ -37,6 +38,14 @@ public final class BulkRetryStrategy {
         this.bulkRequestSupplier = bulkRequestSupplier;
     }
 
+    public void execute(final BulkRequest bulkRequest) throws InterruptedException {
+        // Exponential backoff run forever
+        // TODO: replace with custom backoff policy setting including maximum interval between retries
+        final BackOffUtils backOffUtils = new BackOffUtils(
+                BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(50), Integer.MAX_VALUE).iterator());
+        handleRetry(bulkRequest, null, true, backOffUtils);
+    }
+
     public boolean canRetry(final BulkResponse response) {
         for (final BulkItemResponse bulkItemResponse : response) {
             if (bulkItemResponse.isFailed() && !NON_RETRY_STATUS.contains(bulkItemResponse.status().getStatus())) {
@@ -57,31 +66,37 @@ public final class BulkRetryStrategy {
         return Tuple.tuple(request, response);
     }
 
-    public Tuple<BulkRequest, BulkResponse> handleRetry(final BulkRequest request, final BulkResponse response)
-            throws Exception {
-        // Exponential backoff run forever
-        // TODO: replace with custom backoff policy setting including maximum interval between retries
-        final BackOffUtils backOffUtils = new BackOffUtils(
-                BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(50), Integer.MAX_VALUE).iterator());
+    public void handleRetry(
+            final BulkRequest request, final BulkResponse response, final boolean initialAttempt,
+            final BackOffUtils backOffUtils) throws InterruptedException {
         Tuple<BulkRequest, BulkResponse> tuple = Tuple.tuple(request, response);
-        BulkRequest bulkRequestForRetry = createBulkRequestForRetry(request, response);
-        while (backOffUtils.next()) {
+        final BulkRequest bulkRequestForRetry = createBulkRequestForRetry(request, response);
+        if (initialAttempt || backOffUtils.hasNext()) {
+            if (!initialAttempt) {
+                // Wait for backOff duration
+                backOffUtils.next();
+            }
             try {
                 tuple = retry(bulkRequestForRetry);
             } catch (final Exception e) {
-                if (backOffUtils.hasNext()) {
-                    continue;
+                if (canRetry(e) && backOffUtils.hasNext()) {
+                    // FIXME: maximum recursion depth?
+                    handleRetry(bulkRequestForRetry, null, false, backOffUtils);
                 } else {
-                    throw e;
+                    handleFailures(bulkRequestForRetry.requests(), e);
+                }
+
+                return;
+            }
+            if (tuple.v2().hasFailures()) {
+                if (canRetry(tuple.v2()) && backOffUtils.hasNext()) {
+                    // FIXME: maximum recursion depth?
+                    handleRetry(tuple.v1(), tuple.v2(), false, backOffUtils);
+                } else {
+                    handleFailures(tuple.v1().requests(), tuple.v2().getItems());
                 }
             }
-            if (!tuple.v2().hasFailures()) {
-                return tuple;
-            } else {
-                bulkRequestForRetry = createBulkRequestForRetry(tuple.v1(), tuple.v2());
-            }
         }
-        return tuple;
     }
 
     private BulkRequest createBulkRequestForRetry(final BulkRequest request, final BulkResponse response) {
@@ -103,6 +118,24 @@ public final class BulkRetryStrategy {
                 index++;
             }
             return requestToReissue;
+        }
+    }
+
+    private void handleFailures(final List<DocWriteRequest<?>> docWriteRequests, final BulkItemResponse[] itemResponses) {
+        assert docWriteRequests.size() == itemResponses.length;
+        for (int i = 0; i < itemResponses.length; i++) {
+            final BulkItemResponse bulkItemResponse = itemResponses[i];
+            final DocWriteRequest<?> docWriteRequest = docWriteRequests.get(i);
+            if (bulkItemResponse.isFailed()) {
+                final BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
+                logFailure.accept(docWriteRequest, failure.getCause());
+            }
+        }
+    }
+
+    private void handleFailures(final List<DocWriteRequest<?>> docWriteRequests, final Throwable failure) {
+        for (final DocWriteRequest<?> docWriteRequest: docWriteRequests) {
+            logFailure.accept(docWriteRequest, failure);
         }
     }
 }

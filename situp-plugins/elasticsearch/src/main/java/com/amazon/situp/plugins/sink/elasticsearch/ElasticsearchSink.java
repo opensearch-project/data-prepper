@@ -124,47 +124,12 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   }
 
   private boolean flushBatch(final BulkRequest bulkRequest) {
-    final BulkResponse bulkResponse;
     try {
-      bulkResponse = restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT);
-    } catch (final Exception bulkException) {
-      // Captures exception in bulk API, check exception and retry, then log failure if any after retry
-      Tuple<BulkRequest, BulkResponse> tuple = Tuple.tuple(bulkRequest, null);
-      if (bulkRetryStrategy.canRetry(bulkException)) {
-        try {
-          tuple = bulkRetryStrategy.handleRetry(bulkRequest, null);
-        } catch (final Exception retryException) {
-          handleFailures(bulkRequest.requests(), retryException);
-          return true;
-        }
-      } else {
-        handleFailures(tuple.v1().requests(), bulkException);
-        return true;
-      }
-
-      if (tuple.v2().hasFailures()) {
-        // Response has failure after retry
-        handleFailures(tuple.v1().requests(), tuple.v2().getItems());
-      }
-
-      return true;
-    }
-
-    // Receives BulkResponse back, check failure and retry, then log failure if any after retry
-    if (bulkResponse.hasFailures()) {
-      Tuple<BulkRequest, BulkResponse> tuple = Tuple.tuple(bulkRequest, bulkResponse);
-      if (bulkRetryStrategy.canRetry(bulkResponse)) {
-        try {
-          tuple = bulkRetryStrategy.handleRetry(bulkRequest, bulkResponse);
-        } catch (final Exception retryException) {
-          handleFailures(bulkRequest.requests(), retryException);
-          return true;
-        }
-      }
-
-      if (tuple.v2().hasFailures()) {
-        handleFailures(tuple.v1().requests(), tuple.v2().getItems());
-      }
+      bulkRetryStrategy.execute(bulkRequest);
+    } catch (final InterruptedException e) {
+      LOG.error(e.getMessage(), e);
+      Thread.currentThread().interrupt();
+      return false;
     }
     return true;
   }
@@ -233,24 +198,6 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     final XContentParser parser = XContentFactory.xContent(XContentType.JSON)
             .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, documentJson);
     return parser.map();
-  }
-
-  private void handleFailures(final List<DocWriteRequest<?>> docWriteRequests, final BulkItemResponse[] itemResponses) {
-    assert docWriteRequests.size() == itemResponses.length;
-    for (int i = 0; i < itemResponses.length; i++) {
-      final BulkItemResponse bulkItemResponse = itemResponses[i];
-      final DocWriteRequest<?> docWriteRequest = docWriteRequests.get(i);
-      if (bulkItemResponse.isFailed()) {
-        final BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
-        logFailure(docWriteRequest, failure.getCause());
-      }
-    }
-  }
-
-  private void handleFailures(final List<DocWriteRequest<?>> docWriteRequests, final Throwable failure) {
-    for (final DocWriteRequest<?> docWriteRequest: docWriteRequests) {
-      logFailure(docWriteRequest, failure);
-    }
   }
 
   private void logFailure(final DocWriteRequest<?> docWriteRequest, final Throwable failure) {
