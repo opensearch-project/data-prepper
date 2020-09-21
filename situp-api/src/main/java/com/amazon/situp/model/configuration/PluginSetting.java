@@ -81,6 +81,18 @@ public class PluginSetting {
     public Boolean getBooleanOrDefault(final String attribute, final boolean defaultValue) {
         return (Boolean) getAttributeOrDefault(attribute, defaultValue);
     }
-    
+
+    /**
+     * Returns the value of the specified attribute as long, or {@code defaultValue} if this settings contains no
+     * value for the attribute.
+     *
+     * @param attribute    name of the attribute
+     * @param defaultValue default value for the setting
+     * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
+     * the attribute
+     */
+    public Long getLongOrDefault(final String attribute, final long defaultValue) {
+        return (Long) getAttributeOrDefault(attribute, defaultValue);
+    }
 
 }
