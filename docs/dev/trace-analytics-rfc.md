@@ -1,14 +1,14 @@
 # RFC - Trace Analytics
 ## 1. Overview
-Open Distro for Elasticsearch (ODFE) users already store their log data which allows them to access log events in their services. However, with the log data alone, the user can not pinpoint where the error occurred or what caused the poor performance. This means they need to another datastore or going into a different codebase to determine the context of the log event. The overall result is that the user has to rely on multiple products, software, log data, and human ingenuity to track down problems with their systems. The goal is to reduce the number of contexts switches a 
+Open Distro for Elasticsearch (ODFE) users already store their log data which allows them to access log events in their services. However, with the log data alone, the user can not pinpoint where the error occurred or what caused the poor performance. This means they need another datastore or going into a different codebase to determine the context of the log event. The overall result is that the user has to rely on multiple products, software, log data, and human ingenuity to track down problems with their systems. The goal is to reduce the number of contexts switches a 
 user must do in order to solve a problem in production, we will achieve this through a set of Application Performance Management (APM) features. 
 As the first step, in 2020 we will offer Trace Analytics, which will allow users to store trace information and provide them a holistic view of their
  service under observation.
 
 ## 2. Approach
 The Trace Analytics feature will embrace the Open Telemetry standard and provide the required plugins and adapters to integrate with the ecosystem. 
-Adoption to the OpenTelemetry ecosystem will benefit users od existing tracing standards like Zipkin and OpenTracing to use the Trace Analytics feature.
-To support the trace analytics feature we will build a new service called SITUP, which receives trace data from the OpenTelemetry collector, process them to elasticsearch friendly docs, and stores them users' elasticsearch clusters. The trace analytics will also provide a Kibana plugin that will provide user-friendly dashboards on the stored trace data. 
+Adoption to the OpenTelemetry ecosystem will benefit users of existing tracing standards like Zipkin and OpenTracing to use the Trace Analytics feature.
+To support the trace analytics feature we will build a new service called SITUP, which receives trace data from the OpenTelemetry collector, process them to elasticsearch friendly docs, and stores them in users' elasticsearch cluster. The trace analytics will also provide a Kibana plugin that will provide user-friendly dashboards on the stored trace data. 
 
 ![Kibana Notebooks Architecture](images/HighLevelDesign.jpg)
 
@@ -45,9 +45,12 @@ SITUP will be an ODFE community-driven project, the end goal is to make multiple
 
 #### 3.1.2 Trace Analytics
 
-In the first release of SITUP, we will support only one SITUP pipeline for the Trace Analytics feature. Below is how the Trace Analytics feature pipeline would look.
+In the first release of SITUP, we will support only one SITUP pipeline for the Trace Analytics feature. Below is design of the Trace Analytics feature pipeline .
 
 ![Trace Analytics Pipeline](images/TraceAnalyticsFeature.jpg)
+
+<br />
+<br />
 
 ##### OpenTelemetry Trace Source
 
@@ -57,7 +60,7 @@ mean we will support transport over gRPC, HTTP/Proto and HTTP/JSON. The source w
 ##### Processors
 
 We are building two processors for the Trace Analytics feature,
-* *otel-trace-raw-processor* -  This processor will be responsible for converting the trace data in OpenTelemetry specification to elasticsearch friendly docs. These elasticsearch friendly docs will have minimal additional fields like duration which are not part of the original specification. These additional fields are to make the instant kibana dashboards user-friendly.
+* *otel-trace-raw-processor* -  This processor will be responsible for converting the trace data in [OpenTelemetry specification](https://github.com/open-telemetry/opentelemetry-proto/tree/master/opentelemetry/proto/trace/v1) to elasticsearch friendly (JSON) docs. These elasticsearch friendly docs will have minimal additional fields like duration which are not part of the original specification. These additional fields are to make the instant kibana dashboards user-friendly.
 * *service-map-processor* -  This processor will perform the required preprocessing on the trace data and build metadata to display the service-map kibana dashboards.
 
 
@@ -84,4 +87,4 @@ NOTE: The above Kibana dashboards are mockup UIs, they are subject to changes.
 
 
 ## Providing Feedback
-If you have comments or feedback on our plans for Trace Analytics, please comment on the GitHub repository of this project to discuss.
+If you have comments or feedback on our plans for Trace Analytics, please comment on this [github issue](https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/39)
