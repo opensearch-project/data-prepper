@@ -128,23 +128,23 @@ public class ServiceMapStatefulProcessorTest {
         final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, 2, clock);
 
         //Frontend service client span
-        ResourceSpans spans1 = getResourceSpans(FRONTEND_SERVICE, "span1", SPAN_ID_1, SPAN_ID_1, Span.SpanKind.SPAN_KIND_CLIENT);
+        ResourceSpans spans1 = getResourceSpans(FRONTEND_SERVICE, "span1", SPAN_ID_1, SPAN_ID_1, Span.SpanKind.CLIENT);
         //Backend service server and client spans
-        ResourceSpans spans2 = getResourceSpans(BACKEND_SERVICE, "span2", SPAN_ID_2, SPAN_ID_1, Span.SpanKind.SPAN_KIND_SERVER);
-        ResourceSpans spans3 = getResourceSpans(BACKEND_SERVICE, "span3", SPAN_ID_3, SPAN_ID_2, Span.SpanKind.SPAN_KIND_CLIENT);
+        ResourceSpans spans2 = getResourceSpans(BACKEND_SERVICE, "span2", SPAN_ID_2, SPAN_ID_1, Span.SpanKind.SERVER);
+        ResourceSpans spans3 = getResourceSpans(BACKEND_SERVICE, "span3", SPAN_ID_3, SPAN_ID_2, Span.SpanKind.CLIENT);
         //Database service server span
-        ResourceSpans spans4 = getResourceSpans(DATABASE_SERVICE, "span4" ,SPAN_ID_4,SPAN_ID_3, Span.SpanKind.SPAN_KIND_SERVER );
+        ResourceSpans spans4 = getResourceSpans(DATABASE_SERVICE, "span4" ,SPAN_ID_4,SPAN_ID_3, Span.SpanKind.SERVER);
         //Checkoue service server span
-        ResourceSpans spans5 = getResourceSpans(CHECKOUT_SERVICE, "span5",SPAN_ID_5, SPAN_ID_3, Span.SpanKind.SPAN_KIND_SERVER);
+        ResourceSpans spans5 = getResourceSpans(CHECKOUT_SERVICE, "span5",SPAN_ID_5, SPAN_ID_3, Span.SpanKind.SERVER);
         //Other service span
         ResourceSpans spans6 = getResourceSpans(OTHER_SERVICE, "span6",SPAN_ID_6,SPAN_ID_7, Span.SpanKind.SPAN_KIND_UNSPECIFIED);
 
-        final ServiceMapRelationship relationship1 = ServiceMapRelationship.newDestinationRelationship(FRONTEND_SERVICE, Span.SpanKind.SPAN_KIND_CLIENT.name(), BACKEND_SERVICE);
-        final ServiceMapRelationship relationship2 = ServiceMapRelationship.newDestinationRelationship(BACKEND_SERVICE, Span.SpanKind.SPAN_KIND_CLIENT.name(), DATABASE_SERVICE);
-        final ServiceMapRelationship relationship3 = ServiceMapRelationship.newDestinationRelationship(BACKEND_SERVICE, Span.SpanKind.SPAN_KIND_CLIENT.name(), CHECKOUT_SERVICE);
-        final ServiceMapRelationship targetRelationship1 = ServiceMapRelationship.newTargetRelationship(BACKEND_SERVICE, Span.SpanKind.SPAN_KIND_SERVER.name(), BACKEND_SERVICE);
-        final ServiceMapRelationship targetRelationship2 = ServiceMapRelationship.newTargetRelationship(DATABASE_SERVICE, Span.SpanKind.SPAN_KIND_SERVER.name(), DATABASE_SERVICE);
-        final ServiceMapRelationship targetRelationship3 = ServiceMapRelationship.newTargetRelationship(CHECKOUT_SERVICE, Span.SpanKind.SPAN_KIND_SERVER.name(), CHECKOUT_SERVICE);
+        final ServiceMapRelationship relationship1 = ServiceMapRelationship.newDestinationRelationship(FRONTEND_SERVICE, Span.SpanKind.CLIENT.name(), BACKEND_SERVICE);
+        final ServiceMapRelationship relationship2 = ServiceMapRelationship.newDestinationRelationship(BACKEND_SERVICE, Span.SpanKind.CLIENT.name(), DATABASE_SERVICE);
+        final ServiceMapRelationship relationship3 = ServiceMapRelationship.newDestinationRelationship(BACKEND_SERVICE, Span.SpanKind.CLIENT.name(), CHECKOUT_SERVICE);
+        final ServiceMapRelationship targetRelationship1 = ServiceMapRelationship.newTargetRelationship(BACKEND_SERVICE, Span.SpanKind.SERVER.name(), BACKEND_SERVICE);
+        final ServiceMapRelationship targetRelationship2 = ServiceMapRelationship.newTargetRelationship(DATABASE_SERVICE, Span.SpanKind.SERVER.name(), DATABASE_SERVICE);
+        final ServiceMapRelationship targetRelationship3 = ServiceMapRelationship.newTargetRelationship(CHECKOUT_SERVICE, Span.SpanKind.SERVER.name(), CHECKOUT_SERVICE);
 
         //Set clock to close out original window
         Mockito.when(clock.millis()).thenReturn(110L);
