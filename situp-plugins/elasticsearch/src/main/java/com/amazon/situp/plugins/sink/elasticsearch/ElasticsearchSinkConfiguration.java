@@ -1,5 +1,7 @@
 package com.amazon.situp.plugins.sink.elasticsearch;
 
+import com.amazon.situp.model.configuration.PluginSetting;
+
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class ElasticsearchSinkConfiguration {
@@ -53,5 +55,17 @@ public class ElasticsearchSinkConfiguration {
     this.connectionConfiguration = builder.connectionConfiguration;
     this.indexConfiguration = builder.indexConfiguration;
     this.retryConfiguration = builder.retryConfiguration;
+  }
+
+  public static ElasticsearchSinkConfiguration readESConfig(final PluginSetting pluginSetting) {
+    final ConnectionConfiguration connectionConfiguration =
+            ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+    final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
+    final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(pluginSetting);
+
+    return new ElasticsearchSinkConfiguration.Builder(connectionConfiguration)
+            .withIndexConfiguration(indexConfiguration)
+            .withRetryConfiguration(retryConfiguration)
+            .build();
   }
 }

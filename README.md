@@ -1,29 +1,38 @@
 # simple-ingest-transformation-utility-pipeline
 
-Simple Ingest Transformation Utility Pipeline (SITUP) is an open source, light weight and server side collector that provides customers with abilities to filter, enrich, trasform, normalize and aggregate data for analytics. The primary component of transformation instance is a **pipeline**.
+## Overview
 
-## Components
-A SITUP has four key components **source**, **buffer**, **processor**, and **sink**. A single instance of SITUP can have one or more pipelines. A pipeline definition contains two required components **source** and **sink**. The other components *viz* **buffer** and **processor** are optional and will default to default implementations in the absence of user implementation.
+Simple Ingest Transformation Utility Pipeline (SITUP) is an open source, lightweight ingestion service that provides customers with abilities to filter, enrich, transform, normalize and aggregate data for analytics.
 
-### Source
-Source is the input component of a pipeline, it defines the mechanism through which a SITUP will consume records. Source component could consume records either by receiving over http/s or reading from external endpoints like Kafka, SQS, Cloudwatch etc.  Source will have its own configuration options based on the type like the format of the records (string/json/cloudwatch logs/open telemetry trace) , security, concurrency threads etc . The source component will consume records and write them to the buffer component.
+*Please note that SITUP is under active development.*
 
-### Buffer
-The buffer component will act as the layer between the *source* and *sink.* The buffer could either be in-memory or disk based. The default buffer will be in-memory queue bounded by the number of records/size of records. 
+This project contains the following top level components:
 
-### Sink
-Sink is the output component of pipeline, it defines the one or more destinations to which a SITUP will publish the records. A sink destination could be either services like elastic search, s3 or another SITUP. By using another SITUP (pipeline) as sink, we could chain multiple SITUPs. Sink will have its own configuration options based on the destination type like security, request batching etc. 
+* [situp-api](situp-api/): The SITUP API, contains the interfaces for all the SITUP components.
+* [situp-core](situp-core/): The core implementation of SITUP.
+* [situp-plugins](situp-plugins/): The home for SITUP plugins.
+  * [common](situp-plugins/common): Common plugins for all components *viz. source, buffer, processor, and sink*
+  * [apmtracesource](situp-plugins/apmtracesource/): The HTTP source plugin for APM Trace.
+  * [elasticsearch](situp-plugins/elasticsearch/): The Elasticsearch sink plugin that publishes records to elasticsearch cluster via REST client.
+  * [lmdb-processor-state](situp-plugins/lmdb-processor-state/): TODO
 
-### Processor
-Processor component of the pipeline, these are intermediary processing units using which users can filter, transform and enrich the records into desired format before publishing to the sink. The processor is an optional component of the pipeline, if not defined the records will be published in the format as defined in the source.
+We would love to hear from the larger community: please provide feedback proactively.
 
-## Pre-requisites for custom components (TBD)
-As we know, the default provided source, buffer, processor and/or sinks will not suffice diverse customer needs. Below are the steps to create a custom source/buffer/processor/sink
- 
- 
-1. Implement the appropriate interface from ```com.amazon.situp.<source|buffer|processor|sink>.Source|Buffer|Processor|Sink```
-2. Annotate the class file with ```com.amazon.situp.model.annotations.SitupPlugin``` providing appropriate name and type
-3. Add a mandatory constructor to the class with ```com.amazon.situp.com.amazon.situp.model.configuration.PluginSetting``` as parameter. Example: [FileSink](https://github.com/yadavcbala/transformation-instance/blob/master/src/main/java/com/amazon/ti/plugins/sink/FileSink.java)
+## Design RFC
+[RFC](docs/dev/trace-analytics-rfc.md)
 
-## Building SITUP
-In order to build this code base, you must use Gradle X.XX or above and Java Development Kit 14 is required.
+## Contribute
+
+We invite developers from the larger Open Distro community to contribute and help improve test coverage and give us feedback on where improvements can be made in design, code and documentation. You can look at  [contribution guide](CONTRIBUTING.md) for more information on how to contribute.
+
+## Code of Conduct
+
+This project has adopted an [Open Source Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Security Issue Notifications
+
+If you discover a potential security issue in this project we ask that you notify AWS/Amazon Security via our [vulnerability reporting page](http://aws.amazon.com/security/vulnerability-reporting/). Please do **not** create a public GitHub issue.
+
+## License
+
+This library is licensed under the Apache 2.0 License. [Refer](LICENSE)
