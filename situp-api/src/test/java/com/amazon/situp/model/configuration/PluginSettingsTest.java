@@ -23,6 +23,7 @@ public class PluginSettingsTest {
     public void setup() {
         pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS);
     }
+
     @Test
     public void testPluginSettingsCreation() {
         assertThat(pluginSetting, notNullValue());

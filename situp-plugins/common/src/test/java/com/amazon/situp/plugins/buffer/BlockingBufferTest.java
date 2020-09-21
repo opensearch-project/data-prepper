@@ -4,11 +4,10 @@ import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -16,7 +15,8 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class BlockingBufferTest {
-    private static final String ATTRIBUTE_BATCH_SIZE = "batch-size";
+    private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
+    private static final String ATTRIBUTE_BUFFER_SIZE = "buffer_size";
     private static final int TEST_BATCH_SIZE = 3;
     private static final int TEST_BUFFER_SIZE = 13;
     private static final int TEST_WRITE_TIMEOUT = 1_00;
@@ -36,10 +36,18 @@ public class BlockingBufferTest {
     }
 
     @Test(expected = NullPointerException.class)
-    public void testInsertNull() {
+    public void testInsertNull() throws TimeoutException {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_SIZE, TEST_BATCH_SIZE);
         assertThat(blockingBuffer, notNullValue());
         blockingBuffer.write(null, TEST_WRITE_TIMEOUT);
+    }
+
+    @Test(expected = TimeoutException.class)
+    public void testNoEmptySpace() throws TimeoutException {
+        final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(1, TEST_BATCH_SIZE);
+        assertThat(blockingBuffer, notNullValue());
+        blockingBuffer.write(new Record<>("FILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
+        blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT);
     }
 
     @Test
@@ -51,7 +59,7 @@ public class BlockingBufferTest {
     }
 
     @Test
-    public void testBatchRead() {
+    public void testBatchRead() throws Exception {
         final PluginSetting completePluginSetting = completePluginSettingForBlockingBuffer();
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(completePluginSetting);
         assertThat(blockingBuffer, notNullValue());
@@ -77,10 +85,10 @@ public class BlockingBufferTest {
     }
 
     private PluginSetting completePluginSettingForBlockingBuffer() {
-        final String pluginName = "bounded-blocking";
+        final String pluginName = "bounded_blocking";
         final Map<String, Object> settings = new HashMap<>();
-        settings.put("buffer-size", TEST_BUFFER_SIZE);
-        settings.put("batch-size", TEST_BATCH_SIZE);
+        settings.put(ATTRIBUTE_BUFFER_SIZE, TEST_BUFFER_SIZE);
+        settings.put(ATTRIBUTE_BATCH_SIZE, TEST_BATCH_SIZE);
         return new PluginSetting(pluginName, settings);
     }
 }

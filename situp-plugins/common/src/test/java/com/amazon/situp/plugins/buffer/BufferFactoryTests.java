@@ -20,7 +20,7 @@ public class BufferFactoryTests {
      */
     @Test
     public void testNewBufferClassByNameThatExists() {
-        final PluginSetting boundedBlocking = new PluginSetting("bounded-blocking", new HashMap<>());
+        final PluginSetting boundedBlocking = new PluginSetting("bounded_blocking", new HashMap<>());
         final Buffer actualBuffer = BufferFactory.newBuffer(boundedBlocking);
         final Buffer expectedBuffer = new BlockingBuffer();
         assertNotNull(actualBuffer);

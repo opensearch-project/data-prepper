@@ -1,5 +1,7 @@
 package com.amazon.situp.plugins.sink.elasticsearch;
 
+import com.amazon.situp.model.configuration.PluginSetting;
+
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class RetryConfiguration {
@@ -27,5 +29,14 @@ public class RetryConfiguration {
 
   private RetryConfiguration(final Builder builder) {
     this.dlqFile = builder.dlqFile;
+  }
+
+  public static RetryConfiguration readRetryConfig(final PluginSetting pluginSetting) {
+    RetryConfiguration.Builder builder = new RetryConfiguration.Builder();
+    final String dlqFile = (String) pluginSetting.getAttributeFromSettings(DLQ_FILE);
+    if (dlqFile != null) {
+      builder = builder.withDlqFile(dlqFile);
+    }
+    return builder.build();
   }
 }
