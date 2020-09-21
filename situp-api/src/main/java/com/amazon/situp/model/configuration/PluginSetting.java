@@ -69,4 +69,18 @@ public class PluginSetting {
         return (String) getAttributeOrDefault(attribute, defaultValue);
     }
 
+    /**
+     * Returns the value of the specified attribute as boolean, or {@code defaultValue} if this settings contains no
+     * value for the attribute.
+     *
+     * @param attribute    name of the attribute
+     * @param defaultValue default value for the setting
+     * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
+     * the attribute
+     */
+    public Boolean getBooleanOrDefault(final String attribute, final boolean defaultValue) {
+        return (Boolean) getAttributeOrDefault(attribute, defaultValue);
+    }
+    
+
 }
