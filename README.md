@@ -2,7 +2,7 @@
 
 ## Overview
 
-Simple Ingest Transformation Utility Pipeline (SITUP) is an open source, lightweight and server side collector that provides customers with abilities to filter, enrich, transform, normalize and aggregate data for analytics.
+Simple Ingest Transformation Utility Pipeline (SITUP) is an open source, lightweight ingestion service that provides customers with abilities to filter, enrich, transform, normalize and aggregate data for analytics.
 
 *Please note that SITUP is under active development.*
 
