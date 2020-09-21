@@ -34,13 +34,40 @@ public class PluginSetting {
     /**
      * Returns the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
      * the attribute.
-     * @param attribute name of the attribute
+     *
+     * @param attribute    name of the attribute
      * @param defaultValue default value for the setting
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
      * the attribute
      */
     public Object getAttributeOrDefault(final String attribute, final Object defaultValue) {
         return settings.getOrDefault(attribute, defaultValue);
+    }
+
+    /**
+     * Returns the value of the specified attribute as integer, or {@code defaultValue} if this settings contains no
+     * value for the attribute.
+     *
+     * @param attribute    name of the attribute
+     * @param defaultValue default value for the setting
+     * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
+     * the attribute
+     */
+    public Integer getIntegerOrDefault(final String attribute, final int defaultValue) {
+        return (Integer) getAttributeOrDefault(attribute, defaultValue);
+    }
+
+    /**
+     * Returns the value of the specified attribute as String, or {@code defaultValue} if this settings contains no
+     * value for the attribute.
+     *
+     * @param attribute    name of the attribute
+     * @param defaultValue default value for the setting
+     * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
+     * the attribute
+     */
+    public String getStringOrDefault(final String attribute, final String defaultValue) {
+        return (String) getAttributeOrDefault(attribute, defaultValue);
     }
 
 }
