@@ -13,6 +13,7 @@ dependencies {
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${versionMap.jackson_dataformat_yaml}"
     testImplementation "junit:junit:${versionMap.junit}"
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.5.2"
+    testImplementation 'org.assertj:assertj-core:3.6.2'
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.5.2"
     testRuntime "org.junit.platform:junit-platform-runner:1.5.2"
 }
