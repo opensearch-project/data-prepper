@@ -9,21 +9,21 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * PipelineConnector is a special type of Plugin which connects two pipelines acting both as Sink and Source.
  *
  * @param <T>
  */
-public class PipelineConnector<T extends Record<?>> implements Source<T>, Sink<T> {
+public final class PipelineConnector<T extends Record<?>> implements Source<T>, Sink<T> {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineConnector.class);
     private static final int DEFAULT_WRITE_TIMEOUT = Integer.MAX_VALUE;
     private Buffer<T> buffer;
-    private boolean isStopRequested;
+    private AtomicBoolean isStopRequested;
 
     public PipelineConnector() {
-        //isStopRequested = new AtomicBoolean();
-        isStopRequested = false;
+        isStopRequested = new AtomicBoolean(false);
     }
 
     @Override
@@ -33,12 +33,12 @@ public class PipelineConnector<T extends Record<?>> implements Source<T>, Sink<T
 
     @Override
     public void stop() {
-        isStopRequested = true;
+        isStopRequested.set(true);
     }
 
     @Override
     public boolean output(final Collection<T> records) {
-        if (buffer != null && !isStopRequested) {
+        if (buffer != null && !isStopRequested.get()) {
             for (T record : records) {
                 try {
                     buffer.write(record, DEFAULT_WRITE_TIMEOUT); //TODO update to use from config
