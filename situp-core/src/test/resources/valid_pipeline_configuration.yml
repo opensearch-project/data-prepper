@@ -1,6 +1,5 @@
 # this configuration file is solely for testing formatting
-pipeline:
-  name: test-pipeline
+test-pipeline:
   source:
     test-plugin:
       someProperty: "someValue"

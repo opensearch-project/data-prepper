@@ -12,14 +12,12 @@ import javax.validation.ValidatorFactory;
 import java.util.Set;
 
 import static com.amazon.situp.TestDataProvider.INVALID_BUFFER_VIOLATION_MESSAGE;
-import static com.amazon.situp.TestDataProvider.INVALID_NAME_VIOLATION_MESSAGE;
 import static com.amazon.situp.TestDataProvider.INVALID_PROCESSOR_VIOLATION_MESSAGE;
 import static com.amazon.situp.TestDataProvider.INVALID_SINK_VIOLATION_MESSAGE;
 import static com.amazon.situp.TestDataProvider.INVALID_SOURCE_VIOLATION_MESSAGE;
 import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithAllInvalidPlugins;
 import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithBufferButEmptyName;
 import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithBufferButNullName;
-import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithEmptyPipelineName;
 import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithMultipleBuffers;
 import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithMultipleProcessors;
 import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithMultipleProcessorsSomeInvalid;
@@ -30,7 +28,6 @@ import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithNoBuffe
 import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithNoPluginsForSource;
 import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithNoProcessors;
 import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithNoSinks;
-import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithNullPipelineName;
 import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithProcessorsButEmptyName;
 import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithProcessorsButNullName;
 import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithSinkButEmptyName;
@@ -56,18 +53,6 @@ public class PipelineConfigurationTests {
     public void testPipelineConfigurationWithValidSource() {
         final PipelineConfiguration pipelineConfiguration = validPipelineConfiguration();
         executeValidationAndAssert(pipelineConfiguration, 0, "");
-    }
-
-    @Test
-    public void testPipelineConfigurationWithEmptyName() {
-        final PipelineConfiguration pipelineConfiguration = pipelineConfigurationWithEmptyPipelineName();
-        executeValidationAndAssert(pipelineConfiguration, 1, INVALID_NAME_VIOLATION_MESSAGE);
-    }
-
-    @Test
-    public void testPipelineConfigurationWithNullName() {
-        final PipelineConfiguration pipelineConfiguration = pipelineConfigurationWithNullPipelineName();
-        executeValidationAndAssert(pipelineConfiguration, 1, INVALID_NAME_VIOLATION_MESSAGE);
     }
 
     @Test
@@ -182,15 +167,15 @@ public class PipelineConfigurationTests {
     public void testPipelineConfigurationWithAllInvalidPlugins() {
         final PipelineConfiguration pipelineConfiguration = pipelineConfigurationWithAllInvalidPlugins();
         final Set<ConstraintViolation<PipelineConfiguration>> violations = JSR_VALIDATOR.validate(pipelineConfiguration);
-        assertThat(violations, iterableWithSize(5));
+        assertThat(violations, iterableWithSize(4));
     }
 
     private void executeValidationAndAssert(final PipelineConfiguration pipelineConfiguration,
-                                   int expectedViolationCount,
-                                   final String expectedMessage) {
+                                            int expectedViolationCount,
+                                            final String expectedMessage) {
         final Set<ConstraintViolation<PipelineConfiguration>> violations = JSR_VALIDATOR.validate(pipelineConfiguration);
         assertThat(violations, iterableWithSize(expectedViolationCount));
-        if(expectedViolationCount !=0) {
+        if (expectedViolationCount != 0) {
             for (ConstraintViolation<PipelineConfiguration> violation : violations) {
                 assertThat(violation.getMessage(), is(expectedMessage));
             }

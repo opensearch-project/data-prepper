@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -46,12 +45,11 @@ public class Pipeline {
      * Constructs a {@link Pipeline} object with provided {@link #name}, {@link Source}, {@link Collection} of
      * {@link Sink}, processorThreads, readBatchTimeout and default {@link Buffer}, {@link Processor}.
      *
-     * @param name             name of the pipeline
-     * @param source           source from where the pipeline reads the records
-     * @param sinks            collection of sink's to which the transformed records need to be posted
-     * @param processorThreads configured or default threads to parallelize processor work
+     * @param name                     name of the pipeline
+     * @param source                   source from where the pipeline reads the records
+     * @param sinks                    collection of sink's to which the transformed records need to be posted
+     * @param processorThreads         configured or default threads to parallelize processor work
      * @param readBatchTimeoutInMillis configured or default timeout for reading batch of records from buffer
-     *
      */
     public Pipeline(
             @Nonnull final String name,
@@ -69,12 +67,12 @@ public class Pipeline {
      * {@link Processor} sequentially (in the given order) and outputs the processed records to collection of
      * {@link Sink}
      *
-     * @param name             name of the pipeline
-     * @param source           source from where the pipeline reads the records
-     * @param buffer           buffer for the source to queue records
-     * @param processors       processor that is applied to records
-     * @param sinks            sink to which the transformed records are posted
-     * @param processorThreads configured or default threads to parallelize processor work
+     * @param name                     name of the pipeline
+     * @param source                   source from where the pipeline reads the records
+     * @param buffer                   buffer for the source to queue records
+     * @param processors               processor that is applied to records
+     * @param sinks                    sink to which the transformed records are posted
+     * @param processorThreads         configured or default threads to parallelize processor work
      * @param readBatchTimeoutInMillis configured or default timeout for reading batch of records from buffer
      */
     public Pipeline(

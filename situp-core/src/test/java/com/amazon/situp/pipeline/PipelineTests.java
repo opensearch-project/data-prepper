@@ -1,8 +1,8 @@
 package com.amazon.situp.pipeline;
 
 import com.amazon.situp.model.record.Record;
-import com.amazon.situp.TestSink;
-import com.amazon.situp.TestSource;
+import com.amazon.situp.plugins.TestSink;
+import com.amazon.situp.plugins.TestSource;
 import com.amazon.situp.model.source.Source;
 
 import java.util.Collections;
