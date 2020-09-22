@@ -42,7 +42,7 @@ public final class BulkRetryStrategy {
         // TODO: replace with custom backoff policy setting including maximum interval between retries
         final BackOffUtils backOffUtils = new BackOffUtils(
                 BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(50), Integer.MAX_VALUE).iterator());
-        handleRetry(bulkRequest, null, true, backOffUtils);
+        handleRetry(bulkRequest, null, backOffUtils);
     }
 
     public boolean canRetry(final BulkResponse response) {
@@ -60,22 +60,18 @@ public final class BulkRetryStrategy {
                         !NON_RETRY_STATUS.contains(((ElasticsearchException) e).status().getStatus())));
     }
 
-    private void handleRetry(
-            final BulkRequest request, final BulkResponse response, final boolean initialAttempt,
-            final BackOffUtils backOffUtils) throws InterruptedException {
+    private void handleRetry(final BulkRequest request, final BulkResponse response, final BackOffUtils backOffUtils)
+            throws InterruptedException {
         final BulkRequest bulkRequestForRetry = createBulkRequestForRetry(request, response);
-        if (initialAttempt || backOffUtils.hasNext()) {
-            if (!initialAttempt) {
-                // Wait for backOff duration
-                backOffUtils.next();
-            }
+        if (backOffUtils.hasNext()) {
+            // Wait for backOff duration
+            backOffUtils.next();
             final BulkResponse bulkResponse;
             try {
                 bulkResponse = requestFunction.apply(bulkRequestForRetry);
             } catch (final Exception e) {
                 if (canRetry(e) && backOffUtils.hasNext()) {
-                    // FIXME: maximum recursion depth?
-                    handleRetry(bulkRequestForRetry, null, false, backOffUtils);
+                    handleRetry(bulkRequestForRetry, null, backOffUtils);
                 } else {
                     handleFailures(bulkRequestForRetry.requests(), e);
                 }
@@ -84,8 +80,7 @@ public final class BulkRetryStrategy {
             }
             if (bulkResponse.hasFailures()) {
                 if (canRetry(bulkResponse)) {
-                    // FIXME: maximum recursion depth?
-                    handleRetry(bulkRequestForRetry, bulkResponse, false, backOffUtils);
+                    handleRetry(bulkRequestForRetry, bulkResponse, backOffUtils);
                 } else {
                     handleFailures(bulkRequestForRetry.requests(), bulkResponse.getItems());
                 }

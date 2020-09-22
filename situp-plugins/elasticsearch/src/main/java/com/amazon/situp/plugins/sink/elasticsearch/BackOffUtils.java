@@ -9,15 +9,21 @@ public final class BackOffUtils {
 
     private long currTime = 0;
 
+    private boolean firstAttempt = true;
+
     public BackOffUtils(final Iterator<TimeValue> iterator) {
         this.iterator = iterator;
     }
 
     public boolean hasNext() {
-        return iterator.hasNext();
+        return firstAttempt || iterator.hasNext();
     }
 
     public boolean next() throws InterruptedException {
+        if (firstAttempt) {
+            firstAttempt = false;
+            return true;
+        }
         if (!iterator.hasNext()) {
             return false;
         } else {
