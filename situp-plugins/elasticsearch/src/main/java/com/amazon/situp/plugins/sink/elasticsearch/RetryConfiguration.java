@@ -1,20 +1,42 @@
 package com.amazon.situp.plugins.sink.elasticsearch;
 
+import com.amazon.situp.model.configuration.PluginSetting;
+
+import static com.google.common.base.Preconditions.checkNotNull;
+
 public class RetryConfiguration {
-  // TODO: add private parameters
+  public static final String DLQ_FILE = "dlq_file";
+
+  private final String dlqFile;
+
+  public String getDlqFile() {
+    return dlqFile;
+  }
 
   public static class Builder {
-    // TODO: add with methods for parameters
+    private String dlqFile;
+
+    public Builder withDlqFile(final String dlqFile) {
+      checkNotNull(dlqFile, "dlqFile cannot be null.");
+      this.dlqFile = dlqFile;
+      return this;
+    }
 
     public RetryConfiguration build() {
-      /*
-      * TODO:
-      *  1. add logic for essential parameters check
-      *  2. return builded connection configuration
-      * */
-      return null;
+      return new RetryConfiguration(this);
     }
   }
 
-  private RetryConfiguration() {}
+  private RetryConfiguration(final Builder builder) {
+    this.dlqFile = builder.dlqFile;
+  }
+
+  public static RetryConfiguration readRetryConfig(final PluginSetting pluginSetting) {
+    RetryConfiguration.Builder builder = new RetryConfiguration.Builder();
+    final String dlqFile = (String) pluginSetting.getAttributeFromSettings(DLQ_FILE);
+    if (dlqFile != null) {
+      builder = builder.withDlqFile(dlqFile);
+    }
+    return builder.build();
+  }
 }

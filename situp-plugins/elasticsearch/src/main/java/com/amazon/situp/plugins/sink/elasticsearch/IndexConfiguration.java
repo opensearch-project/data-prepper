@@ -1,5 +1,8 @@
 package com.amazon.situp.plugins.sink.elasticsearch;
 
+import com.amazon.situp.model.configuration.PluginSetting;
+import org.elasticsearch.common.unit.ByteSizeUnit;
+
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -13,10 +16,14 @@ public class IndexConfiguration {
   public static final String INDEX_TYPE = "index_type";
   public static final String INDEX_ALIAS = "index_alias";
   public static final String TEMPLATE_FILE = "template_file";
+  public static final String BULK_SIZE = "bulk_size";
+  public static final String DEFAULT_INDEX_TYPE = IndexConstants.RAW;
+  public static final long DEFAULT_BULK_SIZE = 5L;
 
   private final String indexType;
   private final String indexAlias;
   private final URL templateURL;
+  private final long bulkSize;
 
   public String getIndexType() {
     return indexType;
@@ -30,10 +37,15 @@ public class IndexConfiguration {
     return templateURL;
   }
 
+  public long getBulkSize() {
+    return bulkSize;
+  }
+
   public static class Builder {
-    private String indexType = IndexConstants.RAW;
+    private String indexType = DEFAULT_INDEX_TYPE;
     private String indexAlias;
     private String templateFile;
+    private long bulkSize = DEFAULT_BULK_SIZE;
 
     public Builder withIndexType(final String indexType) {
       checkArgument(indexType != null, "indexType cannot be null.");
@@ -55,6 +67,11 @@ public class IndexConfiguration {
       return this;
     }
 
+    public Builder withBulkSize(final long bulkSize) {
+      this.bulkSize = bulkSize;
+      return this;
+    }
+
     public IndexConfiguration build() {
       return new IndexConfiguration(this);
     }
@@ -68,7 +85,7 @@ public class IndexConfiguration {
       if (builder.indexType.equals(IndexConstants.RAW)) {
         templateURL = getClass().getClassLoader()
             .getResource(IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
-      } else if (builder.indexType == IndexConstants.SERVICE_MAP) {
+      } else if (builder.indexType.equals(IndexConstants.SERVICE_MAP)) {
         templateURL = getClass().getClassLoader()
             .getResource(IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
       }
@@ -90,5 +107,23 @@ public class IndexConfiguration {
       }
     }
     this.indexAlias = indexAlias;
+    this.bulkSize = builder.bulkSize;
+  }
+
+  public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
+    IndexConfiguration.Builder builder = new IndexConfiguration.Builder();
+    final String indexType = (String) pluginSetting.getAttributeOrDefault(INDEX_TYPE, DEFAULT_INDEX_TYPE);
+    builder = builder.withIndexType(indexType);
+    final String indexAlias = (String) pluginSetting.getAttributeFromSettings(INDEX_ALIAS);
+    if (indexAlias != null) {
+      builder = builder.withIndexAlias(indexAlias);
+    }
+    final String templateFile = (String) pluginSetting.getAttributeFromSettings(TEMPLATE_FILE);
+    if (templateFile != null) {
+      builder = builder.withTemplateFile(templateFile);
+    }
+    final Long batchSize = (Long) pluginSetting.getAttributeOrDefault(BULK_SIZE, DEFAULT_BULK_SIZE);
+    builder = builder.withBulkSize(batchSize);
+    return builder.build();
   }
 }

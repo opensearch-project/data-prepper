@@ -1,10 +1,10 @@
 package com.amazon.situp.plugins.source;
 
-import com.amazon.situp.model.record.Record;
+import com.amazon.situp.model.PluginType;
 import com.amazon.situp.model.annotations.SitupPlugin;
 import com.amazon.situp.model.buffer.Buffer;
 import com.amazon.situp.model.configuration.PluginSetting;
-import com.amazon.situp.model.PluginType;
+import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.source.Source;
 
 import java.io.BufferedReader;
@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.concurrent.TimeoutException;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
@@ -22,6 +23,7 @@ public class FileSource implements Source<Record<String>> {
     private final String filePathToRead;
     private boolean isStopRequested;
     private static final String SAMPLE_FILE_PATH = "src/resources/file-test-sample.txt";
+    private static final int WRITE_TIMEOUT = 5_000;
 
     /**
      * Mandatory constructor for SITUP Component - This constructor is used by SITUP
@@ -51,9 +53,9 @@ public class FileSource implements Source<Record<String>> {
         try (BufferedReader reader = Files.newBufferedReader(Paths.get(filePathToRead), StandardCharsets.UTF_8)) {
             String line;
             while ((line = reader.readLine()) != null && !isStopRequested) {
-                buffer.write(new Record<>(line));
+                buffer.write(new Record<>(line), WRITE_TIMEOUT);
             }
-        } catch (IOException ex) {
+        } catch (IOException | TimeoutException ex) {
             throw new RuntimeException(format("Error processing the input file %s", filePathToRead), ex);
         }
     }
