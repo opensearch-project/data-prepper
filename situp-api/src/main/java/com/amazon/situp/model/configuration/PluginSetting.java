@@ -40,7 +40,7 @@ public class PluginSetting {
      * the attribute
      */
     public Object getAttributeOrDefault(final String attribute, final Object defaultValue) {
-        return settings == null ? defaultValue : settings.get(attribute);
+        return settings == null ? defaultValue : settings.getOrDefault(attribute, defaultValue);
     }
 
 }

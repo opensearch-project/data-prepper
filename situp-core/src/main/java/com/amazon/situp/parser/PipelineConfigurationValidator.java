@@ -94,10 +94,7 @@ public class PipelineConfigurationValidator {
                 //Further process only if the sink is of pipeline type
                 if (pluginSetting.getName().equals(PIPELINE_TYPE)) {
                     final String connectedPipelineName = (String) pluginSetting.getAttributeFromSettings(PIPELINE_ATTRIBUTE_NAME);
-                    if (connectedPipelineName == null || "".equals(connectedPipelineName.trim())) {
-                        throw new RuntimeException(format("name is a required attribute for sink pipeline plugin, " +
-                                "check pipeline: %s", pipeline));
-                    }
+                    validatePipelineAttributeName(connectedPipelineName, pipeline);
                     validateSourceMapping(pipeline, connectedPipelineName, pipelineConfigurationMap);
                     visitAndValidate(connectedPipelineName, pipelineConfigurationMap, touchedPipelineSet,
                             visitedAndProcessedPipelineSet, sortedPipelineNames);
@@ -127,13 +124,30 @@ public class PipelineConfigurationValidator {
         final PipelineConfiguration pipelineConfiguration = pipelineConfigurationMap.get(currentPipeline);
         //Current deserialization has empty source if it is not defined - so no NPE
         final List<PluginSetting> sourcePluginSettings = pipelineConfiguration.getSource().getPluginSettings();
-        if (sourcePluginSettings.isEmpty() || sourcePluginSettings.get(0) == null ||
-                !PIPELINE_TYPE.equals(sourcePluginSettings.get(0).getName()) ||
-                !sourcePipeline.equals(sourcePluginSettings.get(0).getAttributeFromSettings(PIPELINE_ATTRIBUTE_NAME))) {
+        if (!isPipelineAttributeExists(sourcePluginSettings, sourcePipeline)) {
             LOG.error("Invalid configuration, expected source {} for pipeline {} is missing",
                     sourcePipeline, currentPipeline);
             throw new RuntimeException(format("Invalid configuration, expected source %s for pipeline %s is missing",
                     sourcePipeline, currentPipeline));
+        }
+    }
+
+    private static boolean isPipelineAttributeExists(final List<PluginSetting> pluginSettings, final String pipelineName) {
+        boolean result = false;
+        for (PluginSetting pluginSetting : pluginSettings) {
+            if (pluginSetting != null && PIPELINE_TYPE.equals(pluginSetting.getName()) &&
+                    pipelineName.equals(pluginSetting.getAttributeFromSettings(PIPELINE_ATTRIBUTE_NAME))) {
+                result = true;
+            }
+            break;
+        }
+        return result;
+    }
+
+    private static void validatePipelineAttributeName(final String pipelineAttribute, final String pipelineName) {
+        if (pipelineAttribute == null || "".equals(pipelineAttribute.trim())) {
+            throw new RuntimeException(format("name is a required attribute for sink pipeline plugin, " +
+                    "check pipeline: %s", pipelineName));
         }
     }
 

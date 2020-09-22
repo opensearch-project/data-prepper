@@ -51,8 +51,8 @@ public class PipelineParser {
     public Map<String, Pipeline> parseConfiguration() {
         try {
             final Map<String, PipelineConfiguration> pipelineConfigurationMap = OBJECT_MAPPER.readValue(
-                    new File(configurationFileLocation), new TypeReference<Map<String, PipelineConfiguration>>() {
-                    });
+                    new File(configurationFileLocation),
+                    new TypeReference<Map<String, PipelineConfiguration>>() {});
             final List<String> allPipelineNames = PipelineConfigurationValidator.
                     validateAndGetPipelineNames(pipelineConfigurationMap);
             final Map<String, Pipeline> pipelineMap = new HashMap<>();
@@ -88,8 +88,8 @@ public class PipelineParser {
         final int processorThreads = getWorkersOrDefault(processorConfiguration);
         final int readBatchDelay = getDelayOrDefault(processorConfiguration);
 
-        final List<PluginSetting> sinkPluginSettings = pipelineConfiguration.getSink().getPluginSettings();
-        final List<Sink> sinks = sinkPluginSettings.stream().map(this::buildSinkOrConnector).collect(Collectors.toList());
+        final List<Sink> sinks = pipelineConfiguration.getSink().getPluginSettings().stream()
+                .map(this::buildSinkOrConnector).collect(Collectors.toList());
 
         final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, processors, sinks, processorThreads, readBatchDelay);
         pipelineMap.put(pipelineName, pipeline);
