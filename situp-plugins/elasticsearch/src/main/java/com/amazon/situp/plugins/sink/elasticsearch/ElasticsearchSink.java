@@ -8,9 +8,7 @@ import com.amazon.situp.model.sink.Sink;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.alias.Alias;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
-import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
@@ -37,7 +35,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -52,6 +49,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private final ElasticsearchSinkConfiguration esSinkConfig;
   private RestHighLevelClient restHighLevelClient;
   private Supplier<BulkRequest> bulkRequestSupplier;
+  private BulkRetryStrategy bulkRetryStrategy;
   private final long bulkSize;
 
   public ElasticsearchSink(final PluginSetting pluginSetting) {
@@ -75,6 +73,10 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     }
     checkAndCreateIndex();
     bulkRequestSupplier = () -> new BulkRequest(esSinkConfig.getIndexConfiguration().getIndexAlias());
+    bulkRetryStrategy = new BulkRetryStrategy(
+            bulkRequest -> restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT),
+            this::logFailure,
+            bulkRequestSupplier);
   }
 
   @Override
@@ -119,18 +121,13 @@ public class ElasticsearchSink implements Sink<Record<String>> {
 
   private boolean flushBatch(final BulkRequest bulkRequest) {
     try {
-      final BulkResponse bulkResponse = restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT);
-      final boolean hasFailures = bulkResponse.hasFailures();
-      // TODO: apply retry here
-      if (hasFailures) {
-        handleFailures(bulkRequest.requests(), bulkResponse.getItems());
-      }
-
-      return !hasFailures;
-    } catch (final IOException e) {
-      handleFailures(bulkRequest.requests(), e);
+      bulkRetryStrategy.execute(bulkRequest);
+    } catch (final InterruptedException e) {
+      LOG.error("Unexpected Interrupt:", e);
+      Thread.currentThread().interrupt();
       return false;
     }
+    return true;
   }
 
   // TODO: need to be invoked by pipeline
@@ -197,24 +194,6 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     final XContentParser parser = XContentFactory.xContent(XContentType.JSON)
             .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, documentJson);
     return parser.map();
-  }
-
-  private void handleFailures(final List<DocWriteRequest<?>> docWriteRequests, final BulkItemResponse[] itemResponses) {
-    assert docWriteRequests.size() == itemResponses.length;
-    for (int i = 0; i < itemResponses.length; i++) {
-      final BulkItemResponse bulkItemResponse = itemResponses[i];
-      final DocWriteRequest<?> docWriteRequest = docWriteRequests.get(i);
-      if (bulkItemResponse.isFailed()) {
-        final BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
-        logFailure(docWriteRequest, failure.getCause());
-      }
-    }
-  }
-
-  private void handleFailures(final List<DocWriteRequest<?>> docWriteRequests, final Throwable failure) {
-    for (final DocWriteRequest<?> docWriteRequest: docWriteRequests) {
-      logFailure(docWriteRequest, failure);
-    }
   }
 
   private void logFailure(final DocWriteRequest<?> docWriteRequest, final Throwable failure) {
