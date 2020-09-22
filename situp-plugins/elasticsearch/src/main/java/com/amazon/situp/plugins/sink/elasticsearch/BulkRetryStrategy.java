@@ -70,7 +70,7 @@ public final class BulkRetryStrategy {
             try {
                 bulkResponse = requestFunction.apply(bulkRequestForRetry);
             } catch (final Exception e) {
-                if (canRetry(e) && backOffUtils.hasNext()) {
+                if (canRetry(e)) {
                     handleRetry(bulkRequestForRetry, null, backOffUtils);
                 } else {
                     handleFailures(bulkRequestForRetry.requests(), e);
