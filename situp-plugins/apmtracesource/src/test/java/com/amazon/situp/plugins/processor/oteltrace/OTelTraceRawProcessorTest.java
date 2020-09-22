@@ -13,7 +13,6 @@ import io.opentelemetry.proto.trace.v1.Span;
 import io.opentelemetry.proto.trace.v1.Status;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
@@ -93,6 +92,6 @@ public class OTelTraceRawProcessorTest {
     @Test
     public void testDecodeResourceSpan() throws JsonProcessingException {
         ArrayList<String> result = OTelTraceRawProcessor.decodeResourceSpan(jsonString);
-        assertEquals(resourceSpansList, result);
+        assertThat(resourceSpansList.equals(result));
     }
 }
