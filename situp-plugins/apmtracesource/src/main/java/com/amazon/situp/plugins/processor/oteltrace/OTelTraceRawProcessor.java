@@ -1,13 +1,15 @@
 package com.amazon.situp.plugins.processor.oteltrace;
 
+import com.amazon.situp.model.PluginType;
+import com.amazon.situp.model.annotations.SitupPlugin;
 import com.amazon.situp.model.processor.Processor;
 import com.amazon.situp.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.util.JsonFormat;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import org.slf4j.Logger;
@@ -16,8 +18,14 @@ import org.slf4j.LoggerFactory;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 
+
+@SitupPlugin(name = "otel_trace_raw_processor", type = PluginType.PROCESSOR)
 public class OTelTraceRawProcessor implements Processor<Record<ResourceSpans>, Record<String>> {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
