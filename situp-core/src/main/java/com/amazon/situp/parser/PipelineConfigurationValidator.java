@@ -95,7 +95,8 @@ public class PipelineConfigurationValidator {
                 if (pluginSetting.getName().equals(PIPELINE_TYPE)) {
                     final String connectedPipelineName = (String) pluginSetting.getAttributeFromSettings(PIPELINE_ATTRIBUTE_NAME);
                     if (connectedPipelineName == null || "".equals(connectedPipelineName.trim())) {
-                        throw new RuntimeException("name is a required attribute for sink pipeline plugin");
+                        throw new RuntimeException(format("name is a required attribute for sink pipeline plugin, " +
+                                "check pipeline: %s", pipeline));
                     }
                     validateSourceMapping(pipeline, connectedPipelineName, pipelineConfigurationMap);
                     visitAndValidate(connectedPipelineName, pipelineConfigurationMap, touchedPipelineSet,

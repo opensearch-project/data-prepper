@@ -36,12 +36,6 @@ public class ConfigurationDeserializerTests {
                 validPipelineConfiguration());
     }
 
-/*    @Test
-    public void testDeserializeOfNullNamePipelineConfigurationFile() {
-        readFileAndAssertActualWithExpected(NULL_NAME_CONFIGURATION_FILE,
-                pipelineConfigurationWithNullPipelineName());
-    }*/
-
     private void readFileAndAssertActualWithExpected(
             final String configurationFile,
             final PipelineConfiguration expectedConfiguration) {

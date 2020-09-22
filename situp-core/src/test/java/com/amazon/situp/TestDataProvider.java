@@ -11,13 +11,20 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class TestDataProvider {
     public static String TEST_PLUGIN_NAME = "test-plugin";
     public static final String VALID_CONFIGURATION_FILE = "valid_pipeline_configuration.yml";
+    public static final String VALID_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/valid_multiple_pipeline_configuration.yml";
+    public static final String CYCLE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/cyclic_multiple_pipeline_configuration.yml";
+    public static final String INCORRECT_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/incorrect_source_multiple_pipeline_configuration.yml";
+    public static final String MISSING_NAME_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/missing_name_multiple_pipeline_configuration.yml";
+    public static final String MISSING_PIPELINE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/missing_pipeline_multiple_pipeline_configuration.yml";
     public static final String MISSING_COMPONENT_CONFIGURATION_FILE = "missing_component_configuration.yml";
     public static String INVALID_SOURCE_VIOLATION_MESSAGE = "Invalid source configuration; Requires exactly " +
             "one valid source";
@@ -26,6 +33,8 @@ public class TestDataProvider {
     public static String INVALID_PROCESSOR_VIOLATION_MESSAGE = "Invalid processor configuration.";
     public static String INVALID_SINK_VIOLATION_MESSAGE = "Invalid sink configuration; Requires at least " +
             "one valid sink";
+    public static Set<String> VALID_MULTIPLE_PIPELINE_NAMES = new HashSet<>(Arrays.asList("test-pipeline-1",
+            "test-pipeline-2","test-pipeline-3"));
     public static List<PluginSetting> EMPTY_PLUGIN_SETTINGS = new ArrayList<>(0);
     public static PluginSetting VALID_PLUGIN_SETTING = new PluginSetting(TEST_PLUGIN_NAME, validSettingsForPlugin());
     public static PluginSetting PLUGIN_SETTING_WITHOUT_NAME = new PluginSetting("", validSettingsForPlugin());

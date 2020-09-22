@@ -1,4 +1,4 @@
-package com.amazon.situp;
+package com.amazon.situp.plugins;
 
 import com.amazon.situp.model.PluginType;
 import com.amazon.situp.model.annotations.SitupPlugin;
@@ -12,7 +12,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@SitupPlugin(name = "test-source", type = PluginType.SOURCE)
+@SitupPlugin(name = "test_source", type = PluginType.SOURCE)
 public class TestSource implements Source<Record<String>> {
     public static final List<Record<String>> TEST_DATA = Stream.of("THIS", "IS", "TEST", "DATA")
             .map(Record::new).collect(Collectors.toList());

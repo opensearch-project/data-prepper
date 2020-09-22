@@ -23,11 +23,14 @@ public class PluginSetting {
     /**
      * Returns the value of the specified attribute, or null if this settings contains no value for the attribute.
      * TODO: Add more methods to return specific Strings/integers instead of Objects
-     * 
+     *
      * @param attribute name of the attribute
      * @return value of the attribute from the metadata
      */
     public Object getAttributeFromSettings(final String attribute) {
+        if(settings == null) {
+            return null;
+        }
         return settings.get(attribute);
     }
 
@@ -40,6 +43,9 @@ public class PluginSetting {
      * the attribute
      */
     public Object getAttributeOrDefault(final String attribute, final Object defaultValue) {
+        if(settings == null) {
+            return defaultValue;
+        }
         return settings.getOrDefault(attribute, defaultValue);
     }
 
