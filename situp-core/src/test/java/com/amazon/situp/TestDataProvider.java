@@ -17,11 +17,8 @@ import java.util.Objects;
 
 public class TestDataProvider {
     public static String TEST_PLUGIN_NAME = "test-plugin";
-    public static String TEST_PIPELINE_NAME = "test-pipeline";
     public static final String VALID_CONFIGURATION_FILE = "valid_pipeline_configuration.yml";
-    public static final String NULL_NAME_CONFIGURATION_FILE = "null_name_configuration.yml";
     public static final String MISSING_COMPONENT_CONFIGURATION_FILE = "missing_component_configuration.yml";
-    public static String INVALID_NAME_VIOLATION_MESSAGE = "Pipeline name cannot be null or empty";
     public static String INVALID_SOURCE_VIOLATION_MESSAGE = "Invalid source configuration; Requires exactly " +
             "one valid source";
     public static String INVALID_BUFFER_VIOLATION_MESSAGE = "Invalid buffer configuration; Requires at most " +
@@ -59,31 +56,15 @@ public class TestDataProvider {
             MULTIPLE_PARTIAL_INVALID_PLUGIN_SETTINGS);
 
     public static PipelineConfiguration validPipelineConfiguration() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 CONFIGURATION_WITH_PLUGIN_WITH_NO_SETTINGS,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN);
     }
 
-    public static PipelineConfiguration pipelineConfigurationWithEmptyPipelineName() {
-        return new PipelineConfiguration("",
-                VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
-                VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
-                VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
-                VALID_CONFIGURATION_WITH_SINGLE_PLUGIN);
-    }
-
-    public static PipelineConfiguration pipelineConfigurationWithNullPipelineName() {
-        return new PipelineConfiguration(null,
-                VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
-                VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
-                VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
-                VALID_CONFIGURATION_WITH_SINGLE_PLUGIN);
-    }
-
     public static PipelineConfiguration pipelineConfigurationWithSourceButEmptyName() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 CONFIGURATION_WITH_EMPTY_NAME,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
@@ -91,7 +72,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithSourceButNullName() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 CONFIGURATION_WITH_NULL_NAME,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
@@ -99,7 +80,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithNoPluginsForSource() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 CONFIGURATION_WITH_EMPTY_PLUGINS,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
@@ -107,7 +88,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithMultipleSources() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 CONFIGURATION_WITH_MULTIPLE_PLUGINS,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
@@ -115,7 +96,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithNoBuffer() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 CONFIGURATION_WITH_EMPTY_PLUGINS,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
@@ -123,7 +104,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithBufferButEmptyName() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 CONFIGURATION_WITH_EMPTY_NAME,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
@@ -131,7 +112,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithBufferButNullName() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 CONFIGURATION_WITH_NULL_NAME,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
@@ -139,7 +120,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithMultipleBuffers() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 CONFIGURATION_WITH_MULTIPLE_PLUGINS,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
@@ -147,7 +128,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithNoProcessors() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 CONFIGURATION_WITH_EMPTY_PLUGINS,
@@ -155,7 +136,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithMultipleProcessors() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 CONFIGURATION_WITH_MULTIPLE_PLUGINS,
@@ -163,7 +144,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithMultipleProcessorsSomeInvalid() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 CONFIGURATION_WITH_MULTIPLE_PLUGINS_SOME_INVALID,
@@ -171,7 +152,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithProcessorsButEmptyName() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 CONFIGURATION_WITH_EMPTY_NAME,
@@ -179,7 +160,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithProcessorsButNullName() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 CONFIGURATION_WITH_NULL_NAME,
@@ -187,7 +168,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithSinkButEmptyName() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
@@ -195,7 +176,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithSinkButNullName() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
@@ -203,7 +184,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithMultipleSinks() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
@@ -211,7 +192,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithNoSinks() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
@@ -219,7 +200,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithMultipleSinksSomeInvalid() {
-        return new PipelineConfiguration(TEST_PIPELINE_NAME,
+        return new PipelineConfiguration(
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
                 VALID_CONFIGURATION_WITH_SINGLE_PLUGIN,
@@ -227,7 +208,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithAllInvalidPlugins() {
-        return new PipelineConfiguration("",
+        return new PipelineConfiguration(
                 CONFIGURATION_WITH_NULL_NAME,
                 CONFIGURATION_WITH_NULL_NAME,
                 CONFIGURATION_WITH_NULL_NAME,
@@ -235,7 +216,7 @@ public class TestDataProvider {
     }
 
     public static PipelineConfiguration pipelineConfigurationWithEmptyConfigurations() {
-        return new PipelineConfiguration(null,
+        return new PipelineConfiguration(
                 CONFIGURATION_WITH_EMPTY_PLUGINS,
                 CONFIGURATION_WITH_EMPTY_PLUGINS,
                 CONFIGURATION_WITH_EMPTY_PLUGINS,
@@ -243,7 +224,7 @@ public class TestDataProvider {
     }
 
     public static String readConfigurationFileContent(final String configurationFile) throws Exception {
-        if(configurationFile == null) {
+        if (configurationFile == null) {
             return ""; //return empty if the configuration file is absent
         }
         final StringBuilder stringBuilder = new StringBuilder();

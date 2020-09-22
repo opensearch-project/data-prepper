@@ -14,7 +14,9 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -41,6 +43,7 @@ public class Pipeline {
     private final int readBatchTimeoutInMillis;
     private final ExecutorService processorSinkExecutorService;
     private final ExecutorService sourceExecutorService;
+    private Map<String, Sink> sinkMap;
 
     /**
      * Constructs a {@link Pipeline} object with provided {@link #name}, {@link Source}, {@link Collection} of
@@ -97,6 +100,7 @@ public class Pipeline {
                 new PipelineThreadFactory("situp-processor-sink"));
         sourceExecutorService = Executors.newSingleThreadExecutor(new PipelineThreadFactory("situp-source"));
         stopRequested = false;
+        sinkMap = new HashMap<>();
     }
 
 

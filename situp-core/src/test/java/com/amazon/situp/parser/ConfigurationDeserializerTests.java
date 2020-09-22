@@ -6,11 +6,9 @@ import org.hamcrest.Matchers;
 import org.junit.Test;
 
 import static com.amazon.situp.TestDataProvider.MISSING_COMPONENT_CONFIGURATION_FILE;
-import static com.amazon.situp.TestDataProvider.NULL_NAME_CONFIGURATION_FILE;
 import static com.amazon.situp.TestDataProvider.VALID_CONFIGURATION_FILE;
 import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithEmptyConfigurations;
 import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithNoPluginsForSource;
-import static com.amazon.situp.TestDataProvider.pipelineConfigurationWithNullPipelineName;
 import static com.amazon.situp.TestDataProvider.readConfigurationFileContent;
 import static com.amazon.situp.TestDataProvider.validPipelineConfiguration;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -38,11 +36,11 @@ public class ConfigurationDeserializerTests {
                 validPipelineConfiguration());
     }
 
-    @Test
+/*    @Test
     public void testDeserializeOfNullNamePipelineConfigurationFile() {
         readFileAndAssertActualWithExpected(NULL_NAME_CONFIGURATION_FILE,
                 pipelineConfigurationWithNullPipelineName());
-    }
+    }*/
 
     private void readFileAndAssertActualWithExpected(
             final String configurationFile,
@@ -52,7 +50,7 @@ public class ConfigurationDeserializerTests {
                     readConfigurationFileContent(configurationFile), PipelineConfiguration.class);
             assertThat(actualConfiguration, Matchers.is(expectedConfiguration));
         } catch (Exception ex) {
-            assertFalse("Encountered exception during execution of test",false);
+            assertFalse("Encountered exception during execution of test", false);
         }
     }
 
