@@ -123,7 +123,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     try {
       bulkRetryStrategy.execute(bulkRequest);
     } catch (final InterruptedException e) {
-      LOG.error(e.getMessage(), e);
+      LOG.error("Unexpected Interrupt:", e);
       Thread.currentThread().interrupt();
       return false;
     }
