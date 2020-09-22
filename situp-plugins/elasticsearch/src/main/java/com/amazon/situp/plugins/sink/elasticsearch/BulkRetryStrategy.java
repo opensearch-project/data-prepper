@@ -6,7 +6,6 @@ import org.elasticsearch.action.bulk.BackoffPolicy;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.common.collect.Tuple;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.rest.RestStatus;
 
@@ -61,11 +60,6 @@ public final class BulkRetryStrategy {
                         !NON_RETRY_STATUS.contains(((ElasticsearchException) e).status().getStatus())));
     }
 
-    private Tuple<BulkRequest, BulkResponse> retry(final BulkRequest request) throws Exception {
-        final BulkResponse response = requestFunction.apply(request);
-        return Tuple.tuple(request, response);
-    }
-
     private void handleRetry(
             final BulkRequest request, final BulkResponse response, final boolean initialAttempt,
             final BackOffUtils backOffUtils) throws InterruptedException {
@@ -75,9 +69,9 @@ public final class BulkRetryStrategy {
                 // Wait for backOff duration
                 backOffUtils.next();
             }
-            final Tuple<BulkRequest, BulkResponse> tuple;
+            final BulkResponse bulkResponse;
             try {
-                tuple = retry(bulkRequestForRetry);
+                bulkResponse = requestFunction.apply(bulkRequestForRetry);
             } catch (final Exception e) {
                 if (canRetry(e) && backOffUtils.hasNext()) {
                     // FIXME: maximum recursion depth?
@@ -88,12 +82,12 @@ public final class BulkRetryStrategy {
 
                 return;
             }
-            if (tuple.v2().hasFailures()) {
-                if (canRetry(tuple.v2()) && backOffUtils.hasNext()) {
+            if (bulkResponse.hasFailures()) {
+                if (canRetry(bulkResponse)) {
                     // FIXME: maximum recursion depth?
-                    handleRetry(tuple.v1(), tuple.v2(), false, backOffUtils);
+                    handleRetry(bulkRequestForRetry, bulkResponse, false, backOffUtils);
                 } else {
-                    handleFailures(tuple.v1().requests(), tuple.v2().getItems());
+                    handleFailures(bulkRequestForRetry.requests(), bulkResponse.getItems());
                 }
             }
         }
