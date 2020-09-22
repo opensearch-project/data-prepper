@@ -101,7 +101,7 @@ public final class BulkRetryStrategy {
 
     private BulkRequest createBulkRequestForRetry(final BulkRequest request, final BulkResponse response) {
         if (response == null) {
-            // retry due to Exception
+            // first attempt or retry due to Exception
             return request;
         } else {
             final BulkRequest requestToReissue = bulkRequestSupplier.get();
