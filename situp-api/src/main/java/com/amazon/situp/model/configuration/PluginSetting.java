@@ -22,7 +22,8 @@ public class PluginSetting {
 
     /**
      * Returns the value of the specified attribute, or null if this settings contains no value for the attribute.
-     *
+     * TODO: Add more methods to return specific Strings/integers instead of Objects
+     * 
      * @param attribute name of the attribute
      * @return value of the attribute from the metadata
      */
