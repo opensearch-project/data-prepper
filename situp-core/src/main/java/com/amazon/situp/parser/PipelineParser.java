@@ -46,17 +46,17 @@ public class PipelineParser {
     }
 
     /**
-     * Parses the configuration file into PipelineConfiguration
+     * Parses the configuration file into Pipeline
      */
     public Map<String, Pipeline> parseConfiguration() {
         try {
             final Map<String, PipelineConfiguration> pipelineConfigurationMap = OBJECT_MAPPER.readValue(
                     new File(configurationFileLocation), new TypeReference<Map<String, PipelineConfiguration>>() {
                     });
-            final List<String> sortedPipelineNames = PipelineConfigurationValidator.
-                    validateAndSortPipelines(pipelineConfigurationMap);
+            final List<String> allPipelineNames = PipelineConfigurationValidator.
+                    validateAndGetPipelineNames(pipelineConfigurationMap);
             final Map<String, Pipeline> pipelineMap = new HashMap<>();
-            for (String pipelineName : sortedPipelineNames) {
+            for (String pipelineName : allPipelineNames) {
                 if (!pipelineMap.containsKey(pipelineName)) {
                     buildPipelineFromConfiguration(pipelineName, pipelineConfigurationMap, pipelineMap);
                 }
@@ -122,7 +122,7 @@ public class PipelineParser {
             final PluginSetting pluginSetting,
             final Map<String, Pipeline> pipelineMap,
             final Map<String, PipelineConfiguration> pipelineConfigurationMap) {
-        final Optional<String> pipelineNameOptional = getConnectedPipelineIfPipelineType(pluginSetting);
+        final Optional<String> pipelineNameOptional = getPipelineNameIfPipelineType(pluginSetting);
         if (pipelineNameOptional.isPresent()) { //update to ifPresentOrElse when using JDK9
             if (!sourceConnectorMap.containsKey(sourcePipelineName)) {
                 //Build connected pipeline for the pipeline connector to be available
@@ -134,17 +134,17 @@ public class PipelineParser {
     }
 
     private Sink buildSinkOrConnector(final PluginSetting pluginSetting) {
-        final Optional<String> pipelineNameOptional = getConnectedPipelineIfPipelineType(pluginSetting);
+        final Optional<String> pipelineNameOptional = getPipelineNameIfPipelineType(pluginSetting);
         if (pipelineNameOptional.isPresent()) { //update to ifPresentOrElse when using JDK9
             final PipelineConnector pipelineConnector = new PipelineConnector();
-            sourceConnectorMap.put(pipelineNameOptional.get(), pipelineConnector); //TODO if possible move to Pipeline
+            sourceConnectorMap.put(pipelineNameOptional.get(), pipelineConnector); //TODO retrieve from parent Pipeline using name
             return pipelineConnector;
         } else {
             return SinkFactory.newSink(pluginSetting);
         }
     }
 
-    private Optional<String> getConnectedPipelineIfPipelineType(final PluginSetting pluginSetting) {
+    private Optional<String> getPipelineNameIfPipelineType(final PluginSetting pluginSetting) {
         if (PIPELINE_TYPE.equals(pluginSetting.getName()) &&
                 pluginSetting.getAttributeFromSettings(ATTRIBUTE_NAME) != null) {
             //Validator marked valid config with type as pipeline will have attribute name

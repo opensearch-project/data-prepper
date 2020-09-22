@@ -28,10 +28,7 @@ public class PluginSetting {
      * @return value of the attribute from the metadata
      */
     public Object getAttributeFromSettings(final String attribute) {
-        if(settings == null) {
-            return null;
-        }
-        return settings.get(attribute);
+        return settings == null ? null : settings.get(attribute);
     }
 
     /**
@@ -43,10 +40,7 @@ public class PluginSetting {
      * the attribute
      */
     public Object getAttributeOrDefault(final String attribute, final Object defaultValue) {
-        if(settings == null) {
-            return defaultValue;
-        }
-        return settings.getOrDefault(attribute, defaultValue);
+        return settings == null ? defaultValue : settings.get(attribute);
     }
 
 }

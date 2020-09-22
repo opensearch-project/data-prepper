@@ -52,20 +52,20 @@ public class PipelineConfigurationValidator {
      * @param pipelineConfigurationMap String to PipelineConfiguration map
      * @return List of pipeline names in topological order
      */
-    public static List<String> validateAndSortPipelines(final Map<String, PipelineConfiguration> pipelineConfigurationMap) {
+    public static List<String> validateAndGetPipelineNames(final Map<String, PipelineConfiguration> pipelineConfigurationMap) {
         final Set<String> touchedPipelineSet = new HashSet<>();
         final Set<String> visitedAndProcessedPipelineSet = new HashSet<>();
-        final List<String> sortedPipelineNames = new LinkedList<>();
+        final List<String> orderedPipelineNames = new LinkedList<>();
 
         pipelineConfigurationMap.forEach((pipeline, configuration) -> {
             if (!visitedAndProcessedPipelineSet.contains(pipeline)) {
                 visitAndValidate(pipeline, pipelineConfigurationMap, touchedPipelineSet, visitedAndProcessedPipelineSet,
-                        sortedPipelineNames);
+                        orderedPipelineNames);
             }
         });
-        Collections.reverse(sortedPipelineNames); // reverse to put the root at the top
-        //validateForOrphans(sortedPipelineNames, pipelineConfigurationMap); //TODO: Should we disable orphan pipelines ?
-        return sortedPipelineNames;
+        Collections.reverse(orderedPipelineNames); // reverse to put the root at the top
+        //validateForOrphans(orderedPipelineNames, pipelineConfigurationMap); //TODO: Should we disable orphan pipelines ?
+        return orderedPipelineNames;
     }
 
     private static void visitAndValidate(

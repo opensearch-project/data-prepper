@@ -56,8 +56,7 @@ public class Situp {
         LOG.info("Using {} configuration file", configurationFileLocation);
         final PipelineParser pipelineParser = new PipelineParser(configurationFileLocation);
         transformationPipelines = pipelineParser.parseConfiguration();
-        execute(transformationPipelines);
-        return true;
+        return initiateExecution();
     }
 
     /**
@@ -71,9 +70,9 @@ public class Situp {
         });
     }
 
-    private boolean execute(final Map<String, Pipeline> pipelineMap) {
+    private boolean initiateExecution() {
         LOG.info("Successfully parsed the configuration file, Triggering pipeline execution");
-        pipelineMap.forEach((name, pipeline) -> {
+        transformationPipelines.forEach((name, pipeline) -> {
             pipeline.execute();
             LOG.info("Successfully triggered execution of pipeline {}", name);
         });

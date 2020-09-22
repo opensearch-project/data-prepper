@@ -12,6 +12,7 @@ import java.util.concurrent.TimeoutException;
 
 /**
  * PipelineConnector is a special type of Plugin which connects two pipelines acting both as Sink and Source.
+ *
  * @param <T>
  */
 public class PipelineConnector<T extends Record<?>> implements Source<T>, Sink<T> {
@@ -37,10 +38,10 @@ public class PipelineConnector<T extends Record<?>> implements Source<T>, Sink<T
 
     @Override
     public boolean output(final Collection<T> records) {
-        if(buffer != null && !isStopRequested) {
-            for(T record: records) {
-                try{
-                    buffer.write(record, DEFAULT_WRITE_TIMEOUT);
+        if (buffer != null && !isStopRequested) {
+            for (T record : records) {
+                try {
+                    buffer.write(record, DEFAULT_WRITE_TIMEOUT); //TODO update to use from config
                 } catch (TimeoutException ex) {
                     LOG.error("Timed out writing to pipeline source", ex);
                     return false;
