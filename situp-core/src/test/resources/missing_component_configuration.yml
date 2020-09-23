@@ -1,6 +1,5 @@
 # this configuration file is solely for testing formatting
-pipeline:
-  name: test-pipeline
+test-pipeline:
   buffer:
     test-plugin:
       someProperty: "someValue"
@@ -10,4 +9,3 @@ pipeline:
   sink:
     test-plugin:
       someProperty: "someValue"
-

@@ -29,14 +29,12 @@ public class ConfigurationDeserializer extends JsonDeserializer<PipelineConfigur
     public PipelineConfiguration deserialize(JsonParser jsonParser, DeserializationContext context) {
         PipelineConfiguration pipelineConfiguration;
         try {
-            final JsonNode rootNode = jsonParser.getCodec().readTree(jsonParser);
-            final JsonNode pipelineNode = getAttributeNodeFromPipeline(rootNode, PipelineAttribute.PIPELINE);
-            final JsonNode nameNode = getAttributeNodeFromPipeline(pipelineNode, PipelineAttribute.NAME);
+            final JsonNode pipelineNode = jsonParser.getCodec().readTree(jsonParser);
             final JsonNode sourceNode = getAttributeNodeFromPipeline(pipelineNode, PipelineAttribute.SOURCE);
             final JsonNode bufferNode = getAttributeNodeFromPipeline(pipelineNode, PipelineAttribute.BUFFER);
             final JsonNode processorNode = getAttributeNodeFromPipeline(pipelineNode, PipelineAttribute.PROCESSOR);
             final JsonNode sinkNode = getAttributeNodeFromPipeline(pipelineNode, PipelineAttribute.SINK);
-            pipelineConfiguration = generatePipelineConfigModel(nameNode, sourceNode, bufferNode, processorNode, sinkNode);
+            pipelineConfiguration = generatePipelineConfigModel(sourceNode, bufferNode, processorNode, sinkNode);
         } catch (IOException e) {
             throw new ParseException(e.getMessage(), e);
         }
@@ -44,18 +42,15 @@ public class ConfigurationDeserializer extends JsonDeserializer<PipelineConfigur
     }
 
     private PipelineConfiguration generatePipelineConfigModel(
-            final JsonNode nameNode,
             final JsonNode sourceNode,
             final JsonNode bufferNode,
             final JsonNode processorNode,
             final JsonNode sinkNode) {
-        final String pipelineName = nameNode == null ? null : nameNode.asText();
         final Configuration sourceConfiguration = getConfigurationsOrEmpty(sourceNode);
         final Configuration bufferConfiguration = getConfigurationsOrEmpty(bufferNode);
         final Configuration processorConfiguration = getConfigurationsOrEmpty(processorNode);
         final Configuration sinkConfiguration = getConfigurationsOrEmpty(sinkNode);
         return new PipelineConfiguration(
-                pipelineName,
                 sourceConfiguration,
                 bufferConfiguration,
                 processorConfiguration,

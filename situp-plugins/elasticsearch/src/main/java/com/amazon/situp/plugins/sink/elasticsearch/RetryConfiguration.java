@@ -14,7 +14,6 @@ public class RetryConfiguration {
   }
 
   public static class Builder {
-
     private String dlqFile;
 
     public Builder withDlqFile(final String dlqFile) {

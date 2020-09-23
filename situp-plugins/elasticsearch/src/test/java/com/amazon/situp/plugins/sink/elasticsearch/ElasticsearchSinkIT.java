@@ -103,7 +103,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     // TODO: better wait strategy?
     Thread.sleep(1000);
 
-    assertFalse(success);
+    assertTrue(success);
     final StringBuilder content = new StringBuilder();
     Files.lines(Paths.get(expDLQFile)).forEach(content::append);
     assertTrue(content.toString().contains(testDoc1));

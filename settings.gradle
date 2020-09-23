@@ -7,4 +7,4 @@ include 'situp-plugins:common'
 include 'situp-plugins:apmtracesource'
 include 'situp-plugins:elasticsearch'
 include 'situp-plugins:lmdb-processor-state'
-
+include 'situp-plugins:service-map-stateful'

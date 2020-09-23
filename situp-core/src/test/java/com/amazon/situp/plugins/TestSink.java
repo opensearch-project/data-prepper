@@ -1,4 +1,4 @@
-package com.amazon.situp;
+package com.amazon.situp.plugins;
 
 import com.amazon.situp.model.PluginType;
 import com.amazon.situp.model.annotations.SitupPlugin;
@@ -10,7 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@SitupPlugin(name = "test-sink", type = PluginType.SINK)
+@SitupPlugin(name = "test_sink", type = PluginType.SINK)
 public class TestSink implements Sink<Record<String>> {
     private final List<Record<String>> collectedRecords;
 
