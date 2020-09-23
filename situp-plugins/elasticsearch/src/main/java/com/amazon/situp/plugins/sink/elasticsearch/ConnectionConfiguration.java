@@ -142,10 +142,12 @@ public class ConnectionConfiguration {
       credentialsProvider.setCredentials(
               AuthScope.ANY, new UsernamePasswordCredentials(username, password));
     }
+    // TODO: customize trustStrategy?
     final TrustStrategy trustStrategy = new TrustAllStrategy();
     final SSLContext sslContext;
     try {
-      sslContext = SSLContexts.custom().loadTrustMaterial(trustStrategy).build();
+      // TODO: load KeyStore
+      sslContext = SSLContexts.custom().loadTrustMaterial(null, trustStrategy).build();
     } catch (Exception e) {
       throw new RuntimeException("Can't load the client certificate from the keystore", e);
     }
