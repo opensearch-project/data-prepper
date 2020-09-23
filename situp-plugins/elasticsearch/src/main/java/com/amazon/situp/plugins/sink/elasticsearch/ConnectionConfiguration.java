@@ -149,7 +149,7 @@ public class ConnectionConfiguration {
       // TODO: load KeyStore
       sslContext = SSLContexts.custom().loadTrustMaterial(null, trustStrategy).build();
     } catch (Exception e) {
-      throw new RuntimeException("Can't load the client certificate from the keystore", e);
+      throw new RuntimeException(e.getMessage(), e);
     }
     restClientBuilder.setHttpClientConfigCallback(
             httpClientBuilder -> httpClientBuilder
