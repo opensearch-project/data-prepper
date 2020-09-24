@@ -122,7 +122,6 @@ public class PipelineConfigurationValidator {
             throw new RuntimeException(format("Invalid configuration, no pipeline is defined with name %s", currentPipeline));
         }
         final PipelineConfiguration pipelineConfiguration = pipelineConfigurationMap.get(currentPipeline);
-        //Current deserialization has empty source if it is not defined - so no NPE
         final PluginSetting sourcePluginSettings = pipelineConfiguration.getSourcePluginSetting();
         if (!isPipelineAttributeExists(sourcePluginSettings, sourcePipeline)) {
             LOG.error("Invalid configuration, expected source {} for pipeline {} is missing",
