@@ -23,3 +23,11 @@ jobs:
       run: chmod +x gradlew
     - name: Build with Gradle
       run: ./gradlew build
+    - name: Run ODFE docker
+      run: |
+        docker pull amazon/opendistro-for-elasticsearch:1.9.0
+        docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" amazon/opendistro-for-elasticsearch:1.9.0
+        sleep 90
+    - name: Run ODFE tests
+        ./gradlew :situp-plugins:elasticsearch:test --tests "com.amazon.situp.plugins.sink.elasticsearch.ODFETests.testODFEConnection" -Dodfe.host=https://localhost:9200 -Dodfe.user=admin -Dodfe.password=admin
+

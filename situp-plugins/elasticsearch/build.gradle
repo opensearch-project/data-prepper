@@ -57,6 +57,15 @@ configurations.all {
     }
 }
 
+test {
+    if (System.getProperty("odfe.host") == null) {
+        exclude '**/ODFETests.class'
+    }
+    systemProperty "odfe.host", System.getProperty("odfe.host")
+    systemProperty "odfe.user", System.getProperty("odfe.user")
+    systemProperty "odfe.password", System.getProperty("odfe.password")
+}
+
 integTest {}
 
 testClusters.integTest {
