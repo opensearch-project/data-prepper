@@ -7,10 +7,7 @@ import org.apache.http.util.EntityUtils;
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.common.Strings;
-import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
-import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.common.xcontent.XContentFactory;
-import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.test.rest.ESRestTestCase;
 
@@ -47,6 +44,9 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     Request request = new Request(HttpMethod.HEAD, indexAlias);
     Response response = client().performRequest(request);
     assertEquals(SC_OK, response.getStatusLine().getStatusCode());
+    final Map<String, Object> mappings = getIndexMappings(String.format("%s-000001", indexAlias));
+    assertNotNull(mappings);
+    assertFalse((boolean)mappings.get("date_detection"));
     sink.stop();
 
     // roll over initial index
@@ -181,6 +181,9 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final Request request = new Request(HttpMethod.HEAD, indexAlias);
     final Response response = client().performRequest(request);
     assertEquals(SC_OK, response.getStatusLine().getStatusCode());
+    final Map<String, Object> mappings = getIndexMappings(indexAlias);
+    assertNotNull(mappings);
+    assertFalse((boolean)mappings.get("date_detection"));
     sink.stop();
   }
 
@@ -302,6 +305,17 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
             .map(hit -> (Map<String, Object>)((Map<String, Object>) hit).get("_source"))
             .collect(Collectors.toList());
     return sources;
+  }
+
+  private Map<String, Object> getIndexMappings(final String index) throws IOException {
+    final Request request = new Request(HttpMethod.GET, index + "/_mappings");
+    final Response response = client().performRequest(request);
+    final String responseBody = EntityUtils.toString(response.getEntity());
+
+    @SuppressWarnings("unchecked")
+    final Map<String, Object> mappings = (Map<String, Object>) ((Map<String, Object>)createParser(XContentType.JSON.xContent(),
+            responseBody).map().get(index)).get("mappings");
+    return mappings;
   }
 
   private boolean deleteDirectory(final File directoryToBeDeleted) {

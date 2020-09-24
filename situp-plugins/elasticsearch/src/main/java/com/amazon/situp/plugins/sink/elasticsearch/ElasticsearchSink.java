@@ -154,7 +154,11 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private void createIndexTemplate() throws IOException {
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
     final PutIndexTemplateRequest putIndexTemplateRequest = new PutIndexTemplateRequest(indexAlias + "-index-template");
-    putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias + "-*"));
+    if (indexType.equals(IndexConstants.RAW)) {
+      putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias + "-*"));
+    } else {
+      putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias));
+    }
     final URL jsonURL = esSinkConfig.getIndexConfiguration().getTemplateURL();
     final String templateJson = readTemplateURL(jsonURL);
     putIndexTemplateRequest.source(templateJson, XContentType.JSON);
