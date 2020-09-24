@@ -51,10 +51,12 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private Supplier<BulkRequest> bulkRequestSupplier;
   private BulkRetryStrategy bulkRetryStrategy;
   private final long bulkSize;
+  private final String indexType;
 
   public ElasticsearchSink(final PluginSetting pluginSetting) {
     this.esSinkConfig = ElasticsearchSinkConfiguration.readESConfig(pluginSetting);
     this.bulkSize = ByteSizeUnit.MB.toBytes(esSinkConfig.getIndexConfiguration().getBulkSize());
+    this.indexType = esSinkConfig.getIndexConfiguration().getIndexType();
     try {
       start();
     } catch (final IOException e) {
@@ -90,10 +92,10 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       final String document = record.getData();
       final IndexRequest indexRequest = new IndexRequest().source(document, XContentType.JSON);
       try {
-        final Map<String, Object> docMap = getMapFromJson(document);
-        final String spanId = (String) docMap.get("spanId");
-        if (spanId != null) {
-          indexRequest.id(spanId);
+        final Map<String, Object> source = getMapFromJson(document);
+        final String docId = extractDocId(source);
+        if (docId != null) {
+          indexRequest.id(docId);
         }
         final long estimatedBytesBeforeAdd = bulkRequest.estimatedSizeInBytes() + calcEstimatedSizeInBytes(indexRequest);
         if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.numberOfActions() > 0) {
@@ -194,6 +196,16 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     final XContentParser parser = XContentFactory.xContent(XContentType.JSON)
             .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, documentJson);
     return parser.map();
+  }
+
+  private String extractDocId(final Map<String, Object> source) {
+    if (indexType.equals(IndexConstants.RAW)) {
+      return (String) source.get("spanId");
+    } else if (indexType.equals(IndexConstants.SERVICE_MAP)) {
+      return (String) source.get("hashId");
+    } else {
+      return null;
+    }
   }
 
   private void logFailure(final DocWriteRequest<?> docWriteRequest, final Throwable failure) {
