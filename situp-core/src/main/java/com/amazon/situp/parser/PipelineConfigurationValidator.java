@@ -47,7 +47,7 @@ public class PipelineConfigurationValidator {
      * Sorts the pipelines in topological order while also validating for
      * i. cycles in pipeline configuration
      * ii. incorrect pipeline source-sink configuration
-     * iii. orphan pipelines
+     * iii. orphan pipelines [check is disabled for now]
      *
      * @param pipelineConfigurationMap String to PipelineConfiguration map
      * @return List of pipeline names in topological order
@@ -88,7 +88,7 @@ public class PipelineConfigurationValidator {
             validate(pipelineConfiguration);
             touchedPipelineSet.add(pipeline);
             //if validation is successful, then there is definitely sink
-            final List<PluginSetting> connectedPipelinesSettings = pipelineConfiguration.getSink().getPluginSettings();
+            final List<PluginSetting> connectedPipelinesSettings = pipelineConfiguration.getSinkPluginSettings();
             //Recursively check connected pipelines
             for (PluginSetting pluginSetting : connectedPipelinesSettings) {
                 //Further process only if the sink is of pipeline type
@@ -123,7 +123,7 @@ public class PipelineConfigurationValidator {
         }
         final PipelineConfiguration pipelineConfiguration = pipelineConfigurationMap.get(currentPipeline);
         //Current deserialization has empty source if it is not defined - so no NPE
-        final List<PluginSetting> sourcePluginSettings = pipelineConfiguration.getSource().getPluginSettings();
+        final PluginSetting sourcePluginSettings = pipelineConfiguration.getSourcePluginSetting();
         if (!isPipelineAttributeExists(sourcePluginSettings, sourcePipeline)) {
             LOG.error("Invalid configuration, expected source {} for pipeline {} is missing",
                     sourcePipeline, currentPipeline);
@@ -132,14 +132,11 @@ public class PipelineConfigurationValidator {
         }
     }
 
-    private static boolean isPipelineAttributeExists(final List<PluginSetting> pluginSettings, final String pipelineName) {
+    private static boolean isPipelineAttributeExists(final PluginSetting pluginSetting, final String pipelineName) {
         boolean result = false;
-        for (PluginSetting pluginSetting : pluginSettings) {
-            if (pluginSetting != null && PIPELINE_TYPE.equals(pluginSetting.getName()) &&
-                    pipelineName.equals(pluginSetting.getAttributeFromSettings(PIPELINE_ATTRIBUTE_NAME))) {
-                result = true;
-            }
-            break;
+        if (pluginSetting != null && PIPELINE_TYPE.equals(pluginSetting.getName()) &&
+                pipelineName.equals(pluginSetting.getAttributeFromSettings(PIPELINE_ATTRIBUTE_NAME))) {
+            result = true;
         }
         return result;
     }
@@ -168,7 +165,7 @@ public class PipelineConfigurationValidator {
                 throw new RuntimeException("Invalid configuration, cannot proceed with ambiguous configuration");
             }
             final PipelineConfiguration pipelineConfiguration = pipelineConfigurationMap.get(currentPipelineName);
-            final List<PluginSetting> pluginSettings = pipelineConfiguration.getSink().getPluginSettings();
+            final List<PluginSetting> pluginSettings = pipelineConfiguration.getSinkPluginSettings();
             for (PluginSetting pluginSetting : pluginSettings) {
                 if (PIPELINE_TYPE.equals(pluginSetting.getName()) &&
                         pluginSetting.getAttributeFromSettings(PIPELINE_ATTRIBUTE_NAME) != null) {

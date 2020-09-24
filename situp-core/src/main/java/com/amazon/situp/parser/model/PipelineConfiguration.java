@@ -1,53 +1,93 @@
 package com.amazon.situp.parser.model;
 
-import com.amazon.situp.model.configuration.Configuration;
-import com.amazon.situp.parser.ConfigurationDeserializer;
-import com.amazon.situp.parser.validator.PipelineComponent;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.amazon.situp.model.configuration.PluginSetting;
+import com.amazon.situp.parser.ParseException;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-@JsonDeserialize(using = ConfigurationDeserializer.class)
+import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.NotNull;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import static java.lang.String.format;
+
 public class PipelineConfiguration {
 
-    @PipelineComponent(type = PipelineComponent.Type.Source, message = "Invalid source configuration; Requires " +
-            "exactly one valid source")
-    private final Configuration source;
+    @NotNull(message = "source settings are missing in provided configuration")
+    private final PluginSetting sourcePluginSetting;
+    private final PluginSetting bufferPluginSetting;
+    private final List<PluginSetting> processorPluginSettings;
+    @NotEmpty(message = "sink settings are missing in provided configuration, atleast one sink is required")
+    private final List<PluginSetting> sinkPluginSettings;
+    private final int workers;
+    private final int readBatchDelay;
 
-    @PipelineComponent(type = PipelineComponent.Type.Buffer, message = "Invalid buffer configuration; Requires" +
-            " at most one valid buffer")
-    private final Configuration buffer;
-
-    @PipelineComponent(type = PipelineComponent.Type.Processor, message = "Invalid processor configuration.")
-    private Configuration processor;
-
-    @PipelineComponent(type = PipelineComponent.Type.Sink, message = "Invalid sink configuration; Requires at least " +
-            "one valid sink")
-    private Configuration sink;
-
+    @JsonCreator
     public PipelineConfiguration(
-            Configuration source,
-            Configuration buffer,
-            Configuration processor,
-            Configuration sink) {
-        this.source = source;
-        this.buffer = buffer;
-        this.processor = processor;
-        this.sink = sink;
+            @JsonProperty("source") final Map<String, Map<String, Object>> source,
+            @JsonProperty("buffer") final Map<String, Map<String, Object>> buffer,
+            @JsonProperty("processor") final Map<String, Map<String, Object>> processors,
+            @JsonProperty("sink") final Map<String, Map<String, Object>> sinks,
+            @JsonProperty("workers") final int workers,
+            @JsonProperty("delay") final int delay) {
+        this.sourcePluginSetting = getFirstPluginSettingFromConfiguration(source, "source");
+        this.bufferPluginSetting = getFirstPluginSettingFromConfiguration(buffer, "buffer");
+        this.processorPluginSettings = getAllPluginSettingsFromConfiguration(processors);
+        this.sinkPluginSettings = getAllPluginSettingsFromConfiguration(sinks);
+        this.workers = workers;
+        this.readBatchDelay = delay;
+
     }
 
-    public Configuration getSource() {
-        return source;
+    private List<PluginSetting> getAllPluginSettingsFromConfiguration(final Map<String, Map<String, Object>> settings) {
+        if (settings == null) {
+            return null;
+        }
+        final List<PluginSetting> pluginSettings = new ArrayList<>();
+        settings.forEach((name, setting) -> {
+            pluginSettings.add(new PluginSetting(name, setting));
+        });
+        return pluginSettings;
     }
 
-    public Configuration getBuffer() {
-        return buffer;
+    private PluginSetting getFirstPluginSettingFromConfiguration(final Map<String, Map<String, Object>> settings,
+                                                                 final String component) {
+        if (settings == null) {
+            return null;
+        }
+        if (settings.size() > 1) {
+            throw new ParseException(format("Incorrect Configuration for component %s", component));
+        }
+        PluginSetting pluginSetting = null;
+        for (String key : settings.keySet()) {
+            pluginSetting = new PluginSetting(key, settings.get(key));
+        }
+        return pluginSetting;
     }
 
-    public Configuration getProcessor() {
-        return processor;
+    public PluginSetting getSourcePluginSetting() {
+        return sourcePluginSetting;
     }
 
-    public Configuration getSink() {
-        return sink;
+    public PluginSetting getBufferPluginSetting() {
+        return bufferPluginSetting;
     }
 
+    public List<PluginSetting> getProcessorPluginSettings() {
+        return processorPluginSettings;
+    }
+
+    public List<PluginSetting> getSinkPluginSettings() {
+        return sinkPluginSettings;
+    }
+
+    public int getWorkers() {
+        return workers;
+    }
+
+    public int getReadBatchDelay() {
+        return readBatchDelay;
+    }
 }

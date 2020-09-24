@@ -1,7 +1,6 @@
 package com.amazon.situp.parser;
 
 import com.amazon.situp.model.buffer.Buffer;
-import com.amazon.situp.model.configuration.Configuration;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.processor.Processor;
 import com.amazon.situp.model.sink.Sink;
@@ -21,6 +20,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,14 +29,12 @@ import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 
-@SuppressWarnings("rawtypes")
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class PipelineParser {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory())
             .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
     private static final String PIPELINE_TYPE = "pipeline";
     private static final String ATTRIBUTE_NAME = "name";
-    private static final String ATTRIBUTE_WORKERS = "workers";
-    private static final String ATTRIBUTE_DELAY = "delay";
     private static final int DEFAULT_READ_BATCH_DELAY = 3_000;
     private final String configurationFileLocation;
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>();
@@ -52,9 +50,9 @@ public class PipelineParser {
         try {
             final Map<String, PipelineConfiguration> pipelineConfigurationMap = OBJECT_MAPPER.readValue(
                     new File(configurationFileLocation),
-                    new TypeReference<Map<String, PipelineConfiguration>>() {});
-            final List<String> allPipelineNames = PipelineConfigurationValidator.
-                    validateAndGetPipelineNames(pipelineConfigurationMap);
+                    new TypeReference<Map<String, PipelineConfiguration>>() {
+                    });
+            final List<String> allPipelineNames = PipelineConfigurationValidator.validateAndGetPipelineNames(pipelineConfigurationMap);
             final Map<String, Pipeline> pipelineMap = new HashMap<>();
             for (String pipelineName : allPipelineNames) {
                 if (!pipelineMap.containsKey(pipelineName)) {
@@ -73,40 +71,38 @@ public class PipelineParser {
             final Map<String, Pipeline> pipelineMap) {
         final PipelineConfiguration pipelineConfiguration = pipelineConfigurationMap.get(pipelineName);
 
-        final PluginSetting sourceSetting = pipelineConfiguration.getSource().getPluginSettings().get(0);
+        final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
         final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
                 pipelineMap, pipelineConfigurationMap);
         final Source source = pipelineSource.orElseGet(() -> SourceFactory.newSource(sourceSetting));
 
-        final Buffer buffer = getBufferOrDefault(pipelineConfiguration.getBuffer());
+        final Buffer buffer = getBufferOrDefault(pipelineConfiguration.getBufferPluginSetting());
+        final List<Processor> processors = getProcessorsOrDefault(pipelineConfiguration.getProcessorPluginSettings());
+        final int processorThreads = getWorkersOrDefault(pipelineConfiguration.getWorkers());
+        final int readBatchDelay = getDelayOrDefault(pipelineConfiguration.getReadBatchDelay());
 
-        final Configuration processorConfiguration = pipelineConfiguration.getProcessor();
-        final List<PluginSetting> processorPluginSettings = processorConfiguration.getPluginSettings();
-        final List<Processor> processors = processorPluginSettings.stream()
-                .map(ProcessorFactory::newProcessor)
-                .collect(Collectors.toList());
-        final int processorThreads = getWorkersOrDefault(processorConfiguration);
-        final int readBatchDelay = getDelayOrDefault(processorConfiguration);
-
-        final List<Sink> sinks = pipelineConfiguration.getSink().getPluginSettings().stream()
+        final List<Sink> sinks = pipelineConfiguration.getSinkPluginSettings().stream()
                 .map(this::buildSinkOrConnector).collect(Collectors.toList());
 
         final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, processors, sinks, processorThreads, readBatchDelay);
         pipelineMap.put(pipelineName, pipeline);
     }
 
-    private Buffer getBufferOrDefault(final Configuration bufferConfiguration) {
-        final List<PluginSetting> pluginSettings = bufferConfiguration.getPluginSettings();
-        return pluginSettings.isEmpty() ? new BlockingBuffer() : BufferFactory.newBuffer(pluginSettings.get(0));
+    private List<Processor> getProcessorsOrDefault(final List<PluginSetting> processorPluginSettings) {
+        return processorPluginSettings == null ? Collections.EMPTY_LIST : processorPluginSettings.stream()
+                .map(ProcessorFactory::newProcessor)
+                .collect(Collectors.toList());
     }
 
-    private int getWorkersOrDefault(final Configuration processorConfiguration) {
-        int processorThreads = processorConfiguration.getAttributeValueAsInteger(ATTRIBUTE_WORKERS);
-        return processorThreads <= 0 ? getDefaultProcessorThreads() : processorThreads;
+    private Buffer getBufferOrDefault(final PluginSetting bufferPluginSetting) {
+        return bufferPluginSetting == null ? new BlockingBuffer() : BufferFactory.newBuffer(bufferPluginSetting);
     }
 
-    private int getDelayOrDefault(final Configuration processorConfiguration) {
-        int readBatchDelay = processorConfiguration.getAttributeValueAsInteger(ATTRIBUTE_DELAY);
+    private int getWorkersOrDefault(final int workers) {
+        return workers <= 0 ? getDefaultProcessorThreads() : workers;
+    }
+
+    private int getDelayOrDefault(final int readBatchDelay) {
         return readBatchDelay <= 0 ? DEFAULT_READ_BATCH_DELAY : readBatchDelay;
     }
 
