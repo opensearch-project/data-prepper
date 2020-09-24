@@ -7,7 +7,10 @@ import org.apache.http.util.EntityUtils;
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.Response;
 import org.elasticsearch.common.Strings;
+import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
+import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.test.rest.ESRestTestCase;
 
@@ -35,6 +38,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
       .map(ip -> "http://" + ip).collect(Collectors.toList());
   private static final String DEFAULT_TEMPLATE_FILE = "test-index-template.json";
   private static final String DEFAULT_RAW_SPAN_FILE = "raw-span-1.json";
+  private static final String DEFAULT_SERVICE_MAP_FILE = "service-map-1.json";
 
   public void testInstantiateSinkRawSpanDefault() throws IOException {
     final PluginSetting pluginSetting = generatePluginSetting(IndexConstants.RAW, null, null);
@@ -79,6 +83,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
     assertEquals(1, retSources.size());
     assertEquals(expData, retSources.get(0));
+    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", (String)expData.get("spanId")));
     sink.stop();
   }
 
@@ -176,6 +181,29 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final Request request = new Request(HttpMethod.HEAD, indexAlias);
     final Response response = client().performRequest(request);
     assertEquals(SC_OK, response.getStatusLine().getStatusCode());
+    sink.stop();
+  }
+
+  public void testOutputServiceMapDefault() throws IOException, InterruptedException {
+    final String testDoc = readDocFromFile(DEFAULT_SERVICE_MAP_FILE);
+    final ObjectMapper mapper = new ObjectMapper();
+    @SuppressWarnings("unchecked")
+    final Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
+
+    final List<Record<String>> testRecords = Collections.singletonList(new Record<>(testDoc));
+    final PluginSetting pluginSetting = generatePluginSetting(IndexConstants.SERVICE_MAP, null, null);
+    final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
+    final boolean success = sink.output(testRecords);
+    // wait for documents to be populated
+    // TODO: better wait strategy?
+    Thread.sleep(1000);
+
+    final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.SERVICE_MAP);
+    assertTrue(success);
+    final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
+    assertEquals(1, retSources.size());
+    assertEquals(expData, retSources.get(0));
+    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", (String)expData.get("hashId")));
     sink.stop();
   }
 
