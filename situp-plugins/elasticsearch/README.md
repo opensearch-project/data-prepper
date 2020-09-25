@@ -70,7 +70,7 @@ Default value is false. If set to true, user also needs to set `trace_analytics_
 ### Custom data type
 
 If both `trace_analytics_raw` and `trace_analytics_service_map` are set to false, the ES sink will ingest custom data type, i.e.
-user needs to provide custom [`index_alias`](#index_alias).
+user needs to provide custom [index_alias](#index_alias).
 
 ### <a name="index_alias"></a>Index alias
 
