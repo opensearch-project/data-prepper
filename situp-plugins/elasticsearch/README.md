@@ -12,8 +12,8 @@ pipeline:
   sink:
     elasticsearch:
       hosts: ["http://localhost:9200"]
-      index_type: raw
-      index_alias: "apm-span"
+      trace_analytics_raw: true
+      trace_analytics_service_map: false
       template_file: /your/local/template-file.json
       dlq_file: /your/local/dlq-file
       bulk_size: 4
@@ -23,11 +23,9 @@ pipeline:
 
 A list of IP addresses of elasticsearch nodes.
 
-### Index type (Optional)
+### Trace analytics raw
 
-A String takes value among `raw`, `service_map` and `custom`. Default to `raw`.
-
-- `raw`: represents APM raw span data. e.g.
+A boolean flag indicates APM trace analytics raw span data type. e.g.
 
 ```$xslt
 {
@@ -42,7 +40,11 @@ A String takes value among `raw`, `service_map` and `custom`. Default to `raw`.
 }
 ```
 
-- `service_map`: represents APM service map data. e.g.
+Default value is true.
+
+### Trace analytics service map
+
+A boolean flag indicates APM trace analytics service map data type. e.g.
 
 ```$xslt
 {
@@ -63,22 +65,27 @@ A String takes value among `raw`, `service_map` and `custom`. Default to `raw`.
 }
 ```
 
-- `custom`: custom data. User needs to provide `index_alias` explicitly.
+Default value is false. If set to true, user also needs to set `trace_analytics_raw` to false.
 
-### Index alias
+### Custom data type
 
-A String used as index alias if `index_type` is `raw` and otherwise used as index name. Default value depends on `index_type` value as follows:
+If both `trace_analytics_raw` and `trace_analytics_service_map` are set to false, the ES sink will ingest custom data type, i.e.
+user needs to provide custom [`index_alias`](#index_alias).
 
-- `raw`: otel-v1-apm-span-index
-- `service_map`: otel-v1-apm-service-map  
+### <a name="index_alias"></a>Index alias
+
+A String used as index alias if `trace_analytics_raw` is `true` and otherwise used just as index name. Default value depends on data type flags as follows:
+
+- `trace_analytics_raw`: otel-v1-apm-span-index
+- `trace_analytics_service_map`: otel-v1-apm-service-map  
 - `custom`: No default value. User needs to provide the index name
 
 `index_alias` is also reserved for index template name and `index_patterns` in the [index template](https://www.elastic.co/guide/en/elasticsearch/reference/7.8/index-templates.html) created by the Elasticsearch sink. 
 
-- `raw`: 
+- `trace_analytics_raw`: 
    - `name`: `<index_alias>-index-template` 
    - `index_patterns`: `[<index_alias>-*]`
-- `service_map`: 
+- `trace_analytics_service_map`: 
    - `name`: `<index_alias>-index-template`
    - `index_patterns`: `[<index_alias>]`
 - `custom`: User needs to provide template file path. See [Template file](#template_file)
@@ -92,9 +99,9 @@ A json file path to be read as index template for APM data ingestion. The json f
 
 Default template file (no template file path given) depends on `index_type`:
 
-- `raw`: [otel-v1-apm-span-index-template.json](https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/blob/master/situp-plugins/elasticsearch/src/main/resources/otel-v1-apm-span-index-template.json)
+- `trace_analytics_raw`: [otel-v1-apm-span-index-template.json](https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/blob/master/situp-plugins/elasticsearch/src/main/resources/otel-v1-apm-span-index-template.json)
 
-- `service_map`: [otel-v1-apm-service-map-index-template.json](https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/blob/master/situp-plugins/elasticsearch/src/main/resources/otel-v1-apm-service-map-index-template.json)
+- `trace_analytics_service_map`: [otel-v1-apm-service-map-index-template.json](https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/blob/master/situp-plugins/elasticsearch/src/main/resources/otel-v1-apm-service-map-index-template.json)
 
 - `custom`: None (no index template will be created)
 
