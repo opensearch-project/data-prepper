@@ -90,135 +90,13 @@ A String used as index alias if `index_type` is `raw` and otherwise used as inde
 A json file path to be read as index template for APM data ingestion. The json file content should be the json value of
 `"template"` key in the json content of elasticsearch [Index templates API](https://www.elastic.co/guide/en/elasticsearch/reference/7.8/index-templates.html).
 
-Default template json (no template file path given) depends on `index_type`:
+Default template file (no template file path given) depends on `index_type`:
 
-- `raw`: 
+- `raw`: [otel-v1-apm-span-index-template.json](https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/blob/master/situp-plugins/elasticsearch/src/main/resources/otel-v1-apm-span-index-template.json)
 
-```$xslt
-{
-  "settings": {
-    "number_of_shards": 1,
-    "number_of_replicas": 2
-  },
-  "mappings": {
-    "date_detection": false,
-    "dynamic_templates": [
-      {
-        "strings_as_keyword": {
-          "mapping": {
-            "ignore_above": 1024,
-            "type": "keyword"
-          },
-          "match_mapping_type": "string"
-        }
-      }
-    ],
-    "_source": {
-      "enabled": true
-    },
-    "properties": {
-      "traceId": {
-        "ignore_above": 1024,
-        "type": "keyword"
-      },
-      "spanId": {
-        "ignore_above": 1024,
-        "type": "keyword"
-      },
-      "name": {
-        "ignore_above": 1024,
-        "type": "keyword"
-      },
-      "kind": {
-        "ignore_above": 1024,
-        "type": "keyword"
-      },
-      "startTime": {
-        "type": "date_nanos"
-      },
-      "endTime": {
-        "type": "date_nanos"
-      },
-      "resource.attributes.service.name": {
-        "ignore_above": 1024,
-        "type": "keyword"
-      }
-    }
-  }
-}
-```
+- `service_map`: [otel-v1-apm-service-map-index-template.json](https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/blob/master/situp-plugins/elasticsearch/src/main/resources/otel-v1-apm-service-map-index-template.json)
 
-- `service_map`
-
-```$xslt
-{
-  "settings": {
-    "number_of_shards": 1,
-    "number_of_replicas": 2
-  },
-  "mappings": {
-    "date_detection": false,
-    "dynamic_templates": [
-      {
-        "strings_as_keyword": {
-          "mapping": {
-            "ignore_above": 1024,
-            "type": "keyword"
-          },
-          "match_mapping_type": "string"
-        }
-      }
-    ],
-    "_source": {
-      "enabled": true
-    },
-    "properties": {
-      "hashId": {
-        "ignore_above": 1024,
-        "type": "keyword"
-      },
-      "serviceName": {
-        "ignore_above": 1024,
-        "type": "keyword"
-      },
-      "kind": {
-        "ignore_above": 1024,
-        "type": "keyword"
-      },
-      "destination": {
-        "properties": {
-          "domain": {
-            "ignore_above": 1024,
-            "type": "keyword"
-          },
-          "resource": {
-            "ignore_above": 1024,
-            "type": "keyword"
-          }
-        }
-      },
-      "target": {
-        "properties": {
-          "domain": {
-            "ignore_above": 1024,
-            "type": "keyword"
-          },
-          "resource": {
-            "ignore_above": 1024,
-            "type": "keyword"
-          }
-        }
-      },
-      "traceGroupName": {
-        "ignore_above": 1024,
-        "type": "keyword"
-      }
-    }
-  }
-}
-```
-
-- `custom`: no index template will be created
+- `custom`: None (no index template will be created)
 
 ### DLQ file (Optional)
 
