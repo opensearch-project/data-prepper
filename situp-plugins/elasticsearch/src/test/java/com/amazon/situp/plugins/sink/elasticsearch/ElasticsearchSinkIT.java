@@ -38,7 +38,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
   private static final String DEFAULT_SERVICE_MAP_FILE = "service-map-1.json";
 
   public void testInstantiateSinkRawSpanDefault() throws IOException {
-    final PluginSetting pluginSetting = generatePluginSetting(IndexConstants.RAW, null, null);
+    final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
     ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
     Request request = new Request(HttpMethod.HEAD, indexAlias);
@@ -71,7 +71,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
 
     final List<Record<String>> testRecords = Collections.singletonList(new Record<>(testDoc));
-    final PluginSetting pluginSetting = generatePluginSetting(IndexConstants.RAW, null, null);
+    final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     final boolean success = sink.output(testRecords);
     // wait for documents to be populated
@@ -94,7 +94,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final ObjectMapper mapper = new ObjectMapper();
     @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc2, Map.class);
     final List<Record<String>> testRecords = Arrays.asList(new Record<>(testDoc1), new Record<>(testDoc2));
-    final PluginSetting pluginSetting = generatePluginSetting(IndexConstants.RAW, null, null);
+    final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
     // generate temporary directory for dlq file
     final File tempDirectory = Files.createTempDirectory("").toFile();
     // add dlq file path into setting
@@ -125,7 +125,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final String testIndexAlias = "test-raw-span";
     final String testTemplateFile = Objects.requireNonNull(
             getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
-    final PluginSetting pluginSetting = generatePluginSetting(IndexConstants.RAW, testIndexAlias, testTemplateFile);
+    final PluginSetting pluginSetting = generatePluginSetting(true, false, testIndexAlias, testTemplateFile);
     ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     Request request = new Request(HttpMethod.HEAD, testIndexAlias);
     Response response = client().performRequest(request);
@@ -159,7 +159,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
         generateDummyRawSpanRecord(traceId, spanId1, "2020-08-05", "2020-08-06"),
         generateDummyRawSpanRecord(traceId, spanId2, "2020-08-30", "2020-09-01")
     );
-    final PluginSetting pluginSetting = generatePluginSetting(IndexConstants.RAW, testIndexAlias, testTemplateFile);
+    final PluginSetting pluginSetting = generatePluginSetting(true, false, testIndexAlias, testTemplateFile);
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     final boolean success = sink.output(testRecords);
     // wait for documents to be populated
@@ -175,7 +175,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
   }
 
   public void testInstantiateSinkServiceMapDefault() throws IOException {
-    final PluginSetting pluginSetting = generatePluginSetting(IndexConstants.SERVICE_MAP, null, null);
+    final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.SERVICE_MAP);
     final Request request = new Request(HttpMethod.HEAD, indexAlias);
@@ -194,7 +194,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
 
     final List<Record<String>> testRecords = Collections.singletonList(new Record<>(testDoc));
-    final PluginSetting pluginSetting = generatePluginSetting(IndexConstants.SERVICE_MAP, null, null);
+    final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     final boolean success = sink.output(testRecords);
     // wait for documents to be populated
@@ -214,7 +214,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final String testIndexAlias = "test-service-map";
     final String testTemplateFile = Objects.requireNonNull(
             getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
-    final PluginSetting pluginSetting = generatePluginSetting(IndexConstants.SERVICE_MAP, testIndexAlias, testTemplateFile);
+    final PluginSetting pluginSetting = generatePluginSetting(false, true, testIndexAlias, testTemplateFile);
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     final Request request = new Request(HttpMethod.HEAD, testIndexAlias);
     final Response response = client().performRequest(request);
@@ -226,7 +226,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final String testIndexAlias = "test-alias";
     final String testTemplateFile = Objects.requireNonNull(
             getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
-    final PluginSetting pluginSetting = generatePluginSetting(IndexConstants.CUSTOM, testIndexAlias, testTemplateFile);
+    final PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFile);
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     final Request request = new Request(HttpMethod.HEAD, testIndexAlias);
     final Response response = client().performRequest(request);
@@ -234,9 +234,10 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     sink.stop();
   }
 
-  private PluginSetting generatePluginSetting(final String indexType, final String indexAlias, final String templateFilePath) {
+  private PluginSetting generatePluginSetting(final boolean isRaw, final boolean isServiceMap, final String indexAlias, final String templateFilePath) {
     final Map<String, Object> metadata = new HashMap<>();
-    metadata.put("index_type", indexType);
+    metadata.put("trace_analytics_raw", isRaw);
+    metadata.put("trace_analytics_service_map", isServiceMap);
     metadata.put("hosts", HOSTS);
     metadata.put("index_alias", indexAlias);
     metadata.put("template_file", templateFilePath);

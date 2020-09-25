@@ -1,7 +1,6 @@
 package com.amazon.situp.plugins.sink.elasticsearch;
 
 import com.amazon.situp.model.configuration.PluginSetting;
-import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.junit.Test;
 
 import java.io.File;
@@ -18,6 +17,7 @@ import static com.amazon.situp.plugins.sink.elasticsearch.IndexConstants.SERVICE
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConstants.TYPE_TO_DEFAULT_ALIAS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public class IndexConfigurationTests {
   @Test
@@ -54,18 +54,20 @@ public class IndexConfigurationTests {
   public void testServiceMap() throws MalformedURLException {
     final String fakeTemplateFilePath = "src/resources/dummy.json";
     IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
-        .withIndexType(SERVICE_MAP)
-        .withTemplateFile(fakeTemplateFilePath)
-        .build();
+            .setIsServiceMap(true)
+            .setIsRaw(false)
+            .withTemplateFile(fakeTemplateFilePath)
+            .build();
 
     assertEquals(TYPE_TO_DEFAULT_ALIAS.get(SERVICE_MAP), indexConfiguration.getIndexAlias());
     assertEquals(new File(fakeTemplateFilePath).toURI().toURL(), indexConfiguration.getTemplateURL());
 
     final String testIndexAlias = "foo";
     indexConfiguration = new IndexConfiguration.Builder()
-        .withIndexType(SERVICE_MAP)
-        .withIndexAlias(testIndexAlias)
-        .build();
+            .setIsServiceMap(true)
+            .setIsRaw(false)
+            .withIndexAlias(testIndexAlias)
+            .build();
     final URL expTemplateURL = indexConfiguration
             .getClass().getClassLoader().getResource(SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
 
@@ -78,7 +80,8 @@ public class IndexConfigurationTests {
     final String fakeTemplateFilePath = "src/resources/dummy.json";
     final String testIndexAlias = "foo";
     IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
-            .withIndexType(CUSTOM)
+            .setIsRaw(false)
+            .setIsServiceMap(false)
             .withIndexAlias(testIndexAlias)
             .withTemplateFile(fakeTemplateFilePath)
             .withBulkSize(10)
@@ -90,7 +93,8 @@ public class IndexConfigurationTests {
     assertEquals(10, indexConfiguration.getBulkSize());
 
     indexConfiguration = new IndexConfiguration.Builder()
-            .withIndexType(CUSTOM)
+            .setIsRaw(false)
+            .setIsServiceMap(false)
             .withIndexAlias(testIndexAlias)
             .withBulkSize(-1)
             .build();
@@ -101,14 +105,15 @@ public class IndexConfigurationTests {
   public void testInvalidCustom() {
     // Missing index alias
     final IndexConfiguration.Builder invalidBuilder = new IndexConfiguration.Builder()
-            .withIndexType(CUSTOM);
+            .setIsRaw(false).setIsServiceMap(false);
     final Exception exception = assertThrows(IllegalStateException.class, invalidBuilder::build);
     assertEquals("Missing required properties:indexAlias", exception.getMessage());
   }
 
   @Test
   public void testReadIndexConfigDefault() {
-    final PluginSetting pluginSetting = generatePluginSetting(null, null, null, null);
+    final PluginSetting pluginSetting = generatePluginSetting(
+            null, null, null, null, null);
     final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
     final URL expTemplateFile = indexConfiguration
             .getClass().getClassLoader().getResource(RAW_DEFAULT_TEMPLATE_FILE);
@@ -119,12 +124,25 @@ public class IndexConfigurationTests {
   }
 
   @Test
+  public void testReadIndexConfigInvalid() {
+    final PluginSetting pluginSetting1 = generatePluginSetting(
+            true, true, null, null, null);
+    Exception e = assertThrows(IllegalStateException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting1));
+    assertTrue(e.getMessage().contains("trace_analytics_raw and trace_analytics_service_map cannot be both true."));
+
+    final PluginSetting pluginSetting2 = generatePluginSetting(
+            null, true, null, null, null);
+    e = assertThrows(IllegalStateException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting2));
+    assertTrue(e.getMessage().contains("trace_analytics_raw and trace_analytics_service_map cannot be both true."));
+  }
+
+  @Test
   public void testReadIndexConfigCustom() throws MalformedURLException {
     final String fakeTemplateFilePath = "src/resources/dummy.json";
     final String testIndexAlias = "foo";
     final long testBulkSize = 10L;
     final PluginSetting pluginSetting = generatePluginSetting(
-            CUSTOM, testIndexAlias, fakeTemplateFilePath, testBulkSize);
+            false, false, testIndexAlias, fakeTemplateFilePath, testBulkSize);
     final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
     assertEquals(CUSTOM, indexConfiguration.getIndexType());
     assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
@@ -132,11 +150,14 @@ public class IndexConfigurationTests {
     assertEquals(testBulkSize, indexConfiguration.getBulkSize());
   }
 
-  private PluginSetting generatePluginSetting(
-          final String indexType, final String indexAlias, final String templateFilePath, final Long bulkSize) {
+  private PluginSetting generatePluginSetting(final Boolean isRaw, final Boolean isServiceMap, final String indexAlias,
+                                              final String templateFilePath, final Long bulkSize) {
     final Map<String, Object> metadata = new HashMap<>();
-    if (indexType != null) {
-      metadata.put("index_type", indexType);
+    if (isRaw != null) {
+      metadata.put(IndexConfiguration.TRACE_ANALYTICS_RAW_FLAG, isRaw);
+    }
+    if (isServiceMap != null) {
+      metadata.put(IndexConfiguration.TRACE_ANALYTICS_SERVICE_MAP_FLAG, isServiceMap);
     }
     if (indexAlias != null) {
       metadata.put("index_alias", indexAlias);
