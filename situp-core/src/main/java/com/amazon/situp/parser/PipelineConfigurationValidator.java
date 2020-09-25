@@ -2,14 +2,9 @@ package com.amazon.situp.parser;
 
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.parser.model.PipelineConfiguration;
-import org.apache.bval.jsr.ApacheValidationProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.ConstraintViolation;
-import javax.validation.Validation;
-import javax.validation.Validator;
-import javax.validation.ValidatorFactory;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -23,25 +18,6 @@ public class PipelineConfigurationValidator {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineConfigurationValidator.class);
     private static final String PIPELINE_ATTRIBUTE_NAME = "name";
     private static final String PIPELINE_TYPE = "pipeline";
-
-    /**
-     * Validates the provided Pipeline configuration and exits the execution if validation fails
-     *
-     * @param pipelineConfiguration Pipeline configuration for validation
-     */
-    public static void validate(final PipelineConfiguration pipelineConfiguration) {
-        LOG.debug("Validating pipeline configuration");
-        final ValidatorFactory validatorFactory = Validation.byProvider(ApacheValidationProvider.class)
-                .configure().buildValidatorFactory();
-        final Validator jsrValidator = validatorFactory.getValidator();
-        final Set<ConstraintViolation<PipelineConfiguration>> violations = jsrValidator.validate(pipelineConfiguration);
-        if (violations.size() > 0) {
-            violations.forEach(violation -> LOG.error("Found invalid configuration: {}", violation.getMessage()));
-            validatorFactory.close();
-            throw new RuntimeException("Found invalid configuration, cannot proceed");
-        }
-        validatorFactory.close();
-    }
 
     /**
      * Sorts the pipelines in topological order while also validating for
@@ -84,8 +60,6 @@ public class PipelineConfigurationValidator {
         //if its not already visited, recursively check
         if (!visitedAndProcessedPipelineSet.contains(pipeline)) {
             final PipelineConfiguration pipelineConfiguration = pipelineConfigurationMap.get(pipeline);
-            //validate for pipeline configuration
-            validate(pipelineConfiguration);
             touchedPipelineSet.add(pipeline);
             //if validation is successful, then there is definitely sink
             final List<PluginSetting> connectedPipelinesSettings = pipelineConfiguration.getSinkPluginSettings();

@@ -20,7 +20,6 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +28,7 @@ import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 
-@SuppressWarnings({"rawtypes", "unchecked"})
+@SuppressWarnings("rawtypes")
 public class PipelineParser {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory())
             .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
@@ -77,7 +76,9 @@ public class PipelineParser {
         final Source source = pipelineSource.orElseGet(() -> SourceFactory.newSource(sourceSetting));
 
         final Buffer buffer = getBufferOrDefault(pipelineConfiguration.getBufferPluginSetting());
-        final List<Processor> processors = getProcessorsOrDefault(pipelineConfiguration.getProcessorPluginSettings());
+        final List<Processor> processors = pipelineConfiguration.getProcessorPluginSettings().stream()
+                .map(ProcessorFactory::newProcessor)
+                .collect(Collectors.toList());
         final int processorThreads = getWorkersOrDefault(pipelineConfiguration.getWorkers());
         final int readBatchDelay = getDelayOrDefault(pipelineConfiguration.getReadBatchDelay());
 
@@ -88,22 +89,16 @@ public class PipelineParser {
         pipelineMap.put(pipelineName, pipeline);
     }
 
-    private List<Processor> getProcessorsOrDefault(final List<PluginSetting> processorPluginSettings) {
-        return processorPluginSettings == null ? Collections.EMPTY_LIST : processorPluginSettings.stream()
-                .map(ProcessorFactory::newProcessor)
-                .collect(Collectors.toList());
-    }
-
     private Buffer getBufferOrDefault(final PluginSetting bufferPluginSetting) {
         return bufferPluginSetting == null ? new BlockingBuffer() : BufferFactory.newBuffer(bufferPluginSetting);
     }
 
-    private int getWorkersOrDefault(final int workers) {
-        return workers <= 0 ? getDefaultProcessorThreads() : workers;
+    private int getWorkersOrDefault(final Integer workers) {
+        return workers == null ? getDefaultProcessorThreads() : workers;
     }
 
-    private int getDelayOrDefault(final int readBatchDelay) {
-        return readBatchDelay <= 0 ? DEFAULT_READ_BATCH_DELAY : readBatchDelay;
+    private int getDelayOrDefault(final Integer readBatchDelay) {
+        return readBatchDelay == null ? DEFAULT_READ_BATCH_DELAY : readBatchDelay;
     }
 
     /**

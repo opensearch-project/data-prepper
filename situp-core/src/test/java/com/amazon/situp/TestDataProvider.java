@@ -11,8 +11,8 @@ import java.util.Set;
 public class TestDataProvider {
     public static final String TEST_PLUGIN_NAME_1 = "test-plugin-1";
     public static final String TEST_PLUGIN_NAME_2 = "test-plugin-2";
-    public static final int TEST_WORKERS = 5;
-    public static final int TEST_DELAY = 3_000;
+    public static final Integer TEST_WORKERS = 5;
+    public static final Integer TEST_DELAY = 3_000;
     public static final String VALID_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/valid_multiple_pipeline_configuration.yml";
     public static final String CYCLE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/cyclic_multiple_pipeline_configuration.yml";
     public static final String INCORRECT_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/incorrect_source_multiple_pipeline_configuration.yml";

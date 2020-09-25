@@ -1,7 +1,7 @@
 package com.amazon.situp.parser.model;
 
 import com.amazon.situp.model.configuration.PluginSetting;
-import com.amazon.situp.parser.ParseException;
+import org.hamcrest.CoreMatchers;
 import org.junit.Test;
 
 import java.util.List;
@@ -47,18 +47,19 @@ public class PipelineConfigurationTests {
                 null,
                 null,
                 validSingleConfiguration(),
-                0, 0);
+                null, null);
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
         final List<PluginSetting> actualProcessorPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
         final List<PluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         comparePluginSettings(actualSourcePluginSetting, VALID_PLUGIN_SETTING_1);
         assertThat(pipelineConfiguration.getBufferPluginSetting(), nullValue());
-        assertThat(actualProcessorPluginSettings, nullValue());
+        assertThat(actualProcessorPluginSettings, CoreMatchers.isA(Iterable.class));
+        assertThat(actualProcessorPluginSettings.size(), is(0));
         assertThat(actualSinkPluginSettings.size(), is(1));
         comparePluginSettings(actualSinkPluginSettings.get(0), VALID_PLUGIN_SETTING_1);
-        assertThat(pipelineConfiguration.getWorkers(), is(0));
-        assertThat(pipelineConfiguration.getReadBatchDelay(), is(0));
+        assertThat(pipelineConfiguration.getWorkers(), nullValue());
+        assertThat(pipelineConfiguration.getReadBatchDelay(), nullValue());
     }
 
     @Test() //not using expected to assert the message
@@ -70,8 +71,9 @@ public class PipelineConfigurationTests {
                     validSingleConfiguration(),
                     validSingleConfiguration(),
                     TEST_WORKERS, TEST_DELAY);
-        } catch (ParseException ex) {
-            assertThat(ex.getMessage(), is("Incorrect Configuration for component source"));
+        } catch (IllegalArgumentException ex) {
+            assertThat(ex.getMessage(), is("Incorrect configuration for component source, " +
+                    "maximum allowed plugins are 1"));
         }
     }
 
@@ -84,8 +86,65 @@ public class PipelineConfigurationTests {
                     validSingleConfiguration(),
                     validSingleConfiguration(),
                     TEST_WORKERS, TEST_DELAY);
-        } catch (ParseException ex) {
-            assertThat(ex.getMessage(), is("Incorrect Configuration for component buffer"));
+        } catch (IllegalArgumentException ex) {
+            assertThat(ex.getMessage(), is("Incorrect configuration for component buffer, " +
+                    "maximum allowed plugins are 1"));
+        }
+    }
+
+    @Test() //not using expected to assert the message
+    public void testNoSourceConfiguration() {
+        try {
+            new PipelineConfiguration(
+                    null,
+                    validMultipleConfiguration(),
+                    validSingleConfiguration(),
+                    validSingleConfiguration(),
+                    TEST_WORKERS, TEST_DELAY);
+        } catch (IllegalArgumentException ex) {
+            assertThat(ex.getMessage(), is("Invalid configuration, source is a required component"));
+        }
+    }
+
+    @Test() //not using expected to assert the message
+    public void testNoSinkConfiguration() {
+        try {
+            new PipelineConfiguration(
+                    validSingleConfiguration(),
+                    validSingleConfiguration(),
+                    validSingleConfiguration(),
+                    null,
+                    TEST_WORKERS, TEST_DELAY);
+        } catch (IllegalArgumentException ex) {
+            assertThat(ex.getMessage(), is("Invalid configuration, at least one sink is required"));
+        }
+    }
+
+    @Test() //not using expected to assert the message
+    public void testInvalidWorkersConfiguration() {
+        try {
+            new PipelineConfiguration(
+                    validSingleConfiguration(),
+                    validSingleConfiguration(),
+                    validSingleConfiguration(),
+                    validSingleConfiguration(),
+                    0, TEST_DELAY);
+        } catch (IllegalArgumentException ex) {
+            assertThat(ex.getMessage(), is("Invalid configuration, workers cannot be 0"));
+        }
+    }
+
+    @Test() //not using expected to assert the message
+    public void testInvalidDelayConfiguration() {
+        try {
+            new PipelineConfiguration(
+                    validSingleConfiguration(),
+                    validSingleConfiguration(),
+                    validSingleConfiguration(),
+                    validSingleConfiguration(),
+                    TEST_WORKERS, 0);
+        } catch (IllegalArgumentException ex) {
+            assertThat(ex.getMessage(), is("Invalid configuration, delay cannot be 0"));
         }
     }
 
