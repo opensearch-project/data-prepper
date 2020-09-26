@@ -192,11 +192,11 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
 
   private PluginSetting generatePluginSetting(final boolean isRaw, final boolean isServiceMap, final String indexAlias, final String templateFilePath) {
     final Map<String, Object> metadata = new HashMap<>();
-    metadata.put("trace_analytics_raw", isRaw);
-    metadata.put("trace_analytics_service_map", isServiceMap);
-    metadata.put("hosts", HOSTS);
-    metadata.put("index_alias", indexAlias);
-    metadata.put("template_file", templateFilePath);
+    metadata.put(IndexConfiguration.TRACE_ANALYTICS_RAW_FLAG, isRaw);
+    metadata.put(IndexConfiguration.TRACE_ANALYTICS_SERVICE_MAP_FLAG, isServiceMap);
+    metadata.put(ConnectionConfiguration.HOSTS, HOSTS);
+    metadata.put(IndexConfiguration.INDEX_ALIAS, indexAlias);
+    metadata.put(IndexConfiguration.TEMPLATE_FILE, templateFilePath);
 
     return new PluginSetting("elasticsearch", metadata);
   }

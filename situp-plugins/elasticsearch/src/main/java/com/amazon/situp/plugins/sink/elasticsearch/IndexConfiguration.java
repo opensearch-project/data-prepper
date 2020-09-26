@@ -15,7 +15,7 @@ public class IndexConfiguration {
    */
   public static final String TRACE_ANALYTICS_RAW_FLAG = "trace_analytics_raw";
   public static final String TRACE_ANALYTICS_SERVICE_MAP_FLAG = "trace_analytics_service_map";
-  public static final String INDEX_ALIAS = "index_alias";
+  public static final String INDEX_ALIAS = "index";
   public static final String TEMPLATE_FILE = "template_file";
   public static final String BULK_SIZE = "bulk_size";
   public static final String DOCUMENT_ID_FIELD = "document_id_field";

@@ -132,16 +132,16 @@ public class IndexConfigurationTests {
       metadata.put(IndexConfiguration.TRACE_ANALYTICS_SERVICE_MAP_FLAG, isServiceMap);
     }
     if (indexAlias != null) {
-      metadata.put("index_alias", indexAlias);
+      metadata.put(IndexConfiguration.INDEX_ALIAS, indexAlias);
     }
     if (templateFilePath != null) {
-      metadata.put("template_file", templateFilePath);
+      metadata.put(IndexConfiguration.TEMPLATE_FILE, templateFilePath);
     }
     if (bulkSize != null) {
-      metadata.put("bulk_size", bulkSize);
+      metadata.put(IndexConfiguration.BULK_SIZE, bulkSize);
     }
     if (documentIdField != null) {
-      metadata.put("document_id_field", documentIdField);
+      metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, documentIdField);
     }
 
     return new PluginSetting("elasticsearch", metadata);
