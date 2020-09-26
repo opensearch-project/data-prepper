@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.apache.http.HttpStatus.SC_OK;
@@ -121,59 +120,6 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     assertTrue(deleteDirectory(tempDirectory));
   }
 
-  public void testInstantiateSinkRawSpanCustom() throws IOException {
-    final String testIndexAlias = "test-raw-span";
-    final String testTemplateFile = Objects.requireNonNull(
-            getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
-    final PluginSetting pluginSetting = generatePluginSetting(true, false, testIndexAlias, testTemplateFile);
-    ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
-    Request request = new Request(HttpMethod.HEAD, testIndexAlias);
-    Response response = client().performRequest(request);
-    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
-    sink.stop();
-
-    // roll over initial index
-    request = new Request(HttpMethod.POST, String.format("%s/_rollover", testIndexAlias));
-    request.setJsonEntity("{ \"conditions\" : { } }\n");
-    response = client().performRequest(request);
-    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
-
-    // Instantiate sink again
-    sink = new ElasticsearchSink(pluginSetting);
-    // Make sure no new write index *-000001 is created under alias
-    final String rolloverIndexName = String.format("%s-000002", testIndexAlias);
-    request = new Request(HttpMethod.GET, rolloverIndexName + "/_alias");
-    response = client().performRequest(request);
-    assertEquals(true, checkIsWriteIndex(EntityUtils.toString(response.getEntity()), testIndexAlias, rolloverIndexName));
-    sink.stop();
-  }
-
-  public void testOutputRawSpanCustom() throws IOException, InterruptedException {
-    final String testIndexAlias = "test-raw-span";
-    final String testTemplateFile = Objects.requireNonNull(
-            getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
-    final String traceId = UUID.randomUUID().toString();
-    final String spanId1 = UUID.randomUUID().toString();
-    final String spanId2 = UUID.randomUUID().toString();
-    final List<Record<String>> testRecords = Arrays.asList(
-        generateDummyRawSpanRecord(traceId, spanId1, "2020-08-05", "2020-08-06"),
-        generateDummyRawSpanRecord(traceId, spanId2, "2020-08-30", "2020-09-01")
-    );
-    final PluginSetting pluginSetting = generatePluginSetting(true, false, testIndexAlias, testTemplateFile);
-    final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
-    final boolean success = sink.output(testRecords);
-    // wait for documents to be populated
-    // TODO: better wait strategy?
-    Thread.sleep(1000);
-
-    assertTrue(success);
-    assertEquals(Integer.valueOf(2), getDocumentCount(testIndexAlias, "traceId", traceId));
-    // startTime field should no longer be detected as datetime according to test-index-template.json
-    assertEquals(Integer.valueOf(0), getDocumentCount(testIndexAlias, "startTime", "2020-08-05T00:00:00.000Z"));
-    assertEquals(Integer.valueOf(1), getDocumentCount(testIndexAlias, "endTime", "2020-09-01"));
-    sink.stop();
-  }
-
   public void testInstantiateSinkServiceMapDefault() throws IOException {
     final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
@@ -210,18 +156,6 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     sink.stop();
   }
 
-  public void testInstantiateSinkServiceMapCustom() throws IOException {
-    final String testIndexAlias = "test-service-map";
-    final String testTemplateFile = Objects.requireNonNull(
-            getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
-    final PluginSetting pluginSetting = generatePluginSetting(false, true, testIndexAlias, testTemplateFile);
-    final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
-    final Request request = new Request(HttpMethod.HEAD, testIndexAlias);
-    final Response response = client().performRequest(request);
-    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
-    sink.stop();
-  }
-
   public void testInstantiateSinkCustomIndex() throws IOException {
     final String testIndexAlias = "test-alias";
     final String testTemplateFile = Objects.requireNonNull(
@@ -243,20 +177,6 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     metadata.put("template_file", templateFilePath);
 
     return new PluginSetting("elasticsearch", metadata);
-  }
-
-  private Record<String> generateDummyRawSpanRecord(final String traceId, final String spanId, final String startTime, final String endTime) throws IOException {
-    return new Record<>(
-        Strings.toString(
-            XContentFactory.jsonBuilder()
-                .startObject()
-                .field("traceId", traceId)
-                .field("spanId", spanId)
-                .field("startTime", startTime)
-                .field("endTime", endTime)
-                .endObject()
-        )
-    );
   }
 
   private String readDocFromFile(final String filename) throws IOException {

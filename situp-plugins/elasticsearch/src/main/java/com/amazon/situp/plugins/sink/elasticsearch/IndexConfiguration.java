@@ -43,7 +43,7 @@ public class IndexConfiguration {
   }
 
   public static class Builder {
-    private boolean isRaw = true;
+    private boolean isRaw = false;
     private boolean isServiceMap = false;
     private String indexAlias;
     private String templateFile;
@@ -98,28 +98,28 @@ public class IndexConfiguration {
     this.indexType = indexType;
 
     URL templateURL = null;
-    if (builder.templateFile == null) {
-      if (indexType.equals(IndexConstants.RAW)) {
-        templateURL = getClass().getClassLoader()
-            .getResource(IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
-      } else if (indexType.equals(IndexConstants.SERVICE_MAP)) {
-        templateURL = getClass().getClassLoader()
-            .getResource(IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
-      }
+    if (indexType.equals(IndexConstants.RAW)) {
+      templateURL = getClass().getClassLoader()
+          .getResource(IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
+    } else if (indexType.equals(IndexConstants.SERVICE_MAP)) {
+      templateURL = getClass().getClassLoader()
+          .getResource(IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
     } else {
-      try {
-        templateURL = new File(builder.templateFile).toURI().toURL();
-      } catch (MalformedURLException e) {
-        throw new IllegalStateException("Invalid template file path");
+      if (builder.templateFile != null) {
+        try {
+          templateURL = new File(builder.templateFile).toURI().toURL();
+        } catch (MalformedURLException e) {
+          throw new IllegalStateException("Invalid template file path");
+        }
       }
     }
     this.templateURL = templateURL;
 
     String indexAlias = builder.indexAlias;
-    if (indexAlias == null) {
-      if (IndexConstants.TYPE_TO_DEFAULT_ALIAS.containsKey(indexType)) {
+    if (IndexConstants.TYPE_TO_DEFAULT_ALIAS.containsKey(indexType)) {
         indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(indexType);
-      } else {
+    } else {
+      if (indexAlias == null) {
         throw new IllegalStateException("Missing required properties:indexAlias");
       }
     }
@@ -129,7 +129,7 @@ public class IndexConfiguration {
 
   public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
     IndexConfiguration.Builder builder = new IndexConfiguration.Builder();
-    builder.setIsRaw(pluginSetting.getBooleanOrDefault(TRACE_ANALYTICS_RAW_FLAG, true));
+    builder.setIsRaw(pluginSetting.getBooleanOrDefault(TRACE_ANALYTICS_RAW_FLAG, false));
     builder.setIsServiceMap(pluginSetting.getBooleanOrDefault(TRACE_ANALYTICS_SERVICE_MAP_FLAG, false));
     final String indexAlias = pluginSetting.getStringOrDefault(INDEX_ALIAS, null);
     if (indexAlias != null) {
