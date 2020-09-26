@@ -52,11 +52,13 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private BulkRetryStrategy bulkRetryStrategy;
   private final long bulkSize;
   private final String indexType;
+  private final String documentIdField;
 
   public ElasticsearchSink(final PluginSetting pluginSetting) {
     this.esSinkConfig = ElasticsearchSinkConfiguration.readESConfig(pluginSetting);
     this.bulkSize = ByteSizeUnit.MB.toBytes(esSinkConfig.getIndexConfiguration().getBulkSize());
     this.indexType = esSinkConfig.getIndexConfiguration().getIndexType();
+    this.documentIdField = esSinkConfig.getIndexConfiguration().getDocumentIdField();
     try {
       start();
     } catch (final IOException e) {
@@ -93,7 +95,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       final IndexRequest indexRequest = new IndexRequest().source(document, XContentType.JSON);
       try {
         final Map<String, Object> source = getMapFromJson(document);
-        final String docId = extractDocId(source);
+        final String docId = (String) source.get(documentIdField);
         if (docId != null) {
           indexRequest.id(docId);
         }
@@ -200,16 +202,6 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     final XContentParser parser = XContentFactory.xContent(XContentType.JSON)
             .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, documentJson);
     return parser.map();
-  }
-
-  private String extractDocId(final Map<String, Object> source) {
-    if (indexType.equals(IndexConstants.RAW)) {
-      return (String) source.get("spanId");
-    } else if (indexType.equals(IndexConstants.SERVICE_MAP)) {
-      return (String) source.get("hashId");
-    } else {
-      return null;
-    }
   }
 
   private void logFailure(final DocWriteRequest<?> docWriteRequest, final Throwable failure) {

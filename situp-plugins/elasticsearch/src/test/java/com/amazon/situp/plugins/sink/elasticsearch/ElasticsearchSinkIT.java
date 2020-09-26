@@ -168,6 +168,28 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     sink.stop();
   }
 
+  public void testOutputCustomIndex() throws IOException, InterruptedException {
+    final String testIndexAlias = "test-alias";
+    final String testTemplateFile = Objects.requireNonNull(
+            getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
+    final String testIdField = "someId";
+    final String testId = "foo";
+    final List<Record<String>> testRecords = Collections.singletonList(generateCustomRecord(testIdField, testId));
+    final PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFile);
+    pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+    final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
+    final boolean success = sink.output(testRecords);
+    // wait for documents to be populated
+    // TODO: better wait strategy?
+    Thread.sleep(1000);
+
+    assertTrue(success);
+    final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+    assertEquals(1, retSources.size());
+    assertEquals(Integer.valueOf(1), getDocumentCount(testIndexAlias, "_id", testId));
+    sink.stop();
+  }
+
   private PluginSetting generatePluginSetting(final boolean isRaw, final boolean isServiceMap, final String indexAlias, final String templateFilePath) {
     final Map<String, Object> metadata = new HashMap<>();
     metadata.put("trace_analytics_raw", isRaw);
@@ -177,6 +199,17 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     metadata.put("template_file", templateFilePath);
 
     return new PluginSetting("elasticsearch", metadata);
+  }
+
+  private Record<String> generateCustomRecord(final String idField, final String documentId) throws IOException {
+    return new Record<>(
+        Strings.toString(
+            XContentFactory.jsonBuilder()
+                .startObject()
+                .field(idField, documentId)
+                .endObject()
+        )
+    );
   }
 
   private String readDocFromFile(final String filename) throws IOException {

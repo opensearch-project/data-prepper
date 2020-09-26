@@ -18,12 +18,13 @@ public class IndexConfiguration {
   public static final String INDEX_ALIAS = "index_alias";
   public static final String TEMPLATE_FILE = "template_file";
   public static final String BULK_SIZE = "bulk_size";
-  public static final String DEFAULT_INDEX_TYPE = IndexConstants.RAW;
+  public static final String DOCUMENT_ID_FIELD = "document_id_field";
   public static final long DEFAULT_BULK_SIZE = 5L;
 
   private final String indexType;
   private final String indexAlias;
   private final URL templateURL;
+  private final String documentIdField;
   private final long bulkSize;
 
   public String getIndexType() {
@@ -38,6 +39,10 @@ public class IndexConfiguration {
     return templateURL;
   }
 
+  public String getDocumentIdField() {
+    return documentIdField;
+  }
+
   public long getBulkSize() {
     return bulkSize;
   }
@@ -47,6 +52,7 @@ public class IndexConfiguration {
     private boolean isServiceMap = false;
     private String indexAlias;
     private String templateFile;
+    private String documentIdField;
     private long bulkSize = DEFAULT_BULK_SIZE;
 
     public Builder setIsRaw(final Boolean isRaw) {
@@ -71,6 +77,12 @@ public class IndexConfiguration {
     public Builder withTemplateFile(final String templateFile) {
       checkArgument(templateFile != null, "templateFile cannot be null.");
       this.templateFile = templateFile;
+      return this;
+    }
+
+    public Builder withDocumentIdField(final String documentIdField) {
+      checkNotNull(documentIdField, "documentId field cannot be null");
+      this.documentIdField = documentIdField;
       return this;
     }
 
@@ -125,6 +137,14 @@ public class IndexConfiguration {
     }
     this.indexAlias = indexAlias;
     this.bulkSize = builder.bulkSize;
+
+    String documentIdField = builder.documentIdField;
+    if (indexType.equals(IndexConstants.RAW)) {
+      documentIdField = "spanId";
+    } else if (indexType.equals(IndexConstants.SERVICE_MAP)) {
+      documentIdField = "hashId";
+    }
+    this.documentIdField = documentIdField;
   }
 
   public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
@@ -141,6 +161,10 @@ public class IndexConfiguration {
     }
     final Long batchSize = pluginSetting.getLongOrDefault(BULK_SIZE, DEFAULT_BULK_SIZE);
     builder = builder.withBulkSize(batchSize);
+    final String documentId = pluginSetting.getStringOrDefault(DOCUMENT_ID_FIELD, null);
+    if (documentId != null) {
+      builder = builder.withDocumentIdField(documentId);
+    }
     return builder.build();
   }
 }

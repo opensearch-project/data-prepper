@@ -8,7 +8,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConstants.CUSTOM;
 import static com.amazon.situp.plugins.sink.elasticsearch.IndexConstants.RAW;
@@ -73,7 +72,7 @@ public class IndexConfigurationTests {
   @Test
   public void testReadIndexConfigRaw() {
     final PluginSetting pluginSetting = generatePluginSetting(
-            true, null, null, null, null);
+            true, null, null, null, null, null);
     final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
     final URL expTemplateFile = indexConfiguration
             .getClass().getClassLoader().getResource(RAW_DEFAULT_TEMPLATE_FILE);
@@ -81,12 +80,13 @@ public class IndexConfigurationTests {
     assertEquals(TYPE_TO_DEFAULT_ALIAS.get(RAW), indexConfiguration.getIndexAlias());
     assertEquals(expTemplateFile, indexConfiguration.getTemplateURL());
     assertEquals(5, indexConfiguration.getBulkSize());
+    assertEquals("spanId", indexConfiguration.getDocumentIdField());
   }
 
   @Test
   public void testReadIndexConfigServiceMap() {
     final PluginSetting pluginSetting = generatePluginSetting(
-            null, true, null, null, null);
+            null, true, null, null, null, null);
     final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
     final URL expTemplateFile = indexConfiguration
             .getClass().getClassLoader().getResource(SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
@@ -94,12 +94,13 @@ public class IndexConfigurationTests {
     assertEquals(TYPE_TO_DEFAULT_ALIAS.get(SERVICE_MAP), indexConfiguration.getIndexAlias());
     assertEquals(expTemplateFile, indexConfiguration.getTemplateURL());
     assertEquals(5, indexConfiguration.getBulkSize());
+    assertEquals("hashId", indexConfiguration.getDocumentIdField());
   }
 
   @Test
   public void testReadIndexConfigInvalid() {
     final PluginSetting pluginSetting = generatePluginSetting(
-            true, true, null, null, null);
+            true, true, null, null, null, null);
     Exception e = assertThrows(IllegalStateException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting));
     assertTrue(e.getMessage().contains("trace_analytics_raw and trace_analytics_service_map cannot be both true."));
   }
@@ -109,17 +110,20 @@ public class IndexConfigurationTests {
     final String fakeTemplateFilePath = "src/resources/dummy.json";
     final String testIndexAlias = "foo";
     final long testBulkSize = 10L;
+    final String testIdField = "someId";
     final PluginSetting pluginSetting = generatePluginSetting(
-            false, false, testIndexAlias, fakeTemplateFilePath, testBulkSize);
+            false, false, testIndexAlias, fakeTemplateFilePath, testBulkSize, testIdField);
     final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
     assertEquals(CUSTOM, indexConfiguration.getIndexType());
     assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
     assertEquals(new File(fakeTemplateFilePath).toURI().toURL(), indexConfiguration.getTemplateURL());
     assertEquals(testBulkSize, indexConfiguration.getBulkSize());
+    assertEquals(testIdField, indexConfiguration.getDocumentIdField());
   }
 
-  private PluginSetting generatePluginSetting(final Boolean isRaw, final Boolean isServiceMap, final String indexAlias,
-                                              final String templateFilePath, final Long bulkSize) {
+  private PluginSetting generatePluginSetting(
+          final Boolean isRaw, final Boolean isServiceMap, final String indexAlias,
+          final String templateFilePath, final Long bulkSize, final String documentIdField) {
     final Map<String, Object> metadata = new HashMap<>();
     if (isRaw != null) {
       metadata.put(IndexConfiguration.TRACE_ANALYTICS_RAW_FLAG, isRaw);
@@ -135,6 +139,9 @@ public class IndexConfigurationTests {
     }
     if (bulkSize != null) {
       metadata.put("bulk_size", bulkSize);
+    }
+    if (documentIdField != null) {
+      metadata.put("document_id_field", documentIdField);
     }
 
     return new PluginSetting("elasticsearch", metadata);
