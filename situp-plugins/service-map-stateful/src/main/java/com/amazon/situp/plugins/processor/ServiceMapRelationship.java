@@ -8,6 +8,8 @@ import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 
 public class ServiceMapRelationship {
 
+    private static final String MD5 = "MD5";
+
     /**
      * ThreadLocal object to generate hashes of relationships
      */
@@ -167,9 +169,9 @@ public class ServiceMapRelationship {
     private String md5Hash() {
         if(THREAD_LOCAL_MESSAGE_DIGEST.get() == null) {
             try {
-                THREAD_LOCAL_MESSAGE_DIGEST.set(MessageDigest.getInstance("MD5"));
+                THREAD_LOCAL_MESSAGE_DIGEST.set(MessageDigest.getInstance(MD5));
             } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
         }
         THREAD_LOCAL_MESSAGE_DIGEST.get().reset();
