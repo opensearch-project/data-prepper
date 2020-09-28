@@ -36,7 +36,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
     private volatile static LmdbProcessorState<String> previousTraceGroupWindow;
     private volatile static LmdbProcessorState<String> currentTraceGroupWindow;
     //TODO: Consider keeping this state in lmdb
-    private volatile static  HashSet<Integer> relationshipState = new HashSet<>();
+    private volatile static  HashSet<ServiceMapRelationship> relationshipState = new HashSet<>();
     private static File databasePath;
     //TODO: Strange errors when using the same db path. Could be because of different data types?
     private static File traceDatabasePath;
@@ -86,7 +86,8 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
                                                     resourceName,
                                                     span.getParentSpanId().toByteArray(),
                                                     span.getTraceId().toByteArray(),
-                                                    span.getKind().name()));
+                                                    span.getKind().name(),
+                                                    span.getName()));
                                     if(isRootSpan(span)) {
                                         currentTraceGroupWindow.put(span.getTraceId().toByteArray(), span.getName());
                                     }
@@ -109,11 +110,11 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
             final Stream<ServiceMapRelationship> currentStream = currentWindow.iterate(currentWindowFunction, currentRange[0], currentRange[1]).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
             final Collection<Record<String>> serviceDependencyRecords =
                     Stream.concat(previousStream, currentStream).filter(Objects::nonNull)
-                            .filter(serviceMapRelationship -> !relationshipState.contains(serviceMapRelationship.hashCode()))
-                            .map(serviceDependency -> {
+                            .filter(serviceMapRelationship -> !relationshipState.contains(serviceMapRelationship))
+                            .map(serviceMapRelationship -> {
                                 try {
-                                    relationshipState.add(serviceDependency.hashCode());
-                                    return new Record<>(OBJECT_MAPPER.writeValueAsString(serviceDependency));
+                                    relationshipState.add(serviceMapRelationship);
+                                    return new Record<>(OBJECT_MAPPER.writeValueAsString(serviceMapRelationship));
                                 } catch (JsonProcessingException e) {
                                     throw new RuntimeException(e);
                                 }
@@ -148,9 +149,9 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
             final String traceGroupName = getTraceGroupName(serviceMapStateData.traceId);
             if (parentStateData != null && !parentStateData.serviceName.equals(serviceMapStateData.serviceName) && traceGroupName != null) {
                 return Arrays.asList(
-                        ServiceMapRelationship.newDestinationRelationship(parentStateData.serviceName, parentStateData.spanKind, serviceMapStateData.serviceName, traceGroupName),
+                        ServiceMapRelationship.newDestinationRelationship(parentStateData.serviceName, parentStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName),
                         //This extra edge is added for compatibility of the index for both stateless and stateful processors
-                        ServiceMapRelationship.newTargetRelationship(serviceMapStateData.serviceName, serviceMapStateData.spanKind, serviceMapStateData.serviceName, traceGroupName)
+                        ServiceMapRelationship.newTargetRelationship(serviceMapStateData.serviceName, serviceMapStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName)
                 ).stream();
             } else {
                 return null;
@@ -168,9 +169,9 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
             final String traceGroupName = getTraceGroupName(serviceMapStateData.traceId);
             if (parentStateData != null && !parentStateData.serviceName.equals(serviceMapStateData.serviceName) && traceGroupName != null) {
                 return Arrays.asList(
-                        ServiceMapRelationship.newDestinationRelationship(parentStateData.serviceName, parentStateData.spanKind, serviceMapStateData.serviceName, traceGroupName),
+                        ServiceMapRelationship.newDestinationRelationship(parentStateData.serviceName, parentStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName),
                         //This extra edge is added for compatibility of the index for both stateless and stateful processors
-                        ServiceMapRelationship.newTargetRelationship(serviceMapStateData.serviceName, serviceMapStateData.spanKind, serviceMapStateData.serviceName, traceGroupName)
+                        ServiceMapRelationship.newTargetRelationship(serviceMapStateData.serviceName, serviceMapStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName)
                 ).stream();
             } else {
                 return null;
@@ -331,17 +332,20 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
         public byte[] parentSpanId;
         public byte[] traceId;
         public String spanKind;
+        public String name;
 
         public ServiceMapStateData() {
         }
 
         public ServiceMapStateData(final String serviceName, final byte[] parentSpanId,
                                    final byte[] traceId,
-                                   final String spanKind) {
+                                   final String spanKind,
+                                   final String name) {
             this.serviceName = serviceName;
             this.parentSpanId = parentSpanId;
             this.traceId = traceId;
             this.spanKind = spanKind;
+            this.name = name;
         }
     }
 }

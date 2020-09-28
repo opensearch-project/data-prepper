@@ -83,17 +83,17 @@ public class ServiceMapStatefulProcessorTest {
 
 
         //Expected relationships
-        final ServiceMapRelationship frontendAuth = ServiceMapRelationship.newDestinationRelationship(FRONTEND_SERVICE, Span.SpanKind.CLIENT.name(), AUTHENTICATION_SERVICE, traceGroup1);
-        final ServiceMapRelationship authPassword = ServiceMapRelationship.newDestinationRelationship(FRONTEND_SERVICE, Span.SpanKind.CLIENT.name(), AUTHENTICATION_SERVICE, traceGroup1);
-        final ServiceMapRelationship frontendCheckout = ServiceMapRelationship.newDestinationRelationship(FRONTEND_SERVICE, Span.SpanKind.CLIENT.name(), CHECKOUT_SERVICE, traceGroup2);
-        final ServiceMapRelationship checkoutCart = ServiceMapRelationship.newDestinationRelationship(CHECKOUT_SERVICE, Span.SpanKind.CLIENT.name(), CART_SERVICE, traceGroup2);
-        final ServiceMapRelationship checkoutPayment = ServiceMapRelationship.newDestinationRelationship(CHECKOUT_SERVICE, Span.SpanKind.CLIENT.name(), PAYMENT_SERVICE, traceGroup2);
+        final ServiceMapRelationship frontendAuth = ServiceMapRelationship.newDestinationRelationship(FRONTEND_SERVICE, Span.SpanKind.CLIENT.name(), AUTHENTICATION_SERVICE, "reset", traceGroup1);
+        final ServiceMapRelationship authPassword = ServiceMapRelationship.newDestinationRelationship(AUTHENTICATION_SERVICE, Span.SpanKind.CLIENT.name(), PASSWORD_DATABASE, "update", traceGroup1);
+        final ServiceMapRelationship frontendCheckout = ServiceMapRelationship.newDestinationRelationship(FRONTEND_SERVICE, Span.SpanKind.CLIENT.name(), CHECKOUT_SERVICE, "checkout", traceGroup2);
+        final ServiceMapRelationship checkoutCart = ServiceMapRelationship.newDestinationRelationship(CHECKOUT_SERVICE, Span.SpanKind.CLIENT.name(), CART_SERVICE, "get_items", traceGroup2);
+        final ServiceMapRelationship checkoutPayment = ServiceMapRelationship.newDestinationRelationship(CHECKOUT_SERVICE, Span.SpanKind.CLIENT.name(), PAYMENT_SERVICE, "charge", traceGroup2);
 
-        final ServiceMapRelationship checkoutTarget = ServiceMapRelationship.newTargetRelationship(CHECKOUT_SERVICE, Span.SpanKind.SERVER.name(), CHECKOUT_SERVICE, traceGroup2);
-        final ServiceMapRelationship authTarget = ServiceMapRelationship.newTargetRelationship(AUTHENTICATION_SERVICE, Span.SpanKind.SERVER.name(), AUTHENTICATION_SERVICE, traceGroup1);
-        final ServiceMapRelationship passwordTarget = ServiceMapRelationship.newTargetRelationship(PASSWORD_DATABASE, Span.SpanKind.SERVER.name(), PASSWORD_DATABASE, traceGroup1);
-        final ServiceMapRelationship paymentTarget = ServiceMapRelationship.newTargetRelationship(PAYMENT_SERVICE, Span.SpanKind.SERVER.name(), PAYMENT_SERVICE, traceGroup2);
-        final ServiceMapRelationship cartTarget = ServiceMapRelationship.newTargetRelationship(CART_SERVICE, Span.SpanKind.SERVER.name(), CART_SERVICE, traceGroup2);
+        final ServiceMapRelationship checkoutTarget = ServiceMapRelationship.newTargetRelationship(CHECKOUT_SERVICE, Span.SpanKind.SERVER.name(), CHECKOUT_SERVICE, "checkout", traceGroup2);
+        final ServiceMapRelationship authTarget = ServiceMapRelationship.newTargetRelationship(AUTHENTICATION_SERVICE, Span.SpanKind.SERVER.name(), AUTHENTICATION_SERVICE, "reset", traceGroup1);
+        final ServiceMapRelationship passwordTarget = ServiceMapRelationship.newTargetRelationship(PASSWORD_DATABASE, Span.SpanKind.SERVER.name(), PASSWORD_DATABASE, "update", traceGroup1);
+        final ServiceMapRelationship paymentTarget = ServiceMapRelationship.newTargetRelationship(PAYMENT_SERVICE, Span.SpanKind.SERVER.name(), PAYMENT_SERVICE, "charge", traceGroup2);
+        final ServiceMapRelationship cartTarget = ServiceMapRelationship.newTargetRelationship(CART_SERVICE, Span.SpanKind.SERVER.name(), CART_SERVICE, "get_items", traceGroup2);
 
         final Set<ServiceMapRelationship> relationshipsFound = new HashSet<>();
 
@@ -151,7 +151,6 @@ public class ServiceMapStatefulProcessorTest {
         );
 
         Assert.assertTrue(evaluateEdges(relationshipsFound).containsAll(expectedSourceDests));
-
 
         //Make sure that future relationships that are equivalent are caught by cache
         final byte[] rootSpanId3 = ServiceMapTestUtils.getRandomBytes(8);
