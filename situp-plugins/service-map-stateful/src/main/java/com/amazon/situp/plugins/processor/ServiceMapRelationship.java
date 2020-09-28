@@ -24,14 +24,20 @@ public class ServiceMapRelationship {
      */
     private String target;
 
+    /**
+     * Trace group name for this relationship
+     */
+    private String traceGroupName;
+
     public ServiceMapRelationship() {
     }
 
-    private ServiceMapRelationship(String serviceName, String spanKind, String destination, String target) {
+    private ServiceMapRelationship(String serviceName, String spanKind, String destination, String target, String traceGroupName) {
         this.serviceName = serviceName;
         this.spanKind = spanKind;
         this.destination = destination;
         this.target = target;
+        this.traceGroupName = traceGroupName;
     }
 
     /**
@@ -41,8 +47,9 @@ public class ServiceMapRelationship {
     public static ServiceMapRelationship newDestinationRelationship (
             final String serviceName,
             final String spanKind,
-            final String destination) {
-        return new ServiceMapRelationship(serviceName, spanKind, destination, null);
+            final String destination,
+            final String traceGroupName) {
+        return new ServiceMapRelationship(serviceName, spanKind, destination, null, traceGroupName);
     }
 
     /**
@@ -52,8 +59,9 @@ public class ServiceMapRelationship {
     public static ServiceMapRelationship newTargetRelationship (
             final String serviceName,
             final String spanKind,
-            final String target) {
-        return new ServiceMapRelationship(serviceName, spanKind, null, target);
+            final String target,
+            final String traceGroupName) {
+        return new ServiceMapRelationship(serviceName, spanKind, null, target, traceGroupName);
     }
 
     public String getServiceName() {
@@ -94,6 +102,14 @@ public class ServiceMapRelationship {
         this.target = target;
     }
 
+    public String getTraceGroupName() {
+        return traceGroupName;
+    }
+
+    public void setTraceGroupName(String traceGroupName) {
+        this.traceGroupName = traceGroupName;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -102,11 +118,12 @@ public class ServiceMapRelationship {
         return Objects.equals(serviceName, that.serviceName) &&
                 Objects.equals(spanKind, that.spanKind) &&
                 Objects.equals(destination, that.destination) &&
-                Objects.equals(target, that.target);
+                Objects.equals(target, that.target) &&
+                Objects.equals(traceGroupName, that.traceGroupName);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(serviceName, spanKind, destination, target);
+        return Objects.hash(serviceName, spanKind, destination, target, traceGroupName);
     }
 }
