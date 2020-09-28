@@ -62,7 +62,7 @@ test {
         exclude '**/ODFETests.class'
     }
     systemProperty "odfe.host", System.getProperty("odfe.host")
-    if (System.hasProperty("odfe.user")) {
+    if (System.getProperty("odfe.user") != null) {
         systemProperty "odfe.user", System.getProperty("odfe.user")
         systemProperty "odfe.password", System.getProperty("odfe.password")
     }
