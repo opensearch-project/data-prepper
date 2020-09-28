@@ -1,28 +1,30 @@
 package com.amazon.situp.plugins.sink.elasticsearch;
 
 import com.amazon.situp.model.configuration.PluginSetting;
-import org.elasticsearch.common.unit.ByteSizeUnit;
 
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class IndexConfiguration {
   /**
    * TODO: add index management policy parameters
    */
-  public static final String INDEX_TYPE = "index_type";
-  public static final String INDEX_ALIAS = "index_alias";
+  public static final String TRACE_ANALYTICS_RAW_FLAG = "trace_analytics_raw";
+  public static final String TRACE_ANALYTICS_SERVICE_MAP_FLAG = "trace_analytics_service_map";
+  public static final String INDEX_ALIAS = "index";
   public static final String TEMPLATE_FILE = "template_file";
   public static final String BULK_SIZE = "bulk_size";
-  public static final String DEFAULT_INDEX_TYPE = IndexConstants.RAW;
+  public static final String DOCUMENT_ID_FIELD = "document_id_field";
   public static final long DEFAULT_BULK_SIZE = 5L;
 
   private final String indexType;
   private final String indexAlias;
   private final URL templateURL;
+  private final String documentIdField;
   private final long bulkSize;
 
   public String getIndexType() {
@@ -37,20 +39,31 @@ public class IndexConfiguration {
     return templateURL;
   }
 
+  public String getDocumentIdField() {
+    return documentIdField;
+  }
+
   public long getBulkSize() {
     return bulkSize;
   }
 
   public static class Builder {
-    private String indexType = DEFAULT_INDEX_TYPE;
+    private boolean isRaw = false;
+    private boolean isServiceMap = false;
     private String indexAlias;
     private String templateFile;
+    private String documentIdField;
     private long bulkSize = DEFAULT_BULK_SIZE;
 
-    public Builder withIndexType(final String indexType) {
-      checkArgument(indexType != null, "indexType cannot be null.");
-      checkArgument( IndexConstants.TYPES.contains(indexType), "Invalid indexType.");
-      this.indexType = indexType;
+    public Builder setIsRaw(final Boolean isRaw) {
+      checkNotNull(isRaw, "trace_analytics_raw cannot be null.");
+      this.isRaw = isRaw;
+      return this;
+    }
+
+    public Builder setIsServiceMap(final Boolean isServiceMap) {
+      checkNotNull(isServiceMap, "trace_analytics_service_map cannot be null.");
+      this.isServiceMap = isServiceMap;
       return this;
     }
 
@@ -67,6 +80,12 @@ public class IndexConfiguration {
       return this;
     }
 
+    public Builder withDocumentIdField(final String documentIdField) {
+      checkNotNull(documentIdField, "documentId field cannot be null");
+      this.documentIdField = documentIdField;
+      return this;
+    }
+
     public Builder withBulkSize(final long bulkSize) {
       this.bulkSize = bulkSize;
       return this;
@@ -78,52 +97,74 @@ public class IndexConfiguration {
   }
 
   private IndexConfiguration(final Builder builder) {
-    this.indexType = builder.indexType;
+    final String indexType;
+    if (builder.isRaw && builder.isServiceMap) {
+      throw new IllegalStateException("trace_analytics_raw and trace_analytics_service_map cannot be both true.");
+    } else if (builder.isRaw) {
+      indexType = IndexConstants.RAW;
+    } else if (builder.isServiceMap) {
+      indexType = IndexConstants.SERVICE_MAP;
+    } else {
+      indexType = IndexConstants.CUSTOM;
+    }
+    this.indexType = indexType;
 
     URL templateURL = null;
-    if (builder.templateFile == null) {
-      if (builder.indexType.equals(IndexConstants.RAW)) {
-        templateURL = getClass().getClassLoader()
-            .getResource(IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
-      } else if (builder.indexType.equals(IndexConstants.SERVICE_MAP)) {
-        templateURL = getClass().getClassLoader()
-            .getResource(IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
-      }
+    if (indexType.equals(IndexConstants.RAW)) {
+      templateURL = getClass().getClassLoader()
+          .getResource(IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
+    } else if (indexType.equals(IndexConstants.SERVICE_MAP)) {
+      templateURL = getClass().getClassLoader()
+          .getResource(IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
     } else {
-      try {
-        templateURL = new File(builder.templateFile).toURI().toURL();
-      } catch (MalformedURLException e) {
-        throw new IllegalStateException("Invalid template file path");
+      if (builder.templateFile != null) {
+        try {
+          templateURL = new File(builder.templateFile).toURI().toURL();
+        } catch (MalformedURLException e) {
+          throw new IllegalStateException("Invalid template file path");
+        }
       }
     }
     this.templateURL = templateURL;
 
     String indexAlias = builder.indexAlias;
-    if (indexAlias == null) {
-      if (IndexConstants.TYPE_TO_DEFAULT_ALIAS.containsKey(builder.indexType)) {
-        indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(builder.indexType);
-      } else {
+    if (IndexConstants.TYPE_TO_DEFAULT_ALIAS.containsKey(indexType)) {
+        indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(indexType);
+    } else {
+      if (indexAlias == null) {
         throw new IllegalStateException("Missing required properties:indexAlias");
       }
     }
     this.indexAlias = indexAlias;
     this.bulkSize = builder.bulkSize;
+
+    String documentIdField = builder.documentIdField;
+    if (indexType.equals(IndexConstants.RAW)) {
+      documentIdField = "spanId";
+    } else if (indexType.equals(IndexConstants.SERVICE_MAP)) {
+      documentIdField = "hashId";
+    }
+    this.documentIdField = documentIdField;
   }
 
   public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
     IndexConfiguration.Builder builder = new IndexConfiguration.Builder();
-    final String indexType = (String) pluginSetting.getAttributeOrDefault(INDEX_TYPE, DEFAULT_INDEX_TYPE);
-    builder = builder.withIndexType(indexType);
-    final String indexAlias = (String) pluginSetting.getAttributeFromSettings(INDEX_ALIAS);
+    builder.setIsRaw(pluginSetting.getBooleanOrDefault(TRACE_ANALYTICS_RAW_FLAG, false));
+    builder.setIsServiceMap(pluginSetting.getBooleanOrDefault(TRACE_ANALYTICS_SERVICE_MAP_FLAG, false));
+    final String indexAlias = pluginSetting.getStringOrDefault(INDEX_ALIAS, null);
     if (indexAlias != null) {
       builder = builder.withIndexAlias(indexAlias);
     }
-    final String templateFile = (String) pluginSetting.getAttributeFromSettings(TEMPLATE_FILE);
+    final String templateFile = pluginSetting.getStringOrDefault(TEMPLATE_FILE, null);
     if (templateFile != null) {
       builder = builder.withTemplateFile(templateFile);
     }
-    final Long batchSize = (Long) pluginSetting.getAttributeOrDefault(BULK_SIZE, DEFAULT_BULK_SIZE);
+    final Long batchSize = pluginSetting.getLongOrDefault(BULK_SIZE, DEFAULT_BULK_SIZE);
     builder = builder.withBulkSize(batchSize);
+    final String documentId = pluginSetting.getStringOrDefault(DOCUMENT_ID_FIELD, null);
+    if (documentId != null) {
+      builder = builder.withDocumentIdField(documentId);
+    }
     return builder.build();
   }
 }
