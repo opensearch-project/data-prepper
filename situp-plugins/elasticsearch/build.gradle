@@ -62,8 +62,10 @@ test {
         exclude '**/ODFETests.class'
     }
     systemProperty "odfe.host", System.getProperty("odfe.host")
-    systemProperty "odfe.user", System.getProperty("odfe.user")
-    systemProperty "odfe.password", System.getProperty("odfe.password")
+    if (System.hasProperty("odfe.user")) {
+        systemProperty "odfe.user", System.getProperty("odfe.user")
+        systemProperty "odfe.password", System.getProperty("odfe.password")
+    }
 }
 
 integTest {}

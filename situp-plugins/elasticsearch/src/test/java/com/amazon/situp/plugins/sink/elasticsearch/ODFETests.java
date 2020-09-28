@@ -16,11 +16,15 @@ public class ODFETests {
     @Test
     public void testODFEConnection() throws IOException {
         final String host = System.getProperty("odfe.host");
+        final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
+                Collections.singletonList(host));
         final String user = System.getProperty("odfe.user");
         final String password = System.getProperty("odfe.password");
-        final ConnectionConfiguration connectionConfiguration = new ConnectionConfiguration.Builder(
-                Collections.singletonList(host)).withUsername(user).withPassword(password).build();
-        final RestHighLevelClient client = connectionConfiguration.createClient();
+        if (user != null) {
+            builder.withUsername(user);
+            builder.withPassword(password);
+        }
+        final RestHighLevelClient client = builder.build().createClient();
         final ClusterHealthRequest request = new ClusterHealthRequest().waitForYellowStatus();
         final ClusterHealthResponse response = client.cluster().health(request, RequestOptions.DEFAULT);
         assertEquals(RestStatus.OK, response.status());
