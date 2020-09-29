@@ -8,6 +8,8 @@ import com.amazon.situp.model.sink.Sink;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.elasticsearch.action.DocWriteRequest;
+import org.elasticsearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
+import org.elasticsearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
 import org.elasticsearch.action.admin.indices.alias.Alias;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
@@ -41,6 +43,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -74,8 +77,12 @@ public class ElasticsearchSink implements Sink<Record<String>> {
 
   public void start() throws IOException {
     restHighLevelClient = esSinkConfig.getConnectionConfiguration().createClient();
+    final boolean ismEnabled = checkISMEnabled();
+    if (ismEnabled) {
+      checkAndCreatePolicy();
+    }
     if (esSinkConfig.getIndexConfiguration().getTemplateURL() != null) {
-      createIndexTemplate();
+      createIndexTemplate(ismEnabled);
     }
     final String dlqFile = esSinkConfig.getRetryConfiguration().getDlqFile();
     if ( dlqFile != null) {
@@ -159,6 +166,14 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     }
   }
 
+  private boolean checkISMEnabled() throws IOException {
+    final ClusterGetSettingsRequest request = new ClusterGetSettingsRequest();
+    request.includeDefaults(true);
+    final ClusterGetSettingsResponse response = restHighLevelClient.cluster().getSettings(request, RequestOptions.DEFAULT);
+    final String enabled = response.getSetting(IndexConstants.ISM_ENABLED_SETTING);
+    return enabled != null && enabled.equals("true");
+  }
+
   private void checkAndCreatePolicy() throws IOException {
     final String endPoint = "/_opendistro/_ism/policies/" + IndexConstants.RAW_ISM_POLICY;
     Request request = new Request(HttpMethod.HEAD, endPoint);
@@ -177,7 +192,8 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     }
   }
 
-  private void createIndexTemplate() throws IOException {
+  @SuppressWarnings("unchecked")
+  private void createIndexTemplate(final boolean ismEnabled) throws IOException {
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
     final PutIndexTemplateRequest putIndexTemplateRequest = new PutIndexTemplateRequest(indexAlias + "-index-template");
     if (indexType.equals(IndexConstants.RAW)) {
@@ -187,6 +203,12 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     }
     final URL jsonURL = esSinkConfig.getIndexConfiguration().getTemplateURL();
     final Map<String, Object> template = readTemplateURL(jsonURL);
+    if (ismEnabled) {
+      // Attach policy_id and rollover_alias
+      final Map<String, Object> settings = (Map<String, Object>) template.getOrDefault("settings", new HashMap<>());
+      settings.put(IndexConstants.ISM_POLICY_ID_SETTING, IndexConstants.RAW_ISM_POLICY);
+      settings.put(IndexConstants.ISM_ROLLOVER_ALIAS_SETTING, indexAlias);
+    }
     putIndexTemplateRequest.source(template);
     restHighLevelClient.indices().putTemplate(putIndexTemplateRequest, RequestOptions.DEFAULT);
   }
