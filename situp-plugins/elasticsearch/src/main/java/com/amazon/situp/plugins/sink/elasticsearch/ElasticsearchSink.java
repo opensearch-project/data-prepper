@@ -5,6 +5,8 @@ import com.amazon.situp.model.annotations.SitupPlugin;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.sink.Sink;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.alias.Alias;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
@@ -184,8 +186,8 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias));
     }
     final URL jsonURL = esSinkConfig.getIndexConfiguration().getTemplateURL();
-    final String templateJson = readTemplateURL(jsonURL);
-    putIndexTemplateRequest.source(templateJson, XContentType.JSON);
+    final Map<String, Object> template = readTemplateURL(jsonURL);
+    putIndexTemplateRequest.source(template);
     restHighLevelClient.indices().putTemplate(putIndexTemplateRequest, RequestOptions.DEFAULT);
   }
 
@@ -210,14 +212,8 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     }
   }
 
-  private String readTemplateURL(final URL templateURL) throws IOException {
-    final StringBuilder templateJsonBuffer = new StringBuilder();
-    final InputStream is = templateURL.openStream();
-    try (final BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
-      reader.lines().forEach(line -> templateJsonBuffer.append(line).append("\n"));
-    }
-    is.close();
-    return templateJsonBuffer.toString();
+  private Map<String, Object> readTemplateURL(final URL templateURL) throws IOException {
+    return new ObjectMapper().readValue(templateURL, new TypeReference<Map<String, Object>>() {});
   }
 
   private Map<String, Object> getMapFromJson(final String documentJson) throws IOException {
