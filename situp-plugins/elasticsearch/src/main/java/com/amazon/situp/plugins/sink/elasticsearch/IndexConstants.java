@@ -13,6 +13,8 @@ public class IndexConstants {
   public static final Map<String, String> TYPE_TO_DEFAULT_ALIAS = new HashMap<>();
   // TODO: extract out version number into version enum
   public static final String RAW_DEFAULT_TEMPLATE_FILE = "otel-v1-apm-span-index-template.json";
+  public static final String RAW_ISM_POLICY = "raw-span-policy";
+  public static final String RAW_ISM_FILE = "raw-span-policy.json";
   // TODO: extract out version number into version enum
   public static final String SERVICE_MAP_DEFAULT_TEMPLATE_FILE = "otel-v1-apm-service-map-index-template.json";
 

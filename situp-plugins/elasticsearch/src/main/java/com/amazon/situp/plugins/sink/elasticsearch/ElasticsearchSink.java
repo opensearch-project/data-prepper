@@ -10,7 +10,9 @@ import org.elasticsearch.action.admin.indices.alias.Alias;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.index.IndexRequest;
+import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.PutIndexTemplateRequest;
@@ -21,9 +23,11 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.common.xcontent.XContentType;
+import org.elasticsearch.rest.RestStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -150,6 +154,24 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       } catch (final IOException e) {
         LOG.error(e.getMessage(), e);
       }
+    }
+  }
+
+  private void checkAndCreatePolicy() throws IOException {
+    final String endPoint = "/_opendistro/_ism/policies/" + IndexConstants.RAW_ISM_POLICY;
+    Request request = new Request(HttpMethod.HEAD, endPoint);
+    final Response response = restHighLevelClient.getLowLevelClient().performRequest(request);
+    if (response.getStatusLine().getStatusCode() != RestStatus.OK.getStatus()) {
+      final InputStream is = getClass().getClassLoader().getResourceAsStream(IndexConstants.RAW_ISM_FILE);
+      assert is != null;
+      final StringBuilder policyJsonBuffer = new StringBuilder();
+      try (final BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
+        reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
+      }
+      is.close();
+      request = new Request(HttpMethod.PUT, endPoint);
+      request.setJsonEntity(policyJsonBuffer.toString());
+      restHighLevelClient.getLowLevelClient().performRequest(request);
     }
   }
 
