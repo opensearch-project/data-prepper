@@ -62,10 +62,16 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     Request request = new Request(HttpMethod.HEAD, indexAlias);
     Response response = client().performRequest(request);
     assertEquals(SC_OK, response.getStatusLine().getStatusCode());
-    final Map<String, Object> mappings = getIndexMappings(String.format("%s-000001", indexAlias));
+    final String index = String.format("%s-000001", indexAlias);
+    final Map<String, Object> mappings = getIndexMappings(index);
     assertNotNull(mappings);
     assertFalse((boolean)mappings.get("date_detection"));
     sink.stop();
+
+    if (isODFE()) {
+      // Check managed index
+      assertEquals(IndexConstants.RAW_ISM_POLICY, getIndexPolicyId(index));
+    }
 
     // roll over initial index
     request = new Request(HttpMethod.POST, String.format("%s/_rollover", indexAlias));
@@ -81,6 +87,11 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     response = client().performRequest(request);
     assertEquals(true, checkIsWriteIndex(EntityUtils.toString(response.getEntity()), indexAlias, rolloverIndexName));
     sink.stop();
+
+    if (isODFE()) {
+      // Check managed index
+      assertEquals(IndexConstants.RAW_ISM_POLICY, getIndexPolicyId(rolloverIndexName));
+    }
   }
 
   public void testOutputRawSpanDefault() throws IOException, InterruptedException {
@@ -150,6 +161,11 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     assertNotNull(mappings);
     assertFalse((boolean)mappings.get("date_detection"));
     sink.stop();
+
+    if (isODFE()) {
+      // Check managed index
+      assertNull(getIndexPolicyId(indexAlias));
+    }
   }
 
   public void testOutputServiceMapDefault() throws IOException, InterruptedException {
@@ -295,6 +311,17 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final Map<String, Object> mappings = (Map<String, Object>) ((Map<String, Object>)createParser(XContentType.JSON.xContent(),
             responseBody).map().get(index)).get("mappings");
     return mappings;
+  }
+
+  private String getIndexPolicyId(final String index) throws IOException {
+    final Request request = new Request(HttpMethod.GET, "/_opendistro/_ism/explain/" + index);
+    final Response response = client().performRequest(request);
+    final String responseBody = EntityUtils.toString(response.getEntity());
+
+    @SuppressWarnings("unchecked")
+    final String policyId = (String) ((Map<String, Object>)createParser(XContentType.JSON.xContent(),
+            responseBody).map().get(index)).get("index.opendistro.index_state_management.policy_id");
+    return policyId;
   }
 
   private boolean deleteDirectory(final File directoryToBeDeleted) {
