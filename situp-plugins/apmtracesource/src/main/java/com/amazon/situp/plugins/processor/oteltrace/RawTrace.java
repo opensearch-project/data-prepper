@@ -114,7 +114,8 @@ public class RawTrace {
     }
 
     public static RawTrace buildFromProto(Resource resource, Span spans, InstrumentationLibrary instrumentationLibrary) {
-        final String service = resource.getAttributesList().stream().filter(keyValue -> keyValue.getKey().equals())
+        final String SERVICE_NAME_KEY = "resource.name";
+
         return new RawTraceBuilder()
                 .setTraceID(Hex.encodeHexString(spans.getTraceId().toByteArray()))
                 .setSpanID(Hex.encodeHexString(spans.getSpanId().toByteArray()))
@@ -124,7 +125,8 @@ public class RawTrace {
                 .setEndTime(convertStringNanosToISO8601(String.valueOf(spans.getEndTimeUnixNano())))
                 .setInstrumentationName(instrumentationLibrary.getName())
                 .setInstrumentationVersion(instrumentationLibrary.getVersion())
-//                .setServiceName(resource.getAttributesList().stream().filter(keyValue -> keyValue.getKey().equals(SERVICE_NAME)))
+                .setServiceName(resource.getAttributesList().stream().filter(keyValue -> keyValue.getKey().equals(SERVICE_NAME_KEY)
+                ).findFirst().get().getValue().getStringValue())
                 .build();
     }
 }
