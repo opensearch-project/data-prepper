@@ -3,12 +3,7 @@ package com.amazon.situp.plugins.processor;
 import com.amazon.situp.model.record.Record;
 import java.io.File;
 import java.time.Clock;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -99,8 +94,10 @@ public class ServiceMapStatefulProcessorTest {
 
         //First batch
         Mockito.when(clock.millis()).thenReturn(110L);
-        Future<Set<ServiceMapRelationship>> r1 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1, Arrays.asList(new Record<>(frontendSpans1), new Record<>(checkoutSpansServer)));
-        Future<Set<ServiceMapRelationship>> r2 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2, Arrays.asList(new Record<>(frontendSpans2), new Record<>(checkoutSpansClient)));
+        Future<Set<ServiceMapRelationship>> r1 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1,
+                Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(frontendSpans1, checkoutSpansServer))));
+        Future<Set<ServiceMapRelationship>> r2 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2,
+                Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(frontendSpans2,checkoutSpansClient))));
         relationshipsFound.addAll(r1.get());
         relationshipsFound.addAll(r2.get());
 
@@ -109,8 +106,11 @@ public class ServiceMapStatefulProcessorTest {
 
         //Second batch
         Mockito.when(clock.millis()).thenReturn(220L);
-        Future<Set<ServiceMapRelationship>> r3 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1, Arrays.asList(new Record<>(authenticationSpansServer), new Record<>(authenticationSpansClient), new Record<>(cartSpans)));
-        Future<Set<ServiceMapRelationship>> r4 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2, Arrays.asList(new Record<>(passwordDbSpans), new Record<>(paymentSpans)));
+        Future<Set<ServiceMapRelationship>> r3 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1,
+                Arrays.asList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(authenticationSpansServer,authenticationSpansClient)),
+                        new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(cartSpans))));
+        Future<Set<ServiceMapRelationship>> r4 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2,
+                Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(passwordDbSpans,paymentSpans))));
         relationshipsFound.addAll(r3.get());
         relationshipsFound.addAll(r4.get());
 
@@ -159,8 +159,10 @@ public class ServiceMapStatefulProcessorTest {
         final ResourceSpans authenticationSpansServer2 = ServiceMapTestUtils.getResourceSpans(AUTHENTICATION_SERVICE, "reset", ServiceMapTestUtils.getRandomBytes(8), ServiceMapTestUtils.getSpanId(frontendSpans3), traceId3, Span.SpanKind.SERVER);
 
         Mockito.when(clock.millis()).thenReturn(450L);
-        Future<Set<ServiceMapRelationship>> r7 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1, Arrays.asList(new Record<>(frontendSpans3)));
-        Future<Set<ServiceMapRelationship>> r8 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2, Arrays.asList(new Record<>(authenticationSpansServer2)));
+        Future<Set<ServiceMapRelationship>> r7 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1,
+                Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(frontendSpans3))));
+        Future<Set<ServiceMapRelationship>> r8 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2,
+                Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(authenticationSpansServer2))));
         Assert.assertTrue(r7.get().isEmpty());
         Assert.assertTrue(r8.get().isEmpty());
 
