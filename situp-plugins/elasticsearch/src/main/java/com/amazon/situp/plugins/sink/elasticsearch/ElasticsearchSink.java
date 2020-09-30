@@ -175,20 +175,22 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   }
 
   private void checkAndCreatePolicy() throws IOException {
-    final String endPoint = "/_opendistro/_ism/policies/" + IndexConstants.RAW_ISM_POLICY;
-    Request request = new Request(HttpMethod.HEAD, endPoint);
-    final Response response = restHighLevelClient.getLowLevelClient().performRequest(request);
-    if (response.getStatusLine().getStatusCode() != RestStatus.OK.getStatus()) {
-      final InputStream is = getClass().getClassLoader().getResourceAsStream(IndexConstants.RAW_ISM_FILE);
-      assert is != null;
-      final StringBuilder policyJsonBuffer = new StringBuilder();
-      try (final BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
-        reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
+    if (indexType.equals(IndexConstants.RAW)) {
+      final String endPoint = "/_opendistro/_ism/policies/" + IndexConstants.RAW_ISM_POLICY;
+      Request request = new Request(HttpMethod.HEAD, endPoint);
+      final Response response = restHighLevelClient.getLowLevelClient().performRequest(request);
+      if (response.getStatusLine().getStatusCode() != RestStatus.OK.getStatus()) {
+        final InputStream is = getClass().getClassLoader().getResourceAsStream(IndexConstants.RAW_ISM_FILE);
+        assert is != null;
+        final StringBuilder policyJsonBuffer = new StringBuilder();
+        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
+          reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
+        }
+        is.close();
+        request = new Request(HttpMethod.PUT, endPoint);
+        request.setJsonEntity(policyJsonBuffer.toString());
+        restHighLevelClient.getLowLevelClient().performRequest(request);
       }
-      is.close();
-      request = new Request(HttpMethod.PUT, endPoint);
-      request.setJsonEntity(policyJsonBuffer.toString());
-      restHighLevelClient.getLowLevelClient().performRequest(request);
     }
   }
 
@@ -196,14 +198,15 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private void createIndexTemplate(final boolean ismEnabled) throws IOException {
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
     final PutIndexTemplateRequest putIndexTemplateRequest = new PutIndexTemplateRequest(indexAlias + "-index-template");
-    if (indexType.equals(IndexConstants.RAW)) {
+    final boolean isRaw = indexType.equals(IndexConstants.RAW);
+    if (isRaw) {
       putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias + "-*"));
     } else {
       putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias));
     }
     final URL jsonURL = esSinkConfig.getIndexConfiguration().getTemplateURL();
     final Map<String, Object> template = readTemplateURL(jsonURL);
-    if (ismEnabled) {
+    if (ismEnabled && isRaw) {
       // Attach policy_id and rollover_alias
       final Map<String, Object> settings = (Map<String, Object>) template.getOrDefault("settings", new HashMap<>());
       settings.put(IndexConstants.ISM_POLICY_ID_SETTING, IndexConstants.RAW_ISM_POLICY);
