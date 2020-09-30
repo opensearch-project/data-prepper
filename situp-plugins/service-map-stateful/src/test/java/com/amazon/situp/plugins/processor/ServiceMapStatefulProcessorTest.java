@@ -61,8 +61,8 @@ public class ServiceMapStatefulProcessorTest {
         ExecutorService threadpool = Executors.newCachedThreadPool();
         final File path = temporaryFolder.newFolder();
         final File path2 = temporaryFolder.newFolder();
-        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, path2,2, clock);
-        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, path2,2, clock);
+        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, path2, clock);
+        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, path2, clock);
 
         final byte[] rootSpanId1 = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] rootSpanId2 = ServiceMapTestUtils.getRandomBytes(8);
