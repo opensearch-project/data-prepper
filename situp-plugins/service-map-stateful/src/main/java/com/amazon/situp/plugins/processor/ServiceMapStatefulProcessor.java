@@ -1,5 +1,8 @@
 package com.amazon.situp.plugins.processor;
 
+import com.amazon.situp.model.PluginType;
+import com.amazon.situp.model.annotations.SitupPlugin;
+import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.processor.Processor;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.plugins.processor.state.LmdbProcessorState;
@@ -20,17 +23,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
+@SitupPlugin(name = "service-map-stateful", type = PluginType.PROCESSOR)
 public class ServiceMapStatefulProcessor implements Processor<Record<ExportTraceServiceRequest>, Record<String>> {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Collection<Record<String>> EMPTY_COLLECTION = Collections.emptySet();
-
-    private static int numProcessors;
+    private static final Integer TO_MILLIS = 1_000;
     private static AtomicInteger processorsCreated = new AtomicInteger(0);
     private static long previousTimestamp;
     private static long windowDurationMillis;
-    private static CountDownLatch edgeEvaluationLatch = new CountDownLatch(numProcessors);
+    private static CountDownLatch edgeEvaluationLatch;
     private static CountDownLatch windowRotationLatch = new CountDownLatch(1);
     private volatile static LmdbProcessorState<ServiceMapStateData> previousWindow;
     private volatile static LmdbProcessorState<ServiceMapStateData> currentWindow;
@@ -39,28 +41,49 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     //TODO: Consider keeping this state in lmdb
     private volatile static  HashSet<ServiceMapRelationship> relationshipState = new HashSet<>();
     private static File databasePath;
-    //TODO: Strange errors when using the same db path. Could be because of different data types?
     private static File traceDatabasePath;
     private static Clock clock;
 
     private final int thisProcessorId;
 
-    public ServiceMapStatefulProcessor(final long windowDurationMillis, final File databasePath, final File traceDatabasePath, final int numProcessors,
+    public ServiceMapStatefulProcessor(final PluginSetting pluginSetting) {
+     this(pluginSetting.getIntegerOrDefault(ServiceMapProcessorConfig.WINDOW_DURATION, ServiceMapProcessorConfig.DEFAULT_WINDOW_DURATION)*TO_MILLIS,
+             new File(ServiceMapProcessorConfig.DEFAULT_SPANS_LMDB_PATH),
+             new File(ServiceMapProcessorConfig.DEFAULT_TRACES_LMDB_PATH),
+             Clock.systemUTC());
+    }
+
+    ServiceMapStatefulProcessor(final long windowDurationMillis,
+                                       final File databasePath,
+                                       final File traceDatabasePath,
                                        final Clock clock) {
-        this.clock = clock;
+        ServiceMapStatefulProcessor.clock = clock;
         this.thisProcessorId = processorsCreated.getAndIncrement();
         if(isMasterInstance()) {
-            //TODO: Read num processors from config when its available
-            this.numProcessors = numProcessors;
-            previousTimestamp = this.clock.millis();
-            this.databasePath = databasePath;
-            this.traceDatabasePath = traceDatabasePath;
-            this.windowDurationMillis = windowDurationMillis;
-            this.currentWindow = new LmdbProcessorState<>(databasePath, getNewDbName(), ServiceMapStateData.class);
-            this.previousWindow = new LmdbProcessorState<>(databasePath, getNewDbName() + "-prev", ServiceMapStateData.class);
-            this.currentTraceGroupWindow = new LmdbProcessorState<>(traceDatabasePath, getNewTraceDbName(), String.class);
-            this.previousTraceGroupWindow = new LmdbProcessorState<>(traceDatabasePath, getNewTraceDbName() + "-prev", String.class);
+            previousTimestamp = ServiceMapStatefulProcessor.clock.millis();
+            ServiceMapStatefulProcessor.windowDurationMillis = windowDurationMillis;
+            ServiceMapStatefulProcessor.databasePath = createPath(databasePath);
+            ServiceMapStatefulProcessor.traceDatabasePath = createPath(traceDatabasePath);
+            currentWindow = new LmdbProcessorState<>(databasePath, getNewDbName(), ServiceMapStateData.class);
+            previousWindow = new LmdbProcessorState<>(databasePath, getNewDbName() + "-prev", ServiceMapStateData.class);
+            currentTraceGroupWindow = new LmdbProcessorState<>(traceDatabasePath, getNewTraceDbName(), String.class);
+            previousTraceGroupWindow = new LmdbProcessorState<>(traceDatabasePath, getNewTraceDbName() + "-prev", String.class);
         }
+    }
+
+    /**
+     * This function creates the directory if it doesn't exists and returns the File.
+     * @param path
+     * @return path
+     * @throws RuntimeException if the directory can not be created.
+     */
+    private static File createPath(File path) {
+        if(!path.exists()){
+            if(!path.mkdirs()){
+                throw new RuntimeException(String.format("Unable to create the directory at the provided path: %s", path.getName()));
+            }
+        }
+        return path;
     }
 
     /**
@@ -122,6 +145,9 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
                             })
                             .collect(Collectors.toSet());
 
+            if(edgeEvaluationLatch == null) {
+                initEdgeEvaluationLatch();
+            }
             doneEvaluatingEdges();
             waitForEvaluationFinish();
 
@@ -135,6 +161,12 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
             return serviceDependencyRecords;
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private static synchronized void initEdgeEvaluationLatch() {
+        if(edgeEvaluationLatch==null){
+            edgeEvaluationLatch = new CountDownLatch(processorsCreated.get());
         }
     }
 
@@ -249,7 +281,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
      */
     private void resetWorkState() {
         windowRotationLatch = new CountDownLatch(1);
-        edgeEvaluationLatch = new CountDownLatch(numProcessors);
+        edgeEvaluationLatch = new CountDownLatch(processorsCreated.get());
     }
 
     /**
@@ -317,7 +349,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
         if(elements == 0) {
             return new long[]{0,-1};
         }
-        long step = (long) Math.ceil(((double) elements / (double) numProcessors));
+        long step = (long) Math.ceil(((double) elements / (double) processorsCreated.get()));
         long lower = (long) thisProcessorId * step;
         long upper = Math.min(lower + step, elements);
         return new long[]{lower, upper};
