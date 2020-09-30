@@ -1,0 +1,16 @@
+{
+  "hashId": "aQ/2NNEmtuwsGAOR5ntCNwk=",
+  "serviceName": "Payment",
+  "kind": "Client",
+  "target":
+  {
+    "domain": "Purchase",
+    "resource": "Buy"
+  },
+  "destination":
+  {
+    "domain": "Purchase",
+    "resource": "Buy"
+  },
+  "traceGroupName": "MakePayement.auto"
+}

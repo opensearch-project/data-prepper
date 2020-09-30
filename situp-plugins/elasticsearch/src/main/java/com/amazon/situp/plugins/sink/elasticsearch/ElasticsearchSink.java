@@ -51,10 +51,14 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private Supplier<BulkRequest> bulkRequestSupplier;
   private BulkRetryStrategy bulkRetryStrategy;
   private final long bulkSize;
+  private final String indexType;
+  private final String documentIdField;
 
   public ElasticsearchSink(final PluginSetting pluginSetting) {
     this.esSinkConfig = ElasticsearchSinkConfiguration.readESConfig(pluginSetting);
     this.bulkSize = ByteSizeUnit.MB.toBytes(esSinkConfig.getIndexConfiguration().getBulkSize());
+    this.indexType = esSinkConfig.getIndexConfiguration().getIndexType();
+    this.documentIdField = esSinkConfig.getIndexConfiguration().getDocumentIdField();
     try {
       start();
     } catch (final IOException e) {
@@ -90,10 +94,10 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       final String document = record.getData();
       final IndexRequest indexRequest = new IndexRequest().source(document, XContentType.JSON);
       try {
-        final Map<String, Object> docMap = getMapFromJson(document);
-        final String spanId = (String) docMap.get("spanId");
-        if (spanId != null) {
-          indexRequest.id(spanId);
+        final Map<String, Object> source = getMapFromJson(document);
+        final String docId = (String) source.get(documentIdField);
+        if (docId != null) {
+          indexRequest.id(docId);
         }
         final long estimatedBytesBeforeAdd = bulkRequest.estimatedSizeInBytes() + calcEstimatedSizeInBytes(indexRequest);
         if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.numberOfActions() > 0) {
@@ -152,7 +156,11 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private void createIndexTemplate() throws IOException {
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
     final PutIndexTemplateRequest putIndexTemplateRequest = new PutIndexTemplateRequest(indexAlias + "-index-template");
-    putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias + "-*"));
+    if (indexType.equals(IndexConstants.RAW)) {
+      putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias + "-*"));
+    } else {
+      putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias));
+    }
     final URL jsonURL = esSinkConfig.getIndexConfiguration().getTemplateURL();
     final String templateJson = readTemplateURL(jsonURL);
     putIndexTemplateRequest.source(templateJson, XContentType.JSON);

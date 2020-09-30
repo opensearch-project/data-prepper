@@ -2,12 +2,14 @@ package com.amazon.situp.plugins.processor.state;
 
 import com.amazon.situp.processor.state.ProcessorState;
 import java.io.Serializable;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.UUID;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -17,19 +19,34 @@ public abstract class ProcessorStateTest {
 
     protected static final Random random = new Random();
 
-    protected ProcessorState<DataClass> processorState;
+    protected ProcessorState<byte[], DataClass> processorState;
 
     @Before
     public abstract void setProcessorState() throws Exception;
 
     @Test
+    public void testSize() {
+        //Put two random Pojos in the processor state
+        final DataClass data1 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
+        final byte[] key1 = UUID.randomUUID().toString().getBytes();
+
+        final DataClass data2 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
+        final byte[] key2 = UUID.randomUUID().toString().getBytes();
+
+        processorState.put(key1, data1);
+        processorState.put(key2, data2);
+
+        Assert.assertEquals(2, processorState.size());
+    }
+
+    @Test
     public void testPutAndGet() {
         //Put two random Pojos in the processor state
         final DataClass data1 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
-        final String key1 = UUID.randomUUID().toString();
+        final byte[] key1 = UUID.randomUUID().toString().getBytes();
 
         final DataClass data2 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
-        final String key2 = UUID.randomUUID().toString();
+        final byte[] key2 = UUID.randomUUID().toString().getBytes();
 
         processorState.put(key1, data1);
         processorState.put(key2, data2);
@@ -37,25 +54,29 @@ public abstract class ProcessorStateTest {
         //Read them and assert that they are correctly read, and assert incorrect key gives back null value
         Assert.assertEquals(data1, processorState.get(key1));
         Assert.assertEquals(data2, processorState.get(key2));
-        Assert.assertNull(processorState.get(UUID.randomUUID().toString()));
+        Assert.assertNull(processorState.get(UUID.randomUUID().toString().getBytes()));
     }
 
     @Test
     public void testPutAndGetAll() {
         //Put two random Pojos in the processor state
         final DataClass data1 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
-        final String key1 = UUID.randomUUID().toString();
+        final byte[] key1 = UUID.randomUUID().toString().getBytes();
 
         final DataClass data2 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
-        final String key2 = UUID.randomUUID().toString();
+        final byte[] key2 = UUID.randomUUID().toString().getBytes();
 
         processorState.put(key1, data1);
         processorState.put(key2, data2);
 
-        final Map<String, DataClass> stateMap = processorState.getAll();
+        //Using byte array as key, need to translate to String key for value comparision (instead of reference)
+        final Map<String, DataClass> stateMap = processorState.getAll()
+                .entrySet()
+                .stream()
+                .collect(Collectors.toMap( dataClassEntry -> new String(dataClassEntry.getKey()), dataClassEntry -> dataClassEntry.getValue()));
         Assert.assertEquals(2, stateMap.size());
-        Assert.assertEquals(data1, stateMap.get(key1));
-        Assert.assertEquals(data2, stateMap.get(key2));
+        Assert.assertEquals(data1, stateMap.get(new String(key1)));
+        Assert.assertEquals(data2, stateMap.get(new String(key2)));
     }
 
     @After
@@ -67,17 +88,17 @@ public abstract class ProcessorStateTest {
     @Test
     public void testIterate() {
         final DataClass data1 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
-        final String key1 = UUID.randomUUID().toString();
+        final byte[] key1 = UUID.randomUUID().toString().getBytes();
 
         final DataClass data2 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
-        final String key2 = UUID.randomUUID().toString();
+        final byte[] key2 = UUID.randomUUID().toString().getBytes();
 
         processorState.put(key1, data1);
         processorState.put(key2, data2);
 
-        final Collection<String> iterateResult = processorState.iterate(new BiFunction<String, DataClass, String>() {
+        final Collection<String> iterateResult = processorState.iterate(new BiFunction<byte[], DataClass, String>() {
             @Override
-            public String apply(String s, DataClass dataClass) {
+            public String apply(byte[] s, DataClass dataClass) {
                 processorState.get(s);
                 return dataClass.stringVal;
             }

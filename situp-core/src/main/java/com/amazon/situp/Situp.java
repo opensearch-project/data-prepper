@@ -1,24 +1,11 @@
 package com.amazon.situp;
 
-import com.amazon.situp.model.buffer.Buffer;
-import com.amazon.situp.model.configuration.Configuration;
-import com.amazon.situp.model.configuration.PluginSetting;
-import com.amazon.situp.model.processor.Processor;
-import com.amazon.situp.model.sink.Sink;
-import com.amazon.situp.model.source.Source;
 import com.amazon.situp.parser.PipelineParser;
-import com.amazon.situp.parser.model.PipelineConfiguration;
 import com.amazon.situp.pipeline.Pipeline;
-import com.amazon.situp.plugins.buffer.BlockingBuffer;
-import com.amazon.situp.plugins.buffer.BufferFactory;
-import com.amazon.situp.plugins.processor.ProcessorFactory;
-import com.amazon.situp.plugins.sink.SinkFactory;
-import com.amazon.situp.plugins.source.SourceFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 /**
  * SITUP is the entry point into the execution engine. An instance of this class is provided by
@@ -29,12 +16,8 @@ import java.util.stream.Collectors;
 public class Situp {
     private static final Logger LOG = LoggerFactory.getLogger(Situp.class);
 
-    private static final String ATTRIBUTE_WORKERS = "workers";
-    private static final String ATTRIBUTE_DELAY = "delay";
-    private static final int DEFAULT_READ_BATCH_DELAY = 3_000;
-
     private static final String DEFAULT_CONFIG_LOCATION = "situp-core/src/main/resources/situp-default.yml";
-    private Pipeline transformationPipeline;
+    private Map<String, Pipeline> transformationPipelines;
 
     private static volatile Situp situp;
 
@@ -72,9 +55,8 @@ public class Situp {
     public boolean execute(final String configurationFileLocation) {
         LOG.info("Using {} configuration file", configurationFileLocation);
         final PipelineParser pipelineParser = new PipelineParser(configurationFileLocation);
-        final PipelineConfiguration pipelineConfiguration = pipelineParser.parseConfiguration();
-        execute(pipelineConfiguration);
-        return true;
+        transformationPipelines = pipelineParser.parseConfiguration();
+        return initiateExecution();
     }
 
     /**
@@ -82,65 +64,18 @@ public class Situp {
      * TODO return boolean status of the stop request
      */
     public void stop() {
-        transformationPipeline.stop();
+        transformationPipelines.forEach((name, pipeline) -> {
+            pipeline.stop();
+            LOG.info("Successfully submitted request to stop execution of pipeline {}", name);
+        });
     }
 
-    /**
-     * Executes SITUP engine for the provided {@link PipelineConfiguration}.
-     *
-     * @param pipelineConfiguration to be used for {@link Pipeline} execution
-     * @return true if the execute successfully initiates the SITUP
-     * {@link com.amazon.situp.pipeline.Pipeline} execute.
-     */
-    private boolean execute(final PipelineConfiguration pipelineConfiguration) {
-        transformationPipeline = buildPipelineFromConfiguration(pipelineConfiguration);
+    private boolean initiateExecution() {
         LOG.info("Successfully parsed the configuration file, Triggering pipeline execution");
-        transformationPipeline.execute();
+        transformationPipelines.forEach((name, pipeline) -> {
+            pipeline.execute();
+            LOG.info("Successfully triggered execution of pipeline {}", name);
+        });
         return true;
     }
-
-    @SuppressWarnings({"rawtypes"})
-    private Pipeline buildPipelineFromConfiguration(final PipelineConfiguration pipelineConfiguration) {
-        final Source source = SourceFactory.newSource(getFirstSettingsIfExists(pipelineConfiguration.getSource()));
-        final PluginSetting bufferPluginSetting = getFirstSettingsIfExists(pipelineConfiguration.getBuffer());
-        final Buffer buffer = bufferPluginSetting == null ?
-                new BlockingBuffer() : BufferFactory.newBuffer(bufferPluginSetting);
-
-        final Configuration processorConfiguration = pipelineConfiguration.getProcessor();
-        final List<PluginSetting> processorPluginSettings = processorConfiguration.getPluginSettings();
-        final List<Processor> processors = processorPluginSettings.stream()
-                .map(ProcessorFactory::newProcessor)
-                .collect(Collectors.toList());
-
-        final List<PluginSetting> sinkPluginSettings = pipelineConfiguration.getSink().getPluginSettings();
-        final List<Sink> sinks = sinkPluginSettings.stream().map(SinkFactory::newSink).collect(Collectors.toList());
-
-        final int processorThreads = getConfiguredThreadsOrDefault(processorConfiguration);
-        final int readBatchDelay = getConfiguredDelayOrDefault(processorConfiguration);
-
-        return new Pipeline(pipelineConfiguration.getName(), source, buffer, processors, sinks, processorThreads, readBatchDelay);
-    }
-
-    private PluginSetting getFirstSettingsIfExists(final Configuration configuration) {
-        final List<PluginSetting> pluginSettings = configuration.getPluginSettings();
-        return pluginSettings.isEmpty() ? null : pluginSettings.get(0);
-    }
-
-    private int getConfiguredThreadsOrDefault(final Configuration processorConfiguration) {
-        int processorThreads = processorConfiguration.getAttributeValueAsInteger(ATTRIBUTE_WORKERS);
-        return processorThreads <= 0 ? getDefaultProcessorThreads() : processorThreads;
-    }
-
-    private int getConfiguredDelayOrDefault(final Configuration processorConfiguration) {
-        int readBatchDelay = processorConfiguration.getAttributeValueAsInteger(ATTRIBUTE_DELAY);
-        return readBatchDelay <= 0 ? DEFAULT_READ_BATCH_DELAY : readBatchDelay;
-    }
-
-    /**
-     * TODO Implement this to use CPU cores of the executing machine
-     */
-    private int getDefaultProcessorThreads() {
-        return 1;
-    }
-
 }

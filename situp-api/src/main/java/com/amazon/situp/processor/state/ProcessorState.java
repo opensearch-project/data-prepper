@@ -9,27 +9,27 @@ import java.util.function.BiFunction;
  * @param <T>
  *     Type parameter for the value type. Keys will be Strings.
  */
-public interface ProcessorState<T> {
+public interface ProcessorState<K, V> {
 
     /**
      * Puts a key value pair in the processor state
      * @param key Key to put in the state
      * @param value Value to map to the key
      */
-    void put(String key, T value);
+    void put(K key, V value);
 
     /**
      * Gets the value in the processor state for the given key
      * @param key Key to look up value for
      * @return Value for key, if it exists. Otherwise null.
      */
-    T get(String key);
+    V get(K key);
 
     /**
      * Gets all the data in the processor state
      * @return All the data in the processor state in the form of a Map
      */
-    Map<String, T> getAll();
+    Map<K, V> getAll();
 
     /**
      * Iterate over the processor state with a bifunction
@@ -37,7 +37,12 @@ public interface ProcessorState<T> {
      * @param <R> Type parameter for return value of BiFunction
      * @return Result of iteration as a list of objects of type R
      */
-    public<R> List<R> iterate(BiFunction<String, T, R> fn);
+    public<R> List<R> iterate(BiFunction<K, V, R> fn);
+
+    /**
+     * @return Size of the processor state, in terms of number of elements stored.
+     */
+    public long size();
 
     /**
      * Clears the data in the processor state
