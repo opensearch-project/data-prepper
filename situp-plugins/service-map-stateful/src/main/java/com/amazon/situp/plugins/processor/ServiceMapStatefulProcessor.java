@@ -3,6 +3,11 @@ package com.amazon.situp.plugins.processor;
 import com.amazon.situp.model.processor.Processor;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.plugins.processor.state.LmdbProcessorState;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.trace.v1.Span;
+
 import java.io.File;
 import java.time.Clock;
 import java.util.Arrays;
@@ -15,12 +20,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.opentelemetry.proto.trace.v1.ResourceSpans;
-import io.opentelemetry.proto.trace.v1.Span;
 
-public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpans>, Record<String>> {
+public class ServiceMapStatefulProcessor implements Processor<Record<ExportTraceServiceRequest>, Record<String>> {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Collection<Record<String>> EMPTY_COLLECTION = Collections.emptySet();
@@ -69,14 +70,14 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
      * added to the service map index. Otherwise, returns an empty set.
      */
     @Override
-    public Collection<Record<String>> execute(Collection<Record<ResourceSpans>> records) {
+    public Collection<Record<String>> execute(Collection<Record<ExportTraceServiceRequest>> records) {
         final Collection<Record<String>> relationships = windowDurationHasPassed() ? evaluateEdges() : EMPTY_COLLECTION;
-        records.forEach(resourceSpansRecord -> {
-            final String resourceName = resourceSpansRecord.getData().getResource().getAttributesList().stream().filter(
+        records.forEach( i -> i.getData().getResourceSpansList().forEach(resourceSpans -> {
+            final String resourceName = resourceSpans.getResource().getAttributesList().stream().filter(
                     keyValue -> keyValue.getKey().equals(ServiceMapSpanTags.SERVICE_NAME_KEY)
             ).findFirst().get().getValue().getStringValue();
 
-            resourceSpansRecord.getData().getInstrumentationLibrarySpansList().forEach(
+            resourceSpans.getInstrumentationLibrarySpansList().forEach(
                     instrumentationLibrarySpans -> {
                         instrumentationLibrarySpans.getSpansList().forEach(
                                 span -> {
@@ -94,7 +95,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ResourceSpa
                                 });
                     }
             );
-        });
+        }));
         return relationships;
     }
 

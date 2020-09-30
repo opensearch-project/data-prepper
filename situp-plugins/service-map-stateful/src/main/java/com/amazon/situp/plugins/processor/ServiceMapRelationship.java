@@ -1,9 +1,10 @@
 package com.amazon.situp.plugins.processor;
 
+import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
-import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 
 
 public class ServiceMapRelationship {
