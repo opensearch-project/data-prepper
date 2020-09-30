@@ -12,10 +12,7 @@ import com.linecorp.armeria.common.*;
 import io.grpc.StatusRuntimeException;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 
 import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
@@ -25,45 +22,40 @@ import static org.assertj.core.api.Assertions.fail;
 
 public class OTelTraceSourceTest {
 
-    private OTelTraceSource SOURCE;
+    private static OTelTraceSource SOURCE;
 
-    private String getUri() {
+    private static String getUri() {
         return "gproto+http://127.0.0.1:" + SOURCE.getoTelTraceSourceConfig().getPort() + '/';
     }
 
-    @BeforeEach
-    private void beforeEach() {
+    @BeforeAll
+    private static void beforeEach() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("request_timeout", 1);
         SOURCE = new OTelTraceSource(new PluginSetting("otel_trace_source", integerHashMap));
         SOURCE.start(getBuffer());
+        addOneRequest();
     }
 
-    @AfterEach
-    private void afterEach() {
+    @AfterAll
+    private static void afterEach() {
         SOURCE.stop();
     }
 
-    private BlockingBuffer<Record<ExportTraceServiceRequest>> getBuffer() {
+    private static BlockingBuffer<Record<ExportTraceServiceRequest>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 1);
         return new BlockingBuffer<>(new PluginSetting("blocking_buffer", integerHashMap));
     }
 
 
-    void addOneRequest() {
+    static void addOneRequest() {
         final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.newClient(getUri(), TraceServiceGrpc.TraceServiceBlockingStub.class);
         client.export(ExportTraceServiceRequest.newBuilder().build());
     }
 
     @Test
-    void testSuccess(){
-        addOneRequest();
-    }
-
-    @Test
     void testBufferFull() {
-        addOneRequest();
         final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.newClient(getUri(), TraceServiceGrpc.TraceServiceBlockingStub.class);
         try {
             client.export(ExportTraceServiceRequest.newBuilder().build());
@@ -74,30 +66,28 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    void testHttpFullJson() throws InvalidProtocolBufferException, ExecutionException, InterruptedException {
-        addOneRequest();
+    void testHttpFullJson() throws InvalidProtocolBufferException {
         final AggregatedHttpResponse res2 = WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
-                        .authority("0.0.0.0:21890")
+                        .authority("127.0.0.1:21890")
                         .method(HttpMethod.POST)
                         .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
                         .contentType(MediaType.JSON_UTF_8)
                         .build(),
-                HttpData.copyOf(JsonFormat.printer().print(ExportTraceServiceRequest.newBuilder().build()).getBytes())).aggregate().get();
+                HttpData.copyOf(JsonFormat.printer().print(ExportTraceServiceRequest.newBuilder().build()).getBytes())).aggregate().join();
         assertThat(res2.status().equals(HttpStatus.TOO_MANY_REQUESTS)).isTrue();
     }
 
     @Test
-    void testHttpFullBytes() throws InvalidProtocolBufferException, ExecutionException, InterruptedException {
-        addOneRequest();
+    void testHttpFullBytes() {
         final AggregatedHttpResponse res2 = WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
-                        .authority("0.0.0.0:21890")
+                        .authority("127.0.0.1:21890")
                         .method(HttpMethod.POST)
                         .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
                         .contentType(MediaType.PROTOBUF)
                         .build(),
-                HttpData.copyOf(ExportTraceServiceRequest.newBuilder().build().toByteArray())).aggregate().get();
+                HttpData.copyOf(ExportTraceServiceRequest.newBuilder().build().toByteArray())).aggregate().join();
         assertThat(res2.status().equals(HttpStatus.TOO_MANY_REQUESTS)).isTrue();
     }
 }
