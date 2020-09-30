@@ -1,9 +1,18 @@
 package com.amazon.situp.plugins.processor.oteltrace;
 
+import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.Span;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
+import org.apache.commons.codec.binary.Hex;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
 
 public class RawTrace {
+
+    private static final BigDecimal MILLIS_TO_NANOS = new BigDecimal(1_000_000);
+    private static final BigDecimal SEC_TO_MILLIS = new BigDecimal(1_000);
 
     private final String traceID;
     private final String spanID;
@@ -13,6 +22,7 @@ public class RawTrace {
     private final String endTime;
     private final String instrumentationName;
     private final String instrumentationVersion;
+    private final String serviceName;
 
 
     private RawTrace(RawTraceBuilder builder) {
@@ -24,6 +34,7 @@ public class RawTrace {
         this.endTime = builder.endTime;
         this.instrumentationName = builder.instrumentationName;
         this.instrumentationVersion = builder.instrumentationVersion;
+        this.serviceName = builder.serviceName;
     }
 
     /**
@@ -38,6 +49,7 @@ public class RawTrace {
         private String endTime;
         private String instrumentationName;
         private String instrumentationVersion;
+        private String serviceName;
 
         public RawTraceBuilder() {
         }
@@ -82,6 +94,11 @@ public class RawTrace {
             return this;
         }
 
+        public RawTraceBuilder setServiceName(String serviceName) {
+            this.serviceName = serviceName;
+            return this;
+        }
+
 
         public RawTrace build() {
             return new RawTrace(this);
@@ -89,16 +106,25 @@ public class RawTrace {
 
     }
 
-    public static RawTrace buildFromProto(Span spans, InstrumentationLibrary instrumentationLibrary) {
-        return new RawTrace.RawTraceBuilder()
-                .setTraceID(spans.getTraceId().toString())
-                .setSpanID(spans.getSpanId().toString())
-                .setParentSpanID(spans.getParentSpanId().toString())
+    private static String convertStringNanosToISO8601(final String stringNanos) {
+        final BigDecimal nanos = new BigDecimal(stringNanos);
+        final long epochSeconds = nanos.divide(MILLIS_TO_NANOS.multiply(SEC_TO_MILLIS), RoundingMode.DOWN).longValue();
+        final int nanoAdj = nanos.remainder(MILLIS_TO_NANOS.multiply(SEC_TO_MILLIS)).intValue();
+        return Instant.ofEpochSecond(epochSeconds, nanoAdj).toString();
+    }
+
+    public static RawTrace buildFromProto(Resource resource, Span spans, InstrumentationLibrary instrumentationLibrary) {
+        final String service = resource.getAttributesList().stream().filter(keyValue -> keyValue.getKey().equals())
+        return new RawTraceBuilder()
+                .setTraceID(Hex.encodeHexString(spans.getTraceId().toByteArray()))
+                .setSpanID(Hex.encodeHexString(spans.getSpanId().toByteArray()))
+                .setParentSpanID(Hex.encodeHexString(spans.getParentSpanId().toByteArray()))
                 .setName(spans.getName())
-                .setStartTime(String.valueOf(spans.getStartTimeUnixNano()))
-                .setEndTime(String.valueOf(spans.getEndTimeUnixNano()))
+                .setStartTime(convertStringNanosToISO8601(String.valueOf(spans.getStartTimeUnixNano())))
+                .setEndTime(convertStringNanosToISO8601(String.valueOf(spans.getEndTimeUnixNano())))
                 .setInstrumentationName(instrumentationLibrary.getName())
                 .setInstrumentationVersion(instrumentationLibrary.getVersion())
+//                .setServiceName(resource.getAttributesList().stream().filter(keyValue -> keyValue.getKey().equals(SERVICE_NAME)))
                 .build();
     }
 }
