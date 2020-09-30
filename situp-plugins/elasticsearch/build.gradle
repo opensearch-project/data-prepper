@@ -65,6 +65,10 @@ testClusters.integTest {
 
 integTest.runner {
     systemProperty 'tests.security.manager', 'false'
+
+    systemProperty "odfe", System.getProperty("odfe")
+    systemProperty "user", System.getProperty("user")
+    systemProperty "password", System.getProperty("password")
 }
 
 checkstyleMain.ignoreFailures = true
