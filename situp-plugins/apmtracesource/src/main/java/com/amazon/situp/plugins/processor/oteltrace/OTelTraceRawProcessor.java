@@ -2,6 +2,7 @@ package com.amazon.situp.plugins.processor.oteltrace;
 
 import com.amazon.situp.model.PluginType;
 import com.amazon.situp.model.annotations.SitupPlugin;
+import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.processor.Processor;
 import com.amazon.situp.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -43,6 +44,15 @@ public class OTelTraceRawProcessor implements Processor<Record<ExportTraceServic
     private static final BigDecimal SEC_TO_MILLIS = new BigDecimal(1_000);
 
     private static final Logger log = LoggerFactory.getLogger(OTelTraceRawProcessor.class);
+
+    //TODO: https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/66
+    public OTelTraceRawProcessor(final PluginSetting pluginSetting) {
+        this();
+    }
+
+    public OTelTraceRawProcessor() {
+
+    }
 
     public static String getJsonFromProtobufObj(ResourceSpans resourceSpans) throws InvalidProtocolBufferException {
         return JsonFormat.printer().print(resourceSpans);
