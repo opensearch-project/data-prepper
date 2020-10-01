@@ -3,13 +3,31 @@ package com.amazon.situp.plugins.sink.elasticsearch;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.http.Header;
+import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.message.BasicHeader;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.Response;
+import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.common.Strings;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.common.util.concurrent.ThreadContext;
+import org.elasticsearch.common.xcontent.DeprecationHandler;
+import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.test.rest.ESRestTestCase;
+import org.junit.After;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
@@ -25,13 +43,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.apache.http.HttpStatus.SC_OK;
 
 public class ElasticsearchSinkIT extends ESRestTestCase {
   public static List<String> HOSTS = Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
-      .map(ip -> "http://" + ip).collect(Collectors.toList());
+      .map(ip -> (isODFE()? "https://" : "http://") + ip).collect(Collectors.toList());
   private static final String DEFAULT_TEMPLATE_FILE = "test-index-template.json";
   private static final String DEFAULT_RAW_SPAN_FILE = "raw-span-1.json";
   private static final String DEFAULT_SERVICE_MAP_FILE = "service-map-1.json";
@@ -43,10 +62,16 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     Request request = new Request(HttpMethod.HEAD, indexAlias);
     Response response = client().performRequest(request);
     assertEquals(SC_OK, response.getStatusLine().getStatusCode());
-    final Map<String, Object> mappings = getIndexMappings(String.format("%s-000001", indexAlias));
+    final String index = String.format("%s-000001", indexAlias);
+    final Map<String, Object> mappings = getIndexMappings(index);
     assertNotNull(mappings);
     assertFalse((boolean)mappings.get("date_detection"));
     sink.stop();
+
+    if (isODFE()) {
+      // Check managed index
+      assertEquals(IndexConstants.RAW_ISM_POLICY, getIndexPolicyId(index));
+    }
 
     // roll over initial index
     request = new Request(HttpMethod.POST, String.format("%s/_rollover", indexAlias));
@@ -62,6 +87,11 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     response = client().performRequest(request);
     assertEquals(true, checkIsWriteIndex(EntityUtils.toString(response.getEntity()), indexAlias, rolloverIndexName));
     sink.stop();
+
+    if (isODFE()) {
+      // Check managed index
+      assertEquals(IndexConstants.RAW_ISM_POLICY, getIndexPolicyId(rolloverIndexName));
+    }
   }
 
   public void testOutputRawSpanDefault() throws IOException, InterruptedException {
@@ -131,6 +161,11 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     assertNotNull(mappings);
     assertFalse((boolean)mappings.get("date_detection"));
     sink.stop();
+
+    if (isODFE()) {
+      // Check managed index
+      assertNull(getIndexPolicyId(indexAlias));
+    }
   }
 
   public void testOutputServiceMapDefault() throws IOException, InterruptedException {
@@ -197,6 +232,12 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     metadata.put(ConnectionConfiguration.HOSTS, HOSTS);
     metadata.put(IndexConfiguration.INDEX_ALIAS, indexAlias);
     metadata.put(IndexConfiguration.TEMPLATE_FILE, templateFilePath);
+    final String user = System.getProperty("user");
+    final String password = System.getProperty("password");
+    if (user != null) {
+      metadata.put(ConnectionConfiguration.USERNAME, user);
+      metadata.put(ConnectionConfiguration.PASSWORD, password);
+    }
 
     return new PluginSetting("elasticsearch", metadata);
   }
@@ -272,6 +313,17 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     return mappings;
   }
 
+  private String getIndexPolicyId(final String index) throws IOException {
+    final Request request = new Request(HttpMethod.GET, "/_opendistro/_ism/explain/" + index);
+    final Response response = client().performRequest(request);
+    final String responseBody = EntityUtils.toString(response.getEntity());
+
+    @SuppressWarnings("unchecked")
+    final String policyId = (String) ((Map<String, Object>)createParser(XContentType.JSON.xContent(),
+            responseBody).map().get(index)).get("index.opendistro.index_state_management.policy_id");
+    return policyId;
+  }
+
   private boolean deleteDirectory(final File directoryToBeDeleted) {
     final File[] allContents = directoryToBeDeleted.listFiles();
     if (allContents != null) {
@@ -280,5 +332,112 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
       }
     }
     return directoryToBeDeleted.delete();
+  }
+
+  public static boolean isODFE() {
+    final boolean isODFE = Optional.ofNullable(System.getProperty("odfe"))
+            .map("true"::equalsIgnoreCase).orElse(false);
+    if (isODFE) {
+      // currently only external cluster is supported for security enabled testing
+      if (!Optional.ofNullable(System.getProperty("tests.rest.cluster")).isPresent()) {
+        throw new RuntimeException("cluster url should be provided for security enabled ODFE testing");
+      }
+    }
+
+    return isODFE;
+  }
+
+  @Override
+  protected String getProtocol() {
+    return isODFE() ? "https" : "http";
+  }
+
+  @Override
+  protected RestClient buildClient(final Settings settings, final HttpHost[] hosts) throws IOException {
+    final RestClientBuilder builder = RestClient.builder(hosts);
+    if (isODFE()) {
+      configureHttpsClient(builder, settings);
+    } else {
+      configureClient(builder, settings);
+    }
+
+    builder.setStrictDeprecationMode(true);
+    return builder.build();
+  }
+
+  @SuppressWarnings("unchecked")
+  @After
+  protected void wipeAllODFEIndices() throws IOException {
+    final Response response = client().performRequest(new Request("GET", "/_cat/indices?format=json&expand_wildcards=all"));
+    final XContentType xContentType = XContentType.fromMediaTypeOrFormat(response.getEntity().getContentType().getValue());
+    try (
+            XContentParser parser = xContentType
+                    .xContent()
+                    .createParser(
+                            NamedXContentRegistry.EMPTY,
+                            DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
+                            response.getEntity().getContent()
+                    )
+    ) {
+      final XContentParser.Token token = parser.nextToken();
+      List<Map<String, Object>> parserList = null;
+      if (token == XContentParser.Token.START_ARRAY) {
+        parserList = parser.listOrderedMap().stream().map(obj -> (Map<String, Object>) obj).collect(Collectors.toList());
+      } else {
+        parserList = Collections.singletonList(parser.mapOrdered());
+      }
+
+      for (final Map<String, Object> index : parserList) {
+        final String indexName = (String) index.get("index");
+        if (indexName != null && !".opendistro_security".equals(indexName)) {
+          client().performRequest(new Request("DELETE", "/" + indexName));
+        }
+      }
+    }
+  }
+
+  protected static void configureHttpsClient(final RestClientBuilder builder, final Settings settings) throws IOException {
+    final Map<String, String> headers = ThreadContext.buildDefaultHeaders(settings);
+    final Header[] defaultHeaders = new Header[headers.size()];
+    int i = 0;
+    for (Map.Entry<String, String> entry : headers.entrySet()) {
+      defaultHeaders[i++] = new BasicHeader(entry.getKey(), entry.getValue());
+    }
+    builder.setDefaultHeaders(defaultHeaders);
+    builder.setHttpClientConfigCallback(httpClientBuilder -> {
+      final String userName = Optional
+              .ofNullable(System.getProperty("user"))
+              .orElseThrow(() -> new RuntimeException("user name is missing"));
+      final String password = Optional
+              .ofNullable(System.getProperty("password"))
+              .orElseThrow(() -> new RuntimeException("password is missing"));
+      final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+      credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(userName, password));
+      try {
+        return httpClientBuilder
+                .setDefaultCredentialsProvider(credentialsProvider)
+                // disable the certificate since our testing cluster just uses the default security configuration
+                .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+                .setSSLContext(SSLContextBuilder.create().loadTrustMaterial(null, (chains, authType) -> true).build());
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+    });
+
+    final String socketTimeoutString = settings.get(CLIENT_SOCKET_TIMEOUT);
+    final TimeValue socketTimeout = TimeValue
+            .parseTimeValue(socketTimeoutString == null ? "60s" : socketTimeoutString, CLIENT_SOCKET_TIMEOUT);
+    builder.setRequestConfigCallback(conf -> conf.setSocketTimeout(Math.toIntExact(socketTimeout.getMillis())));
+    if (settings.hasValue(CLIENT_PATH_PREFIX)) {
+      builder.setPathPrefix(settings.get(CLIENT_PATH_PREFIX));
+    }
+  }
+
+  /**
+   * wipeAllIndices won't work since it cannot delete security index. Use wipeAllODFEIndices instead.
+   */
+  @Override
+  protected boolean preserveIndicesUponCompletion() {
+    return true;
   }
 }

@@ -57,6 +57,17 @@ configurations.all {
     }
 }
 
+test {
+    if (System.getProperty("odfe.host") == null) {
+        exclude '**/ODFETests.class'
+    }
+    systemProperty "odfe.host", System.getProperty("odfe.host")
+    if (System.getProperty("odfe.user") != null) {
+        systemProperty "odfe.user", System.getProperty("odfe.user")
+        systemProperty "odfe.password", System.getProperty("odfe.password")
+    }
+}
+
 integTest {}
 
 testClusters.integTest {
@@ -65,6 +76,10 @@ testClusters.integTest {
 
 integTest.runner {
     systemProperty 'tests.security.manager', 'false'
+
+    systemProperty "odfe", System.getProperty("odfe")
+    systemProperty "user", System.getProperty("user")
+    systemProperty "password", System.getProperty("password")
 }
 
 checkstyleMain.ignoreFailures = true
