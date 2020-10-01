@@ -73,9 +73,6 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     final boolean success = sink.output(testRecords);
-    // wait for documents to be populated
-    // TODO: better wait strategy?
-    Thread.sleep(1000);
 
     final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
     assertTrue(success);
@@ -103,9 +100,6 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     final boolean success = sink.output(testRecords);
     sink.stop();
-    // wait for documents to be populated
-    // TODO: better wait strategy?
-    Thread.sleep(1000);
 
     assertTrue(success);
     final StringBuilder content = new StringBuilder();
@@ -143,10 +137,6 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     final boolean success = sink.output(testRecords);
-    // wait for documents to be populated
-    // TODO: better wait strategy?
-    Thread.sleep(1000);
-
     final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.SERVICE_MAP);
     assertTrue(success);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
@@ -179,10 +169,6 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     final boolean success = sink.output(testRecords);
-    // wait for documents to be populated
-    // TODO: better wait strategy?
-    Thread.sleep(1000);
-
     assertTrue(success);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
     assertEquals(1, retSources.size());
@@ -249,6 +235,8 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
   }
 
   private List<Map<String, Object>> getSearchResponseDocSources(final String index) throws IOException {
+    final Request refresh = new Request(HttpMethod.POST, index + "/_refresh");
+    client().performRequest(refresh);
     final Request request = new Request(HttpMethod.GET, index + "/_search");
     final Response response = client().performRequest(request);
     final String responseBody = EntityUtils.toString(response.getEntity());
