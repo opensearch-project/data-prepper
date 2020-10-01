@@ -11,6 +11,8 @@ import static com.amazon.situp.TestDataProvider.MISSING_NAME_MULTIPLE_PIPELINE_C
 import static com.amazon.situp.TestDataProvider.MISSING_PIPELINE_MULTIPLE_PIPELINE_CONFIG_FILE;
 import static com.amazon.situp.TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE;
 import static com.amazon.situp.TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES;
+import static com.amazon.situp.TestDataProvider.VALID_MULTIPLE_PROCESSORS_CONFIG_FILE;
+import static com.amazon.situp.TestDataProvider.VALID_MULTIPLE_SINKS_CONFIG_FILE;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -62,5 +64,17 @@ public class PipelineParserTests {
         } catch (RuntimeException ex) {
             assertThat(ex.getMessage(), is("Invalid configuration, no pipeline is defined with name test-pipeline-4"));
         }
+    }
+
+    @Test
+    public void testMultipleSinks() {
+        final PipelineParser pipelineParser = new PipelineParser(VALID_MULTIPLE_SINKS_CONFIG_FILE);
+        pipelineParser.parseConfiguration();
+    }
+
+    @Test
+    public void testMultipleProcessors() {
+        final PipelineParser pipelineParser = new PipelineParser(VALID_MULTIPLE_PROCESSORS_CONFIG_FILE);
+        pipelineParser.parseConfiguration();
     }
 }

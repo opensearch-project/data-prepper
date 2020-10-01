@@ -1,0 +1,28 @@
+entry-pipeline:
+  source:
+    otel_trace_source:
+  sink:
+    - pipeline:
+        name: "raw-pipeline"
+    - pipeline:
+        name: "service-map-pipeline"
+raw-pipeline:
+  source:
+    pipeline:
+      name: "entry-pipeline"
+  processor:
+    - upper-case:
+    - upper-case:
+  sink:
+    - file:
+        someProperty: "someValue"
+service-map-pipeline:
+  source:
+    pipeline:
+      name: "entry-pipeline"
+  processor:
+    - upper-case:
+    - upper-case:
+  sink:
+    - file:
+        someProperty: "someValue"
