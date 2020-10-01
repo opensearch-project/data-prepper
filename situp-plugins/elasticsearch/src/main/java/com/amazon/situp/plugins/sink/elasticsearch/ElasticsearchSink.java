@@ -48,7 +48,6 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private BufferedWriter dlqWriter;
   private final ElasticsearchSinkConfiguration esSinkConfig;
   private RestHighLevelClient restHighLevelClient;
-  private ISMFactory ismFactory;
   private Supplier<BulkRequest> bulkRequestSupplier;
   private BulkRetryStrategy bulkRetryStrategy;
   private final long bulkSize;
@@ -69,12 +68,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
 
   public void start() throws IOException {
     restHighLevelClient = esSinkConfig.getConnectionConfiguration().createClient();
-    ismFactory = new ISMFactory(restHighLevelClient);
-    final boolean ismEnabled = ismFactory.checkISMEnabled();
-    String ismPolicyId = null;
-    if (ismEnabled) {
-      ismPolicyId = ismFactory.checkAndCreatePolicy(indexType);
-    }
+    final String ismPolicyId = IndexStateManagement.checkAndCreatePolicy(restHighLevelClient, indexType);
     if (esSinkConfig.getIndexConfiguration().getTemplateURL() != null) {
       createIndexTemplate(ismPolicyId);
     }
@@ -174,7 +168,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     final Map<String, Object> template = readTemplateURL(jsonURL);
     final Map<String, Object> settings = (Map<String, Object>) template.getOrDefault("settings", new HashMap<>());
     if (ismPolicyId != null) {
-      ismFactory.attachPolicy(settings, ismPolicyId, indexAlias);
+      IndexStateManagement.attachPolicy(settings, ismPolicyId, indexAlias);
     }
     putIndexTemplateRequest.source(template);
     restHighLevelClient.indices().putTemplate(putIndexTemplateRequest, RequestOptions.DEFAULT);
