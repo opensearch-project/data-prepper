@@ -57,7 +57,7 @@ public class PipelineConfiguration {
 
     private List<PluginSetting> getSinksFromConfiguration(
             final List<Map.Entry<String, Map<String, Object>>> sinkConfigurations) {
-        if (sinkConfigurations==null || sinkConfigurations.isEmpty()) {
+        if (sinkConfigurations == null || sinkConfigurations.isEmpty()) {
             throw new IllegalArgumentException("Invalid configuration, at least one sink is required");
         }
         return sinkConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration).collect(Collectors.toList());
@@ -65,7 +65,7 @@ public class PipelineConfiguration {
 
     private List<PluginSetting> getProcessorsFromConfiguration(
             final List<Map.Entry<String, Map<String, Object>>> processorConfigurations) {
-        if (processorConfigurations==null || processorConfigurations.isEmpty()) {
+        if (processorConfigurations == null || processorConfigurations.isEmpty()) {
             return Collections.emptyList();
         }
         return processorConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration).collect(Collectors.toList());
@@ -74,8 +74,8 @@ public class PipelineConfiguration {
 
 
     private static PluginSetting getPluginSettingFromConfiguration(
-            final Map.Entry<String, Map<String, Object>> processorConfiguration) {
-        return new PluginSetting(processorConfiguration.getKey(), processorConfiguration.getValue());
+            final Map.Entry<String, Map<String, Object>> configuration) {
+        return new PluginSetting(configuration.getKey(), configuration.getValue());
     }
 
     private Integer getWorkersFromConfiguration(final Integer workersConfiguration) {
