@@ -48,7 +48,6 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private BufferedWriter dlqWriter;
   private final ElasticsearchSinkConfiguration esSinkConfig;
   private RestHighLevelClient restHighLevelClient;
-  private ISMFactory ismFactory;
   private Supplier<BulkRequest> bulkRequestSupplier;
   private BulkRetryStrategy bulkRetryStrategy;
   private final long bulkSize;
