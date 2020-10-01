@@ -8,15 +8,11 @@ import com.amazon.situp.model.sink.Sink;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.elasticsearch.action.DocWriteRequest;
-import org.elasticsearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
-import org.elasticsearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
 import org.elasticsearch.action.admin.indices.alias.Alias;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
 import org.elasticsearch.action.bulk.BulkRequest;
 import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.Response;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.PutIndexTemplateRequest;
@@ -27,16 +23,11 @@ import org.elasticsearch.common.xcontent.NamedXContentRegistry;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.common.xcontent.XContentType;
-import org.elasticsearch.rest.RestStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.HttpMethod;
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -57,6 +48,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private BufferedWriter dlqWriter;
   private final ElasticsearchSinkConfiguration esSinkConfig;
   private RestHighLevelClient restHighLevelClient;
+  private ISMFactory ismFactory;
   private Supplier<BulkRequest> bulkRequestSupplier;
   private BulkRetryStrategy bulkRetryStrategy;
   private final long bulkSize;
@@ -77,12 +69,14 @@ public class ElasticsearchSink implements Sink<Record<String>> {
 
   public void start() throws IOException {
     restHighLevelClient = esSinkConfig.getConnectionConfiguration().createClient();
-    final boolean ismEnabled = checkISMEnabled();
+    ismFactory = new ISMFactory(restHighLevelClient);
+    final boolean ismEnabled = ismFactory.checkISMEnabled();
+    String ismPolicyId = null;
     if (ismEnabled) {
-      checkAndCreatePolicy();
+      ismPolicyId = ismFactory.checkAndCreatePolicy(indexType);
     }
     if (esSinkConfig.getIndexConfiguration().getTemplateURL() != null) {
-      createIndexTemplate(ismEnabled);
+      createIndexTemplate(ismPolicyId);
     }
     final String dlqFile = esSinkConfig.getRetryConfiguration().getDlqFile();
     if ( dlqFile != null) {
@@ -166,36 +160,8 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     }
   }
 
-  private boolean checkISMEnabled() throws IOException {
-    final ClusterGetSettingsRequest request = new ClusterGetSettingsRequest();
-    request.includeDefaults(true);
-    final ClusterGetSettingsResponse response = restHighLevelClient.cluster().getSettings(request, RequestOptions.DEFAULT);
-    final String enabled = response.getSetting(IndexConstants.ISM_ENABLED_SETTING);
-    return enabled != null && enabled.equals("true");
-  }
-
-  private void checkAndCreatePolicy() throws IOException {
-    if (indexType.equals(IndexConstants.RAW)) {
-      final String endPoint = "/_opendistro/_ism/policies/" + IndexConstants.RAW_ISM_POLICY;
-      Request request = new Request(HttpMethod.HEAD, endPoint);
-      final Response response = restHighLevelClient.getLowLevelClient().performRequest(request);
-      if (response.getStatusLine().getStatusCode() != RestStatus.OK.getStatus()) {
-        final InputStream is = getClass().getClassLoader().getResourceAsStream(IndexConstants.RAW_ISM_FILE);
-        assert is != null;
-        final StringBuilder policyJsonBuffer = new StringBuilder();
-        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
-          reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
-        }
-        is.close();
-        request = new Request(HttpMethod.PUT, endPoint);
-        request.setJsonEntity(policyJsonBuffer.toString());
-        restHighLevelClient.getLowLevelClient().performRequest(request);
-      }
-    }
-  }
-
   @SuppressWarnings("unchecked")
-  private void createIndexTemplate(final boolean ismEnabled) throws IOException {
+  private void createIndexTemplate(final String ismPolicyId) throws IOException {
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
     final PutIndexTemplateRequest putIndexTemplateRequest = new PutIndexTemplateRequest(indexAlias + "-index-template");
     final boolean isRaw = indexType.equals(IndexConstants.RAW);
@@ -206,12 +172,8 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     }
     final URL jsonURL = esSinkConfig.getIndexConfiguration().getTemplateURL();
     final Map<String, Object> template = readTemplateURL(jsonURL);
-    if (ismEnabled && isRaw) {
-      // Attach policy_id and rollover_alias
-      final Map<String, Object> settings = (Map<String, Object>) template.getOrDefault("settings", new HashMap<>());
-      settings.put(IndexConstants.ISM_POLICY_ID_SETTING, IndexConstants.RAW_ISM_POLICY);
-      settings.put(IndexConstants.ISM_ROLLOVER_ALIAS_SETTING, indexAlias);
-    }
+    final Map<String, Object> settings = (Map<String, Object>) template.getOrDefault("settings", new HashMap<>());
+    ismFactory.attachPolicy(settings, ismPolicyId, indexAlias);
     putIndexTemplateRequest.source(template);
     restHighLevelClient.indices().putTemplate(putIndexTemplateRequest, RequestOptions.DEFAULT);
   }
