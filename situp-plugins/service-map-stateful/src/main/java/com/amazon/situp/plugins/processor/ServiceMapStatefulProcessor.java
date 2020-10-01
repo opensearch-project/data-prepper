@@ -357,7 +357,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
 
     //TODO: Remove this once we have a common class for holding otel attribute tags
     public static class ServiceMapSpanTags {
-        public static final String SERVICE_NAME_KEY = "resource.name";
+        public static final String SERVICE_NAME_KEY = "service.name";
     }
 
     private static class ServiceMapStateData {
