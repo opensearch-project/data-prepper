@@ -173,7 +173,9 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     final URL jsonURL = esSinkConfig.getIndexConfiguration().getTemplateURL();
     final Map<String, Object> template = readTemplateURL(jsonURL);
     final Map<String, Object> settings = (Map<String, Object>) template.getOrDefault("settings", new HashMap<>());
-    ismFactory.attachPolicy(settings, ismPolicyId, indexAlias);
+    if (ismPolicyId != null) {
+      ismFactory.attachPolicy(settings, ismPolicyId, indexAlias);
+    }
     putIndexTemplateRequest.source(template);
     restHighLevelClient.indices().putTemplate(putIndexTemplateRequest, RequestOptions.DEFAULT);
   }
