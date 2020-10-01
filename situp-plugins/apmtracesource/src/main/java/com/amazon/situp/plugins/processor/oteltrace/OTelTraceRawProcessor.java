@@ -151,14 +151,12 @@ public class OTelTraceRawProcessor implements Processor<Record<ExportTraceServic
         for(Record<ExportTraceServiceRequest> ets: records) {
             for (ResourceSpans rs : ets.getData().getResourceSpansList()) {
                 String jsonString;
-                ArrayList<String> esDocs = null;
                 try {
                     jsonString = getJsonFromProtobufObj(rs);
-                    esDocs = decodeResourceSpan(jsonString);
+                    decodeResourceSpan(jsonString).forEach(doc -> finalRecords.add(new Record<>(doc)));
                 } catch (InvalidProtocolBufferException | JsonProcessingException e) {
                     log.warn("Unable to process invalid records", e);
                 }
-                finalRecords.add(new Record(esDocs));
             }
         }
         return finalRecords;

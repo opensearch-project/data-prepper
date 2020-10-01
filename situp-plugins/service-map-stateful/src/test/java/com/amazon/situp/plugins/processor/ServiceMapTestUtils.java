@@ -68,7 +68,7 @@ public class ServiceMapTestUtils {
                 .setResource(
                         Resource.newBuilder()
                                 .addAttributes(KeyValue.newBuilder()
-                                        .setKey("resource.name")
+                                        .setKey(ServiceMapStatefulProcessor.ServiceMapSpanTags.SERVICE_NAME_KEY)
                                         .setValue(AnyValue.newBuilder().setStringValue(serviceName).build()).build())
                                 .build()
                 )
