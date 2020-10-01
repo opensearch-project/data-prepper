@@ -3,8 +3,10 @@ package com.amazon.situp;
 import com.amazon.situp.model.configuration.PluginSetting;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,17 +31,16 @@ public class TestDataProvider {
         return settingsMap;
     }
 
-    public static Map<String, Map<String, Object>> validSingleConfiguration() {
-        final Map<String, Map<String, Object>> singleConfiguration = new HashMap<>();
-        singleConfiguration.put(TEST_PLUGIN_NAME_1, validSettingsForPlugin());
-        return singleConfiguration;
+    public static Map.Entry<String, Map<String, Object>> validSingleConfiguration() {
+        return Map.entry(TEST_PLUGIN_NAME_1, validSettingsForPlugin());
     }
 
-    public static Map<String, Map<String, Object>> validMultipleConfiguration() {
-        final Map<String, Map<String, Object>> multipleConfiguration = new HashMap<>();
-        multipleConfiguration.put(TEST_PLUGIN_NAME_1, validSettingsForPlugin());
-        multipleConfiguration.put(TEST_PLUGIN_NAME_2, validSettingsForPlugin());
-        return multipleConfiguration;
+    public static List<Map.Entry<String, Map<String, Object>>> validMultipleConfiguration() {
+        return Arrays.asList(Map.entry(TEST_PLUGIN_NAME_1, validSettingsForPlugin()),Map.entry(TEST_PLUGIN_NAME_2, validSettingsForPlugin()));
+    }
+
+    public static List<Map.Entry<String, Map<String, Object>>> validMultipleConfigurationOfSizeOne() {
+        return Collections.singletonList(Map.entry(TEST_PLUGIN_NAME_1, validSettingsForPlugin()));
     }
 
 }

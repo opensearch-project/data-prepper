@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 
@@ -26,10 +27,10 @@ public class PipelineConfiguration {
 
     @JsonCreator
     public PipelineConfiguration(
-            @JsonProperty("source") final Map<String, Map<String, Object>> source,
-            @JsonProperty("buffer") final Map<String, Map<String, Object>> buffer,
-            @JsonProperty("processor") final Map<String, Map<String, Object>> processors,
-            @JsonProperty("sink") final Map<String, Map<String, Object>> sinks,
+            @JsonProperty("source") final Map.Entry<String, Map<String, Object>> source,
+            @JsonProperty("buffer") final Map.Entry<String, Map<String, Object>> buffer,
+            @JsonProperty("processor") final List<Map.Entry<String, Map<String, Object>>> processors,
+            @JsonProperty("sink") final List<Map.Entry<String, Map<String, Object>>> sinks,
             @JsonProperty("workers") final Integer workers,
             @JsonProperty("delay") final Integer delay) {
         this.sourcePluginSetting = getSourceFromConfiguration(source);
@@ -40,31 +41,41 @@ public class PipelineConfiguration {
         this.readBatchDelay = getReadBatchDelayFromConfiguration(delay);
     }
 
-    private PluginSetting getSourceFromConfiguration(final Map<String, Map<String, Object>> sourceConfiguration) {
-        final PluginSetting sourcePluginSetting = getFirstPluginSettingFromConfiguration(sourceConfiguration,
-                SOURCE_COMPONENT);
-        if (sourcePluginSetting == null) {
+    private PluginSetting getSourceFromConfiguration(final Map.Entry<String, Map<String, Object>> sourceConfiguration) {
+        if (sourceConfiguration == null) {
             throw new IllegalArgumentException("Invalid configuration, source is a required component");
         }
-        return sourcePluginSetting;
+        return getPluginSettingFromConfiguration(sourceConfiguration);
     }
 
-    private PluginSetting getBufferFromConfiguration(final Map<String, Map<String, Object>> bufferConfiguration) {
-        return getFirstPluginSettingFromConfiguration(bufferConfiguration, BUFFER_COMPONENT);
-    }
-
-    private List<PluginSetting> getProcessorsFromConfiguration(
-            final Map<String, Map<String, Object>> processorConfiguration) {
-        return getAllPluginSettingsFromConfiguration(processorConfiguration);
+    private PluginSetting getBufferFromConfiguration(final Map.Entry<String, Map<String, Object>> bufferConfiguration) {
+        if(bufferConfiguration==null) {
+            return null;
+        }
+        return getPluginSettingFromConfiguration(bufferConfiguration);
     }
 
     private List<PluginSetting> getSinksFromConfiguration(
-            final Map<String, Map<String, Object>> sinkConfiguration) {
-        final List<PluginSetting> sinkPluginSettings = getAllPluginSettingsFromConfiguration(sinkConfiguration);
-        if (sinkPluginSettings.isEmpty()) {
+            final List<Map.Entry<String, Map<String, Object>>> sinkConfigurations) {
+        if (sinkConfigurations==null || sinkConfigurations.isEmpty()) {
             throw new IllegalArgumentException("Invalid configuration, at least one sink is required");
         }
-        return sinkPluginSettings;
+        return sinkConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration).collect(Collectors.toList());
+    }
+
+    private List<PluginSetting> getProcessorsFromConfiguration(
+            final List<Map.Entry<String, Map<String, Object>>> processorConfigurations) {
+        if (processorConfigurations==null || processorConfigurations.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return processorConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration).collect(Collectors.toList());
+    }
+
+
+
+    private static PluginSetting getPluginSettingFromConfiguration(
+            final Map.Entry<String, Map<String, Object>> processorConfiguration) {
+        return new PluginSetting(processorConfiguration.getKey(), processorConfiguration.getValue());
     }
 
     private Integer getWorkersFromConfiguration(final Integer workersConfiguration) {
@@ -81,34 +92,6 @@ public class PipelineConfiguration {
                     component, configuration));
         }
         return configuration;
-    }
-
-    private List<PluginSetting> getAllPluginSettingsFromConfiguration(
-            final Map<String, Map<String, Object>> configuration) {
-        if (configuration == null) {
-            return Collections.emptyList();
-        }
-        final List<PluginSetting> pluginSettings = new ArrayList<>();
-        configuration.forEach((name, setting) -> {
-            pluginSettings.add(new PluginSetting(name, setting));
-        });
-        return pluginSettings;
-    }
-
-    private PluginSetting getFirstPluginSettingFromConfiguration(final Map<String, Map<String, Object>> configuration,
-                                                                 final String component) {
-        if (configuration == null) {
-            return null;
-        }
-        if (configuration.size() > 1) {
-            throw new IllegalArgumentException(format("Incorrect configuration for component %s, " +
-                    "maximum allowed plugins are 1", component));
-        }
-        PluginSetting pluginSetting = null;
-        for (String key : configuration.keySet()) {
-            pluginSetting = new PluginSetting(key, configuration.get(key));
-        }
-        return pluginSetting;
     }
 
     public PluginSetting getSourcePluginSetting() {
