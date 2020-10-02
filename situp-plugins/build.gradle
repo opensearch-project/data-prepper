@@ -1,0 +1,3 @@
+dependencies {
+    subprojects.forEach { compile project(':situp-plugins:' + it.name) }
+}

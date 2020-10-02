@@ -12,6 +12,7 @@ import static com.amazon.situp.TestDataProvider.TEST_WORKERS;
 import static com.amazon.situp.TestDataProvider.VALID_PLUGIN_SETTING_1;
 import static com.amazon.situp.TestDataProvider.VALID_PLUGIN_SETTING_2;
 import static com.amazon.situp.TestDataProvider.validMultipleConfiguration;
+import static com.amazon.situp.TestDataProvider.validMultipleConfigurationOfSizeOne;
 import static com.amazon.situp.TestDataProvider.validSingleConfiguration;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -23,7 +24,7 @@ public class PipelineConfigurationTests {
     public void testPipelineConfigurationCreation() {
         final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(validSingleConfiguration(),
                 null,
-                validSingleConfiguration(),
+                validMultipleConfigurationOfSizeOne(),
                 validMultipleConfiguration(),
                 TEST_WORKERS, TEST_DELAY);
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
@@ -46,7 +47,7 @@ public class PipelineConfigurationTests {
         final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(validSingleConfiguration(),
                 null,
                 null,
-                validSingleConfiguration(),
+                validMultipleConfigurationOfSizeOne(),
                 null, null);
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
         final List<PluginSetting> actualProcessorPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
@@ -63,43 +64,13 @@ public class PipelineConfigurationTests {
     }
 
     @Test() //not using expected to assert the message
-    public void testMultipleSourceConfiguration() {
-        try {
-            new PipelineConfiguration(
-                    validMultipleConfiguration(),
-                    validSingleConfiguration(),
-                    validSingleConfiguration(),
-                    validSingleConfiguration(),
-                    TEST_WORKERS, TEST_DELAY);
-        } catch (IllegalArgumentException ex) {
-            assertThat(ex.getMessage(), is("Incorrect configuration for component source, " +
-                    "maximum allowed plugins are 1"));
-        }
-    }
-
-    @Test() //not using expected to assert the message
-    public void testMultipleBufferConfiguration() {
-        try {
-            new PipelineConfiguration(
-                    validSingleConfiguration(),
-                    validMultipleConfiguration(),
-                    validSingleConfiguration(),
-                    validSingleConfiguration(),
-                    TEST_WORKERS, TEST_DELAY);
-        } catch (IllegalArgumentException ex) {
-            assertThat(ex.getMessage(), is("Incorrect configuration for component buffer, " +
-                    "maximum allowed plugins are 1"));
-        }
-    }
-
-    @Test() //not using expected to assert the message
     public void testNoSourceConfiguration() {
         try {
             new PipelineConfiguration(
                     null,
+                    validSingleConfiguration(),
                     validMultipleConfiguration(),
-                    validSingleConfiguration(),
-                    validSingleConfiguration(),
+                    validMultipleConfiguration(),
                     TEST_WORKERS, TEST_DELAY);
         } catch (IllegalArgumentException ex) {
             assertThat(ex.getMessage(), is("Invalid configuration, source is a required component"));
@@ -112,7 +83,7 @@ public class PipelineConfigurationTests {
             new PipelineConfiguration(
                     validSingleConfiguration(),
                     validSingleConfiguration(),
-                    validSingleConfiguration(),
+                    validMultipleConfiguration(),
                     null,
                     TEST_WORKERS, TEST_DELAY);
         } catch (IllegalArgumentException ex) {
@@ -126,8 +97,8 @@ public class PipelineConfigurationTests {
             new PipelineConfiguration(
                     validSingleConfiguration(),
                     validSingleConfiguration(),
-                    validSingleConfiguration(),
-                    validSingleConfiguration(),
+                    validMultipleConfiguration(),
+                    validMultipleConfiguration(),
                     0, TEST_DELAY);
         } catch (IllegalArgumentException ex) {
             assertThat(ex.getMessage(), is("Invalid configuration, workers cannot be 0"));
@@ -140,8 +111,8 @@ public class PipelineConfigurationTests {
             new PipelineConfiguration(
                     validSingleConfiguration(),
                     validSingleConfiguration(),
-                    validSingleConfiguration(),
-                    validSingleConfiguration(),
+                    validMultipleConfiguration(),
+                    validMultipleConfiguration(),
                     TEST_WORKERS, 0);
         } catch (IllegalArgumentException ex) {
             assertThat(ex.getMessage(), is("Invalid configuration, delay cannot be 0"));
