@@ -15,6 +15,7 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
+import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.client.indices.PutIndexTemplateRequest;
 
 import org.elasticsearch.common.unit.ByteSizeUnit;
@@ -177,13 +178,15 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private void checkAndCreateIndex() throws IOException {
     // Check alias exists
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
-    final GetAliasesRequest getAliasesRequest = new GetAliasesRequest().aliases(indexAlias);
-    final boolean exists = restHighLevelClient.indices().existsAlias(getAliasesRequest, RequestOptions.DEFAULT);
+    final boolean isRaw = indexType.equals(IndexConstants.RAW);
+    final boolean exists = isRaw?
+            restHighLevelClient.indices().existsAlias(new GetAliasesRequest().aliases(indexAlias), RequestOptions.DEFAULT):
+            restHighLevelClient.indices().exists(new GetIndexRequest(indexAlias), RequestOptions.DEFAULT);
     if (!exists) {
       // TODO: use date as suffix?
       final String initialIndexName;
       final CreateIndexRequest createIndexRequest;
-      if (esSinkConfig.getIndexConfiguration().getIndexType().equals(IndexConstants.RAW)) {
+      if (isRaw) {
         initialIndexName = indexAlias + "-000001";
         createIndexRequest = new CreateIndexRequest(initialIndexName);
         createIndexRequest.alias(new Alias(indexAlias).writeIndex(true));
