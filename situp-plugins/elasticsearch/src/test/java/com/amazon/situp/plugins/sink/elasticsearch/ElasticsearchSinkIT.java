@@ -170,7 +170,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
 
     final List<Record<String>> testRecords = Collections.singletonList(new Record<>(testDoc));
     final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
-    final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
+    ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     final boolean success = sink.output(testRecords);
     final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.SERVICE_MAP);
     assertTrue(success);
@@ -179,6 +179,10 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     assertEquals(expData, retSources.get(0));
     assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", (String)expData.get("hashId")));
     sink.stop();
+
+    // Check restart for index already exists
+    sink = new ElasticsearchSink(pluginSetting);
+    sink.stop();
   }
 
   public void testInstantiateSinkCustomIndex() throws IOException {
@@ -186,10 +190,14 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final String testTemplateFile = Objects.requireNonNull(
             getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
     final PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFile);
-    final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
+    ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     final Request request = new Request(HttpMethod.HEAD, testIndexAlias);
     final Response response = client().performRequest(request);
     assertEquals(SC_OK, response.getStatusLine().getStatusCode());
+    sink.stop();
+
+    // Check restart for index already exists
+    sink = new ElasticsearchSink(pluginSetting);
     sink.stop();
   }
 
