@@ -71,12 +71,12 @@ public class ServiceMapStatefulProcessorTest {
         final String traceGroup1 = "reset_password";
         final String traceGroup2 = "checkout";
 
-        final ResourceSpans frontendSpans1 = ServiceMapTestUtils.getResourceSpans(FRONTEND_SERVICE, traceGroup1, rootSpanId1, rootSpanId1, traceId1, Span.SpanKind.CLIENT);
+        final ResourceSpans frontendSpans1 = ServiceMapTestUtils.getResourceSpans(FRONTEND_SERVICE, traceGroup1, rootSpanId1, null, traceId1, Span.SpanKind.CLIENT);
         final ResourceSpans authenticationSpansServer = ServiceMapTestUtils.getResourceSpans(AUTHENTICATION_SERVICE, "reset", ServiceMapTestUtils.getRandomBytes(8), ServiceMapTestUtils.getSpanId(frontendSpans1), traceId1, Span.SpanKind.SERVER);
         final ResourceSpans authenticationSpansClient = ServiceMapTestUtils.getResourceSpans(AUTHENTICATION_SERVICE, "reset", ServiceMapTestUtils.getRandomBytes(8), ServiceMapTestUtils.getSpanId(authenticationSpansServer), traceId1, Span.SpanKind.CLIENT);
         final ResourceSpans passwordDbSpans = ServiceMapTestUtils.getResourceSpans(PASSWORD_DATABASE, "update", ServiceMapTestUtils.getRandomBytes(8), ServiceMapTestUtils.getSpanId(authenticationSpansClient), traceId1, Span.SpanKind.SERVER);
 
-        final ResourceSpans frontendSpans2 = ServiceMapTestUtils.getResourceSpans(FRONTEND_SERVICE, traceGroup2, rootSpanId2, rootSpanId2, traceId2, Span.SpanKind.CLIENT);
+        final ResourceSpans frontendSpans2 = ServiceMapTestUtils.getResourceSpans(FRONTEND_SERVICE, traceGroup2, rootSpanId2, null, traceId2, Span.SpanKind.CLIENT);
         final ResourceSpans checkoutSpansServer = ServiceMapTestUtils.getResourceSpans(CHECKOUT_SERVICE, "checkout", ServiceMapTestUtils.getRandomBytes(8), rootSpanId2, traceId2, Span.SpanKind.SERVER);
         final ResourceSpans checkoutSpansClient = ServiceMapTestUtils.getResourceSpans(CHECKOUT_SERVICE, "checkout", ServiceMapTestUtils.getRandomBytes(8), ServiceMapTestUtils.getSpanId(checkoutSpansServer), traceId2, Span.SpanKind.CLIENT);
         final ResourceSpans cartSpans = ServiceMapTestUtils.getResourceSpans(CART_SERVICE, "get_items", ServiceMapTestUtils.getRandomBytes(8), ServiceMapTestUtils.getSpanId(checkoutSpansClient), traceId2, Span.SpanKind.SERVER);
