@@ -9,11 +9,9 @@ import com.amazon.situp.plugins.processor.state.LmdbProcessorState;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
-import io.opentelemetry.proto.trace.v1.Span;
 
 import java.io.File;
 import java.time.Clock;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -29,7 +27,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Collection<Record<String>> EMPTY_COLLECTION = Collections.emptySet();
     private static final Integer TO_MILLIS = 1_000;
-    private static AtomicInteger processorsCreated = new AtomicInteger(0);
+    private static final AtomicInteger processorsCreated = new AtomicInteger(0);
     private static long previousTimestamp;
     private static long windowDurationMillis;
     private static CountDownLatch edgeEvaluationLatch;
@@ -96,28 +94,26 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     public Collection<Record<String>> execute(Collection<Record<ExportTraceServiceRequest>> records) {
         final Collection<Record<String>> relationships = windowDurationHasPassed() ? evaluateEdges() : EMPTY_COLLECTION;
         records.forEach( i -> i.getData().getResourceSpansList().forEach(resourceSpans -> {
-            final String resourceName = resourceSpans.getResource().getAttributesList().stream().filter(
-                    keyValue -> keyValue.getKey().equals(ServiceMapSpanTags.SERVICE_NAME_KEY)
-            ).findFirst().get().getValue().getStringValue();
-
-            resourceSpans.getInstrumentationLibrarySpansList().forEach(
+            OTelHelper.getServiceName(resourceSpans.getResource()).ifPresent(serviceName -> resourceSpans.getInstrumentationLibrarySpansList().forEach(
                     instrumentationLibrarySpans -> {
                         instrumentationLibrarySpans.getSpansList().forEach(
                                 span -> {
-                                    currentWindow.put(
-                                            span.getSpanId().toByteArray(),
-                                            new ServiceMapStateData(
-                                                    resourceName,
-                                                    span.getParentSpanId().toByteArray(),
-                                                    span.getTraceId().toByteArray(),
-                                                    span.getKind().name(),
-                                                    span.getName()));
-                                    if(isRootSpan(span)) {
-                                        currentTraceGroupWindow.put(span.getTraceId().toByteArray(), span.getName());
+                                    if (OTelHelper.checkValidSpan(span)) {
+                                        currentWindow.put(
+                                                span.getSpanId().toByteArray(),
+                                                new ServiceMapStateData(
+                                                        serviceName,
+                                                        span.getParentSpanId().isEmpty() ? null : span.getParentSpanId().toByteArray(),
+                                                        span.getTraceId().toByteArray(),
+                                                        span.getKind().name(),
+                                                        span.getName()));
+                                        if (span.getParentSpanId().isEmpty()) {
+                                            currentTraceGroupWindow.put(span.getTraceId().toByteArray(), span.getName());
+                                        }
                                     }
                                 });
                     }
-            );
+            ));
         }));
         return relationships;
     }
@@ -178,17 +174,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> previousWindowFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
         @Override
         public Stream<ServiceMapRelationship> apply(byte[] s, ServiceMapStateData serviceMapStateData) {
-            final ServiceMapStateData parentStateData = getParentStateData(serviceMapStateData.parentSpanId);
-            final String traceGroupName = getTraceGroupName(serviceMapStateData.traceId);
-            if (parentStateData != null && !parentStateData.serviceName.equals(serviceMapStateData.serviceName) && traceGroupName != null) {
-                return Arrays.asList(
-                        ServiceMapRelationship.newDestinationRelationship(parentStateData.serviceName, parentStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName),
-                        //This extra edge is added for compatibility of the index for both stateless and stateful processors
-                        ServiceMapRelationship.newTargetRelationship(serviceMapStateData.serviceName, serviceMapStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName)
-                ).stream();
-            } else {
-                return null;
-            }
+            return lookupParentSpan(serviceMapStateData, false);
         }
     };
     /**
@@ -198,28 +184,34 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> currentWindowFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
         @Override
         public Stream<ServiceMapRelationship> apply(byte[] s, ServiceMapStateData serviceMapStateData) {
-            final ServiceMapStateData parentStateData = getParentStateData(serviceMapStateData.parentSpanId);
-            final String traceGroupName = getTraceGroupName(serviceMapStateData.traceId);
-            if (parentStateData != null && !parentStateData.serviceName.equals(serviceMapStateData.serviceName) && traceGroupName != null) {
-                return Arrays.asList(
-                        ServiceMapRelationship.newDestinationRelationship(parentStateData.serviceName, parentStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName),
-                        //This extra edge is added for compatibility of the index for both stateless and stateful processors
-                        ServiceMapRelationship.newTargetRelationship(serviceMapStateData.serviceName, serviceMapStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName)
-                ).stream();
-            } else {
-                return null;
-            }
+            return lookupParentSpan(serviceMapStateData, true);
         }
     };
 
+    private Stream<ServiceMapRelationship> lookupParentSpan(final ServiceMapStateData serviceMapStateData, final boolean checkPrev) {
+        if (serviceMapStateData.parentSpanId != null) {
+            final ServiceMapStateData parentStateData = getParentStateData(serviceMapStateData.parentSpanId, checkPrev);
+            final String traceGroupName = getTraceGroupName(serviceMapStateData.traceId);
+            if (traceGroupName != null && parentStateData != null && !parentStateData.serviceName.equals(serviceMapStateData.serviceName)) {
+                return Stream.of(
+                        ServiceMapRelationship.newDestinationRelationship(parentStateData.serviceName, parentStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName),
+                        //This extra edge is added for compatibility of the index for both stateless and stateful processors
+                        ServiceMapRelationship.newTargetRelationship(serviceMapStateData.serviceName, serviceMapStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName)
+                );
+            }
+        }
+        return Stream.empty();
+    }
+
     /**
      * Checks both current and previous windows for the given parent span id
+     *
      * @param spanId
      * @return ServiceMapStateData for the parent span, if exists. Otherwise null
      */
-    private ServiceMapStateData getParentStateData(final byte[] spanId) {
+    private ServiceMapStateData getParentStateData(final byte[] spanId, final boolean checkPrev) {
         final ServiceMapStateData serviceMapStateData = currentWindow.get(spanId);
-        return serviceMapStateData != null ? serviceMapStateData : previousWindow.get(spanId);
+        return serviceMapStateData != null ? serviceMapStateData : checkPrev ? previousWindow.get(spanId) : null;
     }
 
     /**
@@ -333,14 +325,6 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     }
 
     /**
-     *
-     * @return boolean indicating whether the span is a root span
-     */
-    private boolean isRootSpan(Span span) {
-        return span.getParentSpanId() == null || span.getParentSpanId().isEmpty() || span.getParentSpanId().equals(span.getSpanId());
-    }
-
-    /**
      * Getting range for this processor given a number of elements
      * @param elements Elements to iterate over
      * @return Range given as a 2 element array of longs
@@ -353,11 +337,6 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
         long lower = (long) thisProcessorId * step;
         long upper = Math.min(lower + step, elements);
         return new long[]{lower, upper};
-    }
-
-    //TODO: Remove this once we have a common class for holding otel attribute tags
-    public static class ServiceMapSpanTags {
-        public static final String SERVICE_NAME_KEY = "service.name";
     }
 
     private static class ServiceMapStateData {
