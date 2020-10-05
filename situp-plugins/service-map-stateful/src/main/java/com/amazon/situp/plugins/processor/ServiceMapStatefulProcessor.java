@@ -174,7 +174,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> previousWindowFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
         @Override
         public Stream<ServiceMapRelationship> apply(byte[] s, ServiceMapStateData serviceMapStateData) {
-            return lookupLogic(serviceMapStateData, false);
+            return lookupParentSpan(serviceMapStateData, false);
         }
     };
     /**
@@ -184,11 +184,11 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> currentWindowFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
         @Override
         public Stream<ServiceMapRelationship> apply(byte[] s, ServiceMapStateData serviceMapStateData) {
-            return lookupLogic(serviceMapStateData, true);
+            return lookupParentSpan(serviceMapStateData, true);
         }
     };
 
-    private Stream<ServiceMapRelationship> lookupLogic(final ServiceMapStateData serviceMapStateData, final boolean checkPrev) {
+    private Stream<ServiceMapRelationship> lookupParentSpan(final ServiceMapStateData serviceMapStateData, final boolean checkPrev) {
         if (serviceMapStateData.parentSpanId != null) {
             final ServiceMapStateData parentStateData = getParentStateData(serviceMapStateData.parentSpanId, checkPrev);
             final String traceGroupName = getTraceGroupName(serviceMapStateData.traceId);
