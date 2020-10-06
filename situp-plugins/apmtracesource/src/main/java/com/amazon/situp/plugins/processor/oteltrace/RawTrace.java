@@ -8,6 +8,7 @@ import org.apache.commons.codec.binary.Hex;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.Map;
 
 public class RawTrace {
 
@@ -23,6 +24,7 @@ public class RawTrace {
     private final String instrumentationName;
     private final String instrumentationVersion;
     private final String serviceName;
+    private final Map<String, String> resourceAttributes;
 
 
     private RawTrace(RawTraceBuilder builder) {
@@ -35,6 +37,7 @@ public class RawTrace {
         this.instrumentationName = builder.instrumentationName;
         this.instrumentationVersion = builder.instrumentationVersion;
         this.serviceName = builder.serviceName;
+        this.resourceAttributes = builder.resourceAttributes;
     }
 
     /**
@@ -50,6 +53,7 @@ public class RawTrace {
         private String instrumentationName;
         private String instrumentationVersion;
         private String serviceName;
+        private Map<String, String> resourceAttributes;
 
         public RawTraceBuilder() {
         }
@@ -99,6 +103,10 @@ public class RawTrace {
             return this;
         }
 
+        public RawTraceBuilder setResourceAttributes(Map<String, String> resourceAttributes) {
+            this.resourceAttributes = resourceAttributes;
+            return this;
+        }
 
         public RawTrace build() {
             return new RawTrace(this);
@@ -127,6 +135,7 @@ public class RawTrace {
                 .setInstrumentationVersion(instrumentationLibrary.getVersion())
                 .setServiceName(resource.getAttributesList().stream().filter(keyValue -> keyValue.getKey().equals(SERVICE_NAME)
                 ).findFirst().get().getValue().getStringValue())
+                // TODO: verify the data type for resourceAttributes to set it here
                 .build();
     }
 }
