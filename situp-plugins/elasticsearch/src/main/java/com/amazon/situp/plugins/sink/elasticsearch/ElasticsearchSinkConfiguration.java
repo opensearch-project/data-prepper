@@ -24,37 +24,15 @@ public class ElasticsearchSinkConfiguration {
     return retryConfiguration;
   }
 
-  public static class Builder {
-    private ConnectionConfiguration connectionConfiguration;
-    private IndexConfiguration indexConfiguration = new IndexConfiguration.Builder().build();
-    private RetryConfiguration retryConfiguration = new RetryConfiguration.Builder().build();
-
-    public Builder(final ConnectionConfiguration connectionConfiguration) {
-      checkNotNull(connectionConfiguration, "connectionConfiguration cannot be null");
-      this.connectionConfiguration = connectionConfiguration;
-    }
-
-    public Builder withIndexConfiguration(final IndexConfiguration indexConfiguration) {
-      checkNotNull(indexConfiguration, "indexConfiguration cannot be null");
-      this.indexConfiguration = indexConfiguration;
-      return this;
-    }
-
-    public Builder withRetryConfiguration(final RetryConfiguration retryConfiguration) {
-      checkNotNull(retryConfiguration, "retryConfiguration cannot be null");
-      this.retryConfiguration = retryConfiguration;
-      return this;
-    }
-
-    public ElasticsearchSinkConfiguration build() {
-      return new ElasticsearchSinkConfiguration(this);
-    }
-  }
-
-  private ElasticsearchSinkConfiguration(final Builder builder) {
-    this.connectionConfiguration = builder.connectionConfiguration;
-    this.indexConfiguration = builder.indexConfiguration;
-    this.retryConfiguration = builder.retryConfiguration;
+  private ElasticsearchSinkConfiguration(
+          final ConnectionConfiguration connectionConfiguration, final IndexConfiguration indexConfiguration,
+          final RetryConfiguration retryConfiguration) {
+    checkNotNull(connectionConfiguration, "connectionConfiguration cannot be null");
+    checkNotNull(indexConfiguration, "indexConfiguration cannot be null");
+    checkNotNull(retryConfiguration, "retryConfiguration cannot be null");
+    this.connectionConfiguration = connectionConfiguration;
+    this.indexConfiguration = indexConfiguration;
+    this.retryConfiguration = retryConfiguration;
   }
 
   public static ElasticsearchSinkConfiguration readESConfig(final PluginSetting pluginSetting) {
@@ -63,9 +41,6 @@ public class ElasticsearchSinkConfiguration {
     final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
     final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(pluginSetting);
 
-    return new ElasticsearchSinkConfiguration.Builder(connectionConfiguration)
-            .withIndexConfiguration(indexConfiguration)
-            .withRetryConfiguration(retryConfiguration)
-            .build();
+    return new ElasticsearchSinkConfiguration(connectionConfiguration, indexConfiguration, retryConfiguration);
   }
 }

@@ -2,6 +2,7 @@ package com.amazon.situp.plugins.processor.oteltrace;
 
 import com.amazon.situp.model.PluginType;
 import com.amazon.situp.model.annotations.SitupPlugin;
+import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.processor.Processor;
 import com.amazon.situp.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -11,6 +12,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +28,7 @@ import java.util.List;
 
 
 @SitupPlugin(name = "otel_trace_raw_processor", type = PluginType.PROCESSOR)
-public class OTelTraceRawProcessor implements Processor<Record<ResourceSpans>, Record<String>> {
+public class OTelTraceRawProcessor implements Processor<Record<ExportTraceServiceRequest>, Record<String>> {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String INSTRUMENTATION_LIBRARY_SPANS = "instrumentationLibrarySpans";
@@ -43,8 +45,17 @@ public class OTelTraceRawProcessor implements Processor<Record<ResourceSpans>, R
 
     private static final Logger log = LoggerFactory.getLogger(OTelTraceRawProcessor.class);
 
-    public static String getJsonFromProtobufObj(Record<ResourceSpans> resourceSpans) throws InvalidProtocolBufferException {
-        return JsonFormat.printer().print(resourceSpans.getData());
+    //TODO: https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/66
+    public OTelTraceRawProcessor(final PluginSetting pluginSetting) {
+        this();
+    }
+
+    public OTelTraceRawProcessor() {
+
+    }
+
+    public static String getJsonFromProtobufObj(ResourceSpans resourceSpans) throws InvalidProtocolBufferException {
+        return JsonFormat.printer().print(resourceSpans);
     }
 
     public static ArrayList<String> decodeResourceSpan(final String jsonResourceSpans) throws JsonProcessingException {
@@ -135,18 +146,18 @@ public class OTelTraceRawProcessor implements Processor<Record<ResourceSpans>, R
      * @return Record  modified output records
      */
     @Override
-    public Collection<Record<String>> execute(Collection<Record<ResourceSpans>> records) {
+    public Collection<Record<String>> execute(Collection<Record<ExportTraceServiceRequest>> records) {
         final List<Record<String>> finalRecords = new LinkedList<>();
-        for (Record<ResourceSpans> rs : records) {
-            String jsonString;
-            ArrayList<String> esDocs = null;
-            try {
-                jsonString = getJsonFromProtobufObj(rs);
-                esDocs = decodeResourceSpan(jsonString);
-            } catch (InvalidProtocolBufferException | JsonProcessingException e) {
-                log.warn("Unable to process invalid records", e);
+        for(Record<ExportTraceServiceRequest> ets: records) {
+            for (ResourceSpans rs : ets.getData().getResourceSpansList()) {
+                String jsonString;
+                try {
+                    jsonString = getJsonFromProtobufObj(rs);
+                    decodeResourceSpan(jsonString).forEach(doc -> finalRecords.add(new Record<>(doc)));
+                } catch (InvalidProtocolBufferException | JsonProcessingException e) {
+                    log.warn("Unable to process invalid records", e);
+                }
             }
-            finalRecords.add(new Record(esDocs));
         }
         return finalRecords;
     }

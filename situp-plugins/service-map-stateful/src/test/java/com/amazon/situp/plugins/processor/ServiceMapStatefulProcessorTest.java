@@ -1,26 +1,6 @@
 package com.amazon.situp.plugins.processor;
 
-import com.google.protobuf.ByteString;
 import com.amazon.situp.model.record.Record;
-import java.io.File;
-import java.io.UnsupportedEncodingException;
-import java.time.Clock;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.stream.Collectors;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.opentelemetry.proto.common.v1.AnyValue;
-import io.opentelemetry.proto.common.v1.KeyValue;
-import io.opentelemetry.proto.resource.v1.Resource;
-import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 import org.junit.Assert;
@@ -29,19 +9,31 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.mockito.Mockito;
 
+import java.io.File;
+import java.time.Clock;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+
 
 public class ServiceMapStatefulProcessorTest {
 
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
     private static final String FRONTEND_SERVICE = "FRONTEND";
-    private static final String BACKEND_SERVICE = "BACKEND";
-    private static final String DATABASE_SERVICE = "DATABASE";
     private static final String CHECKOUT_SERVICE = "CHECKOUT";
-    private static final String OTHER_SERVICE = "OTHER";
+    private static final String AUTHENTICATION_SERVICE = "AUTH";
+    private static final String PASSWORD_DATABASE = "PASS";
+    private static final String PAYMENT_SERVICE = "PAY";
+    private static final String CART_SERVICE = "CART";
 
     /**
      * This function mocks what the frontend will do to resolve the data in the service map index to find the edges
@@ -62,176 +54,129 @@ public class ServiceMapStatefulProcessorTest {
                 }).collect(Collectors.toSet());
     }
 
-    /**
-     * Creates a ResourceSpans object with the given parameters, with a single span
-     * @param serviceName Resource name for the ResourceSpans object
-     * @param spanName Span name for the single span in the ResourceSpans object
-     * @param spanId Span id for the single span in the ResourceSpans object
-     * @param parentId Parent id for the single span in the ResourceSpans object
-     * @param spanKind Span kind for the single span in the ResourceSpans object
-     * @return ResourceSpans object with a single span constructed according to the parameters
-     * @throws UnsupportedEncodingException
-     */
-    public ResourceSpans getResourceSpans(final String serviceName, final String spanName, final byte[]
-            spanId, final byte[] parentId, final Span.SpanKind spanKind) throws UnsupportedEncodingException {
-        return ResourceSpans.newBuilder()
-                .setResource(
-                        Resource.newBuilder()
-                                .addAttributes(KeyValue.newBuilder()
-                                        .setKey("resource.name")
-                                        .setValue(AnyValue.newBuilder().setStringValue(serviceName).build()).build())
-                                .build()
-                )
-                .addInstrumentationLibrarySpans(
-                        0,
-                        InstrumentationLibrarySpans.newBuilder()
-                                .addSpans(
-                                        Span.newBuilder()
-                                                .setName(spanName)
-                                                .setKind(spanKind)
-                                                .setSpanId(ByteString.copyFrom(spanId))
-                                                .setParentSpanId(ByteString.copyFrom(parentId))
-                                                .build()
-                                )
-                                .build()
-                )
-                .build();
-    }
-
-    private static final byte[] SPAN_ID_1 = new byte[]{-120, 0, -120, 0, -120, 0, -120, 0};
-    private static final byte[] SPAN_ID_2 = new byte[]{-50, 0, -50, 0, -50, 0, -50, 0};
-    private static final byte[] SPAN_ID_3 = new byte[]{-10, 0, -10, 0, -10, 0, -10, 0};
-    private static final byte[] SPAN_ID_4 = new byte[]{10, 10, 10, 10, 10, 10, 10, 10};
-    private static final byte[] SPAN_ID_5 = new byte[]{20, 20, 20, 20, 20, 20, 20, 20};
-    private static final byte[] SPAN_ID_6 = new byte[]{30, 30, 30, 30, 30, 30, 30, 30};
-    private static final byte[] SPAN_ID_7 = new byte[]{40, 40, 40, 40, 40, 40, 40, 40};
-
-
-    /**
-     * Test with the following fake trace setup
-     *
-     * |----  Service = frontend ------------------------------------------------|
-     *   |--  Service = backend --------------------------------------------|
-     *     |-- Service = database --|    |-- Service = checkout---|
-     *
-     *                                                                                    |--Service = other--|
-     */
     @Test
-    public void testServiceMapProcessor()  throws Exception {
+    public void testTraceGroups() throws Exception {
         final Clock clock = Mockito.mock(Clock.class);
         Mockito.when(clock.millis()).thenReturn(1L);
         ExecutorService threadpool = Executors.newCachedThreadPool();
         final File path = temporaryFolder.newFolder();
-        //This processor will iterate over the front half of key range
-        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, 2, clock);
-        //This processor will iterate over back half of the key range
-        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, 2, clock);
+        final File path2 = temporaryFolder.newFolder();
+        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, path2, clock);
+        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, path2, clock);
 
-        //Frontend service client span
-        ResourceSpans spans1 = getResourceSpans(FRONTEND_SERVICE, "span1", SPAN_ID_1, SPAN_ID_1, Span.SpanKind.CLIENT);
-        //Backend service server and client spans
-        ResourceSpans spans2 = getResourceSpans(BACKEND_SERVICE, "span2", SPAN_ID_2, SPAN_ID_1, Span.SpanKind.SERVER);
-        ResourceSpans spans3 = getResourceSpans(BACKEND_SERVICE, "span3", SPAN_ID_3, SPAN_ID_2, Span.SpanKind.CLIENT);
-        //Database service server span
-        ResourceSpans spans4 = getResourceSpans(DATABASE_SERVICE, "span4" ,SPAN_ID_4,SPAN_ID_3, Span.SpanKind.SERVER);
-        //Checkoue service server span
-        ResourceSpans spans5 = getResourceSpans(CHECKOUT_SERVICE, "span5",SPAN_ID_5, SPAN_ID_3, Span.SpanKind.SERVER);
-        //Other service span
-        ResourceSpans spans6 = getResourceSpans(OTHER_SERVICE, "span6",SPAN_ID_6,SPAN_ID_7, Span.SpanKind.SPAN_KIND_UNSPECIFIED);
+        final byte[] rootSpanId1 = ServiceMapTestUtils.getRandomBytes(8);
+        final byte[] rootSpanId2 = ServiceMapTestUtils.getRandomBytes(8);
+        final byte[] traceId1 = ServiceMapTestUtils.getRandomBytes(16);
+        final byte[] traceId2 = ServiceMapTestUtils.getRandomBytes(16);
+        final String traceGroup1 = "reset_password";
+        final String traceGroup2 = "checkout";
 
-        final ServiceMapRelationship relationship1 = ServiceMapRelationship.newDestinationRelationship(FRONTEND_SERVICE, Span.SpanKind.CLIENT.name(), BACKEND_SERVICE);
-        final ServiceMapRelationship relationship2 = ServiceMapRelationship.newDestinationRelationship(BACKEND_SERVICE, Span.SpanKind.CLIENT.name(), DATABASE_SERVICE);
-        final ServiceMapRelationship relationship3 = ServiceMapRelationship.newDestinationRelationship(BACKEND_SERVICE, Span.SpanKind.CLIENT.name(), CHECKOUT_SERVICE);
-        final ServiceMapRelationship targetRelationship1 = ServiceMapRelationship.newTargetRelationship(BACKEND_SERVICE, Span.SpanKind.SERVER.name(), BACKEND_SERVICE);
-        final ServiceMapRelationship targetRelationship2 = ServiceMapRelationship.newTargetRelationship(DATABASE_SERVICE, Span.SpanKind.SERVER.name(), DATABASE_SERVICE);
-        final ServiceMapRelationship targetRelationship3 = ServiceMapRelationship.newTargetRelationship(CHECKOUT_SERVICE, Span.SpanKind.SERVER.name(), CHECKOUT_SERVICE);
+        final ResourceSpans frontendSpans1 = ServiceMapTestUtils.getResourceSpans(FRONTEND_SERVICE, traceGroup1, rootSpanId1, null, traceId1, Span.SpanKind.CLIENT);
+        final ResourceSpans authenticationSpansServer = ServiceMapTestUtils.getResourceSpans(AUTHENTICATION_SERVICE, "reset", ServiceMapTestUtils.getRandomBytes(8), ServiceMapTestUtils.getSpanId(frontendSpans1), traceId1, Span.SpanKind.SERVER);
+        final ResourceSpans authenticationSpansClient = ServiceMapTestUtils.getResourceSpans(AUTHENTICATION_SERVICE, "reset", ServiceMapTestUtils.getRandomBytes(8), ServiceMapTestUtils.getSpanId(authenticationSpansServer), traceId1, Span.SpanKind.CLIENT);
+        final ResourceSpans passwordDbSpans = ServiceMapTestUtils.getResourceSpans(PASSWORD_DATABASE, "update", ServiceMapTestUtils.getRandomBytes(8), ServiceMapTestUtils.getSpanId(authenticationSpansClient), traceId1, Span.SpanKind.SERVER);
 
-        //Set clock to close out original window
+        final ResourceSpans frontendSpans2 = ServiceMapTestUtils.getResourceSpans(FRONTEND_SERVICE, traceGroup2, rootSpanId2, null, traceId2, Span.SpanKind.CLIENT);
+        final ResourceSpans checkoutSpansServer = ServiceMapTestUtils.getResourceSpans(CHECKOUT_SERVICE, "checkout", ServiceMapTestUtils.getRandomBytes(8), rootSpanId2, traceId2, Span.SpanKind.SERVER);
+        final ResourceSpans checkoutSpansClient = ServiceMapTestUtils.getResourceSpans(CHECKOUT_SERVICE, "checkout", ServiceMapTestUtils.getRandomBytes(8), ServiceMapTestUtils.getSpanId(checkoutSpansServer), traceId2, Span.SpanKind.CLIENT);
+        final ResourceSpans cartSpans = ServiceMapTestUtils.getResourceSpans(CART_SERVICE, "get_items", ServiceMapTestUtils.getRandomBytes(8), ServiceMapTestUtils.getSpanId(checkoutSpansClient), traceId2, Span.SpanKind.SERVER);
+        final ResourceSpans paymentSpans = ServiceMapTestUtils.getResourceSpans(PAYMENT_SERVICE, "charge", ServiceMapTestUtils.getRandomBytes(8), ServiceMapTestUtils.getSpanId(checkoutSpansClient), traceId2, Span.SpanKind.SERVER);
+
+
+        //Expected relationships
+        final ServiceMapRelationship frontendAuth = ServiceMapRelationship.newDestinationRelationship(FRONTEND_SERVICE, Span.SpanKind.CLIENT.name(), AUTHENTICATION_SERVICE, "reset", traceGroup1);
+        final ServiceMapRelationship authPassword = ServiceMapRelationship.newDestinationRelationship(AUTHENTICATION_SERVICE, Span.SpanKind.CLIENT.name(), PASSWORD_DATABASE, "update", traceGroup1);
+        final ServiceMapRelationship frontendCheckout = ServiceMapRelationship.newDestinationRelationship(FRONTEND_SERVICE, Span.SpanKind.CLIENT.name(), CHECKOUT_SERVICE, "checkout", traceGroup2);
+        final ServiceMapRelationship checkoutCart = ServiceMapRelationship.newDestinationRelationship(CHECKOUT_SERVICE, Span.SpanKind.CLIENT.name(), CART_SERVICE, "get_items", traceGroup2);
+        final ServiceMapRelationship checkoutPayment = ServiceMapRelationship.newDestinationRelationship(CHECKOUT_SERVICE, Span.SpanKind.CLIENT.name(), PAYMENT_SERVICE, "charge", traceGroup2);
+
+        final ServiceMapRelationship checkoutTarget = ServiceMapRelationship.newTargetRelationship(CHECKOUT_SERVICE, Span.SpanKind.SERVER.name(), CHECKOUT_SERVICE, "checkout", traceGroup2);
+        final ServiceMapRelationship authTarget = ServiceMapRelationship.newTargetRelationship(AUTHENTICATION_SERVICE, Span.SpanKind.SERVER.name(), AUTHENTICATION_SERVICE, "reset", traceGroup1);
+        final ServiceMapRelationship passwordTarget = ServiceMapRelationship.newTargetRelationship(PASSWORD_DATABASE, Span.SpanKind.SERVER.name(), PASSWORD_DATABASE, "update", traceGroup1);
+        final ServiceMapRelationship paymentTarget = ServiceMapRelationship.newTargetRelationship(PAYMENT_SERVICE, Span.SpanKind.SERVER.name(), PAYMENT_SERVICE, "charge", traceGroup2);
+        final ServiceMapRelationship cartTarget = ServiceMapRelationship.newTargetRelationship(CART_SERVICE, Span.SpanKind.SERVER.name(), CART_SERVICE, "get_items", traceGroup2);
+
+        final Set<ServiceMapRelationship> relationshipsFound = new HashSet<>();
+
+        //First batch
         Mockito.when(clock.millis()).thenReturn(110L);
+        Future<Set<ServiceMapRelationship>> r1 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1,
+                Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(frontendSpans1, checkoutSpansServer))));
+        Future<Set<ServiceMapRelationship>> r2 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2,
+                Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(frontendSpans2,checkoutSpansClient))));
+        relationshipsFound.addAll(r1.get());
+        relationshipsFound.addAll(r2.get());
 
-        //Process Span 1, should result in no relationships found
-        Future<Collection<Record<String>>> emptyFuture1 = threadpool.submit(() -> {
-            return serviceMapStateful1.execute(Arrays.asList(
-                    new Record<>(spans1)
-            ));
-        });
-        Future<Collection<Record<String>>> emptyFuture2 = threadpool.submit(() -> {
-            return serviceMapStateful2.execute(Collections.emptyList());
-        });
+        //Shouldn't find any relationships
+        Assert.assertEquals(0, relationshipsFound.size());
 
-        Assert.assertTrue(emptyFuture1.get().isEmpty());
-        Assert.assertTrue(emptyFuture2.get().isEmpty());
-
-        //Set clock to move on to the next window
+        //Second batch
         Mockito.when(clock.millis()).thenReturn(220L);
+        Future<Set<ServiceMapRelationship>> r3 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1,
+                Arrays.asList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(authenticationSpansServer,authenticationSpansClient)),
+                        new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(cartSpans))));
+        Future<Set<ServiceMapRelationship>> r4 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2,
+                Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(passwordDbSpans,paymentSpans))));
+        relationshipsFound.addAll(r3.get());
+        relationshipsFound.addAll(r4.get());
 
+        //Should find the frontend->checkout relationship indicated in the first batch
+        Assert.assertEquals(2, relationshipsFound.size());
+        Assert.assertTrue(relationshipsFound.containsAll(Arrays.asList(
+                frontendCheckout,
+                checkoutTarget
+        )));
 
-        emptyFuture1 = threadpool.submit(() -> {
-            return serviceMapStateful2.execute(Arrays.asList(
-                    new Record<>(spans2),
-                    new Record<>(spans4)
-            ));
-        });
-        emptyFuture2 = threadpool.submit(()-> {
-            return serviceMapStateful1.execute(Arrays.asList(
-                    new Record<>(spans3),
-                    new Record<>(spans5),
-                    new Record<>(spans6)));
-        });
-        Assert.assertTrue(emptyFuture1.get().isEmpty());
-        Assert.assertTrue(emptyFuture2.get().isEmpty());
+        //Third batch
+        Mockito.when(clock.millis()).thenReturn(340L);
+        Future<Set<ServiceMapRelationship>> r5 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1, Arrays.asList());
+        Future<Set<ServiceMapRelationship>> r6 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2, Arrays.asList());
+        relationshipsFound.addAll(r5.get());
+        relationshipsFound.addAll(r6.get());
 
-        //Set clock to move onto the next window
-        Mockito.when(clock.millis()).thenReturn(330L);
+        //Should find the rest of the relationships
+        Assert.assertEquals(10, relationshipsFound.size());
+        Assert.assertTrue(relationshipsFound.containsAll(Arrays.asList(
+                frontendAuth,
+                authTarget,
+                authPassword,
+                passwordTarget,
+                checkoutCart,
+                cartTarget,
+                checkoutPayment,
+                paymentTarget
+        )));
 
-        Future<Set<ServiceMapRelationship>> frontHalfFuture = threadpool.submit(() -> {
-            return serviceMapStateful1.execute(Collections.emptyList())
-                    .stream()
-                    .map(record -> {
-                        try {
-                            return OBJECT_MAPPER.readValue(record.getData(), ServiceMapRelationship.class);
-                        } catch (JsonProcessingException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }).collect(Collectors.toSet());
-        });
+        // Extra validation
+        final List<ServiceMapSourceDest> expectedSourceDests = Arrays.asList(
+                new ServiceMapSourceDest(FRONTEND_SERVICE, AUTHENTICATION_SERVICE),
+                new ServiceMapSourceDest(AUTHENTICATION_SERVICE, PASSWORD_DATABASE),
+                new ServiceMapSourceDest(FRONTEND_SERVICE, CHECKOUT_SERVICE),
+                new ServiceMapSourceDest(CHECKOUT_SERVICE, CART_SERVICE),
+                new ServiceMapSourceDest(CHECKOUT_SERVICE, PAYMENT_SERVICE)
+        );
 
-        Future<Set<ServiceMapRelationship>> backHalfFuture = threadpool.submit(() -> {
-            return serviceMapStateful2.execute(Collections.emptyList())
-                    .stream()
-                    .map(record -> {
-                        try {
-                            return OBJECT_MAPPER.readValue(record.getData(), ServiceMapRelationship.class);
-                        } catch (JsonProcessingException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }).collect(Collectors.toSet());
-        });
-        //Should iterate over the front half of the elements
-        Set<ServiceMapRelationship> frontHalfRelationships = frontHalfFuture.get();
-        //Should itearte over the back half of the elements
-        Set<ServiceMapRelationship> backHalfRelationships = backHalfFuture.get();
+        Assert.assertTrue(evaluateEdges(relationshipsFound).containsAll(expectedSourceDests));
 
-        Assert.assertEquals(2, backHalfRelationships.size());
-        Assert.assertTrue(backHalfRelationships.contains(relationship1));
-        Assert.assertTrue(backHalfRelationships.contains(targetRelationship1));
+        //Make sure that future relationships that are equivalent are caught by cache
+        final byte[] rootSpanId3 = ServiceMapTestUtils.getRandomBytes(8);
+        final byte[] traceId3 = ServiceMapTestUtils.getRandomBytes(16);
+        final ResourceSpans frontendSpans3 = ServiceMapTestUtils.getResourceSpans(FRONTEND_SERVICE, traceGroup1, rootSpanId3, rootSpanId3, traceId3, Span.SpanKind.CLIENT);
+        final ResourceSpans authenticationSpansServer2 = ServiceMapTestUtils.getResourceSpans(AUTHENTICATION_SERVICE, "reset", ServiceMapTestUtils.getRandomBytes(8), ServiceMapTestUtils.getSpanId(frontendSpans3), traceId3, Span.SpanKind.SERVER);
 
-        Assert.assertEquals(4, frontHalfRelationships.size());
-        Assert.assertTrue(frontHalfRelationships.contains(relationship2));
-        Assert.assertTrue(frontHalfRelationships.contains(targetRelationship2));
-        Assert.assertTrue(frontHalfRelationships.contains(relationship3));
-        Assert.assertTrue(frontHalfRelationships.contains(targetRelationship3));
+        Mockito.when(clock.millis()).thenReturn(450L);
+        Future<Set<ServiceMapRelationship>> r7 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1,
+                Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(frontendSpans3))));
+        Future<Set<ServiceMapRelationship>> r8 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2,
+                Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(authenticationSpansServer2))));
+        Assert.assertTrue(r7.get().isEmpty());
+        Assert.assertTrue(r8.get().isEmpty());
 
-        //As extra verification, evaluate the actual service map edges that result from the above responses
-        //from the processor.
-        Set<ServiceMapSourceDest> serviceMapSourceDests = evaluateEdges(new HashSet<ServiceMapRelationship>(){{
-            addAll(frontHalfRelationships);
-            addAll(backHalfRelationships);
-        }});
-        Assert.assertEquals(3, serviceMapSourceDests.size());
-        Assert.assertTrue(serviceMapSourceDests.contains(new ServiceMapSourceDest(FRONTEND_SERVICE, BACKEND_SERVICE)));
-        Assert.assertTrue(serviceMapSourceDests.contains(new ServiceMapSourceDest(BACKEND_SERVICE, DATABASE_SERVICE)));
-        Assert.assertTrue(serviceMapSourceDests.contains(new ServiceMapSourceDest(BACKEND_SERVICE, CHECKOUT_SERVICE)));
+        Mockito.when(clock.millis()).thenReturn(560L);
+        Future<Set<ServiceMapRelationship>> r9 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1, Arrays.asList());
+        Future<Set<ServiceMapRelationship>> r10 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2, Arrays.asList());
+        Assert.assertTrue(r9.get().isEmpty());
+        Assert.assertTrue(r10.get().isEmpty());
     }
 
     private static class ServiceMapSourceDest {
