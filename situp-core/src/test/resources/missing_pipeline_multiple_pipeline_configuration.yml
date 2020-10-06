@@ -6,12 +6,12 @@ test-pipeline-1:
   buffer:
     bounded_blocking: #to check non object nodes for plugins
   sink:
-    pipeline:
-      name: "test-pipeline-4"
+    - pipeline:
+       name: "test-pipeline-4"
 test-pipeline-2:
   source:
     pipeline:
-      name: "test-pipeline-1"
+       name: "test-pipeline-1"
   sink:
-    pipeline:
-      name: "test-pipeline-3"
+    - pipeline:
+       name: "test-pipeline-3"

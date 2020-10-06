@@ -1,16 +1,17 @@
 package com.amazon.situp.plugins.processor;
 
+import com.amazon.situp.model.PluginType;
+import com.amazon.situp.model.annotations.SitupPlugin;
+import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.processor.Processor;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.plugins.processor.state.LmdbProcessorState;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
-import io.opentelemetry.proto.trace.v1.Span;
 
 import java.io.File;
 import java.time.Clock;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -20,17 +21,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
+@SitupPlugin(name = "service_map_stateful", type = PluginType.PROCESSOR)
 public class ServiceMapStatefulProcessor implements Processor<Record<ExportTraceServiceRequest>, Record<String>> {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Collection<Record<String>> EMPTY_COLLECTION = Collections.emptySet();
-
-    private static int numProcessors;
-    private static AtomicInteger processorsCreated = new AtomicInteger(0);
+    private static final Integer TO_MILLIS = 1_000;
+    private static final AtomicInteger processorsCreated = new AtomicInteger(0);
     private static long previousTimestamp;
     private static long windowDurationMillis;
-    private static CountDownLatch edgeEvaluationLatch = new CountDownLatch(numProcessors);
+    private static CountDownLatch edgeEvaluationLatch;
     private static CountDownLatch windowRotationLatch = new CountDownLatch(1);
     private volatile static LmdbProcessorState<ServiceMapStateData> previousWindow;
     private volatile static LmdbProcessorState<ServiceMapStateData> currentWindow;
@@ -39,28 +39,49 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     //TODO: Consider keeping this state in lmdb
     private volatile static  HashSet<ServiceMapRelationship> relationshipState = new HashSet<>();
     private static File databasePath;
-    //TODO: Strange errors when using the same db path. Could be because of different data types?
     private static File traceDatabasePath;
     private static Clock clock;
 
     private final int thisProcessorId;
 
-    public ServiceMapStatefulProcessor(final long windowDurationMillis, final File databasePath, final File traceDatabasePath, final int numProcessors,
+    public ServiceMapStatefulProcessor(final PluginSetting pluginSetting) {
+     this(pluginSetting.getIntegerOrDefault(ServiceMapProcessorConfig.WINDOW_DURATION, ServiceMapProcessorConfig.DEFAULT_WINDOW_DURATION)*TO_MILLIS,
+             new File(ServiceMapProcessorConfig.DEFAULT_SPANS_LMDB_PATH),
+             new File(ServiceMapProcessorConfig.DEFAULT_TRACES_LMDB_PATH),
+             Clock.systemUTC());
+    }
+
+    ServiceMapStatefulProcessor(final long windowDurationMillis,
+                                       final File databasePath,
+                                       final File traceDatabasePath,
                                        final Clock clock) {
-        this.clock = clock;
+        ServiceMapStatefulProcessor.clock = clock;
         this.thisProcessorId = processorsCreated.getAndIncrement();
         if(isMasterInstance()) {
-            //TODO: Read num processors from config when its available
-            this.numProcessors = numProcessors;
-            previousTimestamp = this.clock.millis();
-            this.databasePath = databasePath;
-            this.traceDatabasePath = traceDatabasePath;
-            this.windowDurationMillis = windowDurationMillis;
-            this.currentWindow = new LmdbProcessorState<>(databasePath, getNewDbName(), ServiceMapStateData.class);
-            this.previousWindow = new LmdbProcessorState<>(databasePath, getNewDbName() + "-prev", ServiceMapStateData.class);
-            this.currentTraceGroupWindow = new LmdbProcessorState<>(traceDatabasePath, getNewTraceDbName(), String.class);
-            this.previousTraceGroupWindow = new LmdbProcessorState<>(traceDatabasePath, getNewTraceDbName() + "-prev", String.class);
+            previousTimestamp = ServiceMapStatefulProcessor.clock.millis();
+            ServiceMapStatefulProcessor.windowDurationMillis = windowDurationMillis;
+            ServiceMapStatefulProcessor.databasePath = createPath(databasePath);
+            ServiceMapStatefulProcessor.traceDatabasePath = createPath(traceDatabasePath);
+            currentWindow = new LmdbProcessorState<>(databasePath, getNewDbName(), ServiceMapStateData.class);
+            previousWindow = new LmdbProcessorState<>(databasePath, getNewDbName() + "-prev", ServiceMapStateData.class);
+            currentTraceGroupWindow = new LmdbProcessorState<>(traceDatabasePath, getNewTraceDbName(), String.class);
+            previousTraceGroupWindow = new LmdbProcessorState<>(traceDatabasePath, getNewTraceDbName() + "-prev", String.class);
         }
+    }
+
+    /**
+     * This function creates the directory if it doesn't exists and returns the File.
+     * @param path
+     * @return path
+     * @throws RuntimeException if the directory can not be created.
+     */
+    private static File createPath(File path) {
+        if(!path.exists()){
+            if(!path.mkdirs()){
+                throw new RuntimeException(String.format("Unable to create the directory at the provided path: %s", path.getName()));
+            }
+        }
+        return path;
     }
 
     /**
@@ -73,28 +94,26 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     public Collection<Record<String>> execute(Collection<Record<ExportTraceServiceRequest>> records) {
         final Collection<Record<String>> relationships = windowDurationHasPassed() ? evaluateEdges() : EMPTY_COLLECTION;
         records.forEach( i -> i.getData().getResourceSpansList().forEach(resourceSpans -> {
-            final String resourceName = resourceSpans.getResource().getAttributesList().stream().filter(
-                    keyValue -> keyValue.getKey().equals(ServiceMapSpanTags.SERVICE_NAME_KEY)
-            ).findFirst().get().getValue().getStringValue();
-
-            resourceSpans.getInstrumentationLibrarySpansList().forEach(
+            OTelHelper.getServiceName(resourceSpans.getResource()).ifPresent(serviceName -> resourceSpans.getInstrumentationLibrarySpansList().forEach(
                     instrumentationLibrarySpans -> {
                         instrumentationLibrarySpans.getSpansList().forEach(
                                 span -> {
-                                    currentWindow.put(
-                                            span.getSpanId().toByteArray(),
-                                            new ServiceMapStateData(
-                                                    resourceName,
-                                                    span.getParentSpanId().toByteArray(),
-                                                    span.getTraceId().toByteArray(),
-                                                    span.getKind().name(),
-                                                    span.getName()));
-                                    if(isRootSpan(span)) {
-                                        currentTraceGroupWindow.put(span.getTraceId().toByteArray(), span.getName());
+                                    if (OTelHelper.checkValidSpan(span)) {
+                                        currentWindow.put(
+                                                span.getSpanId().toByteArray(),
+                                                new ServiceMapStateData(
+                                                        serviceName,
+                                                        span.getParentSpanId().isEmpty() ? null : span.getParentSpanId().toByteArray(),
+                                                        span.getTraceId().toByteArray(),
+                                                        span.getKind().name(),
+                                                        span.getName()));
+                                        if (span.getParentSpanId().isEmpty()) {
+                                            currentTraceGroupWindow.put(span.getTraceId().toByteArray(), span.getName());
+                                        }
                                     }
                                 });
                     }
-            );
+            ));
         }));
         return relationships;
     }
@@ -122,6 +141,9 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
                             })
                             .collect(Collectors.toSet());
 
+            if(edgeEvaluationLatch == null) {
+                initEdgeEvaluationLatch();
+            }
             doneEvaluatingEdges();
             waitForEvaluationFinish();
 
@@ -138,6 +160,12 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
         }
     }
 
+    private static synchronized void initEdgeEvaluationLatch() {
+        if(edgeEvaluationLatch==null){
+            edgeEvaluationLatch = new CountDownLatch(processorsCreated.get());
+        }
+    }
+
     /**
      * This function is used to iterate over the previous window and find parent/child relationships with the current
      * window. It only needs to find parents that live in the current window (and not the previous window) because these
@@ -146,17 +174,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> previousWindowFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
         @Override
         public Stream<ServiceMapRelationship> apply(byte[] s, ServiceMapStateData serviceMapStateData) {
-            final ServiceMapStateData parentStateData = getParentStateData(serviceMapStateData.parentSpanId);
-            final String traceGroupName = getTraceGroupName(serviceMapStateData.traceId);
-            if (parentStateData != null && !parentStateData.serviceName.equals(serviceMapStateData.serviceName) && traceGroupName != null) {
-                return Arrays.asList(
-                        ServiceMapRelationship.newDestinationRelationship(parentStateData.serviceName, parentStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName),
-                        //This extra edge is added for compatibility of the index for both stateless and stateful processors
-                        ServiceMapRelationship.newTargetRelationship(serviceMapStateData.serviceName, serviceMapStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName)
-                ).stream();
-            } else {
-                return null;
-            }
+            return lookupParentSpan(serviceMapStateData, false);
         }
     };
     /**
@@ -166,28 +184,34 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> currentWindowFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
         @Override
         public Stream<ServiceMapRelationship> apply(byte[] s, ServiceMapStateData serviceMapStateData) {
-            final ServiceMapStateData parentStateData = getParentStateData(serviceMapStateData.parentSpanId);
-            final String traceGroupName = getTraceGroupName(serviceMapStateData.traceId);
-            if (parentStateData != null && !parentStateData.serviceName.equals(serviceMapStateData.serviceName) && traceGroupName != null) {
-                return Arrays.asList(
-                        ServiceMapRelationship.newDestinationRelationship(parentStateData.serviceName, parentStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName),
-                        //This extra edge is added for compatibility of the index for both stateless and stateful processors
-                        ServiceMapRelationship.newTargetRelationship(serviceMapStateData.serviceName, serviceMapStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName)
-                ).stream();
-            } else {
-                return null;
-            }
+            return lookupParentSpan(serviceMapStateData, true);
         }
     };
 
+    private Stream<ServiceMapRelationship> lookupParentSpan(final ServiceMapStateData serviceMapStateData, final boolean checkPrev) {
+        if (serviceMapStateData.parentSpanId != null) {
+            final ServiceMapStateData parentStateData = getParentStateData(serviceMapStateData.parentSpanId, checkPrev);
+            final String traceGroupName = getTraceGroupName(serviceMapStateData.traceId);
+            if (traceGroupName != null && parentStateData != null && !parentStateData.serviceName.equals(serviceMapStateData.serviceName)) {
+                return Stream.of(
+                        ServiceMapRelationship.newDestinationRelationship(parentStateData.serviceName, parentStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName),
+                        //This extra edge is added for compatibility of the index for both stateless and stateful processors
+                        ServiceMapRelationship.newTargetRelationship(serviceMapStateData.serviceName, serviceMapStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName)
+                );
+            }
+        }
+        return Stream.empty();
+    }
+
     /**
      * Checks both current and previous windows for the given parent span id
+     *
      * @param spanId
      * @return ServiceMapStateData for the parent span, if exists. Otherwise null
      */
-    private ServiceMapStateData getParentStateData(final byte[] spanId) {
+    private ServiceMapStateData getParentStateData(final byte[] spanId, final boolean checkPrev) {
         final ServiceMapStateData serviceMapStateData = currentWindow.get(spanId);
-        return serviceMapStateData != null ? serviceMapStateData : previousWindow.get(spanId);
+        return serviceMapStateData != null ? serviceMapStateData : checkPrev ? previousWindow.get(spanId) : null;
     }
 
     /**
@@ -249,7 +273,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
      */
     private void resetWorkState() {
         windowRotationLatch = new CountDownLatch(1);
-        edgeEvaluationLatch = new CountDownLatch(numProcessors);
+        edgeEvaluationLatch = new CountDownLatch(processorsCreated.get());
     }
 
     /**
@@ -301,14 +325,6 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     }
 
     /**
-     *
-     * @return boolean indicating whether the span is a root span
-     */
-    private boolean isRootSpan(Span span) {
-        return span.getParentSpanId() == null || span.getParentSpanId().isEmpty() || span.getParentSpanId().equals(span.getSpanId());
-    }
-
-    /**
      * Getting range for this processor given a number of elements
      * @param elements Elements to iterate over
      * @return Range given as a 2 element array of longs
@@ -317,15 +333,10 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
         if(elements == 0) {
             return new long[]{0,-1};
         }
-        long step = (long) Math.ceil(((double) elements / (double) numProcessors));
+        long step = (long) Math.ceil(((double) elements / (double) processorsCreated.get()));
         long lower = (long) thisProcessorId * step;
         long upper = Math.min(lower + step, elements);
         return new long[]{lower, upper};
-    }
-
-    //TODO: Remove this once we have a common class for holding otel attribute tags
-    public static class ServiceMapSpanTags {
-        public static final String SERVICE_NAME_KEY = "resource.name";
     }
 
     private static class ServiceMapStateData {

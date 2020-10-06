@@ -64,11 +64,12 @@ public class ServiceMapTestUtils {
      */
     public static ResourceSpans getResourceSpans(final String serviceName, final String spanName, final byte[]
             spanId, final byte[] parentId, final byte[] traceId, final Span.SpanKind spanKind) throws UnsupportedEncodingException {
+        final ByteString parentSpanId = parentId != null ? ByteString.copyFrom(parentId) : ByteString.EMPTY;
         return ResourceSpans.newBuilder()
                 .setResource(
                         Resource.newBuilder()
                                 .addAttributes(KeyValue.newBuilder()
-                                        .setKey("resource.name")
+                                        .setKey(OTelHelper.SERVICE_NAME_KEY)
                                         .setValue(AnyValue.newBuilder().setStringValue(serviceName).build()).build())
                                 .build()
                 )
@@ -80,7 +81,7 @@ public class ServiceMapTestUtils {
                                                 .setName(spanName)
                                                 .setKind(spanKind)
                                                 .setSpanId(ByteString.copyFrom(spanId))
-                                                .setParentSpanId(ByteString.copyFrom(parentId))
+                                                .setParentSpanId(parentSpanId)
                                                 .setTraceId(ByteString.copyFrom(traceId))
                                                 .build()
                                 )

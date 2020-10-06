@@ -5,6 +5,8 @@ import com.amazon.situp.model.annotations.SitupPlugin;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.sink.Sink;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.alias.Alias;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
@@ -13,6 +15,7 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
+import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.client.indices.PutIndexTemplateRequest;
 
 import org.elasticsearch.common.unit.ByteSizeUnit;
@@ -24,17 +27,15 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -68,8 +69,9 @@ public class ElasticsearchSink implements Sink<Record<String>> {
 
   public void start() throws IOException {
     restHighLevelClient = esSinkConfig.getConnectionConfiguration().createClient();
+    final String ismPolicyId = IndexStateManagement.checkAndCreatePolicy(restHighLevelClient, indexType);
     if (esSinkConfig.getIndexConfiguration().getTemplateURL() != null) {
-      createIndexTemplate();
+      createIndexTemplate(ismPolicyId);
     }
     final String dlqFile = esSinkConfig.getRetryConfiguration().getDlqFile();
     if ( dlqFile != null) {
@@ -153,30 +155,38 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     }
   }
 
-  private void createIndexTemplate() throws IOException {
+  @SuppressWarnings("unchecked")
+  private void createIndexTemplate(final String ismPolicyId) throws IOException {
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
     final PutIndexTemplateRequest putIndexTemplateRequest = new PutIndexTemplateRequest(indexAlias + "-index-template");
-    if (indexType.equals(IndexConstants.RAW)) {
+    final boolean isRaw = indexType.equals(IndexConstants.RAW);
+    if (isRaw) {
       putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias + "-*"));
     } else {
       putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias));
     }
     final URL jsonURL = esSinkConfig.getIndexConfiguration().getTemplateURL();
-    final String templateJson = readTemplateURL(jsonURL);
-    putIndexTemplateRequest.source(templateJson, XContentType.JSON);
+    final Map<String, Object> template = readTemplateURL(jsonURL);
+    final Map<String, Object> settings = (Map<String, Object>) template.getOrDefault("settings", new HashMap<>());
+    if (ismPolicyId != null) {
+      IndexStateManagement.attachPolicy(settings, ismPolicyId, indexAlias);
+    }
+    putIndexTemplateRequest.source(template);
     restHighLevelClient.indices().putTemplate(putIndexTemplateRequest, RequestOptions.DEFAULT);
   }
 
   private void checkAndCreateIndex() throws IOException {
     // Check alias exists
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
-    final GetAliasesRequest getAliasesRequest = new GetAliasesRequest().aliases(indexAlias);
-    final boolean exists = restHighLevelClient.indices().existsAlias(getAliasesRequest, RequestOptions.DEFAULT);
+    final boolean isRaw = indexType.equals(IndexConstants.RAW);
+    final boolean exists = isRaw?
+            restHighLevelClient.indices().existsAlias(new GetAliasesRequest().aliases(indexAlias), RequestOptions.DEFAULT):
+            restHighLevelClient.indices().exists(new GetIndexRequest(indexAlias), RequestOptions.DEFAULT);
     if (!exists) {
       // TODO: use date as suffix?
       final String initialIndexName;
       final CreateIndexRequest createIndexRequest;
-      if (esSinkConfig.getIndexConfiguration().getIndexType().equals(IndexConstants.RAW)) {
+      if (isRaw) {
         initialIndexName = indexAlias + "-000001";
         createIndexRequest = new CreateIndexRequest(initialIndexName);
         createIndexRequest.alias(new Alias(indexAlias).writeIndex(true));
@@ -188,14 +198,8 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     }
   }
 
-  private String readTemplateURL(final URL templateURL) throws IOException {
-    final StringBuilder templateJsonBuffer = new StringBuilder();
-    final InputStream is = templateURL.openStream();
-    try (final BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
-      reader.lines().forEach(line -> templateJsonBuffer.append(line).append("\n"));
-    }
-    is.close();
-    return templateJsonBuffer.toString();
+  private Map<String, Object> readTemplateURL(final URL templateURL) throws IOException {
+    return new ObjectMapper().readValue(templateURL, new TypeReference<Map<String, Object>>() {});
   }
 
   private Map<String, Object> getMapFromJson(final String documentJson) throws IOException {
