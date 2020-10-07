@@ -5,7 +5,7 @@ import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
-import org.apache.http.client.config.RequestConfig;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.TrustAllStrategy;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.BasicCredentialsProvider;
@@ -15,9 +15,6 @@ import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 
 import javax.net.ssl.SSLContext;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -154,6 +151,7 @@ public class ConnectionConfiguration {
     restClientBuilder.setHttpClientConfigCallback(
             httpClientBuilder -> httpClientBuilder
                     .setDefaultCredentialsProvider(credentialsProvider)
+                    .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
                     .setSSLContext(sslContext)
     );
     restClientBuilder.setRequestConfigCallback(

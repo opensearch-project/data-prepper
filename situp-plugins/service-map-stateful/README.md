@@ -9,5 +9,5 @@ processor:
 
 ## Configurations
 
-* window_duration => In seconds. Default is ```300```. 
+* window_duration => In seconds. Default is ```180```. 
 
