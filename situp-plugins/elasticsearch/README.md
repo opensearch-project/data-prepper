@@ -67,11 +67,11 @@ A list of IP addresses of elasticsearch nodes.
 
 ### Username
 
-A String of username used in the cognito of ES cluster.
+A String of username used in the [cognito](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles/#kibana) of ODFE cluster.
 
 ### Password
 
-A String of password used in the cognito of ES cluster.
+A String of password used in the [cognito](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles/#kibana) of ODFE cluster.
 
 ### Trace analytics raw
 
