@@ -10,6 +10,6 @@ public class LmdbProcessorStateTest extends ProcessorStateTest {
 
     @Override
     public void setProcessorState() throws Exception {
-        this.processorState = new LmdbProcessorState<>(temporaryFolder.newFolder(), "testDb", DataClass.class);
+        this.processorState = new LmdbProcessorState<>(temporaryFolder.newFile(), "testDb", DataClass.class);
     }
 }

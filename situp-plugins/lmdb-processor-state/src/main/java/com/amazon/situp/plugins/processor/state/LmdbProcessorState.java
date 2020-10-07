@@ -23,22 +23,24 @@ public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
     private final Dbi<ByteBuffer> db;
     private final Env<ByteBuffer> env;
     private final Class<T> clazz; //Needed for deserialization
+    private final File dbFile;
 
     /**
      * Constructor for LMDB processor state. See LMDB-Java for more info:
      * https://github.com/lmdbjava/lmdbjava
-     * @param dbPath The directory in which to store the LMDB data files
+     * @param dbFile The directory in which to store the LMDB data files
      * @param dbName Name of the database
      * @param clazz Class type for value storage
      */
-    public LmdbProcessorState(final File dbPath, final String dbName, final Class<T> clazz) {
+    public LmdbProcessorState(final File dbFile, final String dbName, final Class<T> clazz) {
         //TODO: These need to be configurable
         env = Env.create()
                 .setMapSize(10_485_760)
                 .setMaxDbs(1)
                 .setMaxReaders(10)
-                .open(dbPath, EnvFlags.MDB_NOTLS);
+                .open(dbFile, EnvFlags.MDB_NOTLS, EnvFlags.MDB_NOSUBDIR);
         db = env.openDbi(dbName, DbiFlags.MDB_CREATE);
+        this.dbFile = dbFile;
         this.clazz = clazz;
     }
 
@@ -113,6 +115,14 @@ public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
         try (final Txn<ByteBuffer> txn = env.txnWrite()) {
             db.drop(txn, true);
         }
+    }
+
+    public void delete() {
+        close();
+        final File lockFile = new File(dbFile.getPath() + "-lock");
+        //TODO: Add logging or metric here for failed deletions
+        dbFile.delete();
+        lockFile.delete();
     }
 
     @Override
