@@ -10,7 +10,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class RawTrace {
 
@@ -61,19 +61,18 @@ public class RawTrace {
         }
 
         public RawTraceBuilder setTraceID(String traceID) {
-            checkArgument(traceID != null, "traceID cannot be null");
+            checkNotNull(traceID, "traceID cannot be null");
             this.traceID = traceID;
             return this;
         }
 
         public RawTraceBuilder setSpanID(String spanID) {
-            checkArgument(spanID != null, "spanID cannot be null");
+            checkNotNull(spanID, "spanID cannot be null");
             this.spanID = spanID;
             return this;
         }
 
         public RawTraceBuilder setParentSpanID(String parentSpanID) {
-            checkArgument(parentSpanID != null, "parentSpanID cannot be null");
             this.parentSpanID = parentSpanID;
             return this;
         }
