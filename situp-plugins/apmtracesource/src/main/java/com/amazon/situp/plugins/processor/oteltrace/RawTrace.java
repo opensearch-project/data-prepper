@@ -17,9 +17,9 @@ public class RawTrace {
     private static final BigDecimal MILLIS_TO_NANOS = new BigDecimal(1_000_000);
     private static final BigDecimal SEC_TO_MILLIS = new BigDecimal(1_000);
 
-    private final String traceID;
-    private final String spanID;
-    private final String parentSpanID;
+    private final String traceId;
+    private final String spanId;
+    private final String parentSpanId;
     private final String name;
     private final String startTime;
     private final String endTime;
@@ -30,9 +30,9 @@ public class RawTrace {
 
 
     private RawTrace(RawTraceBuilder builder) {
-        this.traceID = builder.traceID;
-        this.spanID = builder.spanID;
-        this.parentSpanID = builder.parentSpanID;
+        this.traceId = builder.traceId;
+        this.spanId = builder.spanId;
+        this.parentSpanId = builder.parentSpanId;
         this.name = builder.name;
         this.startTime = builder.startTime;
         this.endTime = builder.endTime;
@@ -46,9 +46,9 @@ public class RawTrace {
      * Builder class
      **/
     public static class RawTraceBuilder {
-        private String traceID;
-        private String spanID;
-        private String parentSpanID;
+        private String traceId;
+        private String spanId;
+        private String parentSpanId;
         private String name;
         private String startTime;
         private String endTime;
@@ -60,54 +60,54 @@ public class RawTrace {
         public RawTraceBuilder() {
         }
 
-        public RawTraceBuilder setTraceID(String traceID) {
-            checkNotNull(traceID, "traceID cannot be null");
-            this.traceID = traceID;
+        public RawTraceBuilder setTraceId(final String traceId) {
+            checkNotNull(traceId, "traceId cannot be null");
+            this.traceId = traceId;
             return this;
         }
 
-        public RawTraceBuilder setSpanID(String spanID) {
-            checkNotNull(spanID, "spanID cannot be null");
-            this.spanID = spanID;
+        public RawTraceBuilder setSpanId(final String spanId) {
+            checkNotNull(spanId, "spanId cannot be null");
+            this.spanId = spanId;
             return this;
         }
 
-        public RawTraceBuilder setParentSpanID(String parentSpanID) {
-            this.parentSpanID = parentSpanID;
+        public RawTraceBuilder setParentSpanId(final String parentSpanId) {
+            this.parentSpanId = parentSpanId;
             return this;
         }
 
-        public RawTraceBuilder setName(String name) {
+        public RawTraceBuilder setName(final String name) {
             this.name = name;
             return this;
         }
 
-        public RawTraceBuilder setStartTime(String startTime) {
+        public RawTraceBuilder setStartTime(final String startTime) {
             this.startTime = startTime;
             return this;
         }
 
-        public RawTraceBuilder setEndTime(String endTime) {
+        public RawTraceBuilder setEndTime(final String endTime) {
             this.endTime = endTime;
             return this;
         }
 
-        public RawTraceBuilder setInstrumentationName(String instrumentationName) {
+        public RawTraceBuilder setInstrumentationName(final String instrumentationName) {
             this.instrumentationName = instrumentationName;
             return this;
         }
 
-        public RawTraceBuilder setInstrumentationVersion(String instrumentationVersion) {
+        public RawTraceBuilder setInstrumentationVersion(final String instrumentationVersion) {
             this.instrumentationVersion = instrumentationVersion;
             return this;
         }
 
-        public RawTraceBuilder setServiceName(String serviceName) {
+        public RawTraceBuilder setServiceName(final String serviceName) {
             this.serviceName = serviceName;
             return this;
         }
 
-        public RawTraceBuilder setResourceAttributes(Map<String, String> resourceAttributes) {
+        public RawTraceBuilder setResourceAttributes(final Map<String, String> resourceAttributes) {
             this.resourceAttributes = resourceAttributes;
             return this;
         }
@@ -129,9 +129,9 @@ public class RawTrace {
         final String SERVICE_NAME = "service.name";
 
         return new RawTraceBuilder()
-                .setTraceID(Hex.encodeHexString(spans.getTraceId().toByteArray()))
-                .setSpanID(Hex.encodeHexString(spans.getSpanId().toByteArray()))
-                .setParentSpanID(Hex.encodeHexString(spans.getParentSpanId().toByteArray()))
+                .setTraceId(Hex.encodeHexString(spans.getTraceId().toByteArray()))
+                .setSpanId(Hex.encodeHexString(spans.getSpanId().toByteArray()))
+                .setParentSpanId(Hex.encodeHexString(spans.getParentSpanId().toByteArray()))
                 .setName(spans.getName())
                 .setStartTime(convertStringNanosToISO8601(String.valueOf(spans.getStartTimeUnixNano())))
                 .setEndTime(convertStringNanosToISO8601(String.valueOf(spans.getEndTimeUnixNano())))
