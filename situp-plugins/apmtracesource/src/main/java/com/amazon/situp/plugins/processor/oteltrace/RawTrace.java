@@ -10,6 +10,8 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.Map;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class RawTrace {
 
     private static final BigDecimal MILLIS_TO_NANOS = new BigDecimal(1_000_000);
@@ -59,16 +61,19 @@ public class RawTrace {
         }
 
         public RawTraceBuilder setTraceID(String traceID) {
+            checkArgument(traceID != null, "traceID cannot be null");
             this.traceID = traceID;
             return this;
         }
 
         public RawTraceBuilder setSpanID(String spanID) {
+            checkArgument(spanID != null, "spanID cannot be null");
             this.spanID = spanID;
             return this;
         }
 
         public RawTraceBuilder setParentSpanID(String parentSpanID) {
+            checkArgument(parentSpanID != null, "parentSpanID cannot be null");
             this.parentSpanID = parentSpanID;
             return this;
         }
