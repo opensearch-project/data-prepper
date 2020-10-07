@@ -14,8 +14,8 @@ pipeline:
   sink:
     elasticsearch:
       hosts: ["http://localhost:9200"]
-      username: admin
-      password: admin
+      username: YOUR_USERNAME_HERE
+      password: YOUR_PASSWORD_HERE
       trace_analytics_raw: true
       dlq_file: /your/local/dlq-file
       bulk_size: 4
@@ -31,8 +31,8 @@ pipeline:
   sink:
     elasticsearch:
       hosts: ["http://localhost:9200"]
-      username: admin
-      password: admin
+      username: YOUR_USERNAME_HERE
+      password: YOUR_PASSWORD_HERE
       trace_analytics_service_map: true
       dlq_file: /your/local/dlq-file
       bulk_size: 4
@@ -48,8 +48,8 @@ pipeline:
   sink:
     elasticsearch:
       hosts: ["http://localhost:9200"]
-      username: admin
-      password: admin
+      username: YOUR_USERNAME_HERE
+      password: YOUR_PASSWORD_HERE
       index: "some-index"
       template_file: /your/local/template-file.json
       document_id_field: "someId"
