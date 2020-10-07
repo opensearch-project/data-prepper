@@ -1,0 +1,32 @@
+entry-pipeline:
+  source:
+    otel_trace_source:
+  sink:
+    - pipeline:
+        name: "raw-pipeline"
+    - pipeline:
+        name: "service-map-pipeline"
+raw-pipeline:
+  source:
+    pipeline:
+      name: "entry-pipeline"
+  processor:
+    - otel_trace_raw_processor:
+  sink:
+    - elasticsearch:
+        hosts: [ "https://odfe:9200" ]
+        username: "admin"
+        password: "admin"
+        trace_analytics_raw: true
+service-map-pipeline:
+  source:
+    pipeline:
+      name: "entry-pipeline"
+  processor:
+    - service_map_stateful:
+  sink:
+    - elasticsearch:
+        hosts: ["https://odfe:9200"]
+        username: "admin"
+        password: "admin"
+        trace_analytics_service_map: true
