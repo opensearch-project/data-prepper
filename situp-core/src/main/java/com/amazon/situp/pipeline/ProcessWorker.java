@@ -1,8 +1,8 @@
 package com.amazon.situp.pipeline;
 
-import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.buffer.Buffer;
 import com.amazon.situp.model.processor.Processor;
+import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.sink.Sink;
 import com.amazon.situp.pipeline.common.FutureHelper;
 import com.amazon.situp.pipeline.common.FutureHelperResult;
@@ -38,31 +38,37 @@ public class ProcessWorker implements Runnable {
     public void run() {
         try {
             do {
-                Thread.sleep(0);
                 Collection records = readBuffer.read(pipeline.getReadBatchTimeoutInMillis());
-                if (records != null && !records.isEmpty()) {
-                    LOG.debug("Pipeline Worker: Processing {} records from buffer", records.size());
-                    for (final Processor processor : processors) {
-                        records = processor.execute(records);
-                    }
-                    postToSink(records); //TODO use the response to ack the buffer
-                } else {
-                    isQueueEmpty = true;
+                LOG.info(" {} Worker: Processing {} records from buffer", pipeline.getName(), records.size());
+                //Should Empty list from buffer should be sent to the processors? For now sending as the Stateful processors expects it.
+                for (final Processor processor : processors) {
+                    records = processor.execute(records);
                 }
-            } while (!pipeline.isStopRequested() || !isBufferEmpty()); //If pipeline is stopped, we try to empty the
-            // already buffered records ?
+                if (!records.isEmpty()) {
+                    postToSink(records); //TODO use the response to ack the buffer on failure?
+                }
+            } while (!shouldStop());
         } catch (final Exception ex) {
             LOG.error("Encountered exception during pipeline processing", ex); //do not halt the execution
         }
     }
 
     /**
-     * TODO Implement this from Buffer [Probably AtomicBoolean]
+     * Shutdown should be handled end to end.
+     *
+     * @return
+     */
+    private boolean shouldStop() {
+        return pipeline.isStopRequested() && isBufferEmpty();
+    }
+
+    /**
+     * TODO Implement this from Buffer [Probably AtomicBoolean], for now we will return true
      *
      * @return
      */
     private boolean isBufferEmpty() {
-        return isQueueEmpty;
+        return true;
     }
 
     /**
