@@ -16,7 +16,7 @@ After successful start, use the hot rod app which runs at localhost:8080. Now ch
 
 You will see two indicies,
 
-* otel-v1-apm-span  - This index will store the raw traces.
+* otel-v1-apm-span  - This index alias will store the raw traces.
 * otel-v1-apm-service-map - This index will store the relationship between services.
 
 
