@@ -5,6 +5,7 @@ import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.TrustAllStrategy;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.BasicCredentialsProvider;
@@ -150,6 +151,7 @@ public class ConnectionConfiguration {
     restClientBuilder.setHttpClientConfigCallback(
             httpClientBuilder -> httpClientBuilder
                     .setDefaultCredentialsProvider(credentialsProvider)
+                    .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
                     .setSSLContext(sslContext)
     );
     restClientBuilder.setRequestConfigCallback(
