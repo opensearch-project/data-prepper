@@ -5,12 +5,16 @@ import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
-import org.apache.http.client.config.RequestConfig;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.conn.ssl.TrustAllStrategy;
+import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.ssl.SSLContexts;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 
+import javax.net.ssl.SSLContext;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -130,14 +134,26 @@ public class ConnectionConfiguration {
       i++;
     }
     final RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
+    final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
     if (username != null) {
-      final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
       credentialsProvider.setCredentials(
               AuthScope.ANY, new UsernamePasswordCredentials(username, password));
-      restClientBuilder.setHttpClientConfigCallback(
-              httpAsyncClientBuilder ->
-                      httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
     }
+    // TODO: customize trustStrategy?
+    final TrustStrategy trustStrategy = new TrustAllStrategy();
+    final SSLContext sslContext;
+    try {
+      // TODO: load KeyStore
+      sslContext = SSLContexts.custom().loadTrustMaterial(null, trustStrategy).build();
+    } catch (Exception e) {
+      throw new RuntimeException(e.getMessage(), e);
+    }
+    restClientBuilder.setHttpClientConfigCallback(
+            httpClientBuilder -> httpClientBuilder
+                    .setDefaultCredentialsProvider(credentialsProvider)
+                    .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
+                    .setSSLContext(sslContext)
+    );
     restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder -> {
               if (connectTimeout != null) {

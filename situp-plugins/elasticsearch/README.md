@@ -14,6 +14,8 @@ pipeline:
   sink:
     elasticsearch:
       hosts: ["http://localhost:9200"]
+      username: YOUR_USERNAME_HERE
+      password: YOUR_PASSWORD_HERE
       trace_analytics_raw: true
       dlq_file: /your/local/dlq-file
       bulk_size: 4
@@ -29,6 +31,8 @@ pipeline:
   sink:
     elasticsearch:
       hosts: ["http://localhost:9200"]
+      username: YOUR_USERNAME_HERE
+      password: YOUR_PASSWORD_HERE
       trace_analytics_service_map: true
       dlq_file: /your/local/dlq-file
       bulk_size: 4
@@ -44,6 +48,8 @@ pipeline:
   sink:
     elasticsearch:
       hosts: ["http://localhost:9200"]
+      username: YOUR_USERNAME_HERE
+      password: YOUR_PASSWORD_HERE
       index: "some-index"
       template_file: /your/local/template-file.json
       document_id_field: "someId"
@@ -58,6 +64,14 @@ User needs to provide custom index for record ingestion.
 ### Hosts
 
 A list of IP addresses of elasticsearch nodes.
+
+### Username
+
+A String of username used in the [cognito](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles/#kibana) of ODFE cluster.
+
+### Password
+
+A String of password used in the [cognito](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles/#kibana) of ODFE cluster.
 
 ### Trace analytics raw
 
