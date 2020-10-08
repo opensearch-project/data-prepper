@@ -58,10 +58,10 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
             previousTimestamp = ServiceMapStatefulProcessor.clock.millis();
             ServiceMapStatefulProcessor.windowDurationMillis = windowDurationMillis;
             ServiceMapStatefulProcessor.dbPath = createPath(databasePath);
-            currentWindow = new LmdbProcessorState<>(new File(dbPath.getPath() + getNewDbName()), "spansDb", ServiceMapStateData.class);
-            previousWindow = new LmdbProcessorState<>(new File(dbPath.getPath() + getNewDbName() + "-prev"), "spansDb", ServiceMapStateData.class);
-            currentTraceGroupWindow = new LmdbProcessorState<>(new File(dbPath.getPath() + getNewTraceDbName()), "traceDb", String.class);
-            previousTraceGroupWindow = new LmdbProcessorState<>(new File(dbPath.getPath() + getNewTraceDbName() + "-prev"), "traceDb", String.class);
+            currentWindow = new LmdbProcessorState<>(new File(String.join("/", dbPath.getPath(), getNewDbName())), "spansDb", ServiceMapStateData.class);
+            previousWindow = new LmdbProcessorState<>(new File(String.join("/", dbPath.getPath(), getNewDbName() + "-prev")), "spansDb", ServiceMapStateData.class);
+            currentTraceGroupWindow = new LmdbProcessorState<>(new File(String.join("/", dbPath.getPath(), getNewTraceDbName())), "traceDb", String.class);
+            previousTraceGroupWindow = new LmdbProcessorState<>(new File(String.join("/", dbPath.getPath(), getNewTraceDbName() + "-prev")), "traceDb", String.class);
         }
     }
 
@@ -281,9 +281,10 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
         previousWindow.delete();
         previousTraceGroupWindow.delete();
         previousWindow = currentWindow;
-        currentWindow = new LmdbProcessorState(new File(dbPath.getPath() + getNewDbName()), "spansDb", ServiceMapStateData.class);
+        currentWindow = new LmdbProcessorState(new File(String.join("/", dbPath.getPath(), getNewDbName())), "spansDb", ServiceMapStateData.class);
         previousTraceGroupWindow = currentTraceGroupWindow;
-        currentTraceGroupWindow = new LmdbProcessorState<>(new File(dbPath.getPath() + getNewTraceDbName()), "traceDb", String.class);
+        currentTraceGroupWindow = new LmdbProcessorState<>(new File(String.join("/", dbPath.getPath(), getNewTraceDbName())), "traceDb", String.class);
+
         previousTimestamp = clock.millis();
         doneRotatingWindows();
     }
@@ -292,14 +293,14 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
      * @return Next database name
      */
     private String getNewDbName() {
-        return "/db-" + clock.millis();
+        return "db-" + clock.millis();
     }
 
     /**
      * @return Next database name
      */
     private String getNewTraceDbName() {
-        return "/trace-db-" + clock.millis();
+        return "trace-db-" + clock.millis();
     }
 
     /**
