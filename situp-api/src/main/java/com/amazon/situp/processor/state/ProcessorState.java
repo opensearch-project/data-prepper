@@ -55,12 +55,7 @@ public interface ProcessorState<K, V> {
     public long size();
 
     /**
-     * Clears the data in the processor state
-     */
-    void clear();
-
-    /**
      * Any cleanup code goes here
      */
-    void close();
+    void delete();
 }

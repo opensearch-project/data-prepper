@@ -222,20 +222,12 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
         return traceGroupName != null ? traceGroupName : previousTraceGroupWindow.get(traceId);
     }
 
-    /**
-     * Delete current state held in the processor
-     */
-    public void deleteState() {
-        previousTraceGroupWindow.close();
-        currentTraceGroupWindow.close();
-        previousWindow.close();
-        currentWindow.close();
-    }
-
     //TODO: Change to an override when a shutdown method is added to the processor interface
     public void shutdown() {
-        previousWindow.close();
-        currentWindow.close();
+        previousWindow.delete();
+        currentWindow.delete();
+        previousTraceGroupWindow.delete();
+        currentTraceGroupWindow.delete();
     }
 
     /**
@@ -280,8 +272,8 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
      * Rotate windows for processor state
      */
     private void rotateWindows() {
-        previousWindow.close();
-        previousTraceGroupWindow.close();
+        previousWindow.delete();
+        previousTraceGroupWindow.delete();
         previousWindow = currentWindow;
         currentWindow = new MapDbProcessorState<>(dbPath, getNewDbName());
         previousTraceGroupWindow = currentTraceGroupWindow;

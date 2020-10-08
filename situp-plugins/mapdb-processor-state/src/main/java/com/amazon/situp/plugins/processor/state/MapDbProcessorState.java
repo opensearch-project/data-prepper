@@ -30,7 +30,7 @@ public class MapDbProcessorState<V> implements ProcessorState<byte[], V> {
 
     public MapDbProcessorState(final File dbPath, final String dbName) {
         map =
-                (BTreeMap<byte[], V>) DBMaker.fileDB(String.join("/", dbPath.getPath(), dbName))
+                (BTreeMap<byte[], V>) DBMaker.fileDB(new File(String.join("/", dbPath.getPath(), dbName)))
                         .fileDeleteAfterClose()
                         .fileMmapEnable() //MapDB uses the (slower) Random Access Files by default
                         .make()
@@ -73,9 +73,9 @@ public class MapDbProcessorState<V> implements ProcessorState<byte[], V> {
         if(map.size() == 0) {
             return Collections.EMPTY_LIST;
         }
-        final byte[][]iterationEndpoints = getIterationEndpoints(segments, index);
+        final KeyRange iterationEndpoints = getIterationEndpoints(segments, index);
         final List<R> returnList = new ArrayList<>();
-        map.entryIterator(iterationEndpoints[0], true, iterationEndpoints[1], false).forEachRemaining(
+        map.entryIterator(iterationEndpoints.low, true, iterationEndpoints.high, false).forEachRemaining(
                 entry -> returnList.add(fn.apply(entry.getKey(), entry.getValue()))
         );
         return returnList;
@@ -87,9 +87,9 @@ public class MapDbProcessorState<V> implements ProcessorState<byte[], V> {
      * but there is no guarantee that all segments contain an equal number of elements.
      * @param segments Number of segments
      * @param index Index to find segment endpoints for
-     * @return byte[][] containing the two endpoints
+     * @return KeyRange containing the two endpoints
      */
-    private byte[][] getIterationEndpoints(final int segments, final int index) {
+    private KeyRange getIterationEndpoints(final int segments, final int index) {
         final BigInteger lowEnd = new BigInteger(map.firstKey());
         final BigInteger highEnd = new BigInteger(map.lastKey());
         final BigInteger step = highEnd.subtract(lowEnd).divide(new BigInteger(String.valueOf(segments)));
@@ -98,7 +98,7 @@ public class MapDbProcessorState<V> implements ProcessorState<byte[], V> {
                 index == segments - 1 ?
                         highEnd.add(new BigInteger("1")).toByteArray() :
                         lowEnd.add(step.multiply(new BigInteger(String.valueOf(index+1)))).toByteArray();
-        return new byte[][]{lowIndex, highIndex};
+        return new KeyRange(lowIndex, highIndex);
     }
 
     @Override
@@ -107,12 +107,18 @@ public class MapDbProcessorState<V> implements ProcessorState<byte[], V> {
     }
 
     @Override
-    public void clear() {
+    public void delete() {
         map.clear();
+        map.close();
     }
 
-    @Override
-    public void close() {
-        map.close();
+    private static class KeyRange {
+        public byte[] low;
+        public byte[] high;
+
+        public KeyRange(byte[] low, byte[] high) {
+            this.low = low;
+            this.high = high;
+        }
     }
 }
