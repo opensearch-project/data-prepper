@@ -292,14 +292,14 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
      * @return Next database name
      */
     private String getNewDbName() {
-        return "db-" + clock.millis();
+        return "/db-" + clock.millis();
     }
 
     /**
      * @return Next database name
      */
     private String getNewTraceDbName() {
-        return "trace-db-" + clock.millis();
+        return "/trace-db-" + clock.millis();
     }
 
     /**
