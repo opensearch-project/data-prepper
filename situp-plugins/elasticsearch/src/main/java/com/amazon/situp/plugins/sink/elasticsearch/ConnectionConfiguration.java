@@ -5,30 +5,43 @@ import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.TrustAllStrategy;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.KeyStore;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateFactory;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class ConnectionConfiguration {
+  private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchSink.class);
+
   public static final String HOSTS = "hosts";
   public static final String USERNAME = "username";
   public static final String PASSWORD = "password";
   public static final String SOCKET_TIMEOUT = "socket_timeout";
   public static final String CONNECT_TIMEOUT = "connect_timeout";
+  public static final String CERT_PATH = "cert";
 
   private final List<String> hosts;
   private final String username;
   private final String password;
+  private final Path certPath;
   private final Integer socketTimeout;
   private final Integer connectTimeout;
 
@@ -52,12 +65,116 @@ public class ConnectionConfiguration {
     return connectTimeout;
   }
 
+  private ConnectionConfiguration(final Builder builder) {
+    this.hosts = builder.hosts;
+    this.username = builder.username;
+    this.password = builder.password;
+    this.socketTimeout = builder.socketTimeout;
+    this.connectTimeout = builder.connectTimeout;
+    this.certPath = builder.certPath;
+  }
+
+  public static ConnectionConfiguration readConnectionConfiguration(final PluginSetting pluginSetting){
+    @SuppressWarnings("unchecked")
+    final List<String> hosts = (List<String>) pluginSetting.getAttributeFromSettings(HOSTS);
+    ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(hosts);
+    final String username = (String) pluginSetting.getAttributeFromSettings(USERNAME);
+    if (username != null) {
+      builder = builder.withUsername(username);
+    }
+    final String password = (String) pluginSetting.getAttributeFromSettings(PASSWORD);
+    if (password != null) {
+      builder = builder.withPassword(password);
+    }
+    final Integer socketTimeout = (Integer) pluginSetting.getAttributeFromSettings(SOCKET_TIMEOUT);
+    if (socketTimeout != null) {
+      builder = builder.withSocketTimeout(socketTimeout);
+    }
+    final Integer connectTimeout = (Integer) pluginSetting.getAttributeFromSettings(CONNECT_TIMEOUT);
+    if (connectTimeout != null) {
+      builder = builder.withConnectTimeout(connectTimeout);
+    }
+    final String certPath = pluginSetting.getStringOrDefault(CERT_PATH, null);
+    if (certPath != null) {
+      builder = builder.withCert(certPath);
+    }
+    return builder.build();
+  }
+
+  public Path getCertPath() {
+    return certPath;
+  }
+
+  public RestHighLevelClient createClient() {
+    final HttpHost[] httpHosts = new HttpHost[hosts.size()];
+    int i = 0;
+    for (final String host : hosts) {
+      httpHosts[i] = HttpHost.create(host);
+      i++;
+    }
+    final RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
+    final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+    if (username != null) {
+      LOG.info("Using the username provided in the config.");
+      credentialsProvider.setCredentials(
+              AuthScope.ANY, new UsernamePasswordCredentials(username, password));
+    }
+    final SSLContext sslContext = certPath != null ? getCAStrategy(certPath) : getTrustAllStrategy();
+    restClientBuilder.setHttpClientConfigCallback(
+            httpClientBuilder -> httpClientBuilder
+                    .setDefaultCredentialsProvider(credentialsProvider)
+                    .setSSLContext(sslContext)
+    );
+    restClientBuilder.setRequestConfigCallback(
+            requestConfigBuilder -> {
+              if (connectTimeout != null) {
+                requestConfigBuilder.setConnectTimeout(connectTimeout);
+              }
+              if (socketTimeout != null) {
+                requestConfigBuilder.setSocketTimeout(socketTimeout);
+              }
+              return requestConfigBuilder;
+            });
+    return new RestHighLevelClient(restClientBuilder);
+  }
+
+  private SSLContext getCAStrategy(Path certPath) {
+    LOG.info("Using the cert provided in the config.");
+    try {
+      CertificateFactory factory = CertificateFactory.getInstance("X.509");
+      Certificate trustedCa;
+      try (InputStream is = Files.newInputStream(certPath)) {
+        trustedCa = factory.generateCertificate(is);
+      }
+      KeyStore trustStore = KeyStore.getInstance("pkcs12");
+      trustStore.load(null, null);
+      trustStore.setCertificateEntry("ca", trustedCa);
+      SSLContextBuilder sslContextBuilder = SSLContexts.custom()
+              .loadTrustMaterial(trustStore, null);
+      return sslContextBuilder.build();
+    } catch (Exception ex) {
+      throw new RuntimeException(ex.getMessage(), ex);
+    }
+  }
+
+  private SSLContext getTrustAllStrategy() {
+    LOG.info("Using the trust all strategy");
+    final TrustStrategy trustStrategy = new TrustAllStrategy();
+    try {
+      return SSLContexts.custom().loadTrustMaterial(null, trustStrategy).build();
+    } catch (Exception ex) {
+      throw new RuntimeException(ex.getMessage(), ex);
+    }
+  }
+
   public static class Builder {
-    private List<String> hosts;
+    private final List<String> hosts;
     private String username;
     private String password;
     private Integer socketTimeout;
     private Integer connectTimeout;
+    private Path certPath;
+
 
     public Builder(final List<String> hosts) {
       checkArgument(hosts != null, "hosts cannot be null");
@@ -89,81 +206,14 @@ public class ConnectionConfiguration {
       return this;
     }
 
+    public Builder withCert(final String certPath) {
+      checkArgument(certPath != null, "cert cannot be null");
+      this.certPath = Paths.get(certPath);
+      return this;
+    }
+
     public ConnectionConfiguration build() {
       return new ConnectionConfiguration(this);
     }
-  }
-
-  private ConnectionConfiguration(final Builder builder) {
-    this.hosts = builder.hosts;
-    this.username = builder.username;
-    this.password = builder.password;
-    this.socketTimeout = builder.socketTimeout;
-    this.connectTimeout = builder.connectTimeout;
-  }
-
-  public static ConnectionConfiguration readConnectionConfiguration(final PluginSetting pluginSetting){
-    @SuppressWarnings("unchecked")
-    final List<String> hosts = (List<String>) pluginSetting.getAttributeFromSettings(HOSTS);
-    ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(hosts);
-    final String username = (String) pluginSetting.getAttributeFromSettings(USERNAME);
-    if (username != null) {
-      builder = builder.withUsername(username);
-    }
-    final String password = (String) pluginSetting.getAttributeFromSettings(PASSWORD);
-    if (password != null) {
-      builder = builder.withPassword(password);
-    }
-    final Integer socketTimeout = (Integer) pluginSetting.getAttributeFromSettings(SOCKET_TIMEOUT);
-    if (socketTimeout != null) {
-      builder = builder.withSocketTimeout(socketTimeout);
-    }
-    final Integer connectTimeout = (Integer) pluginSetting.getAttributeFromSettings(CONNECT_TIMEOUT);
-    if (connectTimeout != null) {
-      builder = builder.withConnectTimeout(connectTimeout);
-    }
-
-    return builder.build();
-  }
-
-  public RestHighLevelClient createClient() {
-    final HttpHost[] httpHosts = new HttpHost[hosts.size()];
-    int i = 0;
-    for (final String host : hosts) {
-      httpHosts[i] = HttpHost.create(host);
-      i++;
-    }
-    final RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
-    final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-    if (username != null) {
-      credentialsProvider.setCredentials(
-              AuthScope.ANY, new UsernamePasswordCredentials(username, password));
-    }
-    // TODO: customize trustStrategy?
-    final TrustStrategy trustStrategy = new TrustAllStrategy();
-    final SSLContext sslContext;
-    try {
-      // TODO: load KeyStore
-      sslContext = SSLContexts.custom().loadTrustMaterial(null, trustStrategy).build();
-    } catch (Exception e) {
-      throw new RuntimeException(e.getMessage(), e);
-    }
-    restClientBuilder.setHttpClientConfigCallback(
-            httpClientBuilder -> httpClientBuilder
-                    .setDefaultCredentialsProvider(credentialsProvider)
-                    .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
-                    .setSSLContext(sslContext)
-    );
-    restClientBuilder.setRequestConfigCallback(
-            requestConfigBuilder -> {
-              if (connectTimeout != null) {
-                requestConfigBuilder.setConnectTimeout(connectTimeout);
-              }
-              if (socketTimeout != null) {
-                requestConfigBuilder.setSocketTimeout(socketTimeout);
-              }
-              return requestConfigBuilder;
-            });
-    return new RestHighLevelClient(restClientBuilder);
   }
 }

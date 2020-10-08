@@ -68,6 +68,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   }
 
   public void start() throws IOException {
+    LOG.info("Starting Elasticsearch sink");
     restHighLevelClient = esSinkConfig.getConnectionConfiguration().createClient();
     final String ismPolicyId = IndexStateManagement.checkAndCreatePolicy(restHighLevelClient, indexType);
     if (esSinkConfig.getIndexConfiguration().getTemplateURL() != null) {
@@ -83,6 +84,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
             bulkRequest -> restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT),
             this::logFailure,
             bulkRequestSupplier);
+    LOG.info("Started Elasticsearch sink");
   }
 
   @Override
