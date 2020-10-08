@@ -40,6 +40,16 @@ public interface ProcessorState<K, V> {
     public<R> List<R> iterate(BiFunction<K, V, R> fn);
 
     /**
+     * Iterate over a segment of the processor state with a bifunction
+     * @param fn BiFunction with which to iterate over the processor state
+     * @param segments total number of segments
+     * @param index segment index
+     * @param <R> Type parameter for return value of BiFunction
+     * @return Result of iteration as a list of objects of type R
+     */
+    public<R> List<R> iterate(BiFunction<K, V, R> fn, int segments, int index);
+
+    /**
      * @return Size of the processor state, in terms of number of elements stored.
      */
     public long size();
