@@ -24,6 +24,7 @@ import java.util.stream.Stream;
 @SitupPlugin(name = "service_map_stateful", type = PluginType.PROCESSOR)
 public class ServiceMapStatefulProcessor implements Processor<Record<ExportTraceServiceRequest>, Record<String>> {
 
+    private static final String EMPTY_SUFFIX = "-empty";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Collection<Record<String>> EMPTY_COLLECTION = Collections.emptySet();
     private static final Integer TO_MILLIS = 1_000;
@@ -59,9 +60,9 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
             ServiceMapStatefulProcessor.windowDurationMillis = windowDurationMillis;
             ServiceMapStatefulProcessor.dbPath = createPath(databasePath);
             currentWindow = new LmdbProcessorState<>(new File(String.join("/", dbPath.getPath(), getNewDbName())), "spansDb", ServiceMapStateData.class);
-            previousWindow = new LmdbProcessorState<>(new File(String.join("/", dbPath.getPath(), getNewDbName() + "-prev")), "spansDb", ServiceMapStateData.class);
+            previousWindow = new LmdbProcessorState<>(new File(String.join("/", dbPath.getPath(), getNewDbName() + EMPTY_SUFFIX)), "spansDb", ServiceMapStateData.class);
             currentTraceGroupWindow = new LmdbProcessorState<>(new File(String.join("/", dbPath.getPath(), getNewTraceDbName())), "traceDb", String.class);
-            previousTraceGroupWindow = new LmdbProcessorState<>(new File(String.join("/", dbPath.getPath(), getNewTraceDbName() + "-prev")), "traceDb", String.class);
+            previousTraceGroupWindow = new LmdbProcessorState<>(new File(String.join("/", dbPath.getPath(), getNewTraceDbName() + EMPTY_SUFFIX)), "traceDb", String.class);
         }
     }
 
