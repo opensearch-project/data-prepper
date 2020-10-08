@@ -15,6 +15,7 @@ dependencies {
     compile project(':situp-api')
     compile project(':situp-plugins:common')
     compile project(':situp-plugins:lmdb-processor-state')
+    compile project(':situp-plugins:mapdb-processor-state')
     implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
     testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"

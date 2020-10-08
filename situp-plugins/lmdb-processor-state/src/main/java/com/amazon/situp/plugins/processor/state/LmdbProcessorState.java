@@ -145,15 +145,30 @@ public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
         }
     }
 
+    private long[] getRange(int segments, int index) {
+        final long sz = size();
+        if(sz == 0) {
+            return new long[]{0,-1};
+        }
+        long step = (long) Math.ceil(((double) sz / (double) segments));
+        long lower = (long) index * step;
+        long upper = Math.min(lower + step, sz);
+        return new long[]{lower, upper};
+    }
+
     /**
      * LMDB specific iterate function, which iterates over an index range using the LMDB cursor
      * @param fn Function to apply to elements
-     * @param start Start index
-     * @param end End index
+     * @param segments Number of segments
+     * @param index index
      * @param <R> Result type
      * @return List of R objects representing the application of the function to the elements in the index range
      */
-    public<R> List<R> iterate(BiFunction<byte[], T, R> fn, final long start, final long end) {
+    @Override
+    public<R> List<R> iterate(BiFunction<byte[], T, R> fn, final int segments, final int index) {
+        final long[] range = getRange(segments, index);
+        final long start = range[0];
+        final long end = range[1];
         try (Txn<ByteBuffer> txn = env.txnRead()) {
             Cursor<ByteBuffer> cursor = db.openCursor(txn);
             final List<R> returnVal = new ArrayList<>();
