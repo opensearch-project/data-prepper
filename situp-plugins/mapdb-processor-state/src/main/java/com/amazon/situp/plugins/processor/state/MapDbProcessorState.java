@@ -62,41 +62,37 @@ public class MapDbProcessorState<V> implements ProcessorState<byte[], V> {
         return returnList;
     }
 
-    //TODO: Make this function an interface method, because it can be used to split iteration without knowing about the underlying structure
     public <R> List<R> iterate(BiFunction<byte[], V, R> fn, final int segments, final int index) {
         if(map.size() == 0) {
             return Collections.EMPTY_LIST;
         }
-        final List<byte[]> iterationEndpoints = getIterationEndpoints(segments, index);
+        final byte[][]iterationEndpoints = getIterationEndpoints(segments, index);
         final List<R> returnList = new ArrayList<>();
-        map.entryIterator(iterationEndpoints.get(0), true, iterationEndpoints.get(1), false).forEachRemaining(
+        map.entryIterator(iterationEndpoints[0], true, iterationEndpoints[1], false).forEachRemaining(
                 entry -> returnList.add(fn.apply(entry.getKey(), entry.getValue()))
         );
         return returnList;
     }
 
-    private List<byte[]> getIterationEndpoints(final int segments, final int index) {
+    /**
+     * Gets iteration endpoints by taking the lowest and highest key and splitting the keyrange into segments.
+     * These endpoints are an approximation of segments, and segments are guaranteed to cover the entire key range,
+     * but there is no guarantee that all segments contain an equal number of elements.
+     * @param segments Number of segments
+     * @param index Index to find segment endpoints for
+     * @return byte[][] containing the two endpoints
+     */
+    private byte[][] getIterationEndpoints(final int segments, final int index) {
         final BigInteger lowEnd = new BigInteger(map.firstKey());
         final BigInteger highEnd = new BigInteger(map.lastKey());
         final BigInteger step = highEnd.subtract(lowEnd).divide(new BigInteger(String.valueOf(segments)));
         final byte[] lowIndex = lowEnd.add(step.multiply(new BigInteger(String.valueOf(index)))).toByteArray();
-        final byte[] highIndex = index == segments - 1? highEnd.add(new BigInteger("1")).toByteArray() : lowEnd.add(step.multiply(new BigInteger(String.valueOf(index+1)))).toByteArray();
-        final List<byte[]> iterationEndpoints = new ArrayList<>();
-        iterationEndpoints.add(lowIndex);
-        iterationEndpoints.add(highIndex);
-
-        return iterationEndpoints;
+        final byte[] highIndex =
+                index == segments - 1 ?
+                        highEnd.add(new BigInteger("1")).toByteArray() :
+                        lowEnd.add(step.multiply(new BigInteger(String.valueOf(index+1)))).toByteArray();
+        return new byte[][]{lowIndex, highIndex};
     }
-
-    private String bytesToString(final byte[] bytes) {
-        String s = "[";
-        for(int i=0; i<bytes.length; i++) {
-            s += bytes[i] + " , ";
-        }
-        s += "]";
-        return s;
-    }
-
 
     @Override
     public long size() {
