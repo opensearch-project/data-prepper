@@ -110,22 +110,6 @@ public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
     }
 
     @Override
-    public void clear() {
-        //TODO: we can delete and recreate a new DB
-        try (final Txn<ByteBuffer> txn = env.txnWrite()) {
-            db.drop(txn, true);
-        }
-    }
-
-    public void delete() {
-        close();
-        final File lockFile = new File(dbFile.getPath() + "-lock");
-        //TODO: Add logging or metric here for failed deletions
-        dbFile.delete();
-        lockFile.delete();
-    }
-
-    @Override
     public<R> List<R> iterate(BiFunction<byte[], T, R> fn) {
         try (Txn<ByteBuffer> txn = env.txnRead()) {
             final List<R> returnVal = new ArrayList<>();
@@ -145,24 +129,37 @@ public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
         }
     }
 
+    private KeyRange getRange(int segments, int index) {
+        final long sz = size();
+        if(sz == 0) {
+            return new KeyRange(0,-1);
+        }
+        long step = (long) Math.ceil(((double) sz / (double) segments));
+        long lower = (long) index * step;
+        long upper = Math.min(lower + step, sz);
+        return new KeyRange(lower, upper);
+    }
+
     /**
      * LMDB specific iterate function, which iterates over an index range using the LMDB cursor
      * @param fn Function to apply to elements
-     * @param start Start index
-     * @param end End index
+     * @param segments Number of segments
+     * @param index index
      * @param <R> Result type
      * @return List of R objects representing the application of the function to the elements in the index range
      */
-    public<R> List<R> iterate(BiFunction<byte[], T, R> fn, final long start, final long end) {
+    @Override
+    public<R> List<R> iterate(BiFunction<byte[], T, R> fn, final int segments, final int index) {
+        final KeyRange keyRange = getRange(segments, index);
         try (Txn<ByteBuffer> txn = env.txnRead()) {
             Cursor<ByteBuffer> cursor = db.openCursor(txn);
             final List<R> returnVal = new ArrayList<>();
             cursor.first();
             //TODO: Look into faster way to move cursor up N elements
-            for(long i=0; i<start; i++) {
+            for(long i=0; i<keyRange.start; i++) {
                 cursor.next();
             }
-            for(long i=start; i<end; i++) {
+            for(long i=keyRange.start; i<keyRange.end; i++) {
                 final R val = fn.apply(getBytes(cursor.key()),
                         byteBufferToObject(cursor.val()));
                 returnVal.add(val);
@@ -176,7 +173,21 @@ public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
     }
 
     @Override
-    public void close() {
+    public void delete() {
+        final File lockFile = new File(dbFile.getPath() + "-lock");
+        //TODO: Add logging or metric here for failed deletions
+        dbFile.delete();
+        lockFile.delete();
         env.close();
+    }
+
+    private static class KeyRange {
+        public long start;
+        public long end;
+
+        public KeyRange(final long start, final long end) {
+            this.start = start;
+            this.end = end;
+        }
     }
 }

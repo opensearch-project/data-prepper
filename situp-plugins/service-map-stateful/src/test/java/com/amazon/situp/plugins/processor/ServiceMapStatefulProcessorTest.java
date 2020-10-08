@@ -176,7 +176,7 @@ public class ServiceMapStatefulProcessorTest {
         Future<Set<ServiceMapRelationship>> r10 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2, Arrays.asList());
         Assert.assertTrue(r9.get().isEmpty());
         Assert.assertTrue(r10.get().isEmpty());
-        serviceMapStateful1.deleteState();
+        serviceMapStateful1.shutdown();
     }
 
     private static class ServiceMapSourceDest {
