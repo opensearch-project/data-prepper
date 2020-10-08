@@ -5,14 +5,12 @@ import com.amazon.situp.model.annotations.SitupPlugin;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.processor.Processor;
 import com.amazon.situp.model.record.Record;
-import com.amazon.situp.plugins.processor.state.LmdbProcessorState;
 import com.amazon.situp.plugins.processor.state.MapDbProcessorState;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.primitives.SignedBytes;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 
-import javax.management.MBeanAttributeInfo;
 import java.io.File;
 import java.io.Serializable;
 import java.time.Clock;
@@ -22,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
 @SitupPlugin(name = "service_map_stateful", type = PluginType.PROCESSOR)
 public class ServiceMapStatefulProcessor implements Processor<Record<ExportTraceServiceRequest>, Record<String>> {
 
@@ -322,13 +321,6 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     private boolean isMasterInstance() {
         return thisProcessorId == 0;
     }
-
-    /**
-     * Getting range for this processor given a number of elements
-     * @param elements Elements to iterate over
-     * @return Range given as a 2 element array of longs
-     */
-
 
     private static class ServiceMapStateData implements Serializable {
         public String serviceName;
