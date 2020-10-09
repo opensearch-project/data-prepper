@@ -8,7 +8,9 @@ import org.apache.commons.codec.binary.Hex;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -125,8 +127,17 @@ public class RawTrace {
         return Instant.ofEpochSecond(epochSeconds, nanoAdj).toString();
     }
 
+
     public static RawTrace buildFromProto(Resource resource, Span spans, InstrumentationLibrary instrumentationLibrary) {
         final String SERVICE_NAME = "service.name";
+
+        Map<Object, Object> map = resource.getAttributesList().stream().collect(Collectors.toMap(keyVal -> keyVal.getKey(), keyVal -> keyVal.getValue()));
+        final Map<String, String> resourceAttributesMap = new HashMap<>();
+        for (Map.Entry<Object, Object> entry : map.entrySet()) {
+            if (entry.getValue() instanceof String) {
+                resourceAttributesMap.put((String) entry.getKey(), (String) entry.getValue());
+            }
+        }
 
         return new RawTraceBuilder()
                 .setTraceId(Hex.encodeHexString(spans.getTraceId().toByteArray()))
@@ -139,7 +150,7 @@ public class RawTrace {
                 .setInstrumentationVersion(instrumentationLibrary.getVersion())
                 .setServiceName(resource.getAttributesList().stream().filter(keyValue -> keyValue.getKey().equals(SERVICE_NAME)
                 ).findFirst().get().getValue().getStringValue())
-                // TODO: verify the data type for resourceAttributes to set it here
+                .setResourceAttributes(resourceAttributesMap)
                 .build();
     }
 }
