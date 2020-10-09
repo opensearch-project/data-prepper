@@ -5,25 +5,26 @@ import com.amazon.situp.model.annotations.SitupPlugin;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.processor.Processor;
 import com.amazon.situp.model.record.Record;
-import com.amazon.situp.plugins.processor.state.LmdbProcessorState;
+import com.amazon.situp.plugins.processor.state.MapDbProcessorState;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.primitives.SignedBytes;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 
 import java.io.File;
+import java.io.Serializable;
 import java.time.Clock;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
 @SitupPlugin(name = "service_map_stateful", type = PluginType.PROCESSOR)
 public class ServiceMapStatefulProcessor implements Processor<Record<ExportTraceServiceRequest>, Record<String>> {
 
+    private static final String EMPTY_SUFFIX = "-empty";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Collection<Record<String>> EMPTY_COLLECTION = Collections.emptySet();
     private static final Integer TO_MILLIS = 1_000;
@@ -32,40 +33,36 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     private static long windowDurationMillis;
     private static CountDownLatch edgeEvaluationLatch;
     private static CountDownLatch windowRotationLatch = new CountDownLatch(1);
-    private volatile static LmdbProcessorState<ServiceMapStateData> previousWindow;
-    private volatile static LmdbProcessorState<ServiceMapStateData> currentWindow;
-    private volatile static LmdbProcessorState<String> previousTraceGroupWindow;
-    private volatile static LmdbProcessorState<String> currentTraceGroupWindow;
+    private volatile static MapDbProcessorState<ServiceMapStateData> previousWindow;
+    private volatile static MapDbProcessorState<ServiceMapStateData> currentWindow;
+    private volatile static MapDbProcessorState<String> previousTraceGroupWindow;
+    private volatile static MapDbProcessorState<String> currentTraceGroupWindow;
     //TODO: Consider keeping this state in lmdb
     private volatile static  HashSet<ServiceMapRelationship> relationshipState = new HashSet<>();
-    private static File databasePath;
-    private static File traceDatabasePath;
+    private static File dbPath;
     private static Clock clock;
 
     private final int thisProcessorId;
 
     public ServiceMapStatefulProcessor(final PluginSetting pluginSetting) {
      this(pluginSetting.getIntegerOrDefault(ServiceMapProcessorConfig.WINDOW_DURATION, ServiceMapProcessorConfig.DEFAULT_WINDOW_DURATION)*TO_MILLIS,
-             new File(ServiceMapProcessorConfig.DEFAULT_SPANS_LMDB_PATH),
-             new File(ServiceMapProcessorConfig.DEFAULT_TRACES_LMDB_PATH),
+             new File(ServiceMapProcessorConfig.DEFAULT_LMDB_PATH),
              Clock.systemUTC());
     }
 
     ServiceMapStatefulProcessor(final long windowDurationMillis,
                                        final File databasePath,
-                                       final File traceDatabasePath,
                                        final Clock clock) {
         ServiceMapStatefulProcessor.clock = clock;
         this.thisProcessorId = processorsCreated.getAndIncrement();
         if(isMasterInstance()) {
             previousTimestamp = ServiceMapStatefulProcessor.clock.millis();
             ServiceMapStatefulProcessor.windowDurationMillis = windowDurationMillis;
-            ServiceMapStatefulProcessor.databasePath = createPath(databasePath);
-            ServiceMapStatefulProcessor.traceDatabasePath = createPath(traceDatabasePath);
-            currentWindow = new LmdbProcessorState<>(databasePath, getNewDbName(), ServiceMapStateData.class);
-            previousWindow = new LmdbProcessorState<>(databasePath, getNewDbName() + "-prev", ServiceMapStateData.class);
-            currentTraceGroupWindow = new LmdbProcessorState<>(traceDatabasePath, getNewTraceDbName(), String.class);
-            previousTraceGroupWindow = new LmdbProcessorState<>(traceDatabasePath, getNewTraceDbName() + "-prev", String.class);
+            ServiceMapStatefulProcessor.dbPath = createPath(databasePath);
+            currentWindow = new MapDbProcessorState<>(dbPath, getNewDbName());
+            previousWindow = new MapDbProcessorState<>(dbPath, getNewDbName() + EMPTY_SUFFIX);
+            currentTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName());
+            previousTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName() + EMPTY_SUFFIX);
         }
     }
 
@@ -93,13 +90,14 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     @Override
     public Collection<Record<String>> execute(Collection<Record<ExportTraceServiceRequest>> records) {
         final Collection<Record<String>> relationships = windowDurationHasPassed() ? evaluateEdges() : EMPTY_COLLECTION;
+        final Map<byte[], ServiceMapStateData> batchStateData = new TreeMap<>(SignedBytes.lexicographicalComparator());
         records.forEach( i -> i.getData().getResourceSpansList().forEach(resourceSpans -> {
             OTelHelper.getServiceName(resourceSpans.getResource()).ifPresent(serviceName -> resourceSpans.getInstrumentationLibrarySpansList().forEach(
                     instrumentationLibrarySpans -> {
                         instrumentationLibrarySpans.getSpansList().forEach(
                                 span -> {
                                     if (OTelHelper.checkValidSpan(span)) {
-                                        currentWindow.put(
+                                        batchStateData.put(
                                                 span.getSpanId().toByteArray(),
                                                 new ServiceMapStateData(
                                                         serviceName,
@@ -115,6 +113,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
                     }
             ));
         }));
+        currentWindow.putAll(batchStateData);
         return relationships;
     }
 
@@ -124,10 +123,9 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
      */
     private Collection<Record<String>> evaluateEdges() {
         try {
-            final long[] previousRange = getRange(previousWindow.size());
-            final long[] currentRange = getRange(currentWindow.size());
-            final Stream<ServiceMapRelationship> previousStream = previousWindow.iterate(previousWindowFunction, previousRange[0], previousRange[1]).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
-            final Stream<ServiceMapRelationship> currentStream = currentWindow.iterate(currentWindowFunction, currentRange[0], currentRange[1]).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
+            final Stream<ServiceMapRelationship> previousStream = previousWindow.iterate(previousWindowFunction, processorsCreated.get(), thisProcessorId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
+            final Stream<ServiceMapRelationship> currentStream = currentWindow.iterate(currentWindowFunction, processorsCreated.get(), thisProcessorId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
+
             final Collection<Record<String>> serviceDependencyRecords =
                     Stream.concat(previousStream, currentStream).filter(Objects::nonNull)
                             .filter(serviceMapRelationship -> !relationshipState.contains(serviceMapRelationship))
@@ -224,18 +222,12 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
         return traceGroupName != null ? traceGroupName : previousTraceGroupWindow.get(traceId);
     }
 
-    /**
-     * Delete current state held in the processor
-     */
-    public void deleteState() {
-        previousWindow.clear();
-        currentWindow.clear();
-    }
-
     //TODO: Change to an override when a shutdown method is added to the processor interface
     public void shutdown() {
-        previousWindow.close();
-        currentWindow.close();
+        previousWindow.delete();
+        currentWindow.delete();
+        previousTraceGroupWindow.delete();
+        currentTraceGroupWindow.delete();
     }
 
     /**
@@ -280,14 +272,12 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
      * Rotate windows for processor state
      */
     private void rotateWindows() {
-        previousWindow.clear();
-        previousWindow.close();
-        previousTraceGroupWindow.clear();
-        previousTraceGroupWindow.close();
+        previousWindow.delete();
+        previousTraceGroupWindow.delete();
         previousWindow = currentWindow;
-        currentWindow = new LmdbProcessorState(databasePath, getNewDbName(), ServiceMapStateData.class);
+        currentWindow = new MapDbProcessorState<>(dbPath, getNewDbName());
         previousTraceGroupWindow = currentTraceGroupWindow;
-        currentTraceGroupWindow = new LmdbProcessorState<>(traceDatabasePath, getNewTraceDbName(), String.class);
+        currentTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName());
         previousTimestamp = clock.millis();
         doneRotatingWindows();
     }
@@ -324,22 +314,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
         return thisProcessorId == 0;
     }
 
-    /**
-     * Getting range for this processor given a number of elements
-     * @param elements Elements to iterate over
-     * @return Range given as a 2 element array of longs
-     */
-    private long[] getRange(long elements) {
-        if(elements == 0) {
-            return new long[]{0,-1};
-        }
-        long step = (long) Math.ceil(((double) elements / (double) processorsCreated.get()));
-        long lower = (long) thisProcessorId * step;
-        long upper = Math.min(lower + step, elements);
-        return new long[]{lower, upper};
-    }
-
-    private static class ServiceMapStateData {
+    private static class ServiceMapStateData implements Serializable {
         public String serviceName;
         public byte[] parentSpanId;
         public byte[] traceId;

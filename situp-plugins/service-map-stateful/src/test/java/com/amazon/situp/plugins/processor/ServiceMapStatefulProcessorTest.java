@@ -59,10 +59,9 @@ public class ServiceMapStatefulProcessorTest {
         final Clock clock = Mockito.mock(Clock.class);
         Mockito.when(clock.millis()).thenReturn(1L);
         ExecutorService threadpool = Executors.newCachedThreadPool();
-        final File path = temporaryFolder.newFolder();
-        final File path2 = temporaryFolder.newFolder();
-        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, path2, clock);
-        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, path2, clock);
+        final File path = new File(ServiceMapProcessorConfig.DEFAULT_LMDB_PATH);
+        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock);
+        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock);
 
         final byte[] rootSpanId1 = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] rootSpanId2 = ServiceMapTestUtils.getRandomBytes(8);
@@ -177,6 +176,7 @@ public class ServiceMapStatefulProcessorTest {
         Future<Set<ServiceMapRelationship>> r10 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2, Arrays.asList());
         Assert.assertTrue(r9.get().isEmpty());
         Assert.assertTrue(r10.get().isEmpty());
+        serviceMapStateful1.shutdown();
     }
 
     private static class ServiceMapSourceDest {
