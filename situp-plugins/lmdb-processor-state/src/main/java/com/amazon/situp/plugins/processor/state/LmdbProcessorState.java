@@ -17,8 +17,11 @@ import org.lmdbjava.DbiFlags;
 import org.lmdbjava.Env;
 import org.lmdbjava.EnvFlags;
 import org.lmdbjava.Txn;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
+    private static final Logger LOG = LoggerFactory.getLogger(LmdbProcessorState.class);
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final Dbi<ByteBuffer> db;
     private final Env<ByteBuffer> env;
@@ -175,9 +178,12 @@ public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
     @Override
     public void delete() {
         final File lockFile = new File(dbFile.getPath() + "-lock");
-        //TODO: Add logging or metric here for failed deletions
-        dbFile.delete();
-        lockFile.delete();
+        if(!dbFile.delete()) {
+            LOG.warn("Unable to delete database file at " + dbFile.getPath());
+        }
+        if(!lockFile.delete()) {
+            LOG.warn("Unable to delete database file at " + lockFile.getPath());
+        }
         env.close();
     }
 

@@ -10,6 +10,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.primitives.SignedBytes;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.Serializable;
@@ -24,6 +26,7 @@ import java.util.stream.Stream;
 @SitupPlugin(name = "service_map_stateful", type = PluginType.PROCESSOR)
 public class ServiceMapStatefulProcessor implements Processor<Record<ExportTraceServiceRequest>, Record<String>> {
 
+    private static final Logger LOG = LoggerFactory.getLogger(ServiceMapStatefulProcessor.class);
     private static final String EMPTY_SUFFIX = "-empty";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Collection<Record<String>> EMPTY_COLLECTION = Collections.emptySet();
@@ -97,23 +100,37 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
                         instrumentationLibrarySpans.getSpansList().forEach(
                                 span -> {
                                     if (OTelHelper.checkValidSpan(span)) {
-                                        batchStateData.put(
-                                                span.getSpanId().toByteArray(),
-                                                new ServiceMapStateData(
-                                                        serviceName,
-                                                        span.getParentSpanId().isEmpty() ? null : span.getParentSpanId().toByteArray(),
-                                                        span.getTraceId().toByteArray(),
-                                                        span.getKind().name(),
-                                                        span.getName()));
-                                        if (span.getParentSpanId().isEmpty()) {
-                                            currentTraceGroupWindow.put(span.getTraceId().toByteArray(), span.getName());
+                                        try {
+                                            batchStateData.put(
+                                                    span.getSpanId().toByteArray(),
+                                                    new ServiceMapStateData(
+                                                            serviceName,
+                                                            span.getParentSpanId().isEmpty() ? null : span.getParentSpanId().toByteArray(),
+                                                            span.getTraceId().toByteArray(),
+                                                            span.getKind().name(),
+                                                            span.getName()));
+                                        } catch (RuntimeException e) {
+                                            LOG.error("Caught exception trying to put service map state data into batch", e);
                                         }
+                                        if (span.getParentSpanId().isEmpty()) {
+                                            try {
+                                                currentTraceGroupWindow.put(span.getTraceId().toByteArray(), span.getName());
+                                            } catch (RuntimeException e) {
+                                                LOG.error("Caught exception trying to put trace group name", e);
+                                            }
+                                        }
+                                    } else {
+                                        LOG.warn("Invalid span received");
                                     }
                                 });
                     }
             ));
         }));
-        currentWindow.putAll(batchStateData);
+        try {
+            currentWindow.putAll(batchStateData);
+        } catch (RuntimeException e) {
+            LOG.error("Caught exception trying to put batch state data", e);
+        }
         return relationships;
     }
 
@@ -123,8 +140,8 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
      */
     private Collection<Record<String>> evaluateEdges() {
         try {
-            final Stream<ServiceMapRelationship> previousStream = previousWindow.iterate(previousWindowFunction, processorsCreated.get(), thisProcessorId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
-            final Stream<ServiceMapRelationship> currentStream = currentWindow.iterate(currentWindowFunction, processorsCreated.get(), thisProcessorId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
+            final Stream<ServiceMapRelationship> previousStream = previousWindow.iterate(realtionshipIterationFunction, processorsCreated.get(), thisProcessorId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
+            final Stream<ServiceMapRelationship> currentStream = currentWindow.iterate(realtionshipIterationFunction, processorsCreated.get(), thisProcessorId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
 
             final Collection<Record<String>> serviceDependencyRecords =
                     Stream.concat(previousStream, currentStream).filter(Objects::nonNull)
@@ -165,21 +182,10 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     }
 
     /**
-     * This function is used to iterate over the previous window and find parent/child relationships with the current
-     * window. It only needs to find parents that live in the current window (and not the previous window) because these
-     * spans have already been checked against the "previous" window.
-     */
-    private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> previousWindowFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
-        @Override
-        public Stream<ServiceMapRelationship> apply(byte[] s, ServiceMapStateData serviceMapStateData) {
-            return lookupParentSpan(serviceMapStateData, false);
-        }
-    };
-    /**
      * This function is used to iterate over the current window and find parent/child relationships in the current and
      * previous windows.
      */
-    private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> currentWindowFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
+    private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> realtionshipIterationFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
         @Override
         public Stream<ServiceMapRelationship> apply(byte[] s, ServiceMapStateData serviceMapStateData) {
             return lookupParentSpan(serviceMapStateData, true);
@@ -208,8 +214,13 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
      * @return ServiceMapStateData for the parent span, if exists. Otherwise null
      */
     private ServiceMapStateData getParentStateData(final byte[] spanId, final boolean checkPrev) {
-        final ServiceMapStateData serviceMapStateData = currentWindow.get(spanId);
-        return serviceMapStateData != null ? serviceMapStateData : checkPrev ? previousWindow.get(spanId) : null;
+        try {
+            final ServiceMapStateData serviceMapStateData = currentWindow.get(spanId);
+            return serviceMapStateData != null ? serviceMapStateData : checkPrev ? previousWindow.get(spanId) : null;
+        } catch (RuntimeException e) {
+            LOG.error("Caught exception trying to get parent state data", e);
+            return null;
+        }
     }
 
     /**
@@ -218,8 +229,13 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
      * @return Trace group name for the given trace if it exists. Otherwise null.
      */
     private String getTraceGroupName(final byte[] traceId) {
-        final String traceGroupName = currentTraceGroupWindow.get(traceId);
-        return traceGroupName != null ? traceGroupName : previousTraceGroupWindow.get(traceId);
+        try {
+            final String traceGroupName = currentTraceGroupWindow.get(traceId);
+            return traceGroupName != null ? traceGroupName : previousTraceGroupWindow.get(traceId);
+        } catch (RuntimeException e) {
+            LOG.error("Caught exception trying to get trace group name", e);
+            return null;
+        }
     }
 
     //TODO: Change to an override when a shutdown method is added to the processor interface
@@ -272,6 +288,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
      * Rotate windows for processor state
      */
     private void rotateWindows() {
+        LOG.debug("Rotating windows at " + clock.instant().toString());
         previousWindow.delete();
         previousTraceGroupWindow.delete();
         previousWindow = currentWindow;

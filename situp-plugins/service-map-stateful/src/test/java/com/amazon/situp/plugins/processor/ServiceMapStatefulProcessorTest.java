@@ -11,6 +11,7 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -58,6 +59,7 @@ public class ServiceMapStatefulProcessorTest {
     public void testTraceGroups() throws Exception {
         final Clock clock = Mockito.mock(Clock.class);
         Mockito.when(clock.millis()).thenReturn(1L);
+        Mockito.when(clock.instant()).thenReturn(Instant.now());
         ExecutorService threadpool = Executors.newCachedThreadPool();
         final File path = new File(ServiceMapProcessorConfig.DEFAULT_LMDB_PATH);
         final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock);
