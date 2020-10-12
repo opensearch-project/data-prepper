@@ -1,5 +1,6 @@
 package com.amazon.situp.plugins.processor.oteltrace;
 
+import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.Span;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
@@ -131,11 +132,14 @@ public class RawTrace {
     public static RawTrace buildFromProto(Resource resource, Span spans, InstrumentationLibrary instrumentationLibrary) {
         final String SERVICE_NAME = "service.name";
 
-        Map<Object, Object> map = resource.getAttributesList().stream().collect(Collectors.toMap(keyVal -> keyVal.getKey(), keyVal -> keyVal.getValue()));
+        Map<Object, Object> map = resource.getAttributesList().stream().collect(Collectors.toMap(KeyValue::getKey, KeyValue::getValue));
         final Map<String, String> resourceAttributesMap = new HashMap<>();
         for (Map.Entry<Object, Object> entry : map.entrySet()) {
             if (entry.getValue() instanceof String) {
                 resourceAttributesMap.put((String) entry.getKey(), (String) entry.getValue());
+            }
+            else {
+                resourceAttributesMap.put((String) entry.getKey(), String.valueOf(entry.getValue()));
             }
         }
 
