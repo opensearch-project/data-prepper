@@ -9,8 +9,8 @@ import java.util.*;
 
 @State(Scope.Thread)
 public class MapDbProcessorStateBenchmarks {
-    private static final int BATCH_SIZE = 1000;
-    private static final int NUM_BATCHES = 1000;
+    private static final int BATCH_SIZE = 100;
+    private static final int NUM_BATCHES = 10000;
     private static final Random RANDOM = new Random();
 
     private MapDbProcessorState<String> mapDbProcessorState;
