@@ -7,7 +7,7 @@ import org.openjdk.jmh.annotations.*;
 import java.io.File;
 import java.util.*;
 
-@State(Scope.Thread)
+@State(Scope.Benchmark)
 public class MapDbProcessorStateBenchmarks {
     private static final int BATCH_SIZE = 100;
     private static final int NUM_BATCHES = 10000;
@@ -39,6 +39,7 @@ public class MapDbProcessorStateBenchmarks {
             }
         }
         mapDbProcessorState = new MapDbProcessorState<>(new File("data/benchmark/"), "benchmarkDb");
+
     }
 
     @TearDown(Level.Iteration)
@@ -49,6 +50,7 @@ public class MapDbProcessorStateBenchmarks {
     @Benchmark
     @Fork(value = 1)
     @Warmup(iterations = 3)
+    @Threads(value = 2)
     @Measurement(iterations = 5)
     public void benchmarkPutAll() {
         mapDbProcessorState.putAll(data.get(RANDOM.nextInt(NUM_BATCHES)));
