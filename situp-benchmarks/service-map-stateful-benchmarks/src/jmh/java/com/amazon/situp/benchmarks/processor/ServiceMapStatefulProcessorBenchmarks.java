@@ -9,8 +9,11 @@ import java.io.UnsupportedEncodingException;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
@@ -35,19 +38,48 @@ public class ServiceMapStatefulProcessorBenchmarks {
 
     private ServiceMapStatefulProcessor serviceMapStatefulProcessor;
     private List<List<Record<ExportTraceServiceRequest>>> batches;
+    private List<byte[]> spanIds;
+    private List<byte[]> traceIds;
     private static final String DB_PATH = "data/benchmark";
     private static final int BATCH_SIZE = 100;
     private static final int NUM_BATCHES = 1000;
     private static final Random RANDOM = new Random();
     private static final List<String> serviceNames = Arrays.asList("FRONTEND", "BACKEND", "PAYMENT", "CHECKOUT", "DATABASE");
+    private static final List<String> traceGroups = Arrays.asList("tg1", "tg2", "tg3", "tg4", "tg5", "tg6", "tg7", "tg8", "tg9");
 
     @Setup(Level.Trial)
     public void setupServiceMapStatefulProcessor() {
         serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(1000, new File(DB_PATH), Clock.systemDefaultZone());
     }
 
+    private byte[] getTraceId() {
+        if(RANDOM.nextInt(100) < 10 || traceIds.isEmpty()) {
+            final byte[] traceId = getRandomBytes(16);
+            traceIds.add(traceId);
+            return traceId;
+        } else {
+            return traceIds.get(RANDOM.nextInt(traceIds.size()));
+        }
+    }
+
+    private byte[] getSpanId() {
+        final byte[] spanId = getRandomBytes(8);
+        spanIds.add(spanId);
+        return spanId;
+    }
+
+    private byte[] getParentId() {
+        if(RANDOM.nextInt(1000) == 0 || spanIds.isEmpty()) {
+            return null;
+        } else {
+            return spanIds.get(RANDOM.nextInt(spanIds.size()));
+        }
+    }
+
     @Setup(Level.Trial)
     public void setupBatches() throws UnsupportedEncodingException {
+        spanIds = new ArrayList<>();
+        traceIds = new ArrayList<>();
         batches = new ArrayList<>();
         for(int i=0; i<NUM_BATCHES; i++) {
             List<Record<ExportTraceServiceRequest>> batch = new ArrayList<>();
@@ -55,10 +87,10 @@ public class ServiceMapStatefulProcessorBenchmarks {
                 batch.add(new Record<>(getExportTraceServiceRequest(
                         getResourceSpans(
                                 serviceNames.get(RANDOM.nextInt(serviceNames.size())),
-                                UUID.randomUUID().toString(),
-                                getRandomBytes(8),
-                                getRandomBytes(8),
-                                getRandomBytes(16),
+                                traceGroups.get(RANDOM.nextInt(traceGroups.size())),
+                                getSpanId(),
+                                getParentId(),
+                                getTraceId(),
                                 Span.SpanKind.CLIENT
                 ))));
             }
@@ -69,7 +101,7 @@ public class ServiceMapStatefulProcessorBenchmarks {
     @Benchmark
     @Fork(value = 1)
     @Warmup(iterations = 3)
-    @Threads(value = 8)
+    @Threads(value = 2)
     @Measurement(iterations = 5)
     public void benchmarkExecute() {
         serviceMapStatefulProcessor.execute(batches.get(RANDOM.nextInt(NUM_BATCHES)));
