@@ -2,19 +2,14 @@ package com.amazon.situp.benchmarks.processor;
 
 import com.google.protobuf.ByteString;
 import com.amazon.situp.model.record.Record;
-import com.amazon.situp.plugins.processor.OTelHelper;
 import com.amazon.situp.plugins.processor.ServiceMapStatefulProcessor;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
@@ -29,7 +24,6 @@ import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
@@ -52,6 +46,10 @@ public class ServiceMapStatefulProcessorBenchmarks {
         serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(1000, new File(DB_PATH), Clock.systemDefaultZone());
     }
 
+    /**
+     * Gets a new trace id. 10% of the time it will generate a new id, and otherwise will pick a random
+     * trace id that has already been generated
+     */
     private byte[] getTraceId() {
         if(RANDOM.nextInt(100) < 10 || traceIds.isEmpty()) {
             final byte[] traceId = getRandomBytes(16);
@@ -62,12 +60,19 @@ public class ServiceMapStatefulProcessorBenchmarks {
         }
     }
 
+    /**
+     * Gets a span id and adds to the list of existing span ids
+     */
     private byte[] getSpanId() {
         final byte[] spanId = getRandomBytes(8);
         spanIds.add(spanId);
         return spanId;
     }
 
+    /**
+     * Gets a parent id. 0.1% of the time will return null, indicating a root span. Otherwise picks a random
+     * spanid that is already existing
+     */
     private byte[] getParentId() {
         if(RANDOM.nextInt(1000) == 0 || spanIds.isEmpty()) {
             return null;
