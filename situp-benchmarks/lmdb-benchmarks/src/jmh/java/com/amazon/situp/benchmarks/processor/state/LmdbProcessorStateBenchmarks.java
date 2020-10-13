@@ -1,6 +1,6 @@
 package com.amazon.situp.benchmarks.processor.state;
 
-import com.amazon.situp.plugins.processor.state.MapDbProcessorState;
+import com.amazon.situp.plugins.processor.state.LmdbProcessorState;
 import com.google.common.primitives.SignedBytes;
 import org.openjdk.jmh.annotations.*;
 
@@ -8,14 +8,14 @@ import java.io.File;
 import java.util.*;
 
 @State(Scope.Benchmark)
-public class MapDbProcessorStateBenchmarks {
+public class LmdbProcessorStateBenchmarks {
     private static final int BATCH_SIZE = 100;
     private static final int NUM_BATCHES = 10000;
     private static final Random RANDOM = new Random();
     private static final String DB_PATH = "data/benchmark";
     private static final String DB_NAME = "benchmarkDb";
 
-    private MapDbProcessorState<String> mapDbProcessorState;
+    private LmdbProcessorState<String> lmdbProcessorState;
     private List<Map<byte[], String>> data = new ArrayList<Map<byte[], String>>(){{
         for(int i=0; i<NUM_BATCHES; i++) {
             final TreeMap<byte[], String> batch = new TreeMap<>(SignedBytes.lexicographicalComparator());
@@ -40,13 +40,12 @@ public class MapDbProcessorStateBenchmarks {
                 throw new RuntimeException(String.format("Unable to create the directory at the provided path: %s", path.getName()));
             }
         }
-        mapDbProcessorState = new MapDbProcessorState<>(new File(DB_PATH), DB_NAME);
-
+        lmdbProcessorState = new LmdbProcessorState<>(new File(String.join("/", DB_PATH, DB_NAME)), DB_NAME, String.class);
     }
 
     @TearDown(Level.Iteration)
     public void teardown() {
-        mapDbProcessorState.delete();
+        lmdbProcessorState.delete();
     }
 
     @Benchmark
@@ -55,8 +54,7 @@ public class MapDbProcessorStateBenchmarks {
     @Threads(value = 2)
     @Measurement(iterations = 5)
     public void benchmarkPutAll() {
-        mapDbProcessorState.putAll(data.get(RANDOM.nextInt(NUM_BATCHES)));
+        lmdbProcessorState.putAll(data.get(RANDOM.nextInt(NUM_BATCHES)));
     }
-
 
 }
