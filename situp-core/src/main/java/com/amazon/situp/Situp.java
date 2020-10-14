@@ -11,7 +11,7 @@ import java.util.Map;
  * SITUP is the entry point into the execution engine. An instance of this class is provided by
  * {@link #getInstance()} method and the same can eb used to trigger execution via {@link #execute()} of the
  * {@link Pipeline} with default configuration or {@link #execute(String)} to provide custom configuration file. Also,
- * the same instance reference can be further used to {@link #stop()} the execution.
+ * the same instance reference can be further used to {@link #shutdown()} the execution.
  */
 public class Situp {
     private static final Logger LOG = LoggerFactory.getLogger(Situp.class);
@@ -56,25 +56,25 @@ public class Situp {
         LOG.info("Using {} configuration file", configurationFileLocation);
         final PipelineParser pipelineParser = new PipelineParser(configurationFileLocation);
         transformationPipelines = pipelineParser.parseConfiguration();
+        if (transformationPipelines.size() == 0){
+            LOG.warn("No valid pipeline is available for execution, exiting");
+            System.exit(1);
+        }
         return initiateExecution();
     }
 
     /**
      * Terminates the execution of SITUP.
-     * TODO return boolean status of the stop request
      */
-    public void stop() {
+    public void shutdown() {
         transformationPipelines.forEach((name, pipeline) -> {
-            pipeline.stop();
-            LOG.info("Successfully submitted request to stop execution of pipeline {}", name);
+            pipeline.shutdown();
         });
     }
 
     private boolean initiateExecution() {
-        LOG.info("Successfully parsed the configuration file, Triggering pipeline execution");
         transformationPipelines.forEach((name, pipeline) -> {
             pipeline.execute();
-            LOG.info("Successfully triggered execution of pipeline {}", name);
         });
         return true;
     }

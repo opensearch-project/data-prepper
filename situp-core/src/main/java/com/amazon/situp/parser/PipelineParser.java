@@ -17,6 +17,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,6 +32,7 @@ import static java.lang.String.format;
 
 @SuppressWarnings("rawtypes")
 public class PipelineParser {
+    private static final Logger LOG = LoggerFactory.getLogger(PipelineParser.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory())
             .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
     private static final String PIPELINE_TYPE = "pipeline";
@@ -69,24 +72,34 @@ public class PipelineParser {
             final Map<String, PipelineConfiguration> pipelineConfigurationMap,
             final Map<String, Pipeline> pipelineMap) {
         final PipelineConfiguration pipelineConfiguration = pipelineConfigurationMap.get(pipelineName);
+        LOG.info("Building pipeline [{}] from provided configuration", pipelineName);
+        try {
+            final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
+            final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
+                    pipelineMap, pipelineConfigurationMap);
+            final Source source = pipelineSource.orElseGet(() -> SourceFactory.newSource(sourceSetting));
 
-        final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
-        final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
-                pipelineMap, pipelineConfigurationMap);
-        final Source source = pipelineSource.orElseGet(() -> SourceFactory.newSource(sourceSetting));
+            LOG.info("Building buffer for the pipeline [{}]", pipelineName);
+            final Buffer buffer = getBufferOrDefault(pipelineConfiguration.getBufferPluginSetting());
 
-        final Buffer buffer = getBufferOrDefault(pipelineConfiguration.getBufferPluginSetting());
-        final List<Processor> processors = pipelineConfiguration.getProcessorPluginSettings().stream()
-                .map(ProcessorFactory::newProcessor)
-                .collect(Collectors.toList());
-        final int processorThreads = getWorkersOrDefault(pipelineConfiguration.getWorkers());
-        final int readBatchDelay = getDelayOrDefault(pipelineConfiguration.getReadBatchDelay());
+            LOG.info("Building processors for the pipeline [{}]", pipelineName);
+            final List<Processor> processors = pipelineConfiguration.getProcessorPluginSettings().stream()
+                    .map(ProcessorFactory::newProcessor)
+                    .collect(Collectors.toList());
+            final int processorThreads = getWorkersOrDefault(pipelineConfiguration.getWorkers());
+            final int readBatchDelay = getDelayOrDefault(pipelineConfiguration.getReadBatchDelay());
 
-        final List<Sink> sinks = pipelineConfiguration.getSinkPluginSettings().stream()
-                .map(this::buildSinkOrConnector).collect(Collectors.toList());
+            LOG.info("Building sinks for the pipeline [{}]", pipelineName);
+            final List<Sink> sinks = pipelineConfiguration.getSinkPluginSettings().stream()
+                    .map(this::buildSinkOrConnector).collect(Collectors.toList());
 
-        final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, processors, sinks, processorThreads, readBatchDelay);
-        pipelineMap.put(pipelineName, pipeline);
+            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, processors, sinks, processorThreads, readBatchDelay);
+            pipelineMap.put(pipelineName, pipeline);
+        } catch (Exception ex) {
+            //If pipeline construction errors out, we will skip that pipeline and proceed
+            LOG.error("Construction of pipeline components failed, skipping building of pipeline [{}]", pipelineName, ex);
+        }
+
     }
 
     private Buffer getBufferOrDefault(final PluginSetting bufferPluginSetting) {
@@ -113,9 +126,12 @@ public class PipelineParser {
             final PluginSetting pluginSetting,
             final Map<String, Pipeline> pipelineMap,
             final Map<String, PipelineConfiguration> pipelineConfigurationMap) {
+        LOG.info("Building [{}] as source component for the pipeline [{}]", pluginSetting.getName(), sourcePipelineName);
         final Optional<String> pipelineNameOptional = getPipelineNameIfPipelineType(pluginSetting);
         if (pipelineNameOptional.isPresent()) { //update to ifPresentOrElse when using JDK9
             if (!sourceConnectorMap.containsKey(sourcePipelineName)) {
+                LOG.info("Source of pipeline [{}] requires building of pipeline [{}]", sourcePipelineName,
+                        pipelineNameOptional.get());
                 //Build connected pipeline for the pipeline connector to be available
                 buildPipelineFromConfiguration(pipelineNameOptional.get(), pipelineConfigurationMap, pipelineMap);
             }
@@ -125,6 +141,7 @@ public class PipelineParser {
     }
 
     private Sink buildSinkOrConnector(final PluginSetting pluginSetting) {
+        LOG.info("Building [{}] as sink component", pluginSetting.getName());
         final Optional<String> pipelineNameOptional = getPipelineNameIfPipelineType(pluginSetting);
         if (pipelineNameOptional.isPresent()) { //update to ifPresentOrElse when using JDK9
             final PipelineConnector pipelineConnector = new PipelineConnector();
