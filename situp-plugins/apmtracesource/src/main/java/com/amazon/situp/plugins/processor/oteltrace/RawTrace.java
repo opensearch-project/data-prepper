@@ -22,7 +22,7 @@ public class RawTrace {
     private static final BigDecimal SEC_TO_MILLIS = new BigDecimal(1_000);
     private static final Map<String, Object> resourceAttributesMap = new HashMap<>();
     private static final Map<String, Object> spanAttributesMap = new HashMap<>();
-    final String SERVICE_NAME = "service.name";
+    private static final String SERVICE_NAME = "service.name";
 
     private final String traceId;
     private final String spanId;
