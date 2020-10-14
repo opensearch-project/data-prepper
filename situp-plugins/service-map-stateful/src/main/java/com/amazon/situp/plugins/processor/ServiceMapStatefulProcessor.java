@@ -53,7 +53,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
              Clock.systemUTC());
     }
 
-    ServiceMapStatefulProcessor(final long windowDurationMillis,
+    public ServiceMapStatefulProcessor(final long windowDurationMillis,
                                        final File databasePath,
                                        final Clock clock) {
         ServiceMapStatefulProcessor.clock = clock;
