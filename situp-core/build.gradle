@@ -1,5 +1,47 @@
+buildscript {
+    ext {
+        es_version = System.getProperty("es.version", "7.8.0")
+        es_group = "org.elasticsearch"
+        distribution = 'oss-zip'
+    }
+
+    repositories {
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+
+    dependencies {
+        classpath "${es_group}.gradle:build-tools:${es_version}"
+    }
+}
+
 plugins {
     id 'jacoco'
+}
+
+apply plugin: 'elasticsearch.testclusters'
+apply plugin: 'elasticsearch.build'
+apply plugin: 'elasticsearch.rest-test'
+
+
+sourceSets {
+    main {
+        resources {
+            srcDirs += "../shared-resources"
+        }
+    }
+
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+        resources.srcDir file('src/integrationTest/resources')
+    }
+}
+
+configurations {
+
 }
 
 dependencies {
@@ -12,13 +54,24 @@ dependencies {
     implementation "org.apache.bval:bval-jsr:${versionMap.bval_jsr}"
     implementation "org.reflections:reflections:${versionMap.reflections}"
     testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
-}
-sourceSets {
-    main {
-        resources {
-            srcDirs += "../shared-resources"
-        }
+    integrationTestCompile("junit:junit:${versionMap.junit}") {
+        exclude group:'org.hamcrest' // workaround for jarHell
     }
+    integrationTestCompile(project(':situp-plugins:apmtracesource')) {
+        exclude group:'io.netty' // workaround for jarHell
+    }
+    integrationTestCompile project(':situp-plugins:elasticsearch')
+    integrationTestImplementation 'io.opentelemetry:opentelemetry-proto:0.6.0'
+    integrationTestImplementation 'com.google.protobuf:protobuf-java-util:3.13.0'
+    integrationTestImplementation "org.elasticsearch.test:framework:${es_version}"
+    integrationTestImplementation ("com.linecorp.armeria:armeria:1.0.0") {
+        exclude group:'io.netty', module:'netty-transport-native-unix-common' // workaround for jarHell
+    }
+}
+
+ext {
+    licenseFile = rootProject.file('LICENSE')
+    noticeFile = rootProject.file('NOTICE')
 }
 
 jar {
@@ -32,3 +85,42 @@ jar {
     }
 
 }
+
+integTest {}
+
+testClusters.integTest {
+    testDistribution = "OSS"
+}
+
+integTest.runner {
+    systemProperty 'tests.security.manager', 'false'
+}
+
+configurations.all {
+    resolutionStrategy {
+        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.1'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.11.1'
+        force 'com.fasterxml.jackson.core:jackson-core:2.11.1'
+        force 'com.google.guava:guava:29.0-jre'
+        force 'org.apache.bval:bval-jsr:2.0.4'
+        force 'junit:junit:4.13'
+        force 'com.google.protobuf:protobuf-java:3.13.0'
+        force 'com.fasterxml.jackson.core:jackson-annotations:2.11.2'
+        force 'io.grpc:grpc-protobuf:1.31.1'
+        force 'io.grpc:grpc-stub:1.31.1'
+        force 'org.hdrhistogram:HdrHistogram:2.1.12'
+        force 'io.grpc:grpc-api:1.31.1'
+        force 'com.google.protobuf:protobuf-java-util:3.13.0'
+    }
+}
+
+
+task integrationTest(type: Test) {
+    description = 'Runs the integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+}
+
+checkstyleMain.ignoreFailures = true
+checkstyleTest.ignoreFailures = true

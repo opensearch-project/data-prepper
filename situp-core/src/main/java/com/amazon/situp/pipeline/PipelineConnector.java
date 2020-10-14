@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * PipelineConnector is a special type of Plugin which connects two pipelines acting both as Sink and Source.
  *
- * @param <T>
+ * @param <T> Type parameter for I/O
  */
 public final class PipelineConnector<T extends Record<?>> implements Source<T>, Sink<T> {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineConnector.class);
