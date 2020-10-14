@@ -1,5 +1,6 @@
 package com.amazon.situp.plugins.processor.oteltrace;
 
+import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.Span;
@@ -19,6 +20,9 @@ public class RawTrace {
 
     private static final BigDecimal MILLIS_TO_NANOS = new BigDecimal(1_000_000);
     private static final BigDecimal SEC_TO_MILLIS = new BigDecimal(1_000);
+    private static final Map<String, Object> resourceAttributesMap = new HashMap<>();
+    private static final Map<String, Object> spanAttributesMap = new HashMap<>();
+    final String SERVICE_NAME = "service.name";
 
     private final String traceId;
     private final String spanId;
@@ -26,10 +30,12 @@ public class RawTrace {
     private final String name;
     private final String startTime;
     private final String endTime;
+    private final long durationInNanos;
     private final String instrumentationName;
     private final String instrumentationVersion;
     private final String serviceName;
-    private final Map<String, String> resourceAttributes;
+    private final Map<String, Object> resourceAttributes;
+    private final Map<String, Object> spanAttributes;
 
 
     private RawTrace(RawTraceBuilder builder) {
@@ -39,10 +45,12 @@ public class RawTrace {
         this.name = builder.name;
         this.startTime = builder.startTime;
         this.endTime = builder.endTime;
+        this.durationInNanos = builder.durationInNanos;
         this.instrumentationName = builder.instrumentationName;
         this.instrumentationVersion = builder.instrumentationVersion;
         this.serviceName = builder.serviceName;
         this.resourceAttributes = builder.resourceAttributes;
+        this.spanAttributes = builder.spanAttributes;
     }
 
     /**
@@ -55,10 +63,12 @@ public class RawTrace {
         private String name;
         private String startTime;
         private String endTime;
+        private long durationInNanos;
         private String instrumentationName;
         private String instrumentationVersion;
         private String serviceName;
-        private Map<String, String> resourceAttributes;
+        private Map<String, Object> resourceAttributes;
+        private Map<String, Object> spanAttributes;
 
         public RawTraceBuilder() {
         }
@@ -95,6 +105,11 @@ public class RawTrace {
             return this;
         }
 
+        public RawTraceBuilder setDurationInNanos(final long durationInNanos) {
+            this.durationInNanos = durationInNanos;
+            return this;
+        }
+
         public RawTraceBuilder setInstrumentationName(final String instrumentationName) {
             this.instrumentationName = instrumentationName;
             return this;
@@ -110,8 +125,13 @@ public class RawTrace {
             return this;
         }
 
-        public RawTraceBuilder setResourceAttributes(final Map<String, String> resourceAttributes) {
+        public RawTraceBuilder setResourceAttributes(final Map<String, Object> resourceAttributes) {
             this.resourceAttributes = resourceAttributes;
+            return this;
+        }
+
+        public RawTraceBuilder setSpanAttributes(final Map<String, Object> spanAttributes) {
+            this.spanAttributes = spanAttributes;
             return this;
         }
 
@@ -128,20 +148,33 @@ public class RawTrace {
         return Instant.ofEpochSecond(epochSeconds, nanoAdj).toString();
     }
 
+    private static Object convertAnyValue(AnyValue value) {
+        switch (value.getValueCase().getNumber()) {
+            case AnyValue.STRING_VALUE_FIELD_NUMBER:
+                return value.getStringValue();
+            case AnyValue.BOOL_VALUE_FIELD_NUMBER:
+                return value.getBoolValue();
+            case AnyValue.INT_VALUE_FIELD_NUMBER:
+                return value.getIntValue();
+            case AnyValue.DOUBLE_VALUE_FIELD_NUMBER:
+                return value.getDoubleValue();
+            case AnyValue.ARRAY_VALUE_FIELD_NUMBER:
+                return value.getArrayValue().getValuesList().stream().map(RawTrace::convertAnyValue).collect(Collectors.toList());
+            case AnyValue.KVLIST_VALUE_FIELD_NUMBER:
+                return value.getKvlistValue().getValuesList().stream().map(RawTrace::convertKeyValue).collect(Collectors.toList());
+            default:
+                throw new RuntimeException("Unknown case");
+        }
+    }
+
+    private static Map<String, Object> convertKeyValue(KeyValue keyValue) {
+        return Map.of(keyValue.getKey(), convertAnyValue(keyValue.getValue()));
+    }
 
     public static RawTrace buildFromProto(Resource resource, Span spans, InstrumentationLibrary instrumentationLibrary) {
-        final String SERVICE_NAME = "service.name";
 
-        Map<Object, Object> map = resource.getAttributesList().stream().collect(Collectors.toMap(KeyValue::getKey, KeyValue::getValue));
-        final Map<String, String> resourceAttributesMap = new HashMap<>();
-        for (Map.Entry<Object, Object> entry : map.entrySet()) {
-            if (entry.getValue() instanceof String) {
-                resourceAttributesMap.put((String) entry.getKey(), (String) entry.getValue());
-            }
-            else {
-                resourceAttributesMap.put((String) entry.getKey(), String.valueOf(entry.getValue()));
-            }
-        }
+        resource.getAttributesList().forEach(i -> resourceAttributesMap.putAll(convertKeyValue(i)));
+        spans.getAttributesList().forEach(i -> spanAttributesMap.putAll(convertKeyValue(i)));
 
         return new RawTraceBuilder()
                 .setTraceId(Hex.encodeHexString(spans.getTraceId().toByteArray()))
@@ -150,11 +183,13 @@ public class RawTrace {
                 .setName(spans.getName())
                 .setStartTime(convertStringNanosToISO8601(String.valueOf(spans.getStartTimeUnixNano())))
                 .setEndTime(convertStringNanosToISO8601(String.valueOf(spans.getEndTimeUnixNano())))
+                .setDurationInNanos(spans.getStartTimeUnixNano() - spans.getEndTimeUnixNano())
                 .setInstrumentationName(instrumentationLibrary.getName())
                 .setInstrumentationVersion(instrumentationLibrary.getVersion())
                 .setServiceName(resource.getAttributesList().stream().filter(keyValue -> keyValue.getKey().equals(SERVICE_NAME)
                 ).findFirst().get().getValue().getStringValue())
                 .setResourceAttributes(resourceAttributesMap)
+                .setSpanAttributes(spanAttributesMap)
                 .build();
     }
 }
