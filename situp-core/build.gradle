@@ -1,5 +1,47 @@
+buildscript {
+    ext {
+        es_version = System.getProperty("es.version", "7.8.0")
+        es_group = "org.elasticsearch"
+        distribution = 'oss-zip'
+    }
+
+    repositories {
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+
+    dependencies {
+        classpath "${es_group}.gradle:build-tools:${es_version}"
+    }
+}
+
 plugins {
     id 'jacoco'
+}
+
+apply plugin: 'elasticsearch.testclusters'
+apply plugin: 'elasticsearch.build'
+apply plugin: 'elasticsearch.rest-test'
+
+
+sourceSets {
+    main {
+        resources {
+            srcDirs += "../shared-resources"
+        }
+    }
+
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+        resources.srcDir file('src/integrationTest/resources')
+    }
+}
+
+configurations {
+
 }
 
 dependencies {
@@ -12,13 +54,24 @@ dependencies {
     implementation "org.apache.bval:bval-jsr:${versionMap.bval_jsr}"
     implementation "org.reflections:reflections:${versionMap.reflections}"
     testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
-}
-sourceSets {
-    main {
-        resources {
-            srcDirs += "../shared-resources"
-        }
+    integrationTestCompile("junit:junit:${versionMap.junit}") {
+        exclude group:'org.hamcrest' // workaround for jarHell
     }
+    integrationTestCompile(project(':situp-plugins:apmtracesource')) {
+        exclude group:'io.netty' // workaround for jarHell
+    }
+    integrationTestCompile project(':situp-plugins:elasticsearch')
+    integrationTestImplementation 'io.opentelemetry:opentelemetry-proto:0.6.0'
+    integrationTestImplementation 'com.google.protobuf:protobuf-java-util:3.13.0'
+    integrationTestImplementation "org.elasticsearch.test:framework:${es_version}"
+    integrationTestImplementation ("com.linecorp.armeria:armeria:1.0.0") {
+        exclude group:'io.netty', module:'netty-transport-native-unix-common' // workaround for jarHell
+    }
+}
+
+ext {
+    licenseFile = rootProject.file('LICENSE')
+    noticeFile = rootProject.file('NOTICE')
 }
 
 jar {
