@@ -47,7 +47,7 @@ services:
     networks:
       - my_network
   opendistro-for-elasticsearch:
-    container_name: odfe
+    container_name: node-0.example.com
     image: 'amazon/opendistro-for-elasticsearch:1.10.1'
     ports:
       - '9200:9200'
@@ -64,8 +64,8 @@ services:
     expose:
       - "5601"
     environment:
-      ELASTICSEARCH_URL: https://odfe:9200
-      ELASTICSEARCH_HOSTS: https://odfe:9200
+      ELASTICSEARCH_URL: https://node-0.example.com:9200
+      ELASTICSEARCH_HOSTS: https://node-0.example.com:9200
     networks:
       - my_network
 networks:

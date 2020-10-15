@@ -13,7 +13,8 @@ pipeline:
   ...
   sink:
     elasticsearch:
-      hosts: ["http://localhost:9200"]
+      hosts: ["https://localhost:9200"]
+      cert: path/to/cert
       username: YOUR_USERNAME_HERE
       password: YOUR_PASSWORD_HERE
       trace_analytics_raw: true
@@ -30,7 +31,8 @@ pipeline:
   ...
   sink:
     elasticsearch:
-      hosts: ["http://localhost:9200"]
+      hosts: ["https://localhost:9200"]
+      cert: path/to/cert
       username: YOUR_USERNAME_HERE
       password: YOUR_PASSWORD_HERE
       trace_analytics_service_map: true
@@ -47,7 +49,7 @@ pipeline:
   ...
   sink:
     elasticsearch:
-      hosts: ["http://localhost:9200"]
+      hosts: ["https://localhost:9200"]
       username: YOUR_USERNAME_HERE
       password: YOUR_PASSWORD_HERE
       index: "some-index"
@@ -65,13 +67,17 @@ User needs to provide custom index for record ingestion.
 
 A list of IP addresses of elasticsearch nodes.
 
+### cert
+CA certificate that is pem encoded. Accepts both .pem or .crt. This enables the client to trust the CA that has signed the certificate that ODFE is using.
+Default is null. 
+
 ### Username
 
-A String of username used in the [cognito](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles/#kibana) of ODFE cluster.
+A String of username used in the [cognito](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles) of ODFE cluster.
 
 ### Password
 
-A String of password used in the [cognito](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles/#kibana) of ODFE cluster.
+A String of password used in the [cognito](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles) of ODFE cluster.
 
 ### Trace analytics raw
 
