@@ -14,11 +14,12 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Extending {@link ThreadPoolExecutor} to tune the behavior of Threads when they encounter an exception, specifically
- * overriding the {@link ThreadPoolExecutor#afterExecute(Runnable, Throwable)} method to control the behavior of process
- * worker thread when it encounters an exception. The method will be invoked upon completion of execution of the given
- * processWorker runnable. The method is invoked by the thread that executed the task. If non-null, the throwable is the
- * uncaught {@code RuntimeException} or {@code Error} that caused execution to terminate abruptly.
+ * The {@link Pipeline} process workers which execute pipeline processors and sinks are spun in n different threads
+ * which run independently and if any of these threads fail/error or encounter exception, pipeline needs to shutdown.
+ * Extending {@link ThreadPoolExecutor} to override {@link ThreadPoolExecutor#afterExecute(Runnable, Throwable)} method
+ * to control the behavior of the pipeline when any of the n threads (process worker) encounters an exception or
+ * fails/errors.
+ *
  */
 public class PipelineThreadPoolExecutor extends ThreadPoolExecutor {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineThreadPoolExecutor.class);
