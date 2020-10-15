@@ -13,6 +13,13 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Extending {@link ThreadPoolExecutor} to tune the behavior of Threads when they encounter an exception, specifically
+ * overriding the {@link ThreadPoolExecutor#afterExecute(Runnable, Throwable)} method to control the behavior of process
+ * worker thread when it encounters an exception. The method will be invoked upon completion of execution of the given
+ * processWorker runnable. The method is invoked by the thread that executed the task. If non-null, the throwable is the
+ * uncaught {@code RuntimeException} or {@code Error} that caused execution to terminate abruptly.
+ */
 public class PipelineThreadPoolExecutor extends ThreadPoolExecutor {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineThreadPoolExecutor.class);
     private final Pipeline pipeline;
@@ -73,7 +80,7 @@ public class PipelineThreadPoolExecutor extends ThreadPoolExecutor {
             }
         }
         // If we ever use the execute instead of submit
-        if (throwable != null) {
+        else if (throwable != null) {
             LOG.error("Pipeline {} encountered a fatal exception, terminating", pipeline.getName(), throwable);
             pipeline.shutdown(); //Stop the source and wait for processors to finish draining the buffer
         }

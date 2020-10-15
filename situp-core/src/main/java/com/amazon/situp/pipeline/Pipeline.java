@@ -148,15 +148,13 @@ public class Pipeline {
         LOG.info("Pipeline [{}] - Initiating pipeline execution", name);
         try {
             source.start(buffer);
+            LOG.info("Pipeline [{}] - Submitting request to initiate the pipeline processing", name);
+            for (int i = 0; i < processorThreads; i++) {
+                processorSinkExecutorService.submit(new ProcessWorker(buffer, processors, sinks, this));
+            }
         } catch (Exception ex) {
-            //source failed to start - Cannot proceed further with the current pipeline
+            //source failed to start - Cannot proceed further with the current pipeline, skipping further execution
             LOG.error("Pipeline [{}] encountered exception while starting the source, skipping execution", name, ex);
-            //skip further processing of this pipeline
-            return;
-        }
-        LOG.info("Pipeline [{}] - Submitting request to initiate the pipeline processing", name);
-        for (int i = 0; i < processorThreads; i++) {
-            processorSinkExecutorService.submit(new ProcessWorker(buffer, processors, sinks, this));
         }
     }
 
