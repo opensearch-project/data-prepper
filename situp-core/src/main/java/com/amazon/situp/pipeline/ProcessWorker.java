@@ -56,7 +56,7 @@ public class ProcessWorker implements Runnable {
     /**
      * Shutdown should be handled end to end.
      *
-     * @return
+     * @return boolean indicating
      */
     private boolean shouldStop() {
         return pipeline.isStopRequested() && isBufferEmpty();
@@ -65,7 +65,7 @@ public class ProcessWorker implements Runnable {
     /**
      * TODO Implement this from Buffer [Probably AtomicBoolean], for now we will return true
      *
-     * @return
+     * @return boolean
      */
     private boolean isBufferEmpty() {
         return true;

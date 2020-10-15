@@ -1,5 +1,43 @@
+buildscript {
+    ext {
+        es_version = System.getProperty("es.version", "7.8.0")
+        es_group = "org.elasticsearch"
+        distribution = 'oss-zip'
+    }
+
+    repositories {
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+
+    dependencies {
+        classpath "${es_group}.gradle:build-tools:${es_version}"
+    }
+}
+
 plugins {
     id 'jacoco'
+    id "cgoit.gradle.elasticsearch" version "0.2.3"
+}
+
+sourceSets {
+    main {
+        resources {
+            srcDirs += "../shared-resources"
+        }
+    }
+
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+        resources.srcDir file('src/integrationTest/resources')
+    }
+}
+
+configurations {
+
 }
 
 dependencies {
@@ -12,13 +50,18 @@ dependencies {
     implementation "org.apache.bval:bval-jsr:${versionMap.bval_jsr}"
     implementation "org.reflections:reflections:${versionMap.reflections}"
     testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
+    integrationTestCompile("junit:junit:${versionMap.junit}")
+    integrationTestCompile(project(':situp-plugins:apmtracesource'))
+    integrationTestCompile project(':situp-plugins:elasticsearch')
+    integrationTestImplementation 'io.opentelemetry:opentelemetry-proto:0.6.0'
+    integrationTestImplementation 'com.google.protobuf:protobuf-java-util:3.13.0'
+    integrationTestImplementation ("com.linecorp.armeria:armeria:1.0.0")
+    integrationTestImplementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:7.8.1"
 }
-sourceSets {
-    main {
-        resources {
-            srcDirs += "../shared-resources"
-        }
-    }
+
+ext {
+    licenseFile = rootProject.file('LICENSE')
+    noticeFile = rootProject.file('NOTICE')
 }
 
 jar {
@@ -31,4 +74,43 @@ jar {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
 
+}
+
+task integrationTest(type: Test) {
+    description = 'Runs the integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+
+    doFirst {
+        startElasticsearch {
+            elasticsearchVersion = "7.8.0"
+            httpScheme = "http"
+            httpHost = "localhost"
+            httpPort = 9200
+            transportPort = 9300
+            dataDir = file("$buildDir/elastic")
+            logsDir = file("$buildDir/elastic/logs")
+            forceShutdownBeforeStart = false
+        }
+    }
+
+    doLast {
+        stopElasticsearch {
+            httpScheme = "http"
+            httpHost = "localhost"
+            httpPort = 9200
+        }
+    }
+}
+
+gradle.taskGraph.afterTask { Task task, TaskState taskState ->
+    if (task.name == "integrationTest") {
+        stopElasticsearch {
+            httpScheme = "http"
+            httpHost = "localhost"
+            httpPort = 9200
+        }
+    }
 }

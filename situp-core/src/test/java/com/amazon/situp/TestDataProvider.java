@@ -2,6 +2,7 @@ package com.amazon.situp;
 
 import com.amazon.situp.model.configuration.PluginSetting;
 
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,15 +36,15 @@ public class TestDataProvider {
     }
 
     public static Map.Entry<String, Map<String, Object>> validSingleConfiguration() {
-        return Map.entry(TEST_PLUGIN_NAME_1, validSettingsForPlugin());
+        return new AbstractMap.SimpleEntry<>(TEST_PLUGIN_NAME_1, validSettingsForPlugin());
     }
 
     public static List<Map.Entry<String, Map<String, Object>>> validMultipleConfiguration() {
-        return Arrays.asList(Map.entry(TEST_PLUGIN_NAME_1, validSettingsForPlugin()),Map.entry(TEST_PLUGIN_NAME_2, validSettingsForPlugin()));
+        return Arrays.asList(new AbstractMap.SimpleEntry<>(TEST_PLUGIN_NAME_1, validSettingsForPlugin()), new AbstractMap.SimpleEntry<>(TEST_PLUGIN_NAME_2, validSettingsForPlugin()));
     }
 
     public static List<Map.Entry<String, Map<String, Object>>> validMultipleConfigurationOfSizeOne() {
-        return Collections.singletonList(Map.entry(TEST_PLUGIN_NAME_1, validSettingsForPlugin()));
+        return Collections.singletonList(new AbstractMap.SimpleEntry<>(TEST_PLUGIN_NAME_1, validSettingsForPlugin()));
     }
 
 }
