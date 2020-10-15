@@ -57,6 +57,7 @@ public class EndToEndIntegrationTest {
 
     @Test
     public void testPipelineEndToEnd() throws IOException, InterruptedException {
+        //Setup pipeline
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("request_timeout", 1);
         final OTelTraceSource oTelTraceSource = new OTelTraceSource(new PluginSetting("otel_trace_source", integerHashMap));
@@ -73,9 +74,10 @@ public class EndToEndIntegrationTest {
         );
         pipeline.execute();
 
-        //Wait for source server to start up
+        //Wait for source server to start up before sending data to it
         Thread.sleep(3000);
 
+        //Send data to otel trace source
         final ExportTraceServiceRequest exportTraceServiceRequest1 = getExportTraceServiceRequest(
                 getRandomResourceSpans(10)
         );
@@ -208,6 +210,11 @@ public class EndToEndIntegrationTest {
         return spansList;
     }
 
+    private String getServiceName(final ResourceSpans resourceSpans) {
+        return resourceSpans.getResource().getAttributesList().stream().filter(kv -> kv.getKey() == "service.name")
+                .findFirst().get().getValue().getStringValue();
+    }
+
     private static BlockingBuffer<Record<ExportTraceServiceRequest>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 1);
@@ -224,10 +231,4 @@ public class EndToEndIntegrationTest {
 
         return new PluginSetting("elasticsearch", metadata);
     }
-
-    private String getServiceName(final ResourceSpans resourceSpans) {
-        return resourceSpans.getResource().getAttributesList().stream().filter(kv -> kv.getKey() == "service.name")
-                .findFirst().get().getValue().getStringValue();
-    }
-
 }
