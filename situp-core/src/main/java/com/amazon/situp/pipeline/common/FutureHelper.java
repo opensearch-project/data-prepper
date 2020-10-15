@@ -19,11 +19,11 @@ public class FutureHelper {
     /**
      * Helper method to handle the return of multiple futures. The method will return
      * as soon as all the futures are complete or until the specified timeout duration.
-     * @param futureList f
-     * @param duration d
-     * @param timeUnit t
-     * @param stopwatch s
-     * @param <A> A
+     * @param futureList
+     * @param duration
+     * @param timeUnit
+     * @param stopwatch
+     * @param <A>
      * @return A list of completed, errored, and uncompleted future tasks.
      */
     public static <A> FutureHelperResult<A> awaitFutures(
