@@ -14,11 +14,11 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
- * The {@link Pipeline} process workers which execute pipeline processors and sinks are spun in n different threads
- * which run independently and if any of these threads fail/error or encounter exception, pipeline needs to shutdown.
- * Extending {@link ThreadPoolExecutor} to override {@link ThreadPoolExecutor#afterExecute(Runnable, Throwable)} method
- * to control the behavior of the pipeline when any of the n threads (process worker) encounters an exception or
- * fails/errors.
+ * The {@link Pipeline} process workers that execute pipeline processors and sinks each run in independent threads. If
+ * any of these threads fail, have an error, or throw an exception, the pipeline needs to shutdown. We extend the
+ * {@link ThreadPoolExecutor} to override {@link ThreadPoolExecutor#afterExecute(Runnable, Throwable)} method
+ * to control the behavior of the pipeline when any of the threads (process worker) fail, have an error, or throw an
+ * exception.
  *
  */
 public class PipelineThreadPoolExecutor extends ThreadPoolExecutor {
