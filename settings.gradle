@@ -11,4 +11,6 @@ include 'situp-plugins:service-map-stateful'
 include 'situp-plugins:mapdb-processor-state'
 include 'situp-benchmarks'
 include 'situp-benchmarks:mapdb-benchmarks'
+include 'research'
+include 'research:zipkin-elastic-to-otel'
 

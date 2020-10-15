@@ -1,0 +1,24 @@
+plugins {
+    id 'java'
+}
+
+ext {
+    es_version = System.getProperty("es.version", "7.8.0")
+}
+
+group 'com.amazon'
+version '0.1-beta'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile project(':situp-plugins:elasticsearch')
+    implementation "com.linecorp.armeria:armeria:1.0.0"
+    implementation "com.linecorp.armeria:armeria-grpc:1.0.0"
+    implementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:${es_version}"
+    implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
+}
