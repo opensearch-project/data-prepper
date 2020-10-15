@@ -86,11 +86,10 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   }
 
   @Override
-  public boolean output(final Collection<Record<String>> records) {
+  public void output(final Collection<Record<String>> records) {
     if (records.isEmpty()) {
-      return false;
+      return;
     }
-    boolean success = true;
     BulkRequest bulkRequest = bulkRequestSupplier.get();
     for (final Record<String> record: records) {
       final String document = record.getData();
@@ -103,7 +102,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
         }
         final long estimatedBytesBeforeAdd = bulkRequest.estimatedSizeInBytes() + calcEstimatedSizeInBytes(indexRequest);
         if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.numberOfActions() > 0) {
-          success = success && flushBatch(bulkRequest);
+          flushBatch(bulkRequest);
           bulkRequest = bulkRequestSupplier.get();
         }
         bulkRequest.add(indexRequest);
@@ -114,10 +113,8 @@ public class ElasticsearchSink implements Sink<Record<String>> {
 
     // Flush the remaining requests
     if (bulkRequest.numberOfActions() > 0) {
-      success = success && flushBatch(bulkRequest);
+      flushBatch(bulkRequest);
     }
-
-    return success;
   }
 
   private long calcEstimatedSizeInBytes(final IndexRequest indexRequest) {
@@ -125,15 +122,13 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     return (indexRequest.source() != null ? indexRequest.source().length() : 0) + REQUEST_OVERHEAD;
   }
 
-  private boolean flushBatch(final BulkRequest bulkRequest) {
+  private void flushBatch(final BulkRequest bulkRequest) {
     try {
       bulkRetryStrategy.execute(bulkRequest);
     } catch (final InterruptedException e) {
       LOG.error("Unexpected Interrupt:", e);
       Thread.currentThread().interrupt();
-      return false;
     }
-    return true;
   }
 
   // TODO: need to be invoked by pipeline

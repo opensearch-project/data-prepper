@@ -72,10 +72,9 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final List<Record<String>> testRecords = Collections.singletonList(new Record<>(testDoc));
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
-    final boolean success = sink.output(testRecords);
+    sink.output(testRecords);
 
     final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
-    assertTrue(success);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
     assertEquals(1, retSources.size());
     assertEquals(expData, retSources.get(0));
@@ -98,10 +97,9 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     pluginSetting.getSettings().put(RetryConfiguration.DLQ_FILE, expDLQFile);
 
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
-    final boolean success = sink.output(testRecords);
+    sink.output(testRecords);
     sink.stop();
 
-    assertTrue(success);
     final StringBuilder content = new StringBuilder();
     Files.lines(Paths.get(expDLQFile)).forEach(content::append);
     assertTrue(content.toString().contains(testDoc1));
@@ -136,9 +134,8 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final List<Record<String>> testRecords = Collections.singletonList(new Record<>(testDoc));
     final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
     ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
-    final boolean success = sink.output(testRecords);
+    sink.output(testRecords);
     final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.SERVICE_MAP);
-    assertTrue(success);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
     assertEquals(1, retSources.size());
     assertEquals(expData, retSources.get(0));
@@ -176,8 +173,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFile);
     pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
-    final boolean success = sink.output(testRecords);
-    assertTrue(success);
+    sink.output(testRecords);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
     assertEquals(1, retSources.size());
     assertEquals(Integer.valueOf(1), getDocumentCount(testIndexAlias, "_id", testId));

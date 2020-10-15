@@ -194,12 +194,12 @@ public class Pipeline {
      * @param records records that needs to published to each sink
      * @return List of Future, each future for each sink
      */
-    public List<Future<Boolean>> publishToSinks(final Collection<Record> records) {
+    public List<Future<Void>> publishToSinks(final Collection<Record> records) {
         final int sinksSize = sinks.size();
-        List<Future<Boolean>> sinkFutures = new ArrayList<>(sinksSize);
+        List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
         for (int i = 0; i < sinksSize; i++) {
             int finalI = i;
-            sinkFutures.add(processorSinkExecutorService.submit(() -> sinks.get(finalI).output(records)));
+            sinkFutures.add(processorSinkExecutorService.submit(() -> sinks.get(finalI).output(records), null));
         }
         return sinkFutures;
     }
