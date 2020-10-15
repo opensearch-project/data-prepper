@@ -34,7 +34,6 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
 
     @Override
     public void stop() {
-        //this.buffer = null;
         isStopRequested.set(true);
     }
 

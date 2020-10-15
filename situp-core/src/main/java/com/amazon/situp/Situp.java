@@ -57,7 +57,7 @@ public class Situp {
         final PipelineParser pipelineParser = new PipelineParser(configurationFileLocation);
         transformationPipelines = pipelineParser.parseConfiguration();
         if (transformationPipelines.size() == 0){
-            LOG.warn("No valid pipeline is available for execution, exiting");
+            LOG.error("No valid pipeline is available for execution, exiting");
             System.exit(1);
         }
         return initiateExecution();
