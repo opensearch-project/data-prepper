@@ -1,0 +1,188 @@
+version: "3.7"
+services:
+  opendistro-pipes:
+    restart: unless-stopped
+    container_name: opendistro-pipes
+    build:
+      context: ../..
+      dockerfile: examples/Dockerfile
+    ports:
+      - "21890:21890"
+    networks:
+      - my_network
+    depends_on:
+      - opendistro-for-elasticsearch
+  opendistro-for-elasticsearch:
+    container_name: node-0.example.com
+    image: 'amazon/opendistro-for-elasticsearch:1.10.1'
+    ports:
+      - '9200:9200'
+      - '9600:9600'
+    environment:
+      - discovery.type=single-node
+    networks:
+      - my_network
+  kibana:
+    image: amazon/opendistro-for-elasticsearch-kibana:1.10.1
+    container_name: odfe-kibana
+    ports:
+      - 5601:5601
+    expose:
+      - "5601"
+    environment:
+      ELASTICSEARCH_URL: https://node-0.example.com:9200
+      ELASTICSEARCH_HOSTS: https://node-0.example.com:9200
+    networks:
+      - my_network
+    depends_on:
+      - opendistro-for-elasticsearch
+  otel-collector:
+    restart: unless-stopped
+    image: otel/opentelemetry-collector-contrib:0.8.0
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./opentelemetry-collector/otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "55680:55680"
+    depends_on:
+      - opendistro-pipes
+    networks:
+      - my_network
+  mysql:
+    restart: unless-stopped
+    image: mysql:latest
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+    networks:
+      - my_network
+  analytics-service:
+    restart: unless-stopped
+    build:
+      context: analytics-service
+      dockerfile: Dockerfile
+    ports:
+      - "8087:8087"
+    environment:
+      - OTEL_OTLP_ENDPOINT=otel-collector:55680
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=analytics-service
+    depends_on:
+      - otel-collector
+      - elasticsearch
+    networks:
+      - my_network
+  elasticsearch:
+    restart: unless-stopped
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.8.1
+    environment:
+      - discovery.type=single-node
+  inventory:
+    restart: unless-stopped
+    build:
+      context: inventory
+      dockerfile: Dockerfile
+    ports:
+      - '8082:8082'
+    environment:
+      - DATABASE=database
+      - LOGS=analytics-service
+      - OTLP=otel-collector
+      - WAIT_HOSTS=database:8083
+    depends_on:
+      - database
+      - analytics-service
+    networks:
+      - my_network
+  database:
+    restart: unless-stopped
+    build:
+      context: database
+      dockerfile: Dockerfile
+    ports:
+      - '8083:8083'
+    environment:
+      - OTLP=otel-collector
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - WAIT_HOSTS=otel-collector:55680, mysql:3306
+    depends_on:
+      - otel-collector
+      - mysql
+    networks:
+      - my_network
+  payment:
+    restart: unless-stopped
+    build:
+      context: payment
+      dockerfile: Dockerfile
+    ports:
+      - '8084:8084'
+    environment:
+      - INVENTORY=inventory
+      - LOGS=analytics-service
+      - OTLP=otel-collector
+      - WAIT_HOSTS=inventory:8082
+    depends_on:
+      - inventory
+      - analytics-service
+    networks:
+      - my_network
+  auth:
+    restart: unless-stopped
+    build:
+      context: auth
+      dockerfile: Dockerfile
+    ports:
+      - '8085:8085'
+    environment:
+      - OTLP=otel-collector
+      - LOGS=analytics-service
+      - RECOMMEND=recommendation
+      - WAIT_HOSTS=otel-collector:55680, recommendation:8086
+    depends_on:
+      - otel-collector
+      - analytics-service
+      - recommendation
+    networks:
+      - my_network
+  recommendation:
+    restart: unless-stopped
+    build:
+      context: recommendation
+      dockerfile: Dockerfile
+    ports:
+      - '8086:8086'
+    environment:
+      - INVENTORY=inventory
+      - LOGS=analytics-service
+      - OTLP=otel-collector
+      - WAIT_HOSTS=inventory:8082
+    depends_on:
+      - inventory
+      - analytics-service
+    networks:
+      - my_network
+  client:
+    restart: unless-stopped
+    build:
+      context: client
+      dockerfile: Dockerfile
+    environment:
+      - OTLP=otel-collector
+      - INVENTORY=inventory
+      - PAYMENT=payment
+      - AUTH=auth
+      - SLEEP_TIME_IN_SECONDS=5
+      - WAIT_HOSTS=otel-collector:55680, inventory:8082, payment:8084, auth:8085, analytics-service:8087
+      - WAIT_AFTER_HOSTS=20
+    depends_on:
+      - otel-collector
+      - inventory
+      - payment
+      - auth
+      - analytics-service
+    networks:
+      - my_network
+networks:
+  my_network:
