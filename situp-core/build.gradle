@@ -16,12 +16,8 @@ buildscript {
 
 plugins {
     id 'jacoco'
+    id "cgoit.gradle.elasticsearch" version "0.2.3"
 }
-
-apply plugin: 'elasticsearch.testclusters'
-apply plugin: 'elasticsearch.build'
-apply plugin: 'elasticsearch.rest-test'
-
 
 sourceSets {
     main {
@@ -54,19 +50,13 @@ dependencies {
     implementation "org.apache.bval:bval-jsr:${versionMap.bval_jsr}"
     implementation "org.reflections:reflections:${versionMap.reflections}"
     testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
-    integrationTestCompile("junit:junit:${versionMap.junit}") {
-        exclude group:'org.hamcrest' // workaround for jarHell
-    }
-    integrationTestCompile(project(':situp-plugins:apmtracesource')) {
-        exclude group:'io.netty' // workaround for jarHell
-    }
+    integrationTestCompile("junit:junit:${versionMap.junit}")
+    integrationTestCompile(project(':situp-plugins:apmtracesource'))
     integrationTestCompile project(':situp-plugins:elasticsearch')
     integrationTestImplementation 'io.opentelemetry:opentelemetry-proto:0.6.0'
     integrationTestImplementation 'com.google.protobuf:protobuf-java-util:3.13.0'
-    integrationTestImplementation "org.elasticsearch.test:framework:${es_version}"
-    integrationTestImplementation ("com.linecorp.armeria:armeria:1.0.0") {
-        exclude group:'io.netty', module:'netty-transport-native-unix-common' // workaround for jarHell
-    }
+    integrationTestImplementation ("com.linecorp.armeria:armeria:1.0.0")
+    integrationTestImplementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:7.8.1"
 }
 
 ext {
@@ -86,4 +76,5 @@ jar {
     exclude 'META-INF/*.RSA'
     exclude 'META-INF/*.SF'
     exclude 'META-INF/*.DSA'
+
 }
