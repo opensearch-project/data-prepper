@@ -35,7 +35,7 @@ public class ZipkinElasticToOtelProcessor {
         final String traceID = (String) source.get(TRACE_ID);
         final String spanID = (String) source.get(SPAN_ID);
         final Long startTime = (Long) source.get(TIME_STAMP);
-        final Long duration = (Long) source.get(DURATION);
+        final Long duration = Long.valueOf((Integer) source.get(DURATION));
         final long endTime = startTime + duration;
         final String parentID = (String) source.get(PARENT_ID);
         final String spanKind = (String) source.get(SPAN_KIND);
@@ -95,7 +95,7 @@ public class ZipkinElasticToOtelProcessor {
             if (sourceByService.containsKey(serviceName)) {
                 sourceByService.get(serviceName).add(source);
             } else {
-                sourceByService.put(serviceName, Collections.singletonList(source));
+                sourceByService.put(serviceName, new ArrayList<>(Arrays.asList(source)));
             }
         }
         return sourceByService;

@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'application'
 }
 
 ext {
@@ -15,8 +16,19 @@ repositories {
     mavenCentral()
 }
 
+application {
+    mainClass = 'com.amazon.situp.research.zipkin.ZipkinElasticToOtel'
+}
+
+run {
+    if (System.getProperty("test") != null) {
+        systemProperty "test", System.getProperty("test")
+    }
+}
+
 dependencies {
     compile project(':situp-plugins:elasticsearch')
+    compile project(':situp-plugins:apmtracesource')
     implementation "com.linecorp.armeria:armeria:1.0.0"
     implementation "com.linecorp.armeria:armeria-grpc:1.0.0"
     implementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:${es_version}"

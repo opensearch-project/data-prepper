@@ -1,66 +1,84 @@
 package com.amazon.situp.research.zipkin;
 
+import com.amazon.situp.model.configuration.PluginSetting;
+import com.amazon.situp.model.record.Record;
+import com.amazon.situp.plugins.buffer.BlockingBuffer;
 import com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration;
-import com.google.protobuf.ByteString;
+import com.amazon.situp.plugins.source.oteltracesource.OTelTraceSource;
 import com.linecorp.armeria.client.Clients;
+import io.grpc.stub.StreamObserver;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
-import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
-import io.opentelemetry.proto.common.v1.KeyValue;
-import io.opentelemetry.proto.resource.v1.Resource;
-import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
-import io.opentelemetry.proto.trace.v1.ResourceSpans;
-import io.opentelemetry.proto.trace.v1.Span;
-import io.opentelemetry.proto.trace.v1.Status;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.conn.ssl.TrustAllStrategy;
-import org.apache.http.conn.ssl.TrustStrategy;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.ssl.SSLContexts;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.SearchHits;
-
-import javax.net.ssl.SSLContext;
 import java.io.IOException;
-import java.net.http.HttpClient;
-import java.net.http.HttpResponse;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ZipkinElasticToOtel {
-    public static void main(String[] args) throws IOException {
+    public static void main(final String[] args) throws IOException {
+        if (args.length != 1) {
+            System.err.println("Missing indexPattern as arg");
+            System.exit(1);
+        }
+        final String indexPattern = args[0];
+        final boolean isTest = !System.getProperty("test", "false").equalsIgnoreCase("false");
+        OTelTraceSource oTelTraceSource = null;
+        if (isTest) {
+            System.out.println("Setting up testing OtelTraceSource");
+            oTelTraceSource = setUpOtelTraceSource();
+        }
         final ConnectionConfiguration connectionConfiguration = new ConnectionConfiguration.Builder(
                 Collections.singletonList("https://localhost:9200"))
                 .withUsername("admin")
                 .withPassword("admin")
                 .build();
         final RestHighLevelClient restHighLevelClient = connectionConfiguration.createClient();
-        final SearchRequest searchRequest = new SearchRequest("zipkin-span-*");
-        final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-        final SearchHits hits = searchResponse.getHits();
-        SearchHit[] searchHits = hits.getHits();
-        for (SearchHit hit : searchHits) {
-            // do something with the SearchHit
-            Map<String, Object> source = hit.getSourceAsMap();
-            Object tags = source.get("tags");
+        final ElasticsearchReader reader = new ElasticsearchReader(indexPattern);
+        final TraceServiceGrpc.TraceServiceBlockingStub client = createGRPCClient();
+        System.out.println("Reading batch 0");
+        List<Map<String, Object>> sources = reader.nextBatch(restHighLevelClient);
+        System.out.println(String.format("Batch size: %d", sources.size()));
+        System.out.println(String.format("Total number of hits: %d", reader.getTotal()));
+        int i = 0;
+        while (i < 5 && sources.size() > 0) {
+            System.out.println(String.format("Processing batch %d as ExportTraceServiceRequest", i));
+            final ExportTraceServiceRequest exportTraceServiceRequest = ZipkinElasticToOtelProcessor.sourcesToRequest(sources);
+            client.export(exportTraceServiceRequest);
+            System.out.println(String.format("Reading batch %d", i+1));
+            sources = reader.nextBatch(restHighLevelClient);
+            i++;
         }
+        System.out.println("Clearing reader scroll context ...");
+        reader.clearScroll(restHighLevelClient);
+        System.out.println("Closing REST client");
         restHighLevelClient.close();
+        if (isTest) {
+            closeOtelTraceSource(oTelTraceSource);
+        }
     }
 
-    public static void testClient() {
-        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.newClient(
-                "gproto+http://127.0.0.1:21890/", TraceServiceGrpc.TraceServiceBlockingStub.class);
+    public static TraceServiceGrpc.TraceServiceBlockingStub createGRPCClient() {
+        return Clients.newClient("gproto+http://127.0.0.1:21890/", TraceServiceGrpc.TraceServiceBlockingStub.class);
+    }
+
+    public static OTelTraceSource setUpOtelTraceSource() {
+        final HashMap<String, Object> integerHashMap = new HashMap<>();
+        integerHashMap.put("request_timeout", 1);
+        final OTelTraceSource SOURCE = new OTelTraceSource(new PluginSetting("otel_trace_source", integerHashMap));
+        SOURCE.start(getBuffer());
+        return SOURCE;
+    }
+
+    public static void closeOtelTraceSource(final OTelTraceSource oTelTraceSource) {
+        oTelTraceSource.stop();
+    }
+
+    private static BlockingBuffer<Record<ExportTraceServiceRequest>> getBuffer() {
+        final HashMap<String, Object> integerHashMap = new HashMap<>();
+        integerHashMap.put("buffer_size", 5);
+        return new BlockingBuffer<>(new PluginSetting("blocking_buffer", integerHashMap));
     }
 }
