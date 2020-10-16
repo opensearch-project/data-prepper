@@ -78,15 +78,8 @@ public class ProcessWorker implements Runnable {
      */
     private boolean postToSink(final Collection<Record> records) {
         LOG.debug("Pipeline Worker: Submitting {} processed records to sinks", records.size());
-        boolean someSinksFailed;
-        final List<Future<Boolean>> sinkFutures = pipeline.publishToSinks(records);
-        final FutureHelperResult<Boolean> futureResults = FutureHelper.awaitFuturesIndefinitely(sinkFutures);
-        someSinksFailed = futureResults.getFailedReasons().size() != 0;
-        for(Boolean sinkResult : futureResults.getSuccessfulResults()) {
-            if(!sinkResult) {
-                return false;
-            }
-        }
-        return !someSinksFailed;
+        final List<Future<Void>> sinkFutures = pipeline.publishToSinks(records);
+        final FutureHelperResult<Void> futureResults = FutureHelper.awaitFuturesIndefinitely(sinkFutures);
+        return futureResults.getFailedReasons().size() == 0;
     }
 }

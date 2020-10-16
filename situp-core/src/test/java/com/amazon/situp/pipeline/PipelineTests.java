@@ -23,7 +23,7 @@ public class PipelineTests {
         assertThat("Sink records are not empty before Pipeline execution", preRun.isEmpty());
         testPipeline.execute();
         Thread.sleep(1000);
-        testPipeline.stop();
+        testPipeline.shutdown();
         List<Record<String>> postRun = testSink.getCollectedRecords();
         assertThat("Pipeline sink has records different from expected", postRun, is(TestSource.TEST_DATA));
     }

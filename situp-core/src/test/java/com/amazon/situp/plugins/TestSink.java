@@ -19,9 +19,8 @@ public class TestSink implements Sink<Record<String>> {
     }
 
     @Override
-    public boolean output(Collection<Record<String>> records) {
+    public void output(Collection<Record<String>> records) {
         records.stream().collect(Collectors.toCollection(() -> collectedRecords));
-        return true;
     }
 
     public List<Record<String>> getCollectedRecords() {

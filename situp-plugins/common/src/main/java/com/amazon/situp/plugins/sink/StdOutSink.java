@@ -28,12 +28,11 @@ public class StdOutSink implements Sink<Record<String>> {
     }
 
     @Override
-    public boolean output(final Collection<Record<String>> records) {
+    public void output(final Collection<Record<String>> records) {
         final Iterator<Record<String>> iterator = records.iterator();
         while (iterator.hasNext()) {
             final Record<String> record = iterator.next();
             System.out.println(record.getData());
         }
-        return true;
     }
 }

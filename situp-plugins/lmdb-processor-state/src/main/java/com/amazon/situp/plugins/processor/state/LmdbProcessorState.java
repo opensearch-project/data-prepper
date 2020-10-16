@@ -74,6 +74,21 @@ public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
         }
     }
 
+    public void putAll(Map<byte[], T> batch) {
+        try(Txn<ByteBuffer> txn = env.txnWrite()) {
+            batch.entrySet().forEach(tEntry -> {
+                try {
+                    final ByteBuffer keyBuffer = toDirectByteBuffer(tEntry.getKey());
+                    final ByteBuffer valueBuffer = toDirectByteBuffer(OBJECT_MAPPER.writeValueAsBytes(tEntry.getValue()));
+                    db.put(txn, keyBuffer, valueBuffer);
+                } catch (JsonProcessingException e) {
+                    LOG.error("Caugh exception writing to db in putAll", e);
+                }
+            });
+            txn.commit();
+        }
+    }
+
     //TODO: Test performance with single puts as above, and also with a putAll function which takes in a batch
     // of items to put into the lmdb
 
