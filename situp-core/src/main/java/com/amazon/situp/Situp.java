@@ -64,12 +64,21 @@ public class Situp {
     }
 
     /**
-     * Terminates the execution of SITUP.
+     * Triggers the shutdown of all configured valid pipelines.
      */
     public void shutdown() {
         transformationPipelines.forEach((name, pipeline) -> {
             pipeline.shutdown();
         });
+    }
+
+    /**
+     * Terminates the provided pipeline
+     */
+    public void shutdown(final String pipeline) {
+        if(transformationPipelines.containsKey(pipeline)) {
+            transformationPipelines.get(pipeline).shutdown();
+        }
     }
 
     private boolean initiateExecution() {
