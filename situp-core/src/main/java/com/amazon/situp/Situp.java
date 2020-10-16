@@ -73,7 +73,8 @@ public class Situp {
     }
 
     /**
-     * Terminates the provided pipeline
+     * Triggers shutdown of the provided pipeline, no-op if the pipeline does not exist.
+     * @param pipeline name of the pipeline
      */
     public void shutdown(final String pipeline) {
         if(transformationPipelines.containsKey(pipeline)) {

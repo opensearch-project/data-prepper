@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.lang.String.format;
 
@@ -160,20 +159,21 @@ public class Pipeline {
     }
 
     /**
-     * Initiates the shutdown of the pipeline with default timeout for process workers.
+     * Initiates shutdown of the pipeline.
      */
     public void shutdown() {
         shutdown(PROCESSOR_DEFAULT_TERMINATION_IN_MILLISECONDS);
     }
 
     /**
-     * Initiates the shutdown of the pipeline by notifying the components to stop processing.
+     * Initiates shutdown of the pipeline by notifying the components to stop processing.
+     *
      * @param processorTimeout the maximum time to wait after initiating shutdown to forcefully shutdown process worker
      */
     public void shutdown(int processorTimeout) {
         LOG.info("Pipeline [{}] - Received shutdown signal with timeout {}, will initiate the shutdown process",
                 name, processorTimeout);
-        try{
+        try {
             source.stop();
             stopRequested = true;
         } catch (Exception ex) {
