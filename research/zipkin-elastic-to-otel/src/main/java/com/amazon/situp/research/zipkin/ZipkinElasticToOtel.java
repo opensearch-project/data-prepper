@@ -6,11 +6,12 @@ import com.amazon.situp.plugins.buffer.BlockingBuffer;
 import com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration;
 import com.amazon.situp.plugins.source.oteltracesource.OTelTraceSource;
 import com.linecorp.armeria.client.Clients;
-import io.grpc.stub.StreamObserver;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -18,6 +19,8 @@ import java.util.List;
 import java.util.Map;
 
 public class ZipkinElasticToOtel {
+    public static final Logger LOG = LoggerFactory.getLogger(ZipkinElasticToOtel.class);
+
     public static void main(final String[] args) throws IOException {
         if (args.length != 1) {
             System.err.println("Missing indexPattern as arg");
@@ -43,10 +46,14 @@ public class ZipkinElasticToOtel {
         System.out.println(String.format("Batch size: %d", sources.size()));
         System.out.println(String.format("Total number of hits: %d", reader.getTotal()));
         int i = 0;
-        while (i < 5 && sources.size() > 0) {
+        while (sources.size() > 0) {
             System.out.println(String.format("Processing batch %d as ExportTraceServiceRequest", i));
-            final ExportTraceServiceRequest exportTraceServiceRequest = ZipkinElasticToOtelProcessor.sourcesToRequest(sources);
-            client.export(exportTraceServiceRequest);
+            try {
+                final ExportTraceServiceRequest exportTraceServiceRequest = ZipkinElasticToOtelProcessor.sourcesToRequest(sources);
+                client.export(exportTraceServiceRequest);
+            } catch (Exception e) {
+                LOG.error(e.getMessage(), e);
+            }
             System.out.println(String.format("Reading batch %d", i+1));
             sources = reader.nextBatch(restHighLevelClient);
             i++;
