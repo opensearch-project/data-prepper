@@ -37,6 +37,49 @@ public class RawTrace {
     private final Map<String, Object> resourceAttributes;
     private final Map<String, Object> spanAttributes;
 
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public String getSpanId() {
+        return spanId;
+    }
+
+    public String getParentSpanId() {
+        return parentSpanId;
+    }
+
+    public String getServiceName() {
+        return serviceName;
+    }
+
+    public String getStartTime() {
+        return startTime;
+    }
+
+    public String getEndTime() {
+        return endTime;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getInstrumentationName() {
+        return instrumentationName;
+    }
+
+    public String getInstrumentationVersion() {
+        return instrumentationVersion;
+    }
+
+    public Map<String, Object> getResourceAttributes() {
+        return resourceAttributes;
+    }
+
+    public Map<String, Object> getSpanAttributes() {
+        return spanAttributes;
+    }
 
     private RawTrace(RawTraceBuilder builder) {
         this.traceId = builder.traceId;
@@ -141,7 +184,7 @@ public class RawTrace {
 
     }
 
-    private static String convertStringNanosToISO8601(final String stringNanos) {
+    public static String convertStringNanosToISO8601(final String stringNanos) {
         final BigDecimal nanos = new BigDecimal(stringNanos);
         final long epochSeconds = nanos.divide(MILLIS_TO_NANOS.multiply(SEC_TO_MILLIS), RoundingMode.DOWN).longValue();
         final int nanoAdj = nanos.remainder(MILLIS_TO_NANOS.multiply(SEC_TO_MILLIS)).intValue();
