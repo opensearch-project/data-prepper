@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * PipelineConnector is a special type of Plugin which connects two pipelines acting both as Sink and Source.
+ * TODO Add connecting pipeline details for better log messaging
  *
  * @param <T>
  */
@@ -37,20 +38,20 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
     }
 
     @Override
-    public boolean output(final Collection<T> records) {
+    public void output(final Collection<T> records) {
         if (buffer != null && !isStopRequested.get()) {
             for (T record : records) {
                 try {
                     buffer.write(record, DEFAULT_WRITE_TIMEOUT); //TODO update to use from config
                 } catch (TimeoutException ex) {
                     LOG.error("Timed out writing to pipeline source", ex);
-                    return false;
+                    throw new RuntimeException("Timed out writing to buffer", ex);
                 }
             }
-            return true;
         } else {
             LOG.error("Pipeline source is currently not initialized or has been halted");
-            return false;
+            //Indicates the successive pipeline is shutdown - TODO update below
+            throw new RuntimeException("Receiving pipeline is not active, cannot proceed");
         }
     }
 }
