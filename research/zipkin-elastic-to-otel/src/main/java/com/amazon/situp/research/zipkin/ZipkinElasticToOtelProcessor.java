@@ -1,8 +1,6 @@
 package com.amazon.situp.research.zipkin;
 
 import com.google.protobuf.ByteString;
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.StringValue;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
@@ -10,11 +8,9 @@ import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
-import io.opentelemetry.proto.trace.v1.Status;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +35,7 @@ public class ZipkinElasticToOtelProcessor {
         final long endTime = startTime + duration;
         final String parentID = (String) source.get(PARENT_ID);
         final String spanKind = (String) source.get(SPAN_KIND);
+        // TODO: read span status from tags
         final Span.Builder spanBuilder = Span.newBuilder()
                 .setStartTimeUnixNano(startTime)
                 .setEndTimeUnixNano(endTime);
@@ -72,6 +69,7 @@ public class ZipkinElasticToOtelProcessor {
                     )
                     .build()
             );
+            // TODO: add library name and version
             final InstrumentationLibrarySpans.Builder isBuilder =
                     InstrumentationLibrarySpans.newBuilder();
             final List<Span> spanGroup = sourceGroup.stream()
