@@ -4,15 +4,7 @@ package com.amazon.situp.integration;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
-import com.amazon.situp.model.configuration.PluginSetting;
-import com.amazon.situp.model.record.Record;
-import com.amazon.situp.pipeline.Pipeline;
-import com.amazon.situp.plugins.buffer.BlockingBuffer;
-import com.amazon.situp.plugins.processor.oteltrace.OTelTraceRawProcessor;
 import com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration;
-import com.amazon.situp.plugins.sink.elasticsearch.ElasticsearchSink;
-import com.amazon.situp.plugins.sink.elasticsearch.IndexConfiguration;
-import com.amazon.situp.plugins.source.oteltracesource.OTelTraceSource;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
@@ -37,11 +29,13 @@ import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -57,26 +51,6 @@ public class EndToEndIntegrationTest {
 
     @Test
     public void testPipelineEndToEnd() throws IOException, InterruptedException {
-        //Setup pipeline
-        final HashMap<String, Object> integerHashMap = new HashMap<>();
-        integerHashMap.put("request_timeout", 1);
-        final OTelTraceSource oTelTraceSource = new OTelTraceSource(new PluginSetting("otel_trace_source", integerHashMap));
-        final OTelTraceRawProcessor oTelTraceRawProcessor = new OTelTraceRawProcessor();
-        final PluginSetting pluginSetting = generatePluginSetting(true, false, "testIndex", null);
-        ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
-        final Pipeline pipeline = new Pipeline(
-                "integTestPipeline",
-                oTelTraceSource,
-                getBuffer(),
-                Collections.singletonList(oTelTraceRawProcessor),
-                Arrays.asList(sink),
-                1, 100
-        );
-        pipeline.execute();
-
-        //Wait for source server to start up before sending data to it
-        Thread.sleep(3000);
-
         //Send data to otel trace source
         final ExportTraceServiceRequest exportTraceServiceRequest1 = getExportTraceServiceRequest(
                 getRandomResourceSpans(10)
@@ -94,11 +68,14 @@ public class EndToEndIntegrationTest {
 
         //Verify data in elasticsearch sink
         final List<Map<String, Object>> expectedDocuments = getExpectedDocuments(exportTraceServiceRequest1, exportTraceServiceRequest2);
-        final RestHighLevelClient restHighLevelClient =new RestHighLevelClient(
-                RestClient.builder(
-                        new HttpHost("localhost", 9200, "http")
-                )
-        );
+        final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        credentialsProvider.setCredentials(AuthScope.ANY,
+                new UsernamePasswordCredentials("admin", "admin"));
+        final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
+                Collections.singletonList("https://0.0.0.0:9200"));
+        builder.withUsername("admin");
+        builder.withPassword("admin");
+        final RestHighLevelClient restHighLevelClient = builder.build().createClient();
         final SearchRequest searchRequest = new SearchRequest(INDEX_NAME);
         searchRequest.source(
                 SearchSourceBuilder.searchSource().size(100)
@@ -213,22 +190,5 @@ public class EndToEndIntegrationTest {
     private String getServiceName(final ResourceSpans resourceSpans) {
         return resourceSpans.getResource().getAttributesList().stream().filter(kv -> kv.getKey() == "service.name")
                 .findFirst().get().getValue().getStringValue();
-    }
-
-    private static BlockingBuffer<Record<ExportTraceServiceRequest>> getBuffer() {
-        final HashMap<String, Object> integerHashMap = new HashMap<>();
-        integerHashMap.put("buffer_size", 1);
-        return new BlockingBuffer<>(new PluginSetting("blocking_buffer", integerHashMap));
-    }
-
-    private PluginSetting generatePluginSetting(final boolean isRaw, final boolean isServiceMap, final String indexAlias, final String templateFilePath) {
-        final Map<String, Object> metadata = new HashMap<>();
-        metadata.put(IndexConfiguration.TRACE_ANALYTICS_RAW_FLAG, isRaw);
-        metadata.put(IndexConfiguration.TRACE_ANALYTICS_SERVICE_MAP_FLAG, isServiceMap);
-        metadata.put(ConnectionConfiguration.HOSTS, Arrays.asList("localhost:9200"));
-        metadata.put(IndexConfiguration.INDEX_ALIAS, indexAlias);
-        metadata.put(IndexConfiguration.TEMPLATE_FILE, templateFilePath);
-
-        return new PluginSetting("elasticsearch", metadata);
     }
 }
