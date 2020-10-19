@@ -56,8 +56,8 @@ public class ZipkinElasticToOtelProcessor {
         final Integer statusCode = extractStatusCodeFromTags(tags);
 
         final Span.Builder spanBuilder = Span.newBuilder()
-                .setStartTimeUnixNano(startTime)
-                .setEndTimeUnixNano(endTime);
+                .setStartTimeUnixNano(startTime * 1000) // Convert to UnixNano
+                .setEndTimeUnixNano(endTime * 1000); // Convert to UnixNano
 
         if (traceID != null) {
             spanBuilder.setTraceId(ByteString.copyFromUtf8(traceID));
