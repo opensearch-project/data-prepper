@@ -58,6 +58,7 @@ public class ZipkinElasticToOtelProcessor {
         final Span.Builder spanBuilder = Span.newBuilder()
                 .setStartTimeUnixNano(startTime)
                 .setEndTimeUnixNano(endTime);
+
         if (traceID != null) {
             spanBuilder.setTraceId(ByteString.copyFromUtf8(traceID));
         }
