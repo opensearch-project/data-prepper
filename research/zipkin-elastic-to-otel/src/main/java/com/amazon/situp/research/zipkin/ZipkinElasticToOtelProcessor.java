@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 @SuppressWarnings("unchecked")
 public class ZipkinElasticToOtelProcessor {
     public static String SPAN_ID = "id";
+    public static String NAME = "name";
     public static String TRACE_ID = "traceId";
     public static String TIME_STAMP = "timestamp";
     public static String DURATION = "duration";
@@ -44,6 +45,7 @@ public class ZipkinElasticToOtelProcessor {
     public static Span sourceToSpan(final Map<String, Object> source) {
         final String traceID = (String) source.get(TRACE_ID);
         final String spanID = (String) source.get(SPAN_ID);
+        final String name = (String) source.get(NAME);
         final Long startTime = (Long) source.get(TIME_STAMP);
         final Long duration = Long.valueOf((Integer) source.get(DURATION));
         final long endTime = startTime + duration;
@@ -61,6 +63,9 @@ public class ZipkinElasticToOtelProcessor {
         }
         if (spanID != null) {
             spanBuilder.setSpanId(ByteString.copyFromUtf8(spanID));
+        }
+        if (name != null) {
+            spanBuilder.setName(name);
         }
         if (parentID != null) {
             spanBuilder.setParentSpanId(ByteString.copyFromUtf8(parentID));
