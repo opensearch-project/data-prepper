@@ -1,5 +1,8 @@
 package com.amazon.situp.research.zipkin;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
@@ -8,6 +11,8 @@ import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
+import io.opentelemetry.proto.trace.v1.Status;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,6 +31,15 @@ public class ZipkinElasticToOtelProcessor {
     public static String PARENT_ID = "parentId";
     public static String LOCAL_ENDPOINT = "localEndpoint";
     public static String SERVICE_NAME = "serviceName";
+    public static String TAGS = "tags";
+    public static String HTTP_STATUS_CODE = "http.status_code";
+    public static String RESPONSE_STATUS = "response.status";
+    public static String ERROR = "error";
+    public static String RETURN_VALUE = "return value";
+    public static String STATUS_CODE_VALUE = "statusCodeValue";
+
+    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final TypeReference<Map<String, Object>> typeRef = new TypeReference<Map<String, Object>>() {};
 
     public static Span sourceToSpan(final Map<String, Object> source) {
         final String traceID = (String) source.get(TRACE_ID);
@@ -36,6 +50,9 @@ public class ZipkinElasticToOtelProcessor {
         final String parentID = (String) source.get(PARENT_ID);
         final String spanKind = (String) source.get(SPAN_KIND);
         // TODO: read span status from tags
+        final Map<String, Object> tags = (Map<String, Object>) source.get(TAGS);
+        final Integer statusCode = extractStatusCodeFromTags(tags);
+
         final Span.Builder spanBuilder = Span.newBuilder()
                 .setStartTimeUnixNano(startTime)
                 .setEndTimeUnixNano(endTime);
@@ -51,8 +68,44 @@ public class ZipkinElasticToOtelProcessor {
         if (spanKind != null) {
             spanBuilder.setKind(Span.SpanKind.valueOf(spanKind));
         }
+        if (statusCode != null) {
+            spanBuilder.setStatus(Status.newBuilder().setCodeValue(statusCode));
+        }
 
         return spanBuilder.build();
+    }
+
+    public static Integer extractStatusCodeFromTags(final Map<String, Object> tags) {
+        for (final Map.Entry<String, Object> entry:tags.entrySet()) {
+            final String key = entry.getKey();
+            if (key.equals(HTTP_STATUS_CODE)) {
+                final String value = (String) entry.getValue();
+                if (StringUtils.isNumeric(value)) {
+                    return Integer.parseInt(value);
+                }
+            } else if (key.equals(RESPONSE_STATUS)) {
+                final String value = (String) entry.getValue();
+                if (StringUtils.isNumeric(value)) {
+                    return Integer.parseInt(value);
+                }
+            } else if (key.equals(ERROR)) {
+                final String value = (String) entry.getValue();
+                if (StringUtils.isNumeric(value)) {
+                    return Integer.parseInt(value);
+                }
+            } else if (key.equals(RETURN_VALUE)) {
+                // Extract only if value is json string
+                try {
+                    final Map<String, Object> value = mapper.readValue((String) entry.getValue(), typeRef);
+                    final Integer statusCodeValue = (Integer) value.get(STATUS_CODE_VALUE);
+                    if (statusCodeValue != null) {
+                        return statusCodeValue;
+                    }
+                } catch (final JsonProcessingException ignored) { }
+            }
+        }
+
+        return null;
     }
 
     public static ExportTraceServiceRequest sourcesToRequest(final List<Map<String, Object>> sources) {
