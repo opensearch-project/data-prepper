@@ -53,7 +53,7 @@ public class PluginSetting {
      * the attribute
      */
     public Integer getIntegerOrDefault(final String attribute, final int defaultValue) {
-        return (Integer) getAttributeOrDefault(attribute, defaultValue);
+        return ((Number) getAttributeOrDefault(attribute, defaultValue)).intValue();
     }
 
     /**
@@ -92,7 +92,7 @@ public class PluginSetting {
      * the attribute
      */
     public Long getLongOrDefault(final String attribute, final long defaultValue) {
-        return (Long) getAttributeOrDefault(attribute, defaultValue);
+        return ((Number) getAttributeOrDefault(attribute, defaultValue)).longValue();
     }
 
 }

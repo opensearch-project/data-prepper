@@ -2,8 +2,8 @@ otel-es-raw-pipeline:
   source:
     apm_trace_source:
   sink:
-    pipeline:
-      name: "otel-es-enrich-pipeline"
+    - pipeline:
+        name: "otel-es-enrich-pipeline"
   workers: 5
   delay: 3000
 otel-es-enrich-pipeline:
@@ -11,6 +11,8 @@ otel-es-enrich-pipeline:
     pipeline:
       name: "otel-es-raw-pipeline"
   sink:
-    elasticsearch:
-      hosts: ["https://search-sample-app-test-lqwynrnd2ikcuzfsrdilv4stbq.us-west-2.es.amazonaws.com"]
+    - elasticsearch:
+        hosts: ["https://search-sample-app-test-lqwynrnd2ikcuzfsrdilv4stbq.us-west-2.es.amazonaws.com"]
+        trace_analytics_service_map: true
+        bulk_size: 4
 

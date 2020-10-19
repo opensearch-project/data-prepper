@@ -14,16 +14,26 @@ import java.util.stream.Stream;
 
 @SitupPlugin(name = "test_source", type = PluginType.SOURCE)
 public class TestSource implements Source<Record<String>> {
-    public static final List<Record<String>> TEST_DATA = Stream.of("THIS", "IS", "TEST", "DATA")
+    public static final List<Record<String>> TEST_DATA = Stream.of("TEST")
             .map(Record::new).collect(Collectors.toList());
     private boolean isStopRequested;
+    private boolean failSourceForTest;
 
     public TestSource() {
-        isStopRequested = false;
+        this.isStopRequested = false;
+        this.failSourceForTest = false;
+    }
+
+    public TestSource(final boolean failSourceForTest) {
+        this.isStopRequested = false;
+        this.failSourceForTest = failSourceForTest;
     }
 
     @Override
     public void start(Buffer<Record<String>> buffer) {
+        if(failSourceForTest) {
+            throw new RuntimeException("Source is expected to fail");
+        }
         final Iterator<Record<String>> iterator = TEST_DATA.iterator();
             while (iterator.hasNext() && !isStopRequested) {
                 try {

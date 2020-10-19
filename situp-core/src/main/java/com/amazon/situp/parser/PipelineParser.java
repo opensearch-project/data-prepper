@@ -51,7 +51,7 @@ public class PipelineParser {
     public Map<String, Pipeline> parseConfiguration() {
         try {
             final Map<String, PipelineConfiguration> pipelineConfigurationMap = OBJECT_MAPPER.readValue(
-                    new File(configurationFileLocation),
+                    getClass().getClassLoader().getResourceAsStream(configurationFileLocation),
                     new TypeReference<Map<String, PipelineConfiguration>>() {
                     });
             final List<String> allPipelineNames = PipelineConfigurationValidator.validateAndGetPipelineNames(pipelineConfigurationMap);
