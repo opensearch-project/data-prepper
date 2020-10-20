@@ -17,7 +17,6 @@ public class Situp {
     private static final Logger LOG = LoggerFactory.getLogger(Situp.class);
 
     private static final String DEFAULT_CONFIG_LOCATION = "situp-core/src/main/resources/situp-default.yml";
-    private static final String ZIPKIN_CONFIG_LOCATION = "situp-core/src/main/resources/trace_analytics.yml";
     private Map<String, Pipeline> transformationPipelines;
 
     private static volatile Situp situp;
@@ -44,7 +43,7 @@ public class Situp {
      * @return true if the execute successfully initiates the SITUP
      */
     public boolean execute() {
-        return execute(ZIPKIN_CONFIG_LOCATION);
+        return execute(DEFAULT_CONFIG_LOCATION);
     }
 
     /**
