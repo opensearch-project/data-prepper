@@ -53,7 +53,10 @@ public class ZipkinElasticToOtelProcessor {
         final String spanKind = (String) source.get(SPAN_KIND);
         // TODO: read span status from tags
         final Map<String, Object> tags = (Map<String, Object>) source.get(TAGS);
-        final Integer statusCode = extractStatusCodeFromTags(tags);
+        Integer statusCode = null;
+        if (tags != null) {
+            statusCode = extractStatusCodeFromTags(tags);
+        }
 
         final Span.Builder spanBuilder = Span.newBuilder()
                 .setStartTimeUnixNano(startTime * 1000) // Convert to UnixNano
@@ -103,9 +106,11 @@ public class ZipkinElasticToOtelProcessor {
                 // Extract only if value is json string
                 try {
                     final Map<String, Object> value = mapper.readValue((String) entry.getValue(), typeRef);
-                    final Integer statusCodeValue = (Integer) value.get(STATUS_CODE_VALUE);
-                    if (statusCodeValue != null) {
-                        return statusCodeValue;
+                    if (value != null) {
+                        final Integer statusCodeValue = (Integer) value.get(STATUS_CODE_VALUE);
+                        if (statusCodeValue != null) {
+                            return statusCodeValue;
+                        }
                     }
                 } catch (final JsonProcessingException ignored) { }
             }
