@@ -11,16 +11,11 @@ public class SitupExecute {
 
     public static void main(String[] args) {
         final Situp situp = Situp.getInstance();
-        boolean executeSubmissionStatus;
         if (args.length > 0) {
-            executeSubmissionStatus = situp.execute(args[0]);
+            situp.execute(args[0]);
         } else {
-            executeSubmissionStatus = situp.execute();
-        }
-        if (executeSubmissionStatus) {
-            LOG.info("Submitted execution request successfully");
-        } else {
-            LOG.warn("Something went wrong - Failed to submit request");
+            LOG.error("Configuration file is required");
+            System.exit(1);
         }
     }
 }

@@ -15,14 +15,14 @@ public class TestDataProvider {
     public static final String TEST_PLUGIN_NAME_2 = "test-plugin-2";
     public static final Integer TEST_WORKERS = 5;
     public static final Integer TEST_DELAY = 3_000;
-    public static final String VALID_MULTIPLE_PIPELINE_CONFIG_FILE = "valid_multiple_pipeline_configuration.yml";
-    public static final String CYCLE_MULTIPLE_PIPELINE_CONFIG_FILE = "cyclic_multiple_pipeline_configuration.yml";
-    public static final String INCORRECT_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE = "incorrect_source_multiple_pipeline_configuration.yml";
-    public static final String MISSING_NAME_MULTIPLE_PIPELINE_CONFIG_FILE = "missing_name_multiple_pipeline_configuration.yml";
-    public static final String MISSING_PIPELINE_MULTIPLE_PIPELINE_CONFIG_FILE = "missing_pipeline_multiple_pipeline_configuration.yml";
-    public static final String VALID_MULTIPLE_SINKS_CONFIG_FILE = "valid_multiple_sinks.yml";
-    public static final String VALID_MULTIPLE_PROCESSORS_CONFIG_FILE = "valid_multiple_sinks.yml";
-    public static final String NO_PIPELINES_EXECUTE_CONFIG_FILE = "no_pipelines_to_execute.yml";
+    public static final String VALID_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/valid_multiple_pipeline_configuration.yml";
+    public static final String CYCLE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/cyclic_multiple_pipeline_configuration.yml";
+    public static final String INCORRECT_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/incorrect_source_multiple_pipeline_configuration.yml";
+    public static final String MISSING_NAME_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/missing_name_multiple_pipeline_configuration.yml";
+    public static final String MISSING_PIPELINE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/missing_pipeline_multiple_pipeline_configuration.yml";
+    public static final String VALID_MULTIPLE_SINKS_CONFIG_FILE = "src/test/resources/valid_multiple_sinks.yml";
+    public static final String VALID_MULTIPLE_PROCESSORS_CONFIG_FILE = "src/test/resources/valid_multiple_sinks.yml";
+    public static final String NO_PIPELINES_EXECUTE_CONFIG_FILE = "src/test/resources/no_pipelines_to_execute.yml";
 
     public static Set<String> VALID_MULTIPLE_PIPELINE_NAMES = new HashSet<>(Arrays.asList("test-pipeline-1",
             "test-pipeline-2", "test-pipeline-3"));
