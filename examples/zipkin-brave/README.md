@@ -1,6 +1,6 @@
-## Zipkin brave
+## Zipkin sleuth-webmvc-example
 
-This demo will use the [Zipkin brave example](https://github.com/openzipkin/brave-example). 
+This demo will use the [sleuth-webmvc-example](https://github.com/openzipkin/sleuth-webmvc-example). 
 
 #### Required:
 * Docker - If you run Docker locally, we recommend allowing Docker to use at least 4 GB of RAM in Preferences > Resources.

@@ -3,8 +3,10 @@ services:
   # Generate traffic by hitting http://localhost:8081
   frontend:
     container_name: frontend
-    image: openzipkin/example-brave:armeria
+    image: openzipkin/example-sleuth-webmvc
     command: frontend
+    environment:
+      JAVA_OPTS: -Dspring.zipkin.baseUrl=http://otel-collector:9411
     ports:
       - 8081:8081
     networks:
@@ -15,13 +17,16 @@ services:
   # Serves the /api endpoint the frontend uses
   backend:
     container_name: backend
-    image: openzipkin/example-brave:armeria
+    image: openzipkin/example-sleuth-webmvc
     command: backend
+    environment:
+      JAVA_OPTS: -Dspring.zipkin.baseUrl=http://otel-collector:9411
+    ports:
+      - 9000:9000
     networks:
       - my_network
     depends_on:
       - zipkin
-  # View traces at http://127.0.0.1:9411/zipkin
   zipkin:
     image: openzipkin/zipkin:latest
     container_name: zipkin
@@ -49,7 +54,7 @@ services:
       - ${PWD}:/project
       - ./otel-collector-config.yml:/etc/otel-collector-config.yml
     ports:
-      - "14250:14250"
+      - "9411"   # Zipkin receiver
     networks:
       - my_network
     depends_on:
