@@ -1,0 +1,14 @@
+receivers:
+  zipkin:
+
+exporters:
+  otlp/2:
+    endpoint: situp:21890
+    insecure: true
+  logging:
+
+service:
+  pipelines:
+    traces:
+      receivers: [zipkin]
+      exporters: [logging, otlp/2]

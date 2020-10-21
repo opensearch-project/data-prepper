@@ -1,0 +1,80 @@
+version: "3.7"
+services:
+  # Generate traffic by hitting http://localhost:8081
+  frontend:
+    container_name: frontend
+    image: openzipkin/example-brave:armeria
+    command: frontend
+    ports:
+      - 8081:8081
+    networks:
+      - my_network
+    depends_on:
+      - backend
+      - zipkin
+  # Serves the /api endpoint the frontend uses
+  backend:
+    container_name: backend
+    image: openzipkin/example-brave:armeria
+    command: backend
+    networks:
+      - my_network
+    depends_on:
+      - zipkin
+  # View traces at http://127.0.0.1:9411/zipkin
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: zipkin
+    ports:
+      - 9411:9411
+    networks:
+      - my_network
+  situp:
+    container_name: situp
+    build:
+      context: ../..
+      dockerfile: examples/Dockerfile
+    ports:
+      - "21890:21890"
+    networks:
+      - my_network
+    depends_on:
+      - opendistro-for-elasticsearch
+  otel-collector:
+    container_name: otel-collector
+    image: otel/opentelemetry-collector-contrib:0.8.0
+    command: [ "--config=/etc/otel-collector-config.yml" ]
+    working_dir: "/project"
+    volumes:
+      - ${PWD}:/project
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "14250:14250"
+    networks:
+      - my_network
+    depends_on:
+      - zipkin
+  opendistro-for-elasticsearch:
+    container_name: node-0.example.com
+    image: 'amazon/opendistro-for-elasticsearch:1.10.1'
+    ports:
+      - '9200:9200'
+      - '9600:9600'
+    environment:
+      - discovery.type=single-node
+    networks:
+      - my_network
+  kibana:
+    image: amazon/opendistro-for-elasticsearch-kibana:1.10.1
+    container_name: odfe-kibana
+    ports:
+      - 5601:5601
+    expose:
+      - "5601"
+    environment:
+      ELASTICSEARCH_URL: https://node-0.example.com:9200
+      ELASTICSEARCH_HOSTS: https://node-0.example.com:9200
+    networks:
+      - my_network
+networks:
+  my_network:
