@@ -9,14 +9,13 @@ import java.util.Map;
 
 /**
  * SITUP is the entry point into the execution engine. An instance of this class is provided by
- * {@link #getInstance()} method and the same can eb used to trigger execution via {@link #execute()} of the
+ * {@link #getInstance()} method and the same can eb used to trigger execution via {@link #execute(String)} ()} of the
  * {@link Pipeline} with default configuration or {@link #execute(String)} to provide custom configuration file. Also,
  * the same instance reference can be further used to {@link #shutdown()} the execution.
  */
 public class Situp {
     private static final Logger LOG = LoggerFactory.getLogger(Situp.class);
 
-    private static final String DEFAULT_CONFIG_LOCATION = "situp-default.yml";
     private Map<String, Pipeline> transformationPipelines;
 
     private static volatile Situp situp;
@@ -35,15 +34,6 @@ public class Situp {
         if (situp != null) {
             throw new RuntimeException("Please use getInstance() for an instance of this SITUP");
         }
-    }
-
-    /**
-     * Executes SITUP engine using the default configuration file/
-     *
-     * @return true if the execute successfully initiates the SITUP
-     */
-    public boolean execute() {
-        return execute(DEFAULT_CONFIG_LOCATION);
     }
 
     /**
