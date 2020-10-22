@@ -44,12 +44,12 @@ public class IndexConfigurationTests {
 
   @Test
   public void testValidCustom() throws MalformedURLException {
-    final String fakeTemplateFilePath = Objects.requireNonNull(
+    final String defaultTemplateFilePath = Objects.requireNonNull(
             getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
     final String testIndexAlias = "foo";
     IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
             .withIndexAlias(testIndexAlias)
-            .withTemplateFile(fakeTemplateFilePath)
+            .withTemplateFile(defaultTemplateFilePath)
             .withBulkSize(10)
             .build();
 
@@ -118,12 +118,12 @@ public class IndexConfigurationTests {
 
   @Test
   public void testValidCustomWithTemplateFileAndShards() throws MalformedURLException {
-    final String fakeTemplateFilePath = Objects.requireNonNull(
+    final String defaultTemplateFilePath = Objects.requireNonNull(
             getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
     final String testIndexAlias = "foo";
     IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
             .withIndexAlias(testIndexAlias)
-            .withTemplateFile(fakeTemplateFilePath)
+            .withTemplateFile(defaultTemplateFilePath)
             .withBulkSize(10)
             .build();
 
@@ -190,13 +190,13 @@ public class IndexConfigurationTests {
 
   @Test
   public void testReadIndexConfigCustom() throws MalformedURLException {
-    final String fakeTemplateFilePath = Objects.requireNonNull(
+    final String defaultTemplateFilePath = Objects.requireNonNull(
             getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
     final String testIndexAlias = "foo";
     final long testBulkSize = 10L;
     final String testIdField = "someId";
     final PluginSetting pluginSetting = generatePluginSetting(
-            false, false, testIndexAlias, fakeTemplateFilePath, testBulkSize, testIdField);
+            false, false, testIndexAlias, defaultTemplateFilePath, testBulkSize, testIdField);
     final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
     assertEquals(CUSTOM, indexConfiguration.getIndexType());
     assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
