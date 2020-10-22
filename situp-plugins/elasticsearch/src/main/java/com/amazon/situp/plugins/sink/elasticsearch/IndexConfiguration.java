@@ -36,17 +36,15 @@ public class IndexConfiguration {
 
     @SuppressWarnings("unchecked")
     private IndexConfiguration(final Builder builder) {
-        final String indexType;
         if (builder.isRaw && builder.isServiceMap) {
             throw new IllegalStateException("trace_analytics_raw and trace_analytics_service_map cannot be both true.");
         } else if (builder.isRaw) {
-            indexType = IndexConstants.RAW;
+            this.indexType  = IndexConstants.RAW;
         } else if (builder.isServiceMap) {
-            indexType = IndexConstants.SERVICE_MAP;
+            this.indexType  = IndexConstants.SERVICE_MAP;
         } else {
-            indexType = IndexConstants.CUSTOM;
+            this.indexType  = IndexConstants.CUSTOM;
         }
-        this.indexType = indexType;
 
         this.indexTemplate = readIndexTemplate(builder.templateFile, indexType);
 
