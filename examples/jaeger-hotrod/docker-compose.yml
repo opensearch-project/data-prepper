@@ -5,9 +5,10 @@ services:
     build:
       context: ../..
       dockerfile: examples/Dockerfile
-    command: sh /usr/local/bin/wait-for-odfe.sh
+    working_dir: /app
+    command: sh situp-wait-for-odfe-and-start.sh
     volumes:
-      - ./wait-for-odfe.sh:/usr/local/bin/wait-for-odfe.sh
+      - ../situp-wait-for-odfe-and-start.sh:/app/situp-wait-for-odfe-and-start.sh
     ports:
       - "21890:21890"
     networks:
