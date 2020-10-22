@@ -1,10 +1,15 @@
 package com.amazon.situp.plugins.sink.elasticsearch;
 
 import com.amazon.situp.model.configuration.PluginSetting;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -13,17 +18,20 @@ public class IndexConfiguration {
   /**
    * TODO: add index management policy parameters
    */
+  public static final String SETTINGS = "settings";
   public static final String TRACE_ANALYTICS_RAW_FLAG = "trace_analytics_raw";
   public static final String TRACE_ANALYTICS_SERVICE_MAP_FLAG = "trace_analytics_service_map";
   public static final String INDEX_ALIAS = "index";
   public static final String TEMPLATE_FILE = "template_file";
+  public static final String NUM_SHARDS = "number_of_shards";
+  public static final String NUM_REPLICAS = "number_of_replicas";
   public static final String BULK_SIZE = "bulk_size";
   public static final String DOCUMENT_ID_FIELD = "document_id_field";
   public static final long DEFAULT_BULK_SIZE = 5L;
 
   private final String indexType;
   private final String indexAlias;
-  private final URL templateURL;
+  private final Map<String, Object> indexTemplate;
   private final String documentIdField;
   private final long bulkSize;
 
@@ -35,8 +43,8 @@ public class IndexConfiguration {
     return indexAlias;
   }
 
-  public URL getTemplateURL() {
-    return templateURL;
+  public Map<String, Object> getIndexTemplate() {
+    return indexTemplate;
   }
 
   public String getDocumentIdField() {
@@ -52,6 +60,8 @@ public class IndexConfiguration {
     private boolean isServiceMap = false;
     private String indexAlias;
     private String templateFile;
+    private int numShards;
+    private int numReplicas;
     private String documentIdField;
     private long bulkSize = DEFAULT_BULK_SIZE;
 
@@ -91,11 +101,22 @@ public class IndexConfiguration {
       return this;
     }
 
+    public Builder withNumShards(final int numShards) {
+      this.numShards = numShards;
+      return this;
+    }
+
+    public Builder withNumReplicas(final int numReplicas) {
+      this.numReplicas = numReplicas;
+      return this;
+    }
+
     public IndexConfiguration build() {
       return new IndexConfiguration(this);
     }
   }
 
+  @SuppressWarnings("unchecked")
   private IndexConfiguration(final Builder builder) {
     final String indexType;
     if (builder.isRaw && builder.isServiceMap) {
@@ -109,23 +130,17 @@ public class IndexConfiguration {
     }
     this.indexType = indexType;
 
-    URL templateURL = null;
-    if (indexType.equals(IndexConstants.RAW)) {
-      templateURL = getClass().getClassLoader()
-          .getResource(IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
-    } else if (indexType.equals(IndexConstants.SERVICE_MAP)) {
-      templateURL = getClass().getClassLoader()
-          .getResource(IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
-    } else {
-      if (builder.templateFile != null) {
-        try {
-          templateURL = new File(builder.templateFile).toURI().toURL();
-        } catch (MalformedURLException e) {
-          throw new IllegalStateException("Invalid template file path");
-        }
-      }
+    this.indexTemplate = readIndexTemplate(builder.templateFile, indexType);
+
+    if(builder.numReplicas>0) {
+      indexTemplate.putIfAbsent(SETTINGS, new HashMap<>());
+      ((Map<String, Object>)indexTemplate.get(SETTINGS)).putIfAbsent(NUM_REPLICAS, builder.numReplicas);
     }
-    this.templateURL = templateURL;
+
+    if(builder.numShards>0) {
+      indexTemplate.putIfAbsent(SETTINGS, new HashMap<>());
+      ((Map<String, Object>)indexTemplate.get(SETTINGS)).putIfAbsent(NUM_SHARDS, builder.numShards);
+    }
 
     String indexAlias = builder.indexAlias;
     if (IndexConstants.TYPE_TO_DEFAULT_ALIAS.containsKey(indexType)) {
@@ -159,6 +174,8 @@ public class IndexConfiguration {
     if (templateFile != null) {
       builder = builder.withTemplateFile(templateFile);
     }
+    builder = builder.withNumShards(pluginSetting.getIntegerOrDefault(NUM_SHARDS, 0));
+    builder = builder.withNumShards(pluginSetting.getIntegerOrDefault(NUM_REPLICAS, 0));
     final Long batchSize = pluginSetting.getLongOrDefault(BULK_SIZE, DEFAULT_BULK_SIZE);
     builder = builder.withBulkSize(batchSize);
     final String documentId = pluginSetting.getStringOrDefault(DOCUMENT_ID_FIELD, null);
@@ -166,5 +183,36 @@ public class IndexConfiguration {
       builder = builder.withDocumentIdField(documentId);
     }
     return builder.build();
+  }
+
+  /**
+   * This method is used in the creation of IndexConfiguration object. It takes in the template file path
+   * or index type and returns the index template read from the file or specific to index type or returns an
+   * empty map.
+   * @param templateFile
+   * @param indexType
+   * @return
+   */
+  private Map<String, Object> readIndexTemplate(final String templateFile, final String indexType) {
+    try {
+      URL templateURL = null;
+      if (indexType.equals(IndexConstants.RAW)) {
+        templateURL = getClass().getClassLoader()
+                .getResource(IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
+      } else if (indexType.equals(IndexConstants.SERVICE_MAP)) {
+        templateURL = getClass().getClassLoader()
+                .getResource(IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
+      } else if (templateFile != null) {
+        templateURL = new File(templateFile).toURI().toURL();
+      }
+      if(templateURL!=null) {
+        return new ObjectMapper().readValue(templateURL, new TypeReference<Map<String, Object>>() {
+        });
+      } else {
+        return new HashMap<>();
+      }
+    } catch (IOException ex) {
+      throw new IllegalStateException("Index template is not valid.", ex);
+    }
   }
 }

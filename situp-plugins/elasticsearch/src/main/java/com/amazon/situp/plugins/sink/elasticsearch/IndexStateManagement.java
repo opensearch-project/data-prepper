@@ -13,6 +13,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.HashMap;
 import java.util.Map;
 
 public class IndexStateManagement {
@@ -48,11 +49,12 @@ public class IndexStateManagement {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public static void attachPolicy(
-            final Map<String, Object> settings, final String ismPolicyId, final String rolloverAlias) {
-        assert settings != null;
+            final IndexConfiguration configuration, final String ismPolicyId, final String rolloverAlias) {
+        configuration.getIndexTemplate().putIfAbsent("settings", new HashMap<>());
         // Attach policy_id and rollover_alias
-        settings.put(IndexConstants.ISM_POLICY_ID_SETTING, ismPolicyId);
-        settings.put(IndexConstants.ISM_ROLLOVER_ALIAS_SETTING, rolloverAlias);
+        ((Map<String, Object>)configuration.getIndexTemplate().get("settings")).put(IndexConstants.ISM_POLICY_ID_SETTING, ismPolicyId);
+        ((Map<String, Object>)configuration.getIndexTemplate().get("settings")).put(IndexConstants.ISM_ROLLOVER_ALIAS_SETTING, rolloverAlias);
     }
 }
