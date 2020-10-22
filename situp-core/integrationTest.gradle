@@ -11,6 +11,7 @@ apply plugin: 'com.bmuschko.docker-remote-api'
 
 import com.bmuschko.gradle.docker.tasks.container.*
 import com.bmuschko.gradle.docker.tasks.image.*
+import com.bmuschko.gradle.docker.tasks.network.*
 
 sourceSets {
     integrationTest {
@@ -30,6 +31,18 @@ dependencies {
     integrationTestImplementation 'com.google.protobuf:protobuf-java-util:3.13.0'
     integrationTestImplementation ("com.linecorp.armeria:armeria:1.0.0")
     integrationTestImplementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:7.8.1"
+}
+
+/**
+ * End-to-end test docker network
+ */
+task createSitupNetwork(type: DockerCreateNetwork) {
+    networkName = "situp_network"
+}
+
+task removeSitupNetwork(type: DockerRemoveNetwork) {
+    dependsOn createSitupNetwork
+    networkId = createSitupNetwork.getNetworkId()
 }
 
 /**
@@ -55,7 +68,9 @@ task buildSitupDockerImage(type: DockerBuildImage) {
 
 task createSitupDockerContainer(type: DockerCreateContainer) {
     dependsOn buildSitupDockerImage
+    dependsOn createSitupNetwork
     hostConfig.portBindings = ['21890:21890']
+    hostConfig.network = createSitupNetwork.getNetworkName()
     targetImageId buildSitupDockerImage.getImageId()
 }
 
@@ -75,9 +90,12 @@ task stopSitupDockerContainer(type: DockerStopContainer) {
  * ODFE Docker tasks
  */
 task createOdfeDockerContainer(type: DockerCreateContainer) {
+    dependsOn createSitupNetwork
     targetImageId 'amazon/opendistro-for-elasticsearch:1.9.0'
+    containerName = "node-0.example.com"
     hostConfig.portBindings = ['9200:9200', '9600:9600']
     hostConfig.autoRemove = true
+    hostConfig.network = createSitupNetwork.getNetworkName()
     envVars = ['discovery.type':'single-node']
 }
 
@@ -111,4 +129,5 @@ task endToEndTest(type: Test) {
 
     finalizedBy stopOdfeDockerContainer
     finalizedBy stopSitupDockerContainer
+    finalizedBy removeSitupNetwork
 }
