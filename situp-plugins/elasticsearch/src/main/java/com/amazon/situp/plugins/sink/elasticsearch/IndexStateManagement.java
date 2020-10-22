@@ -54,7 +54,7 @@ public class IndexStateManagement {
             final IndexConfiguration configuration, final String ismPolicyId, final String rolloverAlias) {
         configuration.getIndexTemplate().putIfAbsent("settings", new HashMap<>());
         // Attach policy_id and rollover_alias
-        ((Map<String, Object>)configuration.getIndexTemplate().get("settings")).put(IndexConstants.ISM_POLICY_ID_SETTING, ismPolicyId);
-        ((Map<String, Object>)configuration.getIndexTemplate().get("settings")).put(IndexConstants.ISM_ROLLOVER_ALIAS_SETTING, rolloverAlias);
+        ((Map<String, Object>) configuration.getIndexTemplate().get("settings")).put(IndexConstants.ISM_POLICY_ID_SETTING, ismPolicyId);
+        ((Map<String, Object>) configuration.getIndexTemplate().get("settings")).put(IndexConstants.ISM_ROLLOVER_ALIAS_SETTING, rolloverAlias);
     }
 }
