@@ -71,7 +71,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     LOG.info("Starting Elasticsearch sink");
     restHighLevelClient = esSinkConfig.getConnectionConfiguration().createClient();
     final String ismPolicyId = IndexStateManagement.checkAndCreatePolicy(restHighLevelClient, indexType);
-    if (esSinkConfig.getIndexConfiguration().getTemplateURL() != null) {
+    if (!esSinkConfig.getIndexConfiguration().getIndexTemplate().isEmpty()) {
       createIndexTemplate(ismPolicyId);
     }
     final String dlqFile = esSinkConfig.getRetryConfiguration().getDlqFile();
@@ -152,7 +152,6 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     }
   }
 
-  @SuppressWarnings("unchecked")
   private void createIndexTemplate(final String ismPolicyId) throws IOException {
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
     final PutIndexTemplateRequest putIndexTemplateRequest = new PutIndexTemplateRequest(indexAlias + "-index-template");
@@ -162,13 +161,10 @@ public class ElasticsearchSink implements Sink<Record<String>> {
     } else {
       putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias));
     }
-    final URL jsonURL = esSinkConfig.getIndexConfiguration().getTemplateURL();
-    final Map<String, Object> template = readTemplateURL(jsonURL);
-    final Map<String, Object> settings = (Map<String, Object>) template.getOrDefault("settings", new HashMap<>());
     if (ismPolicyId != null) {
-      IndexStateManagement.attachPolicy(settings, ismPolicyId, indexAlias);
+      IndexStateManagement.attachPolicy(esSinkConfig.getIndexConfiguration(), ismPolicyId, indexAlias);
     }
-    putIndexTemplateRequest.source(template);
+    putIndexTemplateRequest.source(esSinkConfig.getIndexConfiguration().getIndexTemplate());
     restHighLevelClient.indices().putTemplate(putIndexTemplateRequest, RequestOptions.DEFAULT);
   }
 
@@ -193,10 +189,6 @@ public class ElasticsearchSink implements Sink<Record<String>> {
       }
       restHighLevelClient.indices().create(createIndexRequest, RequestOptions.DEFAULT);
     }
-  }
-
-  private Map<String, Object> readTemplateURL(final URL templateURL) throws IOException {
-    return new ObjectMapper().readValue(templateURL, new TypeReference<Map<String, Object>>() {});
   }
 
   private Map<String, Object> getMapFromJson(final String documentJson) throws IOException {

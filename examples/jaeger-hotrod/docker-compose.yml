@@ -5,6 +5,10 @@ services:
     build:
       context: ../..
       dockerfile: examples/Dockerfile
+    working_dir: /app
+    command: sh situp-wait-for-odfe-and-start.sh
+    volumes:
+      - ../situp-wait-for-odfe-and-start.sh:/app/situp-wait-for-odfe-and-start.sh
     ports:
       - "21890:21890"
     networks:
@@ -57,7 +61,9 @@ services:
     networks:
       - my_network
   kibana:
-    image: amazon/opendistro-for-elasticsearch-kibana:1.10.1
+    build:
+      context: ../..
+      dockerfile: examples/kibana-trace-analytics/Dockerfile
     container_name: odfe-kibana
     ports:
       - 5601:5601
