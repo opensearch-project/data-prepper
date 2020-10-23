@@ -12,11 +12,8 @@ docker-compose up -d --build
 
 The above command will start the Jaeger Hotrod sample, Jaeger Agent, OpenTelemetry Collector, SITUP, ODFE and Kibana.
 
-After successful start, use the hot rod app which runs at localhost:8080. Now check the traces in kibana which runs at localhost:5601.
+After successful start, 
 
-You will see two indicies,
-
-* otel-v1-apm-span  - This index alias will store the raw traces.
-* otel-v1-apm-service-map - This index will store the relationship between services.
-
+* use the hot rod app at localhost:8080 
+* check the traces in kibana trace analytics dashboards at localhost:5601/app/traceAnalytics#/dashboard
 
