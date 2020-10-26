@@ -1,0 +1,37 @@
+plugins {
+    id "com.palantir.docker" version "0.25.0"
+}
+
+dependencies {
+    compile project(':situp-core')
+}
+
+task endToEndTests {
+    //dependsOn(':situp-api:test') TODO add E2E and enable when ready
+}
+
+task benchmarkTests {
+    //dependsOn(':situp-api:test') TODO add benchmark test and enable
+}
+
+task buildCore {
+    dependsOn ':situp-core:build'
+}
+
+task dockerPrerequisites {
+    dependsOn 'buildCore'
+    dependsOn 'endToEndTests'
+    dependsOn 'benchmarkTests'
+}
+
+docker {
+    name "situp/${project.rootProject.name}:${project.version}"
+    tag "${project.name}", "${project.version}" //update tag when ready to push
+    files project(':situp-core').jar.archivePath
+    buildArgs(['JAR_FILE': project(':situp-core').jar.archiveName,
+               'CONFIG_FILEPATH': '/usr/share/situp/situp.yml'])
+    dockerfile file('docker/Dockerfile')
+}
+
+dockerPrepare.dependsOn dockerPrerequisites
+dockerPush.dependsOn docker //TODO Add dockerPush specific task when ready to publish
