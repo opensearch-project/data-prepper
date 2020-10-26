@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 @SuppressWarnings("unchecked")
 public class ZipkinElasticToOtelProcessor {
     public static String SPAN_ID = "id";
+    public static String NAME = "name";
     public static String TRACE_ID = "traceId";
     public static String TIME_STAMP = "timestamp";
     public static String DURATION = "duration";
@@ -44,6 +45,7 @@ public class ZipkinElasticToOtelProcessor {
     public static Span sourceToSpan(final Map<String, Object> source) {
         final String traceID = (String) source.get(TRACE_ID);
         final String spanID = (String) source.get(SPAN_ID);
+        final String name = (String) source.get(NAME);
         final Long startTime = (Long) source.get(TIME_STAMP);
         final Long duration = Long.valueOf((Integer) source.get(DURATION));
         final long endTime = startTime + duration;
@@ -51,16 +53,23 @@ public class ZipkinElasticToOtelProcessor {
         final String spanKind = (String) source.get(SPAN_KIND);
         // TODO: read span status from tags
         final Map<String, Object> tags = (Map<String, Object>) source.get(TAGS);
-        final Integer statusCode = extractStatusCodeFromTags(tags);
+        Integer statusCode = null;
+        if (tags != null) {
+            statusCode = extractStatusCodeFromTags(tags);
+        }
 
         final Span.Builder spanBuilder = Span.newBuilder()
-                .setStartTimeUnixNano(startTime)
-                .setEndTimeUnixNano(endTime);
+                .setStartTimeUnixNano(startTime * 1000) // Convert to UnixNano
+                .setEndTimeUnixNano(endTime * 1000); // Convert to UnixNano
+
         if (traceID != null) {
             spanBuilder.setTraceId(ByteString.copyFromUtf8(traceID));
         }
         if (spanID != null) {
             spanBuilder.setSpanId(ByteString.copyFromUtf8(spanID));
+        }
+        if (name != null) {
+            spanBuilder.setName(name);
         }
         if (parentID != null) {
             spanBuilder.setParentSpanId(ByteString.copyFromUtf8(parentID));
@@ -97,9 +106,11 @@ public class ZipkinElasticToOtelProcessor {
                 // Extract only if value is json string
                 try {
                     final Map<String, Object> value = mapper.readValue((String) entry.getValue(), typeRef);
-                    final Integer statusCodeValue = (Integer) value.get(STATUS_CODE_VALUE);
-                    if (statusCodeValue != null) {
-                        return statusCodeValue;
+                    if (value != null) {
+                        final Integer statusCodeValue = (Integer) value.get(STATUS_CODE_VALUE);
+                        if (statusCodeValue != null) {
+                            return statusCodeValue;
+                        }
                     }
                 } catch (final JsonProcessingException ignored) { }
             }

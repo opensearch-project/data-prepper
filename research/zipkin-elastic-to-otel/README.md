@@ -10,8 +10,10 @@ This is a demo on reading zipkin trace analytics data from local opendistro-elas
 ## Run
 
 ```
-./gradlew :research:zipkin-elastic-to-otel:run --args YOUR_INDEX_PATTERN
+./gradlew :research:zipkin-elastic-to-otel:run --args YOUR_INDEX_PATTERN FIELD VALUE
 ```
+
+Notice that `FIELD` and `VALUE` are optional arguments.
 
 * Test mode: with environment variable test set to `true`. A test Otel trace source will be launched listening on http://127.0.0.1:21890.
 

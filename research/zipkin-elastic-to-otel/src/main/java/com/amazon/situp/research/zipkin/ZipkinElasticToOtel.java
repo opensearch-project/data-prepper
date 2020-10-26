@@ -22,11 +22,13 @@ public class ZipkinElasticToOtel {
     public static final Logger LOG = LoggerFactory.getLogger(ZipkinElasticToOtel.class);
 
     public static void main(final String[] args) throws IOException {
-        if (args.length != 1) {
+        if (args.length < 1) {
             System.err.println("Missing indexPattern as arg");
             System.exit(1);
         }
         final String indexPattern = args[0];
+        final String field = args.length >= 2? args[1] : null;
+        final String value = args.length >= 3? args[2] : null;
         final boolean isTest = !System.getProperty("test", "false").equalsIgnoreCase("false");
         OTelTraceSource oTelTraceSource = null;
         if (isTest) {
@@ -39,7 +41,7 @@ public class ZipkinElasticToOtel {
                 .withPassword("admin")
                 .build();
         final RestHighLevelClient restHighLevelClient = connectionConfiguration.createClient();
-        final ElasticsearchReader reader = new ElasticsearchReader(indexPattern);
+        final ElasticsearchReader reader = new ElasticsearchReader(indexPattern, field, value);
         final TraceServiceGrpc.TraceServiceBlockingStub client = createGRPCClient();
         System.out.println("Reading batch 0");
         List<Map<String, Object>> sources = reader.nextBatch(restHighLevelClient);
