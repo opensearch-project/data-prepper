@@ -34,15 +34,7 @@ jar {
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
-<<<<<<< HEAD
     exclude 'META-INF/*.RSA'
     exclude 'META-INF/*.SF'
     exclude 'META-INF/*.DSA'
-=======
-
-    exclude 'META-INF/*.RSA'
-    exclude 'META-INF/*.SF'
-    exclude 'META-INF/*.DSA'
-
->>>>>>> 531604685c6d3923c2b58f76a263a00d1ae1c89c
 }
