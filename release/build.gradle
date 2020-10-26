@@ -25,11 +25,11 @@ task dockerPrerequisites {
 }
 
 docker {
-    name "odfe-pipes/${project.rootProject.name}:${project.version}"
+    name "situp/${project.rootProject.name}:${project.version}"
     tag "${project.name}", "${project.version}" //update tag when ready to push
     files project(':situp-core').jar.archivePath
     buildArgs(['JAR_FILE': project(':situp-core').jar.archiveName,
-               'CONFIG_FILEPATH': '/usr/share/situp/odfe-pipes.yml'])
+               'CONFIG_FILEPATH': '/usr/share/situp/situp.yml'])
     dockerfile file('docker/Dockerfile')
 }
 

@@ -7,7 +7,7 @@ ARG JAR_FILE
 ENV ENV_CONFIG_FILEPATH=$CONFIG_FILEPATH
 ENV SITUP_PATH /usr/share/situp
 RUN mkdir -p $SITUP_PATH
-COPY $JAR_FILE /usr/share/situp/odfe-pipes.jar
+COPY $JAR_FILE /usr/share/situp/situp.jar
 WORKDIR $SITUP_PATH
-CMD java $JAVA_OPTS -jar odfe-pipes.jar ${ENV_CONFIG_FILEPATH}
+CMD java $JAVA_OPTS -jar situp.jar ${ENV_CONFIG_FILEPATH}
 
