@@ -5,7 +5,7 @@ raw-pipeline:
     - otel_trace_raw_processor:
   sink:
     - elasticsearch:
-        hosts: [ "https://host.docker.internal:9200" ]
+        hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
         password: "admin"
         trace_analytics_raw: true

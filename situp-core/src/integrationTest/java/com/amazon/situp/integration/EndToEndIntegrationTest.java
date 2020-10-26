@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpMethod;
@@ -33,6 +35,7 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
@@ -41,6 +44,8 @@ import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.junit.Assert;
 import org.junit.Test;
+
+import static org.awaitility.Awaitility.await;
 
 public class EndToEndIntegrationTest {
 
@@ -63,9 +68,6 @@ public class EndToEndIntegrationTest {
         sendExportTraceServiceRequestToSource(exportTraceServiceRequest1);
         sendExportTraceServiceRequestToSource(exportTraceServiceRequest2);
 
-        //Wait for data to flow through pipeline and be indexed by ES
-        Thread.sleep(2000);
-
         //Verify data in elasticsearch sink
         final List<Map<String, Object>> expectedDocuments = getExpectedDocuments(exportTraceServiceRequest1, exportTraceServiceRequest2);
         final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
@@ -76,14 +78,25 @@ public class EndToEndIntegrationTest {
         builder.withUsername("admin");
         builder.withPassword("admin");
         final RestHighLevelClient restHighLevelClient = builder.build().createClient();
-        final SearchRequest searchRequest = new SearchRequest(INDEX_NAME);
-        searchRequest.source(
-                SearchSourceBuilder.searchSource().size(100)
+        // Wait for data to flow through pipeline and be indexed by ES
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(
+                () -> {
+                    refreshIndices(restHighLevelClient);
+                    final SearchRequest searchRequest = new SearchRequest(INDEX_NAME);
+                    searchRequest.source(
+                            SearchSourceBuilder.searchSource().size(100)
+                    );
+                    final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+                    final List<Map<String, Object>> foundSources = getSourcesFromSearchHits(searchResponse.getHits());
+                    Assert.assertEquals(expectedDocuments.size(), foundSources.size());
+                    expectedDocuments.forEach(expectedDoc -> Assert.assertTrue(foundSources.contains(expectedDoc)));
+                }
         );
-        final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-        final List<Map<String, Object>> foundSources = getSourcesFromSearchHits(searchResponse.getHits());
-        Assert.assertEquals(expectedDocuments.size(), foundSources.size());
-        expectedDocuments.forEach(expectedDoc -> Assert.assertTrue(foundSources.contains(expectedDoc)));
+    }
+
+    private void refreshIndices(final RestHighLevelClient restHighLevelClient) throws IOException {
+        final RefreshRequest requestAll = new RefreshRequest();
+        restHighLevelClient.indices().refresh(requestAll, RequestOptions.DEFAULT);
     }
 
     private void sendExportTraceServiceRequestToSource(ExportTraceServiceRequest request) throws InvalidProtocolBufferException {
