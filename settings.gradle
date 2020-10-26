@@ -1,5 +1,6 @@
 rootProject.name = 'situp'
 
+include 'release'
 include 'situp-api'
 include 'situp-plugins'
 include 'situp-core'
