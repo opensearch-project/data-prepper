@@ -9,5 +9,5 @@ ENV SITUP_PATH /usr/share/situp
 RUN mkdir -p $SITUP_PATH
 COPY $JAR_FILE /usr/share/situp/odfe-pipes.jar
 WORKDIR $SITUP_PATH
-CMD java -jar odfe-pipes.jar ${ENV_CONFIG_FILEPATH}
+CMD java $JAVA_OPTS -jar odfe-pipes.jar ${ENV_CONFIG_FILEPATH}
 
