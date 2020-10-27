@@ -16,6 +16,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.HttpData;
@@ -50,12 +52,14 @@ import static org.awaitility.Awaitility.await;
 public class EndToEndIntegrationTest {
 
     private static final Random RANDOM = new Random();
-    private static final List<Span.SpanKind> SPAN_KINDS = Arrays.asList(Span.SpanKind.CLIENT, Span.SpanKind.SERVER);
+    private static final List<Span.SpanKind> SPAN_KINDS = Arrays.asList(
+            Span.SpanKind.CLIENT, Span.SpanKind.SERVER, Span.SpanKind.CONSUMER, Span.SpanKind.INTERNAL);
     private List<byte[]> spanIds;
-    private List<byte[]> traceIds;
-    private static final List<String> serviceNames = Arrays.asList("FRONTEND", "BACKEND");
-    private static final List<String> traceGroups = Arrays.asList("tg1", "tg2");
-    private static final String INDEX_NAME = "otel-v1-apm-span-000001";
+    private byte[] traceId;
+    private static final List<String> serviceNames = Arrays.asList("FRONTEND", "BACKEND", "PAYMENT", "DATABASE");
+    private static final List<String> traceGroups = Arrays.asList("tg1", "tg2", "tg3", "tg4");
+    private static final String RAW_SPAN_INDEX_ALIAS = "otel-v1-apm-span";
+    private static final String SERVICE_MAP_INDEX_NAME = "otel-v1-apm-service-map";
 
     @Test
     public void testPipelineEndToEnd() throws IOException, InterruptedException {
@@ -73,40 +77,57 @@ public class EndToEndIntegrationTest {
 
         //Verify data in elasticsearch sink
         final List<Map<String, Object>> expectedDocuments = getExpectedDocuments(exportTraceServiceRequest1, exportTraceServiceRequest2);
+        final List<Map<String, Object>> expectedTargets = IntStream.range(0, serviceNames.size()).mapToObj(i -> {
+            final Map<String, Object> target = new HashMap<>();
+            target.put("resource", serviceNames.get(i));
+            target.put("domain", traceGroups.get(i));
+            return target;
+        }).collect(Collectors.toList());
+        final List<Map<String, Object>> expectedEdges = IntStream.range(1, serviceNames.size() + 1).mapToObj(i -> {
+            final Map<String, Object> edge = new HashMap<>();
+            edge.put("traceGroupName", "tg1");
+            edge.put("serviceName", serviceNames.get((i - 1) % serviceNames.size()));
+            edge.put("resource", serviceNames.get(i % serviceNames.size()));
+            edge.put("domain", traceGroups.get(i % traceGroups.size()));
+            return edge;
+        }).collect(Collectors.toList());
         final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
                 Collections.singletonList("https://127.0.0.1:9200"));
         builder.withUsername("admin");
         builder.withPassword("admin");
         final RestHighLevelClient restHighLevelClient = builder.build().createClient();
-        // Wait for data to flow through pipeline and be indexed by ES
+        // Wait for raw span data to flow through pipeline and be indexed by ES
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(
                 () -> {
-                    refreshIndices(restHighLevelClient);
-                    final SearchRequest searchRequest = new SearchRequest(INDEX_NAME);
-                    searchRequest.source(
-                            SearchSourceBuilder.searchSource().size(100)
-                    );
-                    final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-                    final List<Map<String, Object>> foundSources = getSourcesFromSearchHits(searchResponse.getHits());
+                    final List<Map<String, Object>> foundSources = getSourcesFromIndex(restHighLevelClient, RAW_SPAN_INDEX_ALIAS);
                     Assert.assertEquals(expectedDocuments.size(), foundSources.size());
                     expectedDocuments.forEach(expectedDoc -> Assert.assertTrue(foundSources.contains(expectedDoc)));
                 }
         );
-        System.out.println("OK");
+        // Wait for service map processor window duration
+        Thread.sleep(3000);
+        await().atMost(10, TimeUnit.SECONDS).untilAsserted(
+                () -> {
+                    final List<Map<String, Object>> foundSources = getSourcesFromIndex(restHighLevelClient, SERVICE_MAP_INDEX_NAME);
+                    Assert.assertEquals(8, foundSources.size());
+                    final List<Map<String, Object>> foundTargets = getTargets(foundSources);
+                    Assert.assertTrue(foundTargets.size() == expectedTargets.size() &&
+                            foundTargets.containsAll(expectedTargets));
+                    final List<Map<String, Object>> foundEdges = getEdges(foundSources);
+                    Assert.assertTrue(foundEdges.size() == expectedEdges.size() &&
+                            foundEdges.containsAll(expectedEdges));
+                }
+        );
     }
 
     /**
-     * Gets a new trace id. 10% of the time it will generate a new id, and otherwise will pick a random
-     * trace id that has already been generated
+     * Gets a new root trace id.
      */
     private byte[] getTraceId() {
-        if(traceIds.isEmpty()) {
-            final byte[] traceId = getRandomBytes(16);
-            traceIds.add(traceId);
-            return traceId;
-        } else {
-            return traceIds.get(RANDOM.nextInt(traceIds.size()));
+        if(traceId == null) {
+            traceId = getRandomBytes(16);
         }
+        return traceId;
     }
 
     /**
@@ -119,14 +140,13 @@ public class EndToEndIntegrationTest {
     }
 
     /**
-     * Gets a parent id. 0.1% of the time will return null, indicating a root span. Otherwise picks a random
-     * spanid that is already existing
+     * Gets a parent id. For the root span return null, otherwise picks the previous span id
      */
     private byte[] getParentId() {
         if(spanIds.isEmpty()) {
             return null;
         } else {
-            return spanIds.get(RANDOM.nextInt(spanIds.size()));
+            return spanIds.get(spanIds.size() - 1);
         }
     }
 
@@ -144,6 +164,16 @@ public class EndToEndIntegrationTest {
                         .contentType(MediaType.JSON_UTF_8)
                         .build(),
                 HttpData.copyOf(JsonFormat.printer().print(request).getBytes())).aggregate().join();
+    }
+
+    private List<Map<String, Object>> getSourcesFromIndex(final RestHighLevelClient restHighLevelClient, final String index) throws IOException {
+        refreshIndices(restHighLevelClient);
+        final SearchRequest searchRequest = new SearchRequest(index);
+        searchRequest.source(
+                SearchSourceBuilder.searchSource().size(100)
+        );
+        final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+        return getSourcesFromSearchHits(searchResponse.getHits());
     }
 
     private List<Map<String, Object>> getSourcesFromSearchHits(final SearchHits searchHits) {
@@ -206,11 +236,39 @@ public class EndToEndIntegrationTest {
         final Map<String, Object> esDocSource = new HashMap<>();
         esDocSource.put("traceId", Base64.encodeBase64String(span.getTraceId().toByteArray()));
         esDocSource.put("spanId", Base64.encodeBase64String(span.getSpanId().toByteArray()));
-        esDocSource.put("parentSpanId", Base64.encodeBase64String(span.getParentSpanId().toByteArray()));
+        if (!span.getParentSpanId().isEmpty()) {
+            esDocSource.put("parentSpanId", Base64.encodeBase64String(span.getParentSpanId().toByteArray()));
+        }
         esDocSource.put("name", span.getName());
         esDocSource.put("kind", span.getKind().name());
         esDocSource.put("resource.attributes.service.name", serviceName);
         return esDocSource;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> getTargets(final List<Map<String, Object>> sources) {
+        final List<Map<String, Object>> targets = new ArrayList<>();
+        for (final Map<String, Object> source: sources) {
+            if (source.getOrDefault("target", null) != null) {
+                targets.add((Map<String, Object>) source.get("target"));
+            }
+        }
+
+        return targets;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> getEdges(final List<Map<String, Object>> sources) {
+        final List<Map<String, Object>> edges = new ArrayList<>();
+        for (final Map<String, Object> source: sources) {
+            if (source.getOrDefault("destination", null) != null) {
+                final Map<String, Object> edge = new HashMap<>((Map<String, Object>) source.get("destination"));
+                edge.put("serviceName", source.getOrDefault("serviceName", null));
+                edge.put("traceGroupName", source.getOrDefault("traceGroupName", null));
+                edges.add(edge);
+            }
+        }
+        return edges;
     }
 
     private byte[] getRandomBytes(int len) {
@@ -221,19 +279,19 @@ public class EndToEndIntegrationTest {
 
     private List<ResourceSpans> getRandomResourceSpans(int len) throws UnsupportedEncodingException {
         spanIds = new ArrayList<>();
-        traceIds = new ArrayList<>();
+        traceId = null;
         final ArrayList<ResourceSpans> spansList = new ArrayList<>();
         for(int i=0; i<len; i++) {
-            byte[] parentId = getParentId();
-            byte[] spanId = getSpanId();
+            final byte[] parentId = getParentId();
+            final byte[] spanId = getSpanId();
             spansList.add(
                     getResourceSpans(
-                            serviceNames.get(RANDOM.nextInt(serviceNames.size())),
-                            traceGroups.get(RANDOM.nextInt(traceGroups.size())),
+                            serviceNames.get(i % serviceNames.size()),
+                            traceGroups.get(i % traceGroups.size()),
                             spanId,
                             parentId,
                             getTraceId(),
-                            SPAN_KINDS.get(RANDOM.nextInt(SPAN_KINDS.size()))
+                            SPAN_KINDS.get(i % SPAN_KINDS.size())
                     )
             );
         }
