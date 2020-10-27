@@ -70,11 +70,8 @@ public class EndToEndIntegrationTest {
 
         //Verify data in elasticsearch sink
         final List<Map<String, Object>> expectedDocuments = getExpectedDocuments(exportTraceServiceRequest1, exportTraceServiceRequest2);
-        final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-        credentialsProvider.setCredentials(AuthScope.ANY,
-                new UsernamePasswordCredentials("admin", "admin"));
         final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
-                Collections.singletonList("https://0.0.0.0:9200"));
+                Collections.singletonList("https://127.0.0.1:9200"));
         builder.withUsername("admin");
         builder.withPassword("admin");
         final RestHighLevelClient restHighLevelClient = builder.build().createClient();
