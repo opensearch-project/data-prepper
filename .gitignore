@@ -5,3 +5,6 @@
 
 # Ignore Gradle build output directory
 build
+
+# Ignore things downloaded for gradle es plugin
+gradle/tools
