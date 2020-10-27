@@ -90,9 +90,14 @@ task stopSitupDockerContainer(type: DockerStopContainer) {
 /**
  * ODFE Docker tasks
  */
+task pullOdfeDockerImage(type: DockerPullImage) {
+    image = 'amazon/opendistro-for-elasticsearch:1.9.0'
+}
+
 task createOdfeDockerContainer(type: DockerCreateContainer) {
     dependsOn createSitupNetwork
-    targetImageId 'amazon/opendistro-for-elasticsearch:1.9.0'
+    dependsOn pullOdfeDockerImage
+    targetImageId pullOdfeDockerImage.image
     containerName = "node-0.example.com"
     hostConfig.portBindings = ['9200:9200', '9600:9600']
     hostConfig.autoRemove = true
