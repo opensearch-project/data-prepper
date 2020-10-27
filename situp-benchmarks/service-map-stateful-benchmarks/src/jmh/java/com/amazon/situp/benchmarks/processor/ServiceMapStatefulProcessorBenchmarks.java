@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
@@ -21,6 +22,7 @@ import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
@@ -31,19 +33,23 @@ import org.openjdk.jmh.annotations.Warmup;
 public class ServiceMapStatefulProcessorBenchmarks {
 
     private ServiceMapStatefulProcessor serviceMapStatefulProcessor;
-    private List<List<Record<ExportTraceServiceRequest>>> batches;
     private List<byte[]> spanIds;
     private List<byte[]> traceIds;
     private static final String DB_PATH = "data/benchmark";
-    private static final int BATCH_SIZE = 100;
-    private static final int NUM_BATCHES = 1000;
     private static final Random RANDOM = new Random();
     private static final List<String> serviceNames = Arrays.asList("FRONTEND", "BACKEND", "PAYMENT", "CHECKOUT", "DATABASE");
     private static final List<String> traceGroups = Arrays.asList("tg1", "tg2", "tg3", "tg4", "tg5", "tg6", "tg7", "tg8", "tg9");
+    private List<Record<ExportTraceServiceRequest>> batch;
+
+    @Param(value = "100")
+    private int batchSize;
+
+    @Param(value = "60")
+    private int windowDurationSeconds;
 
     @Setup(Level.Trial)
     public void setupServiceMapStatefulProcessor() {
-        serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(1000, new File(DB_PATH), Clock.systemDefaultZone());
+        serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(windowDurationSeconds*1000, new File(DB_PATH), Clock.systemDefaultZone());
     }
 
     /**
@@ -82,34 +88,32 @@ public class ServiceMapStatefulProcessorBenchmarks {
     }
 
     @Setup(Level.Trial)
-    public void setupBatches() throws UnsupportedEncodingException {
+    public void resetTraceSpanIdCaches() throws UnsupportedEncodingException {
         spanIds = new ArrayList<>();
         traceIds = new ArrayList<>();
-        batches = new ArrayList<>();
-        for(int i=0; i<NUM_BATCHES; i++) {
-            List<Record<ExportTraceServiceRequest>> batch = new ArrayList<>();
-            for(int j=0; j<BATCH_SIZE; j++) {
-                batch.add(new Record<>(getExportTraceServiceRequest(
-                        getResourceSpans(
-                                serviceNames.get(RANDOM.nextInt(serviceNames.size())),
-                                traceGroups.get(RANDOM.nextInt(traceGroups.size())),
-                                getSpanId(),
-                                getParentId(),
-                                getTraceId(),
-                                Span.SpanKind.CLIENT
-                ))));
-            }
-            batches.add(batch);
+    }
+
+    @Setup(Level.Invocation)
+    public void generateBatch() throws UnsupportedEncodingException {
+        batch = new ArrayList<>();
+        for(int j=0; j<batchSize; j++) {
+            batch.add(new Record<>(getExportTraceServiceRequest(
+                    getResourceSpans(
+                            serviceNames.get(RANDOM.nextInt(serviceNames.size())),
+                            traceGroups.get(RANDOM.nextInt(traceGroups.size())),
+                            getSpanId(),
+                            getParentId(),
+                            getTraceId(),
+                            Span.SpanKind.CLIENT
+                    ))));
         }
     }
 
     @Benchmark
     @Fork(value = 1)
-    @Warmup(iterations = 3)
-    @Threads(value = 2)
-    @Measurement(iterations = 5)
+    @Warmup(iterations = 0)
     public void benchmarkExecute() {
-        serviceMapStatefulProcessor.execute(batches.get(RANDOM.nextInt(NUM_BATCHES)));
+        serviceMapStatefulProcessor.execute(batch);
     }
 
     private static byte[] getRandomBytes(int len) {
