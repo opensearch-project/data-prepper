@@ -50,8 +50,11 @@ import static org.awaitility.Awaitility.await;
 public class EndToEndIntegrationTest {
 
     private static final Random RANDOM = new Random();
-    private static final List<Span.SpanKind> SPAN_KINDS =
-            Arrays.asList(Span.SpanKind.CLIENT, Span.SpanKind.CONSUMER, Span.SpanKind.INTERNAL, Span.SpanKind.PRODUCER, Span.SpanKind.SERVER);
+    private static final List<Span.SpanKind> SPAN_KINDS = Arrays.asList(Span.SpanKind.CLIENT, Span.SpanKind.SERVER);
+    private List<byte[]> spanIds;
+    private List<byte[]> traceIds;
+    private static final List<String> serviceNames = Arrays.asList("FRONTEND", "BACKEND");
+    private static final List<String> traceGroups = Arrays.asList("tg1", "tg2");
     private static final String INDEX_NAME = "otel-v1-apm-span-000001";
 
     @Test
@@ -89,6 +92,42 @@ public class EndToEndIntegrationTest {
                     expectedDocuments.forEach(expectedDoc -> Assert.assertTrue(foundSources.contains(expectedDoc)));
                 }
         );
+        System.out.println("OK");
+    }
+
+    /**
+     * Gets a new trace id. 10% of the time it will generate a new id, and otherwise will pick a random
+     * trace id that has already been generated
+     */
+    private byte[] getTraceId() {
+        if(traceIds.isEmpty()) {
+            final byte[] traceId = getRandomBytes(16);
+            traceIds.add(traceId);
+            return traceId;
+        } else {
+            return traceIds.get(RANDOM.nextInt(traceIds.size()));
+        }
+    }
+
+    /**
+     * Gets a span id and adds to the list of existing span ids
+     */
+    private byte[] getSpanId() {
+        final byte[] spanId = getRandomBytes(8);
+        spanIds.add(spanId);
+        return spanId;
+    }
+
+    /**
+     * Gets a parent id. 0.1% of the time will return null, indicating a root span. Otherwise picks a random
+     * spanid that is already existing
+     */
+    private byte[] getParentId() {
+        if(spanIds.isEmpty()) {
+            return null;
+        } else {
+            return spanIds.get(RANDOM.nextInt(spanIds.size()));
+        }
     }
 
     private void refreshIndices(final RestHighLevelClient restHighLevelClient) throws IOException {
@@ -181,15 +220,19 @@ public class EndToEndIntegrationTest {
     }
 
     private List<ResourceSpans> getRandomResourceSpans(int len) throws UnsupportedEncodingException {
+        spanIds = new ArrayList<>();
+        traceIds = new ArrayList<>();
         final ArrayList<ResourceSpans> spansList = new ArrayList<>();
         for(int i=0; i<len; i++) {
+            byte[] parentId = getParentId();
+            byte[] spanId = getSpanId();
             spansList.add(
                     getResourceSpans(
-                            UUID.randomUUID().toString(),
-                            UUID.randomUUID().toString(),
-                            getRandomBytes(8),
-                            getRandomBytes(8),
-                            getRandomBytes(16),
+                            serviceNames.get(RANDOM.nextInt(serviceNames.size())),
+                            traceGroups.get(RANDOM.nextInt(traceGroups.size())),
+                            spanId,
+                            parentId,
+                            getTraceId(),
                             SPAN_KINDS.get(RANDOM.nextInt(SPAN_KINDS.size()))
                     )
             );
