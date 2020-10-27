@@ -1,6 +1,17 @@
 plugins {
     id 'jacoco'
+    id 'com.bmuschko.docker-remote-api' version '6.6.1'
 }
+
+sourceSets {
+    main {
+        resources {
+            srcDirs += "../shared-resources"
+        }
+    }
+}
+
+apply from: "integrationTest.gradle"
 
 dependencies {
     compile project(':situp-api')
@@ -12,13 +23,6 @@ dependencies {
     implementation "org.apache.bval:bval-jsr:${versionMap.bval_jsr}"
     implementation "org.reflections:reflections:${versionMap.reflections}"
     testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
-}
-sourceSets {
-    main {
-        resources {
-            srcDirs += "../shared-resources"
-        }
-    }
 }
 
 jar {
