@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpMethod;
@@ -26,6 +27,7 @@ import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.resource.v1.Resource;
@@ -155,15 +157,9 @@ public class EndToEndIntegrationTest {
         restHighLevelClient.indices().refresh(requestAll, RequestOptions.DEFAULT);
     }
 
-    private void sendExportTraceServiceRequestToSource(ExportTraceServiceRequest request) throws InvalidProtocolBufferException {
-        WebClient.of().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTP)
-                        .authority("127.0.0.1:21890")
-                        .method(HttpMethod.POST)
-                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
-                        .contentType(MediaType.JSON_UTF_8)
-                        .build(),
-                HttpData.copyOf(JsonFormat.printer().print(request).getBytes())).aggregate().join();
+    private void sendExportTraceServiceRequestToSource(final ExportTraceServiceRequest request) {
+        Clients.newClient(
+                "gproto+http://127.0.0.1:21890/", TraceServiceGrpc.TraceServiceBlockingStub.class).export(request);
     }
 
     private List<Map<String, Object>> getSourcesFromIndex(final RestHighLevelClient restHighLevelClient, final String index) throws IOException {
@@ -299,7 +295,7 @@ public class EndToEndIntegrationTest {
     }
 
     private String getServiceName(final ResourceSpans resourceSpans) {
-        return resourceSpans.getResource().getAttributesList().stream().filter(kv -> kv.getKey() == "service.name")
+        return resourceSpans.getResource().getAttributesList().stream().filter(kv -> kv.getKey().equals("service.name"))
                 .findFirst().get().getValue().getStringValue();
     }
 }
