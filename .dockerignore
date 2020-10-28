@@ -1,5 +1,4 @@
 #ignore gradle specific files and examples from copying to image
 build
 docs
-examples
 #research remove this after updating settings.gradle
