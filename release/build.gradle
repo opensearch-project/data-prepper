@@ -53,24 +53,25 @@ task downloadJDK() {
 CopySpec archiveToTar(platform) {
     return copySpec {
         if (!file("archives/${platform}").exists()) {
-            println("Directory does not exists")
             platform = project.property('default-release-platform')
         }
         into('bin') {
-            fileMode(755)
             from project(':situp-core').jar.archivePath
+            fileMode 0755
         }
         into('examples') {
             from("${rootDir}/examples")
+            dirMode 0750
+            fileMode 0755
         }
         into('config') {
             from("${rootDir}/shared-resources/log4j.properties")
         }
-        from("${rootDir}/LICENSE")
-        from("${rootDir}/NOTICE")
-        from {
-            fileMode(755)
-            "archives/${platform}/situp-tar-install.sh"
+        into('') {
+            from("${rootDir}/LICENSE")
+            from("${rootDir}/NOTICE")
+            from("archives/${platform}/situp-tar-install.sh")
+            fileMode 0755
         }
     }
 }
@@ -83,7 +84,7 @@ distributions {
         }
     }
     linuxWithJDK {
-        distributionBaseName = "${project.rootProject.name}-linux-x86_64"
+        distributionBaseName = "${project.rootProject.name}-linux-x86_64-jdk"
         contents {
             with distributions.linux.contents
             into('openjdk') {
