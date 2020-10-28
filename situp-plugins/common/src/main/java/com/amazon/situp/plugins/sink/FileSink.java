@@ -44,14 +44,13 @@ public class FileSink implements Sink<Record<String>> {
     }
 
     @Override
-    public boolean output(Collection<Record<String>> records) {
+    public void output(Collection<Record<String>> records) {
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(outputFilePath),
                 StandardCharsets.UTF_8)) {
             for (final Record<String> record : records) {
                 writer.write(record.getData());
                 writer.newLine();
             }
-            return true;
         } catch (IOException ex) {
             throw new RuntimeException(format("Encountered exception opening/creating file %s", outputFilePath), ex);
         }

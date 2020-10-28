@@ -1,0 +1,27 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '2.3.1.RELEASE'
+    id 'io.spring.dependency-management' version '1.0.9.RELEASE'
+}
+
+
+group = 'com.example.restservice'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation('org.springframework.boot:spring-boot-starter-web')
+    testImplementation('org.springframework.boot:spring-boot-starter-test')
+    compile 'org.elasticsearch.client:elasticsearch-rest-high-level-client:7.8.1'
+    compile 'org.elasticsearch.client:elasticsearch-rest-client:7.8.1'
+    compile 'org.elasticsearch:elasticsearch:7.8.1'
+}
+
+bootJar {
+    mainClassName = 'com.example.restservice.RestServiceApplication'
+}
+

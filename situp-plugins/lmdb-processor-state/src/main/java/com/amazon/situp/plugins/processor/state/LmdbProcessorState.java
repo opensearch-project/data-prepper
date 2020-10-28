@@ -17,28 +17,33 @@ import org.lmdbjava.DbiFlags;
 import org.lmdbjava.Env;
 import org.lmdbjava.EnvFlags;
 import org.lmdbjava.Txn;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
+    private static final Logger LOG = LoggerFactory.getLogger(LmdbProcessorState.class);
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final Dbi<ByteBuffer> db;
     private final Env<ByteBuffer> env;
     private final Class<T> clazz; //Needed for deserialization
+    private final File dbFile;
 
     /**
      * Constructor for LMDB processor state. See LMDB-Java for more info:
      * https://github.com/lmdbjava/lmdbjava
-     * @param dbPath The directory in which to store the LMDB data files
+     * @param dbFile The directory in which to store the LMDB data files
      * @param dbName Name of the database
      * @param clazz Class type for value storage
      */
-    public LmdbProcessorState(final File dbPath, final String dbName, final Class<T> clazz) {
+    public LmdbProcessorState(final File dbFile, final String dbName, final Class<T> clazz) {
         //TODO: These need to be configurable
         env = Env.create()
                 .setMapSize(10_485_760)
                 .setMaxDbs(1)
                 .setMaxReaders(10)
-                .open(dbPath, EnvFlags.MDB_NOTLS);
+                .open(dbFile, EnvFlags.MDB_NOTLS, EnvFlags.MDB_NOSUBDIR);
         db = env.openDbi(dbName, DbiFlags.MDB_CREATE);
+        this.dbFile = dbFile;
         this.clazz = clazz;
     }
 
@@ -66,6 +71,21 @@ public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
             db.put(keyBuffer, valueBuffer);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public void putAll(Map<byte[], T> batch) {
+        try(Txn<ByteBuffer> txn = env.txnWrite()) {
+            batch.entrySet().forEach(tEntry -> {
+                try {
+                    final ByteBuffer keyBuffer = toDirectByteBuffer(tEntry.getKey());
+                    final ByteBuffer valueBuffer = toDirectByteBuffer(OBJECT_MAPPER.writeValueAsBytes(tEntry.getValue()));
+                    db.put(txn, keyBuffer, valueBuffer);
+                } catch (JsonProcessingException e) {
+                    LOG.error("Caugh exception writing to db in putAll", e);
+                }
+            });
+            txn.commit();
         }
     }
 
@@ -108,14 +128,6 @@ public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
     }
 
     @Override
-    public void clear() {
-        //TODO: we can delete and recreate a new DB
-        try (final Txn<ByteBuffer> txn = env.txnWrite()) {
-            db.drop(txn, true);
-        }
-    }
-
-    @Override
     public<R> List<R> iterate(BiFunction<byte[], T, R> fn) {
         try (Txn<ByteBuffer> txn = env.txnRead()) {
             final List<R> returnVal = new ArrayList<>();
@@ -135,24 +147,37 @@ public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
         }
     }
 
+    private KeyRange getRange(int segments, int index) {
+        final long sz = size();
+        if(sz == 0) {
+            return new KeyRange(0,-1);
+        }
+        long step = (long) Math.ceil(((double) sz / (double) segments));
+        long lower = (long) index * step;
+        long upper = Math.min(lower + step, sz);
+        return new KeyRange(lower, upper);
+    }
+
     /**
      * LMDB specific iterate function, which iterates over an index range using the LMDB cursor
      * @param fn Function to apply to elements
-     * @param start Start index
-     * @param end End index
+     * @param segments Number of segments
+     * @param index index
      * @param <R> Result type
      * @return List of R objects representing the application of the function to the elements in the index range
      */
-    public<R> List<R> iterate(BiFunction<byte[], T, R> fn, final long start, final long end) {
+    @Override
+    public<R> List<R> iterate(BiFunction<byte[], T, R> fn, final int segments, final int index) {
+        final KeyRange keyRange = getRange(segments, index);
         try (Txn<ByteBuffer> txn = env.txnRead()) {
             Cursor<ByteBuffer> cursor = db.openCursor(txn);
             final List<R> returnVal = new ArrayList<>();
             cursor.first();
             //TODO: Look into faster way to move cursor up N elements
-            for(long i=0; i<start; i++) {
+            for(long i=0; i<keyRange.start; i++) {
                 cursor.next();
             }
-            for(long i=start; i<end; i++) {
+            for(long i=keyRange.start; i<keyRange.end; i++) {
                 final R val = fn.apply(getBytes(cursor.key()),
                         byteBufferToObject(cursor.val()));
                 returnVal.add(val);
@@ -166,7 +191,24 @@ public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
     }
 
     @Override
-    public void close() {
+    public void delete() {
+        final File lockFile = new File(dbFile.getPath() + "-lock");
+        if(!dbFile.delete()) {
+            LOG.warn("Unable to delete database file at " + dbFile.getPath());
+        }
+        if(!lockFile.delete()) {
+            LOG.warn("Unable to delete database file at " + lockFile.getPath());
+        }
         env.close();
+    }
+
+    private static class KeyRange {
+        public long start;
+        public long end;
+
+        public KeyRange(final long start, final long end) {
+            this.start = start;
+            this.end = end;
+        }
     }
 }

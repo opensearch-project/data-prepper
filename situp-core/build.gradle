@@ -1,6 +1,17 @@
 plugins {
     id 'jacoco'
+    id 'com.bmuschko.docker-remote-api' version '6.6.1'
 }
+
+sourceSets {
+    main {
+        resources {
+            srcDirs += "../shared-resources"
+        }
+    }
+}
+
+apply from: "integrationTest.gradle"
 
 dependencies {
     compile project(':situp-api')
@@ -13,13 +24,6 @@ dependencies {
     implementation "org.reflections:reflections:${versionMap.reflections}"
     testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
 }
-sourceSets {
-    main {
-        resources {
-            srcDirs += "../shared-resources"
-        }
-    }
-}
 
 jar {
     manifest {
@@ -30,5 +34,7 @@ jar {
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
-
+    exclude 'META-INF/*.RSA'
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
 }

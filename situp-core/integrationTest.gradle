@@ -1,0 +1,139 @@
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.bmuschko:gradle-docker-plugin:6.6.1'
+    }
+}
+
+apply plugin: 'com.bmuschko.docker-remote-api'
+
+import com.bmuschko.gradle.docker.tasks.container.*
+import com.bmuschko.gradle.docker.tasks.image.*
+import com.bmuschko.gradle.docker.tasks.network.*
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+        resources.srcDir file('src/integrationTest/resources')
+    }
+}
+
+dependencies {
+    integrationTestCompile("junit:junit:${versionMap.junit}")
+    integrationTestCompile project(':situp-plugins:elasticsearch')
+    integrationTestImplementation "org.awaitility:awaitility:4.0.3"
+    integrationTestImplementation 'io.opentelemetry:opentelemetry-proto:0.6.0'
+    integrationTestImplementation 'com.google.protobuf:protobuf-java-util:3.13.0'
+    integrationTestImplementation ("com.linecorp.armeria:armeria:1.0.0")
+    integrationTestImplementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:7.8.1"
+}
+
+/**
+ * End-to-end test docker network
+ */
+task createSitupNetwork(type: DockerCreateNetwork) {
+    networkName = "situp_network"
+}
+
+task removeSitupNetwork(type: DockerRemoveNetwork) {
+    dependsOn createSitupNetwork
+    networkId = createSitupNetwork.getNetworkId()
+}
+
+/**
+ * Situp Docker tasks
+ */
+task createSitupDockerFile(type: Dockerfile) {
+    dependsOn jar
+    destFile = project.file('build/docker/Dockerfile')
+    from("adoptopenjdk/openjdk14:jre-14.0.1_7-alpine")
+    exposePort(21890)
+    workingDir("/app")
+    copyFile("build/libs/${jar.archiveName}", "/app/situp.jar")
+    copyFile("src/integrationTest/resources/pipeline.yml", "/app/pipeline.yml")
+    defaultCommand("java", "-jar", "situp.jar", "/app/pipeline.yml")
+}
+
+task buildSitupDockerImage(type: DockerBuildImage) {
+    dependsOn createSitupDockerFile
+    inputDir  = file(".")
+    dockerFile  = file("build/docker/Dockerfile")
+    images.add("integ-test-pipeline-image")
+}
+
+task createSitupDockerContainer(type: DockerCreateContainer) {
+    dependsOn buildSitupDockerImage
+    dependsOn createSitupNetwork
+    hostConfig.portBindings = ['21890:21890']
+    hostConfig.network = createSitupNetwork.getNetworkName()
+    targetImageId buildSitupDockerImage.getImageId()
+}
+
+task startSitupDockerContainer(type: DockerStartContainer) {
+    dependsOn createSitupDockerContainer
+    targetContainerId createSitupDockerContainer.getContainerId()
+    doLast {
+        sleep(10*1000)
+    }
+}
+
+task stopSitupDockerContainer(type: DockerStopContainer) {
+    targetContainerId createSitupDockerContainer.getContainerId()
+}
+
+/**
+ * ODFE Docker tasks
+ */
+task pullOdfeDockerImage(type: DockerPullImage) {
+    image = 'amazon/opendistro-for-elasticsearch:1.9.0'
+}
+
+task createOdfeDockerContainer(type: DockerCreateContainer) {
+    dependsOn createSitupNetwork
+    dependsOn pullOdfeDockerImage
+    targetImageId pullOdfeDockerImage.image
+    containerName = "node-0.example.com"
+    hostConfig.portBindings = ['9200:9200', '9600:9600']
+    hostConfig.autoRemove = true
+    hostConfig.network = createSitupNetwork.getNetworkName()
+    envVars = ['discovery.type':'single-node']
+}
+
+task startOdfeDockerContainer(type: DockerStartContainer) {
+    dependsOn createOdfeDockerContainer
+    targetContainerId createOdfeDockerContainer.getContainerId()
+
+    doLast {
+        sleep(90*1000)
+    }
+}
+
+task stopOdfeDockerContainer(type: DockerStopContainer) {
+    targetContainerId createOdfeDockerContainer.getContainerId()
+}
+
+/**
+ * End to end test. Spins up ODFE and situp docker containers, then runs the integ test
+ * Stops the docker containers when finished
+ */
+task endToEndTest(type: Test) {
+    dependsOn build
+    dependsOn startOdfeDockerContainer
+    dependsOn startSitupDockerContainer
+    startSitupDockerContainer.mustRunAfter 'startOdfeDockerContainer'
+
+    description = 'Runs the integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    finalizedBy stopOdfeDockerContainer
+    finalizedBy stopSitupDockerContainer
+    finalizedBy removeSitupNetwork
+}

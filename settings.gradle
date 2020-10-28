@@ -1,5 +1,6 @@
 rootProject.name = 'situp'
 
+include 'release'
 include 'situp-api'
 include 'situp-plugins'
 include 'situp-core'
@@ -8,3 +9,11 @@ include 'situp-plugins:apmtracesource'
 include 'situp-plugins:elasticsearch'
 include 'situp-plugins:lmdb-processor-state'
 include 'situp-plugins:service-map-stateful'
+include 'situp-plugins:mapdb-processor-state'
+include 'situp-benchmarks'
+include 'situp-benchmarks:mapdb-benchmarks'
+include 'research'
+include 'research:zipkin-elastic-to-otel'
+include 'situp-benchmarks:lmdb-benchmarks'
+include 'situp-benchmarks:service-map-stateful-benchmarks'
+
