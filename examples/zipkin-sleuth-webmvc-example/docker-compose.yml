@@ -43,6 +43,8 @@ services:
     command: sh situp-wait-for-odfe-and-start.sh
     volumes:
       - ../situp-wait-for-odfe-and-start.sh:/app/situp-wait-for-odfe-and-start.sh
+      - ../trace_analytics.yml:/app/transformation-instance.yml
+      - ../demo/root-ca.pem:/app/root-ca.pem
     ports:
       - "21890:21890"
     networks:
