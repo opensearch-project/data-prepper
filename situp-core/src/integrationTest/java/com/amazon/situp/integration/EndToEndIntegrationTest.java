@@ -41,7 +41,7 @@ public class EndToEndIntegrationTest {
 
     private static final Random RANDOM = new Random();
     private static final List<Span.SpanKind> SPAN_KINDS =
-            Arrays.asList(Span.SpanKind.CLIENT, Span.SpanKind.CONSUMER, Span.SpanKind.INTERNAL, Span.SpanKind.PRODUCER, Span.SpanKind.SERVER);
+            Arrays.asList(Span.SpanKind.SPAN_KIND_CLIENT, Span.SpanKind.SPAN_KIND_CONSUMER, Span.SpanKind.SPAN_KIND_INTERNAL, Span.SpanKind.SPAN_KIND_PRODUCER, Span.SpanKind.SPAN_KIND_SERVER);
     private static final String INDEX_NAME = "otel-v1-apm-span-000001";
 
     @Test
