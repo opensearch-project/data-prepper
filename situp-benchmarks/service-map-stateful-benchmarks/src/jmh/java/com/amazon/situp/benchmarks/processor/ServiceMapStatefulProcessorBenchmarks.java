@@ -112,7 +112,40 @@ public class ServiceMapStatefulProcessorBenchmarks {
     @Benchmark
     @Fork(value = 1)
     @Warmup(iterations = 0)
-    public void benchmarkExecute() {
+    @Threads(1)
+    public void benchmarkExecute_1_thread() {
+        serviceMapStatefulProcessor.execute(batch);
+    }
+
+    @Benchmark
+    @Fork(value = 1)
+    @Warmup(iterations = 0)
+    @Threads(2)
+    public void benchmarkExecute_2_threads() {
+        serviceMapStatefulProcessor.execute(batch);
+    }
+
+    @Benchmark
+    @Fork(value = 1)
+    @Warmup(iterations = 0)
+    @Threads(4)
+    public void benchmarkExecute_4_threads() {
+        serviceMapStatefulProcessor.execute(batch);
+    }
+
+    @Benchmark
+    @Fork(value = 1)
+    @Warmup(iterations = 0)
+    @Threads(8)
+    public void benchmarkExecute_8_threads() {
+        serviceMapStatefulProcessor.execute(batch);
+    }
+
+    @Benchmark
+    @Fork(value = 1)
+    @Warmup(iterations = 0)
+    @Threads(16)
+    public void benchmarkExecute_16_threads() {
         serviceMapStatefulProcessor.execute(batch);
     }
 

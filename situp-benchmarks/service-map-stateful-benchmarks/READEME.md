@@ -17,8 +17,8 @@ To run the tests via JAR, you can build the benchmark jar using the gradle task 
 that runs the benchmark tests. Example command:
 
 ```
-java -jar service-map-stateful-benchmarks-0.1-beta-jmh.jar -t 8 -r 600 -i 2 -p batchSize=100 -p windowDurationSeconds=180
+java -jar service-map-stateful-benchmarks-0.1-beta-jmh.jar -r 600 -i 2 -p batchSize=100 -p windowDurationSeconds=180
 ```
 
-The above command will run the benchmarks with 8 threads, for 600 seconds (10 minutes) per iteration, 2 iterations. It also
+The above command will run the benchmarks for 600 seconds (10 minutes) per iteration, 2 iterations. It also
 sets the batchSize and windowDurationSeconds benchmark parameters. 
