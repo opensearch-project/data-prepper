@@ -38,33 +38,20 @@ public class EndToEndServiceMapTest {
 
     private final Map<String, ResourceSpans> spanIdToRS = new HashMap<>();
     private final List<Map<String, Object>> possibleEdges = new ArrayList<>();
-    private static final List<String> serviceNames1 = Arrays.asList(
-            "ServiceA", "ServiceA", "ServiceB", "ServiceB", "ServiceC", "ServiceC", "ServiceA", "ServiceB",
-            "ServiceB", "ServiceA", "ServiceD");
-    private static final List<String> spanIds1 = Arrays.asList("100", "200", "300", "400", "500", "600", "700", "800", "900", "1000", "1100");
-    private static final List<String> parentIds1 = Arrays.asList(
-            null, "100", "200", "300", "400", "500", "100", "700", "800", "100", "1000");
-    private static final List<String> spanNames1 = Arrays.asList(
-            "FRUITS", "CALL_SERVICE_B_APPLE", "/APPLE", "CALL_SERVICE_C_ORANGE", "/ORANGE",
-            "SOME_INTERNAL", "CALL_SERVICE_B_JACKFRUIT", "/JACKFRUIT", "SOME_INTERNAL", "CALL_SERVICE_D_PEAR", "/PEAR");
-    private static final List<Span.SpanKind> spanKinds1 = Arrays.asList(
-            Span.SpanKind.SPAN_KIND_INTERNAL, Span.SpanKind.SPAN_KIND_CLIENT, Span.SpanKind.SPAN_KIND_SERVER, Span.SpanKind.SPAN_KIND_CLIENT,
-            Span.SpanKind.SPAN_KIND_SERVER, Span.SpanKind.SPAN_KIND_INTERNAL, Span.SpanKind.SPAN_KIND_CLIENT, Span.SpanKind.SPAN_KIND_SERVER,
-            Span.SpanKind.SPAN_KIND_INTERNAL, Span.SpanKind.SPAN_KIND_CLIENT, Span.SpanKind.SPAN_KIND_SERVER);
-    private static final List<String> serviceNames2 = Arrays.asList("ServiceA", "ServiceA", "ServiceB", "ServiceA", "ServiceE");
-    private static final List<String> spanIds2 = Arrays.asList("101", "201", "301", "401", "501");
-    private static final List<String> parentIds2 = Arrays.asList(null, "101", "201", "101", "401");
-    private static final List<String> spanNames2 = Arrays.asList("VEGGIES", "CALL_SERVICE_B_ONION", "/ONION", "CALL_SERVICE_E_POTATO", "/POTATO");
-    private static final List<Span.SpanKind> spanKinds2 = Arrays.asList(
-            Span.SpanKind.SPAN_KIND_INTERNAL, Span.SpanKind.SPAN_KIND_CLIENT, Span.SpanKind.SPAN_KIND_SERVER, Span.SpanKind.SPAN_KIND_CLIENT,
-            Span.SpanKind.SPAN_KIND_SERVER);
+    private static final List<ServiceMapTestData> testDataSet1 = Arrays.asList(
+            ServiceMapTestData.DATA_100, ServiceMapTestData.DATA_200, ServiceMapTestData.DATA_300, ServiceMapTestData.DATA_400,
+            ServiceMapTestData.DATA_500, ServiceMapTestData.DATA_600, ServiceMapTestData.DATA_700, ServiceMapTestData.DATA_800,
+            ServiceMapTestData.DATA_900, ServiceMapTestData.DATA_1000, ServiceMapTestData.DATA_1100);
+    private static final List<ServiceMapTestData> testDataSet2 = Arrays.asList(
+            ServiceMapTestData.DATA_101, ServiceMapTestData.DATA_201, ServiceMapTestData.DATA_301, ServiceMapTestData.DATA_401,
+            ServiceMapTestData.DATA_501);
     private static final String SERVICE_MAP_INDEX_NAME = "otel-v1-apm-service-map";
 
     @Test
     public void testPipelineEndToEnd() throws IOException, InterruptedException {
         // Send test trace group 1
         final ExportTraceServiceRequest exportTraceServiceRequest1 = getExportTraceServiceRequest(
-                getResourceSpansBatch("ABC", spanIds1, parentIds1, serviceNames1, spanNames1, spanKinds1)
+                getResourceSpansBatch("ABC", testDataSet1)
         );
 
         sendExportTraceServiceRequestToSource(exportTraceServiceRequest1);
@@ -91,7 +78,7 @@ public class EndToEndServiceMapTest {
         sendExportTraceServiceRequestToSource(exportTraceServiceRequest1);
         // Send test trace group 2
         final ExportTraceServiceRequest exportTraceServiceRequest2 = getExportTraceServiceRequest(
-                getResourceSpansBatch("CBA", spanIds2, parentIds2, serviceNames2, spanNames2, spanKinds2)
+                getResourceSpansBatch("CBA", testDataSet2)
         );
         sendExportTraceServiceRequestToSource(exportTraceServiceRequest2);
 
@@ -168,15 +155,15 @@ public class EndToEndServiceMapTest {
                 .build();
     }
 
-    private List<ResourceSpans> getResourceSpansBatch(
-            String traceId, List<String> spanIds, List<String> parentIds, List<String> serviceNames, List<String> spanNames, List<Span.SpanKind> spanKinds) throws UnsupportedEncodingException {
+    private List<ResourceSpans> getResourceSpansBatch(final String traceId, final List<ServiceMapTestData> data) {
         final ArrayList<ResourceSpans> spansList = new ArrayList<>();
-        for(int i=0; i < spanIds.size(); i++) {
-            final String parentId = parentIds.get(i);
-            final String spanId = spanIds.get(i);
-            final String serviceName = serviceNames.get(i);
-            final String spanName = spanNames.get(i);
-            final Span.SpanKind spanKind = spanKinds.get(i);
+        for(int i=0; i < data.size(); i++) {
+            final ServiceMapTestData currData = data.get(i);
+            final String parentId = currData.parentId;
+            final String spanId = currData.spanId;
+            final String serviceName = currData.serviceName;
+            final String spanName = currData.name;
+            final Span.SpanKind spanKind = currData.spanKind;
             final ResourceSpans rs = getResourceSpans(
                     serviceName,
                     spanName,
