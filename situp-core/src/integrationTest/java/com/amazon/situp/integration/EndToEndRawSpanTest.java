@@ -1,10 +1,28 @@
 package com.amazon.situp.integration;
 
 
-import com.google.protobuf.ByteString;
-import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.protobuf.util.JsonFormat;
 import com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration;
+import com.google.protobuf.ByteString;
+import com.linecorp.armeria.client.Clients;
+import com.linecorp.armeria.internal.shaded.bouncycastle.util.encoders.Hex;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
+import io.opentelemetry.proto.common.v1.AnyValue;
+import io.opentelemetry.proto.common.v1.KeyValue;
+import io.opentelemetry.proto.resource.v1.Resource;
+import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
+import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import io.opentelemetry.proto.trace.v1.Span;
+import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.search.SearchHits;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.junit.Assert;
+import org.junit.Test;
+
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
@@ -16,30 +34,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-
-import com.linecorp.armeria.client.WebClient;
-import com.linecorp.armeria.common.HttpData;
-import com.linecorp.armeria.common.HttpMethod;
-import com.linecorp.armeria.common.MediaType;
-import com.linecorp.armeria.common.RequestHeaders;
-import com.linecorp.armeria.common.SessionProtocol;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
-import io.opentelemetry.proto.common.v1.AnyValue;
-import io.opentelemetry.proto.common.v1.KeyValue;
-import io.opentelemetry.proto.resource.v1.Resource;
-import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
-import io.opentelemetry.proto.trace.v1.ResourceSpans;
-import io.opentelemetry.proto.trace.v1.Span;
-import org.apache.commons.codec.binary.Base64;
-import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.search.SearchHits;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.junit.Assert;
-import org.junit.Test;
 
 import static org.awaitility.Awaitility.await;
 
@@ -82,7 +76,19 @@ public class EndToEndRawSpanTest {
                     final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
                     final List<Map<String, Object>> foundSources = getSourcesFromSearchHits(searchResponse.getHits());
                     Assert.assertEquals(expectedDocuments.size(), foundSources.size());
-                    expectedDocuments.forEach(expectedDoc -> Assert.assertTrue(foundSources.contains(expectedDoc)));
+                    /**
+                     * Our raw trace processor add more fields than the actual sent object. These are defaults from the proto.
+                     * So assertion is done if all the expected fields exists.
+                     *
+                     * TODO: Can we do better?
+                     *
+                     */
+                    expectedDocuments.forEach(expectedDoc -> {
+                        Assert.assertTrue(foundSources.stream()
+                                .filter(i -> i.get("traceId").equals(expectedDoc.get("traceId")))
+                                .findFirst().get()
+                                .entrySet().containsAll(expectedDoc.entrySet()));
+                    });
                 }
         );
     }
@@ -92,15 +98,10 @@ public class EndToEndRawSpanTest {
         restHighLevelClient.indices().refresh(requestAll, RequestOptions.DEFAULT);
     }
 
-    private void sendExportTraceServiceRequestToSource(ExportTraceServiceRequest request) throws InvalidProtocolBufferException {
-        WebClient.of().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTP)
-                        .authority("127.0.0.1:21890")
-                        .method(HttpMethod.POST)
-                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
-                        .contentType(MediaType.JSON_UTF_8)
-                        .build(),
-                HttpData.copyOf(JsonFormat.printer().print(request).getBytes())).aggregate().join();
+    private void sendExportTraceServiceRequestToSource(ExportTraceServiceRequest request) {
+        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.newClient(
+                "gproto+http://127.0.0.1:21890/", TraceServiceGrpc.TraceServiceBlockingStub.class);
+        client.export(request);
     }
 
     private List<Map<String, Object>> getSourcesFromSearchHits(final SearchHits searchHits) {
@@ -161,12 +162,12 @@ public class EndToEndRawSpanTest {
 
     private Map<String, Object> getExpectedEsDocumentSource(final Span span, final String serviceName) {
         final Map<String, Object> esDocSource = new HashMap<>();
-        esDocSource.put("traceId", Base64.encodeBase64String(span.getTraceId().toByteArray()));
-        esDocSource.put("spanId", Base64.encodeBase64String(span.getSpanId().toByteArray()));
-        esDocSource.put("parentSpanId", Base64.encodeBase64String(span.getParentSpanId().toByteArray()));
+        esDocSource.put("traceId", Hex.toHexString(span.getTraceId().toByteArray()));
+        esDocSource.put("spanId", Hex.toHexString(span.getSpanId().toByteArray()));
+        esDocSource.put("parentSpanId", Hex.toHexString(span.getParentSpanId().toByteArray()));
         esDocSource.put("name", span.getName());
         esDocSource.put("kind", span.getKind().name());
-        esDocSource.put("resource.attributes.service.name", serviceName);
+        esDocSource.put("serviceName", serviceName);
         return esDocSource;
     }
 
@@ -194,7 +195,7 @@ public class EndToEndRawSpanTest {
     }
 
     private String getServiceName(final ResourceSpans resourceSpans) {
-        return resourceSpans.getResource().getAttributesList().stream().filter(kv -> kv.getKey() == "service.name")
+        return resourceSpans.getResource().getAttributesList().stream().filter(kv -> kv.getKey().equals("service.name"))
                 .findFirst().get().getValue().getStringValue();
     }
 }
