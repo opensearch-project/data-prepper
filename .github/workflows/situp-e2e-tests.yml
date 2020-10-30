@@ -26,4 +26,4 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Run end-to-end tests with Gradle
-      run: ./gradlew :situp-core:endToEndTest
+      run: ./gradlew :situp-core:endToEndTest --stacktrace
