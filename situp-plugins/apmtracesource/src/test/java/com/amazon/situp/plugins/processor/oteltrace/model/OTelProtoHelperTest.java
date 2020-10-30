@@ -142,9 +142,9 @@ public class OTelProtoHelperTest {
 
     @Test
     public void testStatusAttributes(){
-        final Status st1 = Status.newBuilder().setCode(Status.StatusCode.Aborted).setMessage("Some message").build();
+        final Status st1 = Status.newBuilder().setCode(Status.StatusCode.STATUS_CODE_ABORTED).setMessage("Some message").build();
         final Status st2 = Status.newBuilder().setMessage("error message").build();
-        final Status st3 = Status.newBuilder().setCode(Status.StatusCode.AlreadyExists).build();
+        final Status st3 = Status.newBuilder().setCode(Status.StatusCode.STATUS_CODE_ALREADY_EXISTS).build();
         final Status st4 = Status.newBuilder().build();
 
         assertThat(OTelProtoHelper.getSpanStatusAttributes(st1).size()==2).isTrue();

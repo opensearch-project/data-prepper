@@ -8,85 +8,137 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
-import com.linecorp.armeria.common.*;
-import io.grpc.StatusRuntimeException;
+import com.linecorp.armeria.common.HttpData;
+import com.linecorp.armeria.common.HttpMethod;
+import com.linecorp.armeria.common.MediaType;
+import com.linecorp.armeria.common.RequestHeaders;
+import com.linecorp.armeria.common.SessionProtocol;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
-import org.junit.jupiter.api.*;
+import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
+import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import io.opentelemetry.proto.trace.v1.Span;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
-import java.util.concurrent.ExecutionException;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
 
 public class OTelTraceSourceTest {
 
+    private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
+            .addResourceSpans(ResourceSpans.newBuilder()
+                    .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
+                            .addSpans(Span.newBuilder().setTraceState("SUCCESS").build())).build()).build();
     private static OTelTraceSource SOURCE;
+    private static final ExportTraceServiceRequest FAILURE_REQUEST = ExportTraceServiceRequest.newBuilder()
+            .addResourceSpans(ResourceSpans.newBuilder()
+                    .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
+                            .addSpans(Span.newBuilder().setTraceState("FAILURE").build())).build()).build();
+    private static TraceServiceGrpc.TraceServiceBlockingStub CLIENT;
+    private static final BlockingBuffer<Record<ExportTraceServiceRequest>> BUFFER = getBuffer();
 
     private static String getUri() {
         return "gproto+http://127.0.0.1:" + SOURCE.getoTelTraceSourceConfig().getPort() + '/';
     }
 
-    @BeforeAll
-    private static void beforeEach() {
-        final HashMap<String, Object> integerHashMap = new HashMap<>();
-        integerHashMap.put("request_timeout", 1);
-        SOURCE = new OTelTraceSource(new PluginSetting("otel_trace_source", integerHashMap));
-        SOURCE.start(getBuffer());
-        addOneRequest();
-    }
-
-    @AfterAll
-    private static void afterEach() {
-        SOURCE.stop();
-    }
-
     private static BlockingBuffer<Record<ExportTraceServiceRequest>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 1);
+        integerHashMap.put("batch_size", 1);
         return new BlockingBuffer<>(new PluginSetting("blocking_buffer", integerHashMap));
     }
 
+    @BeforeEach
+    public void beforeEach() {
+        final HashMap<String, Object> integerHashMap = new HashMap<>();
+        integerHashMap.put("request_timeout", 1);
+        SOURCE = new OTelTraceSource(new PluginSetting("otel_trace_source", integerHashMap));
+        SOURCE.start(BUFFER);
+        CLIENT = Clients.newClient(getUri(), TraceServiceGrpc.TraceServiceBlockingStub.class);
+    }
 
-    static void addOneRequest() {
-        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.newClient(getUri(), TraceServiceGrpc.TraceServiceBlockingStub.class);
-        client.export(ExportTraceServiceRequest.newBuilder().build());
+    @AfterEach
+    public void afterEach() {
+        SOURCE.stop();
     }
 
     @Test
     void testBufferFull() {
-        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.newClient(getUri(), TraceServiceGrpc.TraceServiceBlockingStub.class);
+        CLIENT.export(SUCCESS_REQUEST);
         try {
-            client.export(ExportTraceServiceRequest.newBuilder().build());
+            CLIENT.export(ExportTraceServiceRequest.newBuilder().build());
         } catch (RuntimeException ex) {
             System.out.println("Printing the exception:" + ex);
         }
+        validateBuffer();
+    }
+
+    private void validateBuffer() {
+        List<Record<ExportTraceServiceRequest>> drainedBuffer = (List<Record<ExportTraceServiceRequest>>) BUFFER.read(100000);
+        assertThat(drainedBuffer.size()).isEqualTo(1);
+        assertThat(drainedBuffer.get(0).getData()).isEqualTo(SUCCESS_REQUEST);
     }
 
     @Test
     void testHttpFullJson() throws InvalidProtocolBufferException {
-        final AggregatedHttpResponse res = WebClient.of().execute(RequestHeaders.builder()
+        WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
                         .authority("127.0.0.1:21890")
                         .method(HttpMethod.POST)
                         .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
                         .contentType(MediaType.JSON_UTF_8)
                         .build(),
-                HttpData.copyOf(JsonFormat.printer().print(ExportTraceServiceRequest.newBuilder().build()).getBytes())).aggregate().join();
-        System.out.println("Printing the response code:" + res.status().codeAsText());
+                HttpData.copyOf(JsonFormat.printer().print(SUCCESS_REQUEST).getBytes()))
+                .aggregate()
+                .whenComplete((i, ex) -> {
+                    assertThat(i.status().code()).isEqualTo(200);
+                });
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("127.0.0.1:21890")
+                        .method(HttpMethod.POST)
+                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
+                        .contentType(MediaType.JSON_UTF_8)
+                        .build(),
+                HttpData.copyOf(JsonFormat.printer().print(FAILURE_REQUEST).getBytes()))
+                .aggregate()
+                .whenComplete((i, ex) -> {
+                    assertThat(i.status().code()).isEqualTo(503);
+                    validateBuffer();
+                });
+
     }
 
     @Test
     void testHttpFullBytes() {
-        final AggregatedHttpResponse res = WebClient.of().execute(RequestHeaders.builder()
+        WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
                         .authority("127.0.0.1:21890")
                         .method(HttpMethod.POST)
                         .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
                         .contentType(MediaType.PROTOBUF)
                         .build(),
-                HttpData.copyOf(ExportTraceServiceRequest.newBuilder().build().toByteArray())).aggregate().join();
-        System.out.println("Printing the response code:" + res.status().codeAsText());
+                HttpData.copyOf(SUCCESS_REQUEST.toByteArray()))
+                .aggregate()
+                .whenComplete((i, ex) -> {
+                    assertThat(i.status().code()).isEqualTo(200);
+                });
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("127.0.0.1:21890")
+                        .method(HttpMethod.POST)
+                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
+                        .contentType(MediaType.PROTOBUF)
+                        .build(),
+                HttpData.copyOf(FAILURE_REQUEST.toByteArray()))
+                .aggregate()
+                .whenComplete((i, ex) -> {
+                    assertThat(i.status().code()).isEqualTo(503);
+                    validateBuffer();
+                });
     }
 }

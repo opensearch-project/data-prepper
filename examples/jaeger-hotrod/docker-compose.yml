@@ -11,6 +11,8 @@ services:
       - ../situp-wait-for-odfe-and-start.sh:/app/situp-wait-for-odfe-and-start.sh
       - ../trace_analytics.yml:/app/transformation-instance.yml
       - ../demo/root-ca.pem:/app/root-ca.pem
+      - ../demo/demo-situp.crt:/app/demo-situp.crt
+      - ../demo/demo-situp.key:/app/demo-situp.key
     ports:
       - "21890:21890"
     networks:
@@ -19,12 +21,13 @@ services:
       - opendistro-for-elasticsearch
   otel-collector:
     container_name: otel-collector
-    image: otel/opentelemetry-collector-contrib:0.8.0
+    image: otel/opentelemetry-collector:0.13.0
     command: [ "--config=/etc/otel-collector-config.yml" ]
     working_dir: "/project"
     volumes:
       - ${PWD}:/project
       - ./otel-collector-config.yml:/etc/otel-collector-config.yml
+      - ../demo/demo-situp.crt:/etc/demo-situp.crt
     ports:
       - "14250:14250"
     networks:
