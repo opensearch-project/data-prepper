@@ -104,7 +104,7 @@ public class ServiceMapStatefulProcessorBenchmarks {
                             getSpanId(),
                             getParentId(),
                             getTraceId(),
-                            Span.SpanKind.CLIENT
+                            Span.SpanKind.SPAN_KIND_CLIENT
                     ))));
         }
     }
