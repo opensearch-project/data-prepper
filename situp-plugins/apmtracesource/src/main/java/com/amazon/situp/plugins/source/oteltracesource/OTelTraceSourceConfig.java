@@ -6,6 +6,7 @@ public class OTelTraceSourceConfig {
     private static final String REQUEST_TIMEOUT = "request_timeout";
     private static final String PORT = "port";
     private static final String SSL = "ssl";
+    private static final String HEALTH_CHECK = "health_check";
     private static final String SSL_KEY_CERT_FILE = "sslKeyCertChainFile";
     private static final String SSL_KEY_FILE = "sslKeyFile";
     private static final int DEFAULT_REQUEST_TIMEOUT = 10_000;
@@ -13,14 +14,16 @@ public class OTelTraceSourceConfig {
     private static final boolean DEFAULT_SSL = false;
     private final int requestTimeoutInMillis;
     private final int port;
+    private final boolean healthCheck;
     private final boolean ssl;
     private final String sslKeyCertChainFile;
     private final String sslKeyFile;
 
 
-    private OTelTraceSourceConfig(int requestTimeoutInMillis, int port, boolean isSSL, String sslKeyCertChainFile, String sslKeyFile) {
+    private OTelTraceSourceConfig(int requestTimeoutInMillis, int port, boolean health_check, boolean isSSL, String sslKeyCertChainFile, String sslKeyFile) {
         this.requestTimeoutInMillis = requestTimeoutInMillis;
         this.port = port;
+        this.healthCheck = health_check;
         this.ssl = isSSL;
         this.sslKeyCertChainFile = sslKeyCertChainFile;
         this.sslKeyFile = sslKeyFile;
@@ -35,6 +38,7 @@ public class OTelTraceSourceConfig {
     public static OTelTraceSourceConfig buildConfig(final PluginSetting pluginSetting) {
         return new OTelTraceSourceConfig(pluginSetting.getIntegerOrDefault(REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT),
                 pluginSetting.getIntegerOrDefault(PORT, DEFAULT_PORT),
+                pluginSetting.getBooleanOrDefault(HEALTH_CHECK, false),
                 pluginSetting.getBooleanOrDefault(SSL, DEFAULT_SSL),
                 pluginSetting.getStringOrDefault(SSL_KEY_CERT_FILE, null),
                 pluginSetting.getStringOrDefault(SSL_KEY_FILE, null));
@@ -46,6 +50,10 @@ public class OTelTraceSourceConfig {
 
     public int getPort() {
         return port;
+    }
+
+    public boolean isHealthCheck() {
+        return healthCheck;
     }
 
     public boolean isSsl() {

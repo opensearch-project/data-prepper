@@ -11,6 +11,7 @@ source:
 
 * port => Default is ```21890```. 
 * request_timeout => Default is ```10_000``` millis.
+* health_check => This will add health check at <your_host>:port/health_check.
 * ssl => Default is ```false```.
 * sslKeyCertChainFile => Should be provided if ```ssl``` is set to ```true```
 * sslKeyFile => Should be provided if ```ssl``` is set to ```true```
