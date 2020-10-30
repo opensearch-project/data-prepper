@@ -62,7 +62,7 @@ public class EndToEndServiceMapTest {
     public void testPipelineEndToEnd() throws IOException, InterruptedException {
         // Send test trace group 1
         final ExportTraceServiceRequest exportTraceServiceRequest1 = getExportTraceServiceRequest(
-                getResourceSpansBatch(spanIds1, parentIds1, serviceNames1, spanNames1, spanKinds1)
+                getResourceSpansBatch("ABC", spanIds1, parentIds1, serviceNames1, spanNames1, spanKinds1)
         );
 
         sendExportTraceServiceRequestToSource(exportTraceServiceRequest1);
@@ -89,7 +89,7 @@ public class EndToEndServiceMapTest {
         sendExportTraceServiceRequestToSource(exportTraceServiceRequest1);
         // Send test trace group 2
         final ExportTraceServiceRequest exportTraceServiceRequest2 = getExportTraceServiceRequest(
-                getResourceSpansBatch(spanIds2, parentIds2, serviceNames2, spanNames2, spanKinds2)
+                getResourceSpansBatch("CBA", spanIds2, parentIds2, serviceNames2, spanNames2, spanKinds2)
         );
         sendExportTraceServiceRequestToSource(exportTraceServiceRequest2);
 
@@ -167,7 +167,7 @@ public class EndToEndServiceMapTest {
     }
 
     private List<ResourceSpans> getResourceSpansBatch(
-            List<String> spanIds, List<String> parentIds, List<String> serviceNames, List<String> spanNames, List<Span.SpanKind> spanKinds) throws UnsupportedEncodingException {
+            String traceId, List<String> spanIds, List<String> parentIds, List<String> serviceNames, List<String> spanNames, List<Span.SpanKind> spanKinds) throws UnsupportedEncodingException {
         final ArrayList<ResourceSpans> spansList = new ArrayList<>();
         for(int i=0; i < spanIds.size(); i++) {
             final String parentId = parentIds.get(i);
@@ -180,7 +180,7 @@ public class EndToEndServiceMapTest {
                     spanName,
                     spanId.getBytes(),
                     parentId != null ? parentId.getBytes() : null,
-                    "ABC".getBytes(),
+                    traceId.getBytes(),
                     spanKind
             );
             spansList.add(rs);
