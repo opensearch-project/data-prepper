@@ -56,7 +56,6 @@ public class EndToEndServiceMapTest {
     private static final List<String> spanNames2 = Arrays.asList("VEGGIES", "CALL_SERVICE_B_ONION", "/ONION", "CALL_SERVICE_E_POTATO", "/POTATO");
     private static final List<Span.SpanKind> spanKinds2 = Arrays.asList(
             Span.SpanKind.INTERNAL, Span.SpanKind.CLIENT, Span.SpanKind.SERVER, Span.SpanKind.CLIENT, Span.SpanKind.SERVER);
-    private static final String RAW_SPAN_INDEX_ALIAS = "otel-v1-apm-span";
     private static final String SERVICE_MAP_INDEX_NAME = "otel-v1-apm-service-map";
 
     @Test
