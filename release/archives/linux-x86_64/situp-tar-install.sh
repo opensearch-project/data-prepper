@@ -19,6 +19,8 @@ if [[ $# -eq 0 ]]
 fi
 
 CONFIG_FILE_LOCATION=$1
+MIN_REQ_JAVA_VERSION=1.8
+MIN_REQ_OPENJDK_VERSION=8
 SITUP_HOME=`dirname $(realpath $0)`;
 EXECUTABLE_JAR=`ls -1 $SITUP_HOME/bin/*.jar 2>/dev/null`
 
@@ -34,9 +36,25 @@ else
     export PATH=$JAVA_HOME/bin:$PATH
 fi
 
-if [[ "$_java" ]]; then
-    version=$("$_java" -version 2>&1 | awk -F '"' '/version/ {print $2}')
-    echo "Found java $version"
+if [[ "$_java" ]]
+then
+    java_type=$("$_java" -version 2>&1 | awk -F '"' '/version/ {print $1}')
+    java_version=$("$_java" -version 2>&1 | awk -F '"' '/version/ {print $2}' | sed 's/\(.*\..*\)\..*/\1/g')
+    echo "Found $java_type of $java_version"
+    if [[ $java_type == *"openjdk"* ]]
+    then
+        if (( $(echo "$java_version < $MIN_REQ_OPENJDK_VERSION" | bc -l) ))
+        then
+            echo "Minimum required for $java_type is $MIN_REQ_OPENJDK_VERSION"
+            exit 1
+        fi
+    else
+        if (( $(echo "$java_version < $MIN_REQ_JAVA_VERSION" | bc -l) ))
+        then
+            echo "Minimum required for $java_type is $MIN_REQ_JAVA_VERSION"
+            exit 1
+        fi
+    fi
 fi
 
 chmod 755 $SITUP_HOME/bin/*.jar
