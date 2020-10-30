@@ -48,14 +48,16 @@ public class EndToEndServiceMapTest {
             "FRUITS", "CALL_SERVICE_B_APPLE", "/APPLE", "CALL_SERVICE_C_ORANGE", "/ORANGE",
             "SOME_INTERNAL", "CALL_SERVICE_B_JACKFRUIT", "/JACKFRUIT", "SOME_INTERNAL", "CALL_SERVICE_D_PEAR", "/PEAR");
     private static final List<Span.SpanKind> spanKinds1 = Arrays.asList(
-            Span.SpanKind.INTERNAL, Span.SpanKind.CLIENT, Span.SpanKind.SERVER, Span.SpanKind.CLIENT, Span.SpanKind.SERVER,
-            Span.SpanKind.INTERNAL, Span.SpanKind.CLIENT, Span.SpanKind.SERVER, Span.SpanKind.INTERNAL, Span.SpanKind.CLIENT, Span.SpanKind.SERVER);
+            Span.SpanKind.SPAN_KIND_INTERNAL, Span.SpanKind.SPAN_KIND_CLIENT, Span.SpanKind.SPAN_KIND_SERVER, Span.SpanKind.SPAN_KIND_CLIENT,
+            Span.SpanKind.SPAN_KIND_SERVER, Span.SpanKind.SPAN_KIND_INTERNAL, Span.SpanKind.SPAN_KIND_CLIENT, Span.SpanKind.SPAN_KIND_SERVER,
+            Span.SpanKind.SPAN_KIND_INTERNAL, Span.SpanKind.SPAN_KIND_CLIENT, Span.SpanKind.SPAN_KIND_SERVER);
     private static final List<String> serviceNames2 = Arrays.asList("ServiceA", "ServiceA", "ServiceB", "ServiceA", "ServiceE");
     private static final List<String> spanIds2 = Arrays.asList("101", "201", "301", "401", "501");
     private static final List<String> parentIds2 = Arrays.asList(null, "101", "201", "101", "401");
     private static final List<String> spanNames2 = Arrays.asList("VEGGIES", "CALL_SERVICE_B_ONION", "/ONION", "CALL_SERVICE_E_POTATO", "/POTATO");
     private static final List<Span.SpanKind> spanKinds2 = Arrays.asList(
-            Span.SpanKind.INTERNAL, Span.SpanKind.CLIENT, Span.SpanKind.SERVER, Span.SpanKind.CLIENT, Span.SpanKind.SERVER);
+            Span.SpanKind.SPAN_KIND_INTERNAL, Span.SpanKind.SPAN_KIND_CLIENT, Span.SpanKind.SPAN_KIND_SERVER, Span.SpanKind.SPAN_KIND_CLIENT,
+            Span.SpanKind.SPAN_KIND_SERVER);
     private static final String SERVICE_MAP_INDEX_NAME = "otel-v1-apm-service-map";
 
     @Test
