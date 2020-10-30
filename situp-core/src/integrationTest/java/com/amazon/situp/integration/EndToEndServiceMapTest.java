@@ -85,20 +85,8 @@ public class EndToEndServiceMapTest {
                 }
         );
 
-        // Test resend the same batch of spans
+        // Resend the same batch of spans (No new edges should be created)
         sendExportTraceServiceRequestToSource(exportTraceServiceRequest1);
-
-        // Wait for service map processor by 2 * window_duration
-        Thread.sleep(6000);
-        await().atMost(10, TimeUnit.SECONDS).untilAsserted(
-                () -> {
-                    final List<Map<String, Object>> foundSources = getSourcesFromIndex(restHighLevelClient, SERVICE_MAP_INDEX_NAME);
-                    foundSources.forEach(source -> source.remove("hashId"));
-                    Assert.assertEquals(8, foundSources.size());
-                    Assert.assertTrue(foundSources.containsAll(possibleEdges) && possibleEdges.containsAll(foundSources));
-                }
-        );
-
         // Send test trace group 2
         final ExportTraceServiceRequest exportTraceServiceRequest2 = getExportTraceServiceRequest(
                 getResourceSpansBatch(spanIds2, parentIds2, serviceNames2, spanNames2, spanKinds2)
