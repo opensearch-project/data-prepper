@@ -135,7 +135,7 @@ task rawSpanEndToEndTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
 
     filter {
-        includeTestsMatching "com.amazon.situp.integration.EndToEndRawSpanTest"
+        includeTestsMatching "com.amazon.situp.integration.EndToEndRawSpanTest*"
     }
 
     finalizedBy stopOdfeDockerContainer
