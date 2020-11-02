@@ -1,0 +1,40 @@
+plugins {
+    id "de.undercouch.download" version "4.1.1"
+    id "distribution"
+}
+def platform = "linux_x86_64"
+distributions {
+    linux {
+        distributionBaseName = "${project.rootProject.name}-${platform}"
+        contents {
+            with archiveToTar("${platform}")
+            into('') {
+                from("situp-tar-install.sh")
+                fileMode 0755
+            }
+        }
+    }
+    linuxWithJDK {
+        distributionBaseName = "${project.rootProject.name}-${platform}-jdk"
+        contents {
+            with distributions.linux.contents
+            into('openjdk') {
+                from tarTree("${buildDir}/${platform}/openjdk/openjdk.tar.gz")
+            }
+        }
+    }
+}
+
+task downloadJDK {
+    mkdir "${buildDir}/{platform}/openjdk"
+    doLast {
+        download {
+            src jdkSources[platform]
+            dest "${buildDir}/${platform}/openjdk/openjdk.tar.gz"
+            overwrite false
+        }
+    }
+}
+
+linuxWithJDKDistTar.dependsOn downloadJDK
+linuxWithJDKDistZip.dependsOn downloadJDK

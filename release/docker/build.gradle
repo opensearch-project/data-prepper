@@ -1,0 +1,15 @@
+plugins {
+    id "com.palantir.docker" version "0.25.0"
+}
+
+docker {
+    name "situp/${project.rootProject.name}:${project.version}"
+    tag "${project.rootProject.name}", "${project.version}"
+    files project(':situp-core').jar.archivePath
+    buildArgs(['JAR_FILE'       : project(':situp-core').jar.archiveName,
+               'CONFIG_FILEPATH': '/usr/share/situp/situp.yml'])
+    dockerfile file('Dockerfile')
+}
+
+dockerPrepare.dependsOn ':release:releasePrerequisites'
+dockerPush.dependsOn docker

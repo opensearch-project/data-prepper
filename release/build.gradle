@@ -1,11 +1,25 @@
-plugins {
-    id "com.palantir.docker" version "0.25.0"
-    id "de.undercouch.download" version "4.1.1"
-    id "distribution"
+apply from: file("build-resources.gradle")
+
+allprojects {
+    dependencies {
+        compile project(':situp-core')
+    }
 }
 
-dependencies {
-    compile project(':situp-core')
+subprojects {
+    tasks.withType(Tar) {
+        dependsOn ':release:releasePrerequisites'
+        compression = Compression.GZIP
+        extension = 'tar.gz'
+    }
+
+    tasks.withType(Zip) {
+        dependsOn ':release:releasePrerequisites'
+    }
+
+    ext {
+        archiveToTar = this.&archiveToTar
+    }
 }
 
 task endToEndTests {
@@ -26,35 +40,8 @@ task releasePrerequisites {
     dependsOn 'benchmarkTests'
 }
 
-docker {
-    name "situp/${project.rootProject.name}:${project.version}"
-    tag "${project.rootProject.name}", "${project.version}" //update tag when ready to push
-    files project(':situp-core').jar.archivePath
-    buildArgs(['JAR_FILE'       : project(':situp-core').jar.archiveName,
-               'CONFIG_FILEPATH': '/usr/share/situp/situp.yml'])
-    dockerfile file('docker/Dockerfile')
-}
-
-dockerPrepare.dependsOn releasePrerequisites
-dockerPush.dependsOn docker //TODO Add dockerPush specific task when ready to publish
-
-task downloadJDK() {
-    mkdir "${buildDir}/openjdk"
-    doLast {
-        download {
-            //TODO determine version from versions file
-            //Adding JDK14 but jar can be executed by JDK1.8 as well
-            src 'https://download.java.net/openjdk/jdk14/ri/openjdk-14+36_linux-x64_bin.tar.gz'
-            dest "${buildDir}/openjdk/openjdk.tar.gz"
-            overwrite false
-        }
-    }
-}
 CopySpec archiveToTar(platform) {
     return copySpec {
-        if (!file("archives/${platform}").exists()) {
-            platform = project.property('default-release-platform')
-        }
         into('bin') {
             from project(':situp-core').jar.archivePath
             fileMode 0755
@@ -70,38 +57,7 @@ CopySpec archiveToTar(platform) {
         into('') {
             from("${rootDir}/LICENSE")
             from("${rootDir}/NOTICE")
-            from("archives/${platform}/situp-tar-install.sh")
             fileMode 0755
         }
     }
-}
-
-distributions {
-    linux {
-        distributionBaseName = "${project.rootProject.name}-linux-x86_64"
-        contents {
-            with archiveToTar('linux-x86_64')
-        }
-    }
-    linuxWithJDK {
-        distributionBaseName = "${project.rootProject.name}-linux-x86_64-jdk"
-        contents {
-            with distributions.linux.contents
-            into('openjdk') {
-                from tarTree("${buildDir}/openjdk/openjdk.tar.gz")
-            }
-        }
-    }
-}
-
-tasks.withType(Tar) {
-    dependsOn releasePrerequisites
-    dependsOn downloadJDK
-    compression = Compression.GZIP
-    extension = 'tar.gz'
-}
-
-tasks.withType(Zip) {
-    dependsOn releasePrerequisites
-    dependsOn downloadJDK
 }

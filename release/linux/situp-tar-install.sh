@@ -21,8 +21,8 @@ fi
 CONFIG_FILE_LOCATION=$1
 MIN_REQ_JAVA_VERSION=1.8
 MIN_REQ_OPENJDK_VERSION=8
-SITUP_HOME=`dirname $(realpath $0)`;
-EXECUTABLE_JAR=`ls -1 $SITUP_HOME/bin/*.jar 2>/dev/null`
+SITUP_HOME=$(dirname $(realpath $0))`
+EXECUTABLE_JAR=$(ls -1 $SITUP_HOME/bin/*.jar 2>/dev/null)
 
 #check if java is installed
 if type -p java; then
