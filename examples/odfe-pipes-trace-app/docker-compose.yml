@@ -44,7 +44,7 @@ services:
       - opendistro-for-elasticsearch
   otel-collector:
     restart: unless-stopped
-    image: otel/opentelemetry-collector:0.13.0
+    image: otel/opentelemetry-collector:0.11.0
     command: ["--config=/etc/otel-collector-config.yml"]
     volumes:
       - ./opentelemetry-collector/otel-collector-config.yml:/etc/otel-collector-config.yml
