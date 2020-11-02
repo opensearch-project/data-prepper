@@ -21,7 +21,7 @@ fi
 CONFIG_FILE_LOCATION=$1
 MIN_REQ_JAVA_VERSION=1.8
 MIN_REQ_OPENJDK_VERSION=8
-SITUP_HOME=$(dirname $(realpath $0))`
+SITUP_HOME=$(dirname $(realpath $0))
 EXECUTABLE_JAR=$(ls -1 $SITUP_HOME/bin/*.jar 2>/dev/null)
 
 #check if java is installed
@@ -60,4 +60,3 @@ fi
 chmod 755 $SITUP_HOME/bin/*.jar
 SITUP_JAVA_OPTS="-Dlog4j.configurationFile=$SITUP_HOME/config/log4j.properties"
 java $JAVA_OPTS $SITUP_JAVA_OPTS -jar $EXECUTABLE_JAR $CONFIG_FILE_LOCATION
-
