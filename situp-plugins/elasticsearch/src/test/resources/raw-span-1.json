@@ -1,11 +1,17 @@
 {
   "traceId": "bQ/2NNEmtuwsGAOR5ntCNw==",
   "spanId":"mnO/qUT5ye4=",
+  "parentSpanId": null,
   "name":"io.opentelemetry.auto.servlet-3.0",
-  "kind":"SERVER",
-  "status":{},
+  "kind":"CLIENT",
+  "status": {
+    "code": 0,
+    "message": "Success"
+  },
+  "serviceName": "Customer service",
   "startTime":"2020-08-20T05:40:46.041011600Z",
   "endTime":"2020-08-20T05:40:46.089556800Z",
+  "durationInNanos": 48545200,
   "attributes.http@status_code":200,
   "attributes.net@peer@port":41168,
   "attributes.servlet@path":"/logs",
@@ -17,7 +23,6 @@
   "attributes.net@peer@ip":"172.29.0.1",
   "attributes.http@method":"POST",
   "attributes.http@client_ip":"172.29.0.1",
-  "resource.attributes@service@name":"analytics-service",
   "resource.attributes@telemetry@sdk@language":"java",
   "resource.attributes@telemetry@sdk@name":"opentelemetry",
   "resource.attributes@telemetry@sdk@version":"0.8.0-SNAPSHOT"
