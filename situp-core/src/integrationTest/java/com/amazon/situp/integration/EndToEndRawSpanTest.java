@@ -37,7 +37,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
 
-public class EndToEndIntegrationTest {
+public class EndToEndRawSpanTest {
 
     private static final Random RANDOM = new Random();
     private static final List<Span.SpanKind> SPAN_KINDS =

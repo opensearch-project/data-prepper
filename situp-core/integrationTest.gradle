@@ -123,16 +123,40 @@ task stopOdfeDockerContainer(type: DockerStopContainer) {
  * End to end test. Spins up ODFE and situp docker containers, then runs the integ test
  * Stops the docker containers when finished
  */
-task endToEndTest(type: Test) {
+task rawSpanEndToEndTest(type: Test) {
     dependsOn build
     dependsOn startOdfeDockerContainer
     dependsOn startSitupDockerContainer
     startSitupDockerContainer.mustRunAfter 'startOdfeDockerContainer'
 
-    description = 'Runs the integration tests.'
+    description = 'Runs the raw span integration tests.'
     group = 'verification'
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
     classpath = sourceSets.integrationTest.runtimeClasspath
+
+    filter {
+        includeTestsMatching "com.amazon.situp.integration.EndToEndRawSpanTest*"
+    }
+
+    finalizedBy stopOdfeDockerContainer
+    finalizedBy stopSitupDockerContainer
+    finalizedBy removeSitupNetwork
+}
+
+task serviceMapEndToEndTest(type: Test) {
+    dependsOn build
+    dependsOn startOdfeDockerContainer
+    dependsOn startSitupDockerContainer
+    startSitupDockerContainer.mustRunAfter 'startOdfeDockerContainer'
+
+    description = 'Runs the raw span integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    filter {
+        includeTestsMatching "com.amazon.situp.integration.EndToEndServiceMapTest*"
+    }
 
     finalizedBy stopOdfeDockerContainer
     finalizedBy stopSitupDockerContainer
