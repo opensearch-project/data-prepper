@@ -30,7 +30,7 @@ To build a tar, check out the corresponding branch for the version and follow be
 
 1. Building a tar depends on the platform on which it will be executed/run
 2. From the root project, run  `./gradlew clean :release:<platform>:<platform>WithJDKDistTar -Prelease`
-3. Successful build should generate the tar in `release/linux/build/distributions/` directory
+3. Successful build should generate the tar in `release/<platform>/build/distributions/` directory
 4. Generated tar includes a script file which can be used to execute the situp using 
 ```
 tar -xzf situp-<platform>-jdk-<VERSION>.tar.gz
