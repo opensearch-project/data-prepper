@@ -1,6 +1,10 @@
 rootProject.name = 'situp'
 
-include 'release'
+if(startParameter.getProjectProperties().containsKey("release")){
+    include 'release'
+    include 'release:docker'
+    include 'release:linux'
+}
 include 'situp-api'
 include 'situp-plugins'
 include 'situp-core'
