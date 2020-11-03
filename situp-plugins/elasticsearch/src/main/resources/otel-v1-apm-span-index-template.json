@@ -1,6 +1,6 @@
 {
   "mappings": {
-    "date_detection": false,
+    "date_detection": true,
     "dynamic_templates": [
       {
         "resource_attributes_map": {
@@ -66,7 +66,12 @@
         "type": "long"
       },
       "events": {
-        "type": "nested"
+        "type": "nested",
+        "properties": {
+          "time": {
+            "type": "date_nanos"
+          }
+        }
       },
       "links": {
         "type": "nested"
