@@ -46,7 +46,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     assertEquals(SC_OK, response.getStatusLine().getStatusCode());
     final Map<String, Object> mappings = getIndexMappings(String.format("%s-000001", indexAlias));
     assertNotNull(mappings);
-    assertFalse((boolean)mappings.get("date_detection"));
+    assertTrue((boolean)mappings.get("date_detection"));
     sink.stop();
 
     // roll over initial index
