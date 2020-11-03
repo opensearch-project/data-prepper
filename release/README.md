@@ -23,30 +23,43 @@ docker run --name situp-test --expose 21890 --read-only -v /home/ec2-user/situp-
 **Supported Platform**
 
 * Linux
+* Mac OS
 
 ### Running a tar build
 
 To build a tar, check out the corresponding branch for the version and follow below steps
 
 1. Building a tar depends on the platform on which it will be executed/run
-2. From the root project, run  `./gradlew clean :release:<platform>:<platform>WithJDKDistTar -Prelease`
-3. Successful build should generate the tar in `release/<platform>/build/distributions/` directory
-4. Generated tar includes a script file which can be used to execute the situp using 
+2. From the root project, run  `./gradlew clean :release:<platform>:<platform>Tar -Prelease`
+3. Successful build should generate two tars in `release/<platform>/build/distributions/` directory
+4. Generated tars includes a script file which can be used to execute the situp using 
 ```
 tar -xzf situp-<platform>-jdk-<VERSION>.tar.gz
 ./situp-<platform>-jdk-<VERSION>/situp-tar-install.sh <CONFIG FILE LOCATION>
 ```
 
 ### Example
- For linux platform, above steps will be as below
+* For linux platform, above steps will be as below
  ```
-./gradlew clean :release:linux:linuxWithJDKDistTar -Prelease
+./gradlew clean :release:linux:linuxTar -Prelease
 
 cd release/linux/build/distributions/
 
 tar -xzf situp-linux_x86_64-jdk-<VERSION>.tar.gz
 
 ./situp-linux_x86_64-jdk-<VERSION>/situp-tar-install.sh <CONFIG FILE LOCATION>
+
+```
+
+* For mac OS, above steps will be as below
+ ```
+./gradlew clean :release:macOS:macOSTar -Prelease
+
+cd release/macOS/build/distributions/
+
+tar -xzf situp-macOS_x64-jdk-<VERSION>.tar.gz
+
+./situp-macOS_x64-jdk-<VERSION>/situp-tar-install.sh <CONFIG FILE LOCATION>
 
 ```
    

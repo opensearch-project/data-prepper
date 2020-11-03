@@ -2,9 +2,9 @@ plugins {
     id "de.undercouch.download" version "4.1.1"
     id "distribution"
 }
-def platform = "linux_x86_64"
+def platform = "macOS_x64"
 distributions {
-    linux {
+    macOS {
         distributionBaseName = "${project.rootProject.name}-${platform}"
         contents {
             with archiveToTar("${platform}")
@@ -14,7 +14,7 @@ distributions {
             }
         }
     }
-    linuxWithJDK {
+    macOSWithJDK {
         distributionBaseName = "${project.rootProject.name}-${platform}-jdk"
         contents {
             with archiveToTar("${platform}")
@@ -38,15 +38,16 @@ task downloadJDK {
         }
     }
 }
-task linuxTar {
-    dependsOn linuxDistTar
-    dependsOn linuxWithJDKDistTar
+
+task macOSTar {
+    dependsOn macOSDistTar
+    dependsOn macOSWithJDKDistTar
 }
 
 task macOSZip {
-    dependsOn linuxDistZip
-    dependsOn linuxWithJDKDistZip
+    dependsOn macOSDistZip
+    dependsOn macOSWithJDKDistZip
 }
 
-linuxWithJDKDistTar.dependsOn downloadJDK
-linuxWithJDKDistZip.dependsOn downloadJDK
+macOSWithJDKDistTar.dependsOn downloadJDK
+macOSWithJDKDistZip.dependsOn downloadJDK
