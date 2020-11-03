@@ -1,6 +1,6 @@
 {
   "mappings": {
-    "date_detection": true,
+    "date_detection": false,
     "dynamic_templates": [
       {
         "resource_attributes_map": {
