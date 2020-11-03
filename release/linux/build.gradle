@@ -43,7 +43,7 @@ task linuxTar {
     dependsOn linuxWithJDKDistTar
 }
 
-task macOSZip {
+task linuxZip {
     dependsOn linuxDistZip
     dependsOn linuxWithJDKDistZip
 }

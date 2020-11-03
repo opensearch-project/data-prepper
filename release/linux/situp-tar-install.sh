@@ -26,7 +26,7 @@ EXECUTABLE_JAR=$(ls -1 $SITUP_HOME/bin/*.jar 2>/dev/null)
 
 if [[ -z "$EXECUTABLE_JAR" ]]
 then
-  echo "Expected jar file missing from directory $SITUP_HOME/bin"
+  echo "Jar file is missing from directory $SITUP_HOME/bin"
   exit 1
 fi
 

@@ -25,7 +25,7 @@ OPENJDK=$(ls -1 $SITUP_HOME/openjdk/ 2>/dev/null)
 
 if [[ -z "$EXECUTABLE_JAR" ]]
 then
-  echo "Expected jar file missing from directory $SITUP_HOME/bin; Please consider running the script from the un-tar directory"
+  echo "Jar file is missing from directory $SITUP_HOME/bin"
   exit 1
 fi
 
