@@ -13,6 +13,7 @@ import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
+import io.opentelemetry.proto.trace.v1.Status;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -112,8 +113,13 @@ public class EndToEndRawSpanTest {
 
 
     public static ResourceSpans getResourceSpans(final String serviceName, final String spanName, final byte[]
-            spanId, final byte[] parentId, final byte[] traceId, final Span.SpanKind spanKind) throws UnsupportedEncodingException {
+            spanId, final byte[] parentId, final byte[] traceId, final Span.SpanKind spanKind, final int statusCode, final String statusMessage) {
         final ByteString parentSpanId = parentId != null ? ByteString.copyFrom(parentId) : ByteString.EMPTY;
+        final Status.Builder statusBuilder = Status.newBuilder().setCodeValue(statusCode);
+        if (statusMessage != null) {
+            statusBuilder.setMessage(statusMessage);
+        }
+        final Status status = statusBuilder.build();
         return ResourceSpans.newBuilder()
                 .setResource(
                         Resource.newBuilder()
@@ -131,6 +137,7 @@ public class EndToEndRawSpanTest {
                                                 .setKind(spanKind)
                                                 .setSpanId(ByteString.copyFrom(spanId))
                                                 .setParentSpanId(parentSpanId)
+                                                .setStatus(status)
                                                 .setTraceId(ByteString.copyFrom(traceId))
                                                 .build()
                                 )
@@ -167,6 +174,8 @@ public class EndToEndRawSpanTest {
         esDocSource.put("parentSpanId", Hex.toHexString(span.getParentSpanId().toByteArray()));
         esDocSource.put("name", span.getName());
         esDocSource.put("kind", span.getKind().name());
+        esDocSource.put("status.code", span.getStatus().getCodeValue());
+        esDocSource.put("status.message", span.getStatus().getMessage());
         esDocSource.put("serviceName", serviceName);
         return esDocSource;
     }
@@ -187,7 +196,9 @@ public class EndToEndRawSpanTest {
                             getRandomBytes(8),
                             getRandomBytes(8),
                             getRandomBytes(16),
-                            SPAN_KINDS.get(RANDOM.nextInt(SPAN_KINDS.size()))
+                            SPAN_KINDS.get(RANDOM.nextInt(SPAN_KINDS.size())),
+                            RANDOM.nextInt(17),
+                            UUID.randomUUID().toString()
                     )
             );
         }

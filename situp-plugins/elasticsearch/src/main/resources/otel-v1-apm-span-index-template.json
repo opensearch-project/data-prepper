@@ -3,12 +3,19 @@
     "date_detection": false,
     "dynamic_templates": [
       {
-        "strings_as_keyword": {
+        "resource_attributes_map": {
           "mapping": {
-            "ignore_above": 1024,
-            "type": "keyword"
+            "type":"keyword"
           },
-          "match_mapping_type": "string"
+          "path_match":"resource.attributes.*"
+        }
+      },
+      {
+        "attributes_map": {
+          "mapping": {
+            "type":"keyword"
+          },
+          "path_match":"attributes.*"
         }
       }
     ],
@@ -17,11 +24,15 @@
     },
     "properties": {
       "traceId": {
-        "ignore_above": 1024,
+        "ignore_above": 256,
         "type": "keyword"
       },
       "spanId": {
-        "ignore_above": 1024,
+        "ignore_above": 256,
+        "type": "keyword"
+      },
+      "parentSpanId": {
+        "ignore_above": 256,
         "type": "keyword"
       },
       "name": {
@@ -29,7 +40,7 @@
         "type": "keyword"
       },
       "kind": {
-        "ignore_above": 1024,
+        "ignore_above": 128,
         "type": "keyword"
       },
       "startTime": {
@@ -38,9 +49,32 @@
       "endTime": {
         "type": "date_nanos"
       },
-      "resource.attributes.service.name": {
-        "ignore_above": 1024,
+      "status": {
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "keyword"
+          }
+        }
+      },
+      "serviceName": {
         "type": "keyword"
+      },
+      "durationInNanos": {
+        "type": "long"
+      },
+      "events": {
+        "type": "nested",
+        "properties": {
+          "time": {
+            "type": "date_nanos"
+          }
+        }
+      },
+      "links": {
+        "type": "nested"
       }
     }
   }
