@@ -13,8 +13,6 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 
 public class PipelineConfiguration {
-    private static final String SOURCE_COMPONENT = "source";
-    private static final String BUFFER_COMPONENT = "buffer";
     private static final String WORKERS_COMPONENT = "workers";
     private static final String DELAY_COMPONENT = "delay";
 
