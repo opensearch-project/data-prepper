@@ -12,6 +12,8 @@ services:
       - ../situp-wait-for-odfe-and-start.sh:/app/situp-wait-for-odfe-and-start.sh
       - ../trace_analytics.yml:/app/transformation-instance.yml
       - ../demo/root-ca.pem:/app/root-ca.pem
+      - ../demo/demo-situp.crt:/app/demo-situp.crt
+      - ../demo/demo-situp.key:/app/demo-situp.key
     ports:
       - "21890:21890"
     networks:
@@ -48,6 +50,7 @@ services:
     command: ["--config=/etc/otel-collector-config.yml"]
     volumes:
       - ./opentelemetry-collector/otel-collector-config.yml:/etc/otel-collector-config.yml
+      - ../demo/demo-situp.crt:/etc/demo-situp.crt
     ports:
       - "55680:55680"
     depends_on:
@@ -63,43 +66,43 @@ services:
       - MYSQL_ALLOW_EMPTY_PASSWORD=yes
     networks:
       - my_network
-  analytics-service:
-    restart: unless-stopped
-    build:
-      context: analytics-service
-      dockerfile: Dockerfile
-    ports:
-      - "8087:8087"
-    environment:
-      - OTEL_OTLP_ENDPOINT=otel-collector:55680
-      - OTEL_RESOURCE_ATTRIBUTES=service.name=analytics-service
-    depends_on:
-      - otel-collector
-      - elasticsearch
-    networks:
-      - my_network
-  elasticsearch:
-    restart: unless-stopped
-    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.8.1
-    environment:
-      - discovery.type=single-node
-  inventory:
-    restart: unless-stopped
-    build:
-      context: inventory
-      dockerfile: Dockerfile
-    ports:
-      - '8082:8082'
-    environment:
-      - DATABASE=database
-      - LOGS=analytics-service
-      - OTLP=otel-collector
-      - WAIT_HOSTS=database:8083
-    depends_on:
-      - database
-      - analytics-service
-    networks:
-      - my_network
+#  analytics-service:
+#    restart: unless-stopped
+#    build:
+#      context: analytics-service
+#      dockerfile: Dockerfile
+#    ports:
+#      - "8087:8087"
+#    environment:
+#      - OTEL_OTLP_ENDPOINT=otel-collector:55680
+#      - OTEL_RESOURCE_ATTRIBUTES=service.name=analytics-service
+#    depends_on:
+#      - otel-collector
+#      - elasticsearch
+#    networks:
+#      - my_network
+#  elasticsearch:
+#    restart: unless-stopped
+#    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.8.1
+#    environment:
+#      - discovery.type=single-node
+#  inventory:
+#    restart: unless-stopped
+#    build:
+#      context: inventory
+#      dockerfile: Dockerfile
+#    ports:
+#      - '8082:8082'
+#    environment:
+#      - DATABASE=database
+#      - LOGS=analytics-service
+#      - OTLP=otel-collector
+#      - WAIT_HOSTS=database:8083
+#    depends_on:
+#      - database
+#      - analytics-service
+#    networks:
+#      - my_network
   database:
     restart: unless-stopped
     build:
@@ -117,78 +120,78 @@ services:
       - mysql
     networks:
       - my_network
-  payment:
-    restart: unless-stopped
-    build:
-      context: payment
-      dockerfile: Dockerfile
-    ports:
-      - '8084:8084'
-    environment:
-      - INVENTORY=inventory
-      - LOGS=analytics-service
-      - OTLP=otel-collector
-      - WAIT_HOSTS=inventory:8082
-    depends_on:
-      - inventory
-      - analytics-service
-    networks:
-      - my_network
-  auth:
-    restart: unless-stopped
-    build:
-      context: auth
-      dockerfile: Dockerfile
-    ports:
-      - '8085:8085'
-    environment:
-      - OTLP=otel-collector
-      - LOGS=analytics-service
-      - RECOMMEND=recommendation
-      - WAIT_HOSTS=otel-collector:55680, recommendation:8086
-    depends_on:
-      - otel-collector
-      - analytics-service
-      - recommendation
-    networks:
-      - my_network
-  recommendation:
-    restart: unless-stopped
-    build:
-      context: recommendation
-      dockerfile: Dockerfile
-    ports:
-      - '8086:8086'
-    environment:
-      - INVENTORY=inventory
-      - LOGS=analytics-service
-      - OTLP=otel-collector
-      - WAIT_HOSTS=inventory:8082
-    depends_on:
-      - inventory
-      - analytics-service
-    networks:
-      - my_network
-  client:
-    restart: unless-stopped
-    build:
-      context: client
-      dockerfile: Dockerfile
-    environment:
-      - OTLP=otel-collector
-      - INVENTORY=inventory
-      - PAYMENT=payment
-      - AUTH=auth
-      - SLEEP_TIME_IN_SECONDS=5
-      - WAIT_HOSTS=otel-collector:55680, inventory:8082, payment:8084, auth:8085, analytics-service:8087
-      - WAIT_AFTER_HOSTS=20
-    depends_on:
-      - otel-collector
-      - inventory
-      - payment
-      - auth
-      - analytics-service
-    networks:
-      - my_network
+#  payment:
+#    restart: unless-stopped
+#    build:
+#      context: payment
+#      dockerfile: Dockerfile
+#    ports:
+#      - '8084:8084'
+#    environment:
+#      - INVENTORY=inventory
+#      - LOGS=analytics-service
+#      - OTLP=otel-collector
+#      - WAIT_HOSTS=inventory:8082
+#    depends_on:
+#      - inventory
+#      - analytics-service
+#    networks:
+#      - my_network
+#  auth:
+#    restart: unless-stopped
+#    build:
+#      context: auth
+#      dockerfile: Dockerfile
+#    ports:
+#      - '8085:8085'
+#    environment:
+#      - OTLP=otel-collector
+#      - LOGS=analytics-service
+#      - RECOMMEND=recommendation
+#      - WAIT_HOSTS=otel-collector:55680, recommendation:8086
+#    depends_on:
+#      - otel-collector
+#      - analytics-service
+#      - recommendation
+#    networks:
+#      - my_network
+#  recommendation:
+#    restart: unless-stopped
+#    build:
+#      context: recommendation
+#      dockerfile: Dockerfile
+#    ports:
+#      - '8086:8086'
+#    environment:
+#      - INVENTORY=inventory
+#      - LOGS=analytics-service
+#      - OTLP=otel-collector
+#      - WAIT_HOSTS=inventory:8082
+#    depends_on:
+#      - inventory
+#      - analytics-service
+#    networks:
+#      - my_network
+#  client:
+#    restart: unless-stopped
+#    build:
+#      context: client
+#      dockerfile: Dockerfile
+#    environment:
+#      - OTLP=otel-collector
+#      - INVENTORY=inventory
+#      - PAYMENT=payment
+#      - AUTH=auth
+#      - SLEEP_TIME_IN_SECONDS=5
+#      - WAIT_HOSTS=otel-collector:55680, inventory:8082, payment:8084, auth:8085, analytics-service:8087
+#      - WAIT_AFTER_HOSTS=20
+#    depends_on:
+#      - otel-collector
+#      - inventory
+#      - payment
+#      - auth
+#      - analytics-service
+#    networks:
+#      - my_network
 networks:
   my_network:
