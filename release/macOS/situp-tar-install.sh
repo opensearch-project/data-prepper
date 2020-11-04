@@ -12,6 +12,7 @@
 # on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
+
 if [[ $# -eq 0 ]]
   then
     echo "Path to the configuration file is required"
@@ -21,7 +22,7 @@ fi
 CONFIG_FILE_LOCATION=$1
 MIN_REQ_JAVA_VERSION=1.8
 MIN_REQ_OPENJDK_VERSION=8
-SITUP_HOME=$(dirname $(realpath $0))
+SITUP_HOME=$(cd "$(dirname "$0")"; pwd)
 EXECUTABLE_JAR=$(ls -1 $SITUP_HOME/bin/*.jar 2>/dev/null)
 
 if [[ -z "$EXECUTABLE_JAR" ]]
@@ -30,7 +31,6 @@ then
   exit 1
 fi
 
-#check if java is installed
 if type -p java; then
     _java=java
 elif [[ -n "$JAVA_HOME" ]] && [[ -x "$JAVA_HOME/bin/java" ]];  then
