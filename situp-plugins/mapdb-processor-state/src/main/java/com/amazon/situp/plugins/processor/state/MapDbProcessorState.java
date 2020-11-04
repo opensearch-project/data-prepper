@@ -25,19 +25,17 @@ public class MapDbProcessorState<V> implements ProcessorState<byte[], V> {
     }
 
     private static final SignedByteArraySerializer SIGNED_BYTE_ARRAY_SERIALIZER = new SignedByteArraySerializer();
-    //TODO: Take this concurrency as an argument or from the pipeline configuration
-    private static final int DEFAULT_CONCURRENCY = 16;
 
     private final BTreeMap<byte[], V> map;
 
-    public MapDbProcessorState(final File dbPath, final String dbName) {
+    public MapDbProcessorState(final File dbPath, final String dbName, final int concurrencyScale) {
         map =
                 (BTreeMap<byte[], V>) DBMaker.fileDB(new File(String.join("/", dbPath.getPath(), dbName)))
                         .fileDeleteAfterClose()
                         .fileMmapEnable() //MapDB uses the (slower) Random Access Files by default
                         .fileMmapPreclearDisable()
                         .executorEnable()
-                        .concurrencyScale(DEFAULT_CONCURRENCY)
+                        .concurrencyScale(concurrencyScale)
                         .make()
                         .treeMap(dbName)
                         .counterEnable() //Treemap doesnt keep:q size counter by default

@@ -44,28 +44,31 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     private volatile static  HashSet<ServiceMapRelationship> relationshipState = new HashSet<>();
     private static File dbPath;
     private static Clock clock;
+    private static int processWorkers;
 
     private final int thisProcessorId;
 
     public ServiceMapStatefulProcessor(final PluginSetting pluginSetting) {
      this(pluginSetting.getIntegerOrDefault(ServiceMapProcessorConfig.WINDOW_DURATION, ServiceMapProcessorConfig.DEFAULT_WINDOW_DURATION)*TO_MILLIS,
              new File(ServiceMapProcessorConfig.DEFAULT_LMDB_PATH),
-             Clock.systemUTC());
+             Clock.systemUTC(), pluginSetting.getNumberOfProcessWorkers());
     }
 
     public ServiceMapStatefulProcessor(final long windowDurationMillis,
                                        final File databasePath,
-                                       final Clock clock) {
+                                       final Clock clock,
+                                       final int processWorkers) {
         ServiceMapStatefulProcessor.clock = clock;
         this.thisProcessorId = processorsCreated.getAndIncrement();
         if(isMasterInstance()) {
             previousTimestamp = ServiceMapStatefulProcessor.clock.millis();
             ServiceMapStatefulProcessor.windowDurationMillis = windowDurationMillis;
             ServiceMapStatefulProcessor.dbPath = createPath(databasePath);
-            currentWindow = new MapDbProcessorState<>(dbPath, getNewDbName());
-            previousWindow = new MapDbProcessorState<>(dbPath, getNewDbName() + EMPTY_SUFFIX);
-            currentTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName());
-            previousTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName() + EMPTY_SUFFIX);
+            ServiceMapStatefulProcessor.processWorkers = processWorkers;
+            currentWindow = new MapDbProcessorState<>(dbPath, getNewDbName(), processWorkers);
+            previousWindow = new MapDbProcessorState<>(dbPath, getNewDbName() + EMPTY_SUFFIX, processWorkers);
+            currentTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName(), processWorkers);
+            previousTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName() + EMPTY_SUFFIX, processWorkers);
         }
     }
 
@@ -292,9 +295,9 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
         previousWindow.delete();
         previousTraceGroupWindow.delete();
         previousWindow = currentWindow;
-        currentWindow = new MapDbProcessorState<>(dbPath, getNewDbName());
+        currentWindow = new MapDbProcessorState<>(dbPath, getNewDbName(), processWorkers);
         previousTraceGroupWindow = currentTraceGroupWindow;
-        currentTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName());
+        currentTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName(), processWorkers);
         previousTimestamp = clock.millis();
         doneRotatingWindows();
     }
