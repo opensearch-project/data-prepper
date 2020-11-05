@@ -180,8 +180,8 @@ public class EndToEndServiceMapTest {
                 if (!parentServiceName.equals(serviceName)) {
                     String rootSpanName = getRootSpanName(parentId);
                     Map<String, Object> destination = new HashMap<>();
-                    destination.put("resource", serviceName);
-                    destination.put("domain", spanName);
+                    destination.put("resource", spanName);
+                    destination.put("domain", serviceName);
                     Map<String, Object> edge = new HashMap<>();
                     edge.put("serviceName", parentServiceName);
                     edge.put("kind", parentRS.getInstrumentationLibrarySpans(0).getSpans(0).getKind().name());
