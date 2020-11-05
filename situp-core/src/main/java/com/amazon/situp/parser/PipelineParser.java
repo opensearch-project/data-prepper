@@ -83,7 +83,7 @@ public class PipelineParser {
             final Source source = pipelineSource.orElseGet(() -> SourceFactory.newSource(sourceSetting));
 
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
-            final Buffer buffer = getBufferOrDefault(pipelineConfiguration.getBufferPluginSetting(),pipelineName);
+            final Buffer buffer = getBufferOrDefault(pipelineConfiguration.getBufferPluginSetting(), pipelineName);
 
             LOG.info("Building processors for the pipeline [{}]", pipelineName);
             final List<Processor> processors = pipelineConfiguration.getProcessorPluginSettings().stream()
@@ -116,11 +116,6 @@ public class PipelineParser {
 
     private int getDelayOrDefault(final Integer readBatchDelay) {
         return readBatchDelay == null ? DEFAULT_READ_BATCH_DELAY : readBatchDelay;
-    }
-
-    private void updatePluginSettings(final PluginSetting pluginSetting, final String pipelineName, final int workers) {
-        pluginSetting.setPipelineName(pipelineName);
-        pluginSetting.setProcessWorkers(workers);
     }
 
     /**
