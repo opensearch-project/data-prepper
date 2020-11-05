@@ -2,7 +2,7 @@ version: "3.7"
 services:
   opendistro-pipes:
     restart: unless-stopped
-    container_name: opendistro-pipes
+    container_name: situp
     build:
       context: ../..
       dockerfile: examples/Dockerfile
@@ -12,6 +12,8 @@ services:
       - ../situp-wait-for-odfe-and-start.sh:/app/situp-wait-for-odfe-and-start.sh
       - ../trace_analytics.yml:/app/transformation-instance.yml
       - ../demo/root-ca.pem:/app/root-ca.pem
+      - ../demo/demo-situp.crt:/app/demo-situp.crt
+      - ../demo/demo-situp.key:/app/demo-situp.key
     ports:
       - "21890:21890"
     networks:
@@ -48,6 +50,7 @@ services:
     command: ["--config=/etc/otel-collector-config.yml"]
     volumes:
       - ./opentelemetry-collector/otel-collector-config.yml:/etc/otel-collector-config.yml
+      - ../demo/demo-situp.crt:/etc/demo-situp.crt
     ports:
       - "55680:55680"
     depends_on:
