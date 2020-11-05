@@ -38,6 +38,49 @@ public class PipelineConfiguration {
         this.readBatchDelay = getReadBatchDelayFromConfiguration(delay);
     }
 
+    public PluginSetting getSourcePluginSetting() {
+        return sourcePluginSetting;
+    }
+
+    public PluginSetting getBufferPluginSetting() {
+        return bufferPluginSetting;
+    }
+
+    public List<PluginSetting> getProcessorPluginSettings() {
+        return processorPluginSettings;
+    }
+
+    public List<PluginSetting> getSinkPluginSettings() {
+        return sinkPluginSettings;
+    }
+
+    public Integer getWorkers() {
+        return workers;
+    }
+
+    public Integer getReadBatchDelay() {
+        return readBatchDelay;
+    }
+
+    public void updateCommonPipelineConfiguration(final String pipelineName, final int processWorkers) {
+        updatePluginSetting(sourcePluginSetting, pipelineName, processWorkers);
+        updatePluginSetting(bufferPluginSetting, pipelineName, processWorkers);
+        processorPluginSettings.forEach(processorPluginSettings ->
+                updatePluginSetting(processorPluginSettings, pipelineName, processWorkers));
+        sinkPluginSettings.forEach(sinkPluginSettings ->
+                updatePluginSetting(sinkPluginSettings, pipelineName, processWorkers));
+    }
+
+    private void updatePluginSetting(
+            final PluginSetting pluginSetting,
+            final String pipelineName,
+            final int processWorkers) {
+        if (pluginSetting != null) {
+            pluginSetting.setPipelineName(pipelineName);
+            pluginSetting.setProcessWorkers(processWorkers);
+        }
+    }
+
     private PluginSetting getSourceFromConfiguration(final Map.Entry<String, Map<String, Object>> sourceConfiguration) {
         if (sourceConfiguration == null) {
             throw new IllegalArgumentException("Invalid configuration, source is a required component");
@@ -69,7 +112,6 @@ public class PipelineConfiguration {
     }
 
 
-
     private static PluginSetting getPluginSettingFromConfiguration(
             final Map.Entry<String, Map<String, Object>> configuration) {
         return new PluginSetting(configuration.getKey(), configuration.getValue());
@@ -89,29 +131,5 @@ public class PipelineConfiguration {
                     component, configuration));
         }
         return configuration;
-    }
-
-    public PluginSetting getSourcePluginSetting() {
-        return sourcePluginSetting;
-    }
-
-    public PluginSetting getBufferPluginSetting() {
-        return bufferPluginSetting;
-    }
-
-    public List<PluginSetting> getProcessorPluginSettings() {
-        return processorPluginSettings;
-    }
-
-    public List<PluginSetting> getSinkPluginSettings() {
-        return sinkPluginSettings;
-    }
-
-    public Integer getWorkers() {
-        return workers;
-    }
-
-    public Integer getReadBatchDelay() {
-        return readBatchDelay;
     }
 }

@@ -75,35 +75,25 @@ public class PipelineParser {
         LOG.info("Building pipeline [{}] from provided configuration", pipelineName);
         try {
             final int processorThreads = getWorkersOrDefault(pipelineConfiguration.getWorkers());
+            pipelineConfiguration.updateCommonPipelineConfiguration(pipelineName, processorThreads);
+
             final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
-            updatePluginSettings(sourceSetting, pipelineName, processorThreads);
             final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
                     pipelineMap, pipelineConfigurationMap);
             final Source source = pipelineSource.orElseGet(() -> SourceFactory.newSource(sourceSetting));
 
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
-            final PluginSetting bufferSetting = pipelineConfiguration.getBufferPluginSetting();
-            Buffer buffer;
-            if (bufferSetting != null) {
-                updatePluginSettings(bufferSetting, pipelineName, processorThreads);
-                buffer = BufferFactory.newBuffer(bufferSetting);
-            } else {
-                buffer = new BlockingBuffer(pipelineName);
-            }
+            final Buffer buffer = getBufferOrDefault(pipelineConfiguration.getBufferPluginSetting(),pipelineName);
 
             LOG.info("Building processors for the pipeline [{}]", pipelineName);
             final List<Processor> processors = pipelineConfiguration.getProcessorPluginSettings().stream()
-                    .map(processorSetting -> {
-                        updatePluginSettings(processorSetting, pipelineName, processorThreads);
-                        return ProcessorFactory.newProcessor(processorSetting); })
+                    .map(ProcessorFactory::newProcessor)
                     .collect(Collectors.toList());
             final int readBatchDelay = getDelayOrDefault(pipelineConfiguration.getReadBatchDelay());
 
             LOG.info("Building sinks for the pipeline [{}]", pipelineName);
             final List<Sink> sinks = pipelineConfiguration.getSinkPluginSettings().stream()
-                    .map(sinkSetting -> {
-                        updatePluginSettings(sinkSetting, pipelineName, processorThreads);
-                        return buildSinkOrConnector(sinkSetting); })
+                    .map(this::buildSinkOrConnector)
                     .collect(Collectors.toList());
 
             final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, processors, sinks, processorThreads, readBatchDelay);
@@ -113,6 +103,11 @@ public class PipelineParser {
             LOG.error("Construction of pipeline components failed, skipping building of pipeline [{}]", pipelineName, ex);
         }
 
+    }
+
+    private Buffer getBufferOrDefault(final PluginSetting bufferPluginSetting, final String pipelineName) {
+        return bufferPluginSetting == null ? new BlockingBuffer(pipelineName) :
+                BufferFactory.newBuffer(bufferPluginSetting);
     }
 
     private int getWorkersOrDefault(final Integer workers) {
