@@ -177,6 +177,9 @@ public class EndToEndRawSpanTest {
         esDocSource.put("status.code", span.getStatus().getCodeValue());
         esDocSource.put("status.message", span.getStatus().getMessage());
         esDocSource.put("serviceName", serviceName);
+        if (span.getParentSpanId().isEmpty()) {
+            esDocSource.put("traceGroup", span.getName());
+        }
         return esDocSource;
     }
 

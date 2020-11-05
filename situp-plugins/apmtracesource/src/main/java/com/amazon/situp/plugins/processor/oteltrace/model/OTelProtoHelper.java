@@ -96,13 +96,30 @@ public final class OTelProtoHelper {
         return event.getAttributesList().stream().collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
     }
 
+    /**
+     * Trace group represent root span i.e the span which triggers the trace event with the microservice architecture. This field is not part of the OpenTelemetry Spec.
+     * This field is something specific to Trace Analytics feature that Kibana will be supporting. This field is derived from the opentelemetry spec and set as below,
+     * <p>
+     * if (this.parentSpanId.isEmpty()) {
+     * traceGroup = this.name;
+     * }
+     * <p>
+     * Note: The reason this method is part of the helper class is because the trace group definition will be expanded in the future when we support Links in Kibana Trace Analytics.
+     */
+    public static String getTraceGroup(final Span span) {
+        if (span.getParentSpanId().isEmpty()) {
+            return span.getName();
+        }
+        return null;
+    }
+
 
     public static Map<String, Object> getInstrumentationLibraryAttributes(final InstrumentationLibrary instrumentationLibrary) {
         final Map<String, Object> instrumentationAttr = new HashMap<>();
-        if(!instrumentationLibrary.getName().isEmpty()){
+        if (!instrumentationLibrary.getName().isEmpty()) {
             instrumentationAttr.put(INSTRUMENTATION_LIBRARY_NAME, instrumentationLibrary.getName());
         }
-        if(!instrumentationLibrary.getVersion().isEmpty()){
+        if (!instrumentationLibrary.getVersion().isEmpty()) {
             instrumentationAttr.put(INSTRUMENTATION_LIBRARY_VERSION, instrumentationLibrary.getVersion());
         }
         return instrumentationAttr;

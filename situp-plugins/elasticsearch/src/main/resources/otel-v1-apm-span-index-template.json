@@ -39,6 +39,10 @@
         "ignore_above": 1024,
         "type": "keyword"
       },
+      "traceGroup": {
+        "ignore_above": 1024,
+        "type": "keyword"
+      },
       "kind": {
         "ignore_above": 128,
         "type": "keyword"
