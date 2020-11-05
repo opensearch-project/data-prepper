@@ -29,6 +29,7 @@ public final class RawSpanBuilder {
     int droppedAttributesCount;
     int droppedEventsCount;
     int droppedLinksCount;
+    String traceGroup;
 
 
     public RawSpanBuilder() {
@@ -99,6 +100,10 @@ public final class RawSpanBuilder {
         return this;
     }
 
+    private RawSpanBuilder setTraceGroup(final String traceGroup) {
+        this.traceGroup = traceGroup;
+        return this;
+    }
 
 
     private RawSpanBuilder setSpanAttributes(final Map<String, Object> spanAttributes,
@@ -148,6 +153,7 @@ public final class RawSpanBuilder {
                 .setLinks(span.getLinksList().stream().map(RawLink::buildRawLink).collect(Collectors.toList()))
                 .setDroppedAttributesCount(span.getDroppedAttributesCount())
                 .setDroppedEventsCount(span.getDroppedEventsCount())
-                .setDroppedLinksCount(span.getDroppedLinksCount());
+                .setDroppedLinksCount(span.getDroppedLinksCount())
+                .setTraceGroup(OTelProtoHelper.getTraceGroup(span));
     }
 }

@@ -1,6 +1,5 @@
 package com.amazon.situp.plugins.processor.oteltrace.model;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.protobuf.ByteString;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
 import io.opentelemetry.proto.common.v1.KeyValue;
@@ -10,9 +9,9 @@ import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.Collections;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class RawBuilderTest {
     @Test
@@ -56,17 +55,31 @@ public class RawBuilderTest {
         assertThat(rawSpan.getAttributes().get(OTelProtoHelper.SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("some-key")).equals("")).isTrue();
         assertThat(rawSpan.getDroppedAttributesCount()).isEqualTo(1);
         assertThat(rawSpan.getDroppedLinksCount()).isEqualTo(0);
-        assertThat(rawSpan.getDroppedLinksCount()).isEqualTo(0);
+        assertThat(rawSpan.getDroppedEventsCount()).isEqualTo(0);
         assertThat(rawSpan.getEvents().size()).isEqualTo(2);
         assertThat(rawSpan.getLinks().size()).isEqualTo(1);
         assertThat(rawSpan.getServiceName()).isEqualTo("some-service");
+        assertThat(rawSpan.getTraceGroup()).isNull();
+    }
+
+    @Test
+    public void testForTraceGroupRawSpan() throws DecoderException {
+        final Span span = Span.newBuilder()
+                .setTraceId(ByteString.copyFrom(TestUtils.getRandomBytes(16)))
+                .setSpanId(ByteString.copyFrom(TestUtils.getRandomBytes(8)))
+                .setName("test-span")
+                .build();
+        final RawSpan rawSpan = new RawSpanBuilder().setFromSpan(span, InstrumentationLibrary.newBuilder().build(), "some-service", Collections.EMPTY_MAP).build();
+        assertThat(ByteString.copyFrom(Hex.decodeHex(rawSpan.getTraceId())).equals(span.getTraceId())).isTrue();
+        assertThat(ByteString.copyFrom(Hex.decodeHex(rawSpan.getSpanId())).equals(span.getSpanId())).isTrue();
+        assertThat(rawSpan.getTraceGroup()).isEqualTo(rawSpan.getName());
     }
 
     /**
      * You can submit empty object and the processor will process it without any error
      */
     @Test
-    public void testRawSpanEmpty(){
+    public void testRawSpanEmpty() {
         final RawSpan rawSpan = new RawSpanBuilder().setFromSpan(Span.newBuilder().build(), InstrumentationLibrary.newBuilder().build(), null, Collections.EMPTY_MAP).build();
         assertThat(rawSpan.getSpanId()).isEmpty();
     }
