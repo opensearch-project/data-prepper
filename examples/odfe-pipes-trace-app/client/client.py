@@ -79,7 +79,7 @@ def setupDB():
     cursor = cnx.cursor()
 
     cursor.executemany(INSERT_INITIAL_ROWS_CMD, data)
-    connection.commit()
+    cnx.commit()
 
     closeCursorAndDBCnx(cursor, cnx)
 
@@ -90,7 +90,7 @@ def cleanupDB():
     cursor = cnx.cursor()
 
     cursor.execute(DELETE_INVENTORY)
-    connection.commit()
+    cnx.commit()
 
     closeCursorAndDBCnx(cursor, cnx)
 
