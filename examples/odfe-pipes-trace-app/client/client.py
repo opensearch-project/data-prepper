@@ -2,6 +2,7 @@
 
 from sys import argv
 from requests import post
+import mysql.connector
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace import TracerProvider
