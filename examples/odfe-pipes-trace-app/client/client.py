@@ -68,7 +68,7 @@ def closeCursorAndDBCnx(cursor, cnx):
 
 def setupDB():
     INSERT_ROWS_CMD = """INSERT INTO Inventory_Items (ItemId, TotalQty) 
-                           VALUES (%(ItemId)s, %(Qty)s) ON DUPLICATE KEY UPDATE TotalQty = TotalQty + %(Qty)s """
+                           VALUES (%(ItemId)s, %(Qty)s) ON DUPLICATE KEY UPDATE TotalQty = TotalQty + %(Qty)s"""
     data=[
         {"ItemId": "apple", "Qty": 4},
         {"ItemId": "orange", "Qty": 10},
@@ -78,8 +78,9 @@ def setupDB():
     cnx = getDBCnx()
     cursor = cnx.cursor()
 
-    cursor.executemany(INSERT_ROWS_CMD, data)
-    cnx.commit()
+    for item in data:
+        cursor.execute(INSERT_ROWS_CMD, item)
+        cnx.commit()
 
     closeCursorAndDBCnx(cursor, cnx)
 
