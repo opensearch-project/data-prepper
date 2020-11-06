@@ -1,6 +1,6 @@
 version: "3.7"
 services:
-  opendistro-pipes:
+  situp:
     restart: unless-stopped
     container_name: situp
     build:
@@ -10,10 +10,8 @@ services:
     command: sh situp-wait-for-odfe-and-start.sh
     volumes:
       - ../situp-wait-for-odfe-and-start.sh:/app/situp-wait-for-odfe-and-start.sh
-      - ../trace_analytics.yml:/app/transformation-instance.yml
+      - ../trace_analytics_no_ssl.yml:/app/transformation-instance.yml
       - ../demo/root-ca.pem:/app/root-ca.pem
-      - ../demo/demo-situp.crt:/app/demo-situp.crt
-      - ../demo/demo-situp.key:/app/demo-situp.key
     ports:
       - "21890:21890"
     networks:
@@ -31,7 +29,9 @@ services:
     networks:
       - my_network
   kibana:
-    image: amazon/opendistro-for-elasticsearch-kibana:1.10.1
+    build:
+      context: ../..
+      dockerfile: examples/kibana-trace-analytics/Dockerfile
     container_name: odfe-kibana
     ports:
       - 5601:5601
@@ -42,11 +42,9 @@ services:
       ELASTICSEARCH_HOSTS: https://node-0.example.com:9200
     networks:
       - my_network
-    depends_on:
-      - opendistro-for-elasticsearch
   otel-collector:
     restart: unless-stopped
-    image: otel/opentelemetry-collector:0.11.0
+    image: amazon/aws-otel-collector:latest
     command: ["--config=/etc/otel-collector-config.yml"]
     volumes:
       - ./opentelemetry-collector/otel-collector-config.yml:/etc/otel-collector-config.yml
@@ -54,7 +52,7 @@ services:
     ports:
       - "55680:55680"
     depends_on:
-      - opendistro-pipes
+      - situp
     networks:
       - my_network
   mysql:
@@ -78,14 +76,8 @@ services:
       - OTEL_RESOURCE_ATTRIBUTES=service.name=analytics-service
     depends_on:
       - otel-collector
-      - elasticsearch
     networks:
       - my_network
-  elasticsearch:
-    restart: unless-stopped
-    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.8.1
-    environment:
-      - discovery.type=single-node
   inventory:
     restart: unless-stopped
     build:

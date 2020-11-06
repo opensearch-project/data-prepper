@@ -14,4 +14,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      exporters: [logging, otlp/2]
+      exporters: [otlp/2, logging]
+    metrics:
+      receivers: [ otlp ]
+      exporters: [ logging ]
