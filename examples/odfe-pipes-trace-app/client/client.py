@@ -22,6 +22,10 @@ PAYMENT = os.getenv("PAYMENT") if os.getenv("PAYMENT") is not None else "localho
 AUTH = os.getenv("AUTH") if os.getenv("AUTH") is not None else "localhost"
 SLEEP_TIME_IN_SECONDS = os.getenv("SLEEP_TIME_IN_SECONDS") if os.getenv("SLEEP_TIME_IN_SECONDS") is not None else 1
 
+DB_NAME = 'APM'
+HOST = os.getenv("MYSQL_HOST") if os.getenv("MYSQL_HOST") is not None else "localhost"
+PORT = int(os.getenv("MYSQL_PORT")) if os.getenv("MYSQL_PORT") is not None else 3306
+
 trace.set_tracer_provider(
     TracerProvider(
         resource=Resource.create(
@@ -53,47 +57,41 @@ retry_strategy = Retry(
     method_whitelist=["HEAD", "GET", "POST", "PUT", "DELETE", "OPTIONS", "TRACE"]
 )
 
+def getDBCnx():
+    cnx = mysql.connector.connect(user="root", host=HOST, port=PORT, database=DB_NAME)
+    return cnx
+
+def closeCursorAndDBCnx(cursor, cnx):
+    cursor.close()
+    cnx.close()
+
 def setupDB():
-    # Prepare initial inventory.
-    setupSession = requests.Session()
-    setupSession.mount("http://", HTTPAdapter(max_retries=retry_strategy))
-    RequestsInstrumentor.uninstrument_session(setupSession) # No need for instrumentation on setup.
+    INSERT_INITIAL_ROWS_CMD = """INSERT INTO Inventory_Items (ItemId, TotalQty) 
+                           VALUES (%s, %s) """
+    data=[
+        ("apple", 4),
+        ("orange", 10),
+        ("banana", 6),
+    ]
 
-    updateInventoryAPIRequest = setupSession.post(
-        "http://{}:8082/update_inventory".format(INVENTORY),
-        data=[
-            ("apple", 5),
-            ("orange", 10),
-            ("apple", -1),
-            ("banana", 6),
-        ]
-    )
-    assert updateInventoryAPIRequest.status_code == 200
+    cnx = getDBCnx()
+    cursor = cnx.cursor()
 
-    getInventoryAPIRequest = setupSession.get(
-        "http://{}:8082/read_inventory".format(INVENTORY)
-    )
-    assert getInventoryAPIRequest.status_code == 200
+    cursor.executemany(INSERT_INITIAL_ROWS_CMD, data)
+    connection.commit()
 
-    setupSession.close()
+    closeCursorAndDBCnx(cursor, cnx)
 
 def cleanupDB():
-    # Cleanup inventory and verify.
-    cleanupSession = requests.Session()
-    RequestsInstrumentor.uninstrument_session(cleanupSession) # No need for instrumentation on cleanup
-    cleanupSession.mount("http://", HTTPAdapter(max_retries=retry_strategy))
+    DELETE_INVENTORY = "DELETE FROM Inventory_Items;"
 
-    deleteInventoryAPIResponse = cleanupSession.delete(
-        "http://{}:8082/delete_inventory".format(INVENTORY)
-    )
-    assert deleteInventoryAPIResponse.status_code == 200
+    cnx = getDBCnx()
+    cursor = cnx.cursor()
 
-    getInventoryAPIResponse = cleanupSession.get(
-        "http://{}:8082/read_inventory".format(INVENTORY)
-    )
-    assert getInventoryAPIResponse.status_code == 200
+    cursor.execute(DELETE_INVENTORY)
+    connection.commit()
 
-    cleanupSession.close()
+    closeCursorAndDBCnx(cursor, cnx)
 
 def cartCheckout():
     # TODO: Cart Management Service will be used here once created.

@@ -108,6 +108,8 @@ services:
       dockerfile: Dockerfile
     environment:
       - OTLP=otel-collector
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
       - INVENTORY=python-services
       - PAYMENT=python-services
       - AUTH=python-services
