@@ -1,3 +1,4 @@
+mysql-connector==2.2.9
 opentelemetry-exporter-otlp==0.12b0
 opentelemetry-instrumentation-flask==0.12b0
 opentelemetry-instrumentation-requests==0.12b0
