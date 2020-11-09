@@ -16,6 +16,7 @@ public class PipelineConfiguration {
     private static final String WORKERS_COMPONENT = "workers";
     private static final String DELAY_COMPONENT = "delay";
     private static final int DEFAULT_READ_BATCH_DELAY = 3_000;
+    private static final int DEFAULT_WORKERS = 1;
 
     private final PluginSetting sourcePluginSetting;
     private final PluginSetting bufferPluginSetting;
@@ -118,7 +119,7 @@ public class PipelineConfiguration {
 
     private Integer getWorkersFromConfiguration(final Integer workersConfiguration) {
         final Integer configuredWorkers = getValueFromConfiguration(workersConfiguration, WORKERS_COMPONENT);
-        return configuredWorkers == null ? getDefaultProcessorThreads() : configuredWorkers;
+        return configuredWorkers == null ? DEFAULT_WORKERS : configuredWorkers;
     }
 
     private Integer getReadBatchDelayFromConfiguration(final Integer delayConfiguration) {
@@ -132,12 +133,5 @@ public class PipelineConfiguration {
                     component, configuration));
         }
         return configuration;
-    }
-
-    /**
-     * TODO Implement this to use CPU cores of the executing machine
-     */
-    private int getDefaultProcessorThreads() {
-        return 1; //Runtime.getRuntime().availableProcessors()
     }
 }
