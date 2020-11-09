@@ -75,6 +75,7 @@ services:
       - '8084:8084' # payment
       - '8085:8085' # auth
       - '8086:8086' # recommendation
+      - '8088:8088' # order
     environment:
       - OTLP=otel-collector
       - LOGS=analytics-service
@@ -110,6 +111,7 @@ services:
       - OTLP=otel-collector
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
+      - ORDER=python-services
       - INVENTORY=python-services
       - PAYMENT=python-services
       - AUTH=python-services
