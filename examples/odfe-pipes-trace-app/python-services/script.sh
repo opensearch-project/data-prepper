@@ -7,6 +7,13 @@ until [[ $(curl -o /dev/null -s -w "%{http_code}\n" http://localhost:8083) != 00
   sleep 1
 done
 
+python3 orderService.py &
+
+until [[ $(curl -o /dev/null -s -w "%{http_code}\n" http://localhost:8088) != 000 ]]; do
+  echo "Waiting for orderService to be ready"
+  sleep 1
+done
+
 python3 inventoryService.py &
 
 until [[ $(curl -o /dev/null -s -w "%{http_code}\n" http://localhost:8082) != 000 ]]; do

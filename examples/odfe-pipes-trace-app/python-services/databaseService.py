@@ -62,10 +62,9 @@ TABLES['Inventory_Items'] = (
 
 TABLES['User_Carts'] = (
     "CREATE TABLE `User_Carts` ("
-    "  `CartId` varchar(16) NOT NULL,"
     "  `ItemId` varchar(16) NOT NULL,"
     "  `TotalQty` int(11) NOT NULL,"
-    "  PRIMARY KEY (`CartId`, `ItemId`)"
+    "  PRIMARY KEY (`ItemId`)"
     ") ENGINE=InnoDB"
 )
 
@@ -222,18 +221,36 @@ def getIntentory():
 
         return data
 
+GET_CART_CMD = "SELECT * FROM User_Carts"
+
+@app.route("/get_cart")
+def getCart():
+    with tracer.start_as_current_span("get_cart"):
+        cnx = getDBCnx()
+        cursor = cnx.cursor()
+
+        cursor.execute(GET_CART_CMD)
+
+        data = {}
+        for (itemId, totalQty) in cursor:
+            data[itemId] = int(totalQty)
+
+        closeCursorAndDBCnx(cursor, cnx)
+
+        return data
+
 CONDITIONAL_RMV_ITEM_FROM_INVENTORY_CMD = ("UPDATE Inventory_Items "
                             "SET TotalQty=IF(TotalQty >= %(Qty)s, TotalQty - %(Qty)s, TotalQty) "
                             "WHERE ItemId=%(ItemId)s")
 UPDATE_USER_CART_ITEM_CMD = (
-    "INSERT INTO User_Carts (CartId, ItemId, TotalQty) VALUES "
-    "(%(CartId)s, %(ItemId)s, %(Qty)s) ON DUPLICATE KEY UPDATE TotalQty = TotalQty + %(Qty)s"
+    "INSERT INTO User_Carts (ItemId, TotalQty) VALUES "
+    "(%(ItemId)s, %(Qty)s) ON DUPLICATE KEY UPDATE TotalQty = TotalQty + %(Qty)s"
 )
 
 @app.route("/add_item_to_cart", methods=["POST", "PUT"])
 def addItemToCart():
     with tracer.start_as_current_span("add_item_to_cart"):
-        # (CartId, ItemId, Qty)
+        # (ItemId, Qty)
         data = request.form.to_dict()
 
         cnx = getDBCnx()
@@ -256,12 +273,12 @@ def addItemToCart():
 
 CONDITIONAL_RMV_ITEM_FROM_CART_CMD = ("UPDATE User_Carts "
                             "SET TotalQty=IF(TotalQty >= %(Qty)s, TotalQty - %(Qty)s, TotalQty) "
-                            "WHERE ItemId=%(ItemId)s AND CartId=%(CartId)s")
+                            "WHERE ItemId=%(ItemId)s")
 
 @app.route("/remove_item_from_cart", methods=["POST", "PUT"])
 def removeItemFromCart():
     with tracer.start_as_current_span("remove_item_from_cart"):
-        # (CartId, ItemId, Qty)
+        # (ItemId, Qty)
         data = request.form.to_dict()
         
         cnx = getDBCnx()
