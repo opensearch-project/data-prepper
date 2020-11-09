@@ -83,7 +83,7 @@ public class PipelineTests {
             throw new RuntimeException("Processor is expected to fail");
         };
         try {
-            testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(),
+            testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
                     Collections.singletonList(testProcessor), Collections.singletonList(testSink), TEST_PROCESSOR_THREADS,
                     TEST_READ_BATCH_TIMEOUT);
             testPipeline.execute();

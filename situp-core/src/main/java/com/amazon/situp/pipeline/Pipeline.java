@@ -57,7 +57,7 @@ public class Pipeline {
             @Nonnull final List<Sink> sinks,
             final int processorThreads,
             final int readBatchTimeoutInMillis) {
-        this(name, source, new BlockingBuffer(), EMPTY_PROCESSOR_LIST, sinks, processorThreads, readBatchTimeoutInMillis);
+        this(name, source, new BlockingBuffer(name), EMPTY_PROCESSOR_LIST, sinks, processorThreads, readBatchTimeoutInMillis);
     }
 
     /**

@@ -4,7 +4,6 @@ import com.amazon.situp.model.configuration.PluginSetting;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -13,8 +12,6 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 
 public class PipelineConfiguration {
-    private static final String SOURCE_COMPONENT = "source";
-    private static final String BUFFER_COMPONENT = "buffer";
     private static final String WORKERS_COMPONENT = "workers";
     private static final String DELAY_COMPONENT = "delay";
 
@@ -41,59 +38,6 @@ public class PipelineConfiguration {
         this.readBatchDelay = getReadBatchDelayFromConfiguration(delay);
     }
 
-    private PluginSetting getSourceFromConfiguration(final Map.Entry<String, Map<String, Object>> sourceConfiguration) {
-        if (sourceConfiguration == null) {
-            throw new IllegalArgumentException("Invalid configuration, source is a required component");
-        }
-        return getPluginSettingFromConfiguration(sourceConfiguration);
-    }
-
-    private PluginSetting getBufferFromConfiguration(final Map.Entry<String, Map<String, Object>> bufferConfiguration) {
-        if(bufferConfiguration==null) {
-            return null;
-        }
-        return getPluginSettingFromConfiguration(bufferConfiguration);
-    }
-
-    private List<PluginSetting> getSinksFromConfiguration(
-            final List<Map.Entry<String, Map<String, Object>>> sinkConfigurations) {
-        if (sinkConfigurations == null || sinkConfigurations.isEmpty()) {
-            throw new IllegalArgumentException("Invalid configuration, at least one sink is required");
-        }
-        return sinkConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration).collect(Collectors.toList());
-    }
-
-    private List<PluginSetting> getProcessorsFromConfiguration(
-            final List<Map.Entry<String, Map<String, Object>>> processorConfigurations) {
-        if (processorConfigurations == null || processorConfigurations.isEmpty()) {
-            return Collections.emptyList();
-        }
-        return processorConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration).collect(Collectors.toList());
-    }
-
-
-
-    private static PluginSetting getPluginSettingFromConfiguration(
-            final Map.Entry<String, Map<String, Object>> configuration) {
-        return new PluginSetting(configuration.getKey(), configuration.getValue());
-    }
-
-    private Integer getWorkersFromConfiguration(final Integer workersConfiguration) {
-        return getValueFromConfiguration(workersConfiguration, WORKERS_COMPONENT);
-    }
-
-    private Integer getReadBatchDelayFromConfiguration(final Integer delayConfiguration) {
-        return getValueFromConfiguration(delayConfiguration, DELAY_COMPONENT);
-    }
-
-    private Integer getValueFromConfiguration(final Integer configuration, final String component) {
-        if (configuration != null && configuration <= 0) {
-            throw new IllegalArgumentException(format("Invalid configuration, %s cannot be %s",
-                    component, configuration));
-        }
-        return configuration;
-    }
-
     public PluginSetting getSourcePluginSetting() {
         return sourcePluginSetting;
     }
@@ -116,5 +60,76 @@ public class PipelineConfiguration {
 
     public Integer getReadBatchDelay() {
         return readBatchDelay;
+    }
+
+    public void updateCommonPipelineConfiguration(final String pipelineName, final int processWorkers) {
+        updatePluginSetting(sourcePluginSetting, pipelineName, processWorkers);
+        updatePluginSetting(bufferPluginSetting, pipelineName, processWorkers);
+        processorPluginSettings.forEach(processorPluginSettings ->
+                updatePluginSetting(processorPluginSettings, pipelineName, processWorkers));
+        sinkPluginSettings.forEach(sinkPluginSettings ->
+                updatePluginSetting(sinkPluginSettings, pipelineName, processWorkers));
+    }
+
+    private void updatePluginSetting(
+            final PluginSetting pluginSetting,
+            final String pipelineName,
+            final int processWorkers) {
+        if (pluginSetting != null) {
+            pluginSetting.setPipelineName(pipelineName);
+            pluginSetting.setProcessWorkers(processWorkers);
+        }
+    }
+
+    private PluginSetting getSourceFromConfiguration(final Map.Entry<String, Map<String, Object>> sourceConfiguration) {
+        if (sourceConfiguration == null) {
+            throw new IllegalArgumentException("Invalid configuration, source is a required component");
+        }
+        return getPluginSettingFromConfiguration(sourceConfiguration);
+    }
+
+    private PluginSetting getBufferFromConfiguration(final Map.Entry<String, Map<String, Object>> bufferConfiguration) {
+        if (bufferConfiguration == null) {
+            return null;
+        }
+        return getPluginSettingFromConfiguration(bufferConfiguration);
+    }
+
+    private List<PluginSetting> getSinksFromConfiguration(
+            final List<Map.Entry<String, Map<String, Object>>> sinkConfigurations) {
+        if (sinkConfigurations == null || sinkConfigurations.isEmpty()) {
+            throw new IllegalArgumentException("Invalid configuration, at least one sink is required");
+        }
+        return sinkConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration).collect(Collectors.toList());
+    }
+
+    private List<PluginSetting> getProcessorsFromConfiguration(
+            final List<Map.Entry<String, Map<String, Object>>> processorConfigurations) {
+        if (processorConfigurations == null || processorConfigurations.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return processorConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration).collect(Collectors.toList());
+    }
+
+
+    private static PluginSetting getPluginSettingFromConfiguration(
+            final Map.Entry<String, Map<String, Object>> configuration) {
+        return new PluginSetting(configuration.getKey(), configuration.getValue());
+    }
+
+    private Integer getWorkersFromConfiguration(final Integer workersConfiguration) {
+        return getValueFromConfiguration(workersConfiguration, WORKERS_COMPONENT);
+    }
+
+    private Integer getReadBatchDelayFromConfiguration(final Integer delayConfiguration) {
+        return getValueFromConfiguration(delayConfiguration, DELAY_COMPONENT);
+    }
+
+    private Integer getValueFromConfiguration(final Integer configuration, final String component) {
+        if (configuration != null && configuration <= 0) {
+            throw new IllegalArgumentException(format("Invalid configuration, %s cannot be %s",
+                    component, configuration));
+        }
+        return configuration;
     }
 }

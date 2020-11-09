@@ -14,7 +14,6 @@ import static org.junit.Assert.assertThrows;
 
 @SuppressWarnings("rawtypes")
 public class BufferFactoryTests {
-
     /**
      * Tests if BufferFactory is able to retrieve default Source plugins by name
      */
@@ -22,7 +21,7 @@ public class BufferFactoryTests {
     public void testNewBufferClassByNameThatExists() {
         final PluginSetting boundedBlocking = new PluginSetting("bounded_blocking", new HashMap<>());
         final Buffer actualBuffer = BufferFactory.newBuffer(boundedBlocking);
-        final Buffer expectedBuffer = new BlockingBuffer();
+        final Buffer expectedBuffer = new BlockingBuffer("test-pipeline");
         assertNotNull(actualBuffer);
         assertEquals(expectedBuffer.getClass().getSimpleName(), actualBuffer.getClass().getSimpleName());
     }

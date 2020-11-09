@@ -62,8 +62,8 @@ public class ServiceMapStatefulProcessorTest {
         Mockito.when(clock.instant()).thenReturn(Instant.now());
         ExecutorService threadpool = Executors.newCachedThreadPool();
         final File path = new File(ServiceMapProcessorConfig.DEFAULT_LMDB_PATH);
-        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock);
-        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock);
+        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 16);
+        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 16);
 
         final byte[] rootSpanId1 = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] rootSpanId2 = ServiceMapTestUtils.getRandomBytes(8);

@@ -17,6 +17,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static java.lang.String.format;
+
 /**
  * A bounded BlockingBuffer is an implementation of {@link Buffer} using {@link LinkedBlockingQueue}, it is bounded
  * to the provided capacity {@link #ATTRIBUTE_BUFFER_CAPACITY} or {@link #DEFAULT_BUFFER_CAPACITY} (if attribute is
@@ -35,16 +37,19 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
 
     private final int batchSize;
     private final BlockingQueue<T> blockingQueue;
+    private final String pipelineName;
 
     /**
      * Creates a BlockingBuffer with the given (fixed) capacity.
      *
      * @param bufferCapacity the capacity of the buffer
      * @param batchSize      the batch size for {@link #read(int)}
+     * @param pipelineName   the name of the associated Pipeline
      */
-    public BlockingBuffer(final int bufferCapacity, final int batchSize) {
+    public BlockingBuffer(final int bufferCapacity, final int batchSize, final String pipelineName) {
         this.batchSize = batchSize;
         this.blockingQueue = new LinkedBlockingQueue<>(bufferCapacity);
+        this.pipelineName = pipelineName;
     }
 
     /**
@@ -58,11 +63,12 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
      */
     public BlockingBuffer(final PluginSetting pluginSetting) {
         this(pluginSetting.getIntegerOrDefault(ATTRIBUTE_BUFFER_CAPACITY, DEFAULT_BUFFER_CAPACITY),
-                pluginSetting.getIntegerOrDefault(ATTRIBUTE_BATCH_SIZE, DEFAULT_BATCH_SIZE));
+                pluginSetting.getIntegerOrDefault(ATTRIBUTE_BATCH_SIZE, DEFAULT_BATCH_SIZE),
+                pluginSetting.getPipelineName());
     }
 
-    public BlockingBuffer() {
-        this(DEFAULT_BUFFER_CAPACITY, DEFAULT_BATCH_SIZE);
+    public BlockingBuffer(final String pipelineName) {
+        this(DEFAULT_BUFFER_CAPACITY, DEFAULT_BATCH_SIZE, pipelineName);
     }
 
     @Override
@@ -70,10 +76,11 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
         try {
             boolean isSuccess = blockingQueue.offer(record, timeoutInMillis, TimeUnit.MILLISECONDS);
             if (!isSuccess) {
-                throw new TimeoutException("Buffer is full, timed out waiting for a slot");
+                throw new TimeoutException(format("Pipeline [%s] - Buffer is full, timed out waiting for a slot",
+                        pipelineName));
             }
         } catch (InterruptedException ex) {
-            LOG.error("Buffer is full, interrupted while waiting to write the record", ex);
+            LOG.error("Pipeline [{}] - Buffer is full, interrupted while waiting to write the record", pipelineName, ex);
             throw new TimeoutException("Buffer is full, timed out waiting for a slot");
         }
     }
@@ -101,7 +108,8 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
                 }
             }
         } catch (InterruptedException ex) {
-            LOG.warn("Retrieving records from buffer to batch size timed out, returning already retrieved records", ex);
+            LOG.warn("Pipeline [{}] - Retrieving records from buffer to batch size timed out, returning already " +
+                    "retrieved records", pipelineName, ex);
             return records;
         }
         return records;
