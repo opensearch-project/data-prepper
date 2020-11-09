@@ -37,7 +37,6 @@ public class PipelineParser {
             .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
     private static final String PIPELINE_TYPE = "pipeline";
     private static final String ATTRIBUTE_NAME = "name";
-    private static final int DEFAULT_READ_BATCH_DELAY = 3_000;
     private final String configurationFileLocation;
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>();
 
@@ -56,6 +55,7 @@ public class PipelineParser {
                     });
             final List<String> allPipelineNames = PipelineConfigurationValidator.validateAndGetPipelineNames(pipelineConfigurationMap);
             final Map<String, Pipeline> pipelineMap = new HashMap<>();
+            pipelineConfigurationMap.forEach((pipelineName, configuration) -> configuration.updateCommonPipelineConfiguration(pipelineName));
             for (String pipelineName : allPipelineNames) {
                 if (!pipelineMap.containsKey(pipelineName)) {
                     buildPipelineFromConfiguration(pipelineName, pipelineConfigurationMap, pipelineMap);
@@ -74,8 +74,7 @@ public class PipelineParser {
         final PipelineConfiguration pipelineConfiguration = pipelineConfigurationMap.get(pipelineName);
         LOG.info("Building pipeline [{}] from provided configuration", pipelineName);
         try {
-            final int processorThreads = getWorkersOrDefault(pipelineConfiguration.getWorkers());
-            pipelineConfiguration.updateCommonPipelineConfiguration(pipelineName, processorThreads);
+            pipelineConfiguration.updateCommonPipelineConfiguration(pipelineName);
 
             final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
             final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
@@ -83,13 +82,14 @@ public class PipelineParser {
             final Source source = pipelineSource.orElseGet(() -> SourceFactory.newSource(sourceSetting));
 
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
-            final Buffer buffer = getBufferOrDefault(pipelineConfiguration.getBufferPluginSetting(), pipelineName);
+            final Buffer buffer = BufferFactory.newBuffer(pipelineConfiguration.getBufferPluginSetting());
 
             LOG.info("Building processors for the pipeline [{}]", pipelineName);
             final List<Processor> processors = pipelineConfiguration.getProcessorPluginSettings().stream()
                     .map(ProcessorFactory::newProcessor)
                     .collect(Collectors.toList());
-            final int readBatchDelay = getDelayOrDefault(pipelineConfiguration.getReadBatchDelay());
+            final int processorThreads = pipelineConfiguration.getWorkers();
+            final int readBatchDelay = pipelineConfiguration.getReadBatchDelay();
 
             LOG.info("Building sinks for the pipeline [{}]", pipelineName);
             final List<Sink> sinks = pipelineConfiguration.getSinkPluginSettings().stream()
@@ -103,26 +103,6 @@ public class PipelineParser {
             LOG.error("Construction of pipeline components failed, skipping building of pipeline [{}]", pipelineName, ex);
         }
 
-    }
-
-    private Buffer getBufferOrDefault(final PluginSetting bufferPluginSetting, final String pipelineName) {
-        return bufferPluginSetting == null ? new BlockingBuffer(pipelineName) :
-                BufferFactory.newBuffer(bufferPluginSetting);
-    }
-
-    private int getWorkersOrDefault(final Integer workers) {
-        return workers == null ? getDefaultProcessorThreads() : workers;
-    }
-
-    private int getDelayOrDefault(final Integer readBatchDelay) {
-        return readBatchDelay == null ? DEFAULT_READ_BATCH_DELAY : readBatchDelay;
-    }
-
-    /**
-     * TODO Implement this to use CPU cores of the executing machine
-     */
-    private int getDefaultProcessorThreads() {
-        return 1; //Runtime.getRuntime().availableProcessors()
     }
 
     private Optional<Source> getSourceIfPipelineType(

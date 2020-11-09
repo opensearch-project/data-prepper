@@ -1,6 +1,7 @@
 package com.amazon.situp.parser.model;
 
 import com.amazon.situp.model.configuration.PluginSetting;
+import com.amazon.situp.plugins.buffer.BlockingBuffer;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -14,6 +15,7 @@ import static java.lang.String.format;
 public class PipelineConfiguration {
     private static final String WORKERS_COMPONENT = "workers";
     private static final String DELAY_COMPONENT = "delay";
+    private static final int DEFAULT_READ_BATCH_DELAY = 3_000;
 
     private final PluginSetting sourcePluginSetting;
     private final PluginSetting bufferPluginSetting;
@@ -31,7 +33,7 @@ public class PipelineConfiguration {
             @JsonProperty("workers") final Integer workers,
             @JsonProperty("delay") final Integer delay) {
         this.sourcePluginSetting = getSourceFromConfiguration(source);
-        this.bufferPluginSetting = getBufferFromConfiguration(buffer);
+        this.bufferPluginSetting = getBufferFromConfigurationOrDefault(buffer);
         this.processorPluginSettings = getProcessorsFromConfiguration(processors);
         this.sinkPluginSettings = getSinksFromConfiguration(sinks);
         this.workers = getWorkersFromConfiguration(workers);
@@ -62,23 +64,19 @@ public class PipelineConfiguration {
         return readBatchDelay;
     }
 
-    public void updateCommonPipelineConfiguration(final String pipelineName, final int processWorkers) {
-        updatePluginSetting(sourcePluginSetting, pipelineName, processWorkers);
-        updatePluginSetting(bufferPluginSetting, pipelineName, processWorkers);
+    public void updateCommonPipelineConfiguration(final String pipelineName) {
+        updatePluginSetting(sourcePluginSetting, pipelineName);
+        updatePluginSetting(bufferPluginSetting, pipelineName);
         processorPluginSettings.forEach(processorPluginSettings ->
-                updatePluginSetting(processorPluginSettings, pipelineName, processWorkers));
+                updatePluginSetting(processorPluginSettings, pipelineName));
         sinkPluginSettings.forEach(sinkPluginSettings ->
-                updatePluginSetting(sinkPluginSettings, pipelineName, processWorkers));
+                updatePluginSetting(sinkPluginSettings, pipelineName));
     }
 
     private void updatePluginSetting(
-            final PluginSetting pluginSetting,
-            final String pipelineName,
-            final int processWorkers) {
-        if (pluginSetting != null) {
-            pluginSetting.setPipelineName(pipelineName);
-            pluginSetting.setProcessWorkers(processWorkers);
-        }
+            final PluginSetting pluginSetting, final String pipelineName) {
+        pluginSetting.setPipelineName(pipelineName);
+        pluginSetting.setProcessWorkers(this.workers);
     }
 
     private PluginSetting getSourceFromConfiguration(final Map.Entry<String, Map<String, Object>> sourceConfiguration) {
@@ -88,9 +86,10 @@ public class PipelineConfiguration {
         return getPluginSettingFromConfiguration(sourceConfiguration);
     }
 
-    private PluginSetting getBufferFromConfiguration(final Map.Entry<String, Map<String, Object>> bufferConfiguration) {
+    private PluginSetting getBufferFromConfigurationOrDefault(
+            final Map.Entry<String, Map<String, Object>> bufferConfiguration) {
         if (bufferConfiguration == null) {
-            return null;
+            return BlockingBuffer.getDefaultPluginSettings();
         }
         return getPluginSettingFromConfiguration(bufferConfiguration);
     }
@@ -118,11 +117,13 @@ public class PipelineConfiguration {
     }
 
     private Integer getWorkersFromConfiguration(final Integer workersConfiguration) {
-        return getValueFromConfiguration(workersConfiguration, WORKERS_COMPONENT);
+        final Integer configuredWorkers = getValueFromConfiguration(workersConfiguration, WORKERS_COMPONENT);
+        return configuredWorkers == null ? getDefaultProcessorThreads() : configuredWorkers;
     }
 
     private Integer getReadBatchDelayFromConfiguration(final Integer delayConfiguration) {
-        return getValueFromConfiguration(delayConfiguration, DELAY_COMPONENT);
+        final Integer configuredDelay = getValueFromConfiguration(delayConfiguration, DELAY_COMPONENT);
+        return configuredDelay == null ? DEFAULT_READ_BATCH_DELAY : configuredDelay;
     }
 
     private Integer getValueFromConfiguration(final Integer configuration, final String component) {
@@ -131,5 +132,12 @@ public class PipelineConfiguration {
                     component, configuration));
         }
         return configuration;
+    }
+
+    /**
+     * TODO Implement this to use CPU cores of the executing machine
+     */
+    private int getDefaultProcessorThreads() {
+        return 1; //Runtime.getRuntime().availableProcessors()
     }
 }
