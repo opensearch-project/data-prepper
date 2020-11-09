@@ -11,6 +11,7 @@ The following are the backend services running on different ports:
 - paymentService.py -> 8084
 - authenticationService.py -> 8085
 - recommendationService.py -> 8086
+- order-service -> 8088
 - analytics-service -> 8087
 - otel-collector -> 55680 
 - transformation-instance -> 9400.
