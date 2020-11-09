@@ -2,6 +2,10 @@
 
 This repository contains items needed to run our sample application with Docker to generate tracing data. The sample app has a client which makes calls to backend services. The client and the backend services are intrumented OpenTelemetry Trace standards. The traces are submitted to OTel Collector which is then exported to transformation instance. The transformation instace converts the OTEL format data into elasticsearch friendly documents. 
 
+The client makes API calls as follows:
+
+## Architecture
+
 There is one client file:
 - client.py
 
@@ -20,7 +24,7 @@ The following are the database/storage we run on different ports.
 - mysql -> 3306
 - elasticsearch -> 9200,9300
 
-
+## Run
 
 To run this application:
 ```
