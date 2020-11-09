@@ -1,7 +1,7 @@
 # Client calling various operations in Sample App
 
 from sys import argv
-from requests import post
+from requests import delete, get, post
 import mysql.connector
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.trace_exporter import OTLPSpanExporter
@@ -18,6 +18,7 @@ import os, pkg_resources, socket, requests
 import time
 
 OTLP = os.getenv("OTLP") if os.getenv("OTLP") is not None else "localhost"
+ORDER = os.getenv("ORDER") if os.getenv("ORDER") is not None else "localhost"
 INVENTORY = os.getenv("INVENTORY") if os.getenv("INVENTORY") is not None else "localhost"
 PAYMENT = os.getenv("PAYMENT") if os.getenv("PAYMENT") is not None else "localhost"
 AUTH = os.getenv("AUTH") if os.getenv("AUTH") is not None else "localhost"
@@ -95,9 +96,8 @@ def cleanupDB():
 
     closeCursorAndDBCnx(cursor, cnx)
 
-def cartCheckout():
-    # TODO: Cart Management Service will be used here once created.
-    with tracer.start_as_current_span("client_cart_checkout"):
+def checkout():
+    with tracer.start_as_current_span("client_checkout"):
         checkoutAPIRequest = post(
             "http://{}:8084/checkout".format(PAYMENT),
             data=[
@@ -107,6 +107,33 @@ def cartCheckout():
             ],
         )
         assert checkoutAPIRequest.status_code == 200
+
+def createOrder():
+    with tracer.start_as_current_span("client_create_order"):
+        updateOrderAPIRequest = post(
+            "http://{}:8088/update_order".format(ORDER),
+            data=[
+                ("apple", 1),
+                ("orange", 3),
+                ("banana", 2)
+            ]
+        )
+        assert updateOrderAPIRequest.status_code == 200
+
+def cancelOrder():
+    with tracer.start_as_current_span("client_cancel_order"):
+        cancelOrderAPIRequest = delete("http://{}:8088/clear_order".format(ORDER))
+        assert cancelOrderAPIRequest.status_code == 200
+
+def deliveryStatus():
+    with tracer.start_as_current_span("client_delivery_status"):
+        getOrderAPIRequest = get("http://{}:8088/get_order".format(ORDER))
+        assert getOrderAPIRequest.status_code == 200
+
+def payOrder():
+    with tracer.start_as_current_span("client_pay_order"):
+        payOrderAPIRequest = post("http://{}:8088/pay_order".format(ORDER))
+        assert payOrderAPIRequest.status_code == 200
 
 while True:
     setupDB()
@@ -121,7 +148,12 @@ while True:
             loginSession.close()
             if loginAPIResponse.status_code != 200:
                 loginAPIResponse.raise_for_status()
-        cartCheckout()
+        checkout()
+        createOrder()
+        cancelOrder()
+        createOrder()
+        deliveryStatus()
+        payOrder()
         time.sleep(5)
     except:
         cleanupDB()
