@@ -55,7 +55,8 @@ public class PipelineParser {
                     });
             final List<String> allPipelineNames = PipelineConfigurationValidator.validateAndGetPipelineNames(pipelineConfigurationMap);
             final Map<String, Pipeline> pipelineMap = new HashMap<>();
-            pipelineConfigurationMap.forEach((pipelineName, configuration) -> configuration.updateCommonPipelineConfiguration(pipelineName));
+            pipelineConfigurationMap.forEach((pipelineName, configuration) ->
+                    configuration.updateCommonPipelineConfiguration(pipelineName));
             for (String pipelineName : allPipelineNames) {
                 if (!pipelineMap.containsKey(pipelineName)) {
                     buildPipelineFromConfiguration(pipelineName, pipelineConfigurationMap, pipelineMap);
@@ -74,8 +75,6 @@ public class PipelineParser {
         final PipelineConfiguration pipelineConfiguration = pipelineConfigurationMap.get(pipelineName);
         LOG.info("Building pipeline [{}] from provided configuration", pipelineName);
         try {
-            pipelineConfiguration.updateCommonPipelineConfiguration(pipelineName);
-
             final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
             final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
                     pipelineMap, pipelineConfigurationMap);
