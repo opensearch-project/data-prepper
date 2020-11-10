@@ -1,12 +1,15 @@
 package com.amazon.situp.parser.model;
 
 import com.amazon.situp.model.configuration.PluginSetting;
+import com.amazon.situp.plugins.buffer.BlockingBuffer;
 import org.hamcrest.CoreMatchers;
 import org.junit.Test;
 
 import java.util.List;
 import java.util.Map;
 
+import static com.amazon.situp.TestDataProvider.DEFAULT_READ_BATCH_DELAY;
+import static com.amazon.situp.TestDataProvider.DEFAULT_WORKERS;
 import static com.amazon.situp.TestDataProvider.TEST_DELAY;
 import static com.amazon.situp.TestDataProvider.TEST_WORKERS;
 import static com.amazon.situp.TestDataProvider.VALID_PLUGIN_SETTING_1;
@@ -15,7 +18,7 @@ import static com.amazon.situp.TestDataProvider.validMultipleConfiguration;
 import static com.amazon.situp.TestDataProvider.validMultipleConfigurationOfSizeOne;
 import static com.amazon.situp.TestDataProvider.validSingleConfiguration;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class PipelineConfigurationTests {
@@ -32,7 +35,8 @@ public class PipelineConfigurationTests {
         final List<PluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         comparePluginSettings(actualSourcePluginSetting, VALID_PLUGIN_SETTING_1);
-        assertThat(pipelineConfiguration.getBufferPluginSetting(), nullValue());
+        assertThat(pipelineConfiguration.getBufferPluginSetting(), notNullValue());
+        comparePluginSettings(pipelineConfiguration.getBufferPluginSetting(), BlockingBuffer.getDefaultPluginSettings());
         assertThat(actualProcessorPluginSettings.size(), is(1));
         actualProcessorPluginSettings.forEach(processorSettings -> comparePluginSettings(processorSettings, VALID_PLUGIN_SETTING_1));
         assertThat(actualSinkPluginSettings.size(), is(2));
@@ -54,13 +58,14 @@ public class PipelineConfigurationTests {
         final List<PluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         comparePluginSettings(actualSourcePluginSetting, VALID_PLUGIN_SETTING_1);
-        assertThat(pipelineConfiguration.getBufferPluginSetting(), nullValue());
+        assertThat(pipelineConfiguration.getBufferPluginSetting(), notNullValue());
+        comparePluginSettings(pipelineConfiguration.getBufferPluginSetting(), BlockingBuffer.getDefaultPluginSettings());
         assertThat(actualProcessorPluginSettings, CoreMatchers.isA(Iterable.class));
         assertThat(actualProcessorPluginSettings.size(), is(0));
         assertThat(actualSinkPluginSettings.size(), is(1));
         comparePluginSettings(actualSinkPluginSettings.get(0), VALID_PLUGIN_SETTING_1);
-        assertThat(pipelineConfiguration.getWorkers(), nullValue());
-        assertThat(pipelineConfiguration.getReadBatchDelay(), nullValue());
+        assertThat(pipelineConfiguration.getWorkers(), is(DEFAULT_WORKERS));
+        assertThat(pipelineConfiguration.getReadBatchDelay(), is(DEFAULT_READ_BATCH_DELAY));
     }
 
     @Test() //not using expected to assert the message
