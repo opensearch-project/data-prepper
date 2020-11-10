@@ -119,9 +119,6 @@ MySQLInstrumentor().instrument()
 FlaskInstrumentor().instrument_app(app)
 RequestsInstrumentor().instrument(tracer_provider=tracerProvider)
 
-def get_header_from_flask_request(request, key):
-	return request.headers.get_all(key)
-
 @app.route("/database")
 def database():
     with tracer.start_as_current_span("database"):
