@@ -69,7 +69,6 @@ def update_order():
     else:
         with tracer.start_as_current_span("update_order"):
             rawData = request.form
-            print("raw data: ", rawData)
             failedItems = []
             for itemId in rawData.keys():
                 qty = sum([val for val in rawData.getlist(itemId, type=int)])
@@ -147,7 +146,6 @@ def logs(serv=None, mes=None):
         url, data=json.dumps(create_log_data),
         headers={'Content-Type': 'application/json'}
     )
-    print(response.status_code, response)
     assert response.status_code == 200
     return "success"
 

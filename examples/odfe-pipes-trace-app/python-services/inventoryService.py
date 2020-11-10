@@ -137,7 +137,6 @@ def logs(serv=None, mes=None):
         url, data=json.dumps(create_log_data),
         headers={'Content-Type': 'application/json'}
     )
-    print(response.status_code, response)
     assert response.status_code == 200
     return "success"
 
