@@ -87,15 +87,11 @@ public class FutureHelper {
         while(!futureQueue.isEmpty()) {
             final Future<A> future = futureQueue.remove();
             try{
-                if(future.isDone()) {
-                    completedFutureResults.add(future.get(1, TimeUnit.MILLISECONDS));
-                } else {
-                    futureQueue.add(future); //add it back to queue
-                }
+                completedFutureResults.add(future.get());
             } catch (ExecutionException e) {
                 failedExceptionList.add(e);
                 LOG.error("FutureTask failed due to: ", e);
-            } catch (InterruptedException | TimeoutException e) {
+            } catch (InterruptedException e) {
                 LOG.error("FutureTask is interrupted or timed out");
             }
         }
