@@ -19,6 +19,7 @@ import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -140,5 +141,23 @@ public class OTelTraceSourceTest {
                     assertThat(i.status().code()).isEqualTo(503);
                     validateBuffer();
                 });
+    }
+
+    @Test
+    public void testDoubleStart() {
+        Assertions.assertThrows(IllegalStateException.class, () -> SOURCE.start(BUFFER));
+    }
+
+    @Test
+    public void testRunAnotherSourceWithSamePort() {
+        final OTelTraceSource source = new OTelTraceSource(new PluginSetting(null, null));
+        //Expect RuntimeException because when port is already in use, BindException is thrown which is not RuntimeException
+        Assertions.assertThrows(RuntimeException.class, () -> source.start(BUFFER));
+    }
+
+    @Test
+    public void testStartWithEmptyBuffer() {
+        final OTelTraceSource source = new OTelTraceSource(new PluginSetting(null, null));
+        Assertions.assertThrows(IllegalStateException.class, () -> source.start(null));
     }
 }

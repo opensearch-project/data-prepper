@@ -25,5 +25,7 @@ jobs:
         java-version: ${{ matrix.java }}
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-    - name: Run end-to-end tests with Gradle
-      run: ./gradlew :situp-core:endToEndTest
+    - name: Run raw-span end-to-end tests with Gradle
+      run: ./gradlew :situp-core:rawSpanEndToEndTest
+    - name: Run service-map end-to-end tests with Gradle
+      run: ./gradlew :situp-core:serviceMapEndToEndTest

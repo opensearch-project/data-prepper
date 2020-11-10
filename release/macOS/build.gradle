@@ -1,0 +1,53 @@
+plugins {
+    id "de.undercouch.download" version "4.1.1"
+    id "distribution"
+}
+def platform = "macOS_x64"
+distributions {
+    macOS {
+        distributionBaseName = "${project.rootProject.name}-${platform}"
+        contents {
+            with archiveToTar("${platform}")
+            into('') {
+                from("situp-tar-install.sh")
+                fileMode 0755
+            }
+        }
+    }
+    macOSWithJDK {
+        distributionBaseName = "${project.rootProject.name}-${platform}-jdk"
+        contents {
+            with archiveToTar("${platform}")
+            into('openjdk') {
+                from tarTree("${buildDir}/${platform}/openjdk/openjdk.tar.gz")
+            }
+            into('') {
+                from("situp-tar-install-with-jdk.sh").rename("situp-tar-install-with-jdk.sh", "situp-tar-install.sh")
+                fileMode 0755
+            }
+        }
+    }
+}
+
+task downloadJDK {
+    doLast {
+        download {
+            src jdkSources[platform]
+            dest "${buildDir}/${platform}/openjdk/openjdk.tar.gz"
+            overwrite false
+        }
+    }
+}
+
+task macOSTar {
+    dependsOn macOSDistTar
+    dependsOn macOSWithJDKDistTar
+}
+
+task macOSZip {
+    dependsOn macOSDistZip
+    dependsOn macOSWithJDKDistZip
+}
+
+macOSWithJDKDistTar.dependsOn downloadJDK
+macOSWithJDKDistZip.dependsOn downloadJDK

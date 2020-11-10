@@ -6,6 +6,8 @@ public class PluginSetting {
 
     private final String name;
     private final Map<String, Object> settings;
+    private int processWorkers;
+    private String pipelineName;
 
     public PluginSetting(final String name, final Map<String, Object> settings) {
         this.name = name;
@@ -18,6 +20,42 @@ public class PluginSetting {
 
     public Map<String, Object> getSettings() {
         return settings;
+    }
+
+    /**
+     * Returns the number of process workers the pipeline is using; This is only required for special plugin use-cases
+     * where plugin implementation depends on the number of process workers. For example, Trace analytics service map
+     * processor plugin uses memory mapped databases and it requires to know the number of workers that operate on it
+     * concurrently.
+     * @return Number of process workers
+     */
+    public int getNumberOfProcessWorkers() {
+        return processWorkers;
+    }
+
+    /**
+     * This method is solely for pipeline execution to set the process workers and it is recommended not to be used.
+     * @param processWorkers number of process workers
+     */
+    public void setProcessWorkers(final int processWorkers) {
+        this.processWorkers = processWorkers;
+    }
+
+    /**
+     * Returns the name of the associated pipeline.
+     * @return name of the associated pipeline
+     */
+    public String getPipelineName() {
+        return this.pipelineName;
+    }
+
+    /**
+     * This method is solely for pipeline execution to set the associated pipeline name and it is recommended not to be
+     * used.
+     * @param pipelineName associated pipeline name
+     */
+    public void setPipelineName(final String pipelineName) {
+        this.pipelineName = pipelineName;
     }
 
     /**

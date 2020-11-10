@@ -83,6 +83,17 @@ public final class RawSpan {
      */
     private final int droppedLinksCount;
 
+    /**
+     * Trace group represent root span i.e the span which triggers the trace event with the microservice architecture. This field is not part of the OpenTelemetry Spec.
+     * This field is something specific to Trace Analytics feature that Kibana will be supporting. This field is derived from the opentelemetry spec and set as below,
+     * <p>
+     * if (this.parentSpanId.isEmpty()) {
+     * traceGroup = this.name;
+     * }
+     */
+    private final String traceGroup;
+
+
     public String getTraceId() {
         return traceId;
     }
@@ -143,11 +154,6 @@ public final class RawSpan {
         return droppedLinksCount;
     }
 
-    @JsonAnyGetter
-    public Map<String, Object> getAttributes() {
-        return attributes;
-    }
-
     RawSpan(RawSpanBuilder builder) {
         this.traceId = builder.traceId;
         this.spanId = builder.spanId;
@@ -165,6 +171,16 @@ public final class RawSpan {
         this.droppedAttributesCount = builder.droppedAttributesCount;
         this.droppedEventsCount = builder.droppedEventsCount;
         this.droppedLinksCount = builder.droppedLinksCount;
+        this.traceGroup = builder.traceGroup;
+    }
+
+    @JsonAnyGetter
+    public Map<String, Object> getAttributes() {
+        return attributes;
+    }
+
+    public String getTraceGroup() {
+        return traceGroup;
     }
 
     public String toJson() throws JsonProcessingException {

@@ -11,11 +11,15 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import static java.lang.String.format;
 
 /**
  * A bounded BlockingBuffer is an implementation of {@link Buffer} using {@link LinkedBlockingQueue}, it is bounded
@@ -30,21 +34,25 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(BlockingBuffer.class);
     private static final int DEFAULT_BUFFER_CAPACITY = 512;
     private static final int DEFAULT_BATCH_SIZE = 8;
+    private static final String PLUGIN_NAME = "bounded_blocking";
     private static final String ATTRIBUTE_BUFFER_CAPACITY = "buffer_size";
     private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
 
     private final int batchSize;
     private final BlockingQueue<T> blockingQueue;
+    private final String pipelineName;
 
     /**
      * Creates a BlockingBuffer with the given (fixed) capacity.
      *
      * @param bufferCapacity the capacity of the buffer
      * @param batchSize      the batch size for {@link #read(int)}
+     * @param pipelineName   the name of the associated Pipeline
      */
-    public BlockingBuffer(final int bufferCapacity, final int batchSize) {
+    public BlockingBuffer(final int bufferCapacity, final int batchSize, final String pipelineName) {
         this.batchSize = batchSize;
         this.blockingQueue = new LinkedBlockingQueue<>(bufferCapacity);
+        this.pipelineName = pipelineName;
     }
 
     /**
@@ -58,11 +66,12 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
      */
     public BlockingBuffer(final PluginSetting pluginSetting) {
         this(pluginSetting.getIntegerOrDefault(ATTRIBUTE_BUFFER_CAPACITY, DEFAULT_BUFFER_CAPACITY),
-                pluginSetting.getIntegerOrDefault(ATTRIBUTE_BATCH_SIZE, DEFAULT_BATCH_SIZE));
+                pluginSetting.getIntegerOrDefault(ATTRIBUTE_BATCH_SIZE, DEFAULT_BATCH_SIZE),
+                pluginSetting.getPipelineName());
     }
 
-    public BlockingBuffer() {
-        this(DEFAULT_BUFFER_CAPACITY, DEFAULT_BATCH_SIZE);
+    public BlockingBuffer(final String pipelineName) {
+        this(DEFAULT_BUFFER_CAPACITY, DEFAULT_BATCH_SIZE, pipelineName);
     }
 
     @Override
@@ -70,10 +79,11 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
         try {
             boolean isSuccess = blockingQueue.offer(record, timeoutInMillis, TimeUnit.MILLISECONDS);
             if (!isSuccess) {
-                throw new TimeoutException("Buffer is full, timed out waiting for a slot");
+                throw new TimeoutException(format("Pipeline [%s] - Buffer is full, timed out waiting for a slot",
+                        pipelineName));
             }
         } catch (InterruptedException ex) {
-            LOG.error("Buffer is full, interrupted while waiting to write the record", ex);
+            LOG.error("Pipeline [{}] - Buffer is full, interrupted while waiting to write the record", pipelineName, ex);
             throw new TimeoutException("Buffer is full, timed out waiting for a slot");
         }
     }
@@ -101,9 +111,21 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
                 }
             }
         } catch (InterruptedException ex) {
-            LOG.warn("Retrieving records from buffer to batch size timed out, returning already retrieved records", ex);
+            LOG.warn("Pipeline [{}] - Retrieving records from buffer to batch size timed out, returning already " +
+                    "retrieved records", pipelineName, ex);
             return records;
         }
         return records;
+    }
+
+    /**
+     * Returns the default PluginSetting object with default values.
+     * @return PluginSetting
+     */
+    public static PluginSetting getDefaultPluginSettings() {
+        final Map<String, Object> settings = new HashMap<>();
+        settings.put(ATTRIBUTE_BUFFER_CAPACITY, DEFAULT_BUFFER_CAPACITY);
+        settings.put(ATTRIBUTE_BATCH_SIZE, DEFAULT_BATCH_SIZE);
+        return new PluginSetting(PLUGIN_NAME, settings);
     }
 }

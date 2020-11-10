@@ -1,6 +1,6 @@
 # PaymentService running on port 8084
 
-from flask import Flask, request, make_response
+from flask import Flask, jsonify, request, make_response
 from opentelemetry import trace
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.exporter.otlp.trace_exporter import OTLPSpanExporter
@@ -11,9 +11,12 @@ from opentelemetry.sdk.trace.export import (
     ConsoleSpanExporter,
     SimpleExportSpanProcessor,
 )
+from Error import Error
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-import os, pkg_resources, socket, requests, json
+import os, pkg_resources, socket, requests, random, json
+
+ERROR_RATE_THRESHOLD = 10
 
 app = Flask(__name__)
 
@@ -55,32 +58,40 @@ retry_strategy = Retry(
     method_whitelist=["HEAD", "GET", "POST", "PUT", "DELETE", "OPTIONS", "TRACE"]
 )
 
-def get_header_from_flask_request(request, key):
-    return request.headers.get_all(key)
+@app.errorhandler(Error)
+def handle_invalid_usage(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
 
 @app.route("/checkout", methods=["POST", "GET"])
 def payment():
-    with tracer.start_as_current_span("checkout"):
-        rawData = request.form
-        data = {}
-        for itemId in rawData.keys():
-            data[itemId] = sum([-val for val in rawData.getlist(itemId, type=int)])
+    errorRate = random.randint(0,99)
+    if errorRate < ERROR_RATE_THRESHOLD:
+        logs('Payment', 'Checkout operation failed - Service Unavailable: 503')
+        raise Error('Checkout Failed - Service Unavailable', status_code=503)
+    else:
+        with tracer.start_as_current_span("checkout"):
+            rawData = request.form
+            data = {}
+            for itemId in rawData.keys():
+                data[itemId] = sum([-val for val in rawData.getlist(itemId, type=int)])
 
-        soldInventorySession = requests.Session()
-        soldInventorySession.mount("http://", HTTPAdapter(max_retries=retry_strategy))
-        soldInventoryUpdateResponse = soldInventorySession.post(
-            "http://{}:8082/update_inventory".format(INVENTORY),
-            data=data,
-        )
-        soldInventorySession.close()
-        if soldInventoryUpdateResponse.status_code == 200:
-            logs('Payment', 'Customer successfully checked out cart')
-            return "success"
-        else:
-            failedItems = soldInventoryUpdateResponse.json().get("failed_items")
-            return make_response(
-                "Failed to checkout following items: {}".format(','.join(failedItems)), 
-                soldInventoryUpdateResponse.status_code)
+            soldInventorySession = requests.Session()
+            soldInventorySession.mount("http://", HTTPAdapter(max_retries=retry_strategy))
+            soldInventoryUpdateResponse = soldInventorySession.post(
+                "http://{}:8082/update_inventory".format(INVENTORY),
+                data=data,
+            )
+            soldInventorySession.close()
+            if soldInventoryUpdateResponse.status_code == 200:
+                logs('Payment', 'Customer successfully checked out cart')
+                return "success"
+            else:
+                failedItems = soldInventoryUpdateResponse.json().get("failed_items")
+                return make_response(
+                    "Failed to checkout following items: {}".format(','.join(failedItems)), 
+                    soldInventoryUpdateResponse.status_code)
 
 def logs(serv=None, mes=None):
     create_log_data = {'service': serv, 'message': mes}

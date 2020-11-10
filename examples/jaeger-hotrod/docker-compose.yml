@@ -21,11 +21,11 @@ services:
       - opendistro-for-elasticsearch
   otel-collector:
     container_name: otel-collector
-    image: otel/opentelemetry-collector:0.13.0
+    image: otel/opentelemetry-collector:0.11.0
     command: [ "--config=/etc/otel-collector-config.yml" ]
     working_dir: "/project"
     volumes:
-      - ${PWD}:/project
+      - ${PWD}/:/project
       - ./otel-collector-config.yml:/etc/otel-collector-config.yml
       - ../demo/demo-situp.crt:/etc/demo-situp.crt
     ports:

@@ -1,0 +1,71 @@
+version: "3.7"
+services:
+  # AWS OTel Collector
+  aws-ot-collector:
+    container_name:  aws-ot-collector
+    image: amazon/aws-otel-collector:latest
+    command: ["--config=/etc/aws-ot-collector-config.yml", "--log-level=DEBUG"]
+    volumes:
+      - ./aws-ot-collector-config.yml:/etc/aws-ot-collector-config.yml
+    ports:
+      - "55680:55680" # OTLP receiver
+    networks:
+      - my_network
+    depends_on:
+      - situp
+
+  # Metric and Trace Sample Data Generator
+  ot-metric-emitter:
+    container_name: aot-sample
+    image: aottestbed/aws-otel-collector-sample-app:java-0.1.0
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=aws-ot-collector:55680
+      - OTEL_RESOURCE_ATTRIBUTES=service.namespace=AOCDockerDemo,service.name=AOCDockerDemoService
+      - S3_REGION=us-west-2
+    depends_on:
+      - aws-ot-collector
+    networks:
+      - my_network
+  situp:
+    container_name: situp
+    build:
+      context: ../..
+      dockerfile: examples/Dockerfile
+    working_dir: /app
+    command: sh situp-wait-for-odfe-and-start.sh
+    volumes:
+      - ../situp-wait-for-odfe-and-start.sh:/app/situp-wait-for-odfe-and-start.sh
+      - ../trace_analytics_no_ssl.yml:/app/transformation-instance.yml
+      - ../demo/root-ca.pem:/app/root-ca.pem
+    ports:
+      - "21890:21890"
+    networks:
+      - my_network
+    depends_on:
+      - opendistro-for-elasticsearch
+  opendistro-for-elasticsearch:
+    container_name: node-0.example.com
+    image: 'amazon/opendistro-for-elasticsearch:1.10.1'
+    ports:
+      - '9200:9200'
+      - '9600:9600'
+    environment:
+      - discovery.type=single-node
+    networks:
+      - my_network
+  kibana:
+    build:
+      context: ../..
+      dockerfile: examples/kibana-trace-analytics/Dockerfile
+    container_name: odfe-kibana
+    ports:
+      - 5601:5601
+    expose:
+      - "5601"
+    environment:
+      ELASTICSEARCH_URL: https://node-0.example.com:9200
+      ELASTICSEARCH_HOSTS: https://node-0.example.com:9200
+    networks:
+      - my_network
+networks:
+  my_network:

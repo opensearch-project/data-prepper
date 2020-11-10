@@ -14,6 +14,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 public class PluginSettingsTest {
     private static final String TEST_PLUGIN_NAME = "test";
+    private static final String TEST_PIPELINE = "test-pipeline";
+    private static final int TEST_WORKERS = 1;
     private static final Map<String, Object> TEST_SETTINGS = ImmutableMap.of("attribute1", 1000,
             "attribute2", 2000);
 
@@ -22,6 +24,8 @@ public class PluginSettingsTest {
     @Before
     public void setup() {
         pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS);
+        pluginSetting.setPipelineName(TEST_PIPELINE);
+        pluginSetting.setProcessWorkers(TEST_WORKERS);
     }
 
     @Test
@@ -33,6 +37,8 @@ public class PluginSettingsTest {
     public void testPluginSettingsNameAndAttribute() {
         assertThat(pluginSetting.getName(), is(TEST_PLUGIN_NAME));
         assertThat(pluginSetting.getSettings(), is(TEST_SETTINGS));
+        assertThat(pluginSetting.getPipelineName(), is(TEST_PIPELINE));
+        assertThat(pluginSetting.getNumberOfProcessWorkers(), is(TEST_WORKERS));
         assertThat(pluginSetting.getAttributeFromSettings("attribute1"), is(1000));
         assertThat(pluginSetting.getAttributeOrDefault("not-present", 500), is(500));
 

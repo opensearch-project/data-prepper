@@ -2,6 +2,7 @@ package com.amazon.situp.plugins.processor.oteltrace.model;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.protobuf.ByteString;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.ArrayValue;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
@@ -12,6 +13,7 @@ import io.opentelemetry.proto.trace.v1.Span;
 import io.opentelemetry.proto.trace.v1.Status;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
@@ -170,11 +172,19 @@ public class OTelProtoHelperTest {
         final Span emptyTimeSpan = Span.newBuilder().build();
 
         final String startTime = OTelProtoHelper.getStartTimeISO8601(startTimeUnixNano);
-        assertThat(Instant.parse(startTime).getEpochSecond()*NANO_MULTIPLIER + Instant.parse(startTime).getNano() == startTimeUnixNano.getStartTimeUnixNano()).isTrue();
+        assertThat(Instant.parse(startTime).getEpochSecond() * NANO_MULTIPLIER + Instant.parse(startTime).getNano() == startTimeUnixNano.getStartTimeUnixNano()).isTrue();
         final String endTime = OTelProtoHelper.getEndTimeISO8601(endTimeUnixNano);
-        assertThat(Instant.parse(endTime).getEpochSecond()*NANO_MULTIPLIER + Instant.parse(endTime).getNano() == endTimeUnixNano.getEndTimeUnixNano()).isTrue();
+        assertThat(Instant.parse(endTime).getEpochSecond() * NANO_MULTIPLIER + Instant.parse(endTime).getNano() == endTimeUnixNano.getEndTimeUnixNano()).isTrue();
         final String emptyTime = OTelProtoHelper.getStartTimeISO8601(endTimeUnixNano);
-        assertThat(Instant.parse(emptyTime).getEpochSecond()*NANO_MULTIPLIER + Instant.parse(emptyTime).getNano() == emptyTimeSpan.getStartTimeUnixNano()).isTrue();
+        assertThat(Instant.parse(emptyTime).getEpochSecond() * NANO_MULTIPLIER + Instant.parse(emptyTime).getNano() == emptyTimeSpan.getStartTimeUnixNano()).isTrue();
 
+    }
+
+    @Test
+    public void testTraceGroup() {
+        final Span span1 = Span.newBuilder().setParentSpanId(ByteString.copyFrom("PArentIdExists", StandardCharsets.UTF_8)).build();
+        assertThat(OTelProtoHelper.getTraceGroup(span1)).isNull();
+        final Span span2 = Span.newBuilder().setName("TraceGroup").build();
+        assertThat(OTelProtoHelper.getTraceGroup(span2)).isEqualToIgnoringCase("TraceGroup");
     }
 }

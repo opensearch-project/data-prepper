@@ -17,7 +17,7 @@ public class MapDbProcessorStateTest extends ProcessorStateTest {
 
     @Override
     public void setProcessorState() throws Exception {
-        this.processorState = new MapDbProcessorState<>(temporaryFolder.newFolder(), "testDb");
+        this.processorState = new MapDbProcessorState<>(temporaryFolder.newFolder(), "testDb", 16);
     }
 
     @Test

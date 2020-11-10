@@ -65,8 +65,8 @@ public class ServiceMapRelationship {
     public static ServiceMapRelationship newDestinationRelationship (
             final String serviceName,
             final String spanKind,
-            final String resource,
             final String domain,
+            final String resource,
             final String traceGroupName) {
         return new ServiceMapRelationship(serviceName, spanKind, new Endpoint(resource, domain), null, traceGroupName);
     }
@@ -78,8 +78,8 @@ public class ServiceMapRelationship {
     public static ServiceMapRelationship newTargetRelationship (
             final String serviceName,
             final String spanKind,
-            final String resource,
             final String domain,
+            final String resource,
             final String traceGroupName) {
         return new ServiceMapRelationship(serviceName, spanKind, null, new Endpoint(resource, domain), traceGroupName);
     }
@@ -180,6 +180,16 @@ public class ServiceMapRelationship {
         return Base64.encode(THREAD_LOCAL_MESSAGE_DIGEST.get().digest());
     }
 
+    /**
+     * The endpoint follows the URL spec.
+     *
+     * Example, https://paymentservice/makePayment.
+     *
+     *  domain: paymentservice
+     *  resource: makePayment
+     *
+     *
+     */
     public static class Endpoint {
         private String resource;
         private String domain;

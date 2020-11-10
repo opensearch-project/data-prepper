@@ -30,6 +30,9 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
 
     @Override
     public void start(Buffer<Record<ExportTraceServiceRequest>> buffer) {
+        if (buffer == null) {
+            throw new IllegalStateException("Buffer provided is null");
+        }
         if (server == null) {
             final ServerBuilder sb = Server.builder();
             sb.service(
@@ -54,14 +57,17 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
         }
         try {
             server.start().get();
-            LOG.info("Started otel_trace_source...");
         } catch (ExecutionException ex) {
-            LOG.error("otel_trace_source failed to start due to:", ex.getCause());
+            if (ex.getCause() != null && ex.getCause() instanceof RuntimeException) {
+                throw (RuntimeException) ex.getCause();
+            } else {
+                throw new RuntimeException(ex);
+            }
         } catch (InterruptedException ex) {
-            LOG.error("otel_trace_source start got interrupted:", ex);
             Thread.currentThread().interrupt();
             throw new RuntimeException(ex);
         }
+        LOG.info("Started otel_trace_source...");
     }
 
     @Override
@@ -69,15 +75,18 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
         if (server != null) {
             try {
                 server.stop().get();
-                LOG.info("Stopped otel_trace_source.");
             } catch (ExecutionException ex) {
-                LOG.error("otel_trace_source failed to stop due to:", ex.getCause());
+                if (ex.getCause() != null && ex.getCause() instanceof RuntimeException) {
+                    throw (RuntimeException) ex.getCause();
+                } else {
+                    throw new RuntimeException(ex);
+                }
             } catch (InterruptedException ex) {
-                LOG.error("otel_trace_source stop got interrupted:", ex);
                 Thread.currentThread().interrupt();
                 throw new RuntimeException(ex);
             }
         }
+        LOG.info("Stopped otel_trace_source.");
     }
 
     public OTelTraceSourceConfig getoTelTraceSourceConfig() {

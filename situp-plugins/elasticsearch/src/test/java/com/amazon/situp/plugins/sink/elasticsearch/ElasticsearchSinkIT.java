@@ -52,7 +52,8 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
   public static List<String> HOSTS = Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
       .map(ip -> (isODFE()? "https://" : "http://") + ip).collect(Collectors.toList());
   private static final String DEFAULT_TEMPLATE_FILE = "test-index-template.json";
-  private static final String DEFAULT_RAW_SPAN_FILE = "raw-span-1.json";
+  private static final String DEFAULT_RAW_SPAN_FILE_1 = "raw-span-1.json";
+  private static final String DEFAULT_RAW_SPAN_FILE_2 = "raw-span-2.json";
   private static final String DEFAULT_SERVICE_MAP_FILE = "service-map-1.json";
 
   public void testInstantiateSinkRawSpanDefault() throws IOException {
@@ -95,27 +96,29 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
   }
 
   public void testOutputRawSpanDefault() throws IOException, InterruptedException {
-    final String testDoc = readDocFromFile(DEFAULT_RAW_SPAN_FILE);
+    final String testDoc1 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
+    final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_2);
     final ObjectMapper mapper = new ObjectMapper();
-    @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
+    @SuppressWarnings("unchecked") final Map<String, Object> expData1 = mapper.readValue(testDoc1, Map.class);
+    @SuppressWarnings("unchecked") final Map<String, Object> expData2 = mapper.readValue(testDoc2, Map.class);
 
-    final List<Record<String>> testRecords = Collections.singletonList(new Record<>(testDoc));
+    final List<Record<String>> testRecords = Arrays.asList(new Record<>(testDoc1), new Record<>(testDoc2));
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     sink.output(testRecords);
 
     final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
-    assertEquals(1, retSources.size());
-    assertEquals(expData, retSources.get(0));
-    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", (String)expData.get("spanId")));
+    assertEquals(2, retSources.size());
+    assertTrue(retSources.containsAll(Arrays.asList(expData1, expData2)));
+    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", (String)expData1.get("spanId")));
     sink.stop();
   }
 
   public void testOutputRawSpanWithDLQ() throws IOException, InterruptedException {
     // TODO: write test case
     final String testDoc1 = readDocFromFile("raw-span-error.json");
-    final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE);
+    final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
     final ObjectMapper mapper = new ObjectMapper();
     @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc2, Map.class);
     final List<Record<String>> testRecords = Arrays.asList(new Record<>(testDoc1), new Record<>(testDoc2));

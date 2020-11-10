@@ -28,18 +28,20 @@ public class MapDbProcessorState<V> implements ProcessorState<byte[], V> {
 
     private final BTreeMap<byte[], V> map;
 
-    public MapDbProcessorState(final File dbPath, final String dbName) {
+    public MapDbProcessorState(final File dbPath, final String dbName, final int concurrencyScale) {
         map =
                 (BTreeMap<byte[], V>) DBMaker.fileDB(new File(String.join("/", dbPath.getPath(), dbName)))
                         .fileDeleteAfterClose()
                         .fileMmapEnable() //MapDB uses the (slower) Random Access Files by default
+                        .fileMmapPreclearDisable()
+                        .executorEnable()
+                        .concurrencyScale(concurrencyScale)
                         .make()
                         .treeMap(dbName)
-                        .counterEnable() //Treemap doesnt keep size counter by default
+                        .counterEnable() //Treemap doesnt keep:q size counter by default
                         .keySerializer(SIGNED_BYTE_ARRAY_SERIALIZER)
                         .valueSerializer(Serializer.JAVA).create();
     }
-
 
     @Override
     public void put(byte[] key, V value) {
@@ -108,7 +110,6 @@ public class MapDbProcessorState<V> implements ProcessorState<byte[], V> {
 
     @Override
     public void delete() {
-        map.clear();
         map.close();
     }
 
@@ -121,4 +122,5 @@ public class MapDbProcessorState<V> implements ProcessorState<byte[], V> {
             this.high = high;
         }
     }
+
 }

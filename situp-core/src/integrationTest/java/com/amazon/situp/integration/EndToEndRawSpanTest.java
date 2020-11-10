@@ -13,6 +13,7 @@ import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
+import io.opentelemetry.proto.trace.v1.Status;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -37,7 +38,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
 
-public class EndToEndIntegrationTest {
+public class EndToEndRawSpanTest {
 
     private static final Random RANDOM = new Random();
     private static final List<Span.SpanKind> SPAN_KINDS =
@@ -112,8 +113,13 @@ public class EndToEndIntegrationTest {
 
 
     public static ResourceSpans getResourceSpans(final String serviceName, final String spanName, final byte[]
-            spanId, final byte[] parentId, final byte[] traceId, final Span.SpanKind spanKind) throws UnsupportedEncodingException {
+            spanId, final byte[] parentId, final byte[] traceId, final Span.SpanKind spanKind, final int statusCode, final String statusMessage) {
         final ByteString parentSpanId = parentId != null ? ByteString.copyFrom(parentId) : ByteString.EMPTY;
+        final Status.Builder statusBuilder = Status.newBuilder().setCodeValue(statusCode);
+        if (statusMessage != null) {
+            statusBuilder.setMessage(statusMessage);
+        }
+        final Status status = statusBuilder.build();
         return ResourceSpans.newBuilder()
                 .setResource(
                         Resource.newBuilder()
@@ -131,6 +137,7 @@ public class EndToEndIntegrationTest {
                                                 .setKind(spanKind)
                                                 .setSpanId(ByteString.copyFrom(spanId))
                                                 .setParentSpanId(parentSpanId)
+                                                .setStatus(status)
                                                 .setTraceId(ByteString.copyFrom(traceId))
                                                 .build()
                                 )
@@ -167,7 +174,12 @@ public class EndToEndIntegrationTest {
         esDocSource.put("parentSpanId", Hex.toHexString(span.getParentSpanId().toByteArray()));
         esDocSource.put("name", span.getName());
         esDocSource.put("kind", span.getKind().name());
+        esDocSource.put("status.code", span.getStatus().getCodeValue());
+        esDocSource.put("status.message", span.getStatus().getMessage());
         esDocSource.put("serviceName", serviceName);
+        if (span.getParentSpanId().isEmpty()) {
+            esDocSource.put("traceGroup", span.getName());
+        }
         return esDocSource;
     }
 
@@ -187,7 +199,9 @@ public class EndToEndIntegrationTest {
                             getRandomBytes(8),
                             getRandomBytes(8),
                             getRandomBytes(16),
-                            SPAN_KINDS.get(RANDOM.nextInt(SPAN_KINDS.size()))
+                            SPAN_KINDS.get(RANDOM.nextInt(SPAN_KINDS.size())),
+                            RANDOM.nextInt(17),
+                            UUID.randomUUID().toString()
                     )
             );
         }

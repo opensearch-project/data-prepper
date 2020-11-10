@@ -1,9 +1,25 @@
-plugins {
-    id "com.palantir.docker" version "0.25.0"
+apply from: file("build-resources.gradle")
+
+allprojects {
+    dependencies {
+        compile project(':situp-core')
+    }
 }
 
-dependencies {
-    compile project(':situp-core')
+subprojects {
+    tasks.withType(Tar) {
+        dependsOn ':release:releasePrerequisites'
+        compression = Compression.GZIP
+        extension = 'tar.gz'
+    }
+
+    tasks.withType(Zip) {
+        dependsOn ':release:releasePrerequisites'
+    }
+
+    ext {
+        archiveToTar = this.&archiveToTar
+    }
 }
 
 task endToEndTests {
@@ -18,20 +34,30 @@ task buildCore {
     dependsOn ':situp-core:build'
 }
 
-task dockerPrerequisites {
+task releasePrerequisites {
     dependsOn 'buildCore'
     dependsOn 'endToEndTests'
     dependsOn 'benchmarkTests'
 }
 
-docker {
-    name "situp/${project.rootProject.name}:${project.version}"
-    tag "${project.name}", "${project.version}" //update tag when ready to push
-    files project(':situp-core').jar.archivePath
-    buildArgs(['JAR_FILE': project(':situp-core').jar.archiveName,
-               'CONFIG_FILEPATH': '/usr/share/situp/situp.yml'])
-    dockerfile file('docker/Dockerfile')
+CopySpec archiveToTar(platform) {
+    return copySpec {
+        into('bin') {
+            from project(':situp-core').jar.archivePath
+            fileMode 0755
+        }
+        into('examples') {
+            from("${rootDir}/examples")
+            dirMode 0750
+            fileMode 0755
+        }
+        into('config') {
+            from("${rootDir}/shared-resources/log4j.properties")
+        }
+        into('') {
+            from("${rootDir}/LICENSE")
+            from("${rootDir}/NOTICE")
+            fileMode 0755
+        }
+    }
 }
-
-dockerPrepare.dependsOn dockerPrerequisites
-dockerPush.dependsOn docker //TODO Add dockerPush specific task when ready to publish
