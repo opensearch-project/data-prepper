@@ -5,7 +5,6 @@ import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.TrustAllStrategy;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.BasicCredentialsProvider;
@@ -38,7 +37,6 @@ public class ConnectionConfiguration {
   public static final String SOCKET_TIMEOUT = "socket_timeout";
   public static final String CONNECT_TIMEOUT = "connect_timeout";
   public static final String CERT_PATH = "cert";
-  public static final String INSECURE = "insecure";
 
   private final List<String> hosts;
   private final String username;
@@ -46,7 +44,6 @@ public class ConnectionConfiguration {
   private final Path certPath;
   private final Integer socketTimeout;
   private final Integer connectTimeout;
-  private final boolean insecure;
 
   public List<String> getHosts() {
     return hosts;
@@ -75,7 +72,6 @@ public class ConnectionConfiguration {
     this.socketTimeout = builder.socketTimeout;
     this.connectTimeout = builder.connectTimeout;
     this.certPath = builder.certPath;
-    this.insecure = builder.insecure;
   }
 
   public static ConnectionConfiguration readConnectionConfiguration(final PluginSetting pluginSetting){
@@ -99,12 +95,8 @@ public class ConnectionConfiguration {
       builder = builder.withConnectTimeout(connectTimeout);
     }
     final String certPath = pluginSetting.getStringOrDefault(CERT_PATH, null);
-    final boolean insecure = pluginSetting.getBooleanOrDefault(INSECURE, false);
     if (certPath != null) {
       builder = builder.withCert(certPath);
-    } else {
-      //We will set insecure flag only if certPath is null
-      builder = builder.withInsecure(insecure);
     }
     return builder.build();
   }
@@ -129,15 +121,9 @@ public class ConnectionConfiguration {
     }
     final SSLContext sslContext = certPath != null ? getCAStrategy(certPath) : getTrustAllStrategy();
     restClientBuilder.setHttpClientConfigCallback(
-            httpClientBuilder -> {
-              httpClientBuilder
-                      .setDefaultCredentialsProvider(credentialsProvider)
-                      .setSSLContext(sslContext);
-              if (this.insecure) {
-                httpClientBuilder.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE);
-              }
-              return httpClientBuilder;
-            }
+            httpClientBuilder -> httpClientBuilder
+                    .setDefaultCredentialsProvider(credentialsProvider)
+                    .setSSLContext(sslContext)
     );
     restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder -> {
@@ -188,7 +174,6 @@ public class ConnectionConfiguration {
     private Integer socketTimeout;
     private Integer connectTimeout;
     private Path certPath;
-    private boolean insecure;
 
 
     public Builder(final List<String> hosts) {
@@ -224,11 +209,6 @@ public class ConnectionConfiguration {
     public Builder withCert(final String certPath) {
       checkArgument(certPath != null, "cert cannot be null");
       this.certPath = Paths.get(certPath);
-      return this;
-    }
-
-    public Builder withInsecure(final boolean insecure) {
-      this.insecure = insecure;
       return this;
     }
 
