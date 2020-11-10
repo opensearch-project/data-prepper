@@ -4,6 +4,8 @@ This repository contains items needed to run our sample application with Docker 
 
 ## Architecture
 
+![High-level Diagram](HighLevelDiagram.png)
+
 There is one client file:
 - client.py
 
@@ -13,7 +15,7 @@ The following are the backend services running on different ports:
 - paymentService.py -> 8084
 - authenticationService.py -> 8085
 - recommendationService.py -> 8086
-- order-service -> 8088
+- orderService.py -> 8088
 - analytics-service -> 8087
 - otel-collector -> 55680 
 - transformation-instance -> 9400.
@@ -40,7 +42,7 @@ Correspondingly, on the server side, the API calls are as follows
 - /get_order (8088) -> /get_cart (8083) -> mysql
 - /pay_order (8088) -> /cart_sold (8083) -> mysql
 
-
+Each API call in the chains above calls `/logs (8087)` in the analytics service.
 
 ## Run
 
