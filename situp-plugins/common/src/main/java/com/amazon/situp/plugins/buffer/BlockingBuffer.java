@@ -11,7 +11,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +34,7 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(BlockingBuffer.class);
     private static final int DEFAULT_BUFFER_CAPACITY = 512;
     private static final int DEFAULT_BATCH_SIZE = 8;
+    private static final String PLUGIN_NAME = "bounded_blocking";
     private static final String ATTRIBUTE_BUFFER_CAPACITY = "buffer_size";
     private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
 
@@ -113,5 +116,16 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
             return records;
         }
         return records;
+    }
+
+    /**
+     * Returns the default PluginSetting object with default values.
+     * @return PluginSetting
+     */
+    public static PluginSetting getDefaultPluginSettings() {
+        final Map<String, Object> settings = new HashMap<>();
+        settings.put(ATTRIBUTE_BUFFER_CAPACITY, DEFAULT_BUFFER_CAPACITY);
+        settings.put(ATTRIBUTE_BATCH_SIZE, DEFAULT_BATCH_SIZE);
+        return new PluginSetting(PLUGIN_NAME, settings);
     }
 }
