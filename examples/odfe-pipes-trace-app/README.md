@@ -35,14 +35,14 @@ The client makes API calls that produces the APM data that falls into the follow
 
 Correspondingly, on the server side, the API calls are as follows
 
-- /server_request_login (8085) -> /recommend (8086) -> /read_inventory (8082) -> /get_inventory (8083) -> mysql
-- /checkout (8084) -> /update_inventory (8082) -> /update_item (8083) -> mysql
-- /update_order (8088) -> /add_item_to_cart (8083) -> mysql
-- /clear_order (8088) -> /cart_empty (8083) -> mysql
-- /get_order (8088) -> /get_cart (8083) -> mysql
-- /pay_order (8088) -> /cart_sold (8083) -> mysql
+- /server_request_login (autheticationService:8085) -> /recommend (recommendationService:8086) -> /read_inventory (inventoryService:8082) -> /get_inventory (databaseService:8083) -> mysql
+- /checkout (paymentService:8084) -> /update_inventory (inventoryService:8082) -> /update_item (databaseService:8083) -> mysql
+- /update_order (orderService:8088) -> /add_item_to_cart or /remove_item_from_cart (databaseService:8083) -> mysql
+- /clear_order (orderService:8088) -> /cart_empty (databaseService:8083) -> mysql
+- /get_order (orderService:8088) -> /get_cart (databaseService:8083) -> mysql
+- /pay_order (orderService:8088) -> /cart_sold (databaseService:8083) -> mysql
 
-Each API call in the chains above calls `/logs (8087)` in the analytics service.
+Each API call in the chains above calls `/logs (analytics-service:8087)` in the analytics service.
 
 ## Run
 
