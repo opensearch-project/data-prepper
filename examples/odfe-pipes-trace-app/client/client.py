@@ -154,7 +154,7 @@ while True:
         createOrder()
         deliveryStatus()
         payOrder()
-        time.sleep(5)
+        time.sleep(SLEEP_TIME_IN_SECONDS)
     except:
         cleanupDB()
         continue

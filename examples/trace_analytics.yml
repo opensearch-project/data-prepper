@@ -1,4 +1,5 @@
 entry-pipeline:
+  delay: "100"
   source:
     otel_trace_source:
       ssl: true
@@ -23,6 +24,7 @@ raw-pipeline:
         password: "admin"
         trace_analytics_raw: true
 service-map-pipeline:
+  delay: "100"
   source:
     pipeline:
       name: "entry-pipeline"
