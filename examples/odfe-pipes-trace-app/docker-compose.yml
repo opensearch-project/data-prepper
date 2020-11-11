@@ -118,7 +118,7 @@ services:
       - INVENTORY=python-services
       - PAYMENT=python-services
       - AUTH=python-services
-      - SLEEP_TIME_IN_SECONDS=5
+      - SLEEP_TIME_IN_SECONDS=0.01
       - WAIT_HOSTS=python-services:8085 # auth
       - WAIT_AFTER_HOSTS=20
     depends_on:
