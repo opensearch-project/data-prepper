@@ -13,9 +13,9 @@ or
 
 * if running from the current project 
     
-    ``` 
-    gradle docker -Prelease
-    ```
+``` 
+gradle docker -Prelease
+```
     
 * The image will be built and will be available for running using docker
 
