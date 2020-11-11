@@ -3,6 +3,7 @@ package com.amazon.situp.plugins.sink.elasticsearch;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.io.FileUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -142,7 +143,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     assertEquals(expData, retSources.get(0));
 
     // clean up temporary directory
-    assertTrue(deleteDirectory(tempDirectory));
+    FileUtils.deleteQuietly(tempDirectory);
   }
 
   public void testInstantiateSinkServiceMapDefault() throws IOException {
@@ -317,16 +318,6 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final String policyId = (String) ((Map<String, Object>)createParser(XContentType.JSON.xContent(),
             responseBody).map().get(index)).get("index.opendistro.index_state_management.policy_id");
     return policyId;
-  }
-
-  private boolean deleteDirectory(final File directoryToBeDeleted) {
-    final File[] allContents = directoryToBeDeleted.listFiles();
-    if (allContents != null) {
-      for (final File file : allContents) {
-        deleteDirectory(file);
-      }
-    }
-    return directoryToBeDeleted.delete();
   }
 
   public static boolean isODFE() {

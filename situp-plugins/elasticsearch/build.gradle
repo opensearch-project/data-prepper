@@ -40,6 +40,7 @@ dependencies {
         exclude group:'org.hamcrest' // workaround for jarHell
     }
     testImplementation "org.elasticsearch.test:framework:${es_version}"
+    testImplementation "commons-io:commons-io:2.8.0"
 }
 
 // Workaround for Werror
