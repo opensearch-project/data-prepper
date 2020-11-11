@@ -1,0 +1,68 @@
+plugins {
+    id "de.undercouch.download" version "4.1.1" apply false
+    id "jp.classmethod.aws.s3" version "0.41" apply false
+}
+
+subprojects {
+    apply plugin: 'de.undercouch.download'
+    apply plugin: 'distribution'
+    apply plugin: 'jp.classmethod.aws.s3'
+
+    dependencies {
+        /* required to resolve below issue with aws sdk
+          JAXB is unavailable. Will fallback to SDK implementation which may be less performant
+         */
+        implementation "javax.xml.bind:jaxb-api:2.3.1"
+    }
+
+    tasks.withType(Tar) {
+        dependsOn ':release:releasePrerequisites'
+        compression = Compression.GZIP
+        extension = 'tar.gz'
+    }
+
+    tasks.withType(Zip) {
+        dependsOn ':release:releasePrerequisites'
+    }
+
+    ext {
+        archiveToTar = this.&archiveToTar
+        awsS3Bucket = project.hasProperty("bucket") ? project.getProperty("bucket") : awsResources.get('default_bucket')
+    }
+
+    aws {
+        profileName = project.hasProperty("profile") ? project.getProperty("profile") : awsResources.get('default_profile')
+        region = project.hasProperty("region") ? project.getProperty("region") : awsResources.get('default_region')
+    }
+}
+
+
+CopySpec archiveToTar() {
+    return copySpec {
+        into('bin') {
+            from project(':situp-core').jar.archivePath
+            fileMode 0755
+        }
+        into('examples') {
+            from("${rootDir}/examples")
+            dirMode 0750
+            fileMode 0755
+        }
+        into('config') {
+            from("${rootDir}/shared-resources/log4j.properties")
+        }
+        into('') {
+            from("${rootDir}/LICENSE")
+            from("${rootDir}/NOTICE")
+            fileMode 0755
+        }
+    }
+}
+
+task uploadArchives {
+    subprojects.each { dependsOn ':release:archives:' + it.name + ':uploadToS3' }
+}
+
+task buildArchives {
+    subprojects.each { dependsOn ':release:archives:' + it.name + ':' + it.name + 'Tar' }
+}
