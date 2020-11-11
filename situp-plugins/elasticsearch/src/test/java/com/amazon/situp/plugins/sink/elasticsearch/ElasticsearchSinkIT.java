@@ -49,8 +49,8 @@ import java.util.stream.Collectors;
 import static org.apache.http.HttpStatus.SC_OK;
 
 public class ElasticsearchSinkIT extends ESRestTestCase {
-  public static List<String> HOSTS = Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
-      .map(ip -> (isODFE()? "https://" : "http://") + ip).collect(Collectors.toList());
+  public List<String> HOSTS = Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
+      .map(ip -> String.format("%s://%s", getProtocol(), ip)).collect(Collectors.toList());
   private static final String DEFAULT_TEMPLATE_FILE = "test-index-template.json";
   private static final String DEFAULT_RAW_SPAN_FILE_1 = "raw-span-1.json";
   private static final String DEFAULT_RAW_SPAN_FILE_2 = "raw-span-2.json";
