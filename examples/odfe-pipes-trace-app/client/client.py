@@ -109,7 +109,7 @@ def checkout():
         assert checkoutAPIRequest.status_code == 200
 
 def createOrder():
-    with tracer.start_as_current_span("client_create_order", "traceState=client_create_order"):
+    with tracer.start_as_current_span("client_create_order"):
         updateOrderAPIRequest = post(
             "http://{}:8088/update_order".format(ORDER),
             data=[
