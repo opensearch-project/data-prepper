@@ -6,22 +6,6 @@ allprojects {
     }
 }
 
-subprojects {
-    tasks.withType(Tar) {
-        dependsOn ':release:releasePrerequisites'
-        compression = Compression.GZIP
-        extension = 'tar.gz'
-    }
-
-    tasks.withType(Zip) {
-        dependsOn ':release:releasePrerequisites'
-    }
-
-    ext {
-        archiveToTar = this.&archiveToTar
-    }
-}
-
 task endToEndTests {
     //dependsOn(':situp-api:test') TODO add E2E and enable when ready
 }
@@ -38,26 +22,4 @@ task releasePrerequisites {
     dependsOn 'buildCore'
     dependsOn 'endToEndTests'
     dependsOn 'benchmarkTests'
-}
-
-CopySpec archiveToTar(platform) {
-    return copySpec {
-        into('bin') {
-            from project(':situp-core').jar.archivePath
-            fileMode 0755
-        }
-        into('examples') {
-            from("${rootDir}/examples")
-            dirMode 0750
-            fileMode 0755
-        }
-        into('config') {
-            from("${rootDir}/shared-resources/log4j.properties")
-        }
-        into('') {
-            from("${rootDir}/LICENSE")
-            from("${rootDir}/NOTICE")
-            fileMode 0755
-        }
-    }
 }

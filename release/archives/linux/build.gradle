@@ -1,13 +1,13 @@
-plugins {
-    id "de.undercouch.download" version "4.1.1"
-    id "distribution"
-}
+import com.amazonaws.services.s3.model.ObjectMetadata
+import jp.classmethod.aws.gradle.s3.AmazonS3FileUploadTask
+import jp.classmethod.aws.gradle.s3.CreateBucketTask
+
 def platform = "linux_x86_64"
 distributions {
     linux {
         distributionBaseName = "${project.rootProject.name}-${platform}"
         contents {
-            with archiveToTar("${platform}")
+            with archiveToTar()
             into('') {
                 from("situp-tar-install.sh")
                 fileMode 0755
@@ -17,7 +17,7 @@ distributions {
     linuxWithJDK {
         distributionBaseName = "${project.rootProject.name}-${platform}-jdk"
         contents {
-            with archiveToTar("${platform}")
+            with archiveToTar()
             into('openjdk') {
                 from tarTree("${buildDir}/${platform}/openjdk/openjdk.tar.gz")
             }
@@ -42,10 +42,37 @@ task linuxTar {
     dependsOn linuxDistTar
     dependsOn linuxWithJDKDistTar
 }
-
 task linuxZip {
     dependsOn linuxDistZip
     dependsOn linuxWithJDKDistZip
+}
+task createBucket(type: CreateBucketTask) {
+    bucketName awsS3Bucket
+    ifNotExists true
+}
+task uploadTarToS3 (type: AmazonS3FileUploadTask, dependsOn: createBucket) {
+    dependsOn linuxDistTar
+    file file(linuxDistTar.archiveFile.get().asFile.absolutePath)
+    bucketName awsS3Bucket
+    key linuxDistTar.archiveName
+
+    def m = new ObjectMetadata()
+    m.setCacheControl("no-cache, no-store")
+    objectMetadata = m
+}
+task uploadTarWithJDKToS3 (type: AmazonS3FileUploadTask, dependsOn: createBucket) {
+    dependsOn linuxWithJDKDistTar
+    file file(linuxWithJDKDistTar.archiveFile.get().asFile.absolutePath)
+    bucketName awsS3Bucket
+    key linuxWithJDKDistTar.archiveName
+
+    def m = new ObjectMetadata()
+    m.setCacheControl("no-cache, no-store")
+    objectMetadata = m
+}
+task uploadToS3 {
+    dependsOn uploadTarToS3
+    dependsOn uploadTarWithJDKToS3
 }
 
 linuxWithJDKDistTar.dependsOn downloadJDK
