@@ -12,5 +12,5 @@ ext.versionMap = [
         slf4j_api              : '1.7.30',
         slf4j_log4j12          : '1.7.30',
         validation_api         : '2.0.1.Final',
-        opentelemetry_proto    : '0.9.1'
+        opentelemetry_proto    : '0.10.0'
 ]
