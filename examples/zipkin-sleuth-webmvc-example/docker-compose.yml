@@ -43,7 +43,7 @@ services:
     command: sh situp-wait-for-odfe-and-start.sh
     volumes:
       - ../situp-wait-for-odfe-and-start.sh:/app/situp-wait-for-odfe-and-start.sh
-      - ../trace_analytics.yml:/app/transformation-instance.yml
+      - ../trace_analytics_no_ssl.yml:/app/transformation-instance.yml
       - ../demo/root-ca.pem:/app/root-ca.pem
     ports:
       - "21890:21890"
@@ -53,7 +53,7 @@ services:
       - opendistro-for-elasticsearch
   otel-collector:
     container_name: otel-collector
-    image: otel/opentelemetry-collector:0.11.0
+    image: otel/opentelemetry-collector:0.14.0
     command: [ "--config=/etc/otel-collector-config.yml" ]
     working_dir: "/project"
     volumes:
@@ -65,6 +65,7 @@ services:
       - my_network
     depends_on:
       - zipkin
+      - situp
   opendistro-for-elasticsearch:
     container_name: node-0.example.com
     image: 'amazon/opendistro-for-elasticsearch:1.10.1'
