@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -44,6 +45,6 @@ public class OTelTraceRawProcessorTest {
         JsonFormat.parser().merge(sampleRequest, builder);
         final ExportTraceServiceRequest exportTraceServiceRequest = builder.build();
         final List<Record<String>> processedRecords = (List<Record<String>>) oTelTraceRawProcessor.execute(Collections.singletonList(new Record<>(exportTraceServiceRequest)));
-        assertThat(processedRecords.size()).isEqualTo(6);
+        Assertions.assertThat(processedRecords.size()).isEqualTo(6);
     }
 }
