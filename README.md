@@ -1,25 +1,20 @@
+
 # simple-ingest-transformation-utility-pipeline
 
-## Overview
+## Table of Contents
 
-Simple Ingest Transformation Utility Pipeline (SITUP) is an open source, lightweight ingestion service that provides customers with abilities to filter, enrich, transform, normalize and aggregate data for analytics.
+- [Overview](docs/readme/overview.md)
+- Trace Analytics
+  - [Overview](docs/readme/trace_overview.md)
+  - [Setup](docs/readme/trace_setup.md)
+- Project Details
+  - [Error Handling](docs/readme/error_handling.md)
+  - [Contribute](#Contribute)
+  - [Code of Conduct](#Code-of-Conduct)
+  - [Security Issue Notifications](#Security-Issue-Notifications)
+  - [License](#License)
+  
 
-*Please note that SITUP is under active development.*
-
-This project contains the following top level components:
-
-* [situp-api](situp-api/): The SITUP API, contains the interfaces for all the SITUP components.
-* [situp-core](situp-core/): The core implementation of SITUP.
-* [situp-plugins](situp-plugins/): The home for SITUP plugins.
-  * [common](situp-plugins/common): Common plugins for all components *viz. source, buffer, processor, and sink*
-  * [apmtracesource](situp-plugins/apmtracesource/): The HTTP source plugin for APM Trace.
-  * [elasticsearch](situp-plugins/elasticsearch/): The Elasticsearch sink plugin that publishes records to elasticsearch cluster via REST client.
-  * [lmdb-processor-state](situp-plugins/lmdb-processor-state/): TODO
-
-We would love to hear from the larger community: please provide feedback proactively.
-
-## Design RFC
-[RFC](docs/dev/trace-analytics-rfc.md)
 
 ## Contribute
 
