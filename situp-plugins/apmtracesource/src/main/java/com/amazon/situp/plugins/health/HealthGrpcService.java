@@ -9,18 +9,8 @@ public class HealthGrpcService extends HealthGrpc.HealthImplBase {
 
     @Override
     public void check(final HealthCheckRequest request, final StreamObserver<HealthCheckResponse> responseObserver) {
-        if (isHealthy()) {
-            responseObserver.onNext(
-                    HealthCheckResponse.newBuilder().setStatus(HealthCheckResponse.ServingStatus.SERVING).build());
-        } else {
-            responseObserver.onNext(
-                    HealthCheckResponse.newBuilder().setStatus(HealthCheckResponse.ServingStatus.NOT_SERVING).build());
-        }
-
+        responseObserver.onNext(
+                HealthCheckResponse.newBuilder().setStatus(HealthCheckResponse.ServingStatus.SERVING).build());
         responseObserver.onCompleted();
-    }
-
-    private boolean isHealthy() {
-        return true;
     }
 }
