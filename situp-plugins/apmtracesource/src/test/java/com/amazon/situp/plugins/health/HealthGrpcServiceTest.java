@@ -1,38 +1,57 @@
 package com.amazon.situp.plugins.health;
 
+import io.grpc.ManagedChannel;
+import io.grpc.Server;
 import io.grpc.health.v1.HealthCheckRequest;
 import io.grpc.health.v1.HealthCheckResponse;
 import io.grpc.health.v1.HealthGrpc;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
-import io.grpc.testing.GrpcCleanupRule;
-import org.junit.Rule;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 
 public class HealthGrpcServiceTest {
 
-    @Rule
-    public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
+    private Server server;
+    private ManagedChannel channel;
 
-    @Test
-    void testHealthCheckResponse() throws Exception {
+    @BeforeEach
+    public void setup() throws Exception {
         String serverName = InProcessServerBuilder.generateName();
 
-        grpcCleanup.register(
-                InProcessServerBuilder.forName(serverName)
-                        .directExecutor()
-                        .addService(new HealthGrpcService())
-                        .build()
-                        .start());
+        server = InProcessServerBuilder.forName(serverName)
+                .directExecutor()
+                .addService(new HealthGrpcService())
+                .build()
+                .start();
 
-        HealthGrpc.HealthBlockingStub blockingStub = HealthGrpc.newBlockingStub(
-                grpcCleanup.register(
-                        InProcessChannelBuilder.forName(serverName)
-                                .directExecutor()
-                                .build()));
+        channel = InProcessChannelBuilder.forName(serverName)
+                .directExecutor()
+                .build();
+    }
 
+    @AfterEach
+    public void teardown() throws Exception {
+        try {
+            channel.shutdown();
+            server.shutdown();
+
+            assert channel.awaitTermination(10, TimeUnit.SECONDS) : "channel cannot be gracefully shutdown";
+            assert server.awaitTermination(10, TimeUnit.SECONDS) : "server cannot be gracefully shutdown";
+        } finally {
+            channel.shutdownNow();
+            server.shutdownNow();
+        }
+    }
+
+    @Test
+    void testHealthCheckResponse() {
+        HealthGrpc.HealthBlockingStub blockingStub = HealthGrpc.newBlockingStub(channel);
         HealthCheckResponse response =
                 blockingStub.check(HealthCheckRequest.newBuilder().build());
 
