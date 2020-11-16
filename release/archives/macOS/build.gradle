@@ -1,47 +1,5 @@
 import com.amazonaws.services.s3.model.ObjectMetadata
 import jp.classmethod.aws.gradle.s3.AmazonS3FileUploadTask
-import jp.classmethod.aws.gradle.s3.CreateBucketTask
-
-def platform = "macOS_x64"
-distributions {
-    macOS {
-        distributionBaseName = "${project.rootProject.name}-${platform}"
-        contents {
-            with archiveToTar()
-            into('') {
-                from("situp-tar-install.sh")
-                fileMode 0755
-            }
-        }
-    }
-    macOSWithJDK {
-        distributionBaseName = "${project.rootProject.name}-${platform}-jdk"
-        contents {
-            with archiveToTar()
-            into('openjdk') {
-                from tarTree("${buildDir}/${platform}/openjdk/openjdk.tar.gz")
-            }
-            into('') {
-                from("situp-tar-install-with-jdk.sh").rename("situp-tar-install-with-jdk.sh", "situp-tar-install.sh")
-                fileMode 0755
-            }
-        }
-    }
-}
-
-task downloadJDK {
-    doLast {
-        download {
-            src jdkSources[platform]
-            dest "${buildDir}/${platform}/openjdk/openjdk.tar.gz"
-            overwrite false
-        }
-    }
-}
-task createBucket(type: CreateBucketTask) {
-    bucketName awsS3Bucket
-    ifNotExists true
-}
 
 task uploadTarToS3 (type: AmazonS3FileUploadTask, dependsOn: createBucket) {
     dependsOn macOSDistTar
@@ -63,20 +21,23 @@ task uploadTarWithJDKToS3 (type: AmazonS3FileUploadTask, dependsOn: createBucket
     m.setCacheControl("no-cache, no-store")
     objectMetadata = m
 }
-task uploadToS3 {
-    dependsOn uploadTarToS3
-    dependsOn uploadTarWithJDKToS3
-}
-
-task macOSTar {
-    dependsOn macOSDistTar
-    dependsOn macOSWithJDKDistTar
-}
-
-task macOSZip {
+task uploadZipToS3 (type: AmazonS3FileUploadTask, dependsOn: createBucket) {
     dependsOn macOSDistZip
-    dependsOn macOSWithJDKDistZip
-}
+    file file(macOSDistZip.archiveFile.get().asFile.absolutePath)
+    bucketName awsS3Bucket
+    key macOSDistZip.archiveName
 
-macOSWithJDKDistTar.dependsOn downloadJDK
-macOSWithJDKDistZip.dependsOn downloadJDK
+    def m = new ObjectMetadata()
+    m.setCacheControl("no-cache, no-store")
+    objectMetadata = m
+}
+task uploadZipWithJDKToS3 (type: AmazonS3FileUploadTask, dependsOn: createBucket) {
+    dependsOn macOSWithJDKDistZip
+    file file(macOSWithJDKDistZip.archiveFile.get().asFile.absolutePath)
+    bucketName awsS3Bucket
+    key macOSWithJDKDistZip.archiveName
+
+    def m = new ObjectMetadata()
+    m.setCacheControl("no-cache, no-store")
+    objectMetadata = m
+}
