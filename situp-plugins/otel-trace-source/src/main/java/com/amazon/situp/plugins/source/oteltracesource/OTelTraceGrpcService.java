@@ -1,4 +1,4 @@
-package com.amazon.situp.plugins.oteltracesource;
+package com.amazon.situp.plugins.source.oteltracesource;
 
 import com.amazon.situp.model.buffer.Buffer;
 import com.amazon.situp.model.record.Record;
