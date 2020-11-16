@@ -7,6 +7,7 @@ import io.grpc.health.v1.HealthCheckResponse;
 import io.grpc.health.v1.HealthGrpc;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
+import org.junit.Assert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,6 +56,6 @@ public class HealthGrpcServiceTest {
         HealthCheckResponse response =
                 blockingStub.check(HealthCheckRequest.newBuilder().build());
 
-        assertEquals(HealthCheckResponse.ServingStatus.SERVING, response.getStatus());
+        Assert.assertEquals(HealthCheckResponse.ServingStatus.SERVING, response.getStatus());
     }
 }
