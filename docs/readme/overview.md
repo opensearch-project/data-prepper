@@ -1,6 +1,6 @@
 # Simple Ingest Transformation Utility Pipeline
 
-Simple Ingest Transformation Utility Pipeline (SITUP) is an open source utility service. SITUP is server side data collector with abilities to filter, enrich, transform, normalize and aggregate data for downstream analytics and visualization.
+Simple Ingest Transformation Utility Pipeline (SITUP) is an open source utility service. SITUP is a server side data collector with abilities to filter, enrich, transform, normalize and aggregate data for downstream analytics and visualization.
 The broader vision for SITUP is to enable an end-to-end data analysis life cycle from gathering raw logs to facilitating sophisticated and actionable interactive ad-hoc analyses on the data. 
 
 ## Concepts
@@ -16,7 +16,7 @@ A SITUP pipeline has four key components a *source*, a *buffer*, one or more *pr
 Source is the input component of a pipeline, it defines the mechanism through which a SITUP pipeline will consume records. A pipeline can have only one source. Source component could consume records either by receiving over http/s or reading from external endpoints like Kafka, SQS, Cloudwatch etc.  Source will have its own configuration options based on the type like the format of the records (string/json/cloudwatch logs/open telemetry trace) , security, concurrency threads etc . The source component will consume records and write them to the buffer component. 
 
 ### Buffer
-The buffer component will act as the layer between the *source* and *sink.* The buffer could either be in-memory or disk based. The default buffer will be in-memory queue bounded by the number of records called `bounded_blocking`.
+The buffer component will act as the layer between the *source* and *sink.* The buffer could either be in-memory or disk based. The default buffer will be in-memory queue bounded by the number of records called `bounded_blocking`. If the buffer component is not explicitly mentioned in the pipeline configuration, the default `bounded_blocking` will be used.
 
 ### Sink
 Sink in the output component of pipeline, it defines the one or more destinations to which a SITUP pipeline will publish the records. A sink destination could be either services like elastic search, s3 or another SITUP pipeline. By using another SITUP pipeline as sink, we could chain multiple SITUP pipelines. Sink will have its own configuration options based on the destination type like security, request batching etc. 

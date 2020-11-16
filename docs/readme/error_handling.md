@@ -1,6 +1,6 @@
 # Error Handling
 
-In SITUP Pipelines Errors should be handled by implementation of plugin components and should not throw any uncaught runtime exceptions. If thrown the pipeline will stop immediately or halt eventually based on the component that throws the exception.
+In SITUP Pipeline, errors should be handled by implementation of plugin components and should not throw any uncaught runtime exceptions. If thrown the pipeline will stop immediately or halt eventually based on the component that throws the exception.
 
 Below are the different scenario of error,
 
@@ -17,6 +17,6 @@ Connected Pipelines is scenario where two or more pipelines connected using the 
 
 
 * If an exception encountered when creating any of the connected pipelines, all the connected pipelines stop and exits using `system.exit(1)`. 
-* If an exception encountered during pipeline `start()` method in any of the connected pipelines, the pipeline that encountered the exception will stop and other pipelines will run and will not receive or process any data as the one of the connected pipelines is unavailable.
-* If an exception encountered in Pipeline `processors` or `sinks` during runtime in any of the connected pipelines, the pipeline that encountered the exception will stop and other pipelines will run and will not receive or process any data as the one of the connected pipelines is unavailable.
+* If an exception encountered during pipeline `start()` method in any of the connected pipelines, the pipeline that encountered the exception will stop and other pipelines will run but not receive or process any data as the one of the connected pipelines is unavailable.
+* If an exception encountered in Pipeline `processors` or `sinks` during runtime in any of the connected pipelines, the pipeline that encountered the exception will stop and other pipelines will run but not receive or process any data as the one of the connected pipelines is unavailable.
 

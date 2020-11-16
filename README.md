@@ -4,11 +4,11 @@
 ## Table of Contents
 
 - [Overview](docs/readme/overview.md)
-- [Error Handling](docs/readme/error_handling.md)
 - Trace Analytics
   - [Overview](docs/readme/trace_overview.md)
   - [Setup](docs/readme/trace_setup.md)
 - Project Details
+  - [Error Handling](docs/readme/error_handling.md)
   - [Contribute](#Contribute)
   - [Code of Conduct](#Code-of-Conduct)
   - [Security Issue Notifications](#Security-Issue-Notifications)
