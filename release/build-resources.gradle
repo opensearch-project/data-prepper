@@ -1,5 +1,9 @@
 //preferably try to main the alphabetical order
 ext {
+    platforms = [
+            linux: 'linux_x86_64',
+            macOS: 'macOS_x64'
+    ]
     jdkSources = [
             linux_x86_64: 'https://download.java.net/java/GA/jdk15.0.1/51f4f36ad4ef43e39d0dfdbaf6549e32/9/GPL/openjdk-15.0.1_linux-x64_bin.tar.gz',
             macOS_x64: 'https://download.java.net/java/GA/jdk15.0.1/51f4f36ad4ef43e39d0dfdbaf6549e32/9/GPL/openjdk-15.0.1_osx-x64_bin.tar.gz'
@@ -7,6 +11,6 @@ ext {
     awsResources = [
             default_region: 'us-east-1',
             default_profile: 'default',
-            default_bucket: 'odfe-situp'
+            default_bucket: 'artifacts.odfesitup.amazon.com'
     ]
 }

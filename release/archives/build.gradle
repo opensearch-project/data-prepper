@@ -2,6 +2,7 @@ plugins {
     id "de.undercouch.download" version "4.1.1" apply false
     id "jp.classmethod.aws.s3" version "0.41" apply false
 }
+import jp.classmethod.aws.gradle.s3.CreateBucketTask
 
 subprojects {
     apply plugin: 'de.undercouch.download'
@@ -15,6 +16,44 @@ subprojects {
         implementation "javax.xml.bind:jaxb-api:2.3.1"
     }
 
+    ext {
+        archiveToTar = this.&archiveToTar
+        awsS3Bucket = project.hasProperty("bucket") ? project.getProperty("bucket") : awsResources.get('default_bucket')
+    }
+
+    def platform = platforms.get(it.name)
+    def distName = it.name
+    def distTar = "${distName}DistTar"
+    def distZip = "${distName}DistZip"
+    def distNameWithJDK = it.name + "WithJDK"
+    def distWithJDKTar = "${distNameWithJDK}DistTar"
+    def distWithJDKZip = "${distNameWithJDK}DistZip"
+
+    distributions {
+        "${distName}" {
+            distributionBaseName = "${project.rootProject.name}-${platform}"
+            contents {
+                with archiveToTar()
+                into('') {
+                    from("situp-tar-install.sh")
+                    fileMode 0755
+                }
+            }
+        }
+        "${distNameWithJDK}" {
+            distributionBaseName = "${project.rootProject.name}-${platform}-jdk"
+            contents {
+                with archiveToTar()
+                into('openjdk') {
+                    from tarTree("${buildDir}/${platform}/openjdk/openjdk.tar.gz")
+                }
+                into('') {
+                    from("situp-tar-install-with-jdk.sh").rename("situp-tar-install-with-jdk.sh", "situp-tar-install.sh")
+                    fileMode 0755
+                }
+            }
+        }
+    }
     tasks.withType(Tar) {
         dependsOn ':release:releasePrerequisites'
         compression = Compression.GZIP
@@ -25,14 +64,45 @@ subprojects {
         dependsOn ':release:releasePrerequisites'
     }
 
-    ext {
-        archiveToTar = this.&archiveToTar
-        awsS3Bucket = project.hasProperty("bucket") ? project.getProperty("bucket") : awsResources.get('default_bucket')
+    task downloadJDK {
+        doLast {
+            download {
+                src jdkSources[platform]
+                dest "${buildDir}/${platform}/openjdk/openjdk.tar.gz"
+                overwrite false
+            }
+        }
+    }
+
+    tasks.create("${it.name}Tar") {
+        dependsOn "${distTar}"
+        dependsOn "${distWithJDKTar}"
+    }
+
+    tasks.create("${it.name}Zip") {
+        dependsOn "${distZip}"
+        dependsOn "${distWithJDKZip}"
     }
 
     aws {
         profileName = project.hasProperty("profile") ? project.getProperty("profile") : awsResources.get('default_profile')
         region = project.hasProperty("region") ? project.getProperty("region") : awsResources.get('default_region')
+    }
+
+    task createBucket(type: CreateBucketTask) {
+        bucketName awsS3Bucket
+        ifNotExists true
+    }
+    afterEvaluate {
+        tasks.getByName("${distNameWithJDK}DistTar").dependsOn(downloadJDK)
+        tasks.getByName("${distNameWithJDK}DistZip").dependsOn(downloadJDK)
+
+        tasks.create("uploadToS3") {
+            dependsOn uploadTarToS3
+            dependsOn uploadTarWithJDKToS3
+            dependsOn uploadZipToS3
+            dependsOn uploadZipWithJDKToS3
+        }
     }
 }
 
@@ -63,6 +133,16 @@ task uploadArchives {
     subprojects.each { dependsOn ':release:archives:' + it.name + ':uploadToS3' }
 }
 
-task buildArchives {
+task buildTar {
     subprojects.each { dependsOn ':release:archives:' + it.name + ':' + it.name + 'Tar' }
+
+}
+
+task buildZip {
+    subprojects.each { dependsOn ':release:archives:' + it.name + ':' + it.name + 'Zip' }
+}
+
+task buildArchives {
+    dependsOn buildTar
+    dependsOn buildZip
 }

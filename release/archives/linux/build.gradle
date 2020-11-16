@@ -1,55 +1,6 @@
 import com.amazonaws.services.s3.model.ObjectMetadata
 import jp.classmethod.aws.gradle.s3.AmazonS3FileUploadTask
-import jp.classmethod.aws.gradle.s3.CreateBucketTask
 
-def platform = "linux_x86_64"
-distributions {
-    linux {
-        distributionBaseName = "${project.rootProject.name}-${platform}"
-        contents {
-            with archiveToTar()
-            into('') {
-                from("situp-tar-install.sh")
-                fileMode 0755
-            }
-        }
-    }
-    linuxWithJDK {
-        distributionBaseName = "${project.rootProject.name}-${platform}-jdk"
-        contents {
-            with archiveToTar()
-            into('openjdk') {
-                from tarTree("${buildDir}/${platform}/openjdk/openjdk.tar.gz")
-            }
-            into('') {
-                from("situp-tar-install-with-jdk.sh").rename("situp-tar-install-with-jdk.sh", "situp-tar-install.sh")
-                fileMode 0755
-            }
-        }
-    }
-}
-
-task downloadJDK {
-    doLast {
-        download {
-            src jdkSources[platform]
-            dest "${buildDir}/${platform}/openjdk/openjdk.tar.gz"
-            overwrite false
-        }
-    }
-}
-task linuxTar {
-    dependsOn linuxDistTar
-    dependsOn linuxWithJDKDistTar
-}
-task linuxZip {
-    dependsOn linuxDistZip
-    dependsOn linuxWithJDKDistZip
-}
-task createBucket(type: CreateBucketTask) {
-    bucketName awsS3Bucket
-    ifNotExists true
-}
 task uploadTarToS3 (type: AmazonS3FileUploadTask, dependsOn: createBucket) {
     dependsOn linuxDistTar
     file file(linuxDistTar.archiveFile.get().asFile.absolutePath)
@@ -70,10 +21,24 @@ task uploadTarWithJDKToS3 (type: AmazonS3FileUploadTask, dependsOn: createBucket
     m.setCacheControl("no-cache, no-store")
     objectMetadata = m
 }
-task uploadToS3 {
-    dependsOn uploadTarToS3
-    dependsOn uploadTarWithJDKToS3
+task uploadZipToS3 (type: AmazonS3FileUploadTask, dependsOn: createBucket) {
+    dependsOn linuxDistZip
+    file file(linuxDistZip.archiveFile.get().asFile.absolutePath)
+    bucketName awsS3Bucket
+    key linuxDistZip.archiveName
+
+    def m = new ObjectMetadata()
+    m.setCacheControl("no-cache, no-store")
+    objectMetadata = m
 }
 
-linuxWithJDKDistTar.dependsOn downloadJDK
-linuxWithJDKDistZip.dependsOn downloadJDK
+task uploadZipWithJDKToS3 (type: AmazonS3FileUploadTask, dependsOn: createBucket) {
+    dependsOn linuxWithJDKDistZip
+    file file(linuxWithJDKDistZip.archiveFile.get().asFile.absolutePath)
+    bucketName awsS3Bucket
+    key linuxWithJDKDistZip.archiveName
+
+    def m = new ObjectMetadata()
+    m.setCacheControl("no-cache, no-store")
+    objectMetadata = m
+}
