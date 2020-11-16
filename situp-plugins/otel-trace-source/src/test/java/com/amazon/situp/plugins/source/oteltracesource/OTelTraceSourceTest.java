@@ -1,4 +1,4 @@
-package com.amazon.situp.plugins.oteltrace;
+package com.amazon.situp.plugins.source.oteltracesource;
 
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
@@ -80,8 +80,8 @@ public class OTelTraceSourceTest {
 
     private void validateBuffer() {
         List<Record<ExportTraceServiceRequest>> drainedBuffer = (List<Record<ExportTraceServiceRequest>>) BUFFER.read(100000);
-        Assertions.assertThat(drainedBuffer.size()).isEqualTo(1);
-        Assertions.assertThat(drainedBuffer.get(0).getData()).isEqualTo(SUCCESS_REQUEST);
+        assertThat(drainedBuffer.size()).isEqualTo(1);
+        assertThat(drainedBuffer.get(0).getData()).isEqualTo(SUCCESS_REQUEST);
     }
 
     @Test
@@ -96,7 +96,7 @@ public class OTelTraceSourceTest {
                 HttpData.copyOf(JsonFormat.printer().print(SUCCESS_REQUEST).getBytes()))
                 .aggregate()
                 .whenComplete((i, ex) -> {
-                    Assertions.assertThat(i.status().code()).isEqualTo(200);
+                    assertThat(i.status().code()).isEqualTo(200);
                 });
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
@@ -108,7 +108,7 @@ public class OTelTraceSourceTest {
                 HttpData.copyOf(JsonFormat.printer().print(FAILURE_REQUEST).getBytes()))
                 .aggregate()
                 .whenComplete((i, ex) -> {
-                    Assertions.assertThat(i.status().code()).isEqualTo(503);
+                    assertThat(i.status().code()).isEqualTo(503);
                     validateBuffer();
                 });
 
@@ -126,7 +126,7 @@ public class OTelTraceSourceTest {
                 HttpData.copyOf(SUCCESS_REQUEST.toByteArray()))
                 .aggregate()
                 .whenComplete((i, ex) -> {
-                    Assertions.assertThat(i.status().code()).isEqualTo(200);
+                    assertThat(i.status().code()).isEqualTo(200);
                 });
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
@@ -138,7 +138,7 @@ public class OTelTraceSourceTest {
                 HttpData.copyOf(FAILURE_REQUEST.toByteArray()))
                 .aggregate()
                 .whenComplete((i, ex) -> {
-                    Assertions.assertThat(i.status().code()).isEqualTo(503);
+                    assertThat(i.status().code()).isEqualTo(503);
                     validateBuffer();
                 });
     }
