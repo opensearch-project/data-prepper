@@ -1,6 +1,6 @@
 allprojects {
     group = 'com.amazon'
-    version = '0.1-beta'
+    version = '0.1.0'
     repositories {
         mavenCentral()
     }
@@ -8,7 +8,6 @@ allprojects {
 apply from: file("${rootDir}/dependency-versions.gradle")
 
 subprojects {
-    version = '0.1-beta'
     apply plugin: 'java'
     sourceCompatibility = '1.8'
     dependencies {
