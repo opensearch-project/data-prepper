@@ -6,7 +6,8 @@ public class OTelTraceSourceConfig {
     private static final String REQUEST_TIMEOUT = "request_timeout";
     private static final String PORT = "port";
     private static final String SSL = "ssl";
-    private static final String HEALTH_CHECK = "health_check";
+    private static final String HEALTH_CHECK_SERVICE = "health_check_service";
+    private static final String PROTO_REFLECTION_SERVICE = "proto_reflection_service";
     private static final String SSL_KEY_CERT_FILE = "sslKeyCertChainFile";
     private static final String SSL_KEY_FILE = "sslKeyFile";
     private static final int DEFAULT_REQUEST_TIMEOUT = 10_000;
@@ -15,15 +16,23 @@ public class OTelTraceSourceConfig {
     private final int requestTimeoutInMillis;
     private final int port;
     private final boolean healthCheck;
+    private final boolean protoReflectionService;
     private final boolean ssl;
     private final String sslKeyCertChainFile;
     private final String sslKeyFile;
 
 
-    private OTelTraceSourceConfig(int requestTimeoutInMillis, int port, boolean health_check, boolean isSSL, String sslKeyCertChainFile, String sslKeyFile) {
+    private OTelTraceSourceConfig(final int requestTimeoutInMillis,
+                                  final int port,
+                                  final boolean healthCheck,
+                                  final boolean protoReflectionService,
+                                  final boolean isSSL,
+                                  final String sslKeyCertChainFile,
+                                  final String sslKeyFile) {
         this.requestTimeoutInMillis = requestTimeoutInMillis;
         this.port = port;
-        this.healthCheck = health_check;
+        this.healthCheck = healthCheck;
+        this.protoReflectionService = protoReflectionService;
         this.ssl = isSSL;
         this.sslKeyCertChainFile = sslKeyCertChainFile;
         this.sslKeyFile = sslKeyFile;
@@ -38,7 +47,8 @@ public class OTelTraceSourceConfig {
     public static OTelTraceSourceConfig buildConfig(final PluginSetting pluginSetting) {
         return new OTelTraceSourceConfig(pluginSetting.getIntegerOrDefault(REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT),
                 pluginSetting.getIntegerOrDefault(PORT, DEFAULT_PORT),
-                pluginSetting.getBooleanOrDefault(HEALTH_CHECK, false),
+                pluginSetting.getBooleanOrDefault(HEALTH_CHECK_SERVICE, false),
+                pluginSetting.getBooleanOrDefault(PROTO_REFLECTION_SERVICE, false),
                 pluginSetting.getBooleanOrDefault(SSL, DEFAULT_SSL),
                 pluginSetting.getStringOrDefault(SSL_KEY_CERT_FILE, null),
                 pluginSetting.getStringOrDefault(SSL_KEY_FILE, null));
@@ -52,8 +62,12 @@ public class OTelTraceSourceConfig {
         return port;
     }
 
-    public boolean isHealthCheck() {
+    public boolean hasHealthCheck() {
         return healthCheck;
+    }
+
+    public boolean hasProtoReflectionService() {
+        return protoReflectionService;
     }
 
     public boolean isSsl() {
