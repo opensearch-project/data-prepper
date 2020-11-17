@@ -11,6 +11,7 @@ import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
+import io.grpc.protobuf.services.ProtoReflectionService;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,8 +42,12 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
                     .addService(new HealthGrpcService())
                     .useClientTimeoutHeader(false);
 
-            if (oTelTraceSourceConfig.isHealthCheck()) {
+            if (oTelTraceSourceConfig.hasHealthCheck()) {
                 grpcServiceBuilder.addService(new HealthGrpcService());
+            }
+
+            if (oTelTraceSourceConfig.hasProtoReflectionService()) {
+                grpcServiceBuilder.addService(ProtoReflectionService.newInstance());
             }
 
             final ServerBuilder sb = Server.builder();
