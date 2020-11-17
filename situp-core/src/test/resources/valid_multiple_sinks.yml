@@ -11,7 +11,8 @@ raw-pipeline:
     pipeline:
       name: "entry-pipeline"
   processor:
-    - upper-case:
+    - string_converter:
+        upper_case: true
   sink:
     - file:
         someProperty: "someValue"
@@ -20,7 +21,8 @@ service-map-pipeline:
     pipeline:
       name: "entry-pipeline"
   processor:
-    - upper-case:
+    - string_converter:
+        upper_case: true
   sink:
     - file:
         someProperty: "someValue"
