@@ -1,9 +1,8 @@
-package com.amazon.situp.plugins.source.oteltracesource;
+package com.amazon.situp.plugins.source.oteltrace;
 
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.plugins.buffer.BlockingBuffer;
-import com.amazon.situp.plugins.source.oteltracesource.OTelTraceSource;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.linecorp.armeria.client.Clients;

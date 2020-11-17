@@ -1,4 +1,4 @@
-package com.amazon.situp.plugins.source.oteltracesource;
+package com.amazon.situp.plugins.source.oteltrace;
 
 import com.amazon.situp.model.configuration.PluginSetting;
 
