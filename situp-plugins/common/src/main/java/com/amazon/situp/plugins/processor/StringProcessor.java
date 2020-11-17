@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * An simple String implementation of {@link Processor} which generates new Records with upper case content. The current
+ * An simple String implementation of {@link Processor} which generates new Records with upper case or lowercase content. The current
  * simpler implementation does not handle errors (if any).
  */
 @SitupPlugin(name = "string_converter", type = PluginType.PROCESSOR)
