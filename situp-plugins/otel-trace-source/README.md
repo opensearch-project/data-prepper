@@ -4,7 +4,7 @@ This is a source which follows the [OTLP Protocol](https://github.com/open-telem
 
 ```
 source:
-    otel_trace_source:
+    - otel_trace_source:
 ```
 
 ## Configurations

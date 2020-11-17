@@ -4,5 +4,5 @@ This is a processor that serializes collection of `ExportTraceServiceRequest` se
 
 ```
 processor:
-    otel_trace_source:
+    - otel_trace_raw_processor:
 ```

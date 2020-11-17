@@ -16,7 +16,7 @@ import java.util.Collection;
 @SitupPlugin(name = "string_converter", type = PluginType.PROCESSOR)
 public class StringProcessor implements Processor<Record<String>, Record<String>> {
 
-    private final boolean toUpperCase;
+    private final boolean upperCase;
 
     /**
      * Mandatory constructor for SITUP Component - This constructor is used by SITUP
@@ -27,7 +27,7 @@ public class StringProcessor implements Processor<Record<String>, Record<String>
      * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
      */
     public StringProcessor(final PluginSetting pluginSetting) {
-        this.toUpperCase = pluginSetting.getBooleanOrDefault("upper_case", true);
+        this.upperCase = pluginSetting.getBooleanOrDefault("upper_case", true);
     }
 
     @Override
@@ -35,7 +35,7 @@ public class StringProcessor implements Processor<Record<String>, Record<String>
         final Collection<Record<String>> modifiedRecords = new ArrayList<>(records.size());
         for (Record<String> record : records) {
             final String recordData = record.getData();
-            final String newData = toUpperCase? recordData.toUpperCase() : recordData.toLowerCase();
+            final String newData = upperCase? recordData.toUpperCase() : recordData.toLowerCase();
             modifiedRecords.add(new Record<>(newData));
         }
         return modifiedRecords;
