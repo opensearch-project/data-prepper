@@ -48,15 +48,15 @@ sample-pipeline:
   source:
     file:
         path: path/to/input-file
- buffer:
+  buffer:
     bounded_blocking:
       buffer_size: 1024 # max number of records the buffer will accept
       batch_size: 256 # max number of records the buffer will drain for each read
- processors:
+  processor:
     - string_converter:
        upper_case: true
- sink:
-   - file:
+  sink:
+    - file:
        path: path/to/output-file
 ```
 
@@ -85,7 +85,7 @@ output-pipeline-1:
   source:
     pipeline:
       name: "input-pipeline"
-  processors:
+  processor:
     - string_converter:
        upper_case: true
   sink:
@@ -94,8 +94,8 @@ output-pipeline-1:
 output-pipeline-2:
   source:
     pipeline:
-      name: "test-pipeline-1"
-  processors:
+      name: "input-pipeline"
+  processor:
     - string_converter:
        upper_case: false
   sink:
@@ -103,4 +103,4 @@ output-pipeline-2:
         path: path/to/output-2-file
 ```
 
-The above configuration uses the Pipeline Connectors. `input-pipeline` is configured with `output-pipeline-1` and `output-pipeline-2` as sink. With the help of pipeline connectors we can read onec from the input file and write upper case values to `output-1-file` and lower case values to `output-2-file`.
+The above configuration uses the Pipeline Connectors. `input-pipeline` is configured with `output-pipeline-1` and `output-pipeline-2` as sink. With the help of pipeline connectors we can read once from the input file and write upper case values to `output-1-file` and lower case values to `output-2-file`.
