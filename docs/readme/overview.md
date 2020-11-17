@@ -53,13 +53,14 @@ sample-pipeline:
       buffer_size: 1024 # max number of records the buffer will accept
       batch_size: 256 # max number of records the buffer will drain for each read
  processors:
-    upper_case:
+    - string_converter:
+       upper_case: true
  sink:
    - file:
        path: path/to/output-file
 ```
 
-The above pipeline has a file source that reads string records from the `input-file`. The source pushes the data to buffer bounded by max size of `1024`. The pipeline configured to have `4` workers each of them reading maximum of `256` records from the buffer for every `100 milliseconds`. Each worker will execute the `upper_case` processor and write the output of the processor to the `output-file`
+The above pipeline has a file source that reads string records from the `input-file`. The source pushes the data to buffer bounded by max size of `1024`. The pipeline configured to have `4` workers each of them reading maximum of `256` records from the buffer for every `100 milliseconds`. Each worker will execute the `string_converter` processor and write the output of the processor to the `output-file`
 
 
 
@@ -85,7 +86,8 @@ output-pipeline-1:
     pipeline:
       name: "input-pipeline"
   processors:
-    - upper_case
+    - string_converter:
+       upper_case: true
   sink:
     - file:
         path: path/to/output-1-file
@@ -94,10 +96,11 @@ output-pipeline-2:
     pipeline:
       name: "test-pipeline-1"
   processors:
-    - lower_case:
+    - string_converter:
+       upper_case: false
   sink:
     - file:
         path: path/to/output-2-file
 ```
 
-The above configuration uses the Pipeline Connectors. `input-pipeline` is configured with `output-pipeline-1` and `output-pipeline-2` as sink. With the help of pipeline connectors we can read onec from the input file and write `upper_case` values to `output-1-file` and `lower_case` values to `output-2-file`.
+The above configuration uses the Pipeline Connectors. `input-pipeline` is configured with `output-pipeline-1` and `output-pipeline-2` as sink. With the help of pipeline connectors we can read onec from the input file and write upper case values to `output-1-file` and lower case values to `output-2-file`.
