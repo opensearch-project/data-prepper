@@ -28,7 +28,8 @@ run {
 
 dependencies {
     compile project(':situp-plugins:elasticsearch')
-    compile project(':situp-plugins:apmtracesource')
+    compile project(':situp-plugins:otel-trace-source')
+    compile project(':situp-plugins:otel-trace-raw-processor')
     implementation "org.apache.commons:commons-lang3:3.11"
     implementation "com.linecorp.armeria:armeria:1.0.0"
     implementation "com.linecorp.armeria:armeria-grpc:1.0.0"

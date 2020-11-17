@@ -4,7 +4,7 @@ import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.plugins.buffer.BlockingBuffer;
 import com.amazon.situp.plugins.sink.elasticsearch.ConnectionConfiguration;
-import com.amazon.situp.plugins.source.oteltracesource.OTelTraceSource;
+import com.amazon.situp.plugins.source.oteltrace.OTelTraceSource;
 import com.linecorp.armeria.client.Clients;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
