@@ -1,7 +1,7 @@
 FROM gradle:jdk14 AS builder
 COPY . /home/gradle/src
 WORKDIR /home/gradle/src/situp-core
-RUN gradle cleanjar --daemon
+RUN gradle clean jar --daemon
 
 FROM adoptopenjdk/openjdk14:jre-14.0.1_7-alpine
 EXPOSE 21890
