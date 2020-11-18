@@ -23,4 +23,5 @@ include 'situp-benchmarks:lmdb-benchmarks'
 include 'situp-benchmarks:service-map-stateful-benchmarks'
 include 'situp-plugins:otel-trace-raw-processor'
 include 'situp-plugins:otel-trace-source'
+include 'situp-plugins:peer-forwarder'
 
