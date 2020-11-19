@@ -8,9 +8,9 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class PeerForwarderConfig {
-    private static final String PEER_IPS = "peer_ips";
-    private static final String TIME_OUT = "time_out";
-    private static final String MAX_NUM_SPANS_PER_REQUEST = "span_agg_count";
+    public static final String PEER_IPS = "peer_ips";
+    public static final String TIME_OUT = "time_out";
+    public static final String MAX_NUM_SPANS_PER_REQUEST = "span_agg_count";
 
     private final List<String> peerIps;
 
