@@ -59,8 +59,7 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
         try {
             peerIps.add(getLocalPublicIp());
         } catch (IOException e) {
-            // TODO: handle this error properly
-            e.printStackTrace();
+            throw new RuntimeException("Cannot get localhost public IP.", e);
         }
         Collections.sort(peerIps);
     }
