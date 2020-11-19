@@ -72,7 +72,7 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
     }
 
     @Override
-    public Collection<Record<ExportTraceServiceRequest>> execute(final Collection<Record<ExportTraceServiceRequest>> records) {
+    public List<Record<ExportTraceServiceRequest>> execute(final Collection<Record<ExportTraceServiceRequest>> records) {
         final Map<String, List<ResourceSpans>> peerGroupedRS = new HashMap<>();
         for (final String peerIp: peerIps) {
             peerGroupedRS.put(peerIp, new ArrayList<>());
