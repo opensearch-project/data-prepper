@@ -120,6 +120,7 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
             try {
                 client.export(request);
             } catch (Exception e) {
+                LOG.error(String.format("Failed to forward the request:\n%s\n", request.toString()));
                 results.add(new Record<>(request));
             }
         } else {
