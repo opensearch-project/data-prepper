@@ -74,12 +74,12 @@ public class AbstractProcessorTest {
         Assert.assertTrue(0.1 < getMeasurementFromList(elapsedTimeMeasurements, Statistic.MAX).getValue());
     }
 
-    final List<Measurement> getMeasurementList(final String meterName, final MeterRegistry registry) {
+    private List<Measurement> getMeasurementList(final String meterName, final MeterRegistry registry) {
         return StreamSupport.stream(registry.find(meterName).meter().measure().spliterator(), false)
                 .collect(Collectors.toList());
     }
 
-    final Measurement getMeasurementFromList(final List<Measurement> measurements, final Statistic statistic) {
+    private Measurement getMeasurementFromList(final List<Measurement> measurements, final Statistic statistic) {
         return measurements.stream().filter(measurement -> measurement.getStatistic() == statistic).findAny().get();
     }
 
