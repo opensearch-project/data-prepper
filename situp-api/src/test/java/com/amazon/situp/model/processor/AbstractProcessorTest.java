@@ -1,15 +1,15 @@
 package com.amazon.situp.model.processor;
 
 import com.amazon.situp.model.configuration.PluginSetting;
+import com.amazon.situp.model.metrics.MetricNames;
 import com.amazon.situp.model.record.Record;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
@@ -21,7 +21,6 @@ import org.junit.Test;
 public class AbstractProcessorTest {
 
     public static class ProcessorImpl extends AbstractProcessor<Record<String>, Record<String>> {
-
         public ProcessorImpl(PluginSetting pluginSetting) {
             super(pluginSetting);
         }
@@ -31,21 +30,22 @@ public class AbstractProcessorTest {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
-
             }
             return records.stream()
-                    .flatMap( stringRecord -> Arrays.asList(stringRecord, stringRecord).stream())
+                    .flatMap(stringRecord -> Arrays.asList(stringRecord, stringRecord).stream())
                     .collect(Collectors.toList());
         }
     }
 
     @Test
     public void testMetrics() {
+        final String processorName = "testProcessor";
+        final String pipelineName = "pipelineName";
         final SimpleMeterRegistry simple = new SimpleMeterRegistry();
         Metrics.addRegistry(simple);
 
-        PluginSetting pluginSetting  = new PluginSetting("testProcessor", Collections.emptyMap());
-        pluginSetting.setPipelineName("testPipeline");
+        PluginSetting pluginSetting = new PluginSetting(processorName, Collections.emptyMap());
+        pluginSetting.setPipelineName(pipelineName);
         AbstractProcessor<Record<String>, Record<String>> processor = new ProcessorImpl(pluginSetting);
 
         processor.execute(Arrays.asList(
@@ -54,12 +54,15 @@ public class AbstractProcessorTest {
                 new Record<>("Value3")
         ));
 
-        final List<Measurement> recordsInMeasurements =
-                getMeasurementList("testPipeline.testProcessor.recordsIn", simple);
-        final List<Measurement> recordsOutMeasurements =
-                getMeasurementList("testPipeline.testProcessor.recordsOut", simple);
-        final List<Measurement> elapsedTimeMeasurements =
-                getMeasurementList("testPipeline.testProcessor.elapsedTime", simple);
+        final List<Measurement> recordsInMeasurements = getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(processorName).add(MetricNames.RECORDS_IN).toString(),
+                simple);
+        final List<Measurement> recordsOutMeasurements = getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(processorName).add(MetricNames.RECORDS_OUT).toString(),
+                simple);
+        final List<Measurement> elapsedTimeMeasurements = getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(processorName).add(MetricNames.TIME_ELAPSED).toString(),
+                simple);
 
         Assert.assertEquals(1, recordsInMeasurements.size());
         Assert.assertEquals(3.0, recordsInMeasurements.get(0).getValue(), 0);
