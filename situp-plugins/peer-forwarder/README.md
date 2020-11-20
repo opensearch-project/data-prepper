@@ -15,6 +15,6 @@ processor:
        span_agg_count: 48
 ```
 
-- `peer_ips`: public IP addresses for all running SITUPs.
+- `peer_ips`: public IP addresses for all running SITUPs except the localhost.
 - `time_out`: timeout in seconds for sending `ExportTraceServiceRequest`. Defaults to 300
 - `span_agg_count`: batch size for number of spans per `ExportTraceServiceRequest`. Defaults to 48.
