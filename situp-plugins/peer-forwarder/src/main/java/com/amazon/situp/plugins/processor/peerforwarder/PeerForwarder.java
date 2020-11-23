@@ -41,12 +41,12 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
 
     public static String getLocalPublicIp() throws IOException {
         // Find public IP address
-        final URL url_name = new URL("http://bot.whatismyipaddress.com");
+        final URL urlName = new URL("http://checkip.amazonaws.com/");
 
-        final BufferedReader sc =
-                new BufferedReader(new InputStreamReader(url_name.openStream()));
+        final BufferedReader bufferedReader =
+                new BufferedReader(new InputStreamReader(urlName.openStream()));
 
-        return sc.readLine().trim();
+        return bufferedReader.readLine().trim();
     }
 
     public PeerForwarder(final PluginSetting pluginSetting) {
