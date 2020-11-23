@@ -159,10 +159,6 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
     }
 
     private int getResourceSpansSize(final ResourceSpans rs) {
-        int spanCount = 0;
-        for (final InstrumentationLibrarySpans ils: rs.getInstrumentationLibrarySpansList()) {
-            spanCount += ils.getSpansCount();
-        }
-        return spanCount;
+        return rs.getInstrumentationLibrarySpansList().stream().mapToInt(InstrumentationLibrarySpans::getSpansCount).sum();
     }
 }
