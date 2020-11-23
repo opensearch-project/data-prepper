@@ -70,8 +70,8 @@ public class PeerForwarderTest {
                 generateResourceSpans(SPAN_4),
                 generateResourceSpans(SPAN_5, SPAN_6)
         );
-        Assert.assertTrue(exportedResourceSpans.containsAll(expectedResourceSpans) &&
-                expectedResourceSpans.containsAll(exportedResourceSpans));
+        Assert.assertTrue(exportedResourceSpans.containsAll(expectedResourceSpans));
+        Assert.assertTrue(expectedResourceSpans.containsAll(exportedResourceSpans));
     }
 
     private PeerForwarder generatePeerForwarder(final List<String> peerIps) {
