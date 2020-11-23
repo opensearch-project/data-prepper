@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -51,16 +52,19 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
 
     public PeerForwarder(final PluginSetting pluginSetting) {
         peerForwarderConfig = PeerForwarderConfig.buildConfig(pluginSetting);
-        peerIps = new ArrayList<>(peerForwarderConfig.getPeerIps());
+        peerIps = new ArrayList<>(new HashSet<>(peerForwarderConfig.getPeerIps()));
+        final String localPublicIp;
+        try {
+            localPublicIp = getLocalPublicIp();
+            peerIps.remove(localPublicIp);
+        } catch (IOException e) {
+            throw new RuntimeException("Cannot get localhost public IP.", e);
+        }
         peerClients = new HashMap<>();
         for (final String peerIp: peerIps) {
             peerClients.put(peerIp, createGRPCClient(peerIp));
         }
-        try {
-            peerIps.add(getLocalPublicIp());
-        } catch (IOException e) {
-            throw new RuntimeException("Cannot get localhost public IP.", e);
-        }
+        peerIps.add(localPublicIp);
         Collections.sort(peerIps);
     }
 
