@@ -5,7 +5,6 @@ allprojects {
     repositories {
         mavenCentral()
     }
-    apply plugin: 'jacoco'
 }
 
 subprojects {
@@ -45,7 +44,7 @@ configure(coreProjects) {
         violationRules {
             rule {
                 limit {
-                    minimum = 0.67 //TODO increase this
+                    minimum = 0.50 //TODO increase this
                 }
             }
         }
