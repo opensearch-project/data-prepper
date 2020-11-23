@@ -13,7 +13,10 @@ import static com.amazon.situp.TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_F
 import static com.amazon.situp.TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES;
 import static com.amazon.situp.TestDataProvider.VALID_MULTIPLE_PROCESSORS_CONFIG_FILE;
 import static com.amazon.situp.TestDataProvider.VALID_MULTIPLE_SINKS_CONFIG_FILE;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class PipelineParserTests {
@@ -76,5 +79,32 @@ public class PipelineParserTests {
     public void testMultipleProcessors() {
         final PipelineParser pipelineParser = new PipelineParser(VALID_MULTIPLE_PROCESSORS_CONFIG_FILE);
         pipelineParser.parseConfiguration();
+    }
+
+    @Test
+    public void testIncorrectConfigurationFilePath() {
+        try{
+            final PipelineParser pipelineParser = new PipelineParser("file_does_no_exist.yml");
+            pipelineParser.parseConfiguration();
+        } catch (ParseException ex) {
+            assertThat(ex.getMessage(), is("Failed to parse the configuration file file_does_no_exist.yml"));
+        }
+    }
+
+    @Test
+    public void testParseExceptionCreation() {
+        try {
+            throw new ParseException("TEST MESSAGE");
+        } catch (ParseException ex) {
+            assertThat(ex.getMessage(), is("TEST MESSAGE"));
+        }
+
+        final Throwable throwable = new Throwable();
+        try {
+            throw new ParseException(throwable);
+        } catch (ParseException ex) {
+            assertThat(ex.getCause(), notNullValue());
+            assertThat(ex.getCause(), is(equalTo(throwable)));
+        }
     }
 }

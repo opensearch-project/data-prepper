@@ -5,19 +5,23 @@ import com.amazon.situp.plugins.buffer.BlockingBuffer;
 import org.hamcrest.CoreMatchers;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import static com.amazon.situp.TestDataProvider.DEFAULT_READ_BATCH_DELAY;
 import static com.amazon.situp.TestDataProvider.DEFAULT_WORKERS;
 import static com.amazon.situp.TestDataProvider.TEST_DELAY;
+import static com.amazon.situp.TestDataProvider.TEST_PIPELINE_NAME;
 import static com.amazon.situp.TestDataProvider.TEST_WORKERS;
 import static com.amazon.situp.TestDataProvider.VALID_PLUGIN_SETTING_1;
 import static com.amazon.situp.TestDataProvider.VALID_PLUGIN_SETTING_2;
 import static com.amazon.situp.TestDataProvider.validMultipleConfiguration;
 import static com.amazon.situp.TestDataProvider.validMultipleConfigurationOfSizeOne;
 import static com.amazon.situp.TestDataProvider.validSingleConfiguration;
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -31,12 +35,13 @@ public class PipelineConfigurationTests {
                 validMultipleConfiguration(),
                 TEST_WORKERS, TEST_DELAY);
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
+        final PluginSetting actualBufferPluginSetting = pipelineConfiguration.getBufferPluginSetting();
         final List<PluginSetting> actualProcessorPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
         final List<PluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         comparePluginSettings(actualSourcePluginSetting, VALID_PLUGIN_SETTING_1);
         assertThat(pipelineConfiguration.getBufferPluginSetting(), notNullValue());
-        comparePluginSettings(pipelineConfiguration.getBufferPluginSetting(), BlockingBuffer.getDefaultPluginSettings());
+        comparePluginSettings(actualBufferPluginSetting, BlockingBuffer.getDefaultPluginSettings());
         assertThat(actualProcessorPluginSettings.size(), is(1));
         actualProcessorPluginSettings.forEach(processorSettings -> comparePluginSettings(processorSettings, VALID_PLUGIN_SETTING_1));
         assertThat(actualSinkPluginSettings.size(), is(2));
@@ -44,6 +49,20 @@ public class PipelineConfigurationTests {
         comparePluginSettings(actualSinkPluginSettings.get(1), VALID_PLUGIN_SETTING_2);
         assertThat(pipelineConfiguration.getWorkers(), is(TEST_WORKERS));
         assertThat(pipelineConfiguration.getReadBatchDelay(), is(TEST_DELAY));
+
+        pipelineConfiguration.updateCommonPipelineConfiguration(TEST_PIPELINE_NAME);
+        assertThat(actualSourcePluginSetting.getPipelineName(), is(equalTo(TEST_PIPELINE_NAME)));
+        assertThat(actualSourcePluginSetting.getNumberOfProcessWorkers(), is(equalTo(TEST_WORKERS)));
+        assertThat(actualBufferPluginSetting.getPipelineName(), is(equalTo(TEST_PIPELINE_NAME)));
+        assertThat(actualBufferPluginSetting.getNumberOfProcessWorkers(), is(equalTo(TEST_WORKERS)));
+        actualProcessorPluginSettings.forEach(processorPluginSetting -> {
+            assertThat(processorPluginSetting.getPipelineName(), is(equalTo(TEST_PIPELINE_NAME)));
+            assertThat(processorPluginSetting.getNumberOfProcessWorkers(), is(equalTo(TEST_WORKERS)));
+        });
+        actualSinkPluginSettings.forEach(sinkPluginSetting -> {
+            assertThat(sinkPluginSetting.getPipelineName(), is(equalTo(TEST_PIPELINE_NAME)));
+            assertThat(sinkPluginSetting.getNumberOfProcessWorkers(), is(equalTo(TEST_WORKERS)));
+        });
     }
 
     @Test
@@ -54,13 +73,14 @@ public class PipelineConfigurationTests {
                 validMultipleConfigurationOfSizeOne(),
                 null, null);
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
+        final PluginSetting actualBufferPluginSetting = pipelineConfiguration.getBufferPluginSetting();
         final List<PluginSetting> actualProcessorPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
         final List<PluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         comparePluginSettings(actualSourcePluginSetting, VALID_PLUGIN_SETTING_1);
         assertThat(pipelineConfiguration.getBufferPluginSetting(), notNullValue());
-        comparePluginSettings(pipelineConfiguration.getBufferPluginSetting(), BlockingBuffer.getDefaultPluginSettings());
-        assertThat(actualProcessorPluginSettings, CoreMatchers.isA(Iterable.class));
+        comparePluginSettings(actualBufferPluginSetting, BlockingBuffer.getDefaultPluginSettings());
+        assertThat(actualProcessorPluginSettings, isA(Iterable.class));
         assertThat(actualProcessorPluginSettings.size(), is(0));
         assertThat(actualSinkPluginSettings.size(), is(1));
         comparePluginSettings(actualSinkPluginSettings.get(0), VALID_PLUGIN_SETTING_1);
@@ -82,6 +102,27 @@ public class PipelineConfigurationTests {
         }
     }
 
+    @Test()
+    public void testNoProcessorConfiguration() {
+        final PipelineConfiguration nullProcessorsConfiguration = new PipelineConfiguration(
+                validSingleConfiguration(),
+                validSingleConfiguration(),
+                null,
+                validMultipleConfiguration(),
+                TEST_WORKERS, TEST_DELAY);
+        assertThat(nullProcessorsConfiguration.getProcessorPluginSettings(), isA(Iterable.class));
+        assertThat(nullProcessorsConfiguration.getProcessorPluginSettings().size(), is(0));
+
+        final PipelineConfiguration emptyProcessorsConfiguration = new PipelineConfiguration(
+                validSingleConfiguration(),
+                validSingleConfiguration(),
+                new ArrayList<>(),
+                validMultipleConfiguration(),
+                TEST_WORKERS, TEST_DELAY);
+        assertThat(emptyProcessorsConfiguration.getProcessorPluginSettings(), isA(Iterable.class));
+        assertThat(emptyProcessorsConfiguration.getProcessorPluginSettings().size(), is(0));
+    }
+
     @Test() //not using expected to assert the message
     public void testNoSinkConfiguration() {
         try {
@@ -90,6 +131,17 @@ public class PipelineConfigurationTests {
                     validSingleConfiguration(),
                     validMultipleConfiguration(),
                     null,
+                    TEST_WORKERS, TEST_DELAY);
+        } catch (IllegalArgumentException ex) {
+            assertThat(ex.getMessage(), is("Invalid configuration, at least one sink is required"));
+        }
+
+        try {
+            new PipelineConfiguration(
+                    validSingleConfiguration(),
+                    validSingleConfiguration(),
+                    validMultipleConfiguration(),
+                    new ArrayList<>(),
                     TEST_WORKERS, TEST_DELAY);
         } catch (IllegalArgumentException ex) {
             assertThat(ex.getMessage(), is("Invalid configuration, at least one sink is required"));

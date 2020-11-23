@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class TestDataProvider {
+    public static final String TEST_PIPELINE_NAME = "test-pipeline-1";
     public static final String TEST_PLUGIN_NAME_1 = "test-plugin-1";
     public static final String TEST_PLUGIN_NAME_2 = "test-plugin-2";
     public static final Integer TEST_WORKERS = 5;

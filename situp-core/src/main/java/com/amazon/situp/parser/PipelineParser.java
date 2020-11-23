@@ -118,7 +118,9 @@ public class PipelineParser {
                 //Build connected pipeline for the pipeline connector to be available
                 buildPipelineFromConfiguration(pipelineNameOptional.get(), pipelineConfigurationMap, pipelineMap);
             }
-            return Optional.of(sourceConnectorMap.get(sourcePipelineName));
+            final PipelineConnector pipelineConnector = sourceConnectorMap.get(sourcePipelineName);
+            pipelineConnector.setSourcePipelineName(pipelineNameOptional.get());
+            return Optional.of(pipelineConnector);
         }
         return Optional.empty();
     }
@@ -127,8 +129,9 @@ public class PipelineParser {
         LOG.info("Building [{}] as sink component", pluginSetting.getName());
         final Optional<String> pipelineNameOptional = getPipelineNameIfPipelineType(pluginSetting);
         if (pipelineNameOptional.isPresent()) { //update to ifPresentOrElse when using JDK9
-            final PipelineConnector pipelineConnector = new PipelineConnector();
-            sourceConnectorMap.put(pipelineNameOptional.get(), pipelineConnector); //TODO retrieve from parent Pipeline using name
+            final String pipelineName = pipelineNameOptional.get();
+            final PipelineConnector pipelineConnector = new PipelineConnector(pipelineName);
+            sourceConnectorMap.put(pipelineName, pipelineConnector); //TODO retrieve from parent Pipeline using name
             return pipelineConnector;
         } else {
             return SinkFactory.newSink(pluginSetting);
