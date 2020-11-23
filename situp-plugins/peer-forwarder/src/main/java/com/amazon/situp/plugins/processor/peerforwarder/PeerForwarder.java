@@ -115,18 +115,21 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
         return results;
     }
 
+    /**
+     * Forward request to the peer address if client is given, otherwise push the request to local buffer.
+     */
     private void processRequest(final TraceServiceGrpc.TraceServiceBlockingStub client,
                                 final ExportTraceServiceRequest request,
-                                final List<Record<ExportTraceServiceRequest>> results) {
+                                final List<Record<ExportTraceServiceRequest>> localBuffer) {
         if (client != null) {
             try {
                 client.export(request);
             } catch (Exception e) {
                 LOG.error(String.format("Failed to forward the request:\n%s\n", request.toString()));
-                results.add(new Record<>(request));
+                localBuffer.add(new Record<>(request));
             }
         } else {
-            results.add(new Record<>(request));
+            localBuffer.add(new Record<>(request));
         }
     }
 
