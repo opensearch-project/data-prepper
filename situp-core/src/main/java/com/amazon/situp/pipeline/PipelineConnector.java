@@ -11,20 +11,28 @@ import java.util.Collection;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static java.lang.String.format;
+
 /**
  * PipelineConnector is a special type of Plugin which connects two pipelines acting both as Sink and Source.
- * TODO Add connecting pipeline details for better log messaging
  *
  * @param <T>
  */
 public final class PipelineConnector<T extends Record<?>> implements Source<T>, Sink<T> {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineConnector.class);
     private static final int DEFAULT_WRITE_TIMEOUT = Integer.MAX_VALUE;
+    private String sourcePipelineName; //name of the pipeline for which this connector acts as source
+    private String sinkPipelineName; //name of the pipeline for which this connector acts as sink
     private Buffer<T> buffer;
     private AtomicBoolean isStopRequested;
 
     public PipelineConnector() {
         isStopRequested = new AtomicBoolean(false);
+    }
+
+    public PipelineConnector(final String sinkPipelineName) {
+        this();
+        this.sinkPipelineName = sinkPipelineName;
     }
 
     @Override
@@ -44,14 +52,25 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
                 try {
                     buffer.write(record, DEFAULT_WRITE_TIMEOUT); //TODO update to use from config
                 } catch (TimeoutException ex) {
-                    LOG.error("Timed out writing to pipeline source", ex);
-                    throw new RuntimeException("Timed out writing to buffer", ex);
+                    LOG.error("PipelineConnector [{}-{}]: Timed out writing to pipeline [{}]",
+                            sinkPipelineName, sourcePipelineName, sourcePipelineName, ex);
+                    throw new RuntimeException("PipelineConnector [{}-{}]: Timed out writing to pipeline [{}]'s buffer",
+                            ex);
                 }
             }
         } else {
-            LOG.error("Pipeline source is currently not initialized or has been halted");
-            //Indicates the successive pipeline is shutdown - TODO update below
-            throw new RuntimeException("Receiving pipeline is not active, cannot proceed");
+            LOG.error("PipelineConnector [{}-{}]: Pipeline [{}] is currently not initialized or has been halted",
+                    sinkPipelineName, sourcePipelineName, sourcePipelineName);
+            throw new RuntimeException(format("PipelineConnector [%s-%s]: Pipeline [%s] is not active, " +
+                    "cannot proceed", sinkPipelineName, sourcePipelineName, sourcePipelineName));
         }
+    }
+
+    public void setSourcePipelineName(final String sourcePipelineName) {
+        this.sourcePipelineName = sourcePipelineName;
+    }
+
+    public void setSinkPipelineName(final String sinkPipelineName) {
+        this.sinkPipelineName = sinkPipelineName;
     }
 }

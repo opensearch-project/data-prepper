@@ -1,11 +1,12 @@
+apply from: file("${rootDir}/build-resources.gradle")
 allprojects {
     group = 'com.amazon'
     version = '0.1.0'
     repositories {
         mavenCentral()
     }
+    apply plugin: 'jacoco'
 }
-apply from: file("${rootDir}/dependency-versions.gradle")
 
 subprojects {
     apply plugin: 'java'
@@ -16,39 +17,38 @@ subprojects {
         implementation "org.slf4j:slf4j-api:${versionMap.slf4j_api}"
         implementation "org.slf4j:slf4j-log4j12:${versionMap.slf4j_log4j12}"
         testImplementation("junit:junit:${versionMap.junit}") {
-            exclude group:'org.hamcrest' // workaround for jarHell
+            exclude group: 'org.hamcrest' // workaround for jarHell
         }
     }
-
     build.dependsOn test
-    if(it.pluginManager.hasPlugin('java')) {
-        //by default jacocoTestReport is OnlyIf false which means if there are no tests -
-        //report is not generated
-        apply plugin: 'jacoco'
-        jacocoTestReport {
-            dependsOn test // tests are required to run before generating the report
-            reports {
-                xml.enabled false
-                csv.enabled false
-                html.destination file("${buildDir}/reports/jacocoHtml")
-            }
+}
+
+configure(coreProjects) {
+    apply plugin: 'jacoco'
+    jacocoTestReport {
+        dependsOn test // tests are required to run before generating the report
+        reports {
+            xml.enabled false
+            csv.enabled false
+            html.destination file("${buildDir}/reports/jacocoHtml")
         }
-        jacocoTestCoverageVerification {
-            dependsOn jacocoTestReport
-            violationRules {
-                rule {
-                    limit {
-                        minimum = 0.90 //TODO increase this
-                    }
+    }
+    test {
+        useJUnit()
+        finalizedBy jacocoTestReport // report is always generated after tests run
+    }
+    jacocoTestReport {
+        dependsOn test // tests are required to run before generating the report
+    }
+    jacocoTestCoverageVerification {
+        dependsOn jacocoTestReport
+        violationRules {
+            rule {
+                limit {
+                    minimum = 0.67 //TODO increase this
                 }
             }
         }
-        test {
-            useJUnit()
-            finalizedBy jacocoTestReport // report is always generated after tests run
-        }
-        jacocoTestReport {
-            dependsOn test // tests are required to run before generating the report
-        }
     }
+    check.dependsOn jacocoTestCoverageVerification
 }

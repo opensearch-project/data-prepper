@@ -38,3 +38,14 @@ jar {
     exclude 'META-INF/*.SF'
     exclude 'META-INF/*.DSA'
 }
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule { //in addition to core projects rule - this one checks for 100% code coverage for this project
+            limit {
+                minimum = 0.67 //keep this at 100%
+            }
+        }
+    }
+}
