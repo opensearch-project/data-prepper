@@ -2,6 +2,7 @@ package com.amazon.situp.model.processor;
 
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.metrics.MetricNames;
+import com.amazon.situp.model.metrics.PluginMetrics;
 import com.amazon.situp.model.record.Record;
 import java.util.Collection;
 import java.util.StringJoiner;
@@ -12,15 +13,16 @@ import io.micrometer.core.instrument.Timer;
 public abstract class AbstractProcessor<InputRecord extends Record<?>, OutputRecord extends Record<?>> implements
     Processor<InputRecord, OutputRecord> {
 
+    protected final PluginMetrics pluginMetrics;
     private final Counter recordsInCounter;
     private final Counter recordsOutCounter;
     private final Timer timeElapsedTimer;
 
     public AbstractProcessor(final PluginSetting pluginSetting) {
-        final String qualifiedName = new StringJoiner(MetricNames.DELIMITER).add(pluginSetting.getPipelineName()).add(pluginSetting.getName()).toString();
-        recordsInCounter = Metrics.counter(new StringJoiner(MetricNames.DELIMITER).add(qualifiedName).add(MetricNames.RECORDS_IN).toString());
-        recordsOutCounter = Metrics.counter(new StringJoiner(MetricNames.DELIMITER).add(qualifiedName).add(MetricNames.RECORDS_OUT).toString());
-        timeElapsedTimer = Metrics.timer(new StringJoiner(MetricNames.DELIMITER).add(qualifiedName).add(MetricNames.TIME_ELAPSED).toString());
+        pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
+        recordsInCounter = pluginMetrics.counter(MetricNames.RECORDS_IN);
+        recordsOutCounter = pluginMetrics.counter(MetricNames.RECORDS_OUT);
+        timeElapsedTimer = pluginMetrics.timer(MetricNames.TIME_ELAPSED);
     }
 
     /**
