@@ -50,7 +50,7 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
         if (buffer != null && !isStopRequested.get()) {
             for (T record : records) {
                 try {
-                    buffer.write(record, DEFAULT_WRITE_TIMEOUT); //TODO update to use from config
+                    buffer.write(record, DEFAULT_WRITE_TIMEOUT);
                 } catch (TimeoutException ex) {
                     LOG.error("PipelineConnector [{}-{}]: Timed out writing to pipeline [{}]",
                             sinkPipelineName, sourcePipelineName, sourcePipelineName, ex);
