@@ -8,6 +8,7 @@ import java.security.Permission;
 
 import static com.amazon.situp.TestDataProvider.NO_PIPELINES_EXECUTE_CONFIG_FILE;
 import static com.amazon.situp.TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE;
+import static com.amazon.situp.TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -48,12 +49,17 @@ public class SitupTests {
     }
 
     @Test
-    public void testSitupInitiateExecute() {
-        Situp testSitup = Situp.getInstance();
+    public void testSitupExecuteAndShutdown() {
+        final Situp testSitup = Situp.getInstance();
         boolean executionStatus = testSitup.execute(VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
         assertThat("Failed to initiate execution", executionStatus);
         testSitup.shutdown();
+        //call shutdown() twice to ensure nothing breaks
+        testSitup.shutdown();
+        VALID_MULTIPLE_PIPELINE_NAMES.forEach(testSitup::shutdown);
+        testSitup.shutdown("pipeline_does_not_exist"); //this does nothing
     }
+
 
     public static class CustomSecurityManager extends SecurityManager {
         @Override
