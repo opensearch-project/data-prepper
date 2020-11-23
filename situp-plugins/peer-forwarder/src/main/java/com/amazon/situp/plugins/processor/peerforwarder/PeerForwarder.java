@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @SitupPlugin(name = "peer_forwarder", type = PluginType.PROCESSOR)
 public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest>, Record<ExportTraceServiceRequest>> {
@@ -60,10 +61,7 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
         } catch (IOException e) {
             throw new RuntimeException("Cannot get localhost public IP.", e);
         }
-        peerClients = new HashMap<>();
-        for (final String peerIp: peerIps) {
-            peerClients.put(peerIp, createGRPCClient(peerIp));
-        }
+        peerClients = peerIps.stream().collect(Collectors.toMap(ip-> ip, ip-> createGRPCClient(ip)));
         peerIps.add(localPublicIp);
         Collections.sort(peerIps);
     }
