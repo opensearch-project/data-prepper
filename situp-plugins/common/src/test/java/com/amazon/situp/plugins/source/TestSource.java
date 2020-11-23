@@ -3,7 +3,6 @@ package com.amazon.situp.plugins.source;
 import com.amazon.situp.model.PluginType;
 import com.amazon.situp.model.annotations.SitupPlugin;
 import com.amazon.situp.model.buffer.Buffer;
-import com.amazon.situp.model.configuration.Configuration;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.source.Source;
 
@@ -20,10 +19,6 @@ public class TestSource implements Source<Record<String>> {
     private static final int WRITE_TIMEOUT = 5_000;
     private boolean isStopRequested;
 
-    public TestSource(final Configuration configuration) {
-        this();
-    }
-
     public TestSource() {
         isStopRequested = false;
     }
@@ -31,13 +26,13 @@ public class TestSource implements Source<Record<String>> {
     @Override
     public void start(Buffer<Record<String>> buffer) {
         final Iterator<Record<String>> iterator = TEST_DATA.iterator();
-            while (iterator.hasNext() && !isStopRequested) {
-                try {
-                    buffer.write(iterator.next(), WRITE_TIMEOUT);
-                } catch (TimeoutException e) {
-                    throw new RuntimeException("Timed out writing to buffer");
-                }
+        while (iterator.hasNext() && !isStopRequested) {
+            try {
+                buffer.write(iterator.next(), WRITE_TIMEOUT);
+            } catch (TimeoutException e) {
+                throw new RuntimeException("Timed out writing to buffer");
             }
+        }
     }
 
     @Override

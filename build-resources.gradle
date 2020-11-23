@@ -14,3 +14,5 @@ ext.versionMap = [
         validation_api         : '2.0.1.Final',
         opentelemetry_proto    : '0.9.1'
 ]
+
+ext.coreProjects = [project(':situp-api'), project(':situp-core'), project('situp-plugins:common')]
