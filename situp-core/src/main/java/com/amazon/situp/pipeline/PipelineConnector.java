@@ -54,8 +54,8 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
                 } catch (TimeoutException ex) {
                     LOG.error("PipelineConnector [{}-{}]: Timed out writing to pipeline [{}]",
                             sinkPipelineName, sourcePipelineName, sourcePipelineName, ex);
-                    throw new RuntimeException("PipelineConnector [{}-{}]: Timed out writing to pipeline [{}]'s buffer",
-                            ex);
+                    throw new RuntimeException(format("PipelineConnector [%s-%s]: Timed out writing to pipeline [%s]'s " +
+                                    "buffer", sinkPipelineName, sourcePipelineName, sourcePipelineName), ex);
                 }
             }
         } else {
