@@ -108,6 +108,8 @@ services:
     build:
       context: client
       dockerfile: Dockerfile
+    ports:
+      - "8089:8089"
     environment:
       - OTLP=otel-collector
       - MYSQL_HOST=mysql
