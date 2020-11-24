@@ -29,11 +29,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.internal.verification.VerificationModeFactory.times;
 import static org.powermock.api.mockito.PowerMockito.doAnswer;
-import static org.powermock.api.mockito.PowerMockito.doReturn;
-import static org.powermock.api.mockito.PowerMockito.mock;
 import static org.powermock.api.mockito.PowerMockito.spy;
 
 @RunWith(PowerMockRunner.class)
@@ -99,9 +99,7 @@ public class PeerForwarderTest {
     public void testProcessRequest() throws Exception {
         final List<String> testIps = generateTestIps(1);
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
-        final TraceServiceGrpc.TraceServiceBlockingStub mockClient = spy(
-                Clients.newClient(
-                        String.format("gproto+http://%s", testIps.get(0)), TraceServiceGrpc.TraceServiceBlockingStub.class));
+        final TraceServiceGrpc.TraceServiceBlockingStub mockClient = mock(TraceServiceGrpc.TraceServiceBlockingStub.class);
         doReturn(null).when(mockClient).export(any());
         final List<Record<ExportTraceServiceRequest>> localBuffer = new ArrayList<>();
         final Object[] args1 = new Object[]{null, REQUEST_1, localBuffer};
