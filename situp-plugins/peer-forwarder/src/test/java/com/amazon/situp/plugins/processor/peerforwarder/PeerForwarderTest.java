@@ -97,7 +97,7 @@ public class PeerForwarderTest {
     @Test
     public void testProcessRequest() throws Exception {
         final List<String> testIps = generateTestIps(1);
-        final PeerForwarder testPeerForwarder = spy(generatePeerForwarder(testIps, 3));
+        final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
         final TraceServiceGrpc.TraceServiceBlockingStub mockClient = mock(TraceServiceGrpc.TraceServiceBlockingStub.class);
         doReturn(null).when(mockClient).export(any());
         final List<Record<ExportTraceServiceRequest>> localBuffer = new ArrayList<>();
