@@ -96,7 +96,8 @@ services:
     ports:
       - "8087:8087"
     environment:
-      - OTEL_OTLP_ENDPOINT=otel-collector:55680
+      - OTEL_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:55680
       - OTEL_RESOURCE_ATTRIBUTES=service.name=analytics-service
     depends_on:
       - otel-collector
