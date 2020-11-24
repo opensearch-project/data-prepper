@@ -18,9 +18,9 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class AbstractProcessorTest {
+public class AbstractPrepperTest {
 
-    public static class ProcessorImpl extends AbstractProcessor<Record<String>, Record<String>> {
+    public static class ProcessorImpl extends AbstractPrepper<Record<String>, Record<String>> {
         public ProcessorImpl(PluginSetting pluginSetting) {
             super(pluginSetting);
         }
@@ -46,7 +46,7 @@ public class AbstractProcessorTest {
 
         PluginSetting pluginSetting = new PluginSetting(processorName, Collections.emptyMap());
         pluginSetting.setPipelineName(pipelineName);
-        AbstractProcessor<Record<String>, Record<String>> processor = new ProcessorImpl(pluginSetting);
+        AbstractPrepper<Record<String>, Record<String>> processor = new ProcessorImpl(pluginSetting);
 
         processor.execute(Arrays.asList(
                 new Record<>("Value1"),

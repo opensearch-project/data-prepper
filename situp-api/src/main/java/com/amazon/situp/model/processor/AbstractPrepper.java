@@ -5,12 +5,14 @@ import com.amazon.situp.model.metrics.MetricNames;
 import com.amazon.situp.model.metrics.PluginMetrics;
 import com.amazon.situp.model.record.Record;
 import java.util.Collection;
-import java.util.StringJoiner;
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 
-public abstract class AbstractProcessor<InputRecord extends Record<?>, OutputRecord extends Record<?>> implements
+/**
+ * Abstract implementation of the {@link com.amazon.situp.model.processor.Processor} interface. This class implements an execute function which records
+ * some basic metrics. Logic of the execute function is handled by extensions of this class in the doExecute function.
+ */
+public abstract class AbstractPrepper<InputRecord extends Record<?>, OutputRecord extends Record<?>> implements
     Processor<InputRecord, OutputRecord> {
 
     protected final PluginMetrics pluginMetrics;
@@ -18,7 +20,7 @@ public abstract class AbstractProcessor<InputRecord extends Record<?>, OutputRec
     private final Counter recordsOutCounter;
     private final Timer timeElapsedTimer;
 
-    public AbstractProcessor(final PluginSetting pluginSetting) {
+    public AbstractPrepper(final PluginSetting pluginSetting) {
         pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
         recordsInCounter = pluginMetrics.counter(MetricNames.RECORDS_IN);
         recordsOutCounter = pluginMetrics.counter(MetricNames.RECORDS_OUT);
@@ -26,7 +28,7 @@ public abstract class AbstractProcessor<InputRecord extends Record<?>, OutputRec
     }
 
     /**
-     * This execute function calls the {@link AbstractProcessor#doExecute(Collection)} function of the implementation,
+     * This execute function calls the {@link AbstractPrepper#doExecute(Collection)} function of the implementation,
      * and records metrics for records in, records out, and elapsed time.
      * @param records Input records that will be modified/processed
      * @return Records as processed by the doExecute function
