@@ -55,6 +55,7 @@ configurations.all {
         force 'com.google.guava:guava:29.0-jre'
         force 'org.apache.bval:bval-jsr:2.0.4'
         force 'junit:junit:4.13'
+        force "org.hdrhistogram:HdrHistogram:2.1.12"
     }
 }
 
