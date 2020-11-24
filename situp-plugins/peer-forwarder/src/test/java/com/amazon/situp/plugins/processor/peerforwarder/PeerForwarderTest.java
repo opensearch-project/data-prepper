@@ -37,7 +37,7 @@ import static org.powermock.api.mockito.PowerMockito.doAnswer;
 import static org.powermock.api.mockito.PowerMockito.spy;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest(PeerForwarder.class)
+@PrepareForTest({PeerForwarder.class, TraceServiceGrpc.TraceServiceBlockingStub.class})
 @PowerMockIgnore({"javax.net.ssl.*","javax.security.*"})
 public class PeerForwarderTest {
 
