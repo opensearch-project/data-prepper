@@ -8,8 +8,10 @@ import org.junit.Test;
 import java.util.HashMap;
 
 import static com.amazon.situp.plugins.PluginFactoryTests.NON_EXISTENT_EMPTY_CONFIGURATION;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 
 @SuppressWarnings("rawtypes")
@@ -22,9 +24,9 @@ public class SourceFactoryTests {
     public void testSourceClassByName() {
         final PluginSetting stdInSourceConfiguration = new PluginSetting("stdin", new HashMap<>());
         final Source actualSource = SourceFactory.newSource(stdInSourceConfiguration);
-        final Source expectedSource = new StdInSource();
-        assertNotNull(actualSource);
-        assertEquals(expectedSource.getClass().getSimpleName(), actualSource.getClass().getSimpleName());
+        final Source expectedSource = new StdInSource(500,"test-pipeline");
+        assertThat(actualSource, notNullValue());
+        assertThat(actualSource.getClass().getSimpleName(), is(equalTo(expectedSource.getClass().getSimpleName())));
     }
 
     /**

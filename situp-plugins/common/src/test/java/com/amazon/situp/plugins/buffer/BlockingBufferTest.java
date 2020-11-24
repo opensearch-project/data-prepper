@@ -7,6 +7,8 @@ import org.junit.Test;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -31,7 +33,14 @@ public class BlockingBufferTest {
     }
 
     @Test
-    public void testCreationUsingDefaults() {
+    public void testCreationUsingDefaultPluginSettings() {
+        final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(
+                BlockingBuffer.getDefaultPluginSettings());
+        assertThat(blockingBuffer, notNullValue());
+    }
+
+    @Test
+    public void testCreationUsingValues() {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_SIZE, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
@@ -97,5 +106,9 @@ public class BlockingBufferTest {
         final PluginSetting testSettings =  new PluginSetting(pluginName, settings);
         testSettings.setPipelineName(TEST_PIPELINE_NAME);
         return testSettings;
+    }
+
+    private void completelyShutdownExecutorService(final ExecutorService executorService) {
+
     }
 }

@@ -8,8 +8,10 @@ import org.junit.Test;
 import java.util.HashMap;
 
 import static com.amazon.situp.plugins.PluginFactoryTests.NON_EXISTENT_EMPTY_CONFIGURATION;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 
 @SuppressWarnings("rawtypes")
@@ -22,8 +24,8 @@ public class BufferFactoryTests {
         final PluginSetting boundedBlocking = new PluginSetting("bounded_blocking", new HashMap<>());
         final Buffer actualBuffer = BufferFactory.newBuffer(boundedBlocking);
         final Buffer expectedBuffer = new BlockingBuffer("test-pipeline");
-        assertNotNull(actualBuffer);
-        assertEquals(expectedBuffer.getClass().getSimpleName(), actualBuffer.getClass().getSimpleName());
+        assertThat(actualBuffer, notNullValue());
+        assertThat(actualBuffer.getClass().getSimpleName(), is(equalTo(expectedBuffer.getClass().getSimpleName())));
     }
 
     /**

@@ -9,8 +9,10 @@ import org.junit.Test;
 import java.util.HashMap;
 
 import static com.amazon.situp.plugins.PluginFactoryTests.NON_EXISTENT_EMPTY_CONFIGURATION;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 
 @SuppressWarnings("rawtypes")
@@ -24,8 +26,8 @@ public class ProcessorFactoryTests {
         final PluginSetting noOpProcessorConfiguration = new PluginSetting("no-op", new HashMap<>());
         final Processor actualProcessor = ProcessorFactory.newProcessor(noOpProcessorConfiguration);
         final Processor expectedProcessor = new NoOpProcessor();
-        assertNotNull(actualProcessor);
-        assertEquals(expectedProcessor.getClass().getSimpleName(), actualProcessor.getClass().getSimpleName());
+        assertThat(actualProcessor, notNullValue());
+        assertThat(actualProcessor.getClass().getSimpleName(), is(equalTo(expectedProcessor.getClass().getSimpleName())));
     }
 
     /**

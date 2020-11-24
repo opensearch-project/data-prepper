@@ -5,6 +5,8 @@ import com.amazon.situp.model.annotations.SitupPlugin;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.sink.Sink;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -17,9 +19,11 @@ import static java.lang.String.format;
 
 @SitupPlugin(name = "file", type = PluginType.SINK)
 public class FileSink implements Sink<Record<String>> {
-    private static final String SAMPLE_FILE_PATH = "src/resources/file-test-sample-output.txt";
-
+    private static final Logger LOG = LoggerFactory.getLogger(FileSink.class);
+    private static final String ATTRIBUTE_PATH = "path";
+    private static final String NULL_PATH = null;
     private final String outputFilePath;
+    private final String pipelineName;
     private boolean isStopRequested;
 
     /**
@@ -31,15 +35,16 @@ public class FileSink implements Sink<Record<String>> {
      * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
      */
     public FileSink(final PluginSetting pluginSetting) {
-        this((String) pluginSetting.getAttributeFromSettings("path"));
+        this(pluginSetting.getStringOrDefault(ATTRIBUTE_PATH, NULL_PATH), pluginSetting.getPipelineName());
     }
 
-    public FileSink() {
-        this(SAMPLE_FILE_PATH);
-    }
-
-    public FileSink(final String outputFile) {
-        this.outputFilePath = outputFile == null ? SAMPLE_FILE_PATH : outputFile;
+    public FileSink(final String outputFile, final String pipelineName) {
+        if (outputFile == null || outputFile.isEmpty()) {
+            throw new RuntimeException(format("Pipeline [%s] - path is a required attribute for file sink",
+                    pipelineName));
+        }
+        this.outputFilePath = outputFile;
+        this.pipelineName = pipelineName;
         isStopRequested = false;
     }
 
@@ -52,7 +57,10 @@ public class FileSink implements Sink<Record<String>> {
                 writer.newLine();
             }
         } catch (IOException ex) {
-            throw new RuntimeException(format("Encountered exception opening/creating file %s", outputFilePath), ex);
+            LOG.error("Pipeline [{}] - Encountered exception opening/creating [{}] for file sink",
+                    pipelineName, outputFilePath, ex);
+            throw new RuntimeException(format("Pipeline [%s] - Encountered exception opening/creating [%s] for " +
+                    "file sink", pipelineName, outputFilePath), ex);
         }
     }
 }

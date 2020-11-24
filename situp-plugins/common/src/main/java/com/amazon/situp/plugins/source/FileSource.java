@@ -6,6 +6,8 @@ import com.amazon.situp.model.buffer.Buffer;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.source.Source;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -19,10 +21,13 @@ import static java.lang.String.format;
 
 @SitupPlugin(name = "file", type = PluginType.SOURCE)
 public class FileSource implements Source<Record<String>> {
+    private static final Logger LOG = LoggerFactory.getLogger(FileSource.class);
     private static final String ATTRIBUTE_PATH = "path";
+    private static final String ATTRIBUTE_TIMEOUT = "write_timeout";
     private final String filePathToRead;
+    private final int writeTimeout;
+    private final String pipelineName;
     private boolean isStopRequested;
-    private static final String SAMPLE_FILE_PATH = "src/resources/file-test-sample.txt";
     private static final int WRITE_TIMEOUT = 5_000;
 
     /**
@@ -34,29 +39,35 @@ public class FileSource implements Source<Record<String>> {
      * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
      */
     public FileSource(final PluginSetting pluginSetting) {
-        this((String) pluginSetting.getAttributeFromSettings(ATTRIBUTE_PATH));
+        this((String) pluginSetting.getAttributeFromSettings(ATTRIBUTE_PATH),
+                pluginSetting.getIntegerOrDefault(ATTRIBUTE_TIMEOUT, WRITE_TIMEOUT),
+                pluginSetting.getPipelineName());
     }
 
-    public FileSource() {
-        this(SAMPLE_FILE_PATH);
-    }
-
-    public FileSource(final String filePath) {
-        this.filePathToRead = filePath == null ? SAMPLE_FILE_PATH : filePath;
+    public FileSource(final String filePath, final int writeTimeout, final String pipelineName) {
+        if (filePath == null || filePath.isEmpty()) {
+            throw new RuntimeException(format("Pipeline [%s] - path is a required attribute for file source",
+                    pipelineName));
+        }
+        this.filePathToRead = filePath;
+        this.writeTimeout = writeTimeout;
+        this.pipelineName = pipelineName;
         isStopRequested = false;
     }
 
 
     @Override
     public void start(final Buffer<Record<String>> buffer) {
-        checkNotNull(buffer, "buffer cannot be null for source to start");
+        checkNotNull(buffer, format("Pipeline [%s] - buffer cannot be null for source to start", pipelineName));
         try (BufferedReader reader = Files.newBufferedReader(Paths.get(filePathToRead), StandardCharsets.UTF_8)) {
             String line;
             while ((line = reader.readLine()) != null && !isStopRequested) {
-                buffer.write(new Record<>(line), WRITE_TIMEOUT);
+                buffer.write(new Record<>(line), writeTimeout);
             }
         } catch (IOException | TimeoutException ex) {
-            throw new RuntimeException(format("Error processing the input file %s", filePathToRead), ex);
+            LOG.error("Pipeline [{}] - Error processing the input file [{}]", pipelineName, filePathToRead, ex);
+            throw new RuntimeException(format("Pipeline [%s] - Error processing the input file %s", pipelineName,
+                    filePathToRead), ex);
         }
     }
 
