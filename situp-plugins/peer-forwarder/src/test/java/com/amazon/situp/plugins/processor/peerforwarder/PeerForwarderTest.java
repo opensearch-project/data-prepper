@@ -3,6 +3,7 @@ package com.amazon.situp.plugins.processor.peerforwarder;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import com.google.protobuf.ByteString;
+import com.linecorp.armeria.client.Clients;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
@@ -98,7 +99,9 @@ public class PeerForwarderTest {
     public void testProcessRequest() throws Exception {
         final List<String> testIps = generateTestIps(1);
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
-        final TraceServiceGrpc.TraceServiceBlockingStub mockClient = mock(TraceServiceGrpc.TraceServiceBlockingStub.class);
+        final TraceServiceGrpc.TraceServiceBlockingStub mockClient = spy(
+                Clients.newClient(
+                        String.format("gproto+http://%s", testIps.get(0)), TraceServiceGrpc.TraceServiceBlockingStub.class));
         doReturn(null).when(mockClient).export(any());
         final List<Record<ExportTraceServiceRequest>> localBuffer = new ArrayList<>();
         final Object[] args1 = new Object[]{null, REQUEST_1, localBuffer};
