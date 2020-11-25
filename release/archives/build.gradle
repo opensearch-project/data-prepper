@@ -27,7 +27,6 @@ subprojects {
     def supportedArchitectures = architectures.get(it.name) as String[]
     def platform = it.name
 
-
     //For each subproject and its supported architecture - Add distribution and upload tasks
     supportedArchitectures.each {
         def architecture = it
