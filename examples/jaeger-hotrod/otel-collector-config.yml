@@ -6,7 +6,7 @@ receivers:
 exporters:
   otlp/2:
     endpoint: situp:21890
-    ca_file: /etc/demo-situp.crt
+    insecure: true
   logging:
 
 service:

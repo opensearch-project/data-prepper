@@ -1,7 +1,0 @@
-mysql-connector==2.2.9
-opentelemetry-exporter-otlp==0.12b0
-opentelemetry-instrumentation-flask==0.12b0
-opentelemetry-instrumentation-mysql==0.12b0
-opentelemetry-instrumentation-requests==0.12b0
-opentelemetry-sdk==0.12b0
-protobuf==3.12.2

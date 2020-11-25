@@ -2,6 +2,9 @@ plugins {
     id "de.undercouch.download" version "4.1.1" apply false
     id "jp.classmethod.aws.s3" version "0.41" apply false
 }
+
+import com.amazonaws.services.s3.model.ObjectMetadata
+import jp.classmethod.aws.gradle.s3.AmazonS3FileUploadTask
 import jp.classmethod.aws.gradle.s3.CreateBucketTask
 
 subprojects {
@@ -21,39 +24,65 @@ subprojects {
         awsS3Bucket = project.hasProperty("bucket") ? project.getProperty("bucket") : awsResources.get('default_bucket')
     }
 
-    def platform = platforms.get(it.name)
-    def distName = it.name
-    def distTar = "${distName}DistTar"
-    def distZip = "${distName}DistZip"
-    def distNameWithJDK = it.name + "WithJDK"
-    def distWithJDKTar = "${distNameWithJDK}DistTar"
-    def distWithJDKZip = "${distNameWithJDK}DistZip"
+    def supportedArchitectures = architectures.get(it.name) as String[]
+    def platform = it.name
 
-    distributions {
-        "${distName}" {
-            distributionBaseName = "${project.rootProject.name}-${platform}"
-            contents {
-                with archiveToTar()
-                into('') {
-                    from("situp-tar-install.sh")
-                    fileMode 0755
+    //For each subproject and its supported architecture - Add distribution and upload tasks
+    supportedArchitectures.each {
+        def architecture = it
+        def distName = "${platform}${architecture}" //eg linuxarm64
+        def distNameWithJDK = "${distName}WithJDK"
+        def downloadJDKTask = "download${architecture}JDK"
+
+        //This adds two distributions for each supported architecture e.g. linuxarm64DistTar, linuxarm64WithJDKDistTar
+        // incl. linuxarm64DistZip, linuxarm64WithJDKDistZip
+        distributions {
+            "${distName}" {
+                distributionBaseName = "${project.rootProject.name}-v${project.rootProject.version}-${platform}-${architecture}"
+                contents {
+                    with archiveToTar()
+                    into('') {
+                        from("situp-tar-install-${architecture}.sh").rename("situp-tar-install-${architecture}.sh", "situp-tar-install.sh")
+                        fileMode 0755
+                    }
+                }
+            }
+            "${distNameWithJDK}" {
+                distributionBaseName = "${project.rootProject.name}-jdk-v${project.rootProject.version}-${platform}-${architecture}"
+                contents {
+                    with archiveToTar()
+                    into('openjdk') {
+                        from tarTree("${buildDir}/${platform}${architecture}/openjdk/openjdk.tar.gz")
+                    }
+                    into('') {
+                        from("situp-tar-install-with-jdk-${architecture}.sh").rename("situp-tar-install-with-jdk-${architecture}.sh", "situp-tar-install.sh")
+                        fileMode 0755
+                    }
                 }
             }
         }
-        "${distNameWithJDK}" {
-            distributionBaseName = "${project.rootProject.name}-${platform}-jdk"
-            contents {
-                with archiveToTar()
-                into('openjdk') {
-                    from tarTree("${buildDir}/${platform}/openjdk/openjdk.tar.gz")
-                }
-                into('') {
-                    from("situp-tar-install-with-jdk.sh").rename("situp-tar-install-with-jdk.sh", "situp-tar-install.sh")
-                    fileMode 0755
+
+        //by default distribution plugin adds project version to archive name, removing it
+        distTar {
+            project.version = ""
+        }
+
+        distZip {
+            project.version = ""
+        }
+
+        //Adds one task per supported architecture for downloading appropriate JDK e.g. downloadarm64JDK
+        tasks.create("${downloadJDKTask}") {
+            doLast {
+                download {
+                    src jdkSources.get(platform + '_' + architecture)
+                    dest "${buildDir}/${platform}${architecture}/openjdk/openjdk.tar.gz"
+                    overwrite false
                 }
             }
         }
     }
+
     tasks.withType(Tar) {
         dependsOn ':release:releasePrerequisites'
         compression = Compression.GZIP
@@ -64,24 +93,18 @@ subprojects {
         dependsOn ':release:releasePrerequisites'
     }
 
-    task downloadJDK {
-        doLast {
-            download {
-                src jdkSources[platform]
-                dest "${buildDir}/${platform}/openjdk/openjdk.tar.gz"
-                overwrite false
-            }
+    tasks.create("${platform}Tar") {
+        supportedArchitectures.each {
+            dependsOn "${platform}${it}DistTar"
+            dependsOn "${platform}${it}WithJDKDistTar"
         }
     }
 
-    tasks.create("${it.name}Tar") {
-        dependsOn "${distTar}"
-        dependsOn "${distWithJDKTar}"
-    }
-
-    tasks.create("${it.name}Zip") {
-        dependsOn "${distZip}"
-        dependsOn "${distWithJDKZip}"
+    tasks.create("${platform}Zip") {
+        supportedArchitectures.each {
+            dependsOn "${platform}${it}DistZip"
+            dependsOn "${platform}${it}WithJDKDistZip"
+        }
     }
 
     aws {
@@ -94,14 +117,66 @@ subprojects {
         ifNotExists true
     }
     afterEvaluate {
-        tasks.getByName("${distNameWithJDK}DistTar").dependsOn(downloadJDK)
-        tasks.getByName("${distNameWithJDK}DistZip").dependsOn(downloadJDK)
+        supportedArchitectures.each {
+            def platformWithArchitecture = "${platform}${it}"
+            def tarTask = tasks.getByName("${platformWithArchitecture}DistTar")
+            println(tarTask.name)
+            def tarWithJDKTask = tasks.getByName("${platformWithArchitecture}WithJDKDistTar")
+            def zipTask = tasks.getByName("${platformWithArchitecture}DistZip")
+            def zipWithJDKTask = tasks.getByName("${platformWithArchitecture}WithJDKDistZip")
+
+            tasks.getByName("${platformWithArchitecture}WithJDKDistTar").dependsOn("download${it}JDK")
+            tasks.getByName("${platformWithArchitecture}WithJDKDistZip").dependsOn("download${it}JDK")
+
+            tasks.create(name: "upload${platformWithArchitecture}TarToS3", type: AmazonS3FileUploadTask, dependsOn: createBucket) {
+                dependsOn tarTask.name
+                file file(tarTask.archiveFile.get().asFile.absolutePath)
+                bucketName awsS3Bucket
+                key tarTask.archiveName
+
+                def m = new ObjectMetadata()
+                m.setCacheControl("no-cache, no-store")
+                objectMetadata = m
+            }
+
+            tasks.create(name: "upload${platformWithArchitecture}ZipToS3", type: AmazonS3FileUploadTask, dependsOn: createBucket) {
+                dependsOn zipTask.name
+                file file(zipTask.archiveFile.get().asFile.absolutePath)
+                bucketName awsS3Bucket
+                key zipTask.archiveName
+
+                def m = new ObjectMetadata()
+                m.setCacheControl("no-cache, no-store")
+                objectMetadata = m
+            }
+
+            tasks.create(name: "upload${platformWithArchitecture}TarWithJDKToS3", type: AmazonS3FileUploadTask, dependsOn: createBucket) {
+                dependsOn tarWithJDKTask.name
+                file file(tarWithJDKTask.archiveFile.get().asFile.absolutePath)
+                bucketName awsS3Bucket
+                key tarWithJDKTask.archiveName
+
+                def m = new ObjectMetadata()
+                m.setCacheControl("no-cache, no-store")
+                objectMetadata = m
+            }
+
+            tasks.create(name: "upload${platformWithArchitecture}ZipWithJDKToS3", type: AmazonS3FileUploadTask, dependsOn: createBucket) {
+                dependsOn zipWithJDKTask.name
+                file file(zipWithJDKTask.archiveFile.get().asFile.absolutePath)
+                bucketName awsS3Bucket
+                key zipWithJDKTask.archiveName
+
+                def m = new ObjectMetadata()
+                m.setCacheControl("no-cache, no-store")
+                objectMetadata = m
+            }
+        }
 
         tasks.create("uploadToS3") {
-            dependsOn uploadTarToS3
-            dependsOn uploadTarWithJDKToS3
-            dependsOn uploadZipToS3
-            dependsOn uploadZipWithJDKToS3
+            tasks.withType(AmazonS3FileUploadTask).each {
+                dependsOn it.name
+            }
         }
     }
 }

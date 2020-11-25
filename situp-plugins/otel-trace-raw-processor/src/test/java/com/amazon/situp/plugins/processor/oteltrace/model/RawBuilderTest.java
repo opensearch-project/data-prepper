@@ -30,7 +30,7 @@ public class RawBuilderTest {
                 .setKind(Span.SpanKind.SPAN_KIND_CONSUMER)
                 .setStartTimeUnixNano(651242400000000321L)
                 .setEndTimeUnixNano(651242400000000321L+3000)
-                .setStatus(Status.newBuilder().setCodeValue(Status.StatusCode.STATUS_CODE_ABORTED_VALUE).setMessage("status-description").build())
+                .setStatus(Status.newBuilder().setCodeValue(Status.StatusCode.STATUS_CODE_UNSET_VALUE).setMessage("status-description").build())
                 .addAttributes(KeyValue.newBuilder()
                         .setKey("some-key")
                         .build()
@@ -51,7 +51,7 @@ public class RawBuilderTest {
         assertThat(rawSpan.getStartTime().equals(OTelProtoHelper.getStartTimeISO8601(span))).isTrue();
         assertThat(rawSpan.getEndTime().equals(OTelProtoHelper.getEndTimeISO8601(span))).isTrue();
         assertThat(rawSpan.getAttributes().get(OTelProtoHelper.STATUS_MESSAGE)).isEqualTo("status-description");
-        assertThat(rawSpan.getAttributes().get(OTelProtoHelper.STATUS_CODE)).isEqualTo(10);
+        assertThat(rawSpan.getAttributes().get(OTelProtoHelper.STATUS_CODE)).isEqualTo(0);
         assertThat(rawSpan.getAttributes().get(OTelProtoHelper.SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("some-key")).equals("")).isTrue();
         assertThat(rawSpan.getDroppedAttributesCount()).isEqualTo(1);
         assertThat(rawSpan.getDroppedLinksCount()).isEqualTo(0);
