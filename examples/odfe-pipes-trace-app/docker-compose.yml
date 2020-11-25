@@ -64,10 +64,10 @@ services:
       - MYSQL_ALLOW_EMPTY_PASSWORD=yes
     networks:
       - my_network
-  python-services:
+  sample-app:
     restart: unless-stopped
     build:
-      context: python-services
+      context: sample-app
       dockerfile: Dockerfile
     ports:
       - '8082:8082' # inventory
@@ -75,56 +75,20 @@ services:
       - '8084:8084' # payment
       - '8085:8085' # auth
       - '8086:8086' # recommendation
+      - '8087:8087' # analytics-service
       - '8088:8088' # order
+      - '8089:8089' # client-dashboard
     environment:
+      - OTEL_EXPORTER=otlp
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:55680
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=analytics-service
       - OTLP=otel-collector
-      - LOGS=analytics-service
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
       - WAIT_HOSTS=otel-collector:55680, mysql:3306
     depends_on:
       - otel-collector
       - mysql
-      - analytics-service
-    networks:
-      - my_network
-  analytics-service:
-    restart: unless-stopped
-    build:
-      context: analytics-service
-      dockerfile: Dockerfile
-    ports:
-      - "8087:8087"
-    environment:
-      - OTEL_EXPORTER=otlp
-      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:55680
-      - OTEL_RESOURCE_ATTRIBUTES=service.name=analytics-service
-    depends_on:
-      - otel-collector
-    networks:
-      - my_network
-  client:
-    restart: unless-stopped
-    build:
-      context: client
-      dockerfile: Dockerfile
-    ports:
-      - "8089:8089"
-    environment:
-      - OTLP=otel-collector
-      - MYSQL_HOST=mysql
-      - MYSQL_PORT=3306
-      - ORDER=python-services
-      - INVENTORY=python-services
-      - PAYMENT=python-services
-      - AUTH=python-services
-      - SLEEP_TIME_IN_SECONDS=1
-      - WAIT_HOSTS=python-services:8085 # auth
-      - WAIT_AFTER_HOSTS=20
-    depends_on:
-      - otel-collector
-      - python-services
-      - analytics-service
     networks:
       - my_network
 networks:

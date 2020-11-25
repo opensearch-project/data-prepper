@@ -167,7 +167,7 @@ def checkout():
     trace_id = None
     try:
         with tracer.start_as_current_span("client_checkout") as checkout_trace_group:
-            trace_id = get_hexadecimal_trace_id(checkout_trace_group.get_context().trace_id)
+            trace_id = get_hexadecimal_trace_id(checkout_trace_group.get_span_context().trace_id)
             checkoutAPIRequest = post(
                 "http://{}:8084/checkout".format(PAYMENT),
                 data=[
@@ -186,7 +186,7 @@ def createOrder():
     trace_id = None
     try:
         with tracer.start_as_current_span("client_create_order") as create_order_trace_group:
-            trace_id = get_hexadecimal_trace_id(create_order_trace_group.get_context().trace_id)
+            trace_id = get_hexadecimal_trace_id(create_order_trace_group.get_span_context().trace_id)
             updateOrderAPIRequest = post(
                 "http://{}:8088/update_order".format(ORDER),
                 data=[
@@ -204,7 +204,7 @@ def cancelOrder():
     trace_id = None
     try:
         with tracer.start_as_current_span("client_cancel_order") as cancel_order_trace_group:
-            trace_id=get_hexadecimal_trace_id(cancel_order_trace_group.get_context().trace_id)
+            trace_id=get_hexadecimal_trace_id(cancel_order_trace_group.get_span_context().trace_id)
             cancelOrderAPIRequest = delete("http://{}:8088/clear_order".format(ORDER))
             assert cancelOrderAPIRequest.status_code == 200
             return get_ref_link("Cancel", "success", trace_id)
@@ -216,7 +216,7 @@ def deliveryStatus():
     trace_id = None
     try:
         with tracer.start_as_current_span("client_delivery_status") as delivery_status_trace_group:
-            trace_id = get_hexadecimal_trace_id(delivery_status_trace_group.get_context().trace_id)
+            trace_id = get_hexadecimal_trace_id(delivery_status_trace_group.get_span_context().trace_id)
             getOrderAPIRequest = get("http://{}:8088/get_order".format(ORDER))
             assert getOrderAPIRequest.status_code == 200
             return get_ref_link("Status", "success", trace_id)
@@ -228,7 +228,7 @@ def payOrder():
     trace_id = None
     try:
         with tracer.start_as_current_span("client_pay_order") as pay_order_trace_group:
-            trace_id = get_hexadecimal_trace_id(pay_order_trace_group.get_context().trace_id)
+            trace_id = get_hexadecimal_trace_id(pay_order_trace_group.get_span_context().trace_id)
             payOrderAPIRequest = post("http://{}:8088/pay_order".format(ORDER))
             assert payOrderAPIRequest.status_code == 200
             return get_ref_link("Pay", "success", trace_id)
