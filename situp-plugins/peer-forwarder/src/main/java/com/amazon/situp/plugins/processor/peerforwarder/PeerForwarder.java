@@ -81,7 +81,7 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
         }
         for (final Record<ExportTraceServiceRequest> record: records) {
             for (final ResourceSpans rs: record.getData().getResourceSpansList()) {
-                final List<Map.Entry<String, ResourceSpans>> rsBatch = splitByTrace(rs);
+                final List<Map.Entry<String, ResourceSpans>> rsBatch = PeerForwarderUtils.splitByTrace(rs);
                 for (final Map.Entry<String, ResourceSpans> entry: rsBatch) {
                     final String traceId = entry.getKey();
                     final ResourceSpans newRS = entry.getValue();
@@ -98,7 +98,7 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
             ExportTraceServiceRequest.Builder currRequestBuilder = ExportTraceServiceRequest.newBuilder();
             int currSpansCount = 0;
             for (final ResourceSpans rs: peerGroupedRS.get(peerIp)) {
-                final int rsSize = getResourceSpansSize(rs);
+                final int rsSize = PeerForwarderUtils.getResourceSpansSize(rs);
                 if (currSpansCount >= peerForwarderConfig.getMaxNumSpansPerRequest()) {
                     final ExportTraceServiceRequest currRequest = currRequestBuilder.build();
                     processRequest(client, currRequest, results);
@@ -133,35 +133,8 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
         }
     }
 
-    private List<Map.Entry<String, ResourceSpans>> splitByTrace(final ResourceSpans rs) {
-        final List<Map.Entry<String, ResourceSpans>> result = new ArrayList<>();
-        for (final InstrumentationLibrarySpans ils: rs.getInstrumentationLibrarySpansList()) {
-            final Map<String, ResourceSpans.Builder> batches = new HashMap<>();
-            for (final Span span: ils.getSpansList()) {
-                final String sTraceId = Hex.toHexString(span.getTraceId().toByteArray());
-                if (!batches.containsKey(sTraceId)) {
-                    final ResourceSpans.Builder newRSBuilder = ResourceSpans.newBuilder()
-                            .setResource(rs.getResource());
-                    newRSBuilder.addInstrumentationLibrarySpansBuilder().setInstrumentationLibrary(ils.getInstrumentationLibrary());
-                    batches.put(sTraceId, newRSBuilder);
-                }
-
-                // there is only one instrumentation library per batch
-                batches.get(sTraceId).getInstrumentationLibrarySpansBuilder(0).addSpans(span);
-            }
-
-            batches.forEach((traceId, rsBuilder) -> result.add(new AbstractMap.SimpleEntry<>(traceId, rsBuilder.build())));
-        }
-
-        return result;
-    }
-
     private String getHostByConsistentHashing(final String traceId) {
         // TODO: better consistent hashing algorithm, e.g. ring hashing
         return peerIps.get(traceId.hashCode() % peerIps.size());
-    }
-
-    private int getResourceSpansSize(final ResourceSpans rs) {
-        return rs.getInstrumentationLibrarySpansList().stream().mapToInt(InstrumentationLibrarySpans::getSpansCount).sum();
     }
 }
