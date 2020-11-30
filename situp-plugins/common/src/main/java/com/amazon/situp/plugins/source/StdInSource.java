@@ -9,6 +9,8 @@ import com.amazon.situp.model.source.Source;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
+import java.util.Objects;
 import java.util.Scanner;
 import java.util.concurrent.TimeoutException;
 
@@ -38,12 +40,14 @@ public class StdInSource implements Source<Record<String>> {
      * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
      */
     public StdInSource(final PluginSetting pluginSetting) {
-        this(pluginSetting.getIntegerOrDefault(ATTRIBUTE_TIMEOUT, WRITE_TIMEOUT), pluginSetting.getPipelineName());
+        this(checkNotNull(pluginSetting, "PluginSetting cannot be null")
+                        .getIntegerOrDefault(ATTRIBUTE_TIMEOUT, WRITE_TIMEOUT),
+                pluginSetting.getPipelineName());
     }
 
     public StdInSource(final int writeTimeout, final String pipelineName) {
         this.writeTimeout = writeTimeout;
-        this.pipelineName = pipelineName;
+        this.pipelineName = checkNotNull(pipelineName, "Pipeline name cannot be null");
         this.reader = new Scanner(System.in);
         isStopRequested = false;
     }

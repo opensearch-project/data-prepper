@@ -16,7 +16,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class BlockingBufferTest {
+public class BlockingBufferTests {
     private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
     private static final String ATTRIBUTE_BUFFER_SIZE = "buffer_size";
     private static final String TEST_PIPELINE_NAME = "test-pipeline";
@@ -30,6 +30,15 @@ public class BlockingBufferTest {
         final PluginSetting completePluginSetting = completePluginSettingForBlockingBuffer();
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(completePluginSetting);
         assertThat(blockingBuffer, notNullValue());
+    }
+
+    @Test
+    public void testCreationUsinNullPluginSetting() {
+        try{
+            new BlockingBuffer<Record<String>>((PluginSetting) null);
+        } catch (NullPointerException ex) {
+            assertThat(ex.getMessage(), is(equalTo("PluginSetting cannot be null")));
+        }
     }
 
     @Test

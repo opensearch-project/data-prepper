@@ -9,6 +9,7 @@ import com.amazon.situp.model.source.Source;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -39,7 +40,8 @@ public class FileSource implements Source<Record<String>> {
      * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
      */
     public FileSource(final PluginSetting pluginSetting) {
-        this((String) pluginSetting.getAttributeFromSettings(ATTRIBUTE_PATH),
+        this((String) checkNotNull(pluginSetting, "PluginSetting cannot be null")
+                        .getAttributeFromSettings(ATTRIBUTE_PATH),
                 pluginSetting.getIntegerOrDefault(ATTRIBUTE_TIMEOUT, WRITE_TIMEOUT),
                 pluginSetting.getPipelineName());
     }
@@ -51,7 +53,7 @@ public class FileSource implements Source<Record<String>> {
         }
         this.filePathToRead = filePath;
         this.writeTimeout = writeTimeout;
-        this.pipelineName = pipelineName;
+        this.pipelineName = checkNotNull(pipelineName, "Pipeline name cannot be null");
         isStopRequested = false;
     }
 

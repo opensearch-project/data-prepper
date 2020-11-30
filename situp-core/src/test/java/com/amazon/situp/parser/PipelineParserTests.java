@@ -1,5 +1,6 @@
 package com.amazon.situp.parser;
 
+import com.amazon.situp.parser.model.PipelineConfiguration;
 import com.amazon.situp.pipeline.Pipeline;
 import org.junit.Test;
 
@@ -9,10 +10,12 @@ import static com.amazon.situp.TestDataProvider.CYCLE_MULTIPLE_PIPELINE_CONFIG_F
 import static com.amazon.situp.TestDataProvider.INCORRECT_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE;
 import static com.amazon.situp.TestDataProvider.MISSING_NAME_MULTIPLE_PIPELINE_CONFIG_FILE;
 import static com.amazon.situp.TestDataProvider.MISSING_PIPELINE_MULTIPLE_PIPELINE_CONFIG_FILE;
+import static com.amazon.situp.TestDataProvider.TEST_PIPELINE_NAME;
 import static com.amazon.situp.TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE;
 import static com.amazon.situp.TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES;
 import static com.amazon.situp.TestDataProvider.VALID_MULTIPLE_PROCESSORS_CONFIG_FILE;
 import static com.amazon.situp.TestDataProvider.VALID_MULTIPLE_SINKS_CONFIG_FILE;
+import static com.amazon.situp.TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -26,6 +29,13 @@ public class PipelineParserTests {
         final PipelineParser pipelineParser = new PipelineParser(VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
         final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
         assertThat(actualPipelineMap.keySet(), is(VALID_MULTIPLE_PIPELINE_NAMES));
+    }
+
+    @Test
+    public void testValidSinglePipelineEmptySourceSettings() {
+        final PipelineParser pipelineParser = new PipelineParser(VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
+        final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
+        assertThat(actualPipelineMap.keySet().size(), is(1));
     }
 
     @Test //not preferring expected to validate exception message

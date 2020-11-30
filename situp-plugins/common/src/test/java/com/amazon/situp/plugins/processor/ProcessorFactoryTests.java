@@ -17,13 +17,14 @@ import static org.junit.Assert.assertThrows;
 
 @SuppressWarnings("rawtypes")
 public class ProcessorFactoryTests {
-
+    private static String TEST_PIPELINE = "test-pipeline";
     /**
      * Tests if ProcessorFactory is able to retrieve default Source plugins by name
      */
     @Test
     public void testNewSinkClassByNameThatExists() {
         final PluginSetting noOpProcessorConfiguration = new PluginSetting("no-op", new HashMap<>());
+        noOpProcessorConfiguration.setPipelineName(TEST_PIPELINE);
         final Processor actualProcessor = ProcessorFactory.newProcessor(noOpProcessorConfiguration);
         final Processor expectedProcessor = new NoOpProcessor();
         assertThat(actualProcessor, notNullValue());

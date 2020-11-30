@@ -16,6 +16,8 @@ import static com.amazon.situp.TestDataProvider.TEST_PIPELINE_NAME;
 import static com.amazon.situp.TestDataProvider.TEST_WORKERS;
 import static com.amazon.situp.TestDataProvider.VALID_PLUGIN_SETTING_1;
 import static com.amazon.situp.TestDataProvider.VALID_PLUGIN_SETTING_2;
+import static com.amazon.situp.TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE;
+import static com.amazon.situp.TestDataProvider.readConfigFile;
 import static com.amazon.situp.TestDataProvider.validMultipleConfiguration;
 import static com.amazon.situp.TestDataProvider.validMultipleConfigurationOfSizeOne;
 import static com.amazon.situp.TestDataProvider.validSingleConfiguration;
@@ -88,7 +90,7 @@ public class PipelineConfigurationTests {
         assertThat(pipelineConfiguration.getReadBatchDelay(), is(DEFAULT_READ_BATCH_DELAY));
     }
 
-    @Test() //not using expected to assert the message
+    @Test //not using expected to assert the message
     public void testNoSourceConfiguration() {
         try {
             new PipelineConfiguration(
@@ -102,7 +104,7 @@ public class PipelineConfigurationTests {
         }
     }
 
-    @Test()
+    @Test
     public void testNoProcessorConfiguration() {
         final PipelineConfiguration nullProcessorsConfiguration = new PipelineConfiguration(
                 validSingleConfiguration(),
@@ -123,7 +125,7 @@ public class PipelineConfigurationTests {
         assertThat(emptyProcessorsConfiguration.getProcessorPluginSettings().size(), is(0));
     }
 
-    @Test() //not using expected to assert the message
+    @Test //not using expected to assert the message
     public void testNoSinkConfiguration() {
         try {
             new PipelineConfiguration(
@@ -148,7 +150,7 @@ public class PipelineConfigurationTests {
         }
     }
 
-    @Test() //not using expected to assert the message
+    @Test //not using expected to assert the message
     public void testInvalidWorkersConfiguration() {
         try {
             new PipelineConfiguration(
@@ -162,7 +164,7 @@ public class PipelineConfigurationTests {
         }
     }
 
-    @Test() //not using expected to assert the message
+    @Test //not using expected to assert the message
     public void testInvalidDelayConfiguration() {
         try {
             new PipelineConfiguration(
@@ -174,6 +176,21 @@ public class PipelineConfigurationTests {
         } catch (IllegalArgumentException ex) {
             assertThat(ex.getMessage(), is("Invalid configuration, delay cannot be 0"));
         }
+    }
+
+    @Test
+    public void testPipelineConfigurationWithoutPluginSettingAttributes() throws Exception{
+        final Map<String, PipelineConfiguration> pipelineConfigurationMap = readConfigFile(
+                VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
+        assertThat(pipelineConfigurationMap.size(), is(equalTo(1)));
+        final PipelineConfiguration actualPipelineConfiguration = pipelineConfigurationMap.get(TEST_PIPELINE_NAME);
+        assertThat(actualPipelineConfiguration, notNullValue());
+        assertThat(actualPipelineConfiguration.getSourcePluginSetting(), notNullValue());
+        assertThat(actualPipelineConfiguration.getBufferPluginSetting(), notNullValue());
+        assertThat(actualPipelineConfiguration.getProcessorPluginSettings(), notNullValue());
+        assertThat(actualPipelineConfiguration.getProcessorPluginSettings().size(), is(equalTo(0)));
+        assertThat(actualPipelineConfiguration.getSinkPluginSettings(), notNullValue());
+        assertThat(actualPipelineConfiguration.getSinkPluginSettings().size(), is(equalTo(1)));
     }
 
     private void comparePluginSettings(final PluginSetting actual, final PluginSetting expected) {

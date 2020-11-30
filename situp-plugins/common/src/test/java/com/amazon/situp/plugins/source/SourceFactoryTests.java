@@ -16,15 +16,16 @@ import static org.junit.Assert.assertThrows;
 
 @SuppressWarnings("rawtypes")
 public class SourceFactoryTests {
-
+    private static String TEST_PIPELINE = "test-pipeline";
     /**
      * Tests if SourceFactory is able to retrieve default Source plugins by name
      */
     @Test
     public void testSourceClassByName() {
         final PluginSetting stdInSourceConfiguration = new PluginSetting("stdin", new HashMap<>());
+        stdInSourceConfiguration.setPipelineName(TEST_PIPELINE);
         final Source actualSource = SourceFactory.newSource(stdInSourceConfiguration);
-        final Source expectedSource = new StdInSource(500,"test-pipeline");
+        final Source expectedSource = new StdInSource(500,TEST_PIPELINE);
         assertThat(actualSource, notNullValue());
         assertThat(actualSource.getClass().getSimpleName(), is(equalTo(expectedSource.getClass().getSimpleName())));
     }
