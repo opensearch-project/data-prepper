@@ -4,12 +4,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.Permission;
 
 import static com.amazon.situp.TestDataProvider.NO_PIPELINES_EXECUTE_CONFIG_FILE;
@@ -22,15 +16,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class SitupTests {
 
     private SecurityManager actualSecurityManager;
-    private Path sourceFile;
 
     @Before
     public void setup() throws Exception {
-        try {
-            sourceFile = Files.createFile(Paths.get("/tmp/file-source.tmp"));
-        } catch (FileAlreadyExistsException ex) {
-            //ignore the exception
-        }
         actualSecurityManager = System.getSecurityManager();
         System.setSecurityManager(new CustomSecurityManager());
     }
@@ -38,11 +26,6 @@ public class SitupTests {
     @After
     public void teardown() {
         System.setSecurityManager(actualSecurityManager);
-        try {
-            Files.deleteIfExists(sourceFile);
-        } catch (Exception ex) {
-            //ignore the exception
-        }
     }
 
     @Test

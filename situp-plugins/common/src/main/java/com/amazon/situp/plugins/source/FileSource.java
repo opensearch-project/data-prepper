@@ -9,7 +9,6 @@ import com.amazon.situp.model.source.Source;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -60,7 +59,7 @@ public class FileSource implements Source<Record<String>> {
 
     @Override
     public void start(final Buffer<Record<String>> buffer) {
-        checkNotNull(buffer, format("Pipeline [%s] - buffer cannot be null for source to start", pipelineName));
+        checkNotNull(buffer, format("Pipeline [%s] - buffer cannot be null for file source to start", pipelineName));
         try (BufferedReader reader = Files.newBufferedReader(Paths.get(filePathToRead), StandardCharsets.UTF_8)) {
             String line;
             while ((line = reader.readLine()) != null && !isStopRequested) {

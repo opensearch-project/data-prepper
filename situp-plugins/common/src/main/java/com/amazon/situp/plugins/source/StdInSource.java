@@ -1,16 +1,14 @@
 package com.amazon.situp.plugins.source;
 
+import com.amazon.situp.model.PluginType;
 import com.amazon.situp.model.annotations.SitupPlugin;
-import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.buffer.Buffer;
 import com.amazon.situp.model.configuration.PluginSetting;
-import com.amazon.situp.model.PluginType;
+import com.amazon.situp.model.record.Record;
 import com.amazon.situp.model.source.Source;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
-import java.util.Objects;
 import java.util.Scanner;
 import java.util.concurrent.TimeoutException;
 
@@ -58,7 +56,7 @@ public class StdInSource implements Source<Record<String>> {
         String line = reader.nextLine();
         while (!"exit".equalsIgnoreCase(line) && !isStopRequested) {
             final Record<String> record = new Record<>(line);
-            try{
+            try {
                 buffer.write(record, writeTimeout);
             } catch (TimeoutException ex) {
                 LOG.error("Pipeline [{}] - Timed out writing to buffer; Will exit without further processing",

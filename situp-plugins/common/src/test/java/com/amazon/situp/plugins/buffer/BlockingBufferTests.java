@@ -7,8 +7,6 @@ import org.junit.Test;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -34,7 +32,7 @@ public class BlockingBufferTests {
 
     @Test
     public void testCreationUsinNullPluginSetting() {
-        try{
+        try {
             new BlockingBuffer<Record<String>>((PluginSetting) null);
         } catch (NullPointerException ex) {
             assertThat(ex.getMessage(), is(equalTo("PluginSetting cannot be null")));
@@ -112,12 +110,8 @@ public class BlockingBufferTests {
         final Map<String, Object> settings = new HashMap<>();
         settings.put(ATTRIBUTE_BUFFER_SIZE, TEST_BUFFER_SIZE);
         settings.put(ATTRIBUTE_BATCH_SIZE, TEST_BATCH_SIZE);
-        final PluginSetting testSettings =  new PluginSetting(pluginName, settings);
+        final PluginSetting testSettings = new PluginSetting(pluginName, settings);
         testSettings.setPipelineName(TEST_PIPELINE_NAME);
         return testSettings;
-    }
-
-    private void completelyShutdownExecutorService(final ExecutorService executorService) {
-
     }
 }

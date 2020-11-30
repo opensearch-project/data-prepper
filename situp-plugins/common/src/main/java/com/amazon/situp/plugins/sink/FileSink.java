@@ -15,13 +15,13 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
 
 @SitupPlugin(name = "file", type = PluginType.SINK)
 public class FileSink implements Sink<Record<String>> {
     private static final Logger LOG = LoggerFactory.getLogger(FileSink.class);
     private static final String ATTRIBUTE_PATH = "path";
-    private static final String NULL_PATH = null;
     private final String outputFilePath;
     private final String pipelineName;
     private boolean isStopRequested;
@@ -35,7 +35,9 @@ public class FileSink implements Sink<Record<String>> {
      * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
      */
     public FileSink(final PluginSetting pluginSetting) {
-        this(pluginSetting.getStringOrDefault(ATTRIBUTE_PATH, NULL_PATH), pluginSetting.getPipelineName());
+        this((String) checkNotNull(pluginSetting, "PluginSetting cannot be null")
+                        .getAttributeFromSettings(ATTRIBUTE_PATH),
+                pluginSetting.getPipelineName());
     }
 
     public FileSink(final String outputFile, final String pipelineName) {
