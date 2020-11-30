@@ -35,7 +35,7 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.title = 'Data Prepper Sample App'
 
 app.layout = html.Div(id="main", children=[
-    html.H1("Data Prepper Sample App", style={'textAlign': 'left'}),
+    html.H1("Trace Analytics Sample App", style={'textAlign': 'left'}),
     html.Div(style={'padding': 25}),
     html.Div([
             html.A("Trace Analytics Dashboard", href="http://localhost:5601/app/opendistro-trace-analytics#/",

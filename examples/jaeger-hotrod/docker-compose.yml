@@ -1,7 +1,7 @@
 version: "3.7"
 services:
-  situp:
-    container_name: situp
+  data-prepper:
+    container_name: data-prepper
     build:
       context: ../..
       dockerfile: examples/Dockerfile
@@ -25,11 +25,11 @@ services:
     volumes:
       - ${PWD}/:/project
       - ./otel-collector-config.yml:/etc/otel-collector-config.yml
-      - ../demo/demo-situp.crt:/etc/demo-situp.crt
+      - ../demo/demo-data-prepper.crt:/etc/demo-data-prepper.crt
     ports:
       - "14250:14250"
     depends_on:
-      - situp
+      - data-prepper
     networks:
       - my_network
   jaeger-agent:
