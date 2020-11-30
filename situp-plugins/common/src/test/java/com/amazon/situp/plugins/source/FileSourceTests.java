@@ -134,7 +134,7 @@ public class FileSourceTests {
         try {
             fileSource.start(null);
         } catch (NullPointerException ex) {
-            assertThat(ex.getMessage(), is(equalTo(format("Pipeline [%s] - buffer cannot be null for source to start",
+            assertThat(ex.getMessage(), is(equalTo(format("Pipeline [%s] - buffer cannot be null for file source to start",
                     TEST_PIPELINE_NAME))));
         }
     }
