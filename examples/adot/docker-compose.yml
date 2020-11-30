@@ -12,7 +12,7 @@ services:
     networks:
       - my_network
     depends_on:
-      - situp
+      - data-prepper
 
   # Metric and Trace Sample Data Generator
   ot-metric-emitter:
@@ -26,7 +26,7 @@ services:
       - aws-ot-collector
     networks:
       - my_network
-  situp:
+  data-prepper:
     container_name: situp
     build:
       context: ../..
