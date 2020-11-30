@@ -48,7 +48,7 @@ services:
     command: ["--config=/etc/otel-collector-config.yml"]
     volumes:
       - ./opentelemetry-collector/otel-collector-config.yml:/etc/otel-collector-config.yml
-      - ../demo/demo-situp.crt:/etc/demo-situp.crt
+      - ../demo/demo-data-prepper.crt:/etc/demo-data-prepper.crt
     ports:
       - "55680:55680"
     depends_on:

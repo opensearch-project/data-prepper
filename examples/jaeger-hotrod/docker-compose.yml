@@ -25,7 +25,7 @@ services:
     volumes:
       - ${PWD}/:/project
       - ./otel-collector-config.yml:/etc/otel-collector-config.yml
-      - ../demo/demo-situp.crt:/etc/demo-situp.crt
+      - ../demo/demo-data-prepper.crt:/etc/demo-data-prepper.crt
     ports:
       - "14250:14250"
     depends_on:
