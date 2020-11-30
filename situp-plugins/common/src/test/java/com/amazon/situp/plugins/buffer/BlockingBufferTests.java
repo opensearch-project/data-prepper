@@ -14,7 +14,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class BlockingBufferTest {
+public class BlockingBufferTests {
     private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
     private static final String ATTRIBUTE_BUFFER_SIZE = "buffer_size";
     private static final String TEST_PIPELINE_NAME = "test-pipeline";
@@ -31,7 +31,23 @@ public class BlockingBufferTest {
     }
 
     @Test
-    public void testCreationUsingDefaults() {
+    public void testCreationUsingNullPluginSetting() {
+        try {
+            new BlockingBuffer<Record<String>>((PluginSetting) null);
+        } catch (NullPointerException ex) {
+            assertThat(ex.getMessage(), is(equalTo("PluginSetting cannot be null")));
+        }
+    }
+
+    @Test
+    public void testCreationUsingDefaultPluginSettings() {
+        final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(
+                BlockingBuffer.getDefaultPluginSettings());
+        assertThat(blockingBuffer, notNullValue());
+    }
+
+    @Test
+    public void testCreationUsingValues() {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_SIZE, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
@@ -94,7 +110,7 @@ public class BlockingBufferTest {
         final Map<String, Object> settings = new HashMap<>();
         settings.put(ATTRIBUTE_BUFFER_SIZE, TEST_BUFFER_SIZE);
         settings.put(ATTRIBUTE_BATCH_SIZE, TEST_BATCH_SIZE);
-        final PluginSetting testSettings =  new PluginSetting(pluginName, settings);
+        final PluginSetting testSettings = new PluginSetting(pluginName, settings);
         testSettings.setPipelineName(TEST_PIPELINE_NAME);
         return testSettings;
     }

@@ -18,7 +18,6 @@ public class PluginFactoryTests {
         final PluginSetting testPluginSettings = new PluginSetting("junit-test", new HashMap<>());
         final Class<Source> clazz = PluginRepository.getSourceClass(testPluginSettings.getName());
         assertNotNull(clazz);
-        //assertThrows(PluginException.class, ()->PluginFactory.newPlugin(testPluginSettings, clazz));
         try {
             PluginFactory.newPlugin(testPluginSettings, clazz);
         } catch (PluginException e) {
