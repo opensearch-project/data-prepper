@@ -20,6 +20,31 @@ public class MetricNames {
     public static final String TIME_ELAPSED = "timeElapsed";
 
     /**
+     * Metric representing the numebr of records written to a Buffer
+     */
+    public static final String RECORDS_WRITTEN = "recordsWritten";
+
+    /**
+     * Metric representing the number of records read from a buffer
+     */
+    public static final String RECORDS_READ = "recordsRead";
+
+    /**
+     * Metric representing the time elapsed while writing to a Buffer
+     */
+    public static final String WRITE_TIME_ELAPSED = "writeTimeElapsed";
+
+    /**
+     * Metric representing the time elapsed while reading from a buffer
+     */
+    public static final String READ_TIME_ELAPSED = "readTimeElapsed";
+
+    /**
+     * Metric representing the count of write timeouts to a Buffer
+     */
+    public static final String WRITE_TIMEOUTS = "writeTimeouts";
+
+    /**
      * Delimiter used to separate path components in metric names.
      */
     public static final String DELIMITER = ".";
