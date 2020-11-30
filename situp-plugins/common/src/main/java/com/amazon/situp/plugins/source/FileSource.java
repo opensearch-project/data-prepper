@@ -24,11 +24,13 @@ public class FileSource implements Source<Record<String>> {
     private static final Logger LOG = LoggerFactory.getLogger(FileSource.class);
     private static final String ATTRIBUTE_PATH = "path";
     private static final String ATTRIBUTE_TIMEOUT = "write_timeout";
+    private static final int WRITE_TIMEOUT = 5_000;
+
     private final String filePathToRead;
     private final int writeTimeout;
     private final String pipelineName;
     private boolean isStopRequested;
-    private static final int WRITE_TIMEOUT = 5_000;
+
 
     /**
      * Mandatory constructor for SITUP Component - This constructor is used by SITUP

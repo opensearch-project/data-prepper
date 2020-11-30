@@ -31,7 +31,7 @@ public class BlockingBufferTests {
     }
 
     @Test
-    public void testCreationUsinNullPluginSetting() {
+    public void testCreationUsingNullPluginSetting() {
         try {
             new BlockingBuffer<Record<String>>((PluginSetting) null);
         } catch (NullPointerException ex) {

@@ -15,7 +15,7 @@ jacocoTestCoverageVerification {
     violationRules {
         rule { //in addition to core projects rule
             limit {
-                minimum = 0.65 //Increase this
+                minimum = 0.65 //Increase this to 0.90
             }
         }
     }

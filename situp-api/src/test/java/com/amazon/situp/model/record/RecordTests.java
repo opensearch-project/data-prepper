@@ -42,7 +42,7 @@ public class RecordTests {
     }
 
     @Test
-    public void testRecordWithDefaultMetadataAndMetadata() {
+    public void testRecordUsingDefaultMetadataAndNoMetadata() {
         final Record<String> recordWithMetadata = new Record<>(TEST_DATA, RecordMetadata.defaultMetadata());
         final Record<String> recordWithDefaultMetadata = new Record<>(TEST_DATA);
         assertThat(recordWithMetadata.getData(), is(equalTo(recordWithDefaultMetadata.getData())));

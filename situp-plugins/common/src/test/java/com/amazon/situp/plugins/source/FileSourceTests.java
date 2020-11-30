@@ -2,6 +2,7 @@ package com.amazon.situp.plugins.source;
 
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
+import com.amazon.situp.plugins.buffer.BlockingBuffer;
 import com.amazon.situp.plugins.buffer.TestBuffer;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
@@ -80,11 +81,9 @@ public class FileSourceTests {
 
     @Test
     public void testFileSourceWithNonExistentFile() {
-        final Queue<Record<String>> bufferQueue = new LinkedList<>();
-        final TestBuffer buffer = new TestBuffer(bufferQueue, 1);
         final FileSource fileSource = new FileSource(FILE_DOES_NOT_EXIST, TEST_WRITE_TIMEOUT, TEST_PIPELINE_NAME);
         try {
-            fileSource.start(buffer);
+            fileSource.start(new BlockingBuffer<Record<String>>(TEST_PIPELINE_NAME));
         } catch (RuntimeException ex) {
             assertThat(ex.getMessage(), is(equalTo(format("Pipeline [%s] - Error processing the input file %s",
                     TEST_PIPELINE_NAME, FILE_DOES_NOT_EXIST))));
