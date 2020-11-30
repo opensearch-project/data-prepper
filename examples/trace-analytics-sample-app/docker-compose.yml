@@ -1,8 +1,8 @@
 version: "3.7"
 services:
-  situp:
+  data-prepper:
     restart: unless-stopped
-    container_name: situp
+    container_name: data-prepper
     build:
       context: ../..
       dockerfile: examples/Dockerfile
@@ -52,7 +52,7 @@ services:
     ports:
       - "55680:55680"
     depends_on:
-      - situp
+      - data-prepper
     networks:
       - my_network
   mysql:

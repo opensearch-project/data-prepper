@@ -34,8 +34,8 @@ services:
       - 9411:9411
     networks:
       - my_network
-  situp:
-    container_name: situp
+  data-prepper:
+    container_name: data-prepper
     build:
       context: ../..
       dockerfile: examples/Dockerfile
@@ -65,7 +65,7 @@ services:
       - my_network
     depends_on:
       - zipkin
-      - situp
+      - data-prepper
   opendistro-for-elasticsearch:
     container_name: node-0.example.com
     image: 'amazon/opendistro-for-elasticsearch:1.10.1'
