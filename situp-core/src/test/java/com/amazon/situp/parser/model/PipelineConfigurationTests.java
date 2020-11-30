@@ -2,7 +2,6 @@ package com.amazon.situp.parser.model;
 
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.plugins.buffer.BlockingBuffer;
-import org.hamcrest.CoreMatchers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -179,7 +178,7 @@ public class PipelineConfigurationTests {
     }
 
     @Test
-    public void testPipelineConfigurationWithoutPluginSettingAttributes() throws Exception{
+    public void testPipelineConfigurationWithoutPluginSettingAttributes() throws Exception {
         final Map<String, PipelineConfiguration> pipelineConfigurationMap = readConfigFile(
                 VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
         assertThat(pipelineConfigurationMap.size(), is(equalTo(1)));
