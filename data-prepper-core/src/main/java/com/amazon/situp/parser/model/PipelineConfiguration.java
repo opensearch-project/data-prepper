@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -100,7 +101,8 @@ public class PipelineConfiguration {
         if (sinkConfigurations == null || sinkConfigurations.isEmpty()) {
             throw new IllegalArgumentException("Invalid configuration, at least one sink is required");
         }
-        return sinkConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration).collect(Collectors.toList());
+        return sinkConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration)
+                .collect(Collectors.toList());
     }
 
     private List<PluginSetting> getProcessorsFromConfiguration(
@@ -108,13 +110,16 @@ public class PipelineConfiguration {
         if (processorConfigurations == null || processorConfigurations.isEmpty()) {
             return Collections.emptyList();
         }
-        return processorConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration).collect(Collectors.toList());
+        return processorConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration)
+                .collect(Collectors.toList());
     }
 
 
     private static PluginSetting getPluginSettingFromConfiguration(
             final Map.Entry<String, Map<String, Object>> configuration) {
-        return new PluginSetting(configuration.getKey(), configuration.getValue());
+        final Map<String, Object> settingsMap = configuration.getValue();
+        //PluginSettings is required to update pipeline name
+        return new PluginSetting(configuration.getKey(), settingsMap == null ? new HashMap<>() : settingsMap);
     }
 
     private Integer getWorkersFromConfiguration(final Integer workersConfiguration) {

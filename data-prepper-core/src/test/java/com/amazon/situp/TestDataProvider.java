@@ -1,7 +1,14 @@
 package com.amazon.situp;
 
 import com.amazon.situp.model.configuration.PluginSetting;
+import com.amazon.situp.parser.model.PipelineConfiguration;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -19,6 +26,7 @@ public class TestDataProvider {
     public static final Integer DEFAULT_READ_BATCH_DELAY = 3_000;
     public static final Integer TEST_DELAY = 3_000;
     public static final String VALID_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/valid_multiple_pipeline_configuration.yml";
+    public static final String VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE = "src/test/resources/single_pipeline_valid_empty_source_plugin_settings.yml";
     public static final String CYCLE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/cyclic_multiple_pipeline_configuration.yml";
     public static final String INCORRECT_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/incorrect_source_multiple_pipeline_configuration.yml";
     public static final String MISSING_NAME_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/missing_name_multiple_pipeline_configuration.yml";
@@ -43,11 +51,20 @@ public class TestDataProvider {
     }
 
     public static List<Map.Entry<String, Map<String, Object>>> validMultipleConfiguration() {
-        return Arrays.asList(Map.entry(TEST_PLUGIN_NAME_1, validSettingsForPlugin()),Map.entry(TEST_PLUGIN_NAME_2, validSettingsForPlugin()));
+        return Arrays.asList(Map.entry(TEST_PLUGIN_NAME_1, validSettingsForPlugin()), Map.entry(TEST_PLUGIN_NAME_2, validSettingsForPlugin()));
     }
 
     public static List<Map.Entry<String, Map<String, Object>>> validMultipleConfigurationOfSizeOne() {
         return Collections.singletonList(Map.entry(TEST_PLUGIN_NAME_1, validSettingsForPlugin()));
+    }
+
+    public static Map<String, PipelineConfiguration> readConfigFile(final String configFilePath) throws IOException {
+        final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory())
+                .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
+        return objectMapper.readValue(
+                new File(configFilePath),
+                new TypeReference<Map<String, PipelineConfiguration>>() {
+                });
     }
 
 }

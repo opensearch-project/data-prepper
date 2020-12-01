@@ -19,6 +19,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
 
 /**
@@ -65,7 +66,8 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
      * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
      */
     public BlockingBuffer(final PluginSetting pluginSetting) {
-        this(pluginSetting.getIntegerOrDefault(ATTRIBUTE_BUFFER_CAPACITY, DEFAULT_BUFFER_CAPACITY),
+        this(checkNotNull(pluginSetting, "PluginSetting cannot be null")
+                        .getIntegerOrDefault(ATTRIBUTE_BUFFER_CAPACITY, DEFAULT_BUFFER_CAPACITY),
                 pluginSetting.getIntegerOrDefault(ATTRIBUTE_BATCH_SIZE, DEFAULT_BATCH_SIZE),
                 pluginSetting.getPipelineName());
     }

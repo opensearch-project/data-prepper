@@ -8,8 +8,10 @@ import org.junit.Test;
 import java.util.HashMap;
 
 import static com.amazon.situp.plugins.PluginFactoryTests.NON_EXISTENT_EMPTY_CONFIGURATION;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 
 @SuppressWarnings("rawtypes")
@@ -23,8 +25,8 @@ public class SinkFactoryTests {
         final PluginSetting stdOutSinkConfiguration = new PluginSetting("stdout", new HashMap<>());
         final Sink actualSink = SinkFactory.newSink(stdOutSinkConfiguration);
         final Sink expectedSink = new StdOutSink();
-        assertNotNull(actualSink);
-        assertEquals(expectedSink.getClass().getSimpleName(), actualSink.getClass().getSimpleName());
+        assertThat(actualSink, notNullValue());
+        assertThat(actualSink.getClass().getSimpleName(), is(equalTo(expectedSink.getClass().getSimpleName())));
     }
 
     /**
