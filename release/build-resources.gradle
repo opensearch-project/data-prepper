@@ -12,6 +12,6 @@ ext {
     awsResources = [
             default_region: 'us-east-1',
             default_profile: 'default',
-            default_bucket: 'artifacts.odfesitup.amazon.com'
+            default_bucket: 'artifacts.dataprepper.amazon.com'
     ]
 }

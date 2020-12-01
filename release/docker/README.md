@@ -1,4 +1,4 @@
-## Docker Build for Situp
+## Docker Build for Data Prepper
 
 ### Running a docker build
 
@@ -26,6 +26,6 @@ The root project has some usage examples for reference included in `examples` di
 Below is an example command which can also be used to run the built image.
 
 ```
-docker run --name situp-test --expose 21890 --read-only -v /home/ec2-user/situp-config.yml:/usr/share/situp/situp.yml situp/situp:0.1-beta
+docker run --name data-prepper-test --expose 21890 --read-only -v /home/ec2-user/data-prepper-config.yml:/usr/share/data-prepper/data-prepper.yml data-prepper/data-prepper:0.1.0
 
 ```
