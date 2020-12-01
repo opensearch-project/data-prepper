@@ -15,4 +15,4 @@ ext.versionMap = [
         opentelemetry_proto    : '0.10.0'
 ]
 
-ext.coreProjects = [project(':situp-api'), project(':situp-core'), project('situp-plugins:common')]
+ext.coreProjects = [project(':data-prepper-api'), project(':data-prepper-core'), project('data-prepper-plugins:common')]
