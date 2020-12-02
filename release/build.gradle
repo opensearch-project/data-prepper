@@ -7,11 +7,11 @@ allprojects {
 }
 
 task endToEndTests {
-    //dependsOn(':data-prepper-core:rawSpanEndToEndTest')
+    //dependsOn(':data-prepper-core:rawSpanEndToEndTest') //Disabling because of docker pull rate limits
 }
 
 task benchmarkTests {
-    //dependsOn(':situp-api:test') TODO add benchmark test and enable
+    //dependsOn(':data-prepper-api:test') TODO add benchmark test and enable
 }
 
 task buildCore {
