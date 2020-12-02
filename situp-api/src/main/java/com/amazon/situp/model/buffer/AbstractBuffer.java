@@ -43,13 +43,13 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
                 try {
                     doWrite(record, timeoutInMillis);
                 } catch (TimeoutException e) {
+                    writeTimeoutCounter.increment();
                     throw new RuntimeException(e);
                 }
             });
             recordsWrittenCounter.increment();
         } catch (RuntimeException e) {
             if(e.getCause() instanceof TimeoutException) {
-                writeTimeoutCounter.increment();
                 throw (TimeoutException) e.getCause();
             } else  {
                 throw e;
