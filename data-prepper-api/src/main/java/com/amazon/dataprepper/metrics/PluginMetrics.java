@@ -1,6 +1,6 @@
-package com.amazon.situp.metrics;
+package com.amazon.dataprepper.metrics;
 
-import com.amazon.situp.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
 import java.util.StringJoiner;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;

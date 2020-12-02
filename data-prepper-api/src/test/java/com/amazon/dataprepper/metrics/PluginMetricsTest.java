@@ -1,12 +1,11 @@
-package com.amazon.situp.metrics;
+package com.amazon.dataprepper.metrics;
 
-import com.amazon.situp.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
 import java.util.Collections;
 import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicInteger;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
-import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Timer;
 import org.junit.Assert;
 import org.junit.Test;

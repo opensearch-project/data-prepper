@@ -1,4 +1,4 @@
-package com.amazon.situp.metrics;
+package com.amazon.dataprepper.metrics;
 
 public class MetricNames {
     private MetricNames() {}

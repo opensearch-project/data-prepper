@@ -1,9 +1,9 @@
-package com.amazon.situp.model.sink;
+package com.amazon.dataprepper.model.sink;
 
-import com.amazon.situp.model.configuration.PluginSetting;
-import com.amazon.situp.metrics.MetricNames;
-import com.amazon.situp.metrics.PluginMetrics;
-import com.amazon.situp.model.record.Record;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.metrics.MetricNames;
+import com.amazon.dataprepper.metrics.PluginMetrics;
+import com.amazon.dataprepper.model.record.Record;
 import java.util.Collection;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
