@@ -42,7 +42,7 @@ subprojects {
                 contents {
                     with archiveToTar()
                     into('') {
-                        from("situp-tar-install-${architecture}.sh").rename("situp-tar-install-${architecture}.sh", "situp-tar-install.sh")
+                        from("data-prepper-tar-install-${architecture}.sh").rename("data-prepper-tar-install-${architecture}.sh", "data-prepper-tar-install.sh")
                         fileMode 0755
                     }
                 }
@@ -55,7 +55,7 @@ subprojects {
                         from tarTree("${buildDir}/${platform}${architecture}/openjdk/openjdk.tar.gz")
                     }
                     into('') {
-                        from("situp-tar-install-with-jdk-${architecture}.sh").rename("situp-tar-install-with-jdk-${architecture}.sh", "situp-tar-install.sh")
+                        from("data-prepper-tar-install-with-jdk-${architecture}.sh").rename("data-prepper-tar-install-with-jdk-${architecture}.sh", "data-prepper-tar-install.sh")
                         fileMode 0755
                     }
                 }
@@ -120,7 +120,6 @@ subprojects {
         supportedArchitectures.each {
             def platformWithArchitecture = "${platform}${it}"
             def tarTask = tasks.getByName("${platformWithArchitecture}DistTar")
-            println(tarTask.name)
             def tarWithJDKTask = tasks.getByName("${platformWithArchitecture}WithJDKDistTar")
             def zipTask = tasks.getByName("${platformWithArchitecture}DistZip")
             def zipWithJDKTask = tasks.getByName("${platformWithArchitecture}WithJDKDistZip")
@@ -185,7 +184,7 @@ subprojects {
 CopySpec archiveToTar() {
     return copySpec {
         into('bin') {
-            from project(':situp-core').jar.archivePath
+            from project(':data-prepper-core').jar.archivePath
             fileMode 0755
         }
         into('examples') {

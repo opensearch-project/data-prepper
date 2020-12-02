@@ -12,7 +12,6 @@
 # on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
-
 if [[ $# -eq 0 ]]
   then
     echo "Path to the configuration file is required"
@@ -20,17 +19,19 @@ if [[ $# -eq 0 ]]
 fi
 
 CONFIG_FILE_LOCATION=$1
-SITUP_HOME=$(cd "$(dirname "$0")"; pwd)
-EXECUTABLE_JAR=$(ls -1 $SITUP_HOME/bin/*.jar 2>/dev/null)
-OPENJDK=$(ls -1 $SITUP_HOME/openjdk/ 2>/dev/null)
+DATA_PREPPER_HOME=$(dirname $(realpath $0))
+EXECUTABLE_JAR=$(ls -1 $DATA_PREPPER_HOME/bin/*.jar 2>/dev/null)
+OPENJDK=$(ls -1 $DATA_PREPPER_HOME/openjdk/ 2>/dev/null)
 
 if [[ -z "$EXECUTABLE_JAR" ]]
 then
-  echo "Jar file is missing from directory $SITUP_HOME/bin"
+  echo "Jar file is missing from directory $DATA_PREPPER_HOME/bin"
   exit 1
 fi
 
-export JAVA_HOME=$SITUP_HOME/openjdk/$OPENJDK/Contents/Home
+export JAVA_HOME=$DATA_PREPPER_HOME/openjdk/$OPENJDK
+echo "JAVA_HOME is set to $JAVA_HOME"
 export PATH=$JAVA_HOME/bin:$PATH
-SITUP_JAVA_OPTS="-Dlog4j.configurationFile=$SITUP_HOME/config/log4j.properties"
-$JAVA_HOME/bin/java $JAVA_OPTS $SITUP_JAVA_OPTS -jar $EXECUTABLE_JAR $CONFIG_FILE_LOCATION
+
+DATA_PREPPER_JAVA_OPTS="-Dlog4j.configurationFile=$DATA_PREPPER_HOME/config/log4j.properties"
+java $JAVA_OPTS $DATA_PREPPER_JAVA_OPTS -jar $EXECUTABLE_JAR $CONFIG_FILE_LOCATION
