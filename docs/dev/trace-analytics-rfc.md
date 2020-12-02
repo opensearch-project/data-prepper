@@ -8,44 +8,44 @@ As the first step, in 2020 we will offer Trace Analytics, which will allow users
 ## 2. Approach
 The Trace Analytics feature will embrace the Open Telemetry standard and provide the required plugins and adapters to integrate with the ecosystem. 
 Adoption to the OpenTelemetry ecosystem will benefit users of existing tracing standards like Zipkin and OpenTracing to use the Trace Analytics feature.
-To support the trace analytics feature we will build a new service called SITUP, which receives trace data from the OpenTelemetry collector, process them to elasticsearch friendly docs, and stores them in users' elasticsearch cluster. The trace analytics will also provide a Kibana plugin that will provide user-friendly dashboards on the stored trace data. 
+To support the trace analytics feature we will build a new service called Data Prepper, which receives trace data from the OpenTelemetry collector, process them to elasticsearch friendly docs, and stores them in users' elasticsearch cluster. The trace analytics will also provide a Kibana plugin that will provide user-friendly dashboards on the stored trace data. 
 
 ![Kibana Notebooks Architecture](images/HighLevelDesign.jpg)
 
 
-## 3. SITUP
+## 3. Data Prepper
 
-Simple Ingest Transformation Utility Pipeline (SITUP) is an ingestion service which provides users to ingest and transform data before stored in elasticsearch. 
+Data Prepper is an ingestion service which provides users to ingest and transform data before stored in elasticsearch. 
 
-### 3.1 General SITUP design
+### 3.1 General Data Prepper design
 
 #### 3.1.1 Concepts 
 
-![Situp Pipeline](images/SitupPipeline.png)
+![Data Prepper Pipeline](images/DataPrepperPipeline.png)
 
-Below are the fundamental concepts of Simple Ingest Transformation Utility Pipeline (SITUP),
+Below are the fundamental concepts of Data Prepper,
 
 *Pipeline:*
-A SITUP pipeline has four key components source, buffer, processor, and sink. A single instance of SITUP can have one or more pipelines. A pipeline definition contains two required components source and sink. By default, the SITUP pipeline will use the default buffer and no processor. All the components are pluggable and enable a user to plugin their custom implementations. Please note that custom implementations will have implications on guarantees however the basic interfaces will remain the same.
+A Data Prepper pipeline has four key components source, buffer, processor, and sink. A single instance of Data Prepper can have one or more pipelines. A pipeline definition contains two required components source and sink. By default, the Data Prepper pipeline will use the default buffer and no processor. All the components are pluggable and enable a user to plugin their custom implementations. Please note that custom implementations will have implications on guarantees however the basic interfaces will remain the same.
 
 *Source:*
-The source is the input component of a pipeline, it defines the mechanism through which a SITUP pipeline will consume records. The source component could consume records either by receiving over http/s or reading from external endpoints like Kafka, SQS, Cloudwatch, etc.  The source will have its own configuration options based on the type like the format of the records (string/JSON/cloudwatch logs/open telemetry trace), security, concurrency threads, etc. The source component will consume records and write them to the buffer component. 
+The source is the input component of a pipeline, it defines the mechanism through which a Data Prepper pipeline will consume records. The source component could consume records either by receiving over http/s or reading from external endpoints like Kafka, SQS, Cloudwatch, etc.  The source will have its own configuration options based on the type like the format of the records (string/JSON/cloudwatch logs/open telemetry trace), security, concurrency threads, etc. The source component will consume records and write them to the buffer component. 
 
 *Buffer:*
 The buffer component will act as the layer between the source and sink. The buffer could either be in-memory or disk-based. The default buffer will be in-memory queue bounded by the number of records/size of records.
 
 *Sink:*
-Sink in the output component of the pipeline, it defines the one or more destinations to which a SITUP pipeline will publish the records. A sink destination could be either service like elastic search, s3. The sink will have its own configuration options based on the destination type like security, request batching, etc. A sink can be another SITUP pipeline, this would provide users the benefit chain multiple SITUP pipelines.
+Sink in the output component of the pipeline, it defines the one or more destinations to which a Data Prepper pipeline will publish the records. A sink destination could be either service like elastic search, s3. The sink will have its own configuration options based on the destination type like security, request batching, etc. A sink can be another Data Prepper pipeline, this would provide users the benefit chain multiple Data Prepper pipelines.
 
 *Processor:*
 Processor component of the pipeline, these are intermediary processing units using which users can filter, transform, and enrich the records into the desired format before publishing to the sink. The processor is an optional component of the pipeline, if not defined the records will be published in the format as defined in the source. You can have more than one processor and they are executed in the order they are defined in the pipeline spec.
 
 
-SITUP will be an ODFE community-driven project, the end goal is to make multiple Source, Sink, and Processor plugins available.
+Data Prepper will be an ODFE community-driven project, the end goal is to make multiple Source, Sink, and Processor plugins available.
 
 #### 3.1.2 Trace Analytics
 
-In the first release of SITUP, we will support only one SITUP pipeline for the Trace Analytics feature. Below is design of the Trace Analytics feature pipeline .
+In the first release of Data Prepper, we will support only one Data Prepper pipeline for the Trace Analytics feature. Below is design of the Trace Analytics feature pipeline .
 
 ![Trace Analytics Pipeline](images/TraceAnalyticsFeature.jpg)
 

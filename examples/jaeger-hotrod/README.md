@@ -10,7 +10,7 @@ This demo will use the Jaeger Hotrod app.
 docker-compose up -d --build
 ``` 
 
-The above command will start the Jaeger Hotrod sample, Jaeger Agent, OpenTelemetry Collector, SITUP, ODFE and Kibana.
+The above command will start the Jaeger Hotrod sample, Jaeger Agent, OpenTelemetry Collector, Data Prepper, ODFE and Kibana.
 
 After successful start, 
 

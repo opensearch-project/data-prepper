@@ -1,6 +1,6 @@
 # Error Handling
 
-In SITUP Pipeline, errors should be handled by implementation of plugin components and should not throw any uncaught runtime exceptions. If thrown the pipeline will stop immediately or halt eventually based on the component that throws the exception.
+In Data Prepper Pipeline, errors should be handled by implementation of plugin components and should not throw any uncaught runtime exceptions. If thrown the pipeline will stop immediately or halt eventually based on the component that throws the exception.
 
 Below are the different scenario of error,
 

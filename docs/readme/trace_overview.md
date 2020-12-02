@@ -1,6 +1,6 @@
 # Trace Analytics
 
-In the first release of SITUP, we officially  support only one SITUP pipeline for the Trace Analytics feature. Below diagram represents the Trace Analytics pipelines,
+In the first release of Data Prepper, we officially  support only one Data Prepper pipeline for the Trace Analytics feature. Below diagram represents the Trace Analytics pipelines,
 
 ![Trace Analytics Pipeline](images/TraceAnalyticsFeature.jpg)
 

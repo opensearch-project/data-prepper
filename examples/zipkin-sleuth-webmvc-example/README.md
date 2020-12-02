@@ -10,7 +10,7 @@ This demo will use the [sleuth-webmvc-example](https://github.com/openzipkin/sle
 docker-compose up -d --build
 ``` 
 
-The above command will start the frontend, backend, Zipkin, OpenTelemetry Collector, SITUP, ODFE and Kibana.
+The above command will start the frontend, backend, Zipkin, OpenTelemetry Collector, Data Prepper, ODFE and Kibana.
 
 After successful start, one can send request to the frontend by opening http://localhost:8081/ or running curl command, e.g. 
 
