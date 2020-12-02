@@ -1,0 +1,19 @@
+{
+  "policy": {
+    "description": "Managing raw spans for trace analytics",
+    "default_state": "current_write_index",
+    "states": [
+      {
+        "name": "current_write_index",
+        "actions": [
+          {
+            "rollover": {
+              "min_size": "50gb",
+              "min_index_age": "24h"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
