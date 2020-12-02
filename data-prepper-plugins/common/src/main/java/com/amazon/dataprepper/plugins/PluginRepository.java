@@ -34,10 +34,10 @@ public final class  PluginRepository {
         final Reflections reflections = new Reflections(DEFAULT_PLUGINS_CLASSPATH);
         final Set<Class<?>> annotatedClasses = reflections.getTypesAnnotatedWith(DataPrepperPlugin.class);
         for (final Class<?> annotatedClass : annotatedClasses) {
-            final DataPrepperPlugin tiPluginAnnotation = annotatedClass
+            final DataPrepperPlugin dataPrepperPluginAnnotation = annotatedClass
                     .getAnnotation(DataPrepperPlugin.class);
-            final String pluginName = tiPluginAnnotation.name();
-            final PluginType pluginType = tiPluginAnnotation.type();
+            final String pluginName = dataPrepperPluginAnnotation.name();
+            final PluginType pluginType = dataPrepperPluginAnnotation.type();
             switch (pluginType) {
                 case SOURCE:
                     SOURCES.put(pluginName, (Class<Source>) annotatedClass);
