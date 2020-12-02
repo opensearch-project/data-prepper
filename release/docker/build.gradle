@@ -3,12 +3,12 @@ plugins {
 }
 
 docker {
-    name "situp/${project.rootProject.name}:${project.version}"
+    name "data-prepper/${project.rootProject.name}:${project.version}"
     tag "${project.rootProject.name}", "${project.version}"
-    files project(':situp-core').jar.archivePath
-    buildArgs(['JAR_FILE'       : project(':situp-core').jar.archiveName,
-               'CONFIG_FILEPATH': '/usr/share/situp/situp.yml'])
-    dockerfile file('Dockerfile')
+    files project(':data-prepper-core').jar.archivePath
+    buildArgs(['JAR_FILE'       : project(':data-prepper-core').jar.archiveName,
+               'CONFIG_FILEPATH': '/usr/share/data-prepper/data-prepper.yml'])
+    dockerfile file('data-prepper-v0.1.0-all.Dockerfile')
 }
 
 dockerPrepare.dependsOn ':release:releasePrerequisites'

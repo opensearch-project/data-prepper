@@ -1,4 +1,4 @@
-# Common SITUP plugins
+# Common Data Prepper plugins
 
 ## `bounded_blocking`
 

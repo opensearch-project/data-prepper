@@ -1,7 +1,7 @@
-package com.amazon.situp.plugins.processor.oteltrace;
+package com.amazon.dataprepper.plugins.processor.oteltrace;
 
-import com.amazon.situp.model.configuration.PluginSetting;
-import com.amazon.situp.model.record.Record;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;

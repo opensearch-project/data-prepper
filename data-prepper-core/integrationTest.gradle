@@ -135,7 +135,7 @@ task rawSpanEndToEndTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
 
     filter {
-        includeTestsMatching "com.amazon.situp.integration.EndToEndRawSpanTest*"
+        includeTestsMatching "com.amazon.dataprepper.integration.EndToEndRawSpanTest*"
     }
 
     finalizedBy stopOdfeDockerContainer
@@ -155,7 +155,7 @@ task serviceMapEndToEndTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
 
     filter {
-        includeTestsMatching "com.amazon.situp.integration.EndToEndServiceMapTest*"
+        includeTestsMatching "com.amazon.dataprepper.integration.EndToEndServiceMapTest*"
     }
 
     finalizedBy stopOdfeDockerContainer
