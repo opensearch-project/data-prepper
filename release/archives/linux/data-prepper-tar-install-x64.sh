@@ -12,7 +12,6 @@
 # on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
-
 if [[ $# -eq 0 ]]
   then
     echo "Path to the configuration file is required"
@@ -22,21 +21,22 @@ fi
 CONFIG_FILE_LOCATION=$1
 MIN_REQ_JAVA_VERSION=1.8
 MIN_REQ_OPENJDK_VERSION=8
-SITUP_HOME=$(cd "$(dirname "$0")"; pwd)
-EXECUTABLE_JAR=$(ls -1 $SITUP_HOME/bin/*.jar 2>/dev/null)
+DATA_PREPPER_HOME=$(dirname $(realpath $0))
+EXECUTABLE_JAR=$(ls -1 $DATA_PREPPER_HOME/bin/*.jar 2>/dev/null)
 
 if [[ -z "$EXECUTABLE_JAR" ]]
 then
-  echo "Jar file is missing from directory $SITUP_HOME/bin"
+  echo "Jar file is missing from directory $DATA_PREPPER_HOME/bin"
   exit 1
 fi
 
+#check if java is installed
 if type -p java; then
     _java=java
 elif [[ -n "$JAVA_HOME" ]] && [[ -x "$JAVA_HOME/bin/java" ]];  then
     _java="$JAVA_HOME/bin/java"
 else
-    echo "java is required for executing situp, consider downloading situp tar with jdk"
+    echo "java is required for executing data prepper, consider downloading data prepper tar with jdk"
     exit 1
 fi
 
@@ -61,5 +61,5 @@ then
     fi
 fi
 
-SITUP_JAVA_OPTS="-Dlog4j.configurationFile=$SITUP_HOME/config/log4j.properties"
-java $JAVA_OPTS $SITUP_JAVA_OPTS -jar $EXECUTABLE_JAR $CONFIG_FILE_LOCATION
+DATA_PREPPER_JAVA_OPTS="-Dlog4j.configurationFile=$DATA_PREPPER_HOME/config/log4j.properties"
+java $JAVA_OPTS $DATA_PREPPER_JAVA_OPTS -jar $EXECUTABLE_JAR $CONFIG_FILE_LOCATION
