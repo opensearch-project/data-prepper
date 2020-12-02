@@ -1,4 +1,4 @@
-package com.amazon.situp.plugins.health;
+package com.amazon.dataprepper.plugins.health;
 
 import io.grpc.ManagedChannel;
 import io.grpc.Server;

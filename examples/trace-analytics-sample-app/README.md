@@ -51,7 +51,7 @@ To run this application together with client:
 docker-compose up --build -d
 ```
 
-By default this toy app will write data to the Internet access enabled Amazon elastic search cluster mentioned in the [situp transformation-instance.yml](situp/tranformation-instance.yml).
+By default this toy app will write data to the Internet access enabled Amazon elastic search cluster mentioned in the [dataPrepper transformation-instance.yml](dataPrepper/tranformation-instance.yml).
 
 ```
 sink:

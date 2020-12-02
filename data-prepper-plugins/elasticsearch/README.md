@@ -1,10 +1,10 @@
 # Elasticsearch sink
 
-This is the SITUP Elasticsearch sink plugin, sending records to Elasticsearch cluster via REST client.
+This is the Data Prepper Elasticsearch sink plugin, sending records to Elasticsearch cluster via REST client.
 
 ## Configuration
 
-The Elasticsearch sink should be configured as part of SITUP pipeline yaml file according to the following use cases.
+The Elasticsearch sink should be configured as part of Data Prepper pipeline yaml file according to the following use cases.
 
 ### Raw span trace analytics
 
@@ -136,7 +136,7 @@ A String used as index name for custom data type.
 
 A json file path to be read as index template for custom data ingestion. The json file content should be the json value of
 `"template"` key in the json content of elasticsearch [Index templates API](https://www.elastic.co/guide/en/elasticsearch/reference/7.8/index-templates.html), 
-e.g. [otel-v1-apm-span-index-template.json](https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/blob/master/situp-plugins/elasticsearch/src/main/resources/otel-v1-apm-span-index-template.json)
+e.g. [otel-v1-apm-span-index-template.json](https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/blob/master/dataPrepper-plugins/elasticsearch/src/main/resources/otel-v1-apm-span-index-template.json)
 
 ### DLQ file (Optional)
 
