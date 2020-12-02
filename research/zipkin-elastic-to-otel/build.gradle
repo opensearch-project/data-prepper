@@ -17,7 +17,7 @@ repositories {
 }
 
 application {
-    mainClass = 'com.amazon.situp.research.zipkin.ZipkinElasticToOtel'
+    mainClass = 'com.amazon.dataprepper.research.zipkin.ZipkinElasticToOtel'
 }
 
 run {
