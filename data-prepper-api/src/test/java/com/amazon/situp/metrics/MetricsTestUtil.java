@@ -1,4 +1,4 @@
-package com.amazon.situp.model.metrics;
+package com.amazon.situp.metrics;
 
 import java.util.List;
 import java.util.stream.Collectors;

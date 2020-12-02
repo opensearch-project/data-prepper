@@ -1,7 +1,0 @@
-plugins {
-    id 'jacoco'
-}
-dependencies {
-    testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
-    implementation "io.micrometer:micrometer-core:1.5.1"
-}

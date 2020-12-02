@@ -1,8 +1,8 @@
 package com.amazon.situp.model.buffer;
 
 import com.amazon.situp.model.configuration.PluginSetting;
-import com.amazon.situp.model.metrics.MetricNames;
-import com.amazon.situp.model.metrics.PluginMetrics;
+import com.amazon.situp.metrics.MetricNames;
+import com.amazon.situp.metrics.PluginMetrics;
 import com.amazon.situp.model.record.Record;
 import java.util.Collection;
 import java.util.concurrent.TimeoutException;

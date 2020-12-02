@@ -1,8 +1,8 @@
 package com.amazon.situp.model.sink;
 
 import com.amazon.situp.model.configuration.PluginSetting;
-import com.amazon.situp.model.metrics.MetricNames;
-import com.amazon.situp.model.metrics.MetricsTestUtil;
+import com.amazon.situp.metrics.MetricNames;
+import com.amazon.situp.metrics.MetricsTestUtil;
 import com.amazon.situp.model.record.Record;
 import java.util.Arrays;
 import java.util.Collection;

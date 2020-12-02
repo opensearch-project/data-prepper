@@ -1,10 +1,9 @@
-package com.amazon.situp.model.metrics;
+package com.amazon.situp.metrics;
 
 import com.amazon.situp.model.configuration.PluginSetting;
 import java.util.StringJoiner;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
-import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 

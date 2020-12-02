@@ -1,9 +1,8 @@
 package com.amazon.situp.model.buffer;
 
 import com.amazon.situp.model.configuration.PluginSetting;
-import com.amazon.situp.model.metrics.MetricNames;
-import com.amazon.situp.model.metrics.MetricsTestUtil;
-import com.amazon.situp.model.metrics.MetricsTestUtil.*;
+import com.amazon.situp.metrics.MetricNames;
+import com.amazon.situp.metrics.MetricsTestUtil;
 import com.amazon.situp.model.record.Record;
 import java.util.Collection;
 import java.util.Collections;
@@ -76,6 +75,17 @@ public class AbstractBufferTest {
         Assert.assertEquals(1.0, timeoutMeasurements.get(0).getValue(), 0);
     }
 
+    @Test
+    public void testRuntimeException() {
+        final String bufferName = "testBuffer";
+        final String pipelineName = "pipelineName";
+        MetricsTestUtil.initMetrics();
+        PluginSetting pluginSetting = new PluginSetting(bufferName, Collections.emptyMap());
+        pluginSetting.setPipelineName(pipelineName);
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferNpeImpl(pluginSetting);
+        Assert.assertThrows(NullPointerException.class, () -> abstractBuffer.write(new Record<>(UUID.randomUUID().toString()), 1000));
+    }
+
     public static class AbstractBufferImpl extends AbstractBuffer<Record<String>> {
         private final Queue<Record<String>> queue;
         public AbstractBufferImpl(PluginSetting pluginSetting) {
@@ -118,6 +128,17 @@ public class AbstractBufferTest {
         @Override
         public void doWrite(Record<String> record, int timeoutInMillis) throws TimeoutException {
             throw new TimeoutException();
+        }
+    }
+
+    public static class AbstractBufferNpeImpl extends AbstractBufferImpl {
+        public AbstractBufferNpeImpl(PluginSetting pluginSetting) {
+            super(pluginSetting);
+        }
+
+        @Override
+        public void doWrite(Record<String> record, int timeoutInMillis) throws TimeoutException {
+            throw new NullPointerException();
         }
     }
 }

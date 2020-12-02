@@ -1,6 +1,7 @@
-package com.amazon.situp.model.metrics;
+package com.amazon.situp.metrics;
 
 public class MetricNames {
+    private MetricNames() {}
     /**
      * Metric representing the ingress of records to a pipeline component.
      * Applicable to processors and sinks

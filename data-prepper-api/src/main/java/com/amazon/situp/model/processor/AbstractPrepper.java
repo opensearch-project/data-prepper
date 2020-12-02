@@ -1,8 +1,8 @@
 package com.amazon.situp.model.processor;
 
 import com.amazon.situp.model.configuration.PluginSetting;
-import com.amazon.situp.model.metrics.MetricNames;
-import com.amazon.situp.model.metrics.PluginMetrics;
+import com.amazon.situp.metrics.MetricNames;
+import com.amazon.situp.metrics.PluginMetrics;
 import com.amazon.situp.model.record.Record;
 import java.util.Collection;
 import io.micrometer.core.instrument.Counter;
@@ -36,13 +36,9 @@ public abstract class AbstractPrepper<InputRecord extends Record<?>, OutputRecor
     @Override
     public Collection<OutputRecord> execute(Collection<InputRecord> records) {
         recordsInCounter.increment(records.size());
-        try {
-            final Collection<OutputRecord> result = timeElapsedTimer.recordCallable(() -> doExecute(records));
-            recordsOutCounter.increment(result.size());
-            return result;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        final Collection<OutputRecord> result = timeElapsedTimer.record(() -> doExecute(records));
+        recordsOutCounter.increment(result.size());
+        return result;
     }
 
     /**
