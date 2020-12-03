@@ -1,8 +1,28 @@
-# odfe-pipes-trace-app
+# Trace Analytics Sample App
 
-This repository contains items needed to run our sample application with Docker to generate tracing data. The sample app has a client which makes calls to backend services. The client and the backend services are intrumented OpenTelemetry Trace standards. The traces are submitted to OTel Collector which is then exported to transformation instance. The transformation instace converts the OTEL format data into elasticsearch friendly documents. 
+This is a demo that is built to demonstrate the Trace Analytics feature that is supported by Open Distro For Elasticsearch. For the demo we have mock e-commerce app which consists of a group of microservices. This demo uses OpenTelemetry libraries to produce trace data and uses Data Prepper to ingest data into ODFE. 
+ 
+## Run
+
+### Required
+
+* Docker - we recommend allowing Docker to use at least 4 GB of RAM in Preferences > Resources.
+
+### Demo
+
+```
+docker-compose up -d
+```
+
+
+* Wait for 5 mins, this is because we spin up multiple python services, elasticsearch and kibana. 
+
+* Navigate to localhost:8089
+
 
 ## Architecture
+
+Below is the architecture of the mock ecommerce app.
 
 ![High-level Diagram](HighLevelDiagram.png)
 
@@ -51,17 +71,7 @@ To run this application together with client:
 docker-compose up --build -d
 ```
 
-By default this toy app will write data to the Internet access enabled Amazon elastic search cluster mentioned in the [dataPrepper transformation-instance.yml](dataPrepper/tranformation-instance.yml).
 
-```
-sink:
-    amazon_es:
-      hosts: ["https://search-sample-app-test-lqwynrnd2ikcuzfsrdilv4stbq.us-west-2.es.amazonaws.com"]
-```
-
-If you would like to change the destination to your local elasticsearch update the yaml file with your elastic search address. Example:
-
-Note: The sample uses elasticsearch as part of its architecture, do not use that as your local elastic search.
 
 
 
