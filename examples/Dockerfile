@@ -8,4 +8,4 @@ EXPOSE 21890
 WORKDIR /app
 RUN apk --no-cache add curl
 COPY --from=builder /home/gradle/src/data-prepper-core/build/libs/data-prepper*.jar /app/data-prepper.jar
-CMD ["java", "-Xms128m", "-Xmx128m", "-jar", "data-prepper.jar", "/app/transformation-instance.yml"]
+CMD ["java", "-Xms128m", "-Xmx128m", "-jar", "data-prepper.jar", "/app/trace_analytics_no_ssl.yml"]
