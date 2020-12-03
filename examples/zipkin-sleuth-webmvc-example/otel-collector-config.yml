@@ -3,7 +3,7 @@ receivers:
 
 exporters:
   otlp/2:
-    endpoint: situp:21890
+    endpoint: data-prepper:21890
     insecure: true
   logging:
 

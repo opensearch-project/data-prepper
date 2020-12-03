@@ -1,34 +1,35 @@
-## Archive distribution of Situp
+## Archive distribution of Data Prepper
 
 **Supported Platform**
 
-* Linux
-* Mac OS
+* Linux - x64
+* MacOS - x64
 
 ### General Instructions
 
-#### Building the archive
+#### Building Archives
 
-To build an archive, check out the corresponding branch for the version and follow below steps
+To build all archives, check out the corresponding branch for the version and follow below steps
 
 1. Building an archive depends on the platform on which it will be executed/run
-2. For building archives for all platforms, from root project run  `./gradlew :release:archives:buildArchives -Prelease`
+2. For building archives for all supported platforms, 
+   * from root project run  `./gradlew :release:archives:buildArchives -Prelease`
    * or from current project `gradle buildArchives -Prelease`
-3. Successful build should generate archives in `release/archives/<platform>/build/distributions/` directory
-4. Generated archives includes a script file which can be used to execute the situp using
+3. Successful build will generate archives in `release/archives/<platform>/build/distributions/` directory
+4. Generated archives includes a script file which can be used to execute the data prepper using
  
 ```
-tar -xzf situp-<platform>-jdk-<VERSION>.tar.gz
-./situp-<platform>-jdk-<VERSION>/situp-tar-install.sh <CONFIG FILE LOCATION>
+tar -xzf data-prepper-jdk-v<VERSION>-<PLATFORM>-<ARCHITECTURE>.tar.gz
+./data-prepper-jdk-v<VERSION>-<PLATFORM>-<ARCHITECTURE>/data-prepper-tar-install.sh <CONFIG FILE LOCATION>
 ```
 
-### For platform specific archive
+#### For platform specific archive
 
 1. From root project, run `./gradlew :release:archives:<platform>:<platform>Tar -Prelease`
-  * or from relevant platform project `gradle <platform>Tar -Prelease`
+   * or from relevant platform project `gradle <platform>Tar -Prelease`
 2. Successful build generates archives in `release/archives/<platform>/build/distributions/`
 
-#### Example for linux
+##### Example for linux
 
 For linux, the above steps will be
  ```
@@ -41,9 +42,10 @@ gradle linuxTar -Prelease
 
 cd release/archives/linux/build/distributions/
 
-tar -xzf situp-linux_x86_64-jdk-<VERSION>.tar.gz
+tar -xzf data-prepper-jdk-v<VERSION>-linux-<ARCHITECTURE>.tar.gz
+//e.g tar -xzf data-prepper-jdk-v0.1.0-linux-x64.tar.gz
 
-./situp-linux_x86_64-jdk-<VERSION>/situp-tar-install.sh <CONFIG FILE LOCATION>
+./data-prepper-jdk-v<VERSION>-linux-<ARCHITECTURE>/data-prepper-tar-install.sh <CONFIG FILE LOCATION>
 
 ```
 

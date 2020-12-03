@@ -1,16 +1,17 @@
 //preferably try to main the alphabetical order
 ext {
-    platforms = [
-            linux: 'linux_x86_64',
-            macOS: 'macOS_x64'
+    architectures = [
+            linux: ['x64'],
+            macos: ['x64']
     ]
     jdkSources = [
-            linux_x86_64: 'https://download.java.net/java/GA/jdk15.0.1/51f4f36ad4ef43e39d0dfdbaf6549e32/9/GPL/openjdk-15.0.1_linux-x64_bin.tar.gz',
-            macOS_x64: 'https://download.java.net/java/GA/jdk15.0.1/51f4f36ad4ef43e39d0dfdbaf6549e32/9/GPL/openjdk-15.0.1_osx-x64_bin.tar.gz'
+            linux_x64: 'https://download.java.net/java/GA/jdk15.0.1/51f4f36ad4ef43e39d0dfdbaf6549e32/9/GPL/openjdk-15.0.1_linux-x64_bin.tar.gz',
+            linux_arm64: 'https://hg.openjdk.java.net/aarch64-port/jdk8/archive/tip.tar.gz',
+            macos_x64: 'https://download.java.net/java/GA/jdk15.0.1/51f4f36ad4ef43e39d0dfdbaf6549e32/9/GPL/openjdk-15.0.1_osx-x64_bin.tar.gz'
     ]
     awsResources = [
             default_region: 'us-east-1',
             default_profile: 'default',
-            default_bucket: 'artifacts.odfesitup.amazon.com'
+            default_bucket: 'artifacts.dataprepper.amazon.com'
     ]
 }
