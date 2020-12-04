@@ -16,14 +16,14 @@ public class PeerForwarderConfigTest {
         final int testNumSpansPerRequest = 2;
         final int testTimeout = 300;
         final HashMap<String, Object> settings = new HashMap<>();
-        settings.put(PeerForwarderConfig.PEER_IPS, testPeerIps);
+        settings.put(PeerForwarderConfig.DATA_PREPPER_IPS, testPeerIps);
         settings.put(PeerForwarderConfig.MAX_NUM_SPANS_PER_REQUEST, testNumSpansPerRequest);
         settings.put(PeerForwarderConfig.TIME_OUT, testTimeout);
 
         final PeerForwarderConfig peerForwarderConfig = PeerForwarderConfig.buildConfig(
                 new PluginSetting("peer_forwarder", settings));
 
-        Assert.assertEquals(testPeerIps, peerForwarderConfig.getPeerIps());
+        Assert.assertEquals(testPeerIps, peerForwarderConfig.getDataPrepperIps());
         Assert.assertEquals(testNumSpansPerRequest, peerForwarderConfig.getMaxNumSpansPerRequest());
         Assert.assertEquals(testTimeout, peerForwarderConfig.getTimeOut());
     }

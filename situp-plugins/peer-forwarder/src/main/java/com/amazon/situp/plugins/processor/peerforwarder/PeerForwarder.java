@@ -37,16 +37,16 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
 
     private final PeerForwarderConfig peerForwarderConfig;
 
-    private final List<String> peerIps;
+    private final List<String> dataPrepperIps;
 
     private final Map<String, TraceServiceGrpc.TraceServiceBlockingStub> peerClients;
 
     public PeerForwarder(final PluginSetting pluginSetting) {
         peerForwarderConfig = PeerForwarderConfig.buildConfig(pluginSetting);
-        peerIps = new ArrayList<>(new HashSet<>(peerForwarderConfig.getPeerIps()));
-        peerClients = peerIps.stream().filter(ip -> !PeerForwarderUtils.isAddressDefinedLocally(ip))
+        dataPrepperIps = new ArrayList<>(new HashSet<>(peerForwarderConfig.getDataPrepperIps()));
+        peerClients = dataPrepperIps.stream().filter(ip -> !PeerForwarderUtils.isAddressDefinedLocally(ip))
                 .collect(Collectors.toMap(ip-> ip, ip-> createGRPCClient(ip)));
-        Collections.sort(peerIps);
+        Collections.sort(dataPrepperIps);
     }
 
     private TraceServiceGrpc.TraceServiceBlockingStub createGRPCClient(final String ipAddress) {
@@ -58,9 +58,9 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
 
     @Override
     public List<Record<ExportTraceServiceRequest>> execute(final Collection<Record<ExportTraceServiceRequest>> records) {
-        final Map<String, List<ResourceSpans>> peerGroupedRS = new HashMap<>();
-        for (final String peerIp: peerIps) {
-            peerGroupedRS.put(peerIp, new ArrayList<>());
+        final Map<String, List<ResourceSpans>> groupedRS = new HashMap<>();
+        for (final String dataPrepperIp: dataPrepperIps) {
+            groupedRS.put(dataPrepperIp, new ArrayList<>());
         }
         for (final Record<ExportTraceServiceRequest> record: records) {
             for (final ResourceSpans rs: record.getData().getResourceSpansList()) {
@@ -68,19 +68,19 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
                 for (final Map.Entry<String, ResourceSpans> entry: rsBatch) {
                     final String traceId = entry.getKey();
                     final ResourceSpans newRS = entry.getValue();
-                    final String peerIp = getHostByConsistentHashing(traceId);
-                    peerGroupedRS.get(peerIp).add(newRS);
+                    final String dataPrepperIp = getHostByConsistentHashing(traceId);
+                    groupedRS.get(dataPrepperIp).add(newRS);
                 }
             }
         }
 
         // Send ExportTraceServiceRequest to designated peer
         final List<Record<ExportTraceServiceRequest>> results = new ArrayList<>();
-        for (final String peerIp: peerIps) {
-            final TraceServiceGrpc.TraceServiceBlockingStub client = peerClients.getOrDefault(peerIp, null);
+        for (final String dataPrepperIp: dataPrepperIps) {
+            final TraceServiceGrpc.TraceServiceBlockingStub client = peerClients.getOrDefault(dataPrepperIp, null);
             ExportTraceServiceRequest.Builder currRequestBuilder = ExportTraceServiceRequest.newBuilder();
             int currSpansCount = 0;
-            for (final ResourceSpans rs: peerGroupedRS.get(peerIp)) {
+            for (final ResourceSpans rs: groupedRS.get(dataPrepperIp)) {
                 final int rsSize = PeerForwarderUtils.getResourceSpansSize(rs);
                 if (currSpansCount >= peerForwarderConfig.getMaxNumSpansPerRequest()) {
                     final ExportTraceServiceRequest currRequest = currRequestBuilder.build();
@@ -118,6 +118,6 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
 
     private String getHostByConsistentHashing(final String traceId) {
         // TODO: better consistent hashing algorithm, e.g. ring hashing
-        return peerIps.get(Math.abs(traceId.hashCode()) % peerIps.size());
+        return dataPrepperIps.get(Math.abs(traceId.hashCode()) % dataPrepperIps.size());
     }
 }

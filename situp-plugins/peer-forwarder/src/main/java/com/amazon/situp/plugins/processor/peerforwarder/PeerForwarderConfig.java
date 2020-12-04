@@ -8,18 +8,18 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class PeerForwarderConfig {
-    public static final String PEER_IPS = "peer_ips";
+    public static final String DATA_PREPPER_IPS = "data_prepper_ips";
     public static final String TIME_OUT = "time_out";
     public static final String MAX_NUM_SPANS_PER_REQUEST = "span_agg_count";
 
-    private final List<String> peerIps;
+    private final List<String> dataPrepperIps;
 
     private final int timeOut;
 
     private final int maxNumSpansPerRequest;
 
-    public List<String> getPeerIps() {
-        return peerIps;
+    public List<String> getDataPrepperIps() {
+        return dataPrepperIps;
     }
 
     public int getTimeOut() {
@@ -30,9 +30,9 @@ public class PeerForwarderConfig {
         return maxNumSpansPerRequest;
     }
 
-    private PeerForwarderConfig(final List<String> peerIps, final int timeOut, final int maxNumSpansPerRequest) {
-        checkNotNull(peerIps, "peerIps cannot be null");
-        this.peerIps = peerIps;
+    private PeerForwarderConfig(final List<String> dataPrepperIps, final int timeOut, final int maxNumSpansPerRequest) {
+        checkNotNull(dataPrepperIps, "peerIps cannot be null");
+        this.dataPrepperIps = dataPrepperIps;
         this.timeOut = timeOut;
         this.maxNumSpansPerRequest = maxNumSpansPerRequest;
     }
@@ -40,7 +40,7 @@ public class PeerForwarderConfig {
     @SuppressWarnings("unchecked")
     public static PeerForwarderConfig buildConfig(final PluginSetting pluginSetting) {
         return new PeerForwarderConfig(
-                (List<String>) pluginSetting.getAttributeOrDefault(PEER_IPS, new ArrayList<>()),
+                (List<String>) pluginSetting.getAttributeOrDefault(DATA_PREPPER_IPS, new ArrayList<>()),
                 pluginSetting.getIntegerOrDefault(TIME_OUT, 300),
                 pluginSetting.getIntegerOrDefault(MAX_NUM_SPANS_PER_REQUEST, 48));
     }
