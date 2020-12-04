@@ -1,7 +1,7 @@
-package com.amazon.situp.plugins.processor.peerforwarder;
+package com.amazon.dataprepper.plugins.processor.peerforwarder;
 
-import com.amazon.situp.model.configuration.PluginSetting;
-import com.amazon.situp.model.record.Record;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.record.Record;
 import com.google.protobuf.ByteString;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;

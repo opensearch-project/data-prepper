@@ -1,4 +1,4 @@
-package com.amazon.situp.plugins.processor.peerforwarder;
+package com.amazon.dataprepper.plugins.processor.peerforwarder;
 
 import com.linecorp.armeria.internal.shaded.bouncycastle.util.encoders.Hex;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;

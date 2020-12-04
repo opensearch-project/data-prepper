@@ -1,6 +1,6 @@
-package com.amazon.situp.plugins.processor.peerforwarder;
+package com.amazon.dataprepper.plugins.processor.peerforwarder;
 
-import com.amazon.situp.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
 import org.junit.Assert;
 import org.junit.Test;
 

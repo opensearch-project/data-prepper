@@ -1,26 +1,18 @@
-package com.amazon.situp.plugins.processor.peerforwarder;
+package com.amazon.dataprepper.plugins.processor.peerforwarder;
 
-import com.amazon.situp.model.PluginType;
-import com.amazon.situp.model.annotations.SitupPlugin;
-import com.amazon.situp.model.configuration.PluginSetting;
-import com.amazon.situp.model.processor.Processor;
-import com.amazon.situp.model.record.Record;
+import com.amazon.dataprepper.model.PluginType;
+import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.record.Record;
 import com.linecorp.armeria.client.Clients;
-import com.linecorp.armeria.internal.shaded.bouncycastle.util.encoders.Hex;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
-import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
-import io.opentelemetry.proto.trace.v1.Span;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.URL;
 import java.time.Duration;
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -30,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@SitupPlugin(name = "peer_forwarder", type = PluginType.PROCESSOR)
+@DataPrepperPlugin(name = "peer_forwarder", type = PluginType.PROCESSOR)
 public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest>, Record<ExportTraceServiceRequest>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarder.class);
