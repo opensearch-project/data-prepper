@@ -2,20 +2,20 @@ apply from: file("build-resources.gradle")
 
 allprojects {
     dependencies {
-        compile project(':situp-core')
+        compile project(':data-prepper-core')
     }
 }
 
 task endToEndTests {
-    //dependsOn(':situp-api:test') TODO add E2E and enable when ready
+    // TODO add benchmark test and enable
 }
 
 task benchmarkTests {
-    //dependsOn(':situp-api:test') TODO add benchmark test and enable
+    // TODO add benchmark test and enable
 }
 
 task buildCore {
-    dependsOn ':situp-core:build'
+    dependsOn ':data-prepper-core:build'
 }
 
 task releasePrerequisites {

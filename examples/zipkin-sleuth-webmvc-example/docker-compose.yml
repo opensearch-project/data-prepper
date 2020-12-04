@@ -34,16 +34,16 @@ services:
       - 9411:9411
     networks:
       - my_network
-  situp:
-    container_name: situp
+  data-prepper:
+    container_name: data-prepper
     build:
       context: ../..
       dockerfile: examples/Dockerfile
     working_dir: /app
-    command: sh situp-wait-for-odfe-and-start.sh
+    command: sh data-prepper-wait-for-odfe-and-start.sh
     volumes:
-      - ../situp-wait-for-odfe-and-start.sh:/app/situp-wait-for-odfe-and-start.sh
-      - ../trace_analytics_no_ssl.yml:/app/transformation-instance.yml
+      - ../data-prepper-wait-for-odfe-and-start.sh:/app/data-prepper-wait-for-odfe-and-start.sh
+      - ../trace_analytics_no_ssl.yml:/app/trace_analytics_no_ssl.yml
       - ../demo/root-ca.pem:/app/root-ca.pem
     ports:
       - "21890:21890"
@@ -65,7 +65,7 @@ services:
       - my_network
     depends_on:
       - zipkin
-      - situp
+      - data-prepper
   opendistro-for-elasticsearch:
     container_name: node-0.example.com
     image: 'amazon/opendistro-for-elasticsearch:1.10.1'

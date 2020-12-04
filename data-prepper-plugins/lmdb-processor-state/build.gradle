@@ -1,0 +1,23 @@
+
+
+plugins {
+    id 'java'
+}
+
+group 'com.amazon'
+version '0.1-beta'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile project(':data-prepper-api')
+    compile project(':data-prepper-plugins:common')
+    implementation 'org.lmdbjava:lmdbjava:0.8.1'
+    implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
+    testCompile project(':data-prepper-plugins:common').sourceSets.test.output
+    testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
+}

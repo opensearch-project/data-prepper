@@ -3,8 +3,8 @@ entry-pipeline:
   source:
     otel_trace_source:
       ssl: true
-      sslKeyCertChainFile: "/app/demo-situp.crt"
-      sslKeyFile: "/app/demo-situp.key"
+      sslKeyCertChainFile: "/app/demo-data-prepper.crt"
+      sslKeyFile: "/app/demo-data-prepper.key"
   sink:
     - pipeline:
         name: "raw-pipeline"

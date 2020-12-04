@@ -1,0 +1,24 @@
+# this configuration file is solely for testing formatting
+test-pipeline-1:
+  source:
+    file:
+      path: "/tmp/file-source.tmp"
+  buffer:
+    bounded_blocking: #to check non object nodes for plugins
+  sink:
+    - pipeline:
+       name: "test-pipeline-2"
+test-pipeline-2:
+  source:
+    pipeline:
+      name: "test-pipeline-1"
+  sink:
+    - pipeline:
+       name: "test-pipeline-3"
+test-pipeline-3:
+  source:
+    pipeline:
+      name: "test-pipeline-2"
+  sink:
+    - file:
+       path: "/tmp/todelete.txt"

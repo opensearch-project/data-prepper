@@ -17,7 +17,7 @@ repositories {
 }
 
 application {
-    mainClass = 'com.amazon.situp.research.zipkin.ZipkinElasticToOtel'
+    mainClass = 'com.amazon.dataprepper.research.zipkin.ZipkinElasticToOtel'
 }
 
 run {
@@ -27,9 +27,9 @@ run {
 }
 
 dependencies {
-    compile project(':situp-plugins:elasticsearch')
-    compile project(':situp-plugins:otel-trace-source')
-    compile project(':situp-plugins:otel-trace-raw-processor')
+    compile project(':data-prepper-plugins:elasticsearch')
+    compile project(':data-prepper-plugins:otel-trace-source')
+    compile project(':data-prepper-plugins:otel-trace-raw-processor')
     implementation "org.apache.commons:commons-lang3:3.11"
     implementation "com.linecorp.armeria:armeria:1.0.0"
     implementation "com.linecorp.armeria:armeria-grpc:1.0.0"

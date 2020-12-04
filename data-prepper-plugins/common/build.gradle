@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+    id 'jacoco'
+}
+dependencies {
+    compile project(':data-prepper-api')
+    implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${versionMap.jackson_dataformat_yaml}"
+    implementation "org.reflections:reflections:${versionMap.reflections}"
+    testImplementation "junit:junit:${versionMap.junit}"
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule { //in addition to core projects rule
+            limit {
+                minimum = 0.65 //Increase this to 0.90
+            }
+        }
+    }
+}

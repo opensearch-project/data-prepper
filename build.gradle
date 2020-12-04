@@ -44,7 +44,7 @@ configure(coreProjects) {
         violationRules {
             rule {
                 limit {
-                    minimum = 0.50 //TODO increase this
+                    minimum = 0.65 //TODO increase this to 0.75
                 }
             }
         }
