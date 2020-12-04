@@ -5,6 +5,10 @@ import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,6 +16,24 @@ import java.util.List;
 import java.util.Map;
 
 public final class PeerForwarderUtils {
+    public static boolean isAddressDefinedLocally(final String address) {
+        final InetAddress inetAddress;
+        try {
+            inetAddress = InetAddress.getByName(address);
+        } catch (UnknownHostException e) {
+            return false;
+        }
+        if (inetAddress.isAnyLocalAddress() || inetAddress.isLoopbackAddress()) {
+            return true;
+        } else {
+            try {
+                return NetworkInterface.getByInetAddress(inetAddress) != null;
+            } catch (SocketException e) {
+                return false;
+            }
+        }
+    }
+
     public static int getResourceSpansSize(final ResourceSpans rs) {
         return rs.getInstrumentationLibrarySpansList().stream().mapToInt(InstrumentationLibrarySpans::getSpansCount).sum();
     }

@@ -41,28 +41,11 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
 
     private final Map<String, TraceServiceGrpc.TraceServiceBlockingStub> peerClients;
 
-    public static String getLocalPublicIp() throws IOException {
-        // Find public IP address
-        final URL urlName = new URL("http://checkip.amazonaws.com/");
-
-        final BufferedReader bufferedReader =
-                new BufferedReader(new InputStreamReader(urlName.openStream()));
-
-        return bufferedReader.readLine().trim();
-    }
-
     public PeerForwarder(final PluginSetting pluginSetting) {
         peerForwarderConfig = PeerForwarderConfig.buildConfig(pluginSetting);
         peerIps = new ArrayList<>(new HashSet<>(peerForwarderConfig.getPeerIps()));
-        final String localPublicIp;
-        try {
-            localPublicIp = getLocalPublicIp();
-            peerIps.remove(localPublicIp);
-        } catch (IOException e) {
-            throw new RuntimeException("Cannot get localhost public IP.", e);
-        }
-        peerClients = peerIps.stream().collect(Collectors.toMap(ip-> ip, ip-> createGRPCClient(ip)));
-        peerIps.add(localPublicIp);
+        peerClients = peerIps.stream().filter(ip -> !PeerForwarderUtils.isAddressDefinedLocally(ip))
+                .collect(Collectors.toMap(ip-> ip, ip-> createGRPCClient(ip)));
         Collections.sort(peerIps);
     }
 
@@ -135,6 +118,6 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
 
     private String getHostByConsistentHashing(final String traceId) {
         // TODO: better consistent hashing algorithm, e.g. ring hashing
-        return peerIps.get(traceId.hashCode() % peerIps.size());
+        return peerIps.get(Math.abs(traceId.hashCode()) % peerIps.size());
     }
 }

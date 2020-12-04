@@ -3,7 +3,6 @@ package com.amazon.situp.plugins.processor.peerforwarder;
 import com.amazon.situp.model.configuration.PluginSetting;
 import com.amazon.situp.model.record.Record;
 import com.google.protobuf.ByteString;
-import com.linecorp.armeria.client.Clients;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
@@ -19,7 +18,6 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.reflect.Whitebox;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -40,7 +38,7 @@ import static org.powermock.api.mockito.PowerMockito.spy;
 @PrepareForTest({PeerForwarder.class, TraceServiceGrpc.TraceServiceBlockingStub.class})
 @PowerMockIgnore({"javax.net.ssl.*","javax.security.*"})
 public class PeerForwarderTest {
-
+    private static final String LOCAL_IP = "127.0.0.1";
     private static final Span SPAN_1 = Span.newBuilder()
             .setTraceId(ByteString.copyFromUtf8("traceId1")).setSpanId(ByteString.copyFromUtf8("spanId1")).build();
     private static final Span SPAN_2 = Span.newBuilder()
@@ -77,7 +75,7 @@ public class PeerForwarderTest {
 
     @Test
     public void testLocalIpOnly() {
-        final PeerForwarder testPeerForwarder = generatePeerForwarder(Collections.emptyList(), 2);
+        final PeerForwarder testPeerForwarder = generatePeerForwarder(Collections.singletonList(LOCAL_IP), 2);
         final List<Record<ExportTraceServiceRequest>> exportedRecords =
                 testPeerForwarder.execute(Arrays.asList(new Record<>(REQUEST_1), new Record<>(REQUEST_2)));
         Assert.assertTrue(exportedRecords.size() >= 3);
@@ -97,7 +95,7 @@ public class PeerForwarderTest {
 
     @Test
     public void testProcessRequest() throws Exception {
-        final PeerForwarder testPeerForwarder = generatePeerForwarder(Collections.emptyList(), 2);
+        final PeerForwarder testPeerForwarder = generatePeerForwarder(Collections.singletonList(LOCAL_IP), 2);
         final TraceServiceGrpc.TraceServiceBlockingStub mockClient = mock(TraceServiceGrpc.TraceServiceBlockingStub.class);
         doReturn(null).when(mockClient).export(any());
         final List<Record<ExportTraceServiceRequest>> localBuffer = new ArrayList<>();
@@ -113,7 +111,7 @@ public class PeerForwarderTest {
 
     @Test
     public void testSingleRemoteIp() throws Exception {
-        final List<String> testIps = generateTestIps(1);
+        final List<String> testIps = generateTestIps(2);
         final PeerForwarder testPeerForwarder = spy(generatePeerForwarder(testIps, 3));
         final Map<String, List<ExportTraceServiceRequest>> requestsByIp = testIps.stream()
                 .collect(Collectors.toMap(ip-> ip, ip-> new ArrayList<>()));
@@ -137,19 +135,22 @@ public class PeerForwarderTest {
                 generateResourceSpans(SPAN_5, SPAN_6),
                 generateResourceSpans(SPAN_4)
         );
-        Assert.assertEquals(1, requestsByIp.get(testIps.get(0)).size());
-        final ExportTraceServiceRequest forwardedRequest = requestsByIp.get(testIps.get(0)).get(0);
+        Assert.assertEquals(1, requestsByIp.get(testIps.get(1)).size());
+        final ExportTraceServiceRequest forwardedRequest = requestsByIp.get(testIps.get(1)).get(0);
         final List<ResourceSpans> forwardedResourceSpans = forwardedRequest.getResourceSpansList();
         Assert.assertTrue(forwardedResourceSpans.containsAll(expectedResourceSpans));
         Assert.assertTrue(expectedResourceSpans.containsAll(forwardedResourceSpans));
     }
 
-    private List<String> generateTestIps(int num) throws IOException {
-        final String localPublicIp = PeerForwarder.getLocalPublicIp();
-        final String[] ipArray = localPublicIp.split("\\.");
-        List<String> results = new ArrayList<>();
-        for (int i = 0; i < num; i++) {
-            ipArray[ipArray.length-1] = String.valueOf((Integer.parseInt(ipArray[ipArray.length-1]) + 1));
+    /**
+     * Generate specified number of test Ip addresses following the pattern 127.0.0.1, 128.0.0.1, ...
+     */
+    private List<String> generateTestIps(int num) {
+        final String[] ipArray = LOCAL_IP.split("\\.");
+        final List<String> results = new ArrayList<>();
+        results.add(LOCAL_IP);
+        for (int i = 1; i < num; i++) {
+            ipArray[0] = String.valueOf((Integer.parseInt(ipArray[0]) + 1));
             results.add(String.join(".", ipArray));
         }
         return results;
