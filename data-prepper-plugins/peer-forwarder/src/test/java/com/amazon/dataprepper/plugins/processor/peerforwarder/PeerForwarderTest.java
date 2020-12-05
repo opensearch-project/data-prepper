@@ -54,6 +54,8 @@ public class PeerForwarderTest {
 
     private static final ExportTraceServiceRequest REQUEST_1 = generateRequest(SPAN_1, SPAN_2, SPAN_4);
     private static final ExportTraceServiceRequest REQUEST_2 = generateRequest(SPAN_3, SPAN_5, SPAN_6);
+    private static final ExportTraceServiceRequest REQUEST_3 = generateRequest(SPAN_1, SPAN_2, SPAN_3);
+    private static final ExportTraceServiceRequest REQUEST_4 = generateRequest(SPAN_4, SPAN_5, SPAN_6);
 
     private static ExportTraceServiceRequest generateRequest(final Span... spans) {
         return ExportTraceServiceRequest.newBuilder()
@@ -110,7 +112,7 @@ public class PeerForwarderTest {
     }
 
     @Test
-    public void testSingleRemoteIp() throws Exception {
+    public void testSingleRemoteIpBothLocalAndForwardedRequest() throws Exception {
         final List<String> testIps = generateTestIps(2);
         final PeerForwarder testPeerForwarder = spy(generatePeerForwarder(testIps, 3));
         final Map<String, List<ExportTraceServiceRequest>> requestsByIp = testIps.stream()
@@ -122,6 +124,8 @@ public class PeerForwarderTest {
             if (client != null) {
                 final String host =  client.getChannel().authority().split(":")[0];
                 requestsByIp.get(host).add(request);
+            } else {
+                requestsByIp.get(LOCAL_IP).add(request);
             }
             return null;
         }).when(testPeerForwarder, "processRequest",
@@ -131,15 +135,92 @@ public class PeerForwarderTest {
 
         testPeerForwarder.execute(Arrays.asList(new Record<>(REQUEST_1), new Record<>(REQUEST_2)));
 
-        final List<ResourceSpans> expectedResourceSpans = Arrays.asList(
+        final List<ResourceSpans> expectedLocalResourceSpans = Arrays.asList(
+                generateResourceSpans(SPAN_1, SPAN_2),
+                generateResourceSpans(SPAN_3)
+        );
+        final List<ResourceSpans> expectedForwardedResourceSpans = Arrays.asList(
                 generateResourceSpans(SPAN_5, SPAN_6),
                 generateResourceSpans(SPAN_4)
         );
+        Assert.assertEquals(1, requestsByIp.get(testIps.get(0)).size());
+        final ExportTraceServiceRequest localRequest = requestsByIp.get(testIps.get(0)).get(0);
+        final List<ResourceSpans> localResourceSpans = localRequest.getResourceSpansList();
+        Assert.assertTrue(localResourceSpans.containsAll(expectedLocalResourceSpans));
+        Assert.assertTrue(expectedLocalResourceSpans.containsAll(localResourceSpans));
         Assert.assertEquals(1, requestsByIp.get(testIps.get(1)).size());
         final ExportTraceServiceRequest forwardedRequest = requestsByIp.get(testIps.get(1)).get(0);
         final List<ResourceSpans> forwardedResourceSpans = forwardedRequest.getResourceSpansList();
-        Assert.assertTrue(forwardedResourceSpans.containsAll(expectedResourceSpans));
-        Assert.assertTrue(expectedResourceSpans.containsAll(forwardedResourceSpans));
+        Assert.assertTrue(forwardedResourceSpans.containsAll(expectedForwardedResourceSpans));
+        Assert.assertTrue(expectedForwardedResourceSpans.containsAll(forwardedResourceSpans));
+    }
+
+    @Test
+    public void testSingleRemoteIpLocalRequestOnly() throws Exception {
+        final List<String> testIps = generateTestIps(2);
+        final PeerForwarder testPeerForwarder = spy(generatePeerForwarder(testIps, 3));
+        final Map<String, List<ExportTraceServiceRequest>> requestsByIp = testIps.stream()
+                .collect(Collectors.toMap(ip-> ip, ip-> new ArrayList<>()));
+        // Mock processRequest
+        doAnswer(invocation -> {
+            final TraceServiceGrpc.TraceServiceBlockingStub client = invocation.getArgument(0);
+            final ExportTraceServiceRequest request = invocation.getArgument(1);
+            if (client != null) {
+                final String host =  client.getChannel().authority().split(":")[0];
+                requestsByIp.get(host).add(request);
+            } else {
+                requestsByIp.get(LOCAL_IP).add(request);
+            }
+            return null;
+        }).when(testPeerForwarder, "processRequest",
+                any(),
+                any(ExportTraceServiceRequest.class),
+                any(List.class));
+
+        testPeerForwarder.execute(Collections.singletonList(new Record<>(REQUEST_3)));
+
+        final List<ResourceSpans> expectedLocalResourceSpans = Collections.singletonList(
+                generateResourceSpans(SPAN_1, SPAN_2, SPAN_3));
+        Assert.assertEquals(1, requestsByIp.get(testIps.get(0)).size());
+        final ExportTraceServiceRequest localRequest = requestsByIp.get(testIps.get(0)).get(0);
+        final List<ResourceSpans> localResourceSpans = localRequest.getResourceSpansList();
+        Assert.assertTrue(localResourceSpans.containsAll(expectedLocalResourceSpans));
+        Assert.assertTrue(expectedLocalResourceSpans.containsAll(localResourceSpans));
+        Assert.assertEquals(0, requestsByIp.get(testIps.get(1)).size());
+    }
+
+    @Test
+    public void testSingleRemoteIpForwardedRequestOnly() throws Exception {
+        final List<String> testIps = generateTestIps(2);
+        final PeerForwarder testPeerForwarder = spy(generatePeerForwarder(testIps, 3));
+        final Map<String, List<ExportTraceServiceRequest>> requestsByIp = testIps.stream()
+                .collect(Collectors.toMap(ip-> ip, ip-> new ArrayList<>()));
+        // Mock processRequest
+        doAnswer(invocation -> {
+            final TraceServiceGrpc.TraceServiceBlockingStub client = invocation.getArgument(0);
+            final ExportTraceServiceRequest request = invocation.getArgument(1);
+            if (client != null) {
+                final String host =  client.getChannel().authority().split(":")[0];
+                requestsByIp.get(host).add(request);
+            } else {
+                requestsByIp.get(LOCAL_IP).add(request);
+            }
+            return null;
+        }).when(testPeerForwarder, "processRequest",
+                any(),
+                any(ExportTraceServiceRequest.class),
+                any(List.class));
+
+        testPeerForwarder.execute(Collections.singletonList(new Record<>(REQUEST_4)));
+
+        final List<ResourceSpans> expectedForwardedResourceSpans = Collections.singletonList(
+                generateResourceSpans(SPAN_4, SPAN_5, SPAN_6));
+        Assert.assertEquals(1, requestsByIp.get(testIps.get(1)).size());
+        final ExportTraceServiceRequest forwardedRequest = requestsByIp.get(testIps.get(1)).get(0);
+        final List<ResourceSpans> forwardedResourceSpans = forwardedRequest.getResourceSpansList();
+        Assert.assertTrue(forwardedResourceSpans.containsAll(expectedForwardedResourceSpans));
+        Assert.assertTrue(expectedForwardedResourceSpans.containsAll(forwardedResourceSpans));
+        Assert.assertEquals(0, requestsByIp.get(testIps.get(0)).size());
     }
 
     /**
