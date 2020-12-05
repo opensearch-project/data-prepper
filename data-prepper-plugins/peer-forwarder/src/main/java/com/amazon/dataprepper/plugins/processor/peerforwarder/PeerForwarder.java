@@ -84,8 +84,10 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
                 currSpansCount += rsSize;
             }
             // last request
-            final ExportTraceServiceRequest currRequest = currRequestBuilder.build();
-            processRequest(client, currRequest, results);
+            if (currSpansCount > 0) {
+                final ExportTraceServiceRequest currRequest = currRequestBuilder.build();
+                processRequest(client, currRequest, results);
+            }
         }
         return results;
     }
