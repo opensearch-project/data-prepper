@@ -16,24 +16,6 @@ import java.util.List;
 import java.util.Map;
 
 public final class PeerForwarderUtils {
-    public static boolean isAddressDefinedLocally(final String address) {
-        final InetAddress inetAddress;
-        try {
-            inetAddress = InetAddress.getByName(address);
-        } catch (UnknownHostException e) {
-            return false;
-        }
-        if (inetAddress.isAnyLocalAddress() || inetAddress.isLoopbackAddress()) {
-            return true;
-        } else {
-            try {
-                return NetworkInterface.getByInetAddress(inetAddress) != null;
-            } catch (SocketException e) {
-                return false;
-            }
-        }
-    }
-
     public static int getResourceSpansSize(final ResourceSpans rs) {
         return rs.getInstrumentationLibrarySpansList().stream().mapToInt(InstrumentationLibrarySpans::getSpansCount).sum();
     }
