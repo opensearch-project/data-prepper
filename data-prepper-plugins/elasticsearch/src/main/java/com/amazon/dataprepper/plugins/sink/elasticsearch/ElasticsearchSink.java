@@ -5,6 +5,7 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.alias.Alias;
 import org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
@@ -15,7 +16,6 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.client.indices.CreateIndexRequest;
 import org.elasticsearch.client.indices.GetIndexRequest;
 import org.elasticsearch.client.indices.PutIndexTemplateRequest;
-
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import org.elasticsearch.common.xcontent.NamedXContentRegistry;
@@ -183,7 +183,16 @@ public class ElasticsearchSink implements Sink<Record<String>> {
         initialIndexName = indexAlias;
         createIndexRequest = new CreateIndexRequest(initialIndexName);
       }
-      restHighLevelClient.indices().create(createIndexRequest, RequestOptions.DEFAULT);
+      try {
+        restHighLevelClient.indices().create(createIndexRequest, RequestOptions.DEFAULT);
+      } catch (ElasticsearchException e) {
+        if (e.getMessage().contains("resource_already_exists_exception")) {
+          // Do nothing - likely caused by a race condition where the resource was created
+          // by another host before this host's restClient made its request
+        } else {
+          throw e;
+        }
+      }
     }
   }
 

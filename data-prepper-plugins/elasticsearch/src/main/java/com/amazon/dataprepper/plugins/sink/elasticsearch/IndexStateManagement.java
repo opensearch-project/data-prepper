@@ -5,6 +5,7 @@ import org.elasticsearch.action.admin.cluster.settings.ClusterGetSettingsRespons
 import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.Response;
+import org.elasticsearch.client.ResponseException;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.rest.RestStatus;
 
@@ -41,7 +42,17 @@ public class IndexStateManagement {
                 is.close();
                 request = new Request(HttpMethod.PUT, endPoint);
                 request.setJsonEntity(policyJsonBuffer.toString());
-                restHighLevelClient.getLowLevelClient().performRequest(request);
+                try {
+                    restHighLevelClient.getLowLevelClient().performRequest(request);
+                } catch (ResponseException e) {
+                    if (e.getMessage().contains("version_conflict_engine_exception")
+                            || e.getMessage().contains("resource_already_exists_exception")) {
+                        // Do nothing - likely caused by a race condition where the resource was created
+                        // by another host before this host's restClient made its request
+                    } else {
+                        throw e;
+                    }
+                }
             }
             return IndexConstants.RAW_ISM_POLICY;
         } else {
