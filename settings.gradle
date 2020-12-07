@@ -23,4 +23,5 @@ include 'data-prepper-benchmarks:lmdb-benchmarks'
 include 'data-prepper-benchmarks:service-map-stateful-benchmarks'
 include 'data-prepper-plugins:otel-trace-raw-processor'
 include 'data-prepper-plugins:otel-trace-source'
+include 'data-prepper-plugins:peer-forwarder'
 
