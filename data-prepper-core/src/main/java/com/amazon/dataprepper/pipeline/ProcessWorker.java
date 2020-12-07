@@ -21,7 +21,7 @@ public class ProcessWorker implements Runnable {
     private final List<Processor> processors;
     private final Collection<Sink> sinks;
     private final Pipeline pipeline;
-    private boolean isQueueEmpty = false;
+    private boolean isEmptyRecordsLogged = false;
 
     public ProcessWorker(
             final Buffer readBuffer,
@@ -39,7 +39,15 @@ public class ProcessWorker implements Runnable {
         try {
             do {
                 Collection records = readBuffer.read(pipeline.getReadBatchTimeoutInMillis());
-                LOG.info(" {} Worker: Processing {} records from buffer", pipeline.getName(), records.size());
+                //TODO Hacky way to avoid logging continuously - Will be removed as part of metrics implementation
+                if (records.isEmpty()) {
+                    if(!isEmptyRecordsLogged) {
+                        LOG.info(" {} Worker: No records received from buffer", pipeline.getName());
+                        isEmptyRecordsLogged = true;
+                    }
+                } else {
+                    LOG.info(" {} Worker: Processing {} records from buffer", pipeline.getName(), records.size());
+                }
                 //Should Empty list from buffer should be sent to the processors? For now sending as the Stateful processors expects it.
                 for (final Processor processor : processors) {
                     records = processor.execute(records);
