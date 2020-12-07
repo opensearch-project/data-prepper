@@ -5,6 +5,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
@@ -48,13 +49,13 @@ public class HashRing {
         final Checksum crc32 = new CRC32();
         crc32.update(traceId, 0, traceId.length);
         final long hashcode = crc32.getValue();
-        // obtain key greater than the hashcode
-        final Long key = virtualNodes.higherKey(hashcode);
-        if (key == null) {
+        // obtain Map.Entry with key greater than the hashcode
+        final Map.Entry<Long, String> entry = virtualNodes.higherEntry(hashcode);
+        if (entry == null) {
             // return first node if no key is greater than the hashcode
-            return virtualNodes.get(virtualNodes.firstKey());
+            return virtualNodes.firstEntry().getValue();
         } else {
-            return virtualNodes.get(key);
+            return entry.getValue();
         }
     }
 }
