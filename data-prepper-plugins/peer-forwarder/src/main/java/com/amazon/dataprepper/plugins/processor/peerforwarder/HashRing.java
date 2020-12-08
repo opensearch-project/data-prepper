@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
@@ -48,9 +49,9 @@ public class HashRing {
         }
     }
 
-    public String getServerIp(final byte[] traceId) {
+    public Optional<String> getServerIp(final byte[] traceId) {
         if (virtualNodes.isEmpty()) {
-            return null;
+            return Optional.empty();
         }
         final Checksum crc32 = new CRC32();
         crc32.update(traceId, 0, traceId.length);
@@ -59,9 +60,9 @@ public class HashRing {
         final Map.Entry<Long, String> entry = virtualNodes.higherEntry(hashcode);
         if (entry == null) {
             // return first node if no key is greater than the hashcode
-            return virtualNodes.firstEntry().getValue();
+            return Optional.of(virtualNodes.firstEntry().getValue());
         } else {
-            return entry.getValue();
+            return Optional.of(entry.getValue());
         }
     }
 }

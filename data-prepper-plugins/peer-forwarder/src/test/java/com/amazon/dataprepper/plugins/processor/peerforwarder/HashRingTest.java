@@ -25,8 +25,8 @@ public class HashRingTest {
         Assert.assertEquals(3, virtualNodes.size());
         Assert.assertTrue(virtualNodes.values().containsAll(expServerIps));
         // Check indeed alternating serverIps for different inputs
-        final String serverIp1 = hashRing.getServerIp(TEST_TRACE_ID_1);
-        final String serverIp2 = hashRing.getServerIp(TEST_TRACE_ID_2);
+        final String serverIp1 = hashRing.getServerIp(TEST_TRACE_ID_1).orElse("");
+        final String serverIp2 = hashRing.getServerIp(TEST_TRACE_ID_2).orElse("");
         Assert.assertNotEquals(serverIp1, serverIp2);
     }
 
@@ -37,7 +37,7 @@ public class HashRingTest {
         Assert.assertEquals(testServerIps, hashRing.getServerIps());
         final TreeMap<Long, String> virtualNodes = Whitebox.getInternalState(hashRing, "virtualNodes");
         Assert.assertEquals(3, virtualNodes.size());
-        final String serverIp = hashRing.getServerIp(TEST_TRACE_ID_1);
+        final String serverIp = hashRing.getServerIp(TEST_TRACE_ID_1).orElse("");
         Assert.assertEquals("127.0.0.1", serverIp);
     }
 }
