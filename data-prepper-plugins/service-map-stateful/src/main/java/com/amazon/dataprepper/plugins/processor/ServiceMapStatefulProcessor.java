@@ -3,6 +3,7 @@ package com.amazon.dataprepper.plugins.processor;
 import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.processor.AbstractPrepper;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.processor.state.MapDbProcessorState;
@@ -24,7 +25,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @DataPrepperPlugin(name = "service_map_stateful", type = PluginType.PROCESSOR)
-public class ServiceMapStatefulProcessor implements Processor<Record<ExportTraceServiceRequest>, Record<String>> {
+public class ServiceMapStatefulProcessor extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(ServiceMapStatefulProcessor.class);
     private static final String EMPTY_SUFFIX = "-empty";
@@ -51,13 +52,15 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
     public ServiceMapStatefulProcessor(final PluginSetting pluginSetting) {
      this(pluginSetting.getIntegerOrDefault(ServiceMapProcessorConfig.WINDOW_DURATION, ServiceMapProcessorConfig.DEFAULT_WINDOW_DURATION)*TO_MILLIS,
              new File(ServiceMapProcessorConfig.DEFAULT_LMDB_PATH),
-             Clock.systemUTC(), pluginSetting.getNumberOfProcessWorkers());
+             Clock.systemUTC(), pluginSetting.getNumberOfProcessWorkers(), pluginSetting);
     }
 
     public ServiceMapStatefulProcessor(final long windowDurationMillis,
                                        final File databasePath,
                                        final Clock clock,
-                                       final int processWorkers) {
+                                       final int processWorkers,
+                                       final PluginSetting pluginSetting) {
+        super(pluginSetting);
         ServiceMapStatefulProcessor.clock = clock;
         this.thisProcessorId = processorsCreated.getAndIncrement();
         if(isMasterInstance()) {
@@ -94,7 +97,7 @@ public class ServiceMapStatefulProcessor implements Processor<Record<ExportTrace
      * added to the service map index. Otherwise, returns an empty set.
      */
     @Override
-    public Collection<Record<String>> execute(Collection<Record<ExportTraceServiceRequest>> records) {
+    public Collection<Record<String>> doExecute(Collection<Record<ExportTraceServiceRequest>> records) {
         final Collection<Record<String>> relationships = windowDurationHasPassed() ? evaluateEdges() : EMPTY_COLLECTION;
         final Map<byte[], ServiceMapStateData> batchStateData = new TreeMap<>(SignedBytes.lexicographicalComparator());
         records.forEach( i -> i.getData().getResourceSpansList().forEach(resourceSpans -> {
