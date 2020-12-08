@@ -47,12 +47,13 @@ public class HashRing {
         }
     }
 
-    public Optional<String> getServerIp(final byte[] traceId) {
+    public Optional<String> getServerIp(final String traceId) {
         if (virtualNodes.isEmpty()) {
             return Optional.empty();
         }
+        final byte[] traceIdInBytes = traceId.getBytes();
         final Checksum crc32 = new CRC32();
-        crc32.update(traceId, 0, traceId.length);
+        crc32.update(traceIdInBytes, 0, traceIdInBytes.length);
         final long hashcode = crc32.getValue();
         // obtain Map.Entry with key greater than the hashcode
         final Map.Entry<Long, String> entry = virtualNodes.higherEntry(hashcode);

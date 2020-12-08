@@ -88,8 +88,7 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
                 for (final Map.Entry<String, ResourceSpans> entry: rsBatch) {
                     final String traceId = entry.getKey();
                     final ResourceSpans newRS = entry.getValue();
-                    hashRing.getServerIp(traceId.getBytes()).ifPresent(
-                            dataPrepperIp -> groupedRS.get(dataPrepperIp).add(newRS));
+                    hashRing.getServerIp(traceId).ifPresent(dataPrepperIp -> groupedRS.get(dataPrepperIp).add(newRS));
                 }
             }
         }

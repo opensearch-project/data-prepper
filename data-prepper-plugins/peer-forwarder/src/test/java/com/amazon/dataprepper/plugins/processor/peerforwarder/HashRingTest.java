@@ -10,8 +10,8 @@ import java.util.List;
 import java.util.TreeMap;
 
 public class HashRingTest {
-    public static final byte[] TEST_TRACE_ID_1 = "10".getBytes();
-    public static final byte[] TEST_TRACE_ID_2 = "20".getBytes();
+    public static final String TEST_TRACE_ID_1 = "10";
+    public static final String TEST_TRACE_ID_2 = "20";
 
     @Test
     public void testGetServerIpSingleVirtualNode() {
