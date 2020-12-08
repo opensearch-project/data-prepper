@@ -4,6 +4,7 @@ import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.model.sink.AbstractSink;
 import com.amazon.dataprepper.model.sink.Sink;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteRequest;
@@ -36,7 +37,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 @DataPrepperPlugin(name = "elasticsearch", type = PluginType.SINK)
-public class ElasticsearchSink implements Sink<Record<String>> {
+public class ElasticsearchSink extends AbstractSink<Record<String>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchSink.class);
   // Pulled from BulkRequest to make estimation of bytes consistent
@@ -52,6 +53,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   private final String documentIdField;
 
   public ElasticsearchSink(final PluginSetting pluginSetting) {
+    super(pluginSetting);
     this.esSinkConfig = ElasticsearchSinkConfiguration.readESConfig(pluginSetting);
     this.bulkSize = ByteSizeUnit.MB.toBytes(esSinkConfig.getIndexConfiguration().getBulkSize());
     this.indexType = esSinkConfig.getIndexConfiguration().getIndexType();
@@ -84,7 +86,7 @@ public class ElasticsearchSink implements Sink<Record<String>> {
   }
 
   @Override
-  public void output(final Collection<Record<String>> records) {
+  public void doOutput(final Collection<Record<String>> records) {
     if (records.isEmpty()) {
       return;
     }

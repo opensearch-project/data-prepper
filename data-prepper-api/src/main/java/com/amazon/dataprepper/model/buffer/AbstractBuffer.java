@@ -21,7 +21,15 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     private final Timer readTimer;
 
     public AbstractBuffer(final PluginSetting pluginSetting) {
-        this.pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
+        this(PluginMetrics.fromPluginSetting(pluginSetting));
+    }
+
+    public AbstractBuffer(final String bufferName, final String pipelineName) {
+        this(PluginMetrics.fromNames(bufferName, pipelineName));
+    }
+
+    private AbstractBuffer(final PluginMetrics pluginMetrics) {
+        this.pluginMetrics = pluginMetrics;
         this.recordsWrittenCounter = pluginMetrics.counter(MetricNames.RECORDS_WRITTEN);
         this.recordsReadCounter = pluginMetrics.counter(MetricNames.RECORDS_READ);
         this.writeTimeoutCounter = pluginMetrics.counter(MetricNames.WRITE_TIMEOUTS);

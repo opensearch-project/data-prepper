@@ -1,5 +1,6 @@
 package com.amazon.dataprepper.plugins.processor;
 
+import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
@@ -35,6 +36,9 @@ public class ServiceMapStatefulProcessorTest {
     private static final String PASSWORD_DATABASE = "PASS";
     private static final String PAYMENT_SERVICE = "PAY";
     private static final String CART_SERVICE = "CART";
+    private static final PluginSetting PLUGIN_SETTING = new PluginSetting("testServiceMapProcessor", Collections.emptyMap()){{
+        setPipelineName("testPipelineName");
+    }};
 
     /**
      * This function mocks what the frontend will do to resolve the data in the service map index to find the edges
@@ -62,8 +66,8 @@ public class ServiceMapStatefulProcessorTest {
         Mockito.when(clock.instant()).thenReturn(Instant.now());
         ExecutorService threadpool = Executors.newCachedThreadPool();
         final File path = new File(ServiceMapProcessorConfig.DEFAULT_LMDB_PATH);
-        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 16);
-        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 16);
+        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 16, PLUGIN_SETTING);
+        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 16, PLUGIN_SETTING);
 
         final byte[] rootSpanId1 = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] rootSpanId2 = ServiceMapTestUtils.getRandomBytes(8);
