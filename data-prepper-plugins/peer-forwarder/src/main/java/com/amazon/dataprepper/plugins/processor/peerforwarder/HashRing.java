@@ -4,6 +4,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -18,7 +19,9 @@ public class HashRing {
 
     public HashRing(@Nonnull final List<String> serverIps, final int numVirtualNodes) {
         this.numVirtualNodes = numVirtualNodes;
-        for (final String serverIp: serverIps) {
+        final List<String> sortedServerIps = new ArrayList<>(serverIps);
+        Collections.sort(sortedServerIps);
+        for (final String serverIp: sortedServerIps) {
             addServerIp(serverIp);
         }
     }
@@ -27,7 +30,7 @@ public class HashRing {
         return serverIps;
     }
 
-    public void addServerIp(@Nonnull final String serverIp) {
+    private void addServerIp(@Nonnull final String serverIp) {
         serverIps.add(serverIp);
         final byte[] serverIpInBytes = serverIp.getBytes();
         final Checksum crc32 = new CRC32();
@@ -36,7 +39,7 @@ public class HashRing {
             crc32.update(serverIpInBytes, 0, serverIpInBytes.length);
             intBuffer.putInt(i);
             crc32.update(intBuffer.array(), 0, intBuffer.array().length);
-            virtualNodes.put(crc32.getValue(), serverIp);
+            virtualNodes.putIfAbsent(crc32.getValue(), serverIp);
             crc32.reset();
             intBuffer.clear();
         }

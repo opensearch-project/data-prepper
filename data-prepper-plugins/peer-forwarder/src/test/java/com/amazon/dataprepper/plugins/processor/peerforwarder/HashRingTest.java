@@ -16,9 +16,11 @@ public class HashRingTest {
 
     @Test
     public void testGetServerIpSingleVirtualNode() {
-        final List<String> testServerIps = Arrays.asList("10", "20", "30");
+        final List<String> testServerIps = Arrays.asList("20", "30", "10");
+        final List<String> expServerIps = new ArrayList<>(testServerIps);
+        Collections.sort(expServerIps);
         final HashRing hashRing = new HashRing(testServerIps, 1);
-        Assert.assertEquals(testServerIps, hashRing.getServerIps());
+        Assert.assertEquals(expServerIps, hashRing.getServerIps());
         // Check indeed alternating serverIps for different inputs
         final String serverIp1 = hashRing.getServerIp(TEST_TRACE_ID_1);
         final String serverIp2 = hashRing.getServerIp(TEST_TRACE_ID_2);
@@ -34,19 +36,5 @@ public class HashRingTest {
         Assert.assertEquals(3, virtualNodes.size());
         final String serverIp = hashRing.getServerIp(TEST_TRACE_ID_1);
         Assert.assertEquals("127.0.0.1", serverIp);
-    }
-
-    @Test
-    public void testAddAndGetServerIp() {
-        final HashRing hashRing = new HashRing(new ArrayList<>(), 1);
-        Assert.assertEquals(new ArrayList<>(), hashRing.getServerIps());
-        Assert.assertNull(hashRing.getServerIp(TEST_TRACE_ID_2));
-        // Check indeed alternating serverIps after adding new serverIp
-        hashRing.addServerIp("10");
-        final String serverIp1 = hashRing.getServerIp(TEST_TRACE_ID_2);
-        Assert.assertEquals("10", serverIp1);
-        hashRing.addServerIp("30");
-        final String serverIp2 = hashRing.getServerIp(TEST_TRACE_ID_2);
-        Assert.assertEquals("30", serverIp2);
     }
 }
