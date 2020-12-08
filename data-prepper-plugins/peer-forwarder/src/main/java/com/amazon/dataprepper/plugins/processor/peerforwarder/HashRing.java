@@ -23,9 +23,7 @@ public class HashRing {
     public HashRing(final List<String> serverIps, final int numVirtualNodes) {
         Objects.requireNonNull(serverIps);
         this.numVirtualNodes = numVirtualNodes;
-        final List<String> sortedServerIps = new ArrayList<>(new HashSet<>(serverIps));
-        Collections.sort(sortedServerIps);
-        for (final String serverIp: sortedServerIps) {
+        for (final String serverIp: serverIps) {
             addServerIp(serverIp);
         }
     }

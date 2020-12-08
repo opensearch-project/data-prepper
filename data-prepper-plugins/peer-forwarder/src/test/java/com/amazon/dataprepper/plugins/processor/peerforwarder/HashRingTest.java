@@ -4,7 +4,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.powermock.reflect.Whitebox;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -17,13 +16,8 @@ public class HashRingTest {
     @Test
     public void testGetServerIpSingleVirtualNode() {
         final List<String> testServerIps = Arrays.asList("20", "30", "10");
-        final List<String> expServerIps = new ArrayList<>(testServerIps);
-        Collections.sort(expServerIps);
         final HashRing hashRing = new HashRing(testServerIps, 1);
-        Assert.assertEquals(expServerIps, hashRing.getServerIps());
-        final TreeMap<Long, String> virtualNodes = Whitebox.getInternalState(hashRing, "virtualNodes");
-        Assert.assertEquals(3, virtualNodes.size());
-        Assert.assertTrue(virtualNodes.values().containsAll(expServerIps));
+        Assert.assertEquals(testServerIps, hashRing.getServerIps());
         // Check indeed alternating serverIps for different inputs
         final String serverIp1 = hashRing.getServerIp(TEST_TRACE_ID_1).orElse("");
         final String serverIp2 = hashRing.getServerIp(TEST_TRACE_ID_2).orElse("");
