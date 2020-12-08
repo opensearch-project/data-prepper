@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
@@ -18,7 +19,8 @@ public class HashRing {
     private final int numVirtualNodes;
     private final TreeMap<Long, String> virtualNodes = new TreeMap<>();
 
-    public HashRing(@Nonnull final List<String> serverIps, final int numVirtualNodes) {
+    public HashRing(final List<String> serverIps, final int numVirtualNodes) {
+        Objects.requireNonNull(serverIps);
         this.numVirtualNodes = numVirtualNodes;
         final List<String> sortedServerIps = new ArrayList<>(new HashSet<>(serverIps));
         Collections.sort(sortedServerIps);
@@ -31,7 +33,7 @@ public class HashRing {
         return serverIps;
     }
 
-    private void addServerIp(@Nonnull final String serverIp) {
+    private void addServerIp(final String serverIp) {
         serverIps.add(serverIp);
         final byte[] serverIpInBytes = serverIp.getBytes();
         final Checksum crc32 = new CRC32();
@@ -46,7 +48,7 @@ public class HashRing {
         }
     }
 
-    public String getServerIp(@Nonnull final byte[] traceId) {
+    public String getServerIp(final byte[] traceId) {
         if (virtualNodes.isEmpty()) {
             return null;
         }
