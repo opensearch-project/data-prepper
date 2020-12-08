@@ -14,10 +14,16 @@ public class HashRingTest {
     public static final String TEST_TRACE_ID_2 = "20";
 
     @Test
-    public void testGetServerIpSingleVirtualNode() {
+    public void testListServerIps() {
         final List<String> testServerIps = Arrays.asList("20", "30", "10");
         final HashRing hashRing = new HashRing(testServerIps, 1);
         Assert.assertEquals(testServerIps, hashRing.getServerIps());
+    }
+
+    @Test
+    public void testGetServerIpSingleVirtualNode() {
+        final List<String> testServerIps = Arrays.asList("20", "30", "10");
+        final HashRing hashRing = new HashRing(testServerIps, 1);
         // Check indeed alternating serverIps for different inputs
         final String serverIp1 = hashRing.getServerIp(TEST_TRACE_ID_1).orElse("");
         final String serverIp2 = hashRing.getServerIp(TEST_TRACE_ID_2).orElse("");
