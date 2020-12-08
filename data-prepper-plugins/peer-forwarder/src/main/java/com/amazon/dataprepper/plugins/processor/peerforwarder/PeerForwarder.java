@@ -37,6 +37,8 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
 
     private final Map<String, TraceServiceGrpc.TraceServiceBlockingStub> peerClients;
 
+    private final HashRing hashRing;
+
     public static boolean isAddressDefinedLocally(final String address) {
         final InetAddress inetAddress;
         try {
@@ -60,7 +62,7 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
         dataPrepperIps = new ArrayList<>(new HashSet<>(peerForwarderConfig.getDataPrepperIps()));
         peerClients = dataPrepperIps.stream().filter(ip -> !isAddressDefinedLocally(ip))
                 .collect(Collectors.toMap(ip-> ip, ip-> createGRPCClient(ip)));
-        Collections.sort(dataPrepperIps);
+        hashRing = new HashRing(dataPrepperIps, PeerForwarderConfig.NUM_VIRTUAL_NODES);
     }
 
     private TraceServiceGrpc.TraceServiceBlockingStub createGRPCClient(final String ipAddress) {
@@ -138,6 +140,6 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
 
     private String getHostByConsistentHashing(final String traceId) {
         // TODO: better consistent hashing algorithm, e.g. ring hashing
-        return dataPrepperIps.get(Math.abs(traceId.hashCode()) % dataPrepperIps.size());
+        return hashRing.getServerIp(traceId.getBytes());
     }
 }
