@@ -5,6 +5,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -19,7 +20,7 @@ public class HashRing {
 
     public HashRing(@Nonnull final List<String> serverIps, final int numVirtualNodes) {
         this.numVirtualNodes = numVirtualNodes;
-        final List<String> sortedServerIps = new ArrayList<>(serverIps);
+        final List<String> sortedServerIps = new ArrayList<>(new HashSet<>(serverIps));
         Collections.sort(sortedServerIps);
         for (final String serverIp: sortedServerIps) {
             addServerIp(serverIp);
