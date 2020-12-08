@@ -74,6 +74,8 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
 
     @Override
     public List<Record<ExportTraceServiceRequest>> execute(final Collection<Record<ExportTraceServiceRequest>> records) {
+        // TODO: regenerate hashRing if there is a change in detected data_prepper_ips
+
         final Map<String, List<ResourceSpans>> groupedRS = new HashMap<>();
         for (final String dataPrepperIp: dataPrepperIps) {
             groupedRS.put(dataPrepperIp, new ArrayList<>());
@@ -86,7 +88,7 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
                 for (final Map.Entry<String, ResourceSpans> entry: rsBatch) {
                     final String traceId = entry.getKey();
                     final ResourceSpans newRS = entry.getValue();
-                    final String dataPrepperIp = getHostByConsistentHashing(traceId);
+                    final String dataPrepperIp = hashRing.getServerIp(traceId.getBytes());
                     groupedRS.get(dataPrepperIp).add(newRS);
                 }
             }
@@ -136,10 +138,5 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
         } else {
             localBuffer.add(new Record<>(request));
         }
-    }
-
-    private String getHostByConsistentHashing(final String traceId) {
-        // TODO: better consistent hashing algorithm, e.g. ring hashing
-        return hashRing.getServerIp(traceId.getBytes());
     }
 }
