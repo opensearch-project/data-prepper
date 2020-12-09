@@ -2,6 +2,7 @@ package com.amazon.dataprepper.plugins.buffer;
 
 import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
+import com.amazon.dataprepper.model.buffer.AbstractBuffer;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
@@ -31,7 +32,7 @@ import static java.lang.String.format;
  * batch size is defined/determined by the configuration attribute {@link #ATTRIBUTE_BATCH_SIZE} or the timeout parameter
  */
 @DataPrepperPlugin(name = "bounded_blocking", type = PluginType.BUFFER)
-public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
+public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(BlockingBuffer.class);
     private static final int DEFAULT_BUFFER_CAPACITY = 512;
     private static final int DEFAULT_BATCH_SIZE = 8;
@@ -51,6 +52,7 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
      * @param pipelineName   the name of the associated Pipeline
      */
     public BlockingBuffer(final int bufferCapacity, final int batchSize, final String pipelineName) {
+        super("BlockingBuffer", pipelineName);
         this.batchSize = batchSize;
         this.blockingQueue = new LinkedBlockingQueue<>(bufferCapacity);
         this.pipelineName = pipelineName;
@@ -77,7 +79,7 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
     }
 
     @Override
-    public void write(T record, int timeoutInMillis) throws TimeoutException {
+    public void doWrite(T record, int timeoutInMillis) throws TimeoutException {
         try {
             boolean isSuccess = blockingQueue.offer(record, timeoutInMillis, TimeUnit.MILLISECONDS);
             if (!isSuccess) {
@@ -99,7 +101,7 @@ public class BlockingBuffer<T extends Record<?>> implements Buffer<T> {
      * @return The earliest batch of records in the buffer which are still not read.
      */
     @Override
-    public Collection<T> read(int timeoutInMillis) {
+    public Collection<T> doRead(int timeoutInMillis) {
         final List<T> records = new ArrayList<>();
         final Stopwatch stopwatch = Stopwatch.createStarted();
         try {

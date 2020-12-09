@@ -58,7 +58,7 @@ public class AbstractPrepperTest {
         }
 
         @Override
-        Collection<Record<String>> doExecute(Collection<Record<String>> records) {
+        public Collection<Record<String>> doExecute(Collection<Record<String>> records) {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {

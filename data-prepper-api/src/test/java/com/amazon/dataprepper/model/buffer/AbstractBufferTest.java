@@ -80,9 +80,7 @@ public class AbstractBufferTest {
         final String bufferName = "testBuffer";
         final String pipelineName = "pipelineName";
         MetricsTestUtil.initMetrics();
-        PluginSetting pluginSetting = new PluginSetting(bufferName, Collections.emptyMap());
-        pluginSetting.setPipelineName(pipelineName);
-        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferNpeImpl(pluginSetting);
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferNpeImpl(bufferName, pipelineName);
         Assert.assertThrows(NullPointerException.class, () -> abstractBuffer.write(new Record<>(UUID.randomUUID().toString()), 1000));
     }
 
@@ -90,6 +88,11 @@ public class AbstractBufferTest {
         private final Queue<Record<String>> queue;
         public AbstractBufferImpl(PluginSetting pluginSetting) {
             super(pluginSetting);
+            queue = new LinkedList<>();
+        }
+
+        public AbstractBufferImpl(final String name, final String pipelineName) {
+            super(name, pipelineName);
             queue = new LinkedList<>();
         }
 
@@ -132,8 +135,8 @@ public class AbstractBufferTest {
     }
 
     public static class AbstractBufferNpeImpl extends AbstractBufferImpl {
-        public AbstractBufferNpeImpl(PluginSetting pluginSetting) {
-            super(pluginSetting);
+        public AbstractBufferNpeImpl(final String name, final String pipelineName) {
+            super(name, pipelineName);
         }
 
         @Override

@@ -12,7 +12,16 @@ public class PluginMetrics {
     private final String metricsPrefix;
 
     public static PluginMetrics fromPluginSetting(final PluginSetting pluginSetting) {
-        return new PluginMetrics(getPrefix(pluginSetting));
+        if(pluginSetting.getPipelineName() == null) {
+            throw new IllegalArgumentException("PluginSetting.pipelineName must not be null");
+        }
+        return PluginMetrics.fromNames(pluginSetting.getName(), pluginSetting.getPipelineName());
+    }
+
+    public static PluginMetrics fromNames(final String name, final String pipelineName) {
+        return new PluginMetrics(new StringJoiner(MetricNames.DELIMITER)
+                .add(pipelineName)
+                .add(name).toString());
     }
 
     private  PluginMetrics(final String metricsPrefix) {
@@ -33,15 +42,6 @@ public class PluginMetrics {
 
     public <T extends Number> T gauge(final String name, T number) {
         return Metrics.gauge(name, number);
-    }
-
-    private static String getPrefix(final PluginSetting pluginSetting) {
-        if(pluginSetting.getPipelineName() == null) {
-            throw new IllegalArgumentException("PluginSetting.pipelineName must not be null");
-        }
-        return new StringJoiner(MetricNames.DELIMITER)
-                .add(pluginSetting.getPipelineName())
-                .add(pluginSetting.getName()).toString();
     }
 
     private String getMeterName(final String name) {

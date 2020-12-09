@@ -46,5 +46,5 @@ public abstract class AbstractPrepper<InputRecord extends Record<?>, OutputRecor
      * @param records Input records
      * @return Processed records
      */
-    abstract Collection<OutputRecord> doExecute(Collection<InputRecord> records);
+    public abstract Collection<OutputRecord> doExecute(Collection<InputRecord> records);
 }

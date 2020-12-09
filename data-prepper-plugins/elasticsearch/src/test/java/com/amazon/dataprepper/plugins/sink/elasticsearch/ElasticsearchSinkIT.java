@@ -233,7 +233,9 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
       metadata.put(ConnectionConfiguration.PASSWORD, password);
     }
 
-    return new PluginSetting("elasticsearch", metadata);
+    final PluginSetting pluginSetting = new PluginSetting("elasticsearch", metadata);
+    pluginSetting.setPipelineName("integTestPipeline");
+    return pluginSetting;
   }
 
   private Record<String> generateCustomRecord(final String idField, final String documentId) throws IOException {
