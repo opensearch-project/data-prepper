@@ -15,7 +15,7 @@ docker-compose up -d
 ```
 
 
-* Wait for 5 mins, this is because we spin up multiple python services, elasticsearch and kibana. 
+* Wait for 5 mins, this is because we spin up multiple python services, elasticsearch and kibana. The DataPrepper will restart till elasticsearch becomes available.
 
 * Navigate to localhost:8089
 

@@ -10,7 +10,7 @@ This demo will use the revered Jaeger Hotrod app. The purpose of this demo is to
 docker-compose up -d --build
 ``` 
 
-The above command will start the Jaeger Hotrod sample, Jaeger Agent, OpenTelemetry Collector, Data Prepper, ODFE and Kibana.
+The above command will start the Jaeger Hotrod sample, Jaeger Agent, OpenTelemetry Collector, Data Prepper, ODFE and Kibana. Wait for few minutes for all the containers to come up, the DataPrepper will restart till elasticsearch becomes available.
 
 After successful start, 
 
