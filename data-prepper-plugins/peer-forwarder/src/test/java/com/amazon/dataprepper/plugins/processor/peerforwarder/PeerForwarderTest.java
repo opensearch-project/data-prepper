@@ -40,17 +40,17 @@ import static org.powermock.api.mockito.PowerMockito.spy;
 public class PeerForwarderTest {
     private static final String LOCAL_IP = "127.0.0.1";
     private static final Span SPAN_1 = Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceId1")).setSpanId(ByteString.copyFromUtf8("spanId1")).build();
+            .setTraceId(ByteString.copyFromUtf8("traceIdA")).setSpanId(ByteString.copyFromUtf8("spanId1")).build();
     private static final Span SPAN_2 = Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceId1")).setSpanId(ByteString.copyFromUtf8("spanId2")).build();
+            .setTraceId(ByteString.copyFromUtf8("traceIdA")).setSpanId(ByteString.copyFromUtf8("spanId2")).build();
     private static final Span SPAN_3 = Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceId1")).setSpanId(ByteString.copyFromUtf8("spanId3")).build();
+            .setTraceId(ByteString.copyFromUtf8("traceIdA")).setSpanId(ByteString.copyFromUtf8("spanId3")).build();
     private static final Span SPAN_4 = Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceId2")).setSpanId(ByteString.copyFromUtf8("spanId4")).build();
+            .setTraceId(ByteString.copyFromUtf8("traceIdB")).setSpanId(ByteString.copyFromUtf8("spanId4")).build();
     private static final Span SPAN_5 = Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceId2")).setSpanId(ByteString.copyFromUtf8("spanId5")).build();
+            .setTraceId(ByteString.copyFromUtf8("traceIdB")).setSpanId(ByteString.copyFromUtf8("spanId5")).build();
     private static final Span SPAN_6 = Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceId2")).setSpanId(ByteString.copyFromUtf8("spanId6")).build();
+            .setTraceId(ByteString.copyFromUtf8("traceIdB")).setSpanId(ByteString.copyFromUtf8("spanId6")).build();
 
     private static final ExportTraceServiceRequest REQUEST_1 = generateRequest(SPAN_1, SPAN_2, SPAN_4);
     private static final ExportTraceServiceRequest REQUEST_2 = generateRequest(SPAN_3, SPAN_5, SPAN_6);

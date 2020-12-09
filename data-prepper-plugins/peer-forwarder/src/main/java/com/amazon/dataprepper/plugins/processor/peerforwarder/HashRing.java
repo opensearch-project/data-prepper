@@ -2,7 +2,10 @@ package com.amazon.dataprepper.plugins.processor.peerforwarder;
 
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.NotThreadSafe;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -16,9 +19,10 @@ import java.util.zip.Checksum;
 
 @NotThreadSafe
 public class HashRing {
+    private static final String MD5 = "MD5";
     private final List<String> serverIps = new ArrayList<>();
     private final int numVirtualNodes;
-    private final TreeMap<Long, String> virtualNodes = new TreeMap<>();
+    private final TreeMap<BigInteger, String> virtualNodes = new TreeMap<>();
 
     public HashRing(final List<String> serverIps, final int numVirtualNodes) {
         Objects.requireNonNull(serverIps);
@@ -35,14 +39,20 @@ public class HashRing {
     private void addServerIp(final String serverIp) {
         serverIps.add(serverIp);
         final byte[] serverIpInBytes = serverIp.getBytes();
-        final Checksum crc32 = new CRC32();
+        final MessageDigest md;
+        try {
+            md = MessageDigest.getInstance(MD5);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
         final ByteBuffer intBuffer = ByteBuffer.allocate(4);
         for (int i = 0; i < numVirtualNodes; i++) {
-            crc32.update(serverIpInBytes, 0, serverIpInBytes.length);
+            md.update(serverIpInBytes);
             intBuffer.putInt(i);
-            crc32.update(intBuffer.array(), 0, intBuffer.array().length);
-            virtualNodes.putIfAbsent(crc32.getValue(), serverIp);
-            crc32.reset();
+            md.update(intBuffer.array());
+            final BigInteger hashcode = new BigInteger(md.digest());
+            virtualNodes.putIfAbsent(hashcode, serverIp);
+            md.reset();
             intBuffer.clear();
         }
     }
@@ -52,11 +62,16 @@ public class HashRing {
             return Optional.empty();
         }
         final byte[] traceIdInBytes = traceId.getBytes();
-        final Checksum crc32 = new CRC32();
-        crc32.update(traceIdInBytes, 0, traceIdInBytes.length);
-        final long hashcode = crc32.getValue();
+        final MessageDigest md;
+        try {
+            md = MessageDigest.getInstance(MD5);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+        md.update(traceIdInBytes);
+        final BigInteger hashcode = new BigInteger(md.digest());
         // obtain Map.Entry with key greater than the hashcode
-        final Map.Entry<Long, String> entry = virtualNodes.higherEntry(hashcode);
+        final Map.Entry<BigInteger, String> entry = virtualNodes.higherEntry(hashcode);
         if (entry == null) {
             // return first node if no key is greater than the hashcode
             return Optional.of(virtualNodes.firstEntry().getValue());
