@@ -79,7 +79,7 @@ public class PeerForwarderTest {
     public void testLocalIpOnly() {
         final PeerForwarder testPeerForwarder = generatePeerForwarder(Collections.singletonList(LOCAL_IP), 2);
         final List<Record<ExportTraceServiceRequest>> exportedRecords =
-                testPeerForwarder.execute(Arrays.asList(new Record<>(REQUEST_1), new Record<>(REQUEST_2)));
+                testPeerForwarder.doExecute(Arrays.asList(new Record<>(REQUEST_1), new Record<>(REQUEST_2)));
         Assert.assertTrue(exportedRecords.size() >= 3);
         final List<ResourceSpans> exportedResourceSpans = new ArrayList<>();
         for (final Record<ExportTraceServiceRequest> record: exportedRecords) {
@@ -133,7 +133,7 @@ public class PeerForwarderTest {
                 any(ExportTraceServiceRequest.class),
                 any(List.class));
 
-        testPeerForwarder.execute(Arrays.asList(new Record<>(REQUEST_1), new Record<>(REQUEST_2)));
+        testPeerForwarder.doExecute(Arrays.asList(new Record<>(REQUEST_1), new Record<>(REQUEST_2)));
 
         final List<ResourceSpans> expectedLocalResourceSpans = Arrays.asList(
                 generateResourceSpans(SPAN_1, SPAN_2),
@@ -177,7 +177,7 @@ public class PeerForwarderTest {
                 any(ExportTraceServiceRequest.class),
                 any(List.class));
 
-        testPeerForwarder.execute(Collections.singletonList(new Record<>(REQUEST_3)));
+        testPeerForwarder.doExecute(Collections.singletonList(new Record<>(REQUEST_3)));
 
         final List<ResourceSpans> expectedLocalResourceSpans = Collections.singletonList(
                 generateResourceSpans(SPAN_1, SPAN_2, SPAN_3));
@@ -211,7 +211,7 @@ public class PeerForwarderTest {
                 any(ExportTraceServiceRequest.class),
                 any(List.class));
 
-        testPeerForwarder.execute(Collections.singletonList(new Record<>(REQUEST_4)));
+        testPeerForwarder.doExecute(Collections.singletonList(new Record<>(REQUEST_4)));
 
         final List<ResourceSpans> expectedForwardedResourceSpans = Collections.singletonList(
                 generateResourceSpans(SPAN_4, SPAN_5, SPAN_6));
@@ -242,6 +242,6 @@ public class PeerForwarderTest {
         settings.put(PeerForwarderConfig.DATA_PREPPER_IPS, dataPrepperIps);
         settings.put(PeerForwarderConfig.MAX_NUM_SPANS_PER_REQUEST, spansPerRequest);
         settings.put(PeerForwarderConfig.TIME_OUT, 300);
-        return new PeerForwarder(new PluginSetting("peer_forwarder", settings));
+        return new PeerForwarder(new PluginSetting("peer_forwarder", settings) {{setPipelineName("testPipeline");}});
     }
 }

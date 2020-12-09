@@ -3,7 +3,7 @@ package com.amazon.dataprepper.plugins.processor.peerforwarder;
 import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.processor.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.linecorp.armeria.client.Clients;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @DataPrepperPlugin(name = "peer_forwarder", type = PluginType.PROCESSOR)
-public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest>, Record<ExportTraceServiceRequest>> {
+public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<ExportTraceServiceRequest>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarder.class);
 
@@ -56,6 +56,7 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
     }
 
     public PeerForwarder(final PluginSetting pluginSetting) {
+        super(pluginSetting);
         peerForwarderConfig = PeerForwarderConfig.buildConfig(pluginSetting);
         dataPrepperIps = new ArrayList<>(new HashSet<>(peerForwarderConfig.getDataPrepperIps()));
         peerClients = dataPrepperIps.stream().filter(ip -> !isAddressDefinedLocally(ip))
@@ -71,7 +72,7 @@ public class PeerForwarder implements Processor<Record<ExportTraceServiceRequest
     }
 
     @Override
-    public List<Record<ExportTraceServiceRequest>> execute(final Collection<Record<ExportTraceServiceRequest>> records) {
+    public List<Record<ExportTraceServiceRequest>> doExecute(final Collection<Record<ExportTraceServiceRequest>> records) {
         final Map<String, List<ResourceSpans>> groupedRS = new HashMap<>();
         for (final String dataPrepperIp: dataPrepperIps) {
             groupedRS.put(dataPrepperIp, new ArrayList<>());
