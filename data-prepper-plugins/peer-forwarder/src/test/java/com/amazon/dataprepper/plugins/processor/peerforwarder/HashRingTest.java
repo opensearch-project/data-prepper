@@ -1,51 +1,89 @@
 package com.amazon.dataprepper.plugins.processor.peerforwarder;
 
-import org.junit.Assert;
+import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.PeerListProvider;
+import org.junit.Before;
 import org.junit.Test;
-import org.powermock.reflect.Whitebox;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.TreeMap;
+import java.util.Optional;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.when;
+
+@RunWith(MockitoJUnitRunner.class)
 public class HashRingTest {
-    public static final String TEST_TRACE_ID_1 = "10";
-    public static final String TEST_TRACE_ID_2 = "20";
+    private static final List<String> SERVER_IPS = Arrays.asList(
+            "10.10.0.1",
+            "10.10.0.2",
+            "10.10.0.3",
+            "10.10.0.4",
+            "10.10.0.5");
+    private static final String TRACE_ID_1 = "TRACE_1";
+    private static final String TRACE_ID_2 = "TRACE_2";
+    private static final int SINGLE_VIRTUAL_NODE_COUNT = 1;
+    private static final int MULTIPLE_VIRTUAL_NODE_COUNT = 100;
 
-    @Test
-    public void testListServerIps() {
-        final List<String> testServerIps = Arrays.asList("20", "30", "10");
-        final HashRing hashRing = new HashRing(testServerIps, 1);
-        Assert.assertEquals(testServerIps, hashRing.getServerIps());
+    @Mock
+    private PeerListProvider peerListProvider;
+
+    private HashRing sut;
+
+    @Before
+    public void setup() {
+        when(peerListProvider.getPeerList()).thenReturn(SERVER_IPS);
     }
 
     @Test
-    public void testGetServerIpSingleVirtualNode() {
-        List<String> testServerIps = Arrays.asList("20", "30", "10");
-        HashRing hashRing = new HashRing(testServerIps, 1);
-        // Check indeed alternating serverIps for different inputs
-        final String serverIp1 = hashRing.getServerIp(TEST_TRACE_ID_1).orElse("");
-        final String serverIp2 = hashRing.getServerIp(TEST_TRACE_ID_2).orElse("");
-        Assert.assertNotEquals(serverIp1, serverIp2);
-        // Duplicate and reorder the input serverIps
-        testServerIps = Arrays.asList("10", "10", "20", "30");
-        hashRing = new HashRing(testServerIps, 1);
-        // Check hash results do not depend on input order
-        final String serverIp3 = hashRing.getServerIp(TEST_TRACE_ID_1).orElse("");
-        final String serverIp4 = hashRing.getServerIp(TEST_TRACE_ID_2).orElse("");
-        Assert.assertEquals(serverIp1, serverIp3);
-        Assert.assertEquals(serverIp2, serverIp4);
+    public void testGetServerIpSingleNodeSameTraceIds() {
+        sut = new HashRing(peerListProvider, SINGLE_VIRTUAL_NODE_COUNT);
+
+        Optional<String> result1 = sut.getServerIp(TRACE_ID_1);
+        Optional<String> result2 = sut.getServerIp(TRACE_ID_1);
+
+        assertTrue(result1.isPresent());
+        assertTrue(result2.isPresent());
+        assertEquals(result1.get(), result2.get());
     }
 
     @Test
-    public void testGetServerIpMultipleVirtualNode() {
-        final List<String> testServerIps = Collections.singletonList("127.0.0.1");
-        final HashRing hashRing = new HashRing(testServerIps, 3);
-        Assert.assertEquals(testServerIps, hashRing.getServerIps());
-        final TreeMap<Long, String> virtualNodes = Whitebox.getInternalState(hashRing, "virtualNodes");
-        Assert.assertEquals(3, virtualNodes.size());
-        final String serverIp = hashRing.getServerIp(TEST_TRACE_ID_1).orElse("");
-        Assert.assertEquals("127.0.0.1", serverIp);
+    public void testGetServerIpSingleNodeDifferentTraceIds() {
+        sut = new HashRing(peerListProvider, SINGLE_VIRTUAL_NODE_COUNT);
+
+        Optional<String> result1 = sut.getServerIp(TRACE_ID_1);
+        Optional<String> result2 = sut.getServerIp(TRACE_ID_2);
+
+        assertTrue(result1.isPresent());
+        assertTrue(result2.isPresent());
+        assertNotEquals(result1.get(), result2.get());
+    }
+
+    @Test
+    public void testGetServerIpMultipleNodesSameTraceIds() {
+        sut = new HashRing(peerListProvider, MULTIPLE_VIRTUAL_NODE_COUNT);
+
+        Optional<String> result1 = sut.getServerIp(TRACE_ID_1);
+        Optional<String> result2 = sut.getServerIp(TRACE_ID_1);
+
+        assertTrue(result1.isPresent());
+        assertTrue(result2.isPresent());
+        assertEquals(result1.get(), result2.get());
+    }
+
+    @Test
+    public void testGetServerIpMultipleDifferentTraceIds() {
+        sut = new HashRing(peerListProvider, MULTIPLE_VIRTUAL_NODE_COUNT);
+
+        Optional<String> result1 = sut.getServerIp(TRACE_ID_1);
+        Optional<String> result2 = sut.getServerIp(TRACE_ID_2);
+
+        assertTrue(result1.isPresent());
+        assertTrue(result2.isPresent());
+        assertNotEquals(result1.get(), result2.get());
     }
 }

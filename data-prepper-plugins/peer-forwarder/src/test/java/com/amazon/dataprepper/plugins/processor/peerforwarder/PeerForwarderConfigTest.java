@@ -23,7 +23,6 @@ public class PeerForwarderConfigTest {
         final PeerForwarderConfig peerForwarderConfig = PeerForwarderConfig.buildConfig(
                 new PluginSetting("peer_forwarder", settings));
 
-        Assert.assertEquals(testPeerIps, peerForwarderConfig.getDataPrepperIps());
         Assert.assertEquals(testNumSpansPerRequest, peerForwarderConfig.getMaxNumSpansPerRequest());
         Assert.assertEquals(testTimeout, peerForwarderConfig.getTimeOut());
     }

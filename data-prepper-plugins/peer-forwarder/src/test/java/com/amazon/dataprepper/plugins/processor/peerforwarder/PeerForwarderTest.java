@@ -239,6 +239,7 @@ public class PeerForwarderTest {
 
     private PeerForwarder generatePeerForwarder(final List<String> dataPrepperIps, final int spansPerRequest) {
         final HashMap<String, Object> settings = new HashMap<>();
+        settings.put(PeerForwarderConfig.DISCOVERY_MODE, "STATIC");
         settings.put(PeerForwarderConfig.DATA_PREPPER_IPS, dataPrepperIps);
         settings.put(PeerForwarderConfig.MAX_NUM_SPANS_PER_REQUEST, spansPerRequest);
         settings.put(PeerForwarderConfig.TIME_OUT, 300);
