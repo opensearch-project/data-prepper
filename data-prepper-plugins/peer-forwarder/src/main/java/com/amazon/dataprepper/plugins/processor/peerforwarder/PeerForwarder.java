@@ -19,7 +19,6 @@ import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -36,6 +35,8 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
     private final List<String> dataPrepperIps;
 
     private final Map<String, TraceServiceGrpc.TraceServiceBlockingStub> peerClients;
+
+    private final HashRing hashRing;
 
     public static boolean isAddressDefinedLocally(final String address) {
         final InetAddress inetAddress;
@@ -61,7 +62,7 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
         dataPrepperIps = new ArrayList<>(new HashSet<>(peerForwarderConfig.getDataPrepperIps()));
         peerClients = dataPrepperIps.stream().filter(ip -> !isAddressDefinedLocally(ip))
                 .collect(Collectors.toMap(ip-> ip, ip-> createGRPCClient(ip)));
-        Collections.sort(dataPrepperIps);
+        hashRing = new HashRing(dataPrepperIps, PeerForwarderConfig.NUM_VIRTUAL_NODES);
     }
 
     private TraceServiceGrpc.TraceServiceBlockingStub createGRPCClient(final String ipAddress) {
@@ -85,8 +86,7 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
                 for (final Map.Entry<String, ResourceSpans> entry: rsBatch) {
                     final String traceId = entry.getKey();
                     final ResourceSpans newRS = entry.getValue();
-                    final String dataPrepperIp = getHostByConsistentHashing(traceId);
-                    groupedRS.get(dataPrepperIp).add(newRS);
+                    hashRing.getServerIp(traceId).ifPresent(dataPrepperIp -> groupedRS.get(dataPrepperIp).add(newRS));
                 }
             }
         }
@@ -135,10 +135,5 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
         } else {
             localBuffer.add(new Record<>(request));
         }
-    }
-
-    private String getHostByConsistentHashing(final String traceId) {
-        // TODO: better consistent hashing algorithm, e.g. ring hashing
-        return dataPrepperIps.get(Math.abs(traceId.hashCode()) % dataPrepperIps.size());
     }
 }

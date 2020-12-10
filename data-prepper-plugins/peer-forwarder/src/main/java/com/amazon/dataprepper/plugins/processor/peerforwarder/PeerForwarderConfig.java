@@ -11,6 +11,7 @@ public class PeerForwarderConfig {
     public static final String DATA_PREPPER_IPS = "data_prepper_ips";
     public static final String TIME_OUT = "time_out";
     public static final String MAX_NUM_SPANS_PER_REQUEST = "span_agg_count";
+    public static final int NUM_VIRTUAL_NODES = 10;
 
     private final List<String> dataPrepperIps;
 
