@@ -84,7 +84,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    void testHttp() throws InvalidProtocolBufferException {
+    void testHttpFullJson() throws InvalidProtocolBufferException {
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
                         .authority("127.0.0.1:21890")
@@ -95,10 +95,51 @@ public class OTelTraceSourceTest {
                 HttpData.copyOf(JsonFormat.printer().print(SUCCESS_REQUEST).getBytes()))
                 .aggregate()
                 .whenComplete((i, ex) -> {
-                    //Http is not allowed, so 415 is expected
                     assertThat(i.status().code()).isEqualTo(415);
                 }).join();
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("127.0.0.1:21890")
+                        .method(HttpMethod.POST)
+                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
+                        .contentType(MediaType.JSON_UTF_8)
+                        .build(),
+                HttpData.copyOf(JsonFormat.printer().print(FAILURE_REQUEST).getBytes()))
+                .aggregate()
+                .whenComplete((i, ex) -> {
+                    assertThat(i.status().code()).isEqualTo(415);
+                    //validateBuffer();
+                }).join();
 
+    }
+
+    @Test
+    void testHttpFullBytes() {
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("127.0.0.1:21890")
+                        .method(HttpMethod.POST)
+                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
+                        .contentType(MediaType.PROTOBUF)
+                        .build(),
+                HttpData.copyOf(SUCCESS_REQUEST.toByteArray()))
+                .aggregate()
+                .whenComplete((i, ex) -> {
+                    assertThat(i.status().code()).isEqualTo(415);
+                }).join();
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("127.0.0.1:21890")
+                        .method(HttpMethod.POST)
+                        .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
+                        .contentType(MediaType.PROTOBUF)
+                        .build(),
+                HttpData.copyOf(FAILURE_REQUEST.toByteArray()))
+                .aggregate()
+                .whenComplete((i, ex) -> {
+                    assertThat(i.status().code()).isEqualTo(415);
+                    //validateBuffer();
+                }).join();
     }
 
     @Test
