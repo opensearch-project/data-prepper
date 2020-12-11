@@ -1,43 +1,67 @@
 package com.amazon.dataprepper.plugins.processor.peerforwarder;
 
-import javax.annotation.Nonnull;
+import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.PeerListProvider;
+
 import javax.annotation.concurrent.NotThreadSafe;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeMap;
-import java.util.zip.CRC32;
-import java.util.zip.Checksum;
 
 @NotThreadSafe
 public class HashRing {
     private static final String MD5 = "MD5";
-    private final List<String> serverIps = new ArrayList<>();
-    private final int numVirtualNodes;
-    private final TreeMap<BigInteger, String> virtualNodes = new TreeMap<>();
 
-    public HashRing(final List<String> serverIps, final int numVirtualNodes) {
-        Objects.requireNonNull(serverIps);
+    private final int numVirtualNodes;
+    private final PeerListProvider peerListProvider;
+
+    private TreeMap<BigInteger, String> hashServerMap = new TreeMap<>();
+
+    public HashRing(final PeerListProvider peerListProvider, final int numVirtualNodes) {
+        Objects.requireNonNull(peerListProvider);
+        this.peerListProvider = peerListProvider;
         this.numVirtualNodes = numVirtualNodes;
-        for (final String serverIp: serverIps) {
-            addServerIp(serverIp);
+
+        buildHashServerMap();
+    }
+
+    public Optional<String> getServerIp(final String traceId) {
+        if (hashServerMap.isEmpty()) {
+            return Optional.empty();
+        }
+        final byte[] traceIdInBytes = traceId.getBytes();
+        final MessageDigest md;
+        try {
+            md = MessageDigest.getInstance(MD5);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+        md.update(traceIdInBytes);
+        final BigInteger hashcode = new BigInteger(md.digest());
+        // obtain Map.Entry with key greater than the hashcode
+        final Map.Entry<BigInteger, String> entry = hashServerMap.higherEntry(hashcode);
+        if (entry == null) {
+            // return first node if no key is greater than the hashcode
+            return Optional.of(hashServerMap.firstEntry().getValue());
+        } else {
+            return Optional.of(entry.getValue());
         }
     }
 
-    public List<String> getServerIps() {
-        return serverIps;
+    private void buildHashServerMap() {
+        final TreeMap<BigInteger, String> newHashValueMap = new TreeMap<>();
+        for (final String serverIp : peerListProvider.getPeerList()) {
+            addServerIpToHashMap(serverIp, newHashValueMap);
+        }
+
+        this.hashServerMap = newHashValueMap;
     }
 
-    private void addServerIp(final String serverIp) {
-        serverIps.add(serverIp);
+    private void addServerIpToHashMap(final String serverIp, final Map<BigInteger, String> targetMap) {
         final byte[] serverIpInBytes = serverIp.getBytes();
         final MessageDigest md;
         try {
@@ -51,32 +75,9 @@ public class HashRing {
             intBuffer.putInt(i);
             md.update(intBuffer.array());
             final BigInteger hashcode = new BigInteger(md.digest());
-            virtualNodes.putIfAbsent(hashcode, serverIp);
+            targetMap.putIfAbsent(hashcode, serverIp);
             md.reset();
             intBuffer.clear();
-        }
-    }
-
-    public Optional<String> getServerIp(final String traceId) {
-        if (virtualNodes.isEmpty()) {
-            return Optional.empty();
-        }
-        final byte[] traceIdInBytes = traceId.getBytes();
-        final MessageDigest md;
-        try {
-            md = MessageDigest.getInstance(MD5);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
-        }
-        md.update(traceIdInBytes);
-        final BigInteger hashcode = new BigInteger(md.digest());
-        // obtain Map.Entry with key greater than the hashcode
-        final Map.Entry<BigInteger, String> entry = virtualNodes.higherEntry(hashcode);
-        if (entry == null) {
-            // return first node if no key is greater than the hashcode
-            return Optional.of(virtualNodes.firstEntry().getValue());
-        } else {
-            return Optional.of(entry.getValue());
         }
     }
 }
