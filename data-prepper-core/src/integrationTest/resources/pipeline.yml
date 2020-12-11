@@ -1,6 +1,9 @@
 entry-pipeline:
   source:
     otel_trace_source:
+  processor:
+    - peer_forwarder:
+        data_prepper_ips: ["data-prepper1", "data-prepper2"]
   sink:
     - pipeline:
         name: "raw-pipeline"

@@ -6,12 +6,14 @@ import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.linecorp.armeria.client.Clients;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
@@ -35,10 +37,12 @@ import org.junit.Test;
 import static org.awaitility.Awaitility.await;
 
 public class EndToEndServiceMapTest {
-    private static final List<ServiceMapTestData> testDataSet1 = Arrays.asList(
-            ServiceMapTestData.DATA_100, ServiceMapTestData.DATA_200, ServiceMapTestData.DATA_300, ServiceMapTestData.DATA_400,
-            ServiceMapTestData.DATA_500, ServiceMapTestData.DATA_600, ServiceMapTestData.DATA_700, ServiceMapTestData.DATA_800,
-            ServiceMapTestData.DATA_900, ServiceMapTestData.DATA_1000, ServiceMapTestData.DATA_1100);
+    private static final List<ServiceMapTestData> testDataSet11 = Arrays.asList(
+            ServiceMapTestData.DATA_100, ServiceMapTestData.DATA_200, ServiceMapTestData.DATA_500, ServiceMapTestData.DATA_600,
+            ServiceMapTestData.DATA_700, ServiceMapTestData.DATA_1000);
+    private static final List<ServiceMapTestData> testDataSet12 = Arrays.asList(
+            ServiceMapTestData.DATA_300, ServiceMapTestData.DATA_400, ServiceMapTestData.DATA_800,
+            ServiceMapTestData.DATA_900, ServiceMapTestData.DATA_1100);
     private static final List<ServiceMapTestData> testDataSet2 = Arrays.asList(
             ServiceMapTestData.DATA_101, ServiceMapTestData.DATA_201, ServiceMapTestData.DATA_301, ServiceMapTestData.DATA_401,
             ServiceMapTestData.DATA_501);
@@ -47,14 +51,20 @@ public class EndToEndServiceMapTest {
     @Test
     public void testPipelineEndToEnd() throws IOException, InterruptedException {
         // Send test trace group 1
-        final ExportTraceServiceRequest exportTraceServiceRequest1 = getExportTraceServiceRequest(
-                getResourceSpansBatch("ABC", testDataSet1)
+        final ExportTraceServiceRequest exportTraceServiceRequest11 = getExportTraceServiceRequest(
+                getResourceSpansBatch("ABC", testDataSet11)
         );
-        final List<Map<String, Object>> possibleEdges = getPossibleEdges("ABC", testDataSet1);
+        final ExportTraceServiceRequest exportTraceServiceRequest12 = getExportTraceServiceRequest(
+                getResourceSpansBatch("ABC", testDataSet12)
+        );
 
-        sendExportTraceServiceRequestToSource(exportTraceServiceRequest1);
+        sendExportTraceServiceRequestToSource(21890, exportTraceServiceRequest11);
+        sendExportTraceServiceRequestToSource(21891, exportTraceServiceRequest12);
 
         //Verify data in elasticsearch sink
+        final List<ServiceMapTestData> testDataSet1 = Stream.of(testDataSet11, testDataSet12)
+                .flatMap(Collection::stream).collect(Collectors.toList());
+        final List<Map<String, Object>> possibleEdges = getPossibleEdges("ABC", testDataSet1);
         final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
                 Collections.singletonList("https://127.0.0.1:9200"));
         builder.withUsername("admin");
@@ -62,7 +72,7 @@ public class EndToEndServiceMapTest {
         final RestHighLevelClient restHighLevelClient = builder.build().createClient();
 
         // Wait for service map processor by 2 * window_duration
-        Thread.sleep(6000);
+        Thread.sleep(15000);
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(
                 () -> {
                     final List<Map<String, Object>> foundSources = getSourcesFromIndex(restHighLevelClient, SERVICE_MAP_INDEX_NAME);
@@ -73,13 +83,14 @@ public class EndToEndServiceMapTest {
         );
 
         // Resend the same batch of spans (No new edges should be created)
-        sendExportTraceServiceRequestToSource(exportTraceServiceRequest1);
+        sendExportTraceServiceRequestToSource(21890, exportTraceServiceRequest11);
+        sendExportTraceServiceRequestToSource(21891, exportTraceServiceRequest12);
         // Send test trace group 2
         final ExportTraceServiceRequest exportTraceServiceRequest2 = getExportTraceServiceRequest(
                 getResourceSpansBatch("CBA", testDataSet2)
         );
         possibleEdges.addAll(getPossibleEdges("CBA", testDataSet2));
-        sendExportTraceServiceRequestToSource(exportTraceServiceRequest2);
+        sendExportTraceServiceRequestToSource(21891, exportTraceServiceRequest2);
 
         // Wait for service map processor by 2 * window_duration
         Thread.sleep(6000);
@@ -98,9 +109,9 @@ public class EndToEndServiceMapTest {
         restHighLevelClient.indices().refresh(requestAll, RequestOptions.DEFAULT);
     }
 
-    private void sendExportTraceServiceRequestToSource(final ExportTraceServiceRequest request) {
-        Clients.newClient(
-                "gproto+http://127.0.0.1:21891/", TraceServiceGrpc.TraceServiceBlockingStub.class).export(request);
+    private void sendExportTraceServiceRequestToSource(final int port, final ExportTraceServiceRequest request) {
+        Clients.newClient(String.format("gproto+http://127.0.0.1:%d/", port),
+                TraceServiceGrpc.TraceServiceBlockingStub.class).export(request);
     }
 
     private List<Map<String, Object>> getSourcesFromIndex(final RestHighLevelClient restHighLevelClient, final String index) throws IOException {

@@ -110,6 +110,14 @@ task stopDataPrepperDockerContainer2(type: DockerStopContainer) {
     targetContainerId createDataPrepperDockerContainer2.getContainerId()
 }
 
+task removeDataPrepperDockerContainer(type: DockerRemoveContainer) {
+    targetContainerId stopDataPrepperDockerContainer.getContainerId()
+}
+
+task removeDataPrepperDockerContainer2(type: DockerRemoveContainer) {
+    targetContainerId stopDataPrepperDockerContainer2.getContainerId()
+}
+
 /**
  * ODFE Docker tasks
  */
@@ -162,6 +170,7 @@ task rawSpanEndToEndTest(type: Test) {
 
     finalizedBy stopOdfeDockerContainer
     finalizedBy stopDataPrepperDockerContainer
+    finalizedBy removeDataPrepperDockerContainer
     finalizedBy removeDataPrepperNetwork
 }
 
@@ -185,5 +194,7 @@ task serviceMapEndToEndTest(type: Test) {
     finalizedBy stopOdfeDockerContainer
     finalizedBy stopDataPrepperDockerContainer
     finalizedBy stopDataPrepperDockerContainer2
+    finalizedBy removeDataPrepperDockerContainer
+    finalizedBy removeDataPrepperDockerContainer2
     finalizedBy removeDataPrepperNetwork
 }
