@@ -71,7 +71,17 @@ task buildDataPrepperDockerImage(type: DockerBuildImage) {
 task createDataPrepperDockerContainer(type: DockerCreateContainer) {
     dependsOn buildDataPrepperDockerImage
     dependsOn createDataPrepperNetwork
+    containerName = "data-prepper1"
     hostConfig.portBindings = ['21890:21890']
+    hostConfig.network = createDataPrepperNetwork.getNetworkName()
+    targetImageId buildDataPrepperDockerImage.getImageId()
+}
+
+task createDataPrepperDockerContainer2(type: DockerCreateContainer) {
+    dependsOn buildDataPrepperDockerImage
+    dependsOn createDataPrepperNetwork
+    containerName = "data-prepper2"
+    hostConfig.portBindings = ['21891:21890']
     hostConfig.network = createDataPrepperNetwork.getNetworkName()
     targetImageId buildDataPrepperDockerImage.getImageId()
 }
@@ -84,8 +94,20 @@ task startDataPrepperDockerContainer(type: DockerStartContainer) {
     }
 }
 
+task startDataPrepperDockerContainer2(type: DockerStartContainer) {
+    dependsOn createDataPrepperDockerContainer2
+    targetContainerId createDataPrepperDockerContainer2.getContainerId()
+    doLast {
+        sleep(10*1000)
+    }
+}
+
 task stopDataPrepperDockerContainer(type: DockerStopContainer) {
     targetContainerId createDataPrepperDockerContainer.getContainerId()
+}
+
+task stopDataPrepperDockerContainer2(type: DockerStopContainer) {
+    targetContainerId createDataPrepperDockerContainer2.getContainerId()
 }
 
 /**
@@ -147,7 +169,9 @@ task serviceMapEndToEndTest(type: Test) {
     dependsOn build
     dependsOn startOdfeDockerContainer
     dependsOn startDataPrepperDockerContainer
+    dependsOn startDataPrepperDockerContainer2
     startDataPrepperDockerContainer.mustRunAfter 'startOdfeDockerContainer'
+    startDataPrepperDockerContainer2.mustRunAfter 'startOdfeDockerContainer'
 
     description = 'Runs the raw span integration tests.'
     group = 'verification'
@@ -160,5 +184,6 @@ task serviceMapEndToEndTest(type: Test) {
 
     finalizedBy stopOdfeDockerContainer
     finalizedBy stopDataPrepperDockerContainer
+    finalizedBy stopDataPrepperDockerContainer2
     finalizedBy removeDataPrepperNetwork
 }

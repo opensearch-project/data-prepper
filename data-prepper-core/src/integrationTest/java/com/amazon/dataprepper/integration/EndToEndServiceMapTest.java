@@ -100,7 +100,7 @@ public class EndToEndServiceMapTest {
 
     private void sendExportTraceServiceRequestToSource(final ExportTraceServiceRequest request) {
         Clients.newClient(
-                "gproto+http://127.0.0.1:21890/", TraceServiceGrpc.TraceServiceBlockingStub.class).export(request);
+                "gproto+http://127.0.0.1:21891/", TraceServiceGrpc.TraceServiceBlockingStub.class).export(request);
     }
 
     private List<Map<String, Object>> getSourcesFromIndex(final RestHighLevelClient restHighLevelClient, final String index) throws IOException {
