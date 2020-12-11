@@ -3,6 +3,7 @@ entry-pipeline:
     otel_trace_source:
   processor:
     - peer_forwarder:
+        discovery_mode: "static"
         data_prepper_ips: ["data-prepper1", "data-prepper2"]
   sink:
     - pipeline:
