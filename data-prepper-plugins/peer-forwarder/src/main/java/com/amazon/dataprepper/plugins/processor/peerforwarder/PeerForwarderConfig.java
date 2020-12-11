@@ -11,8 +11,8 @@ public class PeerForwarderConfig {
     public static final String MAX_NUM_SPANS_PER_REQUEST = "span_agg_count";
     public static final int NUM_VIRTUAL_NODES = 10;
     public static final String DISCOVERY_MODE = "discovery_mode";
-    public static final String CLUSTER_HOSTNAME = "cluster_hostname";
-    public static final String DATA_PREPPER_IPS = "data_prepper_ips";
+    public static final String HOSTNAME_FOR_DNS_LOOKUP = "hostname_for_dns_lookup";
+    public static final String STATIC_ENDPOINTS = "static_endpoints";
 
     private final HashRing hashRing;
     private final PeerClientPool peerClientPool;
