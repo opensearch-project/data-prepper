@@ -68,7 +68,7 @@ task buildDataPrepperDockerImage(type: DockerBuildImage) {
     images.add("integ-test-pipeline-image")
 }
 
-task createDataPrepperDockerContainer(type: DockerCreateContainer) {
+task createDataPrepper1DockerContainer(type: DockerCreateContainer) {
     dependsOn buildDataPrepperDockerImage
     dependsOn createDataPrepperNetwork
     containerName = "data-prepper1"
@@ -77,7 +77,7 @@ task createDataPrepperDockerContainer(type: DockerCreateContainer) {
     targetImageId buildDataPrepperDockerImage.getImageId()
 }
 
-task createDataPrepperDockerContainer2(type: DockerCreateContainer) {
+task createDataPrepper2DockerContainer(type: DockerCreateContainer) {
     dependsOn buildDataPrepperDockerImage
     dependsOn createDataPrepperNetwork
     containerName = "data-prepper2"
@@ -86,36 +86,36 @@ task createDataPrepperDockerContainer2(type: DockerCreateContainer) {
     targetImageId buildDataPrepperDockerImage.getImageId()
 }
 
-task startDataPrepperDockerContainer(type: DockerStartContainer) {
-    dependsOn createDataPrepperDockerContainer
-    targetContainerId createDataPrepperDockerContainer.getContainerId()
+task startDataPrepper1DockerContainer(type: DockerStartContainer) {
+    dependsOn createDataPrepper1DockerContainer
+    targetContainerId createDataPrepper1DockerContainer.getContainerId()
     doLast {
         sleep(10*1000)
     }
 }
 
-task startDataPrepperDockerContainer2(type: DockerStartContainer) {
-    dependsOn createDataPrepperDockerContainer2
-    targetContainerId createDataPrepperDockerContainer2.getContainerId()
+task startDataPrepper2DockerContainer(type: DockerStartContainer) {
+    dependsOn createDataPrepper2DockerContainer
+    targetContainerId createDataPrepper2DockerContainer.getContainerId()
     doLast {
         sleep(10*1000)
     }
 }
 
-task stopDataPrepperDockerContainer(type: DockerStopContainer) {
-    targetContainerId createDataPrepperDockerContainer.getContainerId()
+task stopDataPrepper1DockerContainer(type: DockerStopContainer) {
+    targetContainerId createDataPrepper1DockerContainer.getContainerId()
 }
 
-task stopDataPrepperDockerContainer2(type: DockerStopContainer) {
-    targetContainerId createDataPrepperDockerContainer2.getContainerId()
+task stopDataPrepper2DockerContainer(type: DockerStopContainer) {
+    targetContainerId createDataPrepper2DockerContainer.getContainerId()
 }
 
-task removeDataPrepperDockerContainer(type: DockerRemoveContainer) {
-    targetContainerId stopDataPrepperDockerContainer.getContainerId()
+task removeDataPrepper1DockerContainer(type: DockerRemoveContainer) {
+    targetContainerId stopDataPrepper1DockerContainer.getContainerId()
 }
 
-task removeDataPrepperDockerContainer2(type: DockerRemoveContainer) {
-    targetContainerId stopDataPrepperDockerContainer2.getContainerId()
+task removeDataPrepper2DockerContainer(type: DockerRemoveContainer) {
+    targetContainerId stopDataPrepper2DockerContainer.getContainerId()
 }
 
 /**
@@ -156,8 +156,8 @@ task stopOdfeDockerContainer(type: DockerStopContainer) {
 task rawSpanEndToEndTest(type: Test) {
     dependsOn build
     dependsOn startOdfeDockerContainer
-    dependsOn startDataPrepperDockerContainer
-    startDataPrepperDockerContainer.mustRunAfter 'startOdfeDockerContainer'
+    dependsOn startDataPrepper1DockerContainer
+    startDataPrepper1DockerContainer.mustRunAfter 'startOdfeDockerContainer'
 
     description = 'Runs the raw span integration tests.'
     group = 'verification'
@@ -169,18 +169,18 @@ task rawSpanEndToEndTest(type: Test) {
     }
 
     finalizedBy stopOdfeDockerContainer
-    finalizedBy stopDataPrepperDockerContainer
-    finalizedBy removeDataPrepperDockerContainer
+    finalizedBy stopDataPrepper1DockerContainer
+    finalizedBy removeDataPrepper1DockerContainer
     finalizedBy removeDataPrepperNetwork
 }
 
 task serviceMapEndToEndTest(type: Test) {
     dependsOn build
     dependsOn startOdfeDockerContainer
-    dependsOn startDataPrepperDockerContainer
-    dependsOn startDataPrepperDockerContainer2
-    startDataPrepperDockerContainer.mustRunAfter 'startOdfeDockerContainer'
-    startDataPrepperDockerContainer2.mustRunAfter 'startOdfeDockerContainer'
+    dependsOn startDataPrepper1DockerContainer
+    dependsOn startDataPrepper2DockerContainer
+    startDataPrepper1DockerContainer.mustRunAfter 'startOdfeDockerContainer'
+    startDataPrepper2DockerContainer.mustRunAfter 'startOdfeDockerContainer'
 
     description = 'Runs the raw span integration tests.'
     group = 'verification'
@@ -192,9 +192,9 @@ task serviceMapEndToEndTest(type: Test) {
     }
 
     finalizedBy stopOdfeDockerContainer
-    finalizedBy stopDataPrepperDockerContainer
-    finalizedBy stopDataPrepperDockerContainer2
-    finalizedBy removeDataPrepperDockerContainer
-    finalizedBy removeDataPrepperDockerContainer2
+    finalizedBy stopDataPrepper1DockerContainer
+    finalizedBy stopDataPrepper2DockerContainer
+    finalizedBy removeDataPrepper1DockerContainer
+    finalizedBy removeDataPrepper2DockerContainer
     finalizedBy removeDataPrepperNetwork
 }
