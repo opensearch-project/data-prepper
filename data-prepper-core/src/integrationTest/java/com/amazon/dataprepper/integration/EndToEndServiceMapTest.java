@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import com.linecorp.armeria.client.Clients;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
@@ -34,9 +35,6 @@ import org.junit.Test;
 import static org.awaitility.Awaitility.await;
 
 public class EndToEndServiceMapTest {
-
-    private final Map<String, ResourceSpans> spanIdToRS = new HashMap<>();
-    private final List<Map<String, Object>> possibleEdges = new ArrayList<>();
     private static final List<ServiceMapTestData> testDataSet1 = Arrays.asList(
             ServiceMapTestData.DATA_100, ServiceMapTestData.DATA_200, ServiceMapTestData.DATA_300, ServiceMapTestData.DATA_400,
             ServiceMapTestData.DATA_500, ServiceMapTestData.DATA_600, ServiceMapTestData.DATA_700, ServiceMapTestData.DATA_800,
@@ -52,6 +50,7 @@ public class EndToEndServiceMapTest {
         final ExportTraceServiceRequest exportTraceServiceRequest1 = getExportTraceServiceRequest(
                 getResourceSpansBatch("ABC", testDataSet1)
         );
+        final List<Map<String, Object>> possibleEdges = getPossibleEdges("ABC", testDataSet1);
 
         sendExportTraceServiceRequestToSource(exportTraceServiceRequest1);
 
@@ -79,6 +78,7 @@ public class EndToEndServiceMapTest {
         final ExportTraceServiceRequest exportTraceServiceRequest2 = getExportTraceServiceRequest(
                 getResourceSpansBatch("CBA", testDataSet2)
         );
+        possibleEdges.addAll(getPossibleEdges("CBA", testDataSet2));
         sendExportTraceServiceRequestToSource(exportTraceServiceRequest2);
 
         // Wait for service map processor by 2 * window_duration
@@ -172,18 +172,26 @@ public class EndToEndServiceMapTest {
                     spanKind
             );
             spansList.add(rs);
-            spanIdToRS.put(spanId, rs);
+        }
+        return spansList;
+    }
+
+    private List<Map<String, Object>> getPossibleEdges(final String traceId, final List<ServiceMapTestData> data) {
+        final Map<String, ServiceMapTestData> spanIdToServiceMapTestData = data.stream()
+                .collect(Collectors.toMap(serviceMapTestData -> serviceMapTestData.spanId, serviceMapTestData -> serviceMapTestData));
+        final List<Map<String, Object>> possibleEdges = new ArrayList<>();
+        for (final ServiceMapTestData currData : data) {
+            final String parentId = currData.parentId;
             if (parentId != null) {
-                ResourceSpans parentRS = spanIdToRS.get(parentId);
-                String parentServiceName = parentRS.getResource().getAttributes(0).getValue().getStringValue();
-                if (!parentServiceName.equals(serviceName)) {
-                    String rootSpanName = getRootSpanName(parentId);
+                final ServiceMapTestData parentData = spanIdToServiceMapTestData.get(parentId);
+                if (parentData != null && !parentData.serviceName.equals(currData.serviceName)) {
+                    String rootSpanName = getRootSpanName(parentId, spanIdToServiceMapTestData);
                     Map<String, Object> destination = new HashMap<>();
-                    destination.put("resource", spanName);
-                    destination.put("domain", serviceName);
+                    destination.put("resource", currData.name);
+                    destination.put("domain", currData.serviceName);
                     Map<String, Object> edge = new HashMap<>();
-                    edge.put("serviceName", parentServiceName);
-                    edge.put("kind", parentRS.getInstrumentationLibrarySpans(0).getSpans(0).getKind().name());
+                    edge.put("serviceName", parentData.serviceName);
+                    edge.put("kind", parentData.spanKind.name());
                     edge.put("traceGroupName", rootSpanName);
                     edge.put("destination", destination);
                     edge.put("target", null);
@@ -191,8 +199,8 @@ public class EndToEndServiceMapTest {
 
                     Map<String, Object> target = new HashMap<>(destination);
                     edge = new HashMap<>();
-                    edge.put("serviceName", serviceName);
-                    edge.put("kind", spanKind.name());
+                    edge.put("serviceName", currData.serviceName);
+                    edge.put("kind", currData.spanKind.name());
                     edge.put("traceGroupName", rootSpanName);
                     edge.put("destination", null);
                     edge.put("target", target);
@@ -200,16 +208,15 @@ public class EndToEndServiceMapTest {
                 }
             }
         }
-        return spansList;
+
+        return possibleEdges;
     }
 
-    private String getRootSpanName(String spanId) {
-        ResourceSpans rs = spanIdToRS.get(spanId);
-        ByteString parentSpanId = rs.getInstrumentationLibrarySpans(0).getSpans(0).getParentSpanId();
-        while (!parentSpanId.isEmpty()) {
-            rs = spanIdToRS.get(parentSpanId.toStringUtf8());
-            parentSpanId = rs.getInstrumentationLibrarySpans(0).getSpans(0).getParentSpanId();
+    private String getRootSpanName(String spanId, final Map<String, ServiceMapTestData> spanIdToServiceMapTestData) {
+        ServiceMapTestData rootServiceMapTestData = spanIdToServiceMapTestData.get(spanId);
+        while (rootServiceMapTestData.parentId != null) {
+            rootServiceMapTestData = spanIdToServiceMapTestData.get(rootServiceMapTestData.parentId);
         }
-        return rs.getInstrumentationLibrarySpans(0).getSpans(0).getName();
+        return rootServiceMapTestData.name;
     }
 }
