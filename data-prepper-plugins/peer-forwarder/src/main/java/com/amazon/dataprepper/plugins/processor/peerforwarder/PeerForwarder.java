@@ -5,7 +5,7 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.processor.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
-import com.linecorp.armeria.client.Clients;
+import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.StaticPeerListProvider;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
@@ -16,91 +16,77 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @DataPrepperPlugin(name = "peer_forwarder", type = PluginType.PROCESSOR)
 public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<ExportTraceServiceRequest>> {
-
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarder.class);
 
-    private final PeerForwarderConfig peerForwarderConfig;
-
-    private final List<String> dataPrepperIps;
-
-    private final Map<String, TraceServiceGrpc.TraceServiceBlockingStub> peerClients;
-
     private final HashRing hashRing;
+    private final PeerClientPool peerClientPool;
+    private final int maxNumSpansPerRequest;
 
-    public static boolean isAddressDefinedLocally(final String address) {
-        final InetAddress inetAddress;
-        try {
-            inetAddress = InetAddress.getByName(address);
-        } catch (UnknownHostException e) {
-            return false;
-        }
-        if (inetAddress.isAnyLocalAddress() || inetAddress.isLoopbackAddress()) {
-            return true;
-        } else {
-            try {
-                return NetworkInterface.getByInetAddress(inetAddress) != null;
-            } catch (SocketException e) {
-                return false;
-            }
-        }
+    public PeerForwarder(final PluginSetting pluginSetting,
+                         final PeerClientPool peerClientPool,
+                         final HashRing hashRing,
+                         final int maxNumSpansPerRequest) {
+        super(pluginSetting);
+        this.peerClientPool = peerClientPool;
+        this.hashRing = hashRing;
+        this.maxNumSpansPerRequest = maxNumSpansPerRequest;
     }
 
     public PeerForwarder(final PluginSetting pluginSetting) {
-        super(pluginSetting);
-        peerForwarderConfig = PeerForwarderConfig.buildConfig(pluginSetting);
-        dataPrepperIps = new ArrayList<>(new HashSet<>(peerForwarderConfig.getDataPrepperIps()));
-        peerClients = dataPrepperIps.stream().filter(ip -> !isAddressDefinedLocally(ip))
-                .collect(Collectors.toMap(ip-> ip, ip-> createGRPCClient(ip)));
-        hashRing = new HashRing(dataPrepperIps, PeerForwarderConfig.NUM_VIRTUAL_NODES);
+        this(pluginSetting, PeerForwarderConfig.buildConfig(pluginSetting));
     }
 
-    private TraceServiceGrpc.TraceServiceBlockingStub createGRPCClient(final String ipAddress) {
-        // TODO: replace hardcoded port with customization
-        return Clients.builder(String.format("gproto+http://%s:21890/", ipAddress))
-                .writeTimeout(Duration.ofSeconds(peerForwarderConfig.getTimeOut()))
-                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
+    public PeerForwarder(final PluginSetting pluginSetting, final PeerForwarderConfig peerForwarderConfig) {
+        this(
+                pluginSetting,
+                peerForwarderConfig.getPeerClientPool(),
+                peerForwarderConfig.getHashRing(),
+                peerForwarderConfig.getMaxNumSpansPerRequest()
+        );
     }
 
     @Override
     public List<Record<ExportTraceServiceRequest>> doExecute(final Collection<Record<ExportTraceServiceRequest>> records) {
         final Map<String, List<ResourceSpans>> groupedRS = new HashMap<>();
-        for (final String dataPrepperIp: dataPrepperIps) {
-            groupedRS.put(dataPrepperIp, new ArrayList<>());
-        }
 
         // Group ResourceSpans by consistent hashing of traceId
-        for (final Record<ExportTraceServiceRequest> record: records) {
-            for (final ResourceSpans rs: record.getData().getResourceSpansList()) {
+        for (final Record<ExportTraceServiceRequest> record : records) {
+            for (final ResourceSpans rs : record.getData().getResourceSpansList()) {
                 final List<Map.Entry<String, ResourceSpans>> rsBatch = PeerForwarderUtils.splitByTrace(rs);
-                for (final Map.Entry<String, ResourceSpans> entry: rsBatch) {
+                for (final Map.Entry<String, ResourceSpans> entry : rsBatch) {
                     final String traceId = entry.getKey();
                     final ResourceSpans newRS = entry.getValue();
-                    hashRing.getServerIp(traceId).ifPresent(dataPrepperIp -> groupedRS.get(dataPrepperIp).add(newRS));
+                    final String dataPrepperIp = hashRing.getServerIp(traceId).orElse(StaticPeerListProvider.LOCAL_ENDPOINT);
+                    groupedRS.computeIfAbsent(dataPrepperIp, x -> new ArrayList<>()).add(newRS);
                 }
             }
         }
 
         // Buffer of requests to be exported to the downstream of the local data-prepper
         final List<Record<ExportTraceServiceRequest>> results = new ArrayList<>();
-        for (final String dataPrepperIp: dataPrepperIps) {
-            final TraceServiceGrpc.TraceServiceBlockingStub client = peerClients.getOrDefault(dataPrepperIp, null);
+
+        for (final Map.Entry<String, List<ResourceSpans>> entry : groupedRS.entrySet()) {
+            final TraceServiceGrpc.TraceServiceBlockingStub client;
+            if (isAddressDefinedLocally(entry.getKey())) {
+                client = null;
+            } else {
+                client = peerClientPool.getClient(entry.getKey());
+            }
+
             // Create ExportTraceRequest for storing single batch of spans
             ExportTraceServiceRequest.Builder currRequestBuilder = ExportTraceServiceRequest.newBuilder();
             int currSpansCount = 0;
-            for (final ResourceSpans rs: groupedRS.get(dataPrepperIp)) {
+            for (final ResourceSpans rs : entry.getValue()) {
                 final int rsSize = PeerForwarderUtils.getResourceSpansSize(rs);
-                if (currSpansCount >= peerForwarderConfig.getMaxNumSpansPerRequest()) {
+                if (currSpansCount >= maxNumSpansPerRequest) {
                     final ExportTraceServiceRequest currRequest = currRequestBuilder.build();
                     // Send the batch request to designated remote peer or ingest into localhost
                     processRequest(client, currRequest, results);
@@ -134,6 +120,24 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
             }
         } else {
             localBuffer.add(new Record<>(request));
+        }
+    }
+
+    private boolean isAddressDefinedLocally(final String address) {
+        final InetAddress inetAddress;
+        try {
+            inetAddress = InetAddress.getByName(address);
+        } catch (UnknownHostException e) {
+            return false;
+        }
+        if (inetAddress.isAnyLocalAddress() || inetAddress.isLoopbackAddress()) {
+            return true;
+        } else {
+            try {
+                return NetworkInterface.getByInetAddress(inetAddress) != null;
+            } catch (SocketException e) {
+                return false;
+            }
         }
     }
 }
