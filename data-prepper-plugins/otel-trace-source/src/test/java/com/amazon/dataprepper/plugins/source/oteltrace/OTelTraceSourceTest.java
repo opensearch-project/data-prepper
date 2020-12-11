@@ -84,7 +84,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    void testHttpn() throws InvalidProtocolBufferException {
+    void testHttp() throws InvalidProtocolBufferException {
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
                         .authority("127.0.0.1:21890")
@@ -95,6 +95,7 @@ public class OTelTraceSourceTest {
                 HttpData.copyOf(JsonFormat.printer().print(SUCCESS_REQUEST).getBytes()))
                 .aggregate()
                 .whenComplete((i, ex) -> {
+                    //Http is not allowed, so 415 is expected
                     assertThat(i.status().code()).isEqualTo(415);
                 }).join();
 
