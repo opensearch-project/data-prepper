@@ -208,25 +208,7 @@ public class EndToEndServiceMapTest {
                 final ServiceMapTestData parentData = spanIdToServiceMapTestData.get(parentId);
                 if (parentData != null && !parentData.serviceName.equals(currData.serviceName)) {
                     String rootSpanName = getRootSpanName(parentId, spanIdToServiceMapTestData);
-                    Map<String, Object> destination = new HashMap<>();
-                    destination.put("resource", currData.name);
-                    destination.put("domain", currData.serviceName);
-                    Map<String, Object> edge = new HashMap<>();
-                    edge.put("serviceName", parentData.serviceName);
-                    edge.put("kind", parentData.spanKind.name());
-                    edge.put("traceGroupName", rootSpanName);
-                    edge.put("destination", destination);
-                    edge.put("target", null);
-                    possibleEdges.add(edge);
-
-                    Map<String, Object> target = new HashMap<>(destination);
-                    edge = new HashMap<>();
-                    edge.put("serviceName", currData.serviceName);
-                    edge.put("kind", currData.spanKind.name());
-                    edge.put("traceGroupName", rootSpanName);
-                    edge.put("destination", null);
-                    edge.put("target", target);
-                    possibleEdges.add(edge);
+                    possibleEdges.addAll(getEdgeMaps(rootSpanName, currData, parentData));
                 }
             }
         }
@@ -240,5 +222,32 @@ public class EndToEndServiceMapTest {
             rootServiceMapTestData = spanIdToServiceMapTestData.get(rootServiceMapTestData.parentId);
         }
         return rootServiceMapTestData.name;
+    }
+
+    private List<Map<String, Object>> getEdgeMaps(
+            final String rootSpanName, final ServiceMapTestData currData, final ServiceMapTestData parentData) {
+        final List<Map<String, Object>> edges = new ArrayList<>();
+
+        Map<String, Object> destination = new HashMap<>();
+        destination.put("resource", currData.name);
+        destination.put("domain", currData.serviceName);
+        Map<String, Object> edge = new HashMap<>();
+        edge.put("serviceName", parentData.serviceName);
+        edge.put("kind", parentData.spanKind.name());
+        edge.put("traceGroupName", rootSpanName);
+        edge.put("destination", destination);
+        edge.put("target", null);
+        edges.add(edge);
+
+        Map<String, Object> target = new HashMap<>(destination);
+        edge = new HashMap<>();
+        edge.put("serviceName", currData.serviceName);
+        edge.put("kind", currData.spanKind.name());
+        edge.put("traceGroupName", rootSpanName);
+        edge.put("destination", null);
+        edge.put("target", target);
+        edges.add(edge);
+
+        return edges;
     }
 }
