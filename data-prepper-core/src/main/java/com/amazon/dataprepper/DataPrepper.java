@@ -2,6 +2,10 @@ package com.amazon.dataprepper;
 
 import com.amazon.dataprepper.parser.PipelineParser;
 import com.amazon.dataprepper.pipeline.Pipeline;
+import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.prometheus.PrometheusConfig;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,10 +19,13 @@ import java.util.Map;
  */
 public class DataPrepper {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepper.class);
+    private static final int SERVER_PORT = 4900;
 
     private Map<String, Pipeline> transformationPipelines;
 
     private static volatile DataPrepper dataPrepper;
+
+    private static DataPrepperServer dataPrepperServer;
 
     public static DataPrepper getInstance() {
         if (dataPrepper == null) {
@@ -34,6 +41,17 @@ public class DataPrepper {
         if (dataPrepper != null) {
             throw new RuntimeException("Please use getInstance() for an instance of this Data Prepper");
         }
+        startPrometheusBackend();
+        dataPrepperServer = new DataPrepperServer(SERVER_PORT);
+        dataPrepperServer.start();
+    }
+
+    /**
+     * Create a PrometheusMeterRegistry for this DataPrepper and register it with the global registry
+     */
+    private static void startPrometheusBackend() {
+        final PrometheusMeterRegistry prometheusMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+        Metrics.addRegistry(prometheusMeterRegistry);
     }
 
     /**
@@ -60,6 +78,7 @@ public class DataPrepper {
         transformationPipelines.forEach((name, pipeline) -> {
             pipeline.shutdown();
         });
+        dataPrepperServer.stop();
     }
 
     /**
