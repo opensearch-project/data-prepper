@@ -1,19 +1,25 @@
 package com.amazon.dataprepper.plugins.processor.peerforwarder;
 
 import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.PeerListProvider;
+import com.linecorp.armeria.client.Endpoint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 
 @NotThreadSafe
-public class HashRing {
+public class HashRing implements Consumer<List<Endpoint>> {
+    private static final Logger LOG = LoggerFactory.getLogger(HashRing.class);
     private static final String MD5 = "MD5";
 
     private final int numVirtualNodes;
@@ -27,6 +33,8 @@ public class HashRing {
         this.numVirtualNodes = numVirtualNodes;
 
         buildHashServerMap();
+
+        peerListProvider.addListener(this);
     }
 
     public Optional<String> getServerIp(final String traceId) {
@@ -52,9 +60,22 @@ public class HashRing {
         }
     }
 
+    @Override
+    public void accept(final List<Endpoint> endpoints) {
+        buildHashServerMap();
+    }
+
+    @Override
+    public Consumer<List<Endpoint>> andThen(final Consumer<? super List<Endpoint>> after) {
+        return null;
+    }
+
     private void buildHashServerMap() {
         final TreeMap<BigInteger, String> newHashValueMap = new TreeMap<>();
-        for (final String serverIp : peerListProvider.getPeerList()) {
+        final List<String> endpoints = peerListProvider.getPeerList();
+
+        LOG.info("Building hash ring with endpoints: {}", endpoints);
+        for (final String serverIp : endpoints) {
             addServerIpToHashMap(serverIp, newHashValueMap);
         }
 

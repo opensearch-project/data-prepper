@@ -1,10 +1,12 @@
 package com.amazon.dataprepper.plugins.processor.peerforwarder.discovery;
 
+import com.linecorp.armeria.client.Endpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class StaticPeerListProvider implements PeerListProvider {
     private static final Logger LOG = LoggerFactory.getLogger(StaticPeerListProvider.class);
@@ -20,11 +22,21 @@ public class StaticPeerListProvider implements PeerListProvider {
             throw new RuntimeException("Peer endpoints list cannot be empty");
         }
 
-        LOG.info("Found endpoints: {}", String.join(",", endpoints));
+        LOG.info("Found endpoints: {}", endpoints);
     }
 
     @Override
     public List<String> getPeerList() {
         return endpoints;
+    }
+
+    @Override
+    public void addListener(final Consumer<? super List<Endpoint>> listener) {
+        // Do nothing - static peer list isn't expected to change
+    }
+
+    @Override
+    public void removeListener(final Consumer<?> listener) {
+        // Do nothing - static peer list isn't expected to change
     }
 }

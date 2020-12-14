@@ -1,5 +1,6 @@
 package com.amazon.dataprepper.plugins.processor.peerforwarder.discovery;
 
+import com.linecorp.armeria.client.Endpoint;
 import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class DnsPeerListProvider implements PeerListProvider {
@@ -33,5 +35,15 @@ public class DnsPeerListProvider implements PeerListProvider {
                 .stream()
                 .map(endpoint -> endpoint.ipAddr())
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public void addListener(final Consumer<? super List<Endpoint>> listener) {
+        endpointGroup.addListener(listener);
+    }
+
+    @Override
+    public void removeListener(final Consumer<?> listener) {
+        endpointGroup.removeListener(listener);
     }
 }
