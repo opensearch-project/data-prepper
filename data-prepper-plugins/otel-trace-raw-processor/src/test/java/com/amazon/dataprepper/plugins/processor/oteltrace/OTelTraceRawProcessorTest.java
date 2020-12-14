@@ -6,6 +6,18 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
+import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.FunctionCounter;
+import io.micrometer.core.instrument.FunctionTimer;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Measurement;
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
+import io.micrometer.core.instrument.distribution.pause.PauseDetector;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -13,17 +25,65 @@ import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.function.ToDoubleFunction;
+import java.util.function.ToLongFunction;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class OTelTraceRawProcessorTest {
 
     private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private final OTelTraceRawProcessor oTelTraceRawProcessor = new OTelTraceRawProcessor(new PluginSetting(null, Collections.EMPTY_MAP));
+    private final OTelTraceRawProcessor oTelTraceRawProcessor = new OTelTraceRawProcessor(new PluginSetting(null, Collections.EMPTY_MAP), new MeterRegistry(Clock.SYSTEM) {
+        @Override
+        protected <T> Gauge newGauge(Meter.Id id, T obj, ToDoubleFunction<T> valueFunction) {
+            return null;
+        }
+
+        @Override
+        protected Counter newCounter(Meter.Id id) {
+            return null;
+        }
+
+        @Override
+        protected Timer newTimer(Meter.Id id, DistributionStatisticConfig distributionStatisticConfig, PauseDetector pauseDetector) {
+            return null;
+        }
+
+        @Override
+        protected DistributionSummary newDistributionSummary(Meter.Id id, DistributionStatisticConfig distributionStatisticConfig, double scale) {
+            return null;
+        }
+
+        @Override
+        protected Meter newMeter(Meter.Id id, Meter.Type type, Iterable<Measurement> measurements) {
+            return null;
+        }
+
+        @Override
+        protected <T> FunctionTimer newFunctionTimer(Meter.Id id, T obj, ToLongFunction<T> countFunction, ToDoubleFunction<T> totalTimeFunction, TimeUnit totalTimeFunctionUnit) {
+            return null;
+        }
+
+        @Override
+        protected <T> FunctionCounter newFunctionCounter(Meter.Id id, T obj, ToDoubleFunction<T> countFunction) {
+            return null;
+        }
+
+        @Override
+        protected TimeUnit getBaseTimeUnit() {
+            return null;
+        }
+
+        @Override
+        protected DistributionStatisticConfig defaultHistogramConfig() {
+            return null;
+        }
+    });
 
     @Test
     public void testEmptyCollection() {
-        assertThat(oTelTraceRawProcessor.execute(Collections.EMPTY_LIST)).isEmpty();
+        assertThat(oTelTraceRawProcessor.doExecute(Collections.EMPTY_LIST)).isEmpty();
     }
 
     @Test
