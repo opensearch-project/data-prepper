@@ -1,6 +1,10 @@
 entry-pipeline:
   source:
     otel_trace_source:
+  processor:
+    - peer_forwarder:
+        discovery_mode: "static"
+        static_endpoints: ["data-prepper1", "data-prepper2"]
   sink:
     - pipeline:
         name: "raw-pipeline"
