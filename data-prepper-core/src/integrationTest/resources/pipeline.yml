@@ -4,7 +4,7 @@ entry-pipeline:
   processor:
     - peer_forwarder:
         discovery_mode: "static"
-        data_prepper_ips: ["data-prepper1", "data-prepper2"]
+        static_endpoints: ["data-prepper1", "data-prepper2"]
   sink:
     - pipeline:
         name: "raw-pipeline"

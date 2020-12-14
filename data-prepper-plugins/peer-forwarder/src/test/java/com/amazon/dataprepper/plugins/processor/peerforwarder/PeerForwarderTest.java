@@ -237,10 +237,10 @@ public class PeerForwarderTest {
         return results;
     }
 
-    private PeerForwarder generatePeerForwarder(final List<String> dataPrepperIps, final int spansPerRequest) {
+    private PeerForwarder generatePeerForwarder(final List<String> staticEndpoints, final int spansPerRequest) {
         final HashMap<String, Object> settings = new HashMap<>();
         settings.put(PeerForwarderConfig.DISCOVERY_MODE, "STATIC");
-        settings.put(PeerForwarderConfig.DATA_PREPPER_IPS, dataPrepperIps);
+        settings.put(PeerForwarderConfig.STATIC_ENDPOINTS, staticEndpoints);
         settings.put(PeerForwarderConfig.MAX_NUM_SPANS_PER_REQUEST, spansPerRequest);
         settings.put(PeerForwarderConfig.TIME_OUT, 300);
         return new PeerForwarder(new PluginSetting("peer_forwarder", settings) {{setPipelineName("testPipeline");}});

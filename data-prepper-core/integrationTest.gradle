@@ -55,6 +55,7 @@ task createDataPrepperDockerFile(type: Dockerfile) {
     destFile = project.file('build/docker/Dockerfile')
     from("adoptopenjdk/openjdk14:jre-14.0.1_7-alpine")
     exposePort(21890)
+    exposePort(4900)
     workingDir("/app")
     copyFile("build/libs/${jar.archiveName}", "/app/data-prepper.jar")
     copyFile("src/integrationTest/resources/pipeline.yml", "/app/pipeline.yml")
@@ -72,7 +73,7 @@ task createDataPrepper1DockerContainer(type: DockerCreateContainer) {
     dependsOn buildDataPrepperDockerImage
     dependsOn createDataPrepperNetwork
     containerName = "data-prepper1"
-    hostConfig.portBindings = ['21890:21890']
+    hostConfig.portBindings = ['21890:21890', '4900:4900']
     hostConfig.network = createDataPrepperNetwork.getNetworkName()
     targetImageId buildDataPrepperDockerImage.getImageId()
 }
@@ -81,7 +82,7 @@ task createDataPrepper2DockerContainer(type: DockerCreateContainer) {
     dependsOn buildDataPrepperDockerImage
     dependsOn createDataPrepperNetwork
     containerName = "data-prepper2"
-    hostConfig.portBindings = ['21891:21890']
+    hostConfig.portBindings = ['21891:21890', '4900:4900']
     hostConfig.network = createDataPrepperNetwork.getNetworkName()
     targetImageId buildDataPrepperDockerImage.getImageId()
 }

@@ -12,12 +12,16 @@ public class DataPrepperServer {
 
     private final HttpServer server;
 
-    public DataPrepperServer(final int port) throws IOException {
-        server = HttpServer.create(
-                new InetSocketAddress(port),
-                0
-        );
-        server.createContext("/metrics/prometheus", new PrometheusMetricsHandler());
+    public DataPrepperServer(final int port) {
+        try {
+            server = HttpServer.create(
+                    new InetSocketAddress(port),
+                    0
+            );
+            server.createContext("/metrics/prometheus", new PrometheusMetricsHandler());
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create server", e);
+        }
     }
 
     /**

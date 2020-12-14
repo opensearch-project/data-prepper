@@ -1,6 +1,7 @@
 package com.amazon.dataprepper.plugins.processor.peerforwarder;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.DiscoveryMode;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -16,7 +17,8 @@ public class PeerForwarderConfigTest {
         final int testNumSpansPerRequest = 2;
         final int testTimeout = 300;
         final HashMap<String, Object> settings = new HashMap<>();
-        settings.put(PeerForwarderConfig.DATA_PREPPER_IPS, testPeerIps);
+        settings.put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.STATIC.toString());
+        settings.put(PeerForwarderConfig.STATIC_ENDPOINTS, testPeerIps);
         settings.put(PeerForwarderConfig.MAX_NUM_SPANS_PER_REQUEST, testNumSpansPerRequest);
         settings.put(PeerForwarderConfig.TIME_OUT, testTimeout);
 
