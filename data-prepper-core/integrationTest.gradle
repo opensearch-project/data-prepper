@@ -82,7 +82,7 @@ task createDataPrepper2DockerContainer(type: DockerCreateContainer) {
     dependsOn buildDataPrepperDockerImage
     dependsOn createDataPrepperNetwork
     containerName = "data-prepper2"
-    hostConfig.portBindings = ['21891:21890', '4900:4900']
+    hostConfig.portBindings = ['21891:21890', '4901:4900']
     hostConfig.network = createDataPrepperNetwork.getNetworkName()
     targetImageId buildDataPrepperDockerImage.getImageId()
 }
