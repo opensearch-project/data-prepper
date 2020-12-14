@@ -13,10 +13,5 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${versionMap.jackson_dataformat_yaml}"
     testImplementation 'org.assertj:assertj-core:3.6.2'
-    testImplementation(platform('org.junit:junit-bom:5.7.0'))
-    testImplementation('org.junit.jupiter:junit-jupiter')
-}
-
-test {
-    useJUnitPlatform()
+    testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
 }
