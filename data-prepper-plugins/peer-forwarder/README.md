@@ -31,4 +31,4 @@ processor:
 * `span_agg_count`: batch size for number of spans per `ExportTraceServiceRequest`. Defaults to 48.
 * `discovery_mode`: peer discovery mode to be used. Allowable values are `static` and `dns`. Defaults to `static`
 * `static_endpoints`: list containing endpoints of all Data Prepper instances
-* `hostname_for_dns_lookup`: single hostname to query DNS against. Typically used by creating multiple A Records for the same domain
+* `hostname_for_dns_lookup`: single hostname to query DNS against. Typically used by creating multiple [DNS A Records] (https://www.cloudflare.com/learning/dns/dns-records/dns-a-record/) for the same domain

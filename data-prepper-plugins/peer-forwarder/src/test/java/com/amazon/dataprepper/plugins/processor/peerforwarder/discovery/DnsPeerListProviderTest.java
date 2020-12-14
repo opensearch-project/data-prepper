@@ -27,13 +27,13 @@ public class DnsPeerListProviderTest {
 
     @Mock
     private DnsAddressEndpointGroup dnsAddressEndpointGroup;
-    @Mock
+
     private CompletableFuture completableFuture;
 
     @Before
-    public void setup() throws Exception {
+    public void setup() {
+        completableFuture = CompletableFuture.completedFuture(null);
         when(dnsAddressEndpointGroup.whenReady()).thenReturn(completableFuture);
-        when(completableFuture.get()).thenReturn(null);
     }
 
     @Test(expected = NullPointerException.class)

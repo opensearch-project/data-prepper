@@ -10,7 +10,6 @@ public class StaticPeerListProvider implements PeerListProvider {
     private static final Logger LOG = LoggerFactory.getLogger(StaticPeerListProvider.class);
 
     public static final String LOCAL_ENDPOINT = "127.0.0.1";
-    public static final List<String> DEFAULT_LIST = Collections.singletonList(LOCAL_ENDPOINT);
 
     private final List<String> endpoints;
 
@@ -18,15 +17,10 @@ public class StaticPeerListProvider implements PeerListProvider {
         if (dataPrepperEndpoints != null && dataPrepperEndpoints.size() > 0) {
             endpoints = Collections.unmodifiableList(dataPrepperEndpoints);
         } else {
-            LOG.warn("No endpoints provided, defaulting to localhost only.");
-            endpoints = DEFAULT_LIST;
+            throw new RuntimeException("Peer endpoints list cannot be empty");
         }
 
         LOG.info("Found endpoints: {}", String.join(",", endpoints));
-    }
-
-    public StaticPeerListProvider() {
-        this(Collections.emptyList());
     }
 
     @Override
