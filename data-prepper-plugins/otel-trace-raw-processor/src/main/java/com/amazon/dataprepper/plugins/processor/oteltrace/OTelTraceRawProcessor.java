@@ -41,15 +41,17 @@ public class OTelTraceRawProcessor extends AbstractPrepper<Record<ExportTraceSer
     private static final BigDecimal SEC_TO_MILLIS = new BigDecimal(1_000);
 
     private static final Logger log = LoggerFactory.getLogger(OTelTraceRawProcessor.class);
-    private final Counter spanCounter;
-    private final Counter resourceSpanCounter;
+    private final Counter spanErrorsCounter;
+    private final Counter resourceSpanErrorsCounter;
+    private double totalProcessingErrors;
 
     //TODO: https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/66
     public OTelTraceRawProcessor(final PluginSetting pluginSetting) {
         super(pluginSetting);
-        spanCounter = this.pluginMetrics.counter("spanCounter");
-        resourceSpanCounter = this.pluginMetrics.counter("resourceSpanCounter");
+        spanErrorsCounter = pluginMetrics.counter("spanProcessingErrors");
+        resourceSpanErrorsCounter = pluginMetrics.counter("resourceSpansProcessingErrors");
     }
+
 
     /**
      * execute the processor logic which could potentially modify the incoming record. The level to which the record has
@@ -74,15 +76,15 @@ public class OTelTraceRawProcessor extends AbstractPrepper<Record<ExportTraceSer
                                         .build().toJson()));
                             } catch (Exception ex) {
                                 log.error("Unable to process invalid Span {}:", sp, ex);
-                                spanCounter.increment();
+                                spanErrorsCounter.increment();
                             }
                         }
                     }
                 } catch (Exception ex) {
                     log.error("Unable to process invalid ResourceSpan {} :", rs, ex);
-                    resourceSpanCounter.increment();
+                    resourceSpanErrorsCounter.increment();
                 }
-
+                totalProcessingErrors = spanErrorsCounter.count() + resourceSpanErrorsCounter.count();
             }
         }
         return finalRecords;
