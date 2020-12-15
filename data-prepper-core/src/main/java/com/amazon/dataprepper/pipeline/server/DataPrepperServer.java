@@ -12,10 +12,8 @@ import com.sun.net.httpserver.HttpServer;
 public class DataPrepperServer {
 
     private final HttpServer server;
-    private final DataPrepper dataPrepper;
 
     public DataPrepperServer(final int port, final DataPrepper dataPrepper) {
-        this.dataPrepper = dataPrepper;
         try {
             server = HttpServer.create(
                     new InetSocketAddress(port),
