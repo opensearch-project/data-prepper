@@ -42,7 +42,7 @@ public class DataPrepper {
             throw new RuntimeException("Please use getInstance() for an instance of this Data Prepper");
         }
         startPrometheusBackend();
-        dataPrepperServer = new DataPrepperServer(SERVER_PORT);
+        dataPrepperServer = new DataPrepperServer(SERVER_PORT, this);
         dataPrepperServer.start();
     }
 
@@ -89,6 +89,10 @@ public class DataPrepper {
         if(transformationPipelines.containsKey(pipeline)) {
             transformationPipelines.get(pipeline).shutdown();
         }
+    }
+
+    public Map<String, Pipeline> getTransformationPipelines() {
+        return  transformationPipelines;
     }
 
     private boolean initiateExecution() {
