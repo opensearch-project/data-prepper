@@ -38,17 +38,24 @@ public class PeerForwarderConfig {
     }
 
     public static PeerForwarderConfig buildConfig(final PluginSetting pluginSetting) {
-        final boolean ssl = pluginSetting.getBooleanOrDefault(SSL, DEFAULT_SSL);
-        final String sslKeyCertChainFile = pluginSetting.getStringOrDefault(SSL_KEY_CERT_FILE, null);
-        if (ssl && (sslKeyCertChainFile == null || sslKeyCertChainFile.isEmpty())) {
-            throw new IllegalArgumentException(String.format("%s is enable, %s can not be empty or null", SSL, SSL_KEY_CERT_FILE));
-        }
         final PeerListProvider peerListProvider = new PeerListProviderFactory().createProvider(pluginSetting);
         final HashRing hashRing = new HashRing(peerListProvider, NUM_VIRTUAL_NODES);
         final PeerClientPool peerClientPool = PeerClientPool.getInstance();
         peerClientPool.setClientTimeoutSeconds(3);
+        final boolean ssl = pluginSetting.getBooleanOrDefault(SSL, DEFAULT_SSL);
+        final String sslKeyCertChainFilePath = pluginSetting.getStringOrDefault(SSL_KEY_CERT_FILE, null);
+        final File sslKeyCertChainFile;
+        if (ssl) {
+            try {
+                sslKeyCertChainFile = new File(sslKeyCertChainFilePath);
+            } catch (Exception e) {
+                throw new IllegalArgumentException(String.format("%s is enable, %s is invalid file path", SSL, SSL_KEY_CERT_FILE));
+            }
+        } else {
+            sslKeyCertChainFile = null;
+        }
         peerClientPool.setIsSsl(ssl);
-        peerClientPool.setSslKeyCertChainFile(new File(sslKeyCertChainFile));
+        peerClientPool.setSslKeyCertChainFile(sslKeyCertChainFile);
 
         return new PeerForwarderConfig(
                 peerClientPool,
