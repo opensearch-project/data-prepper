@@ -6,6 +6,7 @@ dependencies {
     compile project(':data-prepper-api')
     compile project(':data-prepper-plugins:common')
     compile 'commons-codec:commons-codec:1.15'
+    testCompile project(':data-prepper-api').sourceSets.test.output
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
     implementation 'com.google.protobuf:protobuf-java-util:3.13.0'
     implementation "com.linecorp.armeria:armeria:1.0.0"
