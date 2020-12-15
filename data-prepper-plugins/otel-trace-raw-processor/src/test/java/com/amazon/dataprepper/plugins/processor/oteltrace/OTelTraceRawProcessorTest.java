@@ -1,33 +1,52 @@
 package com.amazon.dataprepper.plugins.processor.oteltrace;
 
+import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
+import io.micrometer.core.instrument.Measurement;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import org.assertj.core.api.Assertions;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.Before;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.StringJoiner;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class OTelTraceRawProcessorTest {
 
     private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    final String processorName = "testOTelTrace";
+    final String pipelineName = "pipelineOTelTraceRawProcessor";
     PluginSetting pluginSetting;
     private OTelTraceRawProcessor oTelTraceRawProcessor;
 
     @Before
     public void setup() {
-        pluginSetting = new PluginSetting("OTelTrace", Collections.EMPTY_MAP);
-        pluginSetting.setPipelineName("OTelTraceRawProcessor");
+        pluginSetting = new PluginSetting(processorName, Collections.EMPTY_MAP);
+        pluginSetting.setPipelineName(pipelineName);
         oTelTraceRawProcessor = new OTelTraceRawProcessor(pluginSetting);
+    }
+
+    @Test
+    public void testCustomMetrics() {
+        MetricsTestUtil.initMetrics();
+        final List<Measurement> spanErrorsMeasurement = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(processorName).add("spanProcessingErrors").toString());
+        final List<Measurement> resourceSpansErrorsMeasurement = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(processorName).add("resourceSpansProcessingErrors").toString());
+        Assert.assertEquals(1, spanErrorsMeasurement.size());
+        Assert.assertEquals(1, resourceSpansErrorsMeasurement.size());
+        Assert.assertEquals(2, spanErrorsMeasurement.size() + resourceSpansErrorsMeasurement.size());
     }
 
     @Test
