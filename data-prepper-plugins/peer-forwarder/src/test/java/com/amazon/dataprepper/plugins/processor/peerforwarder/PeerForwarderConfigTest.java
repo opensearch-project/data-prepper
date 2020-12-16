@@ -3,9 +3,13 @@ package com.amazon.dataprepper.plugins.processor.peerforwarder;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.DiscoveryMode;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.io.File;
 import java.util.Arrays;
@@ -18,11 +22,24 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+@RunWith(MockitoJUnitRunner.class)
 public class PeerForwarderConfigTest {
     private static final String VALID_SSL_KEY_CERT_FILE = PeerForwarderConfigTest.class.getClassLoader()
             .getResource("test-crt.crt").getFile();
     private static final String INVALID_SSL_KEY_CERT_FILE = "";
     private static List<String> TEST_ENDPOINTS = Arrays.asList("172.0.0.1", "172.0.0.2");
+
+    private static final MockedStatic<PeerClientPool> mockedPeerClientPoolClass = Mockito.mockStatic(PeerClientPool.class);
+
+    @Mock
+    private PeerClientPool peerClientPool;
+
+    @Before
+    public void setUp() {
+        mockedPeerClientPoolClass.when(PeerClientPool::getInstance).thenReturn(peerClientPool);
+        doNothing().when(peerClientPool).setSsl(anyBoolean());
+        doNothing().when(peerClientPool).setSslKeyCertChainFile(any(File.class));
+    }
 
     @Test
     public void testBuildConfigNoSSL() {
@@ -67,13 +84,8 @@ public class PeerForwarderConfigTest {
         settings.put(PeerForwarderConfig.SSL, true);
         settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, VALID_SSL_KEY_CERT_FILE);
 
-        final PeerClientPool mockedPeerClientPool = Mockito.mock(PeerClientPool.class);
-        doNothing().when(mockedPeerClientPool).setSsl(anyBoolean());
-        doNothing().when(mockedPeerClientPool).setSslKeyCertChainFile(any(File.class));
-        final MockedStatic<PeerClientPool> mockedPeerClientPoolClass = Mockito.mockStatic(PeerClientPool.class);
-        mockedPeerClientPoolClass.when(PeerClientPool::getInstance).thenReturn(mockedPeerClientPool);
-        final PeerForwarderConfig peerForwarderConfig = PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings));
-        verify(mockedPeerClientPool, times(1)).setSsl(true);
-        verify(mockedPeerClientPool, times(1)).setSslKeyCertChainFile(new File(VALID_SSL_KEY_CERT_FILE));
+        PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings));
+        verify(peerClientPool, times(1)).setSsl(true);
+        verify(peerClientPool, times(1)).setSslKeyCertChainFile(new File(VALID_SSL_KEY_CERT_FILE));
     }
 }
