@@ -54,7 +54,7 @@ public class PeerForwarderConfig {
         } else {
             sslKeyCertChainFile = null;
         }
-        peerClientPool.setIsSsl(ssl);
+        peerClientPool.setSsl(ssl);
         peerClientPool.setSslKeyCertChainFile(sslKeyCertChainFile);
 
         return new PeerForwarderConfig(

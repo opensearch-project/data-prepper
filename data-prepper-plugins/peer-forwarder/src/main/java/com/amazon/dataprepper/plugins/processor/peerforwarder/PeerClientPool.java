@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PeerClientPool {
+    private static final String GRPC_HTTP = "gproto+http";
+    private static final String GRPC_HTTPS = "gproto+https";
     private static final PeerClientPool INSTANCE = new PeerClientPool();
     private final Map<String, TraceServiceGrpc.TraceServiceBlockingStub> peerClients;
 
@@ -30,7 +32,7 @@ public class PeerClientPool {
     public void setClientTimeoutSeconds(int clientTimeoutSeconds) {
         this.clientTimeoutSeconds = clientTimeoutSeconds;
     }
-    public void setIsSsl(boolean ssl) {
+    public void setSsl(boolean ssl) {
         this.ssl = ssl;
     }
     public void setSslKeyCertChainFile(File sslKeyCertChainFile) {
@@ -44,11 +46,15 @@ public class PeerClientPool {
 
     private TraceServiceGrpc.TraceServiceBlockingStub createGRPCClient(final String ipAddress) {
         // TODO: replace hardcoded port with customization
-        final ClientBuilder clientBuilder = Clients.builder(String.format("gproto+http://%s:21890/", ipAddress))
-                .writeTimeout(Duration.ofSeconds(clientTimeoutSeconds));
+        final ClientBuilder clientBuilder;
         if (ssl) {
-            clientBuilder.factory(ClientFactory.builder()
-                    .tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(sslKeyCertChainFile)).build());
+            clientBuilder = Clients.builder(String.format("%s://%s:21890/", GRPC_HTTPS, ipAddress))
+                    .writeTimeout(Duration.ofSeconds(clientTimeoutSeconds))
+                    .factory(ClientFactory.builder()
+                            .tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(sslKeyCertChainFile)).build());
+        } else {
+            clientBuilder = Clients.builder(String.format("%s://%s:21890/", GRPC_HTTP, ipAddress))
+                    .writeTimeout(Duration.ofSeconds(clientTimeoutSeconds));
         }
         return clientBuilder.build(TraceServiceGrpc.TraceServiceBlockingStub.class);
     }
