@@ -2,6 +2,7 @@ package com.amazon.dataprepper.plugins.processor.peerforwarder;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.DiscoveryMode;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,6 +20,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -29,16 +31,23 @@ public class PeerForwarderConfigTest {
     private static final String INVALID_SSL_KEY_CERT_FILE = "";
     private static List<String> TEST_ENDPOINTS = Arrays.asList("172.0.0.1", "172.0.0.2");
 
-    private static final MockedStatic<PeerClientPool> mockedPeerClientPoolClass = Mockito.mockStatic(PeerClientPool.class);
+    private MockedStatic<PeerClientPool> mockedPeerClientPoolClass;
 
     @Mock
     private PeerClientPool peerClientPool;
 
     @Before
     public void setUp() {
+        mockedPeerClientPoolClass = mockStatic(PeerClientPool.class);
         mockedPeerClientPoolClass.when(PeerClientPool::getInstance).thenReturn(peerClientPool);
         doNothing().when(peerClientPool).setSsl(anyBoolean());
         doNothing().when(peerClientPool).setSslKeyCertChainFile(any(File.class));
+    }
+
+    @After
+    public void tearDown() {
+        // Need to release static mock as otherwise it will remain active on the thread when running other tests
+        mockedPeerClientPoolClass.close();
     }
 
     @Test
