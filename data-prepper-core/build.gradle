@@ -6,7 +6,7 @@ plugins {
 sourceSets {
     main {
         resources {
-            srcDirs += "../shared-resources"
+            srcDirs += "../shared-config"
         }
     }
 }
