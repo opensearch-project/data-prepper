@@ -26,12 +26,11 @@ public class PeerForwarderConfigTest {
 
     @Test
     public void testBuildConfigNoSSL() {
-        final List<String> testPeerIps = Arrays.asList("172.0.0.1", "172.0.0.2");
         final int testNumSpansPerRequest = 2;
         final int testTimeout = 300;
         final HashMap<String, Object> settings = new HashMap<>();
         settings.put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.STATIC.toString());
-        settings.put(PeerForwarderConfig.STATIC_ENDPOINTS, testPeerIps);
+        settings.put(PeerForwarderConfig.STATIC_ENDPOINTS, TEST_ENDPOINTS);
         settings.put(PeerForwarderConfig.MAX_NUM_SPANS_PER_REQUEST, testNumSpansPerRequest);
         settings.put(PeerForwarderConfig.TIME_OUT, testTimeout);
 
@@ -44,10 +43,9 @@ public class PeerForwarderConfigTest {
 
     @Test
     public void testBuildConfigInvalidSSL() {
-        final List<String> testPeerIps = Arrays.asList("172.0.0.1", "172.0.0.2");
         final HashMap<String, Object> settings = new HashMap<>();
         settings.put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.STATIC.toString());
-        settings.put(PeerForwarderConfig.STATIC_ENDPOINTS, testPeerIps);
+        settings.put(PeerForwarderConfig.STATIC_ENDPOINTS, TEST_ENDPOINTS);
         settings.put(PeerForwarderConfig.SSL, true);
 
         settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, INVALID_SSL_KEY_CERT_FILE);
@@ -63,10 +61,9 @@ public class PeerForwarderConfigTest {
 
     @Test
     public void testBuildConfigValidSSL() {
-        final List<String> testPeerIps = Arrays.asList("172.0.0.1", "172.0.0.2");
         final HashMap<String, Object> settings = new HashMap<>();
         settings.put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.STATIC.toString());
-        settings.put(PeerForwarderConfig.STATIC_ENDPOINTS, testPeerIps);
+        settings.put(PeerForwarderConfig.STATIC_ENDPOINTS, TEST_ENDPOINTS);
         settings.put(PeerForwarderConfig.SSL, true);
         settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, VALID_SSL_KEY_CERT_FILE);
 
