@@ -15,7 +15,6 @@ import static org.junit.Assert.assertNotNull;
 
 public class PeerClientPoolTest {
     private static final String VALID_ADDRESS = "10.10.10.5";
-    private static final String LOCAL_IP = "127.0.0.1";
     private static final String LOCALHOST = "localhost";
     private static final int PORT = 21890;
     private static final File SSL_KEY_FILE = new File(
@@ -30,29 +29,6 @@ public class PeerClientPoolTest {
         TraceServiceGrpc.TraceServiceBlockingStub client = pool.getClient(VALID_ADDRESS);
 
         assertNotNull(client);
-    }
-
-    @Test
-    public void testGetClientWithoutSSL() {
-        // Set up test server with SSL
-        ServerBuilder sb = Server.builder();
-        sb.service(GrpcService.builder()
-                .addService(new TestPeerService())
-                .build());
-        sb.http(PORT);
-
-        try (Server server = sb.build()) {
-            server.start();
-
-            // Configure client pool
-            PeerClientPool pool = PeerClientPool.getInstance();
-            pool.setSsl(false);
-            TraceServiceGrpc.TraceServiceBlockingStub client = pool.getClient(LOCAL_IP);
-            assertNotNull(client);
-
-            // Call API should not throw exception
-            client.export(ExportTraceServiceRequest.newBuilder().build());
-        }
     }
 
     @Test
