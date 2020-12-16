@@ -6,11 +6,14 @@ import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.linecorp.armeria.client.Clients;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
@@ -34,28 +37,38 @@ import org.junit.Test;
 import static org.awaitility.Awaitility.await;
 
 public class EndToEndServiceMapTest {
-
-    private final Map<String, ResourceSpans> spanIdToRS = new HashMap<>();
-    private final List<Map<String, Object>> possibleEdges = new ArrayList<>();
-    private static final List<ServiceMapTestData> testDataSet1 = Arrays.asList(
-            ServiceMapTestData.DATA_100, ServiceMapTestData.DATA_200, ServiceMapTestData.DATA_300, ServiceMapTestData.DATA_400,
-            ServiceMapTestData.DATA_500, ServiceMapTestData.DATA_600, ServiceMapTestData.DATA_700, ServiceMapTestData.DATA_800,
-            ServiceMapTestData.DATA_900, ServiceMapTestData.DATA_1000, ServiceMapTestData.DATA_1100);
-    private static final List<ServiceMapTestData> testDataSet2 = Arrays.asList(
-            ServiceMapTestData.DATA_101, ServiceMapTestData.DATA_201, ServiceMapTestData.DATA_301, ServiceMapTestData.DATA_401,
-            ServiceMapTestData.DATA_501);
+    private static final String TEST_TRACEID_1 = "ABC";
+    private static final String TEST_TRACEID_2 = "CBA";
+    private static final int DATA_PREPPER_PORT_1 = 21890;
+    private static final int DATA_PREPPER_PORT_2 = 21891;
+    private static final List<ServiceMapTestData> testDataSet11 = Arrays.asList(
+            ServiceMapTestData.DATA_100, ServiceMapTestData.DATA_200, ServiceMapTestData.DATA_500, ServiceMapTestData.DATA_600,
+            ServiceMapTestData.DATA_700, ServiceMapTestData.DATA_1000);
+    private static final List<ServiceMapTestData> testDataSet12 = Arrays.asList(
+            ServiceMapTestData.DATA_300, ServiceMapTestData.DATA_400, ServiceMapTestData.DATA_800,
+            ServiceMapTestData.DATA_900, ServiceMapTestData.DATA_1100);
+    private static final List<ServiceMapTestData> testDataSet21 = Arrays.asList(
+            ServiceMapTestData.DATA_101, ServiceMapTestData.DATA_201, ServiceMapTestData.DATA_401, ServiceMapTestData.DATA_501);
+    private static final List<ServiceMapTestData> testDataSet22 = Collections.singletonList(ServiceMapTestData.DATA_301);
     private static final String SERVICE_MAP_INDEX_NAME = "otel-v1-apm-service-map";
 
     @Test
     public void testPipelineEndToEnd() throws IOException, InterruptedException {
         // Send test trace group 1
-        final ExportTraceServiceRequest exportTraceServiceRequest1 = getExportTraceServiceRequest(
-                getResourceSpansBatch("ABC", testDataSet1)
+        final ExportTraceServiceRequest exportTraceServiceRequest11 = getExportTraceServiceRequest(
+                getResourceSpansBatch(TEST_TRACEID_1, testDataSet11)
+        );
+        final ExportTraceServiceRequest exportTraceServiceRequest12 = getExportTraceServiceRequest(
+                getResourceSpansBatch(TEST_TRACEID_1, testDataSet12)
         );
 
-        sendExportTraceServiceRequestToSource(exportTraceServiceRequest1);
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest11);
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest12);
 
         //Verify data in elasticsearch sink
+        final List<ServiceMapTestData> testDataSet1 = Stream.of(testDataSet11, testDataSet12)
+                .flatMap(Collection::stream).collect(Collectors.toList());
+        final List<Map<String, Object>> possibleEdges = getPossibleEdges(TEST_TRACEID_1, testDataSet1);
         final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
                 Collections.singletonList("https://127.0.0.1:9200"));
         builder.withUsername("admin");
@@ -74,13 +87,22 @@ public class EndToEndServiceMapTest {
         );
 
         // Resend the same batch of spans (No new edges should be created)
-        sendExportTraceServiceRequestToSource(exportTraceServiceRequest1);
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest11);
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest12);
         // Send test trace group 2
-        final ExportTraceServiceRequest exportTraceServiceRequest2 = getExportTraceServiceRequest(
-                getResourceSpansBatch("CBA", testDataSet2)
+        final ExportTraceServiceRequest exportTraceServiceRequest21 = getExportTraceServiceRequest(
+                getResourceSpansBatch(TEST_TRACEID_2, testDataSet21)
         );
-        sendExportTraceServiceRequestToSource(exportTraceServiceRequest2);
+        final ExportTraceServiceRequest exportTraceServiceRequest22 = getExportTraceServiceRequest(
+                getResourceSpansBatch(TEST_TRACEID_2, testDataSet22)
+        );
 
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest21);
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest22);
+
+        final List<ServiceMapTestData> testDataSet2 = Stream.of(testDataSet21, testDataSet22)
+                .flatMap(Collection::stream).collect(Collectors.toList());
+        possibleEdges.addAll(getPossibleEdges(TEST_TRACEID_2, testDataSet2));
         // Wait for service map processor by 2 * window_duration
         Thread.sleep(6000);
         await().atMost(20, TimeUnit.SECONDS).untilAsserted(
@@ -98,9 +120,9 @@ public class EndToEndServiceMapTest {
         restHighLevelClient.indices().refresh(requestAll, RequestOptions.DEFAULT);
     }
 
-    private void sendExportTraceServiceRequestToSource(final ExportTraceServiceRequest request) {
-        Clients.newClient(
-                "gproto+http://127.0.0.1:21890/", TraceServiceGrpc.TraceServiceBlockingStub.class).export(request);
+    private void sendExportTraceServiceRequestToSource(final int port, final ExportTraceServiceRequest request) {
+        Clients.newClient(String.format("gproto+http://127.0.0.1:%d/", port),
+                TraceServiceGrpc.TraceServiceBlockingStub.class).export(request);
     }
 
     private List<Map<String, Object>> getSourcesFromIndex(final RestHighLevelClient restHighLevelClient, final String index) throws IOException {
@@ -172,44 +194,60 @@ public class EndToEndServiceMapTest {
                     spanKind
             );
             spansList.add(rs);
-            spanIdToRS.put(spanId, rs);
-            if (parentId != null) {
-                ResourceSpans parentRS = spanIdToRS.get(parentId);
-                String parentServiceName = parentRS.getResource().getAttributes(0).getValue().getStringValue();
-                if (!parentServiceName.equals(serviceName)) {
-                    String rootSpanName = getRootSpanName(parentId);
-                    Map<String, Object> destination = new HashMap<>();
-                    destination.put("resource", spanName);
-                    destination.put("domain", serviceName);
-                    Map<String, Object> edge = new HashMap<>();
-                    edge.put("serviceName", parentServiceName);
-                    edge.put("kind", parentRS.getInstrumentationLibrarySpans(0).getSpans(0).getKind().name());
-                    edge.put("traceGroupName", rootSpanName);
-                    edge.put("destination", destination);
-                    edge.put("target", null);
-                    possibleEdges.add(edge);
-
-                    Map<String, Object> target = new HashMap<>(destination);
-                    edge = new HashMap<>();
-                    edge.put("serviceName", serviceName);
-                    edge.put("kind", spanKind.name());
-                    edge.put("traceGroupName", rootSpanName);
-                    edge.put("destination", null);
-                    edge.put("target", target);
-                    possibleEdges.add(edge);
-                }
-            }
         }
         return spansList;
     }
 
-    private String getRootSpanName(String spanId) {
-        ResourceSpans rs = spanIdToRS.get(spanId);
-        ByteString parentSpanId = rs.getInstrumentationLibrarySpans(0).getSpans(0).getParentSpanId();
-        while (!parentSpanId.isEmpty()) {
-            rs = spanIdToRS.get(parentSpanId.toStringUtf8());
-            parentSpanId = rs.getInstrumentationLibrarySpans(0).getSpans(0).getParentSpanId();
+    private List<Map<String, Object>> getPossibleEdges(final String traceId, final List<ServiceMapTestData> data) {
+        final Map<String, ServiceMapTestData> spanIdToServiceMapTestData = data.stream()
+                .collect(Collectors.toMap(serviceMapTestData -> serviceMapTestData.spanId, serviceMapTestData -> serviceMapTestData));
+        final List<Map<String, Object>> possibleEdges = new ArrayList<>();
+        for (final ServiceMapTestData currData : data) {
+            final String parentId = currData.parentId;
+            if (parentId != null) {
+                final ServiceMapTestData parentData = spanIdToServiceMapTestData.get(parentId);
+                if (parentData != null && !parentData.serviceName.equals(currData.serviceName)) {
+                    String rootSpanName = getRootSpanName(parentId, spanIdToServiceMapTestData);
+                    possibleEdges.addAll(getEdgeMaps(rootSpanName, currData, parentData));
+                }
+            }
         }
-        return rs.getInstrumentationLibrarySpans(0).getSpans(0).getName();
+
+        return possibleEdges;
+    }
+
+    private String getRootSpanName(String spanId, final Map<String, ServiceMapTestData> spanIdToServiceMapTestData) {
+        ServiceMapTestData rootServiceMapTestData = spanIdToServiceMapTestData.get(spanId);
+        while (rootServiceMapTestData.parentId != null) {
+            rootServiceMapTestData = spanIdToServiceMapTestData.get(rootServiceMapTestData.parentId);
+        }
+        return rootServiceMapTestData.name;
+    }
+
+    private List<Map<String, Object>> getEdgeMaps(
+            final String rootSpanName, final ServiceMapTestData currData, final ServiceMapTestData parentData) {
+        final List<Map<String, Object>> edges = new ArrayList<>();
+
+        Map<String, Object> destination = new HashMap<>();
+        destination.put("resource", currData.name);
+        destination.put("domain", currData.serviceName);
+        Map<String, Object> edge = new HashMap<>();
+        edge.put("serviceName", parentData.serviceName);
+        edge.put("kind", parentData.spanKind.name());
+        edge.put("traceGroupName", rootSpanName);
+        edge.put("destination", destination);
+        edge.put("target", null);
+        edges.add(edge);
+
+        Map<String, Object> target = new HashMap<>(destination);
+        edge = new HashMap<>();
+        edge.put("serviceName", currData.serviceName);
+        edge.put("kind", currData.spanKind.name());
+        edge.put("traceGroupName", rootSpanName);
+        edge.put("destination", null);
+        edge.put("target", target);
+        edges.add(edge);
+
+        return edges;
     }
 }
