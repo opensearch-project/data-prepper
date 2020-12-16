@@ -39,20 +39,20 @@ public class PeerClientPoolTest {
                 .addService(new TestPeerService())
                 .build());
         sb.tls(SSL_CRT_FILE, SSL_KEY_FILE).https(PORT);
-        Server server = sb.build();
-        server.start();
 
-        // Configure client pool
-        PeerClientPool pool = PeerClientPool.getInstance();
-        pool.setSsl(true);
-        pool.setSslKeyCertChainFile(SSL_CRT_FILE);
-        TraceServiceGrpc.TraceServiceBlockingStub client = pool.getClient(LOCALHOST);
-        assertNotNull(client);
+        try (Server server = sb.build()) {
+            server.start();
 
-        // Call API should not throw exception
-        client.export(ExportTraceServiceRequest.newBuilder().build());
+            // Configure client pool
+            PeerClientPool pool = PeerClientPool.getInstance();
+            pool.setSsl(true);
+            pool.setSslKeyCertChainFile(SSL_CRT_FILE);
+            TraceServiceGrpc.TraceServiceBlockingStub client = pool.getClient(LOCALHOST);
+            assertNotNull(client);
 
-        server.close();
+            // Call API should not throw exception
+            client.export(ExportTraceServiceRequest.newBuilder().build());
+        }
     }
 
     public static class TestPeerService extends TraceServiceGrpc.TraceServiceImplBase {
