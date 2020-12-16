@@ -1,6 +1,7 @@
 package com.amazon.dataprepper.pipeline.server;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import io.micrometer.core.instrument.Metrics;
@@ -25,12 +26,12 @@ public class PrometheusMetricsHandler implements HttpHandler {
         try {
             byte response[] = prometheusMeterRegistry.scrape().getBytes("UTF-8");
             exchange.getResponseHeaders().add("Content-Type", "text/plain; charset=UTF-8");
-            exchange.sendResponseHeaders(200, response.length);
+            exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
             exchange.getResponseBody().write(response);
-            exchange.getResponseBody().close();
         } catch (Exception e) {
             LOG.error("Encountered exception scarping prometheus meter registry", e);
-            exchange.sendResponseHeaders(500, 0);
+            exchange.sendResponseHeaders(HttpURLConnection.HTTP_INTERNAL_ERROR, 0);
+        } finally {
             exchange.getResponseBody().close();
         }
     }

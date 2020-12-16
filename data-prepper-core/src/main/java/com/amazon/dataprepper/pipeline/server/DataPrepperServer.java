@@ -1,5 +1,6 @@
 package com.amazon.dataprepper.pipeline.server;
 
+import com.amazon.dataprepper.DataPrepper;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import com.sun.net.httpserver.HttpServer;
@@ -12,13 +13,15 @@ public class DataPrepperServer {
 
     private final HttpServer server;
 
-    public DataPrepperServer(final int port) {
+    public DataPrepperServer(final int port, final DataPrepper dataPrepper) {
         try {
             server = HttpServer.create(
                     new InetSocketAddress(port),
                     0
             );
             server.createContext("/metrics/prometheus", new PrometheusMetricsHandler());
+            server.createContext("/list", new ListPipelinesHandler(dataPrepper));
+            server.createContext("/shutdown", new ShutdownHandler(dataPrepper));
         } catch (IOException e) {
             throw new RuntimeException("Failed to create server", e);
         }
