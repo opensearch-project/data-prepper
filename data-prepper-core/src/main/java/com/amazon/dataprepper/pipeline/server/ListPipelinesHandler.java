@@ -2,6 +2,7 @@ package com.amazon.dataprepper.pipeline.server;
 
 import com.amazon.dataprepper.DataPrepper;
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -42,12 +43,12 @@ public class ListPipelinesHandler implements HttpHandler {
                     .collect(Collectors.toList());
             final byte[] response = OBJECT_MAPPER.writeValueAsString(Collections.singletonMap("pipelines", pipelines)).getBytes();
             exchange.getResponseHeaders().add("Content-Type", "text/plain; charset=UTF-8");
-            exchange.sendResponseHeaders(200, response.length);
+            exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
             exchange.getResponseBody().write(response);
-            exchange.getResponseBody().close();
         } catch (Exception e) {
             LOG.error("Caught exception listing pipelines", e);
-            exchange.sendResponseHeaders(500, 0);
+            exchange.sendResponseHeaders(HttpURLConnection.HTTP_INTERNAL_ERROR, 0);
+        } finally {
             exchange.getResponseBody().close();
         }
     }

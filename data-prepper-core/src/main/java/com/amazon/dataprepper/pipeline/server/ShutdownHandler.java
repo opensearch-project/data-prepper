@@ -2,6 +2,7 @@ package com.amazon.dataprepper.pipeline.server;
 
 import com.amazon.dataprepper.DataPrepper;
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import org.slf4j.Logger;
@@ -23,11 +24,11 @@ public class ShutdownHandler implements HttpHandler {
     public void handle(HttpExchange exchange) throws IOException {
         try {
             dataPrepper.shutdown();
-            exchange.sendResponseHeaders(200, 0);
-            exchange.getResponseBody().close();
+            exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0);
         } catch (Exception e) {
             LOG.error("Caught exception shutting down data prepper", e);
-            exchange.sendResponseHeaders(500, 0);
+            exchange.sendResponseHeaders(HttpURLConnection.HTTP_INTERNAL_ERROR, 0);
+        } finally {
             exchange.getResponseBody().close();
         }
     }
