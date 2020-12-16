@@ -44,9 +44,11 @@ public class OTelTraceRawProcessorTest {
                 new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(processorName).add("spanProcessingErrors").toString());
         final List<Measurement> resourceSpansErrorsMeasurement = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(processorName).add("resourceSpansProcessingErrors").toString());
+        final List<Measurement> totalErrorsMeasurement = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(processorName).add("totalProcessingErrors").toString());
         Assert.assertEquals(1, spanErrorsMeasurement.size());
         Assert.assertEquals(1, resourceSpansErrorsMeasurement.size());
-        Assert.assertEquals(2, spanErrorsMeasurement.size() + resourceSpansErrorsMeasurement.size());
+        Assert.assertEquals(1, totalErrorsMeasurement.size());
     }
 
     @Test
