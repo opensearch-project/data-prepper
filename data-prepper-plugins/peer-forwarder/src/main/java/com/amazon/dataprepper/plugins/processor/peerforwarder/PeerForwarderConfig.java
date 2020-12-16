@@ -5,6 +5,7 @@ import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.PeerList
 import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.PeerListProviderFactory;
 
 import java.io.File;
+import java.nio.file.Paths;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -46,10 +47,10 @@ public class PeerForwarderConfig {
         final String sslKeyCertChainFilePath = pluginSetting.getStringOrDefault(SSL_KEY_CERT_FILE, null);
         final File sslKeyCertChainFile;
         if (ssl) {
-            try {
+            if (sslKeyCertChainFilePath == null || sslKeyCertChainFilePath.isEmpty()) {
+                throw new IllegalArgumentException(String.format("%s is enable, %s can not be empty or null", SSL, SSL_KEY_CERT_FILE));
+            } else {
                 sslKeyCertChainFile = new File(sslKeyCertChainFilePath);
-            } catch (Exception e) {
-                throw new IllegalArgumentException(String.format("%s is enable, %s is invalid file path", SSL, SSL_KEY_CERT_FILE));
             }
         } else {
             sslKeyCertChainFile = null;
