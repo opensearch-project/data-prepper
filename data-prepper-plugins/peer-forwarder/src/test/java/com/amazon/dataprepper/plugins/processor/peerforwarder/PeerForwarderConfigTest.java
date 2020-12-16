@@ -28,7 +28,8 @@ import static org.mockito.Mockito.verify;
 public class PeerForwarderConfigTest {
     private static final String VALID_SSL_KEY_CERT_FILE = PeerForwarderConfigTest.class.getClassLoader()
             .getResource("test-crt.crt").getFile();
-    private static final String INVALID_SSL_KEY_CERT_FILE = "";
+    private static final String EMPTY_SSL_KEY_CERT_FILE = "";
+    private static final String INVALID_SSL_KEY_CERT_FILE = "path/to/file";
     private static List<String> TEST_ENDPOINTS = Arrays.asList("172.0.0.1", "172.0.0.2");
 
     private MockedStatic<PeerClientPool> mockedPeerClientPoolClass;
@@ -74,12 +75,17 @@ public class PeerForwarderConfigTest {
         settings.put(PeerForwarderConfig.STATIC_ENDPOINTS, TEST_ENDPOINTS);
         settings.put(PeerForwarderConfig.SSL, true);
 
-        settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, INVALID_SSL_KEY_CERT_FILE);
+        settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, EMPTY_SSL_KEY_CERT_FILE);
         Assert.assertThrows(IllegalArgumentException.class, () -> {
             PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings));
         });
 
         settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, null);
+        Assert.assertThrows(IllegalArgumentException.class, () -> {
+            PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings));
+        });
+
+        settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, INVALID_SSL_KEY_CERT_FILE);
         Assert.assertThrows(IllegalArgumentException.class, () -> {
             PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings));
         });

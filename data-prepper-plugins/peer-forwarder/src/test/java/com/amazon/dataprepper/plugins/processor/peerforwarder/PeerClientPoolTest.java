@@ -32,6 +32,28 @@ public class PeerClientPoolTest {
     }
 
     @Test
+    public void testGetClientWithoutSSL() {
+        // Set up test server with SSL
+        ServerBuilder sb = Server.builder();
+        sb.service(GrpcService.builder()
+                .addService(new TestPeerService())
+                .build());
+        sb.http(PORT);
+
+        try (Server server = sb.build()) {
+            server.start();
+
+            // Configure client pool
+            PeerClientPool pool = PeerClientPool.getInstance();
+            TraceServiceGrpc.TraceServiceBlockingStub client = pool.getClient(LOCALHOST);
+            assertNotNull(client);
+
+            // Call API should not throw exception
+            client.export(ExportTraceServiceRequest.newBuilder().build());
+        }
+    }
+
+    @Test
     public void testGetClientWithSSL() {
         // Set up test server with SSL
         ServerBuilder sb = Server.builder();
