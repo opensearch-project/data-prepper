@@ -43,13 +43,14 @@ public class OTelTraceRawProcessor extends AbstractPrepper<Record<ExportTraceSer
     private static final Logger log = LoggerFactory.getLogger(OTelTraceRawProcessor.class);
     private final Counter spanErrorsCounter;
     private final Counter resourceSpanErrorsCounter;
-    private double totalProcessingErrors;
+    private final Counter totalProcessingErrorsCounter;
 
     //TODO: https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/66
     public OTelTraceRawProcessor(final PluginSetting pluginSetting) {
         super(pluginSetting);
         spanErrorsCounter = pluginMetrics.counter("spanProcessingErrors");
         resourceSpanErrorsCounter = pluginMetrics.counter("resourceSpansProcessingErrors");
+        totalProcessingErrorsCounter = pluginMetrics.counter("totalProcessingErrors");
     }
 
 
@@ -77,14 +78,15 @@ public class OTelTraceRawProcessor extends AbstractPrepper<Record<ExportTraceSer
                             } catch (Exception ex) {
                                 log.error("Unable to process invalid Span {}:", sp, ex);
                                 spanErrorsCounter.increment();
+                                totalProcessingErrorsCounter.increment();
                             }
                         }
                     }
                 } catch (Exception ex) {
                     log.error("Unable to process invalid ResourceSpan {} :", rs, ex);
                     resourceSpanErrorsCounter.increment();
+                    totalProcessingErrorsCounter.increment();
                 }
-                totalProcessingErrors = spanErrorsCounter.count() + resourceSpanErrorsCounter.count();
             }
         }
         return finalRecords;
