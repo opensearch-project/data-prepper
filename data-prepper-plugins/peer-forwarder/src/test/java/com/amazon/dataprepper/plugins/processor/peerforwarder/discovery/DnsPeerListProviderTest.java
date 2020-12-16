@@ -1,5 +1,6 @@
 package com.amazon.dataprepper.plugins.processor.peerforwarder.discovery;
 
+import com.amazon.dataprepper.plugins.processor.peerforwarder.HashRing;
 import com.linecorp.armeria.client.Endpoint;
 import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
 import org.junit.Before;
@@ -14,6 +15,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -27,30 +29,48 @@ public class DnsPeerListProviderTest {
 
     @Mock
     private DnsAddressEndpointGroup dnsAddressEndpointGroup;
+    @Mock
+    private HashRing hashRing;
 
     private CompletableFuture completableFuture;
+
+    private DnsPeerListProvider dnsPeerListProvider;
 
     @Before
     public void setup() {
         completableFuture = CompletableFuture.completedFuture(null);
         when(dnsAddressEndpointGroup.whenReady()).thenReturn(completableFuture);
+
+        dnsPeerListProvider = new DnsPeerListProvider(dnsAddressEndpointGroup);
     }
 
     @Test(expected = NullPointerException.class)
     public void testDefaultListProviderWithNullHostname() {
-        DnsPeerListProvider listProvider = new DnsPeerListProvider(null);
+        new DnsPeerListProvider(null);
     }
 
     @Test
     public void testGetPeerList() {
-        DnsPeerListProvider listProvider = new DnsPeerListProvider(dnsAddressEndpointGroup);
-
         when(dnsAddressEndpointGroup.endpoints()).thenReturn(ENDPOINT_LIST);
 
-        List<String> results = listProvider.getPeerList();
+        List<String> results = dnsPeerListProvider.getPeerList();
 
         assertEquals(ENDPOINT_LIST.size(), results.size());
         assertTrue(results.contains(ENDPOINT_1));
         assertTrue(results.contains(ENDPOINT_2));
+    }
+
+    @Test
+    public void testAddListener() {
+        dnsPeerListProvider.addListener(hashRing);
+
+        verify(dnsAddressEndpointGroup).addListener(hashRing);
+    }
+
+    @Test
+    public void testRemoveListener() {
+        dnsPeerListProvider.removeListener(hashRing);
+
+        verify(dnsAddressEndpointGroup).removeListener(hashRing);
     }
 }

@@ -17,12 +17,18 @@ import java.util.Optional;
 import java.util.TreeMap;
 import java.util.function.Consumer;
 
+/**
+ * Consistent hashing implementation used to map trace IDs to Data Prepper hosts.
+ * See https://en.wikipedia.org/wiki/Consistent_hashing for more information.
+ */
 @NotThreadSafe
 public class HashRing implements Consumer<List<Endpoint>> {
     private static final Logger LOG = LoggerFactory.getLogger(HashRing.class);
     private static final String MD5 = "MD5";
 
+    /* Number of virtual nodes per Data Prepper host to be present on the hash ring */
     private final int numVirtualNodes;
+
     private final PeerListProvider peerListProvider;
 
     private TreeMap<BigInteger, String> hashServerMap = new TreeMap<>();
