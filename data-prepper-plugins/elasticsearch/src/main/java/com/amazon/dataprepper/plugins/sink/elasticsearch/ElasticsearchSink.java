@@ -216,4 +216,9 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
       LOG.warn("Document [{}] has failure: {}", docWriteRequest.toString(), failure);
     };
   }
+
+  @Override
+  public void shutdown() {
+    //TODO: Clean up resources
+  }
 }

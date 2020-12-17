@@ -176,6 +176,8 @@ public class Pipeline {
         try {
             source.stop();
             stopRequested = true;
+            processors.forEach(Processor::shutdown);
+            sinks.forEach(Sink::shutdown);
         } catch (Exception ex) {
             LOG.error("Pipeline [{}] - Encountered exception while stopping the source, " +
                     "proceeding with termination of process workers", name);

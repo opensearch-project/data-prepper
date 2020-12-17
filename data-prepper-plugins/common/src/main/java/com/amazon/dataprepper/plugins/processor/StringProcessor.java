@@ -40,4 +40,9 @@ public class StringProcessor implements Processor<Record<String>, Record<String>
         }
         return modifiedRecords;
     }
+
+    @Override
+    public void shutdown() {
+
+    }
 }

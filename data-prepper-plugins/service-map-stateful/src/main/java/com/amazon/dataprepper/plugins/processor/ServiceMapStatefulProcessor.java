@@ -244,7 +244,7 @@ public class ServiceMapStatefulProcessor extends AbstractPrepper<Record<ExportTr
         }
     }
 
-    //TODO: Change to an override when a shutdown method is added to the processor interface
+    @Override
     public void shutdown() {
         previousWindow.delete();
         currentWindow.delete();

@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 public class TestSink implements Sink<Record<String>> {
     private final List<Record<String>> collectedRecords;
     private final boolean failSinkForTest;
+    public boolean isShutdown = false;
 
     public TestSink() {
         this.failSinkForTest = false;
@@ -31,6 +32,11 @@ public class TestSink implements Sink<Record<String>> {
             throw new RuntimeException("Sink is expected to fail");
         }
         records.stream().collect(Collectors.toCollection(() -> collectedRecords));
+    }
+
+    @Override
+    public void shutdown() {
+        isShutdown = true;
     }
 
     public List<Record<String>> getCollectedRecords() {
