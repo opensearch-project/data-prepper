@@ -5,6 +5,10 @@ import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.google.protobuf.ByteString;
+import com.linecorp.armeria.client.ClientBuilder;
+import com.linecorp.armeria.client.ClientFactory;
+import com.linecorp.armeria.client.Clients;
+import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
 import io.micrometer.core.instrument.Measurement;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
@@ -16,11 +20,14 @@ import io.opentelemetry.proto.trace.v1.Span;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.reflect.Whitebox;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,9 +38,11 @@ import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.mockito.internal.verification.VerificationModeFactory.times;
 import static org.powermock.api.mockito.PowerMockito.doAnswer;
 import static org.powermock.api.mockito.PowerMockito.spy;
@@ -230,28 +239,39 @@ public class PeerForwarderTest {
     @Test
     public void testSingleRemoteIpForwardRequestError() throws Exception {
         final List<String> testIps = generateTestIps(2);
-        MetricsTestUtil.initMetrics();
-        final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
+        final ClientBuilder clientBuilder = mock(ClientBuilder.class);
+        final TraceServiceGrpc.TraceServiceBlockingStub client = mock(TraceServiceGrpc.TraceServiceBlockingStub.class);
+        when(clientBuilder.writeTimeout(any(Duration.class))).thenReturn(clientBuilder);
+        when(clientBuilder.factory(any(ClientFactory.class))).thenReturn(clientBuilder);
+        when(clientBuilder.build(TraceServiceGrpc.TraceServiceBlockingStub.class)).thenReturn(client);
+        when(client.export(any(ExportTraceServiceRequest.class))).thenThrow(new RuntimeException());
 
-        final List<Record<ExportTraceServiceRequest>> exportedRecords = testPeerForwarder
-                .doExecute(Collections.singletonList(new Record<>(REQUEST_4)));
+        try (final MockedStatic<Clients> armeriaClientsMock = Mockito.mockStatic(Clients.class)) {
+            armeriaClientsMock.when(() -> Clients.builder(anyString())).thenReturn(clientBuilder);
 
-        final List<ResourceSpans> expectedLocalResourceSpans = Collections.singletonList(
-                generateResourceSpans(SPAN_4, SPAN_5, SPAN_6));
-        Assert.assertEquals(1, exportedRecords.size());
-        final ExportTraceServiceRequest exportedRequest = exportedRecords.get(0).getData();
-        final List<ResourceSpans> forwardedResourceSpans = exportedRequest.getResourceSpansList();
-        Assert.assertTrue(forwardedResourceSpans.containsAll(expectedLocalResourceSpans));
-        Assert.assertTrue(expectedLocalResourceSpans.containsAll(forwardedResourceSpans));
-        // Verify metrics
-        final List<Measurement> forwardRequestErrorsMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add("testPipeline").add("peer_forwarder")
-                        .add(PeerForwarder.FORWARD_REQUEST_ERRORS).toString());
-        Assert.assertEquals(1, forwardRequestErrorsMeasurements.size());
-        Assert.assertEquals(1.0, forwardRequestErrorsMeasurements.get(0).getValue(), 0);
+            MetricsTestUtil.initMetrics();
+            final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
 
-        testPeerForwarder.doExecute(Collections.singletonList(new Record<>(REQUEST_4)));
-        Assert.assertEquals(2.0, forwardRequestErrorsMeasurements.get(0).getValue(), 0);
+            final List<Record<ExportTraceServiceRequest>> exportedRecords = testPeerForwarder
+                    .doExecute(Collections.singletonList(new Record<>(REQUEST_4)));
+
+            final List<ResourceSpans> expectedLocalResourceSpans = Collections.singletonList(
+                    generateResourceSpans(SPAN_4, SPAN_5, SPAN_6));
+            Assert.assertEquals(1, exportedRecords.size());
+            final ExportTraceServiceRequest exportedRequest = exportedRecords.get(0).getData();
+            final List<ResourceSpans> forwardedResourceSpans = exportedRequest.getResourceSpansList();
+            Assert.assertTrue(forwardedResourceSpans.containsAll(expectedLocalResourceSpans));
+            Assert.assertTrue(expectedLocalResourceSpans.containsAll(forwardedResourceSpans));
+            // Verify metrics
+            final List<Measurement> forwardRequestErrorsMeasurements = MetricsTestUtil.getMeasurementList(
+                    new StringJoiner(MetricNames.DELIMITER).add("testPipeline").add("peer_forwarder")
+                            .add(PeerForwarder.FORWARD_REQUEST_ERRORS).toString());
+            Assert.assertEquals(1, forwardRequestErrorsMeasurements.size());
+            Assert.assertEquals(1.0, forwardRequestErrorsMeasurements.get(0).getValue(), 0);
+
+            testPeerForwarder.doExecute(Collections.singletonList(new Record<>(REQUEST_4)));
+            Assert.assertEquals(2.0, forwardRequestErrorsMeasurements.get(0).getValue(), 0);
+        }
     }
 
     /**
