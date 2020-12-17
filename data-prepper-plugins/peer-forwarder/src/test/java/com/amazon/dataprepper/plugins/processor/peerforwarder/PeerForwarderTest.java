@@ -8,7 +8,6 @@ import com.google.protobuf.ByteString;
 import com.linecorp.armeria.client.ClientBuilder;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.Clients;
-import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
 import io.micrometer.core.instrument.Measurement;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
@@ -239,15 +238,13 @@ public class PeerForwarderTest {
     @Test
     public void testSingleRemoteIpForwardRequestError() throws Exception {
         final List<String> testIps = generateTestIps(2);
-        final ClientBuilder clientBuilder = mock(ClientBuilder.class);
+        final PeerClientPool peerClientPool = mock(PeerClientPool.class);
         final TraceServiceGrpc.TraceServiceBlockingStub client = mock(TraceServiceGrpc.TraceServiceBlockingStub.class);
-        when(clientBuilder.writeTimeout(any(Duration.class))).thenReturn(clientBuilder);
-        when(clientBuilder.factory(any(ClientFactory.class))).thenReturn(clientBuilder);
-        when(clientBuilder.build(TraceServiceGrpc.TraceServiceBlockingStub.class)).thenReturn(client);
+        when(peerClientPool.getClient(anyString())).thenReturn(client);
         when(client.export(any(ExportTraceServiceRequest.class))).thenThrow(new RuntimeException());
 
-        try (final MockedStatic<Clients> armeriaClientsMock = Mockito.mockStatic(Clients.class)) {
-            armeriaClientsMock.when(() -> Clients.builder(anyString())).thenReturn(clientBuilder);
+        try (final MockedStatic<PeerClientPool> peerClientPoolClassMock = Mockito.mockStatic(PeerClientPool.class)) {
+            peerClientPoolClassMock.when(PeerClientPool::getInstance).thenReturn(peerClientPool);
 
             MetricsTestUtil.initMetrics();
             final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
