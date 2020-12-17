@@ -47,15 +47,18 @@ public class HashRing implements Consumer<List<Endpoint>> {
         if (hashServerMap.isEmpty()) {
             return Optional.empty();
         }
+
         final byte[] traceIdInBytes = traceId.getBytes();
         final MessageDigest md;
         try {
             md = MessageDigest.getInstance(MD5);
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw (AssertionError)new AssertionError("unreachable", e);
         }
+
         md.update(traceIdInBytes);
         final BigInteger hashcode = new BigInteger(md.digest());
+
         // obtain Map.Entry with key greater than the hashcode
         final Map.Entry<BigInteger, String> entry = hashServerMap.higherEntry(hashcode);
         if (entry == null) {
@@ -73,7 +76,7 @@ public class HashRing implements Consumer<List<Endpoint>> {
 
     @Override
     public Consumer<List<Endpoint>> andThen(final Consumer<? super List<Endpoint>> after) {
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     private void buildHashServerMap() {
@@ -91,11 +94,13 @@ public class HashRing implements Consumer<List<Endpoint>> {
     private void addServerIpToHashMap(final String serverIp, final Map<BigInteger, String> targetMap) {
         final byte[] serverIpInBytes = serverIp.getBytes();
         final MessageDigest md;
+
         try {
             md = MessageDigest.getInstance(MD5);
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw (AssertionError)new AssertionError("unreachable", e);
         }
+
         final ByteBuffer intBuffer = ByteBuffer.allocate(4);
         for (int i = 0; i < numVirtualNodes; i++) {
             md.update(serverIpInBytes);

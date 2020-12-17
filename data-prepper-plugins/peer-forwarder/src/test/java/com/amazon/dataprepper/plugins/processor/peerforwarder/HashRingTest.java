@@ -8,12 +8,16 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -37,6 +41,16 @@ public class HashRingTest {
     @Before
     public void setup() {
         when(peerListProvider.getPeerList()).thenReturn(SERVER_IPS);
+    }
+
+    @Test
+    public void testGetServerIpEmptyMap() {
+        when(peerListProvider.getPeerList()).thenReturn(Collections.emptyList());
+        sut = new HashRing(peerListProvider, SINGLE_VIRTUAL_NODE_COUNT);
+
+        Optional<String> result = sut.getServerIp(TRACE_ID_1);
+
+        assertFalse(result.isPresent());
     }
 
     @Test
@@ -85,5 +99,43 @@ public class HashRingTest {
         assertTrue(result1.isPresent());
         assertTrue(result2.isPresent());
         assertNotEquals(result1.get(), result2.get());
+    }
+
+    @Test
+    public void testSpecialCaseNoKeyInMapGreaterThanHashValue() {
+        when(peerListProvider.getPeerList()).thenReturn(Collections.singletonList("serverIp"));
+
+        sut = new HashRing(peerListProvider, SINGLE_VIRTUAL_NODE_COUNT);
+
+        // Trace ID 1 hash is less than the hash of "serverIp"
+        Optional<String> result1 = sut.getServerIp(TRACE_ID_1);
+
+        // Trace ID 2 hash is greater than the hash of "serverIp"
+        Optional<String> result2 = sut.getServerIp(TRACE_ID_2);
+
+        // As there is only one value in the server list, the results should be the same
+        assertTrue(result1.isPresent());
+        assertTrue(result2.isPresent());
+        assertEquals(result1.get(), result2.get());
+    }
+
+    @Test
+    public void testEndpointChangeRebuildsMap() {
+        sut = new HashRing(peerListProvider, SINGLE_VIRTUAL_NODE_COUNT);
+
+        // First call during construction
+        verify(peerListProvider, times(1)).getPeerList();
+
+        sut.accept(Collections.emptyList());
+
+        // Second call during rebuild
+        verify(peerListProvider, times(2)).getPeerList();
+    }
+
+    @Test(expected = UnsupportedOperationException.class)
+    public void testAndThenImplementationThrowsUnsupportedOperationException() {
+        sut = new HashRing(peerListProvider, SINGLE_VIRTUAL_NODE_COUNT);
+
+        sut.andThen(sut);
     }
 }

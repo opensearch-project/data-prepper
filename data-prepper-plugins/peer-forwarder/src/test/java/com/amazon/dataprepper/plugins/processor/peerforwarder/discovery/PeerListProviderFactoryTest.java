@@ -57,6 +57,13 @@ public class PeerListProviderFactoryTest {
         factory.createProvider(pluginSetting);
     }
 
+    @Test(expected = UnsupportedOperationException.class)
+    public void testUnsupportedDiscoveryModeEnum() {
+        pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.UNSUPPORTED.toString());
+
+        factory.createProvider(pluginSetting);
+    }
+
     @Test(expected = NullPointerException.class)
     public void testCreateProviderStaticInstanceNoEndpoints() {
         pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.STATIC.toString());

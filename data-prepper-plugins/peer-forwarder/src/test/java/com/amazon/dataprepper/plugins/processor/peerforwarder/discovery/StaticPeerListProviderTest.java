@@ -35,6 +35,11 @@ public class StaticPeerListProviderTest {
         new StaticPeerListProvider(Collections.emptyList());
     }
 
+    @Test(expected = RuntimeException.class)
+    public void testListProviderWithNullList() {
+        new StaticPeerListProvider(null);
+    }
+
     @Test
     public void testListProviderWithNonEmptyList() {
         assertEquals(ENDPOINT_LIST.size(), staticPeerListProvider.getPeerList().size());
