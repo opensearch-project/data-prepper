@@ -1,12 +1,8 @@
 package com.amazon.dataprepper.pipeline.server;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.amazon.dataprepper.DataPrepper;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import com.sun.net.httpserver.HttpServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +42,7 @@ public class DataPrepperServer {
 
 
     /**
-     * Stop the data prepper server
+     * Stop the DataPrepperServer
      */
     public void stop() {
         server.stop(0);
