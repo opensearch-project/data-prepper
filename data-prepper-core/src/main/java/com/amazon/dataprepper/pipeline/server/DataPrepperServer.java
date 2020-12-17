@@ -40,7 +40,6 @@ public class DataPrepperServer {
 
     }
 
-
     /**
      * Stop the DataPrepperServer
      */
