@@ -4,6 +4,7 @@ import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
+import com.amazon.dataprepper.plugins.TestProcessor;
 import com.amazon.dataprepper.plugins.TestSink;
 import com.amazon.dataprepper.plugins.TestSource;
 import com.amazon.dataprepper.plugins.buffer.BlockingBuffer;
@@ -45,6 +46,27 @@ public class PipelineTests {
         assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
         testPipeline.shutdown();
         assertThat("Pipeline isStopRequested is expected to be true", testPipeline.isStopRequested(), is(true));
+        assertThat("Sink shutdown should be called", testSink.isShutdown, is(true));
+    }
+
+    @Test
+    public void testPipelineStateWithProcessor() {
+        final Source<Record<String>> testSource = new TestSource();
+        final TestSink testSink = new TestSink();
+        final TestProcessor testProcessor = new TestProcessor();
+        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
+                Collections.singletonList(testProcessor),
+                Collections.singletonList(testSink),
+                TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT);
+        assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
+        assertThat("Pipeline is expected to have a default buffer", testPipeline.getBuffer(), notNullValue());
+        assertTrue("Pipeline processors should be empty", testPipeline.getProcessors().size() == 1);
+        testPipeline.execute();
+        assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
+        testPipeline.shutdown();
+        assertThat("Pipeline isStopRequested is expected to be true", testPipeline.isStopRequested(), is(true));
+        assertThat("Sink shutdown should be called", testSink.isShutdown, is(true));
+        assertThat("Processor shutdown should be called", testProcessor.isShutdown, is(true));
     }
 
     @Test
