@@ -1,5 +1,4 @@
 plugins {
-    id 'jacoco'
     id 'com.bmuschko.docker-remote-api' version '6.6.1'
 }
 
