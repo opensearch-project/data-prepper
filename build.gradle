@@ -9,6 +9,7 @@ allprojects {
 
 subprojects {
     apply plugin: 'java'
+    apply plugin: 'jacoco'
     sourceCompatibility = '1.8'
     dependencies {
         implementation "com.google.guava:guava:${versionMap.guava}"
@@ -23,7 +24,6 @@ subprojects {
 }
 
 configure(coreProjects) {
-    apply plugin: 'jacoco'
     jacocoTestReport {
         dependsOn test // tests are required to run before generating the report
         reports {

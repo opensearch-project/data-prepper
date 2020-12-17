@@ -16,7 +16,6 @@ buildscript {
 
 plugins {
     id 'java'
-    id 'jacoco'
 }
 apply plugin: 'elasticsearch.testclusters'
 apply plugin: 'elasticsearch.build'
