@@ -68,7 +68,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final Map<String, Object> mappings = getIndexMappings(index);
     assertNotNull(mappings);
     assertFalse((boolean)mappings.get("date_detection"));
-    sink.stop();
+    sink.shutdown();
 
     if (isODFE()) {
       // Check managed index
@@ -88,7 +88,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     request = new Request(HttpMethod.GET, rolloverIndexName + "/_alias");
     response = client().performRequest(request);
     assertEquals(true, checkIsWriteIndex(EntityUtils.toString(response.getEntity()), indexAlias, rolloverIndexName));
-    sink.stop();
+    sink.shutdown();
 
     if (isODFE()) {
       // Check managed index
@@ -113,7 +113,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     assertEquals(2, retSources.size());
     assertTrue(retSources.containsAll(Arrays.asList(expData1, expData2)));
     assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", (String)expData1.get("spanId")));
-    sink.stop();
+    sink.shutdown();
   }
 
   public void testOutputRawSpanWithDLQ() throws IOException, InterruptedException {
@@ -132,7 +132,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
 
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     sink.output(testRecords);
-    sink.stop();
+    sink.shutdown();
 
     final StringBuilder content = new StringBuilder();
     Files.lines(Paths.get(expDLQFile)).forEach(content::append);
@@ -156,7 +156,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final Map<String, Object> mappings = getIndexMappings(indexAlias);
     assertNotNull(mappings);
     assertFalse((boolean)mappings.get("date_detection"));
-    sink.stop();
+    sink.shutdown();
 
     if (isODFE()) {
       // Check managed index
@@ -179,11 +179,11 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     assertEquals(1, retSources.size());
     assertEquals(expData, retSources.get(0));
     assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", (String)expData.get("hashId")));
-    sink.stop();
+    sink.shutdown();
 
     // Check restart for index already exists
     sink = new ElasticsearchSink(pluginSetting);
-    sink.stop();
+    sink.shutdown();
   }
 
   public void testInstantiateSinkCustomIndex() throws IOException {
@@ -195,11 +195,11 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final Request request = new Request(HttpMethod.HEAD, testIndexAlias);
     final Response response = client().performRequest(request);
     assertEquals(SC_OK, response.getStatusLine().getStatusCode());
-    sink.stop();
+    sink.shutdown();
 
     // Check restart for index already exists
     sink = new ElasticsearchSink(pluginSetting);
-    sink.stop();
+    sink.shutdown();
   }
 
   public void testOutputCustomIndex() throws IOException, InterruptedException {
@@ -216,7 +216,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
     assertEquals(1, retSources.size());
     assertEquals(Integer.valueOf(1), getDocumentCount(testIndexAlias, "_id", testId));
-    sink.stop();
+    sink.shutdown();
   }
 
   private PluginSetting generatePluginSetting(final boolean isRaw, final boolean isServiceMap, final String indexAlias, final String templateFilePath) {

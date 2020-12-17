@@ -131,25 +131,6 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
     }
   }
 
-  // TODO: need to be invoked by pipeline
-  public void stop() {
-    // Close the client
-    if (restHighLevelClient != null) {
-      try {
-        restHighLevelClient.close();
-      } catch (final IOException e) {
-        throw new RuntimeException(e.getMessage(), e);
-      }
-    }
-    if (dlqWriter != null) {
-      try {
-        dlqWriter.close();
-      } catch (final IOException e) {
-        LOG.error(e.getMessage(), e);
-      }
-    }
-  }
-
   private void createIndexTemplate(final String ismPolicyId) throws IOException {
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
     final PutIndexTemplateRequest putIndexTemplateRequest = new PutIndexTemplateRequest(indexAlias + "-index-template");
@@ -219,6 +200,20 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
 
   @Override
   public void shutdown() {
-    //TODO: Clean up resources
+    // Close the client
+    if (restHighLevelClient != null) {
+      try {
+        restHighLevelClient.close();
+      } catch (final IOException e) {
+        throw new RuntimeException(e.getMessage(), e);
+      }
+    }
+    if (dlqWriter != null) {
+      try {
+        dlqWriter.close();
+      } catch (final IOException e) {
+        LOG.error(e.getMessage(), e);
+      }
+    }
   }
 }
