@@ -78,6 +78,12 @@ public class DataPrepper {
         transformationPipelines.forEach((name, pipeline) -> {
             pipeline.shutdown();
         });
+    }
+
+    /**
+     * Triggers shutdown of the Data Prepper server.
+     */
+    public void shutdownDataPrepperServer(){
         dataPrepperServer.stop();
     }
 
