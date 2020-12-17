@@ -1,11 +1,13 @@
 package com.amazon.dataprepper.plugins.processor.peerforwarder;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.processor.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.StaticPeerListProvider;
+import io.micrometer.core.instrument.Counter;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
@@ -24,11 +26,14 @@ import java.util.Map;
 
 @DataPrepperPlugin(name = "peer_forwarder", type = PluginType.PROCESSOR)
 public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<ExportTraceServiceRequest>> {
+    public static final String FORWARD_REQUEST_ERRORS = "forwardRequestErrors";
+
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarder.class);
 
     private final HashRing hashRing;
     private final PeerClientPool peerClientPool;
     private final int maxNumSpansPerRequest;
+    private final Counter forwardRequestErrorCounter;
 
     public PeerForwarder(final PluginSetting pluginSetting,
                          final PeerClientPool peerClientPool,
@@ -38,6 +43,7 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
         this.peerClientPool = peerClientPool;
         this.hashRing = hashRing;
         this.maxNumSpansPerRequest = maxNumSpansPerRequest;
+        this.forwardRequestErrorCounter = pluginMetrics.counter(FORWARD_REQUEST_ERRORS);
     }
 
     public PeerForwarder(final PluginSetting pluginSetting) {
@@ -116,6 +122,7 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
                 client.export(request);
             } catch (Exception e) {
                 LOG.error(String.format("Failed to forward the request:\n%s\n", request.toString()));
+                forwardRequestErrorCounter.increment();
                 localBuffer.add(new Record<>(request));
             }
         } else {
