@@ -67,5 +67,10 @@ public class AbstractPrepperTest {
                     .flatMap(stringRecord -> Arrays.asList(stringRecord, stringRecord).stream())
                     .collect(Collectors.toList());
         }
+
+        @Override
+        public void shutdown() {
+
+        }
     }
 }

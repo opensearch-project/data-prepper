@@ -10,6 +10,7 @@ import com.amazon.dataprepper.plugins.buffer.BlockingBuffer;
 import org.junit.After;
 import org.junit.Test;
 
+import java.util.Collection;
 import java.util.Collections;
 
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -79,8 +80,16 @@ public class PipelineTests {
     public void testFailingProcessor() {
         final Source<Record<String>> testSource = new TestSource();
         final Sink<Record<String>> testSink = new TestSink();
-        final Processor<Record<String>, Record<String>> testProcessor = records -> {
-            throw new RuntimeException("Processor is expected to fail");
+        final Processor<Record<String>, Record<String>> testProcessor = new Processor<Record<String>, Record<String>>() {
+            @Override
+            public Collection<Record<String>> execute(Collection<Record<String>> records) {
+                throw new RuntimeException("Processor is expected to fail");
+            }
+
+            @Override
+            public void shutdown() {
+
+            }
         };
         try {
             testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),

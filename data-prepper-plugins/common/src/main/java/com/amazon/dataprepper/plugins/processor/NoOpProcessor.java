@@ -31,4 +31,9 @@ public class NoOpProcessor<InputT extends Record<?>> implements Processor<InputT
     public Collection<InputT> execute(Collection<InputT> records) {
         return records;
     }
+
+    @Override
+    public void shutdown() {
+
+    }
 }

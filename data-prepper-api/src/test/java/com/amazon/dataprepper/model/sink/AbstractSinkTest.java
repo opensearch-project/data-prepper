@@ -61,5 +61,10 @@ public class AbstractSinkTest {
 
             }
         }
+
+        @Override
+        public void shutdown() {
+
+        }
     }
 }

@@ -33,6 +33,11 @@ public class TestSink implements Sink<Record<String>> {
         records.stream().collect(Collectors.toCollection(() -> collectedRecords));
     }
 
+    @Override
+    public void shutdown() {
+        
+    }
+
     public List<Record<String>> getCollectedRecords() {
         return collectedRecords;
     }
