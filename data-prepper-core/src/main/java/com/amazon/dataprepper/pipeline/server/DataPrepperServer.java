@@ -40,8 +40,9 @@ public class DataPrepperServer {
 
     }
 
+
     /**
-     * Stop the DataPrepperServer
+     * Stop the data prepper server
      */
     public void stop() {
         server.stop(0);
