@@ -1,8 +1,12 @@
 package com.amazon.dataprepper.pipeline.server;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.amazon.dataprepper.DataPrepper;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import com.sun.net.httpserver.HttpServer;
 
 /**
@@ -34,10 +38,16 @@ public class DataPrepperServer {
         server.start();
     }
 
+
     /**
-     * Stop the DataPrepperServer
+     * Stop the data prepper server, with a delay
+     * @param delay delay in milliseconds
      */
-    public void stop() {
-        server.stop(0);
+    public void stop(long delay) {
+        ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(
+                1,
+                new ThreadFactoryBuilder().setDaemon(false).setNameFormat("server-shutdown-pool-%d").build());
+        scheduledExecutorService.schedule(() -> server.stop(0) , delay, TimeUnit.MILLISECONDS);
+        scheduledExecutorService.shutdown();
     }
 }

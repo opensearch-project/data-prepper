@@ -3,13 +3,12 @@ package com.amazon.dataprepper;
 import com.amazon.dataprepper.parser.PipelineParser;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
+import java.util.Map;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Map;
 
 /**
  * DataPrepper is the entry point into the execution engine. An instance of this class is provided by
@@ -78,7 +77,7 @@ public class DataPrepper {
         transformationPipelines.forEach((name, pipeline) -> {
             pipeline.shutdown();
         });
-        dataPrepperServer.stop();
+        dataPrepperServer.stop(100L);
     }
 
     /**

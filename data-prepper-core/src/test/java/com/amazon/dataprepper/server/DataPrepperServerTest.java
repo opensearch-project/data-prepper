@@ -40,7 +40,7 @@ public class DataPrepperServerTest {
 
     @After
     public void stopServer() {
-        dataPrepperServer.stop();
+        dataPrepperServer.stop(0);
     }
 
     @Test
@@ -56,7 +56,7 @@ public class DataPrepperServerTest {
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_OK, response.statusCode());
         Assert.assertEquals(scrape, response.body());
-        dataPrepperServer.stop();
+        dataPrepperServer.stop(0);
     }
 
     @Test
@@ -69,7 +69,7 @@ public class DataPrepperServerTest {
                 .GET().build();
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_INTERNAL_ERROR, response.statusCode());
-        dataPrepperServer.stop();
+        dataPrepperServer.stop(0);
     }
 
     @Test
@@ -92,7 +92,7 @@ public class DataPrepperServerTest {
         );
         Assert.assertEquals(HttpURLConnection.HTTP_OK, response.statusCode());
         Assert.assertEquals(expectedResponse, response.body());
-        dataPrepperServer.stop();
+        dataPrepperServer.stop(0);
     }
 
     @Test
@@ -106,7 +106,7 @@ public class DataPrepperServerTest {
                 .GET().build();
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_INTERNAL_ERROR, response.statusCode());
-        dataPrepperServer.stop();
+        dataPrepperServer.stop(0);
     }
 
     @Test
@@ -120,7 +120,7 @@ public class DataPrepperServerTest {
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_OK, response.statusCode());
         Mockito.verify(mockDataPrepper).shutdown();
-        dataPrepperServer.stop();
+        dataPrepperServer.stop(0);
     }
 
     @Test
@@ -135,7 +135,7 @@ public class DataPrepperServerTest {
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_INTERNAL_ERROR, response.statusCode());
         Mockito.verify(mockDataPrepper).shutdown();
-        dataPrepperServer.stop();
+        dataPrepperServer.stop(0);
     }
 
     private static class PrometheusRegistryMockScrape extends PrometheusMeterRegistry {
