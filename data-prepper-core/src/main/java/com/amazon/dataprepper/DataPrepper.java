@@ -29,6 +29,10 @@ public class DataPrepper {
     private static DataPrepperServer dataPrepperServer;
     private static DataPrepperConfiguration configuration = DataPrepperConfiguration.DEFAULT_CONFIG;
 
+    /**
+     * Set the DataPrepperConfiguration from a file
+     * @param configurationFile File containing DataPrepperConfiguration yaml
+     */
     public static void configure(final String configurationFile) {
         final DataPrepperConfiguration dataPrepperConfiguration =
                 DataPrepperConfiguration.fromFile(new File(configurationFile));
