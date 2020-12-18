@@ -8,6 +8,7 @@ import com.amazon.dataprepper.model.processor.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.StaticPeerListProvider;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
@@ -26,14 +27,19 @@ import java.util.Map;
 
 @DataPrepperPlugin(name = "peer_forwarder", type = PluginType.PROCESSOR)
 public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<ExportTraceServiceRequest>> {
-    public static final String FORWARD_REQUEST_ERRORS = "forwardRequestErrors";
+    public static final String FORWARD_REQUEST_LATENCY_PREFIX = "forwardRequestLatency";
+    public static final String FORWARD_REQUEST_SUCCESS_PREFIX = "forwardRequestSuccess";
+    public static final String FORWARD_REQUEST_ERRORS_PREFIX = "forwardRequestErrors";
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarder.class);
 
     private final HashRing hashRing;
     private final PeerClientPool peerClientPool;
     private final int maxNumSpansPerRequest;
-    private final Counter forwardRequestErrorCounter;
+
+    private final Map<String, Timer> forwardRequestTimers;
+    private final Map<String, Counter> forwardedRequestCounters;
+    private final Map<String, Counter> forwardRequestErrorCounters;
 
     public PeerForwarder(final PluginSetting pluginSetting,
                          final PeerClientPool peerClientPool,
@@ -43,7 +49,9 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
         this.peerClientPool = peerClientPool;
         this.hashRing = hashRing;
         this.maxNumSpansPerRequest = maxNumSpansPerRequest;
-        this.forwardRequestErrorCounter = pluginMetrics.counter(FORWARD_REQUEST_ERRORS);
+        forwardedRequestCounters = new HashMap<>();
+        forwardRequestErrorCounters = new HashMap<>();
+        forwardRequestTimers = new HashMap<>();
     }
 
     public PeerForwarder(final PluginSetting pluginSetting) {
@@ -118,10 +126,18 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
                                 final ExportTraceServiceRequest request,
                                 final List<Record<ExportTraceServiceRequest>> localBuffer) {
         if (client != null) {
+            final String peerIp = client.getChannel().authority();
             try {
-                client.export(request);
+                final Timer forwardRequestTimer = forwardRequestTimers.computeIfAbsent(
+                        peerIp, ip -> pluginMetrics.timer(String.format("%s:%s", FORWARD_REQUEST_LATENCY_PREFIX, ip)));
+                forwardRequestTimer.record(() -> client.export(request));
+                final Counter forwardedRequestCounter = forwardedRequestCounters.computeIfAbsent(
+                        peerIp, ip -> pluginMetrics.counter(String.format("%s:%s", FORWARD_REQUEST_SUCCESS_PREFIX, ip)));
+                forwardedRequestCounter.increment();
             } catch (Exception e) {
                 LOG.error(String.format("Failed to forward the request:\n%s\n", request.toString()));
+                final Counter forwardRequestErrorCounter = forwardRequestErrorCounters.computeIfAbsent(
+                        peerIp, ip -> pluginMetrics.counter(String.format("%s:%s", FORWARD_REQUEST_ERRORS_PREFIX, ip)));
                 forwardRequestErrorCounter.increment();
                 localBuffer.add(new Record<>(request));
             }
