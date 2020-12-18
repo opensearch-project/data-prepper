@@ -7,6 +7,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
+/**
+ * Class to hold configuration for DataPrepper, including server port and Log4j settings
+ */
 public class DataPrepperConfiguration {
     private int serverPort = 4900;
     private Log4JConfiguration log4JConfiguration = Log4JConfiguration.DEFAULT_CONFIG;
@@ -15,6 +18,11 @@ public class DataPrepperConfiguration {
 
     public static final DataPrepperConfiguration DEFAULT_CONFIG = new DataPrepperConfiguration();
 
+    /**
+     * Construct a DataPrepperConfiguration from a yaml file
+     * @param file
+     * @return
+     */
     public static DataPrepperConfiguration fromFile(File file) {
         try {
             return OBJECT_MAPPER.readValue(file, DataPrepperConfiguration.class);

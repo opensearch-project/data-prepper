@@ -7,6 +7,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.log4j.Level;
 
+/**
+ * Class to hold Log4J properties
+ */
 public class Log4JConfiguration {
     private Level level = Level.ERROR;
     private String filePath = "logs/Data-Prepper.log";
@@ -73,6 +76,11 @@ public class Log4JConfiguration {
         return maxBackupIndex;
     }
 
+    /**
+     * Return this configuration as a Properties object, for ease of use with
+     * Log4j runtime API for setting properties
+     * @return
+     */
     public Properties getProperties() {
         Properties properties = new Properties();
         properties.putAll(PRESET_PROPERTIES);
