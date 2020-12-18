@@ -53,7 +53,7 @@ public class HashRing implements Consumer<List<Endpoint>> {
         try {
             md = MessageDigest.getInstance(MD5);
         } catch (NoSuchAlgorithmException e) {
-            throw (AssertionError)new AssertionError("unreachable", e);
+            throw (AssertionError) new AssertionError("unreachable", e);
         }
 
         md.update(traceIdInBytes);
@@ -72,11 +72,6 @@ public class HashRing implements Consumer<List<Endpoint>> {
     @Override
     public void accept(final List<Endpoint> endpoints) {
         buildHashServerMap();
-    }
-
-    @Override
-    public Consumer<List<Endpoint>> andThen(final Consumer<? super List<Endpoint>> after) {
-        throw new UnsupportedOperationException();
     }
 
     private void buildHashServerMap() {
@@ -98,7 +93,7 @@ public class HashRing implements Consumer<List<Endpoint>> {
         try {
             md = MessageDigest.getInstance(MD5);
         } catch (NoSuchAlgorithmException e) {
-            throw (AssertionError)new AssertionError("unreachable", e);
+            throw (AssertionError) new AssertionError("unreachable", e);
         }
 
         final ByteBuffer intBuffer = ByteBuffer.allocate(4);

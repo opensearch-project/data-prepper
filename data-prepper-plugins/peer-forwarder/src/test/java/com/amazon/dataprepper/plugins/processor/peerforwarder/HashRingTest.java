@@ -131,11 +131,4 @@ public class HashRingTest {
         // Second call during rebuild
         verify(peerListProvider, times(2)).getPeerList();
     }
-
-    @Test(expected = UnsupportedOperationException.class)
-    public void testAndThenImplementationThrowsUnsupportedOperationException() {
-        sut = new HashRing(peerListProvider, SINGLE_VIRTUAL_NODE_COUNT);
-
-        sut.andThen(sut);
-    }
 }
