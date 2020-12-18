@@ -1,6 +1,7 @@
 package com.amazon.dataprepper.server;
 
 import com.amazon.dataprepper.DataPrepper;
+import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
 import java.io.IOException;
@@ -27,14 +28,21 @@ public class DataPrepperServerTest {
 
     private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private DataPrepperServer dataPrepperServer;
+    private DataPrepper dataPrepper;
+    private final int port = 8080;
 
     private void setRegistry(PrometheusMeterRegistry prometheusMeterRegistry) {
         Metrics.globalRegistry.getRegistries().iterator().forEachRemaining(meterRegistry -> Metrics.globalRegistry.remove(meterRegistry));
         Metrics.addRegistry(prometheusMeterRegistry);
     }
 
+    private void setupDataPrepper() {
+        dataPrepper = Mockito.mock(DataPrepper.class);
+        Mockito.when(dataPrepper.getConfiguration()).thenReturn(new DataPrepperConfiguration(port, null));
+    }
+
     @Before
-    public void initMetrics() {
+    public void setup() {
         setRegistry(new PrometheusRegistryMockScrape(PrometheusConfig.DEFAULT, ""));
     }
 
@@ -45,13 +53,14 @@ public class DataPrepperServerTest {
 
     @Test
     public void testGetMetrics() throws IOException, InterruptedException, URISyntaxException {
+        setupDataPrepper();
         final String scrape = UUID.randomUUID().toString();
         final PrometheusMeterRegistry prometheusMeterRegistry = new PrometheusRegistryMockScrape(PrometheusConfig.DEFAULT, scrape);
         setRegistry(prometheusMeterRegistry);
-        dataPrepperServer = new DataPrepperServer(8080, null);
+        dataPrepperServer = new DataPrepperServer(dataPrepper);
         dataPrepperServer.start();
 
-        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:8080/metrics/prometheus"))
+        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:"+ port + "/metrics/prometheus"))
                 .GET().build();
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_OK, response.statusCode());
@@ -61,11 +70,12 @@ public class DataPrepperServerTest {
 
     @Test
     public void testScrapeFailure() throws IOException, InterruptedException, URISyntaxException {
+        setupDataPrepper();
         setRegistry(new PrometheusRegistryThrowingScrape(PrometheusConfig.DEFAULT));
-        dataPrepperServer = new DataPrepperServer(8080, null);
+        dataPrepperServer = new DataPrepperServer(dataPrepper);
         dataPrepperServer.start();
 
-        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:8080/metrics/prometheus"))
+        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:"+ port + "/metrics/prometheus"))
                 .GET().build();
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_INTERNAL_ERROR, response.statusCode());
@@ -74,15 +84,15 @@ public class DataPrepperServerTest {
 
     @Test
     public void testListPipelines() throws URISyntaxException, IOException, InterruptedException {
-        final DataPrepper mockDataPrepper = Mockito.mock(DataPrepper.class);
+        setupDataPrepper();
         final String pipelineName = "testPipeline";
-        Mockito.when(mockDataPrepper.getTransformationPipelines()).thenReturn(
+        Mockito.when(dataPrepper.getTransformationPipelines()).thenReturn(
                 Collections.singletonMap(pipelineName, Mockito.mock(Pipeline.class))
         );
-        dataPrepperServer = new DataPrepperServer(8080, mockDataPrepper);
+        dataPrepperServer = new DataPrepperServer(dataPrepper);
         dataPrepperServer.start();
 
-        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:8080/list"))
+        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:"+ port +"/list"))
                 .GET().build();
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         final String expectedResponse = OBJECT_MAPPER.writeValueAsString(
@@ -97,12 +107,12 @@ public class DataPrepperServerTest {
 
     @Test
     public void testListPipelinesFailure() throws URISyntaxException, IOException, InterruptedException {
-        final DataPrepper mockDataPrepper = Mockito.mock(DataPrepper.class);
-        Mockito.when(mockDataPrepper.getTransformationPipelines()).thenThrow(new RuntimeException(""));
-        dataPrepperServer = new DataPrepperServer(8080, mockDataPrepper);
+        setupDataPrepper();
+        Mockito.when(dataPrepper.getTransformationPipelines()).thenThrow(new RuntimeException(""));
+        dataPrepperServer = new DataPrepperServer(dataPrepper);
         dataPrepperServer.start();
 
-        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:8080/list"))
+        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:"+ port +"/list"))
                 .GET().build();
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_INTERNAL_ERROR, response.statusCode());
@@ -111,30 +121,30 @@ public class DataPrepperServerTest {
 
     @Test
     public void testShutdown() throws URISyntaxException, IOException, InterruptedException {
-        final DataPrepper mockDataPrepper = Mockito.mock(DataPrepper.class);
-        dataPrepperServer = new DataPrepperServer(8080, mockDataPrepper);
+        setupDataPrepper();
+        dataPrepperServer = new DataPrepperServer(dataPrepper);
         dataPrepperServer.start();
 
-        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:8080/shutdown"))
+        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:"+ port +"/shutdown"))
                 .GET().build();
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_OK, response.statusCode());
-        Mockito.verify(mockDataPrepper).shutdown();
+        Mockito.verify(dataPrepper).shutdown();
         dataPrepperServer.stop();
     }
 
     @Test
     public void testShutdownFailure() throws URISyntaxException, IOException, InterruptedException {
-        final DataPrepper mockDataPrepper = Mockito.mock(DataPrepper.class);
-        Mockito.doThrow(new RuntimeException("")).when(mockDataPrepper).shutdown();
-        dataPrepperServer = new DataPrepperServer(8080, mockDataPrepper);
+        setupDataPrepper();
+        Mockito.doThrow(new RuntimeException("")).when(dataPrepper).shutdown();
+        dataPrepperServer = new DataPrepperServer(dataPrepper);
         dataPrepperServer.start();
 
-        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:8080/shutdown"))
+        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:"+ port +"/shutdown"))
                 .GET().build();
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_INTERNAL_ERROR, response.statusCode());
-        Mockito.verify(mockDataPrepper).shutdown();
+        Mockito.verify(dataPrepper).shutdown();
         dataPrepperServer.stop();
     }
 
