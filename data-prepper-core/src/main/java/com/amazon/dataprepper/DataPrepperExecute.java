@@ -10,6 +10,9 @@ public class DataPrepperExecute {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperExecute.class);
 
     public static void main(String[] args) {
+        if(args.length > 1) {
+            DataPrepper.configure(args[1]);
+        }
         final DataPrepper dataPrepper = DataPrepper.getInstance();
         if (args.length > 0) {
             dataPrepper.execute(args[0]);
