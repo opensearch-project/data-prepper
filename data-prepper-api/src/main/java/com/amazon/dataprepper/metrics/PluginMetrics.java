@@ -2,6 +2,8 @@ package com.amazon.dataprepper.metrics;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import java.util.StringJoiner;
+import java.util.function.ToDoubleFunction;
+
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Metrics;
@@ -41,7 +43,11 @@ public class PluginMetrics {
     }
 
     public <T extends Number> T gauge(final String name, T number) {
-        return Metrics.gauge(name, number);
+        return Metrics.gauge(getMeterName(name), number);
+    }
+
+    public <T> T gauge(String name, T obj, ToDoubleFunction<T> valueFunction) {
+        return Metrics.gauge(getMeterName(name), obj, valueFunction);
     }
 
     private String getMeterName(final String name) {

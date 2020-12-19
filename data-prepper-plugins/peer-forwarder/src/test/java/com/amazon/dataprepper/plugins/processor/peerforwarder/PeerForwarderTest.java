@@ -1,15 +1,10 @@
 package com.amazon.dataprepper.plugins.processor.peerforwarder;
 
-import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.google.protobuf.ByteString;
-import com.linecorp.armeria.client.ClientBuilder;
-import com.linecorp.armeria.client.ClientFactory;
-import com.linecorp.armeria.client.Clients;
 import io.grpc.Channel;
-import io.micrometer.core.instrument.Measurement;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
@@ -263,8 +258,9 @@ public class PeerForwarderTest {
             final List<ResourceSpans> forwardedResourceSpans = exportedRequest.getResourceSpansList();
             Assert.assertTrue(forwardedResourceSpans.containsAll(expectedLocalResourceSpans));
             Assert.assertTrue(expectedLocalResourceSpans.containsAll(forwardedResourceSpans));
-            // TODO: Verify metrics
         }
+
+        // TODO: Verify metrics
     }
 
     /**
