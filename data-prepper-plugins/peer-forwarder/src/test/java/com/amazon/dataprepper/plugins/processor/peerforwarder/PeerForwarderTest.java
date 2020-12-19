@@ -237,8 +237,9 @@ public class PeerForwarderTest {
         final Channel channel = mock(Channel.class);
         final PeerClientPool peerClientPool = mock(PeerClientPool.class);
         final TraceServiceGrpc.TraceServiceBlockingStub client = mock(TraceServiceGrpc.TraceServiceBlockingStub.class);
-        when(channel.authority()).thenReturn(String.format("%s:21890", testIps.get(1)));
-        when(peerClientPool.getClient(anyString())).thenReturn(client);
+        final String peerIp = testIps.get(1);
+        when(channel.authority()).thenReturn(String.format("%s:21890", peerIp));
+        when(peerClientPool.getClient(peerIp)).thenReturn(client);
         when(client.export(any(ExportTraceServiceRequest.class))).thenThrow(new RuntimeException());
         when(client.getChannel()).thenReturn(channel);
 
