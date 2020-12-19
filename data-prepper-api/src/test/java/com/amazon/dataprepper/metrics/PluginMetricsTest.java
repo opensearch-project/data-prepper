@@ -6,6 +6,7 @@ import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicInteger;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import org.junit.Assert;
 import org.junit.Test;
@@ -52,6 +53,10 @@ public class PluginMetricsTest {
     public void testGauge() {
         final AtomicInteger atomicInteger = new AtomicInteger(0);
         final AtomicInteger gauge = PLUGIN_METRICS.gauge("gauge", atomicInteger);
+        Assert.assertNotNull(
+                Metrics.globalRegistry.get(new StringJoiner(MetricNames.DELIMITER)
+                        .add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add("gauge").toString()).meter());
         Assert.assertEquals(atomicInteger.get(), gauge.get());
     }
 
