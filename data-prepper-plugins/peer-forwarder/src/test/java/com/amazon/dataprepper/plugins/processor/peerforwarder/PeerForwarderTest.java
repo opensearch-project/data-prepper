@@ -65,6 +65,9 @@ public class PeerForwarderTest {
     @Mock
     private PeerClientPool peerClientPool;
 
+    @Mock
+    private TraceServiceGrpc.TraceServiceBlockingStub client;
+
     @Before
     public void setUp() {
         peerClientPoolClassMock = Mockito.mockStatic(PeerClientPool.class);
@@ -116,10 +119,9 @@ public class PeerForwarderTest {
     }
 
     @Test
-    public void testSingleRemoteIpBothLocalAndForwardedRequest() throws Exception {
+    public void testSingleRemoteIpBothLocalAndForwardedRequest() {
         final List<String> testIps = generateTestIps(2);
         final Channel channel = mock(Channel.class);
-        final TraceServiceGrpc.TraceServiceBlockingStub client = mock(TraceServiceGrpc.TraceServiceBlockingStub.class);
         final String peerIp = testIps.get(1);
         when(channel.authority()).thenReturn(String.format("%s:21890", peerIp));
         when(peerClientPool.getClient(peerIp)).thenReturn(client);
@@ -185,7 +187,6 @@ public class PeerForwarderTest {
     public void testSingleRemoteIpForwardedRequestOnly() throws Exception {
         final List<String> testIps = generateTestIps(2);
         final Channel channel = mock(Channel.class);
-        final TraceServiceGrpc.TraceServiceBlockingStub client = mock(TraceServiceGrpc.TraceServiceBlockingStub.class);
         final String peerIp = testIps.get(1);
         final String fullPeerIp = String.format("%s:21890", peerIp);
         when(channel.authority()).thenReturn(fullPeerIp);
@@ -241,7 +242,6 @@ public class PeerForwarderTest {
     public void testSingleRemoteIpForwardRequestError() {
         final List<String> testIps = generateTestIps(2);
         final Channel channel = mock(Channel.class);
-        final TraceServiceGrpc.TraceServiceBlockingStub client = mock(TraceServiceGrpc.TraceServiceBlockingStub.class);
         final String peerIp = testIps.get(1);
         final String fullPeerIp = String.format("%s:21890", peerIp);
         when(channel.authority()).thenReturn(fullPeerIp);
