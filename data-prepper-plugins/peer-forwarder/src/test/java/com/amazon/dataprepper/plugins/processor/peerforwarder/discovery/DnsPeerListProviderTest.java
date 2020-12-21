@@ -12,9 +12,11 @@ import org.mockito.junit.MockitoJUnitRunner;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -47,6 +49,15 @@ public class DnsPeerListProviderTest {
     @Test(expected = NullPointerException.class)
     public void testDefaultListProviderWithNullHostname() {
         new DnsPeerListProvider(null);
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void testConstructWithInterruptedException() throws Exception {
+        CompletableFuture mockFuture = mock(CompletableFuture.class);
+        when(mockFuture.get()).thenThrow(new InterruptedException());
+        when(dnsAddressEndpointGroup.whenReady()).thenReturn(mockFuture);
+
+        new DnsPeerListProvider(dnsAddressEndpointGroup);
     }
 
     @Test

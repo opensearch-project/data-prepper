@@ -39,7 +39,7 @@ public class PeerListProviderFactory {
 
                 return new StaticPeerListProvider(endpoints);
             default:
-                throw new UnsupportedOperationException(String.format("Unsupported discovery mode: {}", discoveryMode));
+                throw new UnsupportedOperationException(String.format("Unsupported discovery mode: %s", discoveryMode));
         }
     }
 }
