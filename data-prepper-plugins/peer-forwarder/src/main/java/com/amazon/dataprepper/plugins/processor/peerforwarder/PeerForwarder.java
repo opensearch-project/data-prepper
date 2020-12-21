@@ -133,17 +133,17 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
                                 final List<Record<ExportTraceServiceRequest>> localBuffer) {
         if (client != null) {
             final String peerIp = client.getChannel().authority();
+            final Timer forwardRequestTimer = forwardRequestTimers.computeIfAbsent(
+                    peerIp, ip -> pluginMetrics.timer(String.format("%s:%s", FORWARD_REQUEST_LATENCY_PREFIX, ip)));
+            final Counter forwardedRequestCounter = forwardedRequestCounters.computeIfAbsent(
+                    peerIp, ip -> pluginMetrics.counter(String.format("%s:%s", FORWARD_REQUEST_SUCCESS_PREFIX, ip)));
+            final Counter forwardRequestErrorCounter = forwardRequestErrorCounters.computeIfAbsent(
+                    peerIp, ip -> pluginMetrics.counter(String.format("%s:%s", FORWARD_REQUEST_ERRORS_PREFIX, ip)));
             try {
-                final Timer forwardRequestTimer = forwardRequestTimers.computeIfAbsent(
-                        peerIp, ip -> pluginMetrics.timer(String.format("%s:%s", FORWARD_REQUEST_LATENCY_PREFIX, ip)));
                 forwardRequestTimer.record(() -> client.export(request));
-                final Counter forwardedRequestCounter = forwardedRequestCounters.computeIfAbsent(
-                        peerIp, ip -> pluginMetrics.counter(String.format("%s:%s", FORWARD_REQUEST_SUCCESS_PREFIX, ip)));
                 forwardedRequestCounter.increment();
             } catch (Exception e) {
                 LOG.error(String.format("Failed to forward the request:\n%s\n", request.toString()));
-                final Counter forwardRequestErrorCounter = forwardRequestErrorCounters.computeIfAbsent(
-                        peerIp, ip -> pluginMetrics.counter(String.format("%s:%s", FORWARD_REQUEST_ERRORS_PREFIX, ip)));
                 forwardRequestErrorCounter.increment();
                 localBuffer.add(new Record<>(request));
             }
