@@ -131,7 +131,14 @@ public class PeerForwarderTest {
             return null;
         }).when(client).export(any(ExportTraceServiceRequest.class));
 
+        MetricsTestUtil.initMetrics();
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
+        // Verify activePeers
+        final List<Measurement> activePeers = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add("testPipeline").add("peer_forwarder")
+                        .add(PeerForwarder.PEER_ENDPOINTS).toString());
+        Assert.assertEquals(1, activePeers.size());
+        Assert.assertEquals(2.0, activePeers.get(0).getValue(), 0);
 
         final List<Record<ExportTraceServiceRequest>> exportedRecords = testPeerForwarder
                 .doExecute(Arrays.asList(new Record<>(REQUEST_1), new Record<>(REQUEST_2)));
