@@ -9,6 +9,10 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 
+/**
+ * Provides reference to APIs that register timer, counter, gauge into global registry.
+ * See https://micrometer.io/docs/concepts#_registry
+ */
 public class PluginMetrics {
 
     private final String metricsPrefix;
