@@ -40,6 +40,7 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class PeerForwarderTest {
+    private static final String TEST_PIPELINE_NAME = "testPipeline";
     private static final String LOCAL_IP = "127.0.0.1";
     private static final Span SPAN_1 = Span.newBuilder()
             .setTraceId(ByteString.copyFromUtf8("traceIdA")).setSpanId(ByteString.copyFromUtf8("spanId1")).build();
@@ -135,7 +136,7 @@ public class PeerForwarderTest {
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
         // Verify activePeers
         final List<Measurement> activePeers = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add("testPipeline").add("peer_forwarder")
+                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
                         .add(PeerForwarder.PEER_ENDPOINTS).toString());
         Assert.assertEquals(1, activePeers.size());
         Assert.assertEquals(2.0, activePeers.get(0).getValue(), 0);
@@ -215,17 +216,17 @@ public class PeerForwarderTest {
 
         // Verify metrics
         final List<Measurement> forwardRequestErrorMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add("testPipeline").add("peer_forwarder")
+                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
                         .add(String.format("%s:%s", PeerForwarder.FORWARD_REQUEST_ERRORS_PREFIX, fullPeerIp)).toString());
         Assert.assertEquals(1, forwardRequestErrorMeasurements.size());
         Assert.assertEquals(0.0, forwardRequestErrorMeasurements.get(0).getValue(), 0);
         final List<Measurement> forwardRequestSuccessMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add("testPipeline").add("peer_forwarder")
+                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
                         .add(String.format("%s:%s", PeerForwarder.FORWARD_REQUEST_SUCCESS_PREFIX, fullPeerIp)).toString());
         Assert.assertEquals(1, forwardRequestSuccessMeasurements.size());
         Assert.assertEquals(1.0, forwardRequestSuccessMeasurements.get(0).getValue(), 0);
         final List<Measurement> forwardRequestLatencyMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add("testPipeline").add("peer_forwarder")
+                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
                         .add(String.format("%s:%s", PeerForwarder.FORWARD_REQUEST_LATENCY_PREFIX, fullPeerIp)).toString());
         Assert.assertEquals(3, forwardRequestLatencyMeasurements.size());
         // COUNT
@@ -264,17 +265,17 @@ public class PeerForwarderTest {
 
         // Verify metrics
         final List<Measurement> forwardRequestErrorMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add("testPipeline").add("peer_forwarder")
+                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
                         .add(String.format("%s:%s", PeerForwarder.FORWARD_REQUEST_ERRORS_PREFIX, fullPeerIp)).toString());
         Assert.assertEquals(1, forwardRequestErrorMeasurements.size());
         Assert.assertEquals(1.0, forwardRequestErrorMeasurements.get(0).getValue(), 0);
         final List<Measurement> forwardRequestSuccessMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add("testPipeline").add("peer_forwarder")
+                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
                         .add(String.format("%s:%s", PeerForwarder.FORWARD_REQUEST_SUCCESS_PREFIX, fullPeerIp)).toString());
         Assert.assertEquals(1, forwardRequestSuccessMeasurements.size());
         Assert.assertEquals(0.0, forwardRequestSuccessMeasurements.get(0).getValue(), 0);
         final List<Measurement> forwardRequestLatencyMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add("testPipeline").add("peer_forwarder")
+                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
                         .add(String.format("%s:%s", PeerForwarder.FORWARD_REQUEST_LATENCY_PREFIX, fullPeerIp)).toString());
         Assert.assertEquals(3, forwardRequestLatencyMeasurements.size());
         // COUNT
@@ -305,6 +306,6 @@ public class PeerForwarderTest {
         settings.put(PeerForwarderConfig.STATIC_ENDPOINTS, staticEndpoints);
         settings.put(PeerForwarderConfig.MAX_NUM_SPANS_PER_REQUEST, spansPerRequest);
         settings.put(PeerForwarderConfig.TIME_OUT, 300);
-        return new PeerForwarder(new PluginSetting("peer_forwarder", settings) {{setPipelineName("testPipeline");}});
+        return new PeerForwarder(new PluginSetting("peer_forwarder", settings) {{setPipelineName(TEST_PIPELINE_NAME);}});
     }
 }
