@@ -35,16 +35,24 @@ public class DataPrepperConfiguration {
 
     @JsonCreator
     public DataPrepperConfiguration(
-            @JsonProperty("serverPort") final int serverPort,
+            @JsonProperty("serverPort") final String serverPort,
             @JsonProperty("log4jConfig") final Log4JConfiguration log4JConfiguration
     ) {
         setServerPort(serverPort);
         setLog4JConfiguration(log4JConfiguration);
     }
 
-    private void setServerPort(int serverPort) {
-        if(serverPort != 0) {
-            this.serverPort = serverPort;
+    private void setServerPort(final String serverPort) {
+        if(serverPort != null && !serverPort.isEmpty()) {
+            try {
+                int port = Integer.parseInt(serverPort);
+                if(port <= 0) {
+                    throw new IllegalArgumentException("Server port must be a positive integer");
+                }
+                this.serverPort = port;
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Server port must be a positive integer");
+            }
         }
     }
 

@@ -1,8 +1,7 @@
 package com.amazon.dataprepper.server;
 
 import com.amazon.dataprepper.DataPrepper;
-import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
-import com.amazon.dataprepper.pipeline.Pipeline;
+import com.amazon.dataprepper.TestDataProvider;
 import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -29,7 +28,7 @@ public class DataPrepperServerTest {
     private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private DataPrepperServer dataPrepperServer;
     private DataPrepper dataPrepper;
-    private final int port = 8080;
+    private final int port = 1234;
 
     private void setRegistry(PrometheusMeterRegistry prometheusMeterRegistry) {
         Metrics.globalRegistry.getRegistries().iterator().forEachRemaining(meterRegistry -> Metrics.globalRegistry.remove(meterRegistry));
@@ -38,7 +37,7 @@ public class DataPrepperServerTest {
 
     private void setupDataPrepper() {
         dataPrepper = Mockito.mock(DataPrepper.class);
-        Mockito.when(dataPrepper.getConfiguration()).thenReturn(new DataPrepperConfiguration(port, null));
+        DataPrepper.configure(TestDataProvider.VALID_DATA_PREPPER_DEFAULT_LOG4J_CONFIG_FILE);
     }
 
     @Before
@@ -87,7 +86,7 @@ public class DataPrepperServerTest {
         setupDataPrepper();
         final String pipelineName = "testPipeline";
         Mockito.when(dataPrepper.getTransformationPipelines()).thenReturn(
-                Collections.singletonMap(pipelineName, Mockito.mock(Pipeline.class))
+                Collections.singletonMap("testPipeline", null)
         );
         dataPrepperServer = new DataPrepperServer(dataPrepper);
         dataPrepperServer.start();
