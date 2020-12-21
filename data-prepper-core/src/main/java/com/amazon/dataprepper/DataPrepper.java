@@ -113,7 +113,7 @@ public class DataPrepper {
         return  transformationPipelines;
     }
 
-    public DataPrepperConfiguration getConfiguration() {
+    public static DataPrepperConfiguration getConfiguration() {
         return configuration;
     }
 

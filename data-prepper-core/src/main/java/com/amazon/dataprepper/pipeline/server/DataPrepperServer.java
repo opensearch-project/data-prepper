@@ -18,7 +18,7 @@ public class DataPrepperServer {
 
     public DataPrepperServer(final DataPrepper dataPrepper) {
         try {
-            this.port = dataPrepper.getConfiguration().getServerPort();
+            this.port = DataPrepper.getConfiguration().getServerPort();
             server = HttpServer.create(
                     new InetSocketAddress(this.port),
                     0

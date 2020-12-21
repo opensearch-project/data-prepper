@@ -43,18 +43,18 @@ public class DataPrepperTests {
     public void testDefaultConfiguration() {
         DataPrepper testInstance = DataPrepper.getInstance();
         assertThat("Data prepper should have default config if no config is passed in",
-                testInstance.getConfiguration(), is(DataPrepperConfiguration.DEFAULT_CONFIG));
+                DataPrepper.getConfiguration(), is(DataPrepperConfiguration.DEFAULT_CONFIG));
     }
 
     @Test
     public void testCustomConfiguration() {
         DataPrepper.configure(TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE);
         DataPrepper testInstance = DataPrepper.getInstance();
-        Assert.assertEquals(1234, testInstance.getConfiguration().getServerPort());
-        Assert.assertEquals(Level.DEBUG, testInstance.getConfiguration().getLog4JConfiguration().getLevel());
-        Assert.assertEquals("file.txt", testInstance.getConfiguration().getLog4JConfiguration().getFilePath());
-        Assert.assertEquals("1GB", testInstance.getConfiguration().getLog4JConfiguration().getMaxFileSize());
-        Assert.assertEquals("10", testInstance.getConfiguration().getLog4JConfiguration().getMaxBackupIndex());
+        Assert.assertEquals(1234, DataPrepper.getConfiguration().getServerPort());
+        Assert.assertEquals(Level.DEBUG, DataPrepper.getConfiguration().getLog4JConfiguration().getLevel());
+        Assert.assertEquals("file.txt", DataPrepper.getConfiguration().getLog4JConfiguration().getFilePath());
+        Assert.assertEquals("1GB", DataPrepper.getConfiguration().getLog4JConfiguration().getMaxFileSize());
+        Assert.assertEquals("10", DataPrepper.getConfiguration().getLog4JConfiguration().getMaxBackupIndex());
     }
 
     @Test
