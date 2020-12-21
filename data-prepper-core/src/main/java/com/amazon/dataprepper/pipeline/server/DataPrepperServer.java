@@ -16,16 +16,17 @@ public class DataPrepperServer {
     private final HttpServer server;
     private final int port;
 
-    public DataPrepperServer(final int port, final DataPrepper dataPrepper) {
+    public DataPrepperServer(final DataPrepper dataPrepper) {
         try {
+            this.port = DataPrepper.getConfiguration().getServerPort();
             server = HttpServer.create(
-                    new InetSocketAddress(port),
+                    new InetSocketAddress(this.port),
                     0
             );
             server.createContext("/metrics/prometheus", new PrometheusMetricsHandler());
             server.createContext("/list", new ListPipelinesHandler(dataPrepper));
             server.createContext("/shutdown", new ShutdownHandler(dataPrepper));
-            this.port = port;
+
         } catch (IOException e) {
             throw new RuntimeException("Failed to create server", e);
         }

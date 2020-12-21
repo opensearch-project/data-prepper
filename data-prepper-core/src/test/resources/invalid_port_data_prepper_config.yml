@@ -1,0 +1,6 @@
+serverPort: -550
+log4jConfig:
+  logLevel: "DEBUG"
+  filePath: "file.txt"
+  maxFileSize: "1GB"
+  maxBackupIndex: "10"
