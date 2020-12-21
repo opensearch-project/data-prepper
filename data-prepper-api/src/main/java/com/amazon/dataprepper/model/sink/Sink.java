@@ -17,4 +17,9 @@ public interface Sink<T extends Record<?>> {
      */
     void output(Collection<T> records);
 
+    /**
+     * Prepare sink for shutdown, by cleaning up resources and threads.
+     */
+    void shutdown();
+
 }

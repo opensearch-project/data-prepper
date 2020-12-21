@@ -83,4 +83,9 @@ public class OTelTraceRawProcessor implements Processor<Record<ExportTraceServic
         }
         return finalRecords;
     }
+
+    @Override
+    public void shutdown() {
+
+    }
 }
