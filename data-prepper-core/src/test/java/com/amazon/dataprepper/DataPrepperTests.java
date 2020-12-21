@@ -40,13 +40,6 @@ public class DataPrepperTests {
     }
 
     @Test
-    public void testDefaultConfiguration() {
-        DataPrepper testInstance = DataPrepper.getInstance();
-        assertThat("Data prepper should have default config if no config is passed in",
-                DataPrepper.getConfiguration(), is(DataPrepperConfiguration.DEFAULT_CONFIG));
-    }
-
-    @Test
     public void testCustomConfiguration() {
         DataPrepper.configure(TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE);
         DataPrepper testInstance = DataPrepper.getInstance();
