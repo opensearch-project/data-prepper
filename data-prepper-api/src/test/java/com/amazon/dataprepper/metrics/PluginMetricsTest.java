@@ -50,7 +50,7 @@ public class PluginMetricsTest {
     }
 
     @Test
-    public void testGauge() {
+    public void testNumberGauge() {
         final AtomicInteger atomicInteger = new AtomicInteger(0);
         final AtomicInteger gauge = PLUGIN_METRICS.gauge("gauge", atomicInteger);
         Assert.assertNotNull(
@@ -58,6 +58,17 @@ public class PluginMetricsTest {
                         .add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add("gauge").toString()).meter());
         Assert.assertEquals(atomicInteger.get(), gauge.get());
+    }
+
+    @Test
+    public void testReferenceGauge() {
+        final String testString = "abc";
+        final String gauge = PLUGIN_METRICS.gauge("gauge", testString, String::length);
+        Assert.assertNotNull(
+                Metrics.globalRegistry.get(new StringJoiner(MetricNames.DELIMITER)
+                        .add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add("gauge").toString()).meter());
+        Assert.assertEquals(3, gauge.length());
     }
 
     @Test
