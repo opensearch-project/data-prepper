@@ -53,7 +53,7 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
         this.hashRing = hashRing;
         this.maxNumSpansPerRequest = maxNumSpansPerRequest;
         this.peerListProvider = pluginMetrics.gauge(
-                PEER_ENDPOINTS, peerListProvider, provider -> (double) provider.getPeerList().size());
+                PEER_ENDPOINTS, peerListProvider, provider -> provider.getPeerList().size());
         forwardedRequestCounters = new HashMap<>();
         forwardRequestErrorCounters = new HashMap<>();
         forwardRequestTimers = new HashMap<>();
