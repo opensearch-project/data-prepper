@@ -39,18 +39,23 @@ public class OTelTraceRawProcessor extends AbstractPrepper<Record<ExportTraceSer
     private static final String END_TIME = "endTime";
     private static final BigDecimal MILLIS_TO_NANOS = new BigDecimal(1_000_000);
     private static final BigDecimal SEC_TO_MILLIS = new BigDecimal(1_000);
-
     private static final Logger log = LoggerFactory.getLogger(OTelTraceRawProcessor.class);
+
+    public static final String SPAN_PROCESSING_ERRORS = "spanProcessingErrors";
+    public static final String RESOURCE_SPANS_PROCESSING_ERRORS = "resourceSpansProcessingErrors";
+    public static final String TOTAL_PROCESSING_ERRORS = "totalProcessingErrors";
+
     private final Counter spanErrorsCounter;
     private final Counter resourceSpanErrorsCounter;
     private final Counter totalProcessingErrorsCounter;
 
+
     //TODO: https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/66
     public OTelTraceRawProcessor(final PluginSetting pluginSetting) {
         super(pluginSetting);
-        spanErrorsCounter = pluginMetrics.counter("spanProcessingErrors");
-        resourceSpanErrorsCounter = pluginMetrics.counter("resourceSpansProcessingErrors");
-        totalProcessingErrorsCounter = pluginMetrics.counter("totalProcessingErrors");
+        spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
+        resourceSpanErrorsCounter = pluginMetrics.counter(RESOURCE_SPANS_PROCESSING_ERRORS);
+        totalProcessingErrorsCounter = pluginMetrics.counter(TOTAL_PROCESSING_ERRORS);
     }
 
 
@@ -66,6 +71,8 @@ public class OTelTraceRawProcessor extends AbstractPrepper<Record<ExportTraceSer
         final List<Record<String>> finalRecords = new LinkedList<>();
         for (Record<ExportTraceServiceRequest> ets : records) {
             for (ResourceSpans rs : ets.getData().getResourceSpansList()) {
+                System.out.println(ets.toString());
+                System.out.println(rs);
                 try {
                     final String serviceName = OTelProtoHelper.getServiceName(rs.getResource()).orElse(null);
                     final Map<String, Object> resourceAttributes = OTelProtoHelper.getResourceAttributes(rs.getResource());
