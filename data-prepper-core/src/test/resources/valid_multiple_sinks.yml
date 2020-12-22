@@ -10,7 +10,7 @@ raw-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  processor:
+  prepper:
     - string_converter:
         upper_case: true
   sink:
@@ -20,7 +20,7 @@ service-map-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  processor:
+  prepper:
     - string_converter:
         upper_case: true
   sink:
