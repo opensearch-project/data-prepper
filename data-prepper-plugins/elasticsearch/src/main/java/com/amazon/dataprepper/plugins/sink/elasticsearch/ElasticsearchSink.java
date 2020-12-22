@@ -133,13 +133,15 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
   }
 
   private void flushBatch(final BulkRequest bulkRequest) {
-    try {
-      bulkRetryStrategy.execute(bulkRequest);
-    } catch (final InterruptedException e) {
-      LOG.error("Unexpected Interrupt:", e);
-      bulkRequestErrorsCounter.increment();
-      Thread.currentThread().interrupt();
-    }
+    bulkRequestTimer.record(() -> {
+      try {
+        bulkRetryStrategy.execute(bulkRequest);
+      } catch (final InterruptedException e) {
+        LOG.error("Unexpected Interrupt:", e);
+        bulkRequestErrorsCounter.increment();
+        Thread.currentThread().interrupt();
+      }
+    });
   }
 
   private void createIndexTemplate(final String ismPolicyId) throws IOException {
