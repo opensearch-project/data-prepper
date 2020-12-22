@@ -24,6 +24,17 @@ Example running command:
 java -jar data-prepper-core-$VERSION pipelines.yml dataPrepper.yml
 ```
 
+### APIs
+Running the project locally will expose a server on port 4900 by default. The following 
+APIs are available:
+
+* /list
+  * lists running pipelines
+* /shutdown
+  * starts a graceful shutdown of the Data Prepper
+* /metrics/prometheus
+  * returns a scrape of the Data Prepper metrics in Prometheus
+  text format
 
 ### Running the example app
 To run the example app against your local changes, use the docker found [here](https://github.com/opendistro-for-elasticsearch/data-prepper/tree/master/examples/dev/trace-analytics-sample-app)
