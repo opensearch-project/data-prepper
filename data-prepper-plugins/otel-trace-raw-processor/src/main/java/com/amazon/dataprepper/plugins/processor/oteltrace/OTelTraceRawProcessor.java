@@ -71,8 +71,6 @@ public class OTelTraceRawProcessor extends AbstractPrepper<Record<ExportTraceSer
         final List<Record<String>> finalRecords = new LinkedList<>();
         for (Record<ExportTraceServiceRequest> ets : records) {
             for (ResourceSpans rs : ets.getData().getResourceSpansList()) {
-                System.out.println(ets.toString());
-                System.out.println(rs);
                 try {
                     final String serviceName = OTelProtoHelper.getServiceName(rs.getResource()).orElse(null);
                     final Map<String, Object> resourceAttributes = OTelProtoHelper.getResourceAttributes(rs.getResource());
