@@ -5,7 +5,6 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.AbstractSink;
-import com.amazon.dataprepper.model.sink.Sink;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.elasticsearch.ElasticsearchException;
@@ -42,7 +41,6 @@ import java.util.function.Supplier;
 public class ElasticsearchSink extends AbstractSink<Record<String>> {
   public static final String BULKREQUEST_LATENCY = "bulkRequestLatency";
   public static final String BULKREQUEST_ERRORS = "bulkRequestErrors";
-  public static final String DOCUMENTS_SUCCESS = "documentsSuccess";
 
   private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchSink.class);
   // Pulled from BulkRequest to make estimation of bytes consistent
@@ -59,13 +57,11 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
 
   private final Timer bulkRequestTimer;
   private final Counter bulkRequestErrorsCounter;
-  private final Counter sentDocumentsCounter;
 
   public ElasticsearchSink(final PluginSetting pluginSetting) {
     super(pluginSetting);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
-    sentDocumentsCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS);
 
     this.esSinkConfig = ElasticsearchSinkConfiguration.readESConfig(pluginSetting);
     this.bulkSize = ByteSizeUnit.MB.toBytes(esSinkConfig.getIndexConfiguration().getBulkSize());
@@ -141,6 +137,7 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
       bulkRetryStrategy.execute(bulkRequest);
     } catch (final InterruptedException e) {
       LOG.error("Unexpected Interrupt:", e);
+      bulkRequestErrorsCounter.increment();
       Thread.currentThread().interrupt();
     }
   }
