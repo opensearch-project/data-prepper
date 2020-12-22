@@ -3,11 +3,13 @@ networks:
   my_network:
     driver: bridge
     ipam:
-     config:
-       - subnet: 10.10.0.0/16
-         gateway: 10.10.0.1
+      config:
+        - subnet: 10.10.0.0/16
+          gateway: 10.10.0.1
+
 services:
   dnsmasq:
+    container_name: dnsmasq
     restart: always
     build:
       context: ../dns
@@ -22,6 +24,29 @@ services:
     networks:
       my_network:
         ipv4_address: 10.10.1.1
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yaml"
+    ports:
+      - "9090:9090"
+    networks:
+      - my_network
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - my_network
+
   data-prepper:
     restart: unless-stopped
     container_name: data-prepper
@@ -41,16 +66,18 @@ services:
         ipv4_address: 10.10.1.2
     depends_on:
       - opendistro-for-elasticsearch
+
   opendistro-for-elasticsearch:
     container_name: node-0.example.com
     image: amazon/opendistro-for-elasticsearch:1.12.0
     ports:
-      - '9200:9200'
-      - '9600:9600'
+      - "9200:9200"
+      - "9600:9600"
     environment:
       - discovery.type=single-node
     networks:
       - my_network
+
   kibana:
     build:
       context: ../../..
@@ -65,6 +92,7 @@ services:
       ELASTICSEARCH_HOSTS: https://node-0.example.com:9200
     networks:
       - my_network
+
   otel-collector:
     restart: unless-stopped
     dns: 10.10.0.1
@@ -79,6 +107,7 @@ services:
       - data-prepper
     networks:
       - my_network
+
   mysql:
     restart: unless-stopped
     image: mysql:latest
@@ -94,14 +123,14 @@ services:
       context: ../../trace-analytics-sample-app/sample-app
       dockerfile: Dockerfile
     ports:
-      - '8082:8082' # inventory
-      - '8083:8083' # database
-      - '8084:8084' # payment
-      - '8085:8085' # auth
-      - '8086:8086' # recommendation
-      - '8087:8087' # analytics-service
-      - '8088:8088' # order
-      - '8089:8089' # client-dashboard
+      - "8082:8082" # inventory
+      - "8083:8083" # database
+      - "8084:8084" # payment
+      - "8085:8085" # auth
+      - "8086:8086" # recommendation
+      - "8087:8087" # analytics-service
+      - "8088:8088" # order
+      - "8089:8089" # client-dashboard
     environment:
       - OTEL_EXPORTER=otlp
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:55680
