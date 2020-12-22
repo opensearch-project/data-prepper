@@ -2,11 +2,17 @@ package com.amazon.dataprepper.metrics;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import java.util.StringJoiner;
+import java.util.function.ToDoubleFunction;
+
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 
+/**
+ * Provides reference to APIs that register timer, counter, gauge into global registry.
+ * See https://micrometer.io/docs/concepts#_registry
+ */
 public class PluginMetrics {
 
     private final String metricsPrefix;
@@ -42,6 +48,10 @@ public class PluginMetrics {
 
     public <T extends Number> T gauge(final String name, T number) {
         return Metrics.gauge(getMeterName(name), number);
+    }
+
+    public <T> T gauge(String name, T obj, ToDoubleFunction<T> valueFunction) {
+        return Metrics.gauge(getMeterName(name), obj, valueFunction);
     }
 
     private String getMeterName(final String name) {

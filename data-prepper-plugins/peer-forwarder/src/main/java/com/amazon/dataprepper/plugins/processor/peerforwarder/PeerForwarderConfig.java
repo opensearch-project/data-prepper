@@ -23,16 +23,19 @@ public class PeerForwarderConfig {
 
     private final HashRing hashRing;
     private final PeerClientPool peerClientPool;
+    private final PeerListProvider peerListProvider;
     private final int timeOut;
     private final int maxNumSpansPerRequest;
 
-    private PeerForwarderConfig(final PeerClientPool peerClientPool,
+    private PeerForwarderConfig(final PeerListProvider peerListProvider,
+                                final PeerClientPool peerClientPool,
                                 final HashRing hashRing,
                                 final int timeOut,
                                 final int maxNumSpansPerRequest) {
         checkNotNull(peerClientPool);
         checkNotNull(hashRing);
 
+        this.peerListProvider = peerListProvider;
         this.peerClientPool = peerClientPool;
         this.hashRing = hashRing;
         this.timeOut = timeOut;
@@ -62,6 +65,7 @@ public class PeerForwarderConfig {
         peerClientPool.setSslKeyCertChainFile(sslKeyCertChainFile);
 
         return new PeerForwarderConfig(
+                peerListProvider,
                 peerClientPool,
                 hashRing,
                 pluginSetting.getIntegerOrDefault(TIME_OUT, 3),
@@ -70,6 +74,10 @@ public class PeerForwarderConfig {
 
     public HashRing getHashRing() {
         return hashRing;
+    }
+
+    public PeerListProvider getPeerListProvider() {
+        return peerListProvider;
     }
 
     public PeerClientPool getPeerClientPool() {
