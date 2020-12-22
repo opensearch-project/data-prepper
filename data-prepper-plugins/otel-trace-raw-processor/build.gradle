@@ -14,5 +14,6 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${versionMap.jackson_dataformat_yaml}"
     testImplementation 'org.assertj:assertj-core:3.6.2'
+    testImplementation "org.mockito:mockito-inline:2.13.0"
     testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
 }
