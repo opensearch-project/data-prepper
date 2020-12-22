@@ -120,6 +120,8 @@ public final class BulkRetryStrategy {
                         logFailure.accept(request.requests().get(index), bulkItemResponse.getFailure().getCause());
                         documentErrorsCounter.increment();
                     }
+                } else {
+                    sentDocumentsCounter.increment();
                 }
                 index++;
             }
