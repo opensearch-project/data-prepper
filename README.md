@@ -8,7 +8,10 @@
   - [Overview](docs/readme/trace_overview.md)
   - [Setup](docs/readme/trace_setup.md)
 - Project Details
+  - [Setup](docs/readme/project_setup.md)
   - [Error Handling](docs/readme/error_handling.md)
+  - [Logging](docs/readme/logs.md)
+  - [Monitoring](docs/readme/monitoring.md)
   - [Contribute](#Contribute)
   - [Code of Conduct](#Code-of-Conduct)
   - [Security Issue Notifications](#Security-Issue-Notifications)
