@@ -1,40 +1,118 @@
 package com.amazon.dataprepper.plugins.processor.oteltrace;
 
+import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
+import io.micrometer.core.instrument.Measurement;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.resource.v1.Resource;
+import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
+import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import io.opentelemetry.proto.trace.v1.Span;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.Before;
+
+import static org.mockito.Mockito.mock;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.StringJoiner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
 public class OTelTraceRawProcessorTest {
 
     private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private final OTelTraceRawProcessor oTelTraceRawProcessor = new OTelTraceRawProcessor(new PluginSetting(null, Collections.EMPTY_MAP));
+    PluginSetting pluginSetting;
+    public OTelTraceRawProcessor oTelTraceRawProcessor;
+
+    @Before
+    public void setup() {
+        pluginSetting = new PluginSetting("OTelTrace", Collections.EMPTY_MAP);
+        pluginSetting.setPipelineName("pipelineOTelTrace");
+        oTelTraceRawProcessor = new OTelTraceRawProcessor(pluginSetting);
+    }
+
+    @Test
+    public void testResourceSpansProcessingErrorMetrics() {
+
+        MetricsTestUtil.initMetrics();
+
+        ExportTraceServiceRequest mockData = mock(ExportTraceServiceRequest.class);
+        Record record = new Record(mockData);
+        ResourceSpans mockResourceSpans = mock(ResourceSpans.class);
+        List<ResourceSpans> mockResourceSpansList = Collections.singletonList(mockResourceSpans);
+
+        when(mockData.getResourceSpansList()).thenReturn(mockResourceSpansList);
+        when(mockResourceSpans.getResource()).thenThrow(new RuntimeException());
+
+        oTelTraceRawProcessor.doExecute(Collections.singletonList(record));
+
+        final List<Measurement> resourceSpansErrorsMeasurement = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add("pipelineOTelTrace").add("OTelTrace")
+                        .add(OTelTraceRawProcessor.RESOURCE_SPANS_PROCESSING_ERRORS).toString());
+        final List<Measurement> totalErrorsMeasurement = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add("pipelineOTelTrace").add("OTelTrace")
+                        .add(OTelTraceRawProcessor.TOTAL_PROCESSING_ERRORS).toString());
+
+        Assert.assertEquals(1, resourceSpansErrorsMeasurement.size());
+        Assert.assertEquals(1.0, resourceSpansErrorsMeasurement.get(0).getValue(), 0);
+        Assert.assertEquals(1, totalErrorsMeasurement.size());
+        Assert.assertEquals(1.0, totalErrorsMeasurement.get(0).getValue(), 0);
+    }
+
+    @Test
+    public void testSpanProcessingErrors() {
+        MetricsTestUtil.initMetrics();
+
+        ExportTraceServiceRequest mockData = mock(ExportTraceServiceRequest.class);
+        Record record = new Record(mockData);
+        ResourceSpans mockResourceSpans = mock(ResourceSpans.class);
+        List<ResourceSpans> mockResourceSpansList = Collections.singletonList(mockResourceSpans);
+        Resource mockResource = mock(Resource.class);
+        InstrumentationLibrarySpans mockInstrumentationSpans = mock(InstrumentationLibrarySpans.class);
+        List<InstrumentationLibrarySpans> mockInstrumentationSpansList = Collections.singletonList(mockInstrumentationSpans);
+        Span mockSpans = mock(Span.class);
+        List<Span> mockSpansList = Collections.singletonList(mockSpans);
+
+        when(mockData.getResourceSpansList()).thenReturn(mockResourceSpansList);
+        when(mockResourceSpans.getResource()).thenReturn(mockResource);
+        when(mockResourceSpans.getInstrumentationLibrarySpansList()).thenReturn(mockInstrumentationSpansList);
+        when(mockInstrumentationSpans.getSpansList()).thenReturn(mockSpansList);
+        when(mockInstrumentationSpans.getInstrumentationLibrary()).thenThrow(new RuntimeException());
+
+        oTelTraceRawProcessor.doExecute(Collections.singletonList(record));
+
+        final List<Measurement> spanErrorsMeasurement = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add("pipelineOTelTrace").add("OTelTrace")
+                        .add(OTelTraceRawProcessor.SPAN_PROCESSING_ERRORS).toString());
+        Assert.assertEquals(1, spanErrorsMeasurement.size());
+        Assert.assertEquals(1.0, spanErrorsMeasurement.get(0).getValue(), 0);
+    }
 
     @Test
     public void testEmptyCollection() {
-        assertThat(oTelTraceRawProcessor.execute(Collections.EMPTY_LIST)).isEmpty();
+        assertThat(oTelTraceRawProcessor.doExecute(Collections.EMPTY_LIST)).isEmpty();
     }
 
     @Test
     public void testEmptyTraceRequests() {
-        assertThat(oTelTraceRawProcessor.execute(Arrays.asList(new Record<>(ExportTraceServiceRequest.newBuilder().build()),
+        assertThat(oTelTraceRawProcessor.doExecute(Arrays.asList(new Record<>(ExportTraceServiceRequest.newBuilder().build()),
                 new Record<>(ExportTraceServiceRequest.newBuilder().build())))).isEmpty();
     }
 
     @Test
     public void testEmptySpans() {
-        assertThat(oTelTraceRawProcessor.execute(Arrays.asList(new Record<>(ExportTraceServiceRequest.newBuilder().build()),
+        assertThat(oTelTraceRawProcessor.doExecute(Arrays.asList(new Record<>(ExportTraceServiceRequest.newBuilder().build()),
                 new Record<>(ExportTraceServiceRequest.newBuilder().build())))).isEmpty();
     }
 
@@ -44,7 +122,8 @@ public class OTelTraceRawProcessorTest {
         final ExportTraceServiceRequest.Builder builder = ExportTraceServiceRequest.newBuilder();
         JsonFormat.parser().merge(sampleRequest, builder);
         final ExportTraceServiceRequest exportTraceServiceRequest = builder.build();
-        final List<Record<String>> processedRecords = (List<Record<String>>) oTelTraceRawProcessor.execute(Collections.singletonList(new Record<>(exportTraceServiceRequest)));
+        final List<Record<String>> processedRecords = (List<Record<String>>) oTelTraceRawProcessor.doExecute(Collections.singletonList(new Record<>(exportTraceServiceRequest)));
         Assertions.assertThat(processedRecords.size()).isEqualTo(6);
     }
 }
+

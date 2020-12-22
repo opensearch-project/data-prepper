@@ -21,7 +21,7 @@ public class MetricNames {
     public static final String TIME_ELAPSED = "timeElapsed";
 
     /**
-     * Metric representing the numebr of records written to a Buffer
+     * Metric representing the number of records written to a Buffer
      */
     public static final String RECORDS_WRITTEN = "recordsWritten";
 

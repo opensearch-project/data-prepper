@@ -3,11 +3,13 @@ package com.amazon.dataprepper.plugins.processor.oteltrace;
 import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.processor.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.processor.oteltrace.model.OTelProtoHelper;
 import com.amazon.dataprepper.plugins.processor.oteltrace.model.RawSpanBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
+
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
@@ -23,7 +25,7 @@ import java.util.Map;
 
 
 @DataPrepperPlugin(name = "otel_trace_raw_processor", type = PluginType.PROCESSOR)
-public class OTelTraceRawProcessor implements Processor<Record<ExportTraceServiceRequest>, Record<String>> {
+public class OTelTraceRawProcessor extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String INSTRUMENTATION_LIBRARY_SPANS = "instrumentationLibrarySpans";
@@ -37,17 +39,25 @@ public class OTelTraceRawProcessor implements Processor<Record<ExportTraceServic
     private static final String END_TIME = "endTime";
     private static final BigDecimal MILLIS_TO_NANOS = new BigDecimal(1_000_000);
     private static final BigDecimal SEC_TO_MILLIS = new BigDecimal(1_000);
-
     private static final Logger log = LoggerFactory.getLogger(OTelTraceRawProcessor.class);
+
+    public static final String SPAN_PROCESSING_ERRORS = "spanProcessingErrors";
+    public static final String RESOURCE_SPANS_PROCESSING_ERRORS = "resourceSpansProcessingErrors";
+    public static final String TOTAL_PROCESSING_ERRORS = "totalProcessingErrors";
+
+    private final Counter spanErrorsCounter;
+    private final Counter resourceSpanErrorsCounter;
+    private final Counter totalProcessingErrorsCounter;
+
 
     //TODO: https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/66
     public OTelTraceRawProcessor(final PluginSetting pluginSetting) {
-        this();
+        super(pluginSetting);
+        spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
+        resourceSpanErrorsCounter = pluginMetrics.counter(RESOURCE_SPANS_PROCESSING_ERRORS);
+        totalProcessingErrorsCounter = pluginMetrics.counter(TOTAL_PROCESSING_ERRORS);
     }
 
-    private OTelTraceRawProcessor() {
-
-    }
 
     /**
      * execute the processor logic which could potentially modify the incoming record. The level to which the record has
@@ -57,9 +67,9 @@ public class OTelTraceRawProcessor implements Processor<Record<ExportTraceServic
      * @return Record  modified output records
      */
     @Override
-    public Collection<Record<String>> execute(Collection<Record<ExportTraceServiceRequest>> records) {
+    public Collection<Record<String>> doExecute(Collection<Record<ExportTraceServiceRequest>> records) {
         final List<Record<String>> finalRecords = new LinkedList<>();
-        for(Record<ExportTraceServiceRequest> ets: records) {
+        for (Record<ExportTraceServiceRequest> ets : records) {
             for (ResourceSpans rs : ets.getData().getResourceSpansList()) {
                 try {
                     final String serviceName = OTelProtoHelper.getServiceName(rs.getResource()).orElse(null);
@@ -72,13 +82,16 @@ public class OTelTraceRawProcessor implements Processor<Record<ExportTraceServic
                                         .build().toJson()));
                             } catch (Exception ex) {
                                 log.error("Unable to process invalid Span {}:", sp, ex);
+                                spanErrorsCounter.increment();
+                                totalProcessingErrorsCounter.increment();
                             }
                         }
                     }
                 } catch (Exception ex) {
                     log.error("Unable to process invalid ResourceSpan {} :", rs, ex);
+                    resourceSpanErrorsCounter.increment();
+                    totalProcessingErrorsCounter.increment();
                 }
-
             }
         }
         return finalRecords;

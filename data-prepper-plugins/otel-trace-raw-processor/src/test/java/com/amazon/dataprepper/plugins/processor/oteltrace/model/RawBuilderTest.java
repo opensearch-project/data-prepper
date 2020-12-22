@@ -7,7 +7,7 @@ import io.opentelemetry.proto.trace.v1.Span;
 import io.opentelemetry.proto.trace.v1.Status;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import java.util.Collections;
 
@@ -29,7 +29,7 @@ public class RawBuilderTest {
                 .setName("test-span")
                 .setKind(Span.SpanKind.SPAN_KIND_CONSUMER)
                 .setStartTimeUnixNano(651242400000000321L)
-                .setEndTimeUnixNano(651242400000000321L+3000)
+                .setEndTimeUnixNano(651242400000000321L + 3000)
                 .setStatus(Status.newBuilder().setCodeValue(Status.StatusCode.STATUS_CODE_UNSET_VALUE).setMessage("status-description").build())
                 .addAttributes(KeyValue.newBuilder()
                         .setKey("some-key")
