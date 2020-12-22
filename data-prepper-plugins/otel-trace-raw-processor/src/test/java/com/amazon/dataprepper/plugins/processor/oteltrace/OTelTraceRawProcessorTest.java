@@ -47,16 +47,15 @@ public class OTelTraceRawProcessorTest {
 
         MetricsTestUtil.initMetrics();
 
-        Record<ExportTraceServiceRequest> mockRecord = mock(Record.class);
         ExportTraceServiceRequest mockData = mock(ExportTraceServiceRequest.class);
+        Record record = new Record(mockData);
         ResourceSpans mockResourceSpans = mock(ResourceSpans.class);
         List<ResourceSpans> mockResourceSpansList = Collections.singletonList(mockResourceSpans);
 
-        when(mockRecord.getData()).thenReturn(mockData);
         when(mockData.getResourceSpansList()).thenReturn(mockResourceSpansList);
         when(mockResourceSpans.getResource()).thenThrow(new RuntimeException());
 
-        oTelTraceRawProcessor.doExecute(Collections.singletonList(mockRecord));
+        oTelTraceRawProcessor.doExecute(Collections.singletonList(record));
 
         final List<Measurement> resourceSpansErrorsMeasurement = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add("pipelineOTelTrace").add("OTelTrace")
@@ -75,8 +74,8 @@ public class OTelTraceRawProcessorTest {
     public void testSpanProcessingErrors() {
         MetricsTestUtil.initMetrics();
 
-        Record<ExportTraceServiceRequest> mockRecord = mock(Record.class);
         ExportTraceServiceRequest mockData = mock(ExportTraceServiceRequest.class);
+        Record record = new Record(mockData);
         ResourceSpans mockResourceSpans = mock(ResourceSpans.class);
         List<ResourceSpans> mockResourceSpansList = Collections.singletonList(mockResourceSpans);
         Resource mockResource = mock(Resource.class);
@@ -85,14 +84,13 @@ public class OTelTraceRawProcessorTest {
         Span mockSpans = mock(Span.class);
         List<Span> mockSpansList = Collections.singletonList(mockSpans);
 
-        when(mockRecord.getData()).thenReturn(mockData);
         when(mockData.getResourceSpansList()).thenReturn(mockResourceSpansList);
         when(mockResourceSpans.getResource()).thenReturn(mockResource);
         when(mockResourceSpans.getInstrumentationLibrarySpansList()).thenReturn(mockInstrumentationSpansList);
         when(mockInstrumentationSpans.getSpansList()).thenReturn(mockSpansList);
         when(mockInstrumentationSpans.getInstrumentationLibrary()).thenThrow(new RuntimeException());
 
-        oTelTraceRawProcessor.doExecute(Collections.singletonList(mockRecord));
+        oTelTraceRawProcessor.doExecute(Collections.singletonList(record));
 
         final List<Measurement> spanErrorsMeasurement = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add("pipelineOTelTrace").add("OTelTrace")
