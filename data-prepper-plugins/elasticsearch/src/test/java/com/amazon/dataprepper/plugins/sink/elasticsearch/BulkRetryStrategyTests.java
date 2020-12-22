@@ -15,6 +15,7 @@ import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.common.util.concurrent.EsRejectedExecutionException;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.index.shard.ShardId;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -34,6 +35,11 @@ public class BulkRetryStrategyTests {
         setPipelineName(PIPELINE_NAME);
     }};
     private static final PluginMetrics PLUGIN_METRICS = PluginMetrics.fromPluginSetting(PLUGIN_SETTING);
+
+    @Before
+    public void metricsInit() {
+        MetricsTestUtil.initMetrics();
+    }
 
     @Test
     public void testCanRetry() {
@@ -64,7 +70,6 @@ public class BulkRetryStrategyTests {
         final FakeClient client = new FakeClient(testIndex);
         final FakeLogger logger = new FakeLogger();
 
-        MetricsTestUtil.initMetrics();
         final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
                 client::bulk, logger::logFailure, PLUGIN_METRICS, BulkRequest::new);
         final BulkRequest testBulkRequest = new BulkRequest();
@@ -104,7 +109,6 @@ public class BulkRetryStrategyTests {
         client.retryable = false;
         final FakeLogger logger = new FakeLogger();
 
-        MetricsTestUtil.initMetrics();
         final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
                 client::bulk, logger::logFailure, PLUGIN_METRICS, BulkRequest::new);
         final BulkRequest testBulkRequest = new BulkRequest();
