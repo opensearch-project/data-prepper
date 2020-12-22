@@ -149,6 +149,11 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
                     .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
     assertEquals(1, documentsSuccessMeasurements.size());
     assertEquals(2.0, documentsSuccessMeasurements.get(0).getValue(), 0);
+    final List<Measurement> documentsSuccessFirstAttemptMeasurements = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(BulkRetryStrategy.DOCUMENTS_SUCCESS_FIRST_ATTEMPT).toString());
+    assertEquals(1, documentsSuccessFirstAttemptMeasurements.size());
+    assertEquals(2.0, documentsSuccessFirstAttemptMeasurements.get(0).getValue(), 0);
     final List<Measurement> documentErrorsMeasurements = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                     .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
