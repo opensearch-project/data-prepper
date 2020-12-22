@@ -1,5 +1,6 @@
 package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.bulk.BackoffPolicy;
@@ -27,13 +28,16 @@ public final class BulkRetryStrategy {
 
     private final RequestFunction<BulkRequest, BulkResponse> requestFunction;
     private final BiConsumer<DocWriteRequest<?>, Throwable> logFailure;
+    private final PluginMetrics pluginMetrics;
     private final Supplier<BulkRequest> bulkRequestSupplier;
 
     public BulkRetryStrategy(final RequestFunction<BulkRequest, BulkResponse> requestFunction,
                              final BiConsumer<DocWriteRequest<?>, Throwable> logFailure,
+                             final PluginMetrics pluginMetrics,
                              final Supplier<BulkRequest> bulkRequestSupplier) {
         this.requestFunction = requestFunction;
         this.logFailure = logFailure;
+        this.pluginMetrics = pluginMetrics;
         this.bulkRequestSupplier = bulkRequestSupplier;
     }
 
