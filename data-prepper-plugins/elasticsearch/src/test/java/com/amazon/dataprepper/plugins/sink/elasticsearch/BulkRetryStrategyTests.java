@@ -1,5 +1,7 @@
 package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
@@ -13,6 +15,7 @@ import org.elasticsearch.index.shard.ShardId;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
@@ -20,11 +23,18 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class BulkRetryStrategyTests {
+    private static final String PLUGIN_NAME = "testPlugin";
+    private static final String PIPELINE_NAME = "pipelineName";
+    private static final PluginSetting PLUGIN_SETTING = new PluginSetting(PLUGIN_NAME, Collections.emptyMap()) {{
+        setPipelineName(PIPELINE_NAME);
+    }};
+    private static final PluginMetrics PLUGIN_METRICS = PluginMetrics.fromPluginSetting(PLUGIN_SETTING);
+
     @Test
     public void testCanRetry() {
         final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
                 bulkRequest -> new BulkResponse(new BulkItemResponse[bulkRequest.requests().size()], 10),
-                (docWriteRequest, throwable) -> {}, BulkRequest::new);
+                (docWriteRequest, throwable) -> {}, PLUGIN_METRICS, BulkRequest::new);
         final String testIndex = "foo";
         final BulkItemResponse bulkItemResponse1 = successItemResponse(testIndex);
         final BulkItemResponse bulkItemResponse2 = badRequestItemResponse(testIndex);
@@ -49,7 +59,7 @@ public class BulkRetryStrategyTests {
         final FakeClient client = new FakeClient(testIndex);
         final FakeLogger logger = new FakeLogger();
         final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
-                client::bulk, logger::logFailure, BulkRequest::new);
+                client::bulk, logger::logFailure, PLUGIN_METRICS, BulkRequest::new);
         final BulkRequest testBulkRequest = new BulkRequest();
         testBulkRequest.add(new IndexRequest(testIndex).id("1"));
         testBulkRequest.add(new IndexRequest(testIndex).id("2"));

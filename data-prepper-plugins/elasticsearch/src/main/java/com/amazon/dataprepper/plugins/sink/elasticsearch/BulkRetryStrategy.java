@@ -1,6 +1,7 @@
 package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
+import io.micrometer.core.instrument.Counter;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.bulk.BackoffPolicy;
@@ -19,6 +20,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 public final class BulkRetryStrategy {
+    public static final String DOCUMENTS_SUCCESS = "documentsSuccess";
+    public static final String DOCUMENT_ERRORS = "documentErrors";
+
     private static final Set<Integer> NON_RETRY_STATUS = new HashSet<>(
             Arrays.asList(
                     RestStatus.BAD_REQUEST.getStatus(),
@@ -31,6 +35,9 @@ public final class BulkRetryStrategy {
     private final PluginMetrics pluginMetrics;
     private final Supplier<BulkRequest> bulkRequestSupplier;
 
+    private final Counter sentDocumentsCounter;
+    private final Counter documentErrorsCounter;
+
     public BulkRetryStrategy(final RequestFunction<BulkRequest, BulkResponse> requestFunction,
                              final BiConsumer<DocWriteRequest<?>, Throwable> logFailure,
                              final PluginMetrics pluginMetrics,
@@ -39,6 +46,9 @@ public final class BulkRetryStrategy {
         this.logFailure = logFailure;
         this.pluginMetrics = pluginMetrics;
         this.bulkRequestSupplier = bulkRequestSupplier;
+
+        sentDocumentsCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS);
+        documentErrorsCounter = pluginMetrics.counter(DOCUMENT_ERRORS);
     }
 
     public void execute(final BulkRequest bulkRequest) throws InterruptedException {
@@ -88,6 +98,8 @@ public final class BulkRetryStrategy {
                 } else {
                     handleFailures(bulkRequestForRetry.requests(), bulkResponse.getItems());
                 }
+            } else {
+                sentDocumentsCounter.increment(bulkRequestForRetry.numberOfActions());
             }
         }
     }
@@ -106,6 +118,7 @@ public final class BulkRetryStrategy {
                     } else {
                         // log non-retryable failed request
                         logFailure.accept(request.requests().get(index), bulkItemResponse.getFailure().getCause());
+                        documentErrorsCounter.increment();
                     }
                 }
                 index++;
@@ -122,11 +135,15 @@ public final class BulkRetryStrategy {
             if (bulkItemResponse.isFailed()) {
                 final BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
                 logFailure.accept(docWriteRequest, failure.getCause());
+                documentErrorsCounter.increment();
+            } else {
+                sentDocumentsCounter.increment();
             }
         }
     }
 
     private void handleFailures(final List<DocWriteRequest<?>> docWriteRequests, final Throwable failure) {
+        documentErrorsCounter.increment(docWriteRequests.size());
         for (final DocWriteRequest<?> docWriteRequest: docWriteRequests) {
             logFailure.accept(docWriteRequest, failure);
         }
