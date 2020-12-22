@@ -1,7 +1,7 @@
 package com.amazon.dataprepper.plugins.processor;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.plugins.PluginException;
 import com.amazon.dataprepper.plugins.sink.SinkFactory;
 import org.junit.Test;
@@ -16,7 +16,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 
 @SuppressWarnings("rawtypes")
-public class ProcessorFactoryTests {
+public class PrepperFactoryTests {
     private static String TEST_PIPELINE = "test-pipeline";
     /**
      * Tests if ProcessorFactory is able to retrieve default Source plugins by name
@@ -25,10 +25,10 @@ public class ProcessorFactoryTests {
     public void testNewSinkClassByNameThatExists() {
         final PluginSetting noOpProcessorConfiguration = new PluginSetting("no-op", new HashMap<>());
         noOpProcessorConfiguration.setPipelineName(TEST_PIPELINE);
-        final Processor actualProcessor = ProcessorFactory.newProcessor(noOpProcessorConfiguration);
-        final Processor expectedProcessor = new NoOpProcessor();
-        assertThat(actualProcessor, notNullValue());
-        assertThat(actualProcessor.getClass().getSimpleName(), is(equalTo(expectedProcessor.getClass().getSimpleName())));
+        final Prepper actualPrepper = ProcessorFactory.newProcessor(noOpProcessorConfiguration);
+        final Prepper expectedPrepper = new NoOpPrepper();
+        assertThat(actualPrepper, notNullValue());
+        assertThat(actualPrepper.getClass().getSimpleName(), is(equalTo(expectedPrepper.getClass().getSimpleName())));
     }
 
     /**

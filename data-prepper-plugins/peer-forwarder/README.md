@@ -1,5 +1,5 @@
 # Peer Forwarder
-This processor forwards `ExportTraceServiceRequest` via gRPC to other Data Prepper instances. The primary usecase of this processor is 
+This prepper forwards `ExportTraceServiceRequest` via gRPC to other Data Prepper instances. The primary usecase of this prepper is 
 to ensure that groups of traces are aggregated by trace ID and processed by the same Prepper instance.
 
 Presently peer discovery is provided by either a static list (configured in yaml) or by a DNS record lookup.
@@ -7,7 +7,7 @@ Presently peer discovery is provided by either a static list (configured in yaml
 ## Configuration
 Static list example:
 ```
-processor:
+prepper:
     - peer_forwarder:
         time_out: 300
         span_agg_count: 48
@@ -19,7 +19,7 @@ processor:
 
 DNS lookup example:
 ```
-processor:
+prepper:
     - peer_forwarder:
         time_out: 300
         span_agg_count: 48

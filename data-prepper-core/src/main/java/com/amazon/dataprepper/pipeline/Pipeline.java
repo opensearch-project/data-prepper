@@ -1,7 +1,7 @@
 package com.amazon.dataprepper.pipeline;
 
 import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
@@ -23,19 +23,19 @@ import static java.lang.String.format;
 
 /**
  * Pipeline is a data transformation flow which reads data from {@link Source}, optionally transforms the data using
- * {@link Processor} and outputs the transformed (or original) data to {@link Sink}.
+ * {@link Prepper} and outputs the transformed (or original) data to {@link Sink}.
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class Pipeline {
     private static final Logger LOG = LoggerFactory.getLogger(Pipeline.class);
-    private static final List<Processor> EMPTY_PROCESSOR_LIST = new ArrayList<>(0);
+    private static final List<Prepper> EMPTY_PREPPER_LIST = new ArrayList<>(0);
     private static final int PROCESSOR_DEFAULT_TERMINATION_IN_MILLISECONDS = 5000;
     private boolean stopRequested;
 
     private final String name;
     private final Source source;
     private final Buffer buffer;
-    private final List<Processor> processors;
+    private final List<Prepper> preppers;
     private final List<Sink> sinks;
     private final int processorThreads;
     private final int readBatchTimeoutInMillis;
@@ -43,12 +43,12 @@ public class Pipeline {
 
     /**
      * Constructs a {@link Pipeline} object with provided {@link #name}, {@link Source}, {@link Collection} of
-     * {@link Sink}, processorThreads, readBatchTimeout and default {@link Buffer}, {@link Processor}.
+     * {@link Sink}, processorThreads, readBatchTimeout and default {@link Buffer}, {@link Prepper}.
      *
      * @param name                     name of the pipeline
      * @param source                   source from where the pipeline reads the records
      * @param sinks                    collection of sink's to which the transformed records need to be posted
-     * @param processorThreads         configured or default threads to parallelize processor work
+     * @param processorThreads         configured or default threads to parallelize prepper work
      * @param readBatchTimeoutInMillis configured or default timeout for reading batch of records from buffer
      */
     public Pipeline(
@@ -57,36 +57,36 @@ public class Pipeline {
             @Nonnull final List<Sink> sinks,
             final int processorThreads,
             final int readBatchTimeoutInMillis) {
-        this(name, source, new BlockingBuffer(name), EMPTY_PROCESSOR_LIST, sinks, processorThreads, readBatchTimeoutInMillis);
+        this(name, source, new BlockingBuffer(name), EMPTY_PREPPER_LIST, sinks, processorThreads, readBatchTimeoutInMillis);
     }
 
     /**
      * Constructs a {@link Pipeline} object with provided {@link Source}, {@link #name}, {@link Collection} of
-     * {@link Sink}, {@link Buffer} and list of {@link Processor}. On {@link #execute()} the engine will read records
+     * {@link Sink}, {@link Buffer} and list of {@link Prepper}. On {@link #execute()} the engine will read records
      * {@link Record} from provided {@link Source}, buffers the records in {@link Buffer}, applies List of
-     * {@link Processor} sequentially (in the given order) and outputs the processed records to collection of
+     * {@link Prepper} sequentially (in the given order) and outputs the processed records to collection of
      * {@link Sink}
      *
      * @param name                     name of the pipeline
      * @param source                   source from where the pipeline reads the records
      * @param buffer                   buffer for the source to queue records
-     * @param processors               processor that is applied to records
+     * @param preppers               prepper that is applied to records
      * @param sinks                    sink to which the transformed records are posted
-     * @param processorThreads         configured or default threads to parallelize processor work
+     * @param processorThreads         configured or default threads to parallelize prepper work
      * @param readBatchTimeoutInMillis configured or default timeout for reading batch of records from buffer
      */
     public Pipeline(
             @Nonnull final String name,
             @Nonnull final Source source,
             @Nonnull final Buffer buffer,
-            @Nonnull final List<Processor> processors,
+            @Nonnull final List<Prepper> preppers,
             @Nonnull final List<Sink> sinks,
             final int processorThreads,
             final int readBatchTimeoutInMillis) {
         this.name = name;
         this.source = source;
         this.buffer = buffer;
-        this.processors = processors;
+        this.preppers = preppers;
         this.sinks = sinks;
         this.processorThreads = processorThreads;
         this.readBatchTimeoutInMillis = readBatchTimeoutInMillis;
@@ -130,10 +130,10 @@ public class Pipeline {
     }
 
     /**
-     * @return a list of {@link Processor} of this pipeline or an empty list .
+     * @return a list of {@link Prepper} of this pipeline or an empty list .
      */
-    List<Processor> getProcessors() {
-        return processors;
+    List<Prepper> getProcessors() {
+        return preppers;
     }
 
     public int getReadBatchTimeoutInMillis() {
@@ -141,7 +141,7 @@ public class Pipeline {
     }
 
     /**
-     * Executes the current pipeline i.e. reads the data from {@link Source}, executes optional {@link Processor} on the
+     * Executes the current pipeline i.e. reads the data from {@link Source}, executes optional {@link Prepper} on the
      * read data and outputs to {@link Sink}.
      */
     public void execute() {
@@ -150,7 +150,7 @@ public class Pipeline {
             source.start(buffer);
             LOG.info("Pipeline [{}] - Submitting request to initiate the pipeline processing", name);
             for (int i = 0; i < processorThreads; i++) {
-                processorSinkExecutorService.submit(new ProcessWorker(buffer, processors, sinks, this));
+                processorSinkExecutorService.submit(new ProcessWorker(buffer, preppers, sinks, this));
             }
         } catch (Exception ex) {
             //source failed to start - Cannot proceed further with the current pipeline, skipping further execution
@@ -176,7 +176,7 @@ public class Pipeline {
         try {
             source.stop();
             stopRequested = true;
-            processors.forEach(Processor::shutdown);
+            preppers.forEach(Prepper::shutdown);
             sinks.forEach(Sink::shutdown);
         } catch (Exception ex) {
             LOG.error("Pipeline [{}] - Encountered exception while stopping the source, " +

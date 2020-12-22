@@ -1,10 +1,10 @@
 package com.amazon.dataprepper.pipeline;
 
-import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
-import com.amazon.dataprepper.plugins.TestProcessor;
+import com.amazon.dataprepper.plugins.TestPrepper;
 import com.amazon.dataprepper.plugins.TestSink;
 import com.amazon.dataprepper.plugins.TestSource;
 import com.amazon.dataprepper.plugins.buffer.BlockingBuffer;
@@ -54,7 +54,7 @@ public class PipelineTests {
     public void testPipelineStateWithProcessor() {
         final Source<Record<String>> testSource = new TestSource();
         final TestSink testSink = new TestSink();
-        final TestProcessor testProcessor = new TestProcessor();
+        final TestPrepper testProcessor = new TestPrepper();
         final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
                 Collections.singletonList(testProcessor),
                 Collections.singletonList(testSink),
@@ -67,7 +67,7 @@ public class PipelineTests {
         testPipeline.shutdown();
         assertThat("Pipeline isStopRequested is expected to be true", testPipeline.isStopRequested(), is(true));
         assertThat("Sink shutdown should be called", testSink.isShutdown, is(true));
-        assertThat("Processor shutdown should be called", testProcessor.isShutdown, is(true));
+        assertThat("Prepper shutdown should be called", testProcessor.isShutdown, is(true));
     }
 
     @Test
@@ -104,10 +104,10 @@ public class PipelineTests {
     public void testExecuteFailingProcessor() {
         final Source<Record<String>> testSource = new TestSource();
         final Sink<Record<String>> testSink = new TestSink();
-        final Processor<Record<String>, Record<String>> testProcessor = new Processor<Record<String>, Record<String>>() {
+        final Prepper<Record<String>, Record<String>> testPrepper = new Prepper<Record<String>, Record<String>>() {
             @Override
             public Collection<Record<String>> execute(Collection<Record<String>> records) {
-                throw new RuntimeException("Processor is expected to fail");
+                throw new RuntimeException("Prepper is expected to fail");
             }
 
             @Override
@@ -117,13 +117,13 @@ public class PipelineTests {
         };
         try {
             testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
-                    Collections.singletonList(testProcessor), Collections.singletonList(testSink), TEST_PROCESSOR_THREADS,
+                    Collections.singletonList(testPrepper), Collections.singletonList(testSink), TEST_PROCESSOR_THREADS,
                     TEST_READ_BATCH_TIMEOUT);
             testPipeline.execute();
             Thread.sleep(TEST_READ_BATCH_TIMEOUT);
         } catch (Exception ex) {
-            assertThat("Incorrect exception message", ex.getMessage().contains("Processor is expected to fail"));
-            assertThat("Exception from processor should trigger shutdown of pipeline", testPipeline.isStopRequested());
+            assertThat("Incorrect exception message", ex.getMessage().contains("Prepper is expected to fail"));
+            assertThat("Exception from prepper should trigger shutdown of pipeline", testPipeline.isStopRequested());
         }
     }
 

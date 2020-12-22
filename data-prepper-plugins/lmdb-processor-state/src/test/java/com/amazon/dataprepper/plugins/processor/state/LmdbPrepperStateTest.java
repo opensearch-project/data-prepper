@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class LmdbProcessorStateTest extends ProcessorStateTest {
+public class LmdbPrepperStateTest extends PrepperStateTest {
 
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();

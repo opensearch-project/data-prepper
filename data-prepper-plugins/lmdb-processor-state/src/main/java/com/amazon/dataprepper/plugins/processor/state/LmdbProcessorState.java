@@ -29,7 +29,7 @@ public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
     private final File dbFile;
 
     /**
-     * Constructor for LMDB processor state. See LMDB-Java for more info:
+     * Constructor for LMDB prepper state. See LMDB-Java for more info:
      * https://github.com/lmdbjava/lmdbjava
      * @param dbFile The directory in which to store the LMDB data files
      * @param dbName Name of the database

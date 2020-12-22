@@ -37,7 +37,7 @@ public class ServiceMapTestUtils {
         return resourceSpans.getInstrumentationLibrarySpans(0).getSpans(0).getSpanId().toByteArray();
     }
 
-    public static Future<Set<ServiceMapRelationship>> startExecuteAsync(ExecutorService threadpool, ServiceMapStatefulProcessor processor,
+    public static Future<Set<ServiceMapRelationship>> startExecuteAsync(ExecutorService threadpool, ServiceMapStatefulPrepper processor,
                                                                  Collection<Record<ExportTraceServiceRequest>> records) {
         return threadpool.submit(() -> {
             return processor.execute(records)

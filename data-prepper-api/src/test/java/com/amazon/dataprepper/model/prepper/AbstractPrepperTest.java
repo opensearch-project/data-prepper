@@ -1,4 +1,4 @@
-package com.amazon.dataprepper.model.processor;
+package com.amazon.dataprepper.model.prepper;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.metrics.MetricNames;
@@ -25,7 +25,7 @@ public class AbstractPrepperTest {
 
         PluginSetting pluginSetting = new PluginSetting(processorName, Collections.emptyMap());
         pluginSetting.setPipelineName(pipelineName);
-        AbstractPrepper<Record<String>, Record<String>> processor = new ProcessorImpl(pluginSetting);
+        AbstractPrepper<Record<String>, Record<String>> processor = new PrepperImpl(pluginSetting);
 
         processor.execute(Arrays.asList(
                 new Record<>("Value1"),
@@ -52,8 +52,8 @@ public class AbstractPrepperTest {
                 0.2));
     }
 
-    public static class ProcessorImpl extends AbstractPrepper<Record<String>, Record<String>> {
-        public ProcessorImpl(PluginSetting pluginSetting) {
+    public static class PrepperImpl extends AbstractPrepper<Record<String>, Record<String>> {
+        public PrepperImpl(PluginSetting pluginSetting) {
             super(pluginSetting);
         }
 

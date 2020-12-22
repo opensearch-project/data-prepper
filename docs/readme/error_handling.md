@@ -9,7 +9,7 @@ Single pipeline is a pipeline that doesn't use the pipeline connectors.
 
 * If an exception encountered when creating a pipeline, the pipeline stops and exits using `system.exit(1)`. 
 * If an exception encountered during pipeline `start()` method, the pipeline stops with appropriate logs. 
-* If an exception encountered in Pipeline `processors` or `sinks` during runtime, the pipeline stops with appropriate logs.
+* If an exception encountered in Pipeline `preppers` or `sinks` during runtime, the pipeline stops with appropriate logs.
 
 ## Connected Pipelines
 
@@ -18,5 +18,5 @@ Connected Pipelines is scenario where two or more pipelines connected using the 
 
 * If an exception encountered when creating any of the connected pipelines, all the connected pipelines stop and exits using `system.exit(1)`. 
 * If an exception encountered during pipeline `start()` method in any of the connected pipelines, the pipeline that encountered the exception will shutdown and other pipelines will run but not receive or process any data as a connected pipeline is unavailable.
-* If an exception encountered in Pipeline `processors` or `sinks` during runtime in any of the connected pipelines, the pipeline that encountered the exception will shutdown and other pipelines will run for a while and shutdown as a connected pipeline is unavailable.
+* If an exception encountered in Pipeline `preppers` or `sinks` during runtime in any of the connected pipelines, the pipeline that encountered the exception will shutdown and other pipelines will run for a while and shutdown as a connected pipeline is unavailable.
 

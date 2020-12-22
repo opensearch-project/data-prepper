@@ -1,10 +1,10 @@
 package com.amazon.dataprepper.plugins;
 
-import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 import java.util.Collection;
 
-public class TestProcessor implements Processor<Record<String>, Record<String>> {
+public class TestPrepper implements Prepper<Record<String>, Record<String>> {
     public boolean isShutdown = false;
 
     @Override

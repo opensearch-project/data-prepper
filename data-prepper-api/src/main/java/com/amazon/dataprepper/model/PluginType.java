@@ -1,14 +1,14 @@
 package com.amazon.dataprepper.model;
 
 import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
 
 public enum PluginType {
     SOURCE("source", Source.class),
     BUFFER("buffer", Buffer.class),
-    PROCESSOR("processor", Processor.class),
+    PROCESSOR("prepper", Prepper.class),
     SINK("sink", Sink.class);
 
     private final String pluginName;

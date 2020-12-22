@@ -3,7 +3,7 @@ package com.amazon.dataprepper.plugins.processor.peerforwarder;
 import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.processor.AbstractPrepper;
+import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.PeerListProvider;
 import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.StaticPeerListProvider;
