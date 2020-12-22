@@ -33,6 +33,7 @@ import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.test.rest.ESRestTestCase;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
@@ -63,6 +64,11 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
   private static final String DEFAULT_RAW_SPAN_FILE_1 = "raw-span-1.json";
   private static final String DEFAULT_RAW_SPAN_FILE_2 = "raw-span-2.json";
   private static final String DEFAULT_SERVICE_MAP_FILE = "service-map-1.json";
+
+  @Before
+  public void metricsInit() {
+    MetricsTestUtil.initMetrics();
+  }
 
   public void testInstantiateSinkRawSpanDefault() throws IOException {
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
@@ -112,7 +118,6 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
 
     final List<Record<String>> testRecords = Arrays.asList(new Record<>(testDoc1), new Record<>(testDoc2));
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
-    MetricsTestUtil.initMetrics();
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     sink.output(testRecords);
 
@@ -165,7 +170,6 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final String expDLQFile = tempDirectory.getAbsolutePath() + "/test-dlq.txt";
     pluginSetting.getSettings().put(RetryConfiguration.DLQ_FILE, expDLQFile);
 
-    MetricsTestUtil.initMetrics();
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     sink.output(testRecords);
     sink.shutdown();
@@ -220,7 +224,6 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
 
     final List<Record<String>> testRecords = Collections.singletonList(new Record<>(testDoc));
     final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
-    MetricsTestUtil.initMetrics();
     ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     sink.output(testRecords);
     final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.SERVICE_MAP);
@@ -268,7 +271,6 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final List<Record<String>> testRecords = Collections.singletonList(generateCustomRecord(testIdField, testId));
     final PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFile);
     pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
-    MetricsTestUtil.initMetrics();
     final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     sink.output(testRecords);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
