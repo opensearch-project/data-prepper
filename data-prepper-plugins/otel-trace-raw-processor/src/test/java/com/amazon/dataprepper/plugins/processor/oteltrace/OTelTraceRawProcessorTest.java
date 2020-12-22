@@ -10,10 +10,16 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import io.micrometer.core.instrument.Measurement;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.resource.v1.Resource;
+import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
+import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import io.opentelemetry.proto.trace.v1.Span;
 import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.Before;
+
+import static org.mockito.Mockito.mock;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -21,34 +27,78 @@ import java.util.List;
 import java.util.StringJoiner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
 public class OTelTraceRawProcessorTest {
 
     private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    final String processorName = "testOTelTrace";
-    final String pipelineName = "pipelineOTelTraceRawProcessor";
     PluginSetting pluginSetting;
-    private OTelTraceRawProcessor oTelTraceRawProcessor;
+    public OTelTraceRawProcessor oTelTraceRawProcessor;
 
     @Before
     public void setup() {
-        pluginSetting = new PluginSetting(processorName, Collections.EMPTY_MAP);
-        pluginSetting.setPipelineName(pipelineName);
+        pluginSetting = new PluginSetting("OTelTrace", Collections.EMPTY_MAP);
+        pluginSetting.setPipelineName("pipelineOTelTrace");
         oTelTraceRawProcessor = new OTelTraceRawProcessor(pluginSetting);
     }
 
     @Test
-    public void testCustomMetrics() {
+    public void testResourceSpansProcessingErrorMetrics() {
+
         MetricsTestUtil.initMetrics();
-        final List<Measurement> spanErrorsMeasurement = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(processorName).add("spanProcessingErrors").toString());
+
+        Record<ExportTraceServiceRequest> mockRecord = mock(Record.class);
+        ExportTraceServiceRequest mockData = mock(ExportTraceServiceRequest.class);
+        ResourceSpans mockResourceSpans = mock(ResourceSpans.class);
+        List<ResourceSpans> mockResourceSpansList = Collections.singletonList(mockResourceSpans);
+
+        when(mockRecord.getData()).thenReturn(mockData);
+        when(mockData.getResourceSpansList()).thenReturn(mockResourceSpansList);
+        when(mockResourceSpans.getResource()).thenThrow(new RuntimeException());
+
+        oTelTraceRawProcessor.doExecute(Collections.singletonList(mockRecord));
+
         final List<Measurement> resourceSpansErrorsMeasurement = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(processorName).add("resourceSpansProcessingErrors").toString());
+                new StringJoiner(MetricNames.DELIMITER).add("pipelineOTelTrace").add("OTelTrace")
+                        .add(OTelTraceRawProcessor.RESOURCE_SPANS_PROCESSING_ERRORS).toString());
         final List<Measurement> totalErrorsMeasurement = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(processorName).add("totalProcessingErrors").toString());
-        Assert.assertEquals(1, spanErrorsMeasurement.size());
+                new StringJoiner(MetricNames.DELIMITER).add("pipelineOTelTrace").add("OTelTrace")
+                        .add(OTelTraceRawProcessor.TOTAL_PROCESSING_ERRORS).toString());
+
         Assert.assertEquals(1, resourceSpansErrorsMeasurement.size());
+        Assert.assertEquals(1.0, resourceSpansErrorsMeasurement.get(0).getValue(), 0);
         Assert.assertEquals(1, totalErrorsMeasurement.size());
+        Assert.assertEquals(1.0, totalErrorsMeasurement.get(0).getValue(), 0);
+    }
+
+    @Test
+    public void testSpanProcessingErrors() {
+        MetricsTestUtil.initMetrics();
+
+        Record<ExportTraceServiceRequest> mockRecord = mock(Record.class);
+        ExportTraceServiceRequest mockData = mock(ExportTraceServiceRequest.class);
+        ResourceSpans mockResourceSpans = mock(ResourceSpans.class);
+        List<ResourceSpans> mockResourceSpansList = Collections.singletonList(mockResourceSpans);
+        Resource mockResource = mock(Resource.class);
+        InstrumentationLibrarySpans mockInstrumentationSpans = mock(InstrumentationLibrarySpans.class);
+        List<InstrumentationLibrarySpans> mockInstrumentationSpansList = Collections.singletonList(mockInstrumentationSpans);
+        Span mockSpans = mock(Span.class);
+        List<Span> mockSpansList = Collections.singletonList(mockSpans);
+
+        when(mockRecord.getData()).thenReturn(mockData);
+        when(mockData.getResourceSpansList()).thenReturn(mockResourceSpansList);
+        when(mockResourceSpans.getResource()).thenReturn(mockResource);
+        when(mockResourceSpans.getInstrumentationLibrarySpansList()).thenReturn(mockInstrumentationSpansList);
+        when(mockInstrumentationSpans.getSpansList()).thenReturn(mockSpansList);
+        when(mockInstrumentationSpans.getInstrumentationLibrary()).thenThrow(new RuntimeException());
+
+        oTelTraceRawProcessor.doExecute(Collections.singletonList(mockRecord));
+
+        final List<Measurement> spanErrorsMeasurement = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add("pipelineOTelTrace").add("OTelTrace")
+                        .add(OTelTraceRawProcessor.SPAN_PROCESSING_ERRORS).toString());
+        Assert.assertEquals(1, spanErrorsMeasurement.size());
+        Assert.assertEquals(1.0, spanErrorsMeasurement.get(0).getValue(), 0);
     }
 
     @Test
