@@ -1,15 +1,17 @@
 package com.amazon.dataprepper;
 
 import com.amazon.dataprepper.parser.PipelineParser;
+import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
+import java.io.File;
+import java.util.Map;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
+import org.apache.log4j.PropertyConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Map;
 
 /**
  * DataPrepper is the entry point into the execution engine. An instance of this class is provided by
@@ -19,13 +21,24 @@ import java.util.Map;
  */
 public class DataPrepper {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepper.class);
-    private static final int SERVER_PORT = 4900;
 
     private Map<String, Pipeline> transformationPipelines;
 
     private static volatile DataPrepper dataPrepper;
 
     private static DataPrepperServer dataPrepperServer;
+    private static DataPrepperConfiguration configuration = DataPrepperConfiguration.DEFAULT_CONFIG;
+
+    /**
+     * Set the DataPrepperConfiguration from a file
+     * @param configurationFile File containing DataPrepperConfiguration yaml
+     */
+    public static void configure(final String configurationFile) {
+        final DataPrepperConfiguration dataPrepperConfiguration =
+                DataPrepperConfiguration.fromFile(new File(configurationFile));
+        PropertyConfigurator.configure(dataPrepperConfiguration.getLog4JConfiguration().getProperties());
+        configuration = dataPrepperConfiguration;
+    }
 
     public static DataPrepper getInstance() {
         if (dataPrepper == null) {
@@ -42,8 +55,7 @@ public class DataPrepper {
             throw new RuntimeException("Please use getInstance() for an instance of this Data Prepper");
         }
         startPrometheusBackend();
-        dataPrepperServer = new DataPrepperServer(SERVER_PORT);
-        dataPrepperServer.start();
+        dataPrepperServer = new DataPrepperServer(this);
     }
 
     /**
@@ -78,6 +90,12 @@ public class DataPrepper {
         transformationPipelines.forEach((name, pipeline) -> {
             pipeline.shutdown();
         });
+    }
+
+    /**
+     * Triggers shutdown of the Data Prepper server.
+     */
+    public void shutdownDataPrepperServer(){
         dataPrepperServer.stop();
     }
 
@@ -91,10 +109,19 @@ public class DataPrepper {
         }
     }
 
+    public Map<String, Pipeline> getTransformationPipelines() {
+        return  transformationPipelines;
+    }
+
+    public static DataPrepperConfiguration getConfiguration() {
+        return configuration;
+    }
+
     private boolean initiateExecution() {
         transformationPipelines.forEach((name, pipeline) -> {
             pipeline.execute();
         });
+        dataPrepperServer.start();
         return true;
     }
 }

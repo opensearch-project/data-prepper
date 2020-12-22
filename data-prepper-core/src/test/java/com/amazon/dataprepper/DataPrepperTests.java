@@ -1,6 +1,9 @@
 package com.amazon.dataprepper;
 
+import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
+import org.apache.log4j.Level;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -34,6 +37,17 @@ public class DataPrepperTests {
         assertThat("Failed to retrieve a valid Data Prepper instance", testDataPrepper1, is(notNullValue()));
         DataPrepper testDataPrepper2 = DataPrepper.getInstance();
         assertThat("Data Prepper has to be singleton", testDataPrepper2, is(testDataPrepper1));
+    }
+
+    @Test
+    public void testCustomConfiguration() {
+        DataPrepper.configure(TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE);
+        DataPrepper testInstance = DataPrepper.getInstance();
+        Assert.assertEquals(1234, DataPrepper.getConfiguration().getServerPort());
+        Assert.assertEquals(Level.DEBUG, DataPrepper.getConfiguration().getLog4JConfiguration().getLevel());
+        Assert.assertEquals("file.txt", DataPrepper.getConfiguration().getLog4JConfiguration().getFilePath());
+        Assert.assertEquals("1GB", DataPrepper.getConfiguration().getLog4JConfiguration().getMaxFileSize());
+        Assert.assertEquals("10", DataPrepper.getConfiguration().getLog4JConfiguration().getMaxBackupIndex());
     }
 
     @Test

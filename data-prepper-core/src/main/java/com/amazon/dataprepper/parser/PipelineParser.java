@@ -123,7 +123,7 @@ public class PipelineParser {
                 buildPipelineFromConfiguration(pipelineNameOptional.get(), pipelineConfigurationMap, pipelineMap);
             }
             if (!pipelineMap.containsKey(connectedPipeline)) {
-                LOG.info("Connected Pipeline [{}] failed to build, Failing building source for [{}]",
+                LOG.error("Connected Pipeline [{}] failed to build, Failing building source for [{}]",
                         connectedPipeline, sourcePipelineName);
                 throw new RuntimeException(format("Failed building source for %s, exiting", sourcePipelineName));
             }

@@ -1,6 +1,5 @@
 plugins {
     id 'java'
-    id 'jacoco'
 }
 dependencies {
     compile project(':data-prepper-api')

@@ -66,6 +66,11 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
         }
     }
 
+    @Override
+    public void shutdown() {
+        //TODO: Cleanup resources
+    }
+
     public void setSourcePipelineName(final String sourcePipelineName) {
         this.sourcePipelineName = sourcePipelineName;
     }

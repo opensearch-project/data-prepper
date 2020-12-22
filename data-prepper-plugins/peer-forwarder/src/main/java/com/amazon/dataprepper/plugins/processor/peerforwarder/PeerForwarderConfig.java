@@ -4,6 +4,10 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.PeerListProvider;
 import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.PeerListProviderFactory;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class PeerForwarderConfig {
@@ -13,6 +17,9 @@ public class PeerForwarderConfig {
     public static final String DISCOVERY_MODE = "discovery_mode";
     public static final String HOSTNAME_FOR_DNS_LOOKUP = "hostname_for_dns_lookup";
     public static final String STATIC_ENDPOINTS = "static_endpoints";
+    public static final String SSL = "ssl";
+    public static final String SSL_KEY_CERT_FILE = "sslKeyCertChainFile";
+    private static final boolean DEFAULT_SSL = false;
 
     private final HashRing hashRing;
     private final PeerClientPool peerClientPool;
@@ -37,6 +44,22 @@ public class PeerForwarderConfig {
         final HashRing hashRing = new HashRing(peerListProvider, NUM_VIRTUAL_NODES);
         final PeerClientPool peerClientPool = PeerClientPool.getInstance();
         peerClientPool.setClientTimeoutSeconds(3);
+        final boolean ssl = pluginSetting.getBooleanOrDefault(SSL, DEFAULT_SSL);
+        final String sslKeyCertChainFilePath = pluginSetting.getStringOrDefault(SSL_KEY_CERT_FILE, null);
+        final File sslKeyCertChainFile;
+        if (ssl) {
+            if (sslKeyCertChainFilePath == null || sslKeyCertChainFilePath.isEmpty()) {
+                throw new IllegalArgumentException(String.format("%s is enable, %s can not be empty or null", SSL, SSL_KEY_CERT_FILE));
+            } else if (!Files.exists(Paths.get(sslKeyCertChainFilePath))) {
+                throw new IllegalArgumentException(String.format("%s is enable, %s does not exist", SSL, SSL_KEY_CERT_FILE));
+            } else {
+                sslKeyCertChainFile = new File(sslKeyCertChainFilePath);
+            }
+        } else {
+            sslKeyCertChainFile = null;
+        }
+        peerClientPool.setSsl(ssl);
+        peerClientPool.setSslKeyCertChainFile(sslKeyCertChainFile);
 
         return new PeerForwarderConfig(
                 peerClientPool,

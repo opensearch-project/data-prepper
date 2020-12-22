@@ -18,4 +18,9 @@ public interface Processor<InputRecord extends Record<?>, OutputRecord extends R
      * @return Record  modified output records
      */
     Collection<OutputRecord> execute(Collection<InputRecord> records);
+
+    /**
+     * Prepare processor for shutdown, by cleaning up resources and threads.
+     */
+    void shutdown();
 }

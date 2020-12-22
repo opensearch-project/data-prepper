@@ -55,4 +55,9 @@ public class FileSink implements Sink<Record<String>> {
             throw new RuntimeException(format("Encountered exception opening/creating file %s", outputFilePath), ex);
         }
     }
+
+    @Override
+    public void shutdown() {
+
+    }
 }

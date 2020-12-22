@@ -98,4 +98,9 @@ public class OTelTraceRawProcessor extends AbstractPrepper<Record<ExportTraceSer
         }
         return finalRecords;
     }
+
+    @Override
+    public void shutdown() {
+
+    }
 }

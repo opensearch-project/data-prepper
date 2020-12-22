@@ -41,7 +41,7 @@ public class PluginMetrics {
     }
 
     public <T extends Number> T gauge(final String name, T number) {
-        return Metrics.gauge(name, number);
+        return Metrics.gauge(getMeterName(name), number);
     }
 
     private String getMeterName(final String name) {

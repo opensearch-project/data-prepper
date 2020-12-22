@@ -35,4 +35,9 @@ public class StdOutSink implements Sink<Record<String>> {
             System.out.println(record.getData());
         }
     }
+
+    @Override
+    public void shutdown() {
+
+    }
 }

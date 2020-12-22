@@ -16,7 +16,6 @@ buildscript {
 
 plugins {
     id 'java'
-    id 'jacoco'
 }
 apply plugin: 'elasticsearch.testclusters'
 apply plugin: 'elasticsearch.build'
@@ -32,7 +31,6 @@ dependencies {
     compile project(':data-prepper-api')
     compile project(':data-prepper-plugins:common')
     implementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:${es_version}"
-    implementation "org.elasticsearch:elasticsearch:${es_version}"
     implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${versionMap.jackson_dataformat_yaml}"
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'

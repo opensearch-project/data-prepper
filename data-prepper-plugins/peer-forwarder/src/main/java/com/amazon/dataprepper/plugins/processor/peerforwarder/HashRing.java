@@ -1,22 +1,34 @@
 package com.amazon.dataprepper.plugins.processor.peerforwarder;
 
 import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.PeerListProvider;
+import com.linecorp.armeria.client.Endpoint;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 
+/**
+ * Consistent hashing implementation used to map trace IDs to Data Prepper hosts.
+ * See https://en.wikipedia.org/wiki/Consistent_hashing for more information.
+ */
 @NotThreadSafe
-public class HashRing {
+public class HashRing implements Consumer<List<Endpoint>> {
+    private static final Logger LOG = LoggerFactory.getLogger(HashRing.class);
     private static final String MD5 = "MD5";
 
+    /* Number of virtual nodes per Data Prepper host to be present on the hash ring */
     private final int numVirtualNodes;
+
     private final PeerListProvider peerListProvider;
 
     private TreeMap<BigInteger, String> hashServerMap = new TreeMap<>();
@@ -27,21 +39,26 @@ public class HashRing {
         this.numVirtualNodes = numVirtualNodes;
 
         buildHashServerMap();
+
+        peerListProvider.addListener(this);
     }
 
     public Optional<String> getServerIp(final String traceId) {
         if (hashServerMap.isEmpty()) {
             return Optional.empty();
         }
+
         final byte[] traceIdInBytes = traceId.getBytes();
         final MessageDigest md;
         try {
             md = MessageDigest.getInstance(MD5);
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw (AssertionError) new AssertionError("unreachable", e);
         }
+
         md.update(traceIdInBytes);
         final BigInteger hashcode = new BigInteger(md.digest());
+
         // obtain Map.Entry with key greater than the hashcode
         final Map.Entry<BigInteger, String> entry = hashServerMap.higherEntry(hashcode);
         if (entry == null) {
@@ -52,9 +69,17 @@ public class HashRing {
         }
     }
 
+    @Override
+    public void accept(final List<Endpoint> endpoints) {
+        buildHashServerMap();
+    }
+
     private void buildHashServerMap() {
         final TreeMap<BigInteger, String> newHashValueMap = new TreeMap<>();
-        for (final String serverIp : peerListProvider.getPeerList()) {
+        final List<String> endpoints = peerListProvider.getPeerList();
+
+        LOG.info("Building hash ring with endpoints: {}", endpoints);
+        for (final String serverIp : endpoints) {
             addServerIpToHashMap(serverIp, newHashValueMap);
         }
 
@@ -64,11 +89,13 @@ public class HashRing {
     private void addServerIpToHashMap(final String serverIp, final Map<BigInteger, String> targetMap) {
         final byte[] serverIpInBytes = serverIp.getBytes();
         final MessageDigest md;
+
         try {
             md = MessageDigest.getInstance(MD5);
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw (AssertionError) new AssertionError("unreachable", e);
         }
+
         final ByteBuffer intBuffer = ByteBuffer.allocate(4);
         for (int i = 0; i < numVirtualNodes; i++) {
             md.update(serverIpInBytes);
