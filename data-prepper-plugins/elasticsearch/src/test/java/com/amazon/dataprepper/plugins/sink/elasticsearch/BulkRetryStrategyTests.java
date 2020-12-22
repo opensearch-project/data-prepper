@@ -90,6 +90,11 @@ public class BulkRetryStrategyTests {
         assertFalse(logging.contains("[bar][_doc][1]"));
 
         // verify metrics
+        final List<Measurement> documentsSuccessFirstAttemptMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_SUCCESS_FIRST_ATTEMPT).toString());
+        assertEquals(1, documentsSuccessFirstAttemptMeasurements.size());
+        assertEquals(1.0, documentsSuccessFirstAttemptMeasurements.get(0).getValue(), 0);
         final List<Measurement> documentsSuccessMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
@@ -186,16 +191,16 @@ public class BulkRetryStrategyTests {
             finalRequest = bulkRequest;
             final int requestSize = bulkRequest.requests().size();
             if (attempt == 0) {
-                attempt++;
-                throw new IOException();
-            } else if (attempt == 1) {
-                attempt++;
-                throw new ElasticsearchException(new EsRejectedExecutionException());
-            } else if (attempt == 2) {
                 assert requestSize == 4;
                 attempt++;
                 finalResponse = bulkFirstResponse(bulkRequest);
                 return finalResponse;
+            } else if (attempt == 1) {
+                attempt++;
+                throw new ElasticsearchException(new EsRejectedExecutionException());
+            } else if (attempt == 2) {
+                attempt++;
+                throw new IOException();
             } else {
                 assert requestSize == 2;
                 finalResponse = bulkSecondResponse(bulkRequest);
