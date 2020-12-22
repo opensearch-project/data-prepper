@@ -21,6 +21,7 @@ import java.util.function.Supplier;
 
 public final class BulkRetryStrategy {
     public static final String DOCUMENTS_SUCCESS = "documentsSuccess";
+    public static final String DOCUMENTS_SUCCESS_FIRST_ATTEMPT = "documentsSuccessFirstAttempt";
     public static final String DOCUMENT_ERRORS = "documentErrors";
 
     private static final Set<Integer> NON_RETRY_STATUS = new HashSet<>(
@@ -36,6 +37,7 @@ public final class BulkRetryStrategy {
     private final Supplier<BulkRequest> bulkRequestSupplier;
 
     private final Counter sentDocumentsCounter;
+    private final Counter sentDocumentsOnFirstAttemptCounter;
     private final Counter documentErrorsCounter;
 
     public BulkRetryStrategy(final RequestFunction<BulkRequest, BulkResponse> requestFunction,
@@ -48,6 +50,7 @@ public final class BulkRetryStrategy {
         this.bulkRequestSupplier = bulkRequestSupplier;
 
         sentDocumentsCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS);
+        sentDocumentsOnFirstAttemptCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS_FIRST_ATTEMPT);
         documentErrorsCounter = pluginMetrics.counter(DOCUMENT_ERRORS);
     }
 
@@ -56,7 +59,7 @@ public final class BulkRetryStrategy {
         // TODO: replace with custom backoff policy setting including maximum interval between retries
         final BackOffUtils backOffUtils = new BackOffUtils(
                 BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(50), Integer.MAX_VALUE).iterator());
-        handleRetry(bulkRequest, null, backOffUtils);
+        handleRetry(bulkRequest, null, backOffUtils, true);
     }
 
     public boolean canRetry(final BulkResponse response) {
@@ -74,8 +77,8 @@ public final class BulkRetryStrategy {
                         !NON_RETRY_STATUS.contains(((ElasticsearchException) e).status().getStatus())));
     }
 
-    private void handleRetry(final BulkRequest request, final BulkResponse response, final BackOffUtils backOffUtils)
-            throws InterruptedException {
+    private void handleRetry(final BulkRequest request, final BulkResponse response,
+                             final BackOffUtils backOffUtils, final boolean firstAttempt) throws InterruptedException {
         final BulkRequest bulkRequestForRetry = createBulkRequestForRetry(request, response);
         if (backOffUtils.hasNext()) {
             // Wait for backOff duration
@@ -85,7 +88,7 @@ public final class BulkRetryStrategy {
                 bulkResponse = requestFunction.apply(bulkRequestForRetry);
             } catch (final Exception e) {
                 if (canRetry(e)) {
-                    handleRetry(bulkRequestForRetry, null, backOffUtils);
+                    handleRetry(bulkRequestForRetry, null, backOffUtils, false);
                 } else {
                     handleFailures(bulkRequestForRetry.requests(), e);
                 }
@@ -94,17 +97,29 @@ public final class BulkRetryStrategy {
             }
             if (bulkResponse.hasFailures()) {
                 if (canRetry(bulkResponse)) {
-                    handleRetry(bulkRequestForRetry, bulkResponse, backOffUtils);
+                    if (firstAttempt) {
+                        for (final BulkItemResponse bulkItemResponse : bulkResponse.getItems()) {
+                            if (!bulkItemResponse.isFailed()) {
+                                sentDocumentsOnFirstAttemptCounter.increment();
+                            }
+                        }
+                    }
+                    handleRetry(bulkRequestForRetry, bulkResponse, backOffUtils, false);
                 } else {
                     handleFailures(bulkRequestForRetry.requests(), bulkResponse.getItems());
                 }
             } else {
+                final int numberOfDocs = bulkRequestForRetry.numberOfActions();
+                if (firstAttempt) {
+                    sentDocumentsOnFirstAttemptCounter.increment(numberOfDocs);
+                }
                 sentDocumentsCounter.increment(bulkRequestForRetry.numberOfActions());
             }
         }
     }
 
-    private BulkRequest createBulkRequestForRetry(final BulkRequest request, final BulkResponse response) {
+    private BulkRequest createBulkRequestForRetry(
+            final BulkRequest request, final BulkResponse response) {
         if (response == null) {
             // first attempt or retry due to Exception
             return request;
