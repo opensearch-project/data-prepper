@@ -1,5 +1,10 @@
 package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
+import com.amazon.dataprepper.metrics.MetricNames;
+import com.amazon.dataprepper.metrics.MetricsTestUtil;
+import com.amazon.dataprepper.metrics.PluginMetrics;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
+import io.micrometer.core.instrument.Measurement;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
@@ -10,9 +15,13 @@ import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.common.util.concurrent.EsRejectedExecutionException;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.index.shard.ShardId;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.StringJoiner;
 import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
@@ -20,11 +29,23 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class BulkRetryStrategyTests {
+    private static final String PLUGIN_NAME = "elasticsearch";
+    private static final String PIPELINE_NAME = "pipelineName";
+    private static final PluginSetting PLUGIN_SETTING = new PluginSetting(PLUGIN_NAME, Collections.emptyMap()) {{
+        setPipelineName(PIPELINE_NAME);
+    }};
+    private static final PluginMetrics PLUGIN_METRICS = PluginMetrics.fromPluginSetting(PLUGIN_SETTING);
+
+    @Before
+    public void metricsInit() {
+        MetricsTestUtil.initMetrics();
+    }
+
     @Test
     public void testCanRetry() {
         final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
                 bulkRequest -> new BulkResponse(new BulkItemResponse[bulkRequest.requests().size()], 10),
-                (docWriteRequest, throwable) -> {}, BulkRequest::new);
+                (docWriteRequest, throwable) -> {}, PLUGIN_METRICS, BulkRequest::new);
         final String testIndex = "foo";
         final BulkItemResponse bulkItemResponse1 = successItemResponse(testIndex);
         final BulkItemResponse bulkItemResponse2 = badRequestItemResponse(testIndex);
@@ -44,12 +65,13 @@ public class BulkRetryStrategyTests {
     }
 
     @Test
-    public void testExecute() throws Exception {
+    public void testExecuteRetryable() throws Exception {
         final String testIndex = "bar";
         final FakeClient client = new FakeClient(testIndex);
         final FakeLogger logger = new FakeLogger();
+
         final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
-                client::bulk, logger::logFailure, BulkRequest::new);
+                client::bulk, logger::logFailure, PLUGIN_METRICS, BulkRequest::new);
         final BulkRequest testBulkRequest = new BulkRequest();
         testBulkRequest.add(new IndexRequest(testIndex).id("1"));
         testBulkRequest.add(new IndexRequest(testIndex).id("2"));
@@ -63,8 +85,62 @@ public class BulkRetryStrategyTests {
         assertFalse(client.finalResponse.hasFailures());
         assertEquals("3", client.finalRequest.requests().get(0).id());
         assertEquals("4", client.finalRequest.requests().get(1).id());
-        assertTrue(logger.msg.contains("[bar][_doc][2]"));
-        assertFalse(logger.msg.contains("[bar][_doc][1]"));
+        final String logging = logger.msg.toString();
+        assertTrue(logging.contains("[bar][_doc][2]"));
+        assertFalse(logging.contains("[bar][_doc][1]"));
+
+        // verify metrics
+        final List<Measurement> documentsSuccessFirstAttemptMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_SUCCESS_FIRST_ATTEMPT).toString());
+        assertEquals(1, documentsSuccessFirstAttemptMeasurements.size());
+        assertEquals(1.0, documentsSuccessFirstAttemptMeasurements.get(0).getValue(), 0);
+        final List<Measurement> documentsSuccessMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
+        assertEquals(1, documentsSuccessMeasurements.size());
+        assertEquals(3.0, documentsSuccessMeasurements.get(0).getValue(), 0);
+        final List<Measurement> documentErrorsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
+        assertEquals(1, documentErrorsMeasurements.size());
+        assertEquals(1.0, documentErrorsMeasurements.get(0).getValue(), 0);
+    }
+
+    @Test
+    public void testExecuteNonRetryableException() throws Exception {
+        final String testIndex = "bar";
+        final FakeClient client = new FakeClient(testIndex);
+        client.retryable = false;
+        final FakeLogger logger = new FakeLogger();
+
+        final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
+                client::bulk, logger::logFailure, PLUGIN_METRICS, BulkRequest::new);
+        final BulkRequest testBulkRequest = new BulkRequest();
+        testBulkRequest.add(new IndexRequest(testIndex).id("1"));
+        testBulkRequest.add(new IndexRequest(testIndex).id("2"));
+        testBulkRequest.add(new IndexRequest(testIndex).id("3"));
+        testBulkRequest.add(new IndexRequest(testIndex).id("4"));
+
+        bulkRetryStrategy.execute(testBulkRequest);
+
+        assertEquals(1, client.attempt);
+        final String logging = logger.msg.toString();
+        for (int i = 1; i <= 4; i++) {
+            assertTrue(logging.contains(String.format("[bar][_doc][%d]", i)));
+        }
+
+        // verify metrics
+        final List<Measurement> documentsSuccessMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
+        assertEquals(1, documentsSuccessMeasurements.size());
+        assertEquals(0.0, documentsSuccessMeasurements.get(0).getValue(), 0);
+        final List<Measurement> documentErrorsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
+        assertEquals(1, documentErrorsMeasurements.size());
+        assertEquals(4.0, documentErrorsMeasurements.get(0).getValue(), 0);
     }
 
     private static BulkItemResponse successItemResponse(final String index) {
@@ -97,6 +173,7 @@ public class BulkRetryStrategyTests {
 
     private static class FakeClient {
 
+        boolean retryable = true;
         int attempt = 0;
         String index;
         BulkRequest finalRequest;
@@ -107,19 +184,23 @@ public class BulkRetryStrategyTests {
         }
 
         public BulkResponse bulk(final BulkRequest bulkRequest) throws IOException {
+            if (!retryable) {
+                attempt++;
+                throw new IllegalArgumentException();
+            }
             finalRequest = bulkRequest;
             final int requestSize = bulkRequest.requests().size();
             if (attempt == 0) {
-                attempt++;
-                throw new IOException();
-            } else if (attempt == 1) {
-                attempt++;
-                throw new ElasticsearchException(new EsRejectedExecutionException());
-            } else if (attempt == 2) {
                 assert requestSize == 4;
                 attempt++;
                 finalResponse = bulkFirstResponse(bulkRequest);
                 return finalResponse;
+            } else if (attempt == 1) {
+                attempt++;
+                throw new ElasticsearchException(new EsRejectedExecutionException());
+            } else if (attempt == 2) {
+                attempt++;
+                throw new IOException();
             } else {
                 assert requestSize == 2;
                 finalResponse = bulkSecondResponse(bulkRequest);
@@ -146,10 +227,10 @@ public class BulkRetryStrategyTests {
     }
 
     private static class FakeLogger {
-        String msg;
+        StringBuilder msg = new StringBuilder();
 
         public void logFailure(final DocWriteRequest<?> docWriteRequest, final Throwable t) {
-            msg = String.format("Document [%s] has failure: %s", docWriteRequest.toString(), t);
+            msg.append(String.format("Document [%s] has failure: %s", docWriteRequest.toString(), t));
         }
     }
 }

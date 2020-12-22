@@ -1,5 +1,7 @@
 package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
+import io.micrometer.core.instrument.Counter;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.bulk.BackoffPolicy;
@@ -18,6 +20,10 @@ import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 public final class BulkRetryStrategy {
+    public static final String DOCUMENTS_SUCCESS = "documentsSuccess";
+    public static final String DOCUMENTS_SUCCESS_FIRST_ATTEMPT = "documentsSuccessFirstAttempt";
+    public static final String DOCUMENT_ERRORS = "documentErrors";
+
     private static final Set<Integer> NON_RETRY_STATUS = new HashSet<>(
             Arrays.asList(
                     RestStatus.BAD_REQUEST.getStatus(),
@@ -27,14 +33,25 @@ public final class BulkRetryStrategy {
 
     private final RequestFunction<BulkRequest, BulkResponse> requestFunction;
     private final BiConsumer<DocWriteRequest<?>, Throwable> logFailure;
+    private final PluginMetrics pluginMetrics;
     private final Supplier<BulkRequest> bulkRequestSupplier;
+
+    private final Counter sentDocumentsCounter;
+    private final Counter sentDocumentsOnFirstAttemptCounter;
+    private final Counter documentErrorsCounter;
 
     public BulkRetryStrategy(final RequestFunction<BulkRequest, BulkResponse> requestFunction,
                              final BiConsumer<DocWriteRequest<?>, Throwable> logFailure,
+                             final PluginMetrics pluginMetrics,
                              final Supplier<BulkRequest> bulkRequestSupplier) {
         this.requestFunction = requestFunction;
         this.logFailure = logFailure;
+        this.pluginMetrics = pluginMetrics;
         this.bulkRequestSupplier = bulkRequestSupplier;
+
+        sentDocumentsCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS);
+        sentDocumentsOnFirstAttemptCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS_FIRST_ATTEMPT);
+        documentErrorsCounter = pluginMetrics.counter(DOCUMENT_ERRORS);
     }
 
     public void execute(final BulkRequest bulkRequest) throws InterruptedException {
@@ -42,7 +59,7 @@ public final class BulkRetryStrategy {
         // TODO: replace with custom backoff policy setting including maximum interval between retries
         final BackOffUtils backOffUtils = new BackOffUtils(
                 BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(50), Integer.MAX_VALUE).iterator());
-        handleRetry(bulkRequest, null, backOffUtils);
+        handleRetry(bulkRequest, null, backOffUtils, true);
     }
 
     public boolean canRetry(final BulkResponse response) {
@@ -60,8 +77,8 @@ public final class BulkRetryStrategy {
                         !NON_RETRY_STATUS.contains(((ElasticsearchException) e).status().getStatus())));
     }
 
-    private void handleRetry(final BulkRequest request, final BulkResponse response, final BackOffUtils backOffUtils)
-            throws InterruptedException {
+    private void handleRetry(final BulkRequest request, final BulkResponse response,
+                             final BackOffUtils backOffUtils, final boolean firstAttempt) throws InterruptedException {
         final BulkRequest bulkRequestForRetry = createBulkRequestForRetry(request, response);
         if (backOffUtils.hasNext()) {
             // Wait for backOff duration
@@ -71,7 +88,7 @@ public final class BulkRetryStrategy {
                 bulkResponse = requestFunction.apply(bulkRequestForRetry);
             } catch (final Exception e) {
                 if (canRetry(e)) {
-                    handleRetry(bulkRequestForRetry, null, backOffUtils);
+                    handleRetry(bulkRequestForRetry, null, backOffUtils, false);
                 } else {
                     handleFailures(bulkRequestForRetry.requests(), e);
                 }
@@ -80,15 +97,29 @@ public final class BulkRetryStrategy {
             }
             if (bulkResponse.hasFailures()) {
                 if (canRetry(bulkResponse)) {
-                    handleRetry(bulkRequestForRetry, bulkResponse, backOffUtils);
+                    if (firstAttempt) {
+                        for (final BulkItemResponse bulkItemResponse : bulkResponse.getItems()) {
+                            if (!bulkItemResponse.isFailed()) {
+                                sentDocumentsOnFirstAttemptCounter.increment();
+                            }
+                        }
+                    }
+                    handleRetry(bulkRequestForRetry, bulkResponse, backOffUtils, false);
                 } else {
                     handleFailures(bulkRequestForRetry.requests(), bulkResponse.getItems());
                 }
+            } else {
+                final int numberOfDocs = bulkRequestForRetry.numberOfActions();
+                if (firstAttempt) {
+                    sentDocumentsOnFirstAttemptCounter.increment(numberOfDocs);
+                }
+                sentDocumentsCounter.increment(bulkRequestForRetry.numberOfActions());
             }
         }
     }
 
-    private BulkRequest createBulkRequestForRetry(final BulkRequest request, final BulkResponse response) {
+    private BulkRequest createBulkRequestForRetry(
+            final BulkRequest request, final BulkResponse response) {
         if (response == null) {
             // first attempt or retry due to Exception
             return request;
@@ -102,7 +133,10 @@ public final class BulkRetryStrategy {
                     } else {
                         // log non-retryable failed request
                         logFailure.accept(request.requests().get(index), bulkItemResponse.getFailure().getCause());
+                        documentErrorsCounter.increment();
                     }
+                } else {
+                    sentDocumentsCounter.increment();
                 }
                 index++;
             }
@@ -118,11 +152,15 @@ public final class BulkRetryStrategy {
             if (bulkItemResponse.isFailed()) {
                 final BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
                 logFailure.accept(docWriteRequest, failure.getCause());
+                documentErrorsCounter.increment();
+            } else {
+                sentDocumentsCounter.increment();
             }
         }
     }
 
     private void handleFailures(final List<DocWriteRequest<?>> docWriteRequests, final Throwable failure) {
+        documentErrorsCounter.increment(docWriteRequests.size());
         for (final DocWriteRequest<?> docWriteRequest: docWriteRequests) {
             logFailure.accept(docWriteRequest, failure);
         }

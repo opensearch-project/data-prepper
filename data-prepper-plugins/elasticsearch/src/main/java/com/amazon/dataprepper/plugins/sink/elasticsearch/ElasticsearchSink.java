@@ -5,7 +5,8 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.AbstractSink;
-import com.amazon.dataprepper.model.sink.Sink;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.DocWriteRequest;
 import org.elasticsearch.action.admin.indices.alias.Alias;
@@ -38,6 +39,8 @@ import java.util.function.Supplier;
 
 @DataPrepperPlugin(name = "elasticsearch", type = PluginType.SINK)
 public class ElasticsearchSink extends AbstractSink<Record<String>> {
+  public static final String BULKREQUEST_LATENCY = "bulkRequestLatency";
+  public static final String BULKREQUEST_ERRORS = "bulkRequestErrors";
 
   private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchSink.class);
   // Pulled from BulkRequest to make estimation of bytes consistent
@@ -52,8 +55,14 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
   private final String indexType;
   private final String documentIdField;
 
+  private final Timer bulkRequestTimer;
+  private final Counter bulkRequestErrorsCounter;
+
   public ElasticsearchSink(final PluginSetting pluginSetting) {
     super(pluginSetting);
+    bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
+    bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
+
     this.esSinkConfig = ElasticsearchSinkConfiguration.readESConfig(pluginSetting);
     this.bulkSize = ByteSizeUnit.MB.toBytes(esSinkConfig.getIndexConfiguration().getBulkSize());
     this.indexType = esSinkConfig.getIndexConfiguration().getIndexType();
@@ -81,6 +90,7 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
     bulkRetryStrategy = new BulkRetryStrategy(
             bulkRequest -> restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT),
             this::logFailure,
+            pluginMetrics,
             bulkRequestSupplier);
     LOG.info("Started Elasticsearch sink");
   }
@@ -123,12 +133,15 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
   }
 
   private void flushBatch(final BulkRequest bulkRequest) {
-    try {
-      bulkRetryStrategy.execute(bulkRequest);
-    } catch (final InterruptedException e) {
-      LOG.error("Unexpected Interrupt:", e);
-      Thread.currentThread().interrupt();
-    }
+    bulkRequestTimer.record(() -> {
+      try {
+        bulkRetryStrategy.execute(bulkRequest);
+      } catch (final InterruptedException e) {
+        LOG.error("Unexpected Interrupt:", e);
+        bulkRequestErrorsCounter.increment();
+        Thread.currentThread().interrupt();
+      }
+    });
   }
 
   private void createIndexTemplate(final String ismPolicyId) throws IOException {

@@ -1,8 +1,11 @@
 package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
+import com.amazon.dataprepper.metrics.MetricNames;
+import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Measurement;
 import org.apache.commons.io.FileUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
@@ -29,6 +32,8 @@ import org.elasticsearch.common.xcontent.XContentParser;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.test.rest.ESRestTestCase;
 import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
@@ -45,17 +50,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 import static org.apache.http.HttpStatus.SC_OK;
 
 public class ElasticsearchSinkIT extends ESRestTestCase {
+  private static final String PLUGIN_NAME = "elasticsearch";
+  private static final String PIPELINE_NAME = "integTestPipeline";
   public List<String> HOSTS = Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
       .map(ip -> String.format("%s://%s", getProtocol(), ip)).collect(Collectors.toList());
   private static final String DEFAULT_TEMPLATE_FILE = "test-index-template.json";
   private static final String DEFAULT_RAW_SPAN_FILE_1 = "raw-span-1.json";
   private static final String DEFAULT_RAW_SPAN_FILE_2 = "raw-span-2.json";
   private static final String DEFAULT_SERVICE_MAP_FILE = "service-map-1.json";
+
+  @Before
+  public void metricsInit() {
+    MetricsTestUtil.initMetrics();
+  }
 
   public void testInstantiateSinkRawSpanDefault() throws IOException {
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
@@ -114,6 +127,38 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     assertTrue(retSources.containsAll(Arrays.asList(expData1, expData2)));
     assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", (String)expData1.get("spanId")));
     sink.shutdown();
+
+    // Verify metrics
+    final List<Measurement> bulkRequestErrors = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(ElasticsearchSink.BULKREQUEST_ERRORS).toString());
+    assertEquals(1, bulkRequestErrors.size());
+    Assert.assertEquals(0.0, bulkRequestErrors.get(0).getValue(), 0);
+    final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(ElasticsearchSink.BULKREQUEST_LATENCY).toString());
+    assertEquals(3, bulkRequestLatencies.size());
+    // COUNT
+    Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+    // TOTAL_TIME
+    Assert.assertTrue(bulkRequestLatencies.get(1).getValue() > 0.0);
+    // MAX
+    Assert.assertTrue(bulkRequestLatencies.get(2).getValue() > 0.0);
+    final List<Measurement> documentsSuccessMeasurements = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
+    assertEquals(1, documentsSuccessMeasurements.size());
+    assertEquals(2.0, documentsSuccessMeasurements.get(0).getValue(), 0);
+    final List<Measurement> documentsSuccessFirstAttemptMeasurements = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(BulkRetryStrategy.DOCUMENTS_SUCCESS_FIRST_ATTEMPT).toString());
+    assertEquals(1, documentsSuccessFirstAttemptMeasurements.size());
+    assertEquals(2.0, documentsSuccessFirstAttemptMeasurements.get(0).getValue(), 0);
+    final List<Measurement> documentErrorsMeasurements = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
+    assertEquals(1, documentErrorsMeasurements.size());
+    assertEquals(0.0, documentErrorsMeasurements.get(0).getValue(), 0);
   }
 
   public void testOutputRawSpanWithDLQ() throws IOException, InterruptedException {
@@ -144,6 +189,18 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
 
     // clean up temporary directory
     FileUtils.deleteQuietly(tempDirectory);
+
+    // verify metrics
+    final List<Measurement> documentsSuccessMeasurements = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
+    assertEquals(1, documentsSuccessMeasurements.size());
+    assertEquals(1.0, documentsSuccessMeasurements.get(0).getValue(), 0);
+    final List<Measurement> documentErrorsMeasurements = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
+    assertEquals(1, documentErrorsMeasurements.size());
+    assertEquals(1.0, documentErrorsMeasurements.get(0).getValue(), 0);
   }
 
   public void testInstantiateSinkServiceMapDefault() throws IOException {
@@ -181,6 +238,14 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", (String)expData.get("hashId")));
     sink.shutdown();
 
+    // verify metrics
+    final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(ElasticsearchSink.BULKREQUEST_LATENCY).toString());
+    assertEquals(3, bulkRequestLatencies.size());
+    // COUNT
+    Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+
     // Check restart for index already exists
     sink = new ElasticsearchSink(pluginSetting);
     sink.shutdown();
@@ -217,6 +282,14 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     assertEquals(1, retSources.size());
     assertEquals(Integer.valueOf(1), getDocumentCount(testIndexAlias, "_id", testId));
     sink.shutdown();
+
+    // verify metrics
+    final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(ElasticsearchSink.BULKREQUEST_LATENCY).toString());
+    assertEquals(3, bulkRequestLatencies.size());
+    // COUNT
+    Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
   }
 
   private PluginSetting generatePluginSetting(final boolean isRaw, final boolean isServiceMap, final String indexAlias, final String templateFilePath) {
@@ -233,8 +306,8 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
       metadata.put(ConnectionConfiguration.PASSWORD, password);
     }
 
-    final PluginSetting pluginSetting = new PluginSetting("elasticsearch", metadata);
-    pluginSetting.setPipelineName("integTestPipeline");
+    final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, metadata);
+    pluginSetting.setPipelineName(PIPELINE_NAME);
     return pluginSetting;
   }
 
