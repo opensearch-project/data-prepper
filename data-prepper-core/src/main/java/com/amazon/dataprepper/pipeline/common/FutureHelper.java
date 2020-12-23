@@ -17,6 +17,7 @@ public class FutureHelper {
     private static final Logger LOG = LoggerFactory.getLogger(FutureHelper.class);
 
     /**
+     * TODO: Should this be removed? (unused code)
      * Helper method to handle the return of multiple futures. The method will return
      * as soon as all the futures are complete or until the specified timeout duration.
      * @param futureList
