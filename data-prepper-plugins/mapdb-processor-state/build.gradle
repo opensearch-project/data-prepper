@@ -19,3 +19,15 @@ dependencies {
     testCompile project(':data-prepper-plugins:common').sourceSets.test.output
     testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
 }
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule { //in addition to core projects rule
+            limit {
+                minimum = 0.95 //Increase this to 0.90
+            }
+        }
+    }
+}
+
