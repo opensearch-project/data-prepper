@@ -11,5 +11,7 @@ import java.util.List;
  * (see DynamicEndpointGroup), though this can be redefined in the future if more Provider implementations are necessary.
  */
 public interface PeerListProvider extends Listenable<List<Endpoint>> {
+    String PEER_ENDPOINTS = "peerEndpoints";
+
     List<String> getPeerList();
 }

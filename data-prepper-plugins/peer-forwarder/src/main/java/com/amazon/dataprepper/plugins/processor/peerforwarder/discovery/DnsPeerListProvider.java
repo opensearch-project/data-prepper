@@ -1,5 +1,6 @@
 package com.amazon.dataprepper.plugins.processor.peerforwarder.discovery;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.linecorp.armeria.client.Endpoint;
 import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
 import org.slf4j.Logger;
@@ -12,11 +13,12 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class DnsPeerListProvider implements PeerListProvider {
+
     private static final Logger LOG = LoggerFactory.getLogger(DnsPeerListProvider.class);
 
     private final DnsAddressEndpointGroup endpointGroup;
 
-    public DnsPeerListProvider(final DnsAddressEndpointGroup endpointGroup) {
+    public DnsPeerListProvider(final DnsAddressEndpointGroup endpointGroup, final PluginMetrics pluginMetrics) {
         Objects.requireNonNull(endpointGroup);
 
         this.endpointGroup = endpointGroup;
@@ -27,6 +29,8 @@ public class DnsPeerListProvider implements PeerListProvider {
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException("Caught exception while querying DNS", e);
         }
+
+        pluginMetrics.gauge(PEER_ENDPOINTS, endpointGroup, group -> group.endpoints().size());
     }
 
     @Override

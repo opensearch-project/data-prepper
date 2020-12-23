@@ -1,5 +1,6 @@
 package com.amazon.dataprepper.plugins.processor.peerforwarder.discovery;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
 
@@ -23,6 +24,8 @@ public class PeerListProviderFactory {
 
         final DiscoveryMode discoveryMode = DiscoveryMode.valueOf(discoveryModeString.toUpperCase());
 
+        final PluginMetrics pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
+
         switch (discoveryMode) {
             case DNS:
                 final String hostname = pluginSetting.getStringOrDefault(HOSTNAME_FOR_DNS_LOOKUP, null);
@@ -32,12 +35,12 @@ public class PeerListProviderFactory {
                         .ttl(MIN_TTL, MAX_TTL)
                         .build();
 
-                return new DnsPeerListProvider(endpointGroup);
+                return new DnsPeerListProvider(endpointGroup, pluginMetrics);
             case STATIC:
                 final List<String> endpoints = (List<String>) pluginSetting.getAttributeOrDefault(STATIC_ENDPOINTS, null);
                 Objects.requireNonNull(endpoints, String.format("Missing '%s' configuration value", STATIC_ENDPOINTS));
 
-                return new StaticPeerListProvider(endpoints);
+                return new StaticPeerListProvider(endpoints, pluginMetrics);
             default:
                 throw new UnsupportedOperationException(String.format("Unsupported discovery mode: %s", discoveryMode));
         }
