@@ -8,7 +8,7 @@ docker {
     files project(':data-prepper-core').jar.archivePath
     buildArgs(['JAR_FILE'       : project(':data-prepper-core').jar.archiveName,
                'CONFIG_FILEPATH': '/usr/share/data-prepper/data-prepper.yml'])
-    dockerfile file('data-prepper-v0.1.0-all.Dockerfile')
+    dockerfile file('data-prepper-v0.7.0-all.Dockerfile')
 }
 
 dockerPrepare.dependsOn ':release:releasePrerequisites'
