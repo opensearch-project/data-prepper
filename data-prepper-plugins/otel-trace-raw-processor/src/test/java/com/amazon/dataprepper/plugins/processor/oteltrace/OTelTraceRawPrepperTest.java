@@ -37,6 +37,7 @@ public class OTelTraceRawPrepperTest {
 
     @Before
     public void setup() {
+        MetricsTestUtil.initMetrics();
         pluginSetting = new PluginSetting("OTelTrace", Collections.EMPTY_MAP);
         pluginSetting.setPipelineName("pipelineOTelTrace");
         oTelTraceRawProcessor = new OTelTraceRawPrepper(pluginSetting);
@@ -44,9 +45,6 @@ public class OTelTraceRawPrepperTest {
 
     @Test
     public void testResourceSpansProcessingErrorMetrics() {
-
-        MetricsTestUtil.initMetrics();
-
         ExportTraceServiceRequest mockData = mock(ExportTraceServiceRequest.class);
         Record record = new Record(mockData);
         ResourceSpans mockResourceSpans = mock(ResourceSpans.class);
@@ -72,8 +70,6 @@ public class OTelTraceRawPrepperTest {
 
     @Test
     public void testSpanProcessingErrors() {
-        MetricsTestUtil.initMetrics();
-
         ExportTraceServiceRequest mockData = mock(ExportTraceServiceRequest.class);
         Record record = new Record(mockData);
         ResourceSpans mockResourceSpans = mock(ResourceSpans.class);

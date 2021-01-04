@@ -26,6 +26,7 @@ import static org.mockito.Mockito.verify;
 
 @RunWith(MockitoJUnitRunner.class)
 public class PeerForwarderConfigTest {
+    private static final String PIPELINE_NAME = "pipelineName";
     private static final String VALID_SSL_KEY_CERT_FILE = PeerForwarderConfigTest.class.getClassLoader()
             .getResource("test-crt.crt").getFile();
     private static final String EMPTY_SSL_KEY_CERT_FILE = "";
@@ -62,7 +63,7 @@ public class PeerForwarderConfigTest {
         settings.put(PeerForwarderConfig.TIME_OUT, testTimeout);
 
         final PeerForwarderConfig peerForwarderConfig = PeerForwarderConfig.buildConfig(
-                new PluginSetting("peer_forwarder", settings));
+                new PluginSetting("peer_forwarder", settings){{ setPipelineName(PIPELINE_NAME); }});
 
         Assert.assertEquals(testNumSpansPerRequest, peerForwarderConfig.getMaxNumSpansPerRequest());
         Assert.assertEquals(testTimeout, peerForwarderConfig.getTimeOut());
@@ -77,17 +78,17 @@ public class PeerForwarderConfigTest {
 
         settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, EMPTY_SSL_KEY_CERT_FILE);
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings));
+            PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings){{ setPipelineName(PIPELINE_NAME); }});
         });
 
         settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, null);
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings));
+            PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings){{ setPipelineName(PIPELINE_NAME); }});
         });
 
         settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, INVALID_SSL_KEY_CERT_FILE);
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings));
+            PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings){{ setPipelineName(PIPELINE_NAME); }});
         });
     }
 
@@ -99,7 +100,7 @@ public class PeerForwarderConfigTest {
         settings.put(PeerForwarderConfig.SSL, true);
         settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, VALID_SSL_KEY_CERT_FILE);
 
-        PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings));
+        PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings){{ setPipelineName(PIPELINE_NAME); }});
         verify(peerClientPool, times(1)).setSsl(true);
         verify(peerClientPool, times(1)).setSslKeyCertChainFile(new File(VALID_SSL_KEY_CERT_FILE));
     }

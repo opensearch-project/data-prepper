@@ -13,6 +13,7 @@ public class MetricsTestUtil {
 
     public static void initMetrics() {
         Metrics.globalRegistry.getRegistries().forEach(meterRegistry -> Metrics.globalRegistry.remove(meterRegistry));
+        Metrics.globalRegistry.getMeters().forEach(meter -> Metrics.globalRegistry.remove(meter));
         Metrics.addRegistry(new SimpleMeterRegistry());
     }
 

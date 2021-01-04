@@ -4,6 +4,7 @@ import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.plugins.processor.peerforwarder.discovery.PeerListProvider;
 import com.google.protobuf.ByteString;
 import io.grpc.Channel;
 import io.micrometer.core.instrument.Measurement;
@@ -136,12 +137,6 @@ public class PeerForwarderTest {
 
         MetricsTestUtil.initMetrics();
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
-        // Verify activePeers
-        final List<Measurement> activePeers = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
-                        .add(PeerForwarder.PEER_ENDPOINTS).toString());
-        Assert.assertEquals(1, activePeers.size());
-        Assert.assertEquals(2.0, activePeers.get(0).getValue(), 0);
 
         final List<Record<ExportTraceServiceRequest>> exportedRecords = testPeerForwarder
                 .doExecute(Arrays.asList(new Record<>(REQUEST_1), new Record<>(REQUEST_2)));

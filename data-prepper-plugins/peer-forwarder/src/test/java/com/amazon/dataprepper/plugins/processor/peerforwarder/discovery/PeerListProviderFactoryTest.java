@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 public class PeerListProviderFactoryTest {
     private static final String PLUGIN_NAME = "PLUGIN_NAME";
     private static final String ENDPOINT = "ENDPOINT";
+    private static final String PIPELINE_NAME = "pipelineName";
 
     @Mock
     private DnsAddressEndpointGroupBuilder dnsAddressEndpointGroupBuilder;
@@ -41,7 +42,7 @@ public class PeerListProviderFactoryTest {
     @Before
     public void setup() {
         factory = new PeerListProviderFactory();
-        pluginSetting = new PluginSetting(PLUGIN_NAME, new HashMap<>());
+        pluginSetting = new PluginSetting(PLUGIN_NAME, new HashMap<>()){{ setPipelineName(PIPELINE_NAME); }};
         completableFuture = CompletableFuture.completedFuture(null);
     }
 
