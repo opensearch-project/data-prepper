@@ -21,3 +21,14 @@ dependencies {
     testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
     testImplementation "org.mockito:mockito-core:${versionMap.mockito}"
 }
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule { //in addition to core projects rule
+            limit {
+                minimum = 0.9
+            }
+        }
+    }
+}
