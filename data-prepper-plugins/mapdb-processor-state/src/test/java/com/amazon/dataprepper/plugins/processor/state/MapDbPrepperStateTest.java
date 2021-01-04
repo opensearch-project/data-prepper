@@ -10,7 +10,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-public class MapDbProcessorStateTest extends ProcessorStateTest {
+public class MapDbPrepperStateTest extends PrepperStateTest {
 
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();

@@ -2,7 +2,7 @@ package com.amazon.dataprepper.parser;
 
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.parser.model.PipelineConfiguration;
@@ -82,8 +82,8 @@ public class PipelineParser {
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
             final Buffer buffer = BufferFactory.newBuffer(pipelineConfiguration.getBufferPluginSetting());
 
-            LOG.info("Building processors for the pipeline [{}]", pipelineName);
-            final List<Processor> processors = pipelineConfiguration.getProcessorPluginSettings().stream()
+            LOG.info("Building preppers for the pipeline [{}]", pipelineName);
+            final List<Prepper> preppers = pipelineConfiguration.getProcessorPluginSettings().stream()
                     .map(ProcessorFactory::newProcessor)
                     .collect(Collectors.toList());
             final int processorThreads = pipelineConfiguration.getWorkers();
@@ -94,7 +94,7 @@ public class PipelineParser {
                     .map(this::buildSinkOrConnector)
                     .collect(Collectors.toList());
 
-            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, processors, sinks, processorThreads, readBatchDelay);
+            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, preppers, sinks, processorThreads, readBatchDelay);
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
             //If pipeline construction errors out, we will skip that pipeline and proceed

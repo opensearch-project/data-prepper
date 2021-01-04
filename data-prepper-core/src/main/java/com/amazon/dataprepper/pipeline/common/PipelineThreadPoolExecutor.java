@@ -37,13 +37,6 @@ public class PipelineThreadPoolExecutor extends ThreadPoolExecutor {
         this.pipeline = pipeline;
     }
 
-    public static PipelineThreadPoolExecutor newSingleThreadExecutor(
-            final ThreadFactory threadFactory,
-            final Pipeline pipeline) {
-        return new PipelineThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(), threadFactory, pipeline);
-    }
-
     public static PipelineThreadPoolExecutor newFixedThreadPool(
             final int nThreads,
             final ThreadFactory threadFactory,
@@ -66,7 +59,7 @@ public class PipelineThreadPoolExecutor extends ThreadPoolExecutor {
         super.afterExecute(runnable, throwable);
 
         // If submit() method is used instead of execute(), the exceptions are wrapped in Future
-        // Processor or Sink failures will enter into this loop
+        // Prepper or Sink failures will enter into this loop
         if (throwable == null && runnable instanceof Future<?>) {
             try {
                 ((Future<?>) runnable).get();

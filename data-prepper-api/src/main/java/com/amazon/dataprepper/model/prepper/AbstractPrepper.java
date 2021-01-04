@@ -1,4 +1,4 @@
-package com.amazon.dataprepper.model.processor;
+package com.amazon.dataprepper.model.prepper;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.metrics.MetricNames;
@@ -9,11 +9,11 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 
 /**
- * Abstract implementation of the {@link com.amazon.dataprepper.model.processor.Processor} interface. This class implements an execute function which records
+ * Abstract implementation of the {@link Prepper} interface. This class implements an execute function which records
  * some basic metrics. Logic of the execute function is handled by extensions of this class in the doExecute function.
  */
 public abstract class AbstractPrepper<InputRecord extends Record<?>, OutputRecord extends Record<?>> implements
-    Processor<InputRecord, OutputRecord> {
+        Prepper<InputRecord, OutputRecord> {
 
     protected final PluginMetrics pluginMetrics;
     private final Counter recordsInCounter;
@@ -42,7 +42,7 @@ public abstract class AbstractPrepper<InputRecord extends Record<?>, OutputRecor
     }
 
     /**
-     * This function should implement the processing logic of the processor
+     * This function should implement the processing logic of the prepper
      * @param records Input records
      * @return Processed records
      */

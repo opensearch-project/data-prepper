@@ -1,8 +1,9 @@
 package com.amazon.dataprepper.benchmarks.processor;
 
+import com.amazon.dataprepper.plugins.processor.ServiceMapStatefulPrepper;
 import com.google.protobuf.ByteString;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.processor.ServiceMapStatefulProcessor;
+
 import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.time.Clock;
@@ -31,7 +32,7 @@ import org.openjdk.jmh.annotations.Warmup;
 @State(Scope.Thread)
 public class ServiceMapStatefulProcessorBenchmarks {
 
-    private ServiceMapStatefulProcessor serviceMapStatefulProcessor;
+    private ServiceMapStatefulPrepper serviceMapStatefulProcessor;
     private List<byte[]> spanIds;
     private List<byte[]> traceIds;
     private static final String DB_PATH = "data/benchmark";
@@ -48,7 +49,7 @@ public class ServiceMapStatefulProcessorBenchmarks {
 
     @Setup(Level.Trial)
     public void setupServiceMapStatefulProcessor() {
-        serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(windowDurationSeconds*1000, new File(DB_PATH), Clock.systemDefaultZone());
+        serviceMapStatefulProcessor = new ServiceMapStatefulPrepper(windowDurationSeconds*1000, new File(DB_PATH), Clock.systemDefaultZone());
     }
 
     /**

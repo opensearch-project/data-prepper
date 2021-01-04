@@ -1,17 +1,17 @@
-package com.amazon.dataprepper.model.processor;
+package com.amazon.dataprepper.model.prepper;
 
 import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
 /**
- * Data Prepper Processor interface. These are intermediary processing units using which users can filter,
+ * Prepper interface. These are intermediary processing units using which users can filter,
  * transform and enrich the records into desired format before publishing to the sink.
  */
-public interface Processor<InputRecord extends Record<?>, OutputRecord extends Record<?>> {
+public interface Prepper<InputRecord extends Record<?>, OutputRecord extends Record<?>> {
 
     /**
-     * execute the processor logic which could potentially modify the incoming record. The level to which the record has
+     * execute the prepper logic which could potentially modify the incoming record. The level to which the record has
      * been modified depends on the implementation
      *
      * @param records Input records that will be modified/processed
@@ -20,7 +20,7 @@ public interface Processor<InputRecord extends Record<?>, OutputRecord extends R
     Collection<OutputRecord> execute(Collection<InputRecord> records);
 
     /**
-     * Prepare processor for shutdown, by cleaning up resources and threads.
+     * Prepare prepper for shutdown, by cleaning up resources and threads.
      */
     void shutdown();
 }

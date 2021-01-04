@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 import java.lang.annotation.RetentionPolicy;
 
 /**
- * Annotates a Data Prepper Java plugin that includes Source, Sink, Buffer and Processor.
+ * Annotates a Data Prepper Java plugin that includes Source, Sink, Buffer and Prepper.
  * The value returned from {@link #name()} represents the name of the plugin and is used in the pipeline configuration
  * and the optional {@link #type()}
  *

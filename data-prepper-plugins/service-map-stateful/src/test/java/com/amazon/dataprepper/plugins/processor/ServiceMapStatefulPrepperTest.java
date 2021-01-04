@@ -25,7 +25,7 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 
-public class ServiceMapStatefulProcessorTest {
+public class ServiceMapStatefulPrepperTest {
 
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -60,14 +60,23 @@ public class ServiceMapStatefulProcessorTest {
     }
 
     @Test
+    public void testPluginSettingConstructor() {
+        final PluginSetting pluginSetting = new PluginSetting("testPluginSetting", Collections.emptyMap());
+        pluginSetting.setProcessWorkers(4);
+        pluginSetting.setPipelineName("TestPipeline");
+        //Nothing is accessible to validate, so just verify that no exception is thrown.
+        final ServiceMapStatefulPrepper serviceMapStatefulPrepper = new ServiceMapStatefulPrepper(pluginSetting);
+    }
+
+    @Test
     public void testTraceGroups() throws Exception {
         final Clock clock = Mockito.mock(Clock.class);
         Mockito.when(clock.millis()).thenReturn(1L);
         Mockito.when(clock.instant()).thenReturn(Instant.now());
         ExecutorService threadpool = Executors.newCachedThreadPool();
         final File path = new File(ServiceMapProcessorConfig.DEFAULT_LMDB_PATH);
-        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 16, PLUGIN_SETTING);
-        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 16, PLUGIN_SETTING);
+        final ServiceMapStatefulPrepper serviceMapStateful1 = new ServiceMapStatefulPrepper(100, path, clock, 16, PLUGIN_SETTING);
+        final ServiceMapStatefulPrepper serviceMapStateful2 = new ServiceMapStatefulPrepper(100, path, clock, 16, PLUGIN_SETTING);
 
         final byte[] rootSpanId1 = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] rootSpanId2 = ServiceMapTestUtils.getRandomBytes(8);

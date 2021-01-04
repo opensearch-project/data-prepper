@@ -1,10 +1,10 @@
 package com.amazon.dataprepper.pipeline;
 
-import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
-import com.amazon.dataprepper.plugins.TestProcessor;
+import com.amazon.dataprepper.plugins.TestPrepper;
 import com.amazon.dataprepper.plugins.TestSink;
 import com.amazon.dataprepper.plugins.TestSource;
 import com.amazon.dataprepper.plugins.buffer.BlockingBuffer;
@@ -17,6 +17,7 @@ import java.util.Collections;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class PipelineTests {
@@ -53,7 +54,7 @@ public class PipelineTests {
     public void testPipelineStateWithProcessor() {
         final Source<Record<String>> testSource = new TestSource();
         final TestSink testSink = new TestSink();
-        final TestProcessor testProcessor = new TestProcessor();
+        final TestPrepper testProcessor = new TestPrepper();
         final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
                 Collections.singletonList(testProcessor),
                 Collections.singletonList(testSink),
@@ -66,11 +67,11 @@ public class PipelineTests {
         testPipeline.shutdown();
         assertThat("Pipeline isStopRequested is expected to be true", testPipeline.isStopRequested(), is(true));
         assertThat("Sink shutdown should be called", testSink.isShutdown, is(true));
-        assertThat("Processor shutdown should be called", testProcessor.isShutdown, is(true));
+        assertThat("Prepper shutdown should be called", testProcessor.isShutdown, is(true));
     }
 
     @Test
-    public void testFailingSource() {
+    public void testExecuteFailingSource() {
         final Source<Record<String>> testSource = new TestSource(true);
         final TestSink testSink = new TestSink();
         try {
@@ -79,12 +80,13 @@ public class PipelineTests {
             testPipeline.execute();
         } catch (Exception ex) {
             assertThat("Incorrect exception message", ex.getMessage().contains("Source is expected to fail"));
-            assertThat("Exception while starting the source should have pipeline.isStopRequested to false", !testPipeline.isStopRequested());
+            assertThat("Exception while starting the source should have pipeline.isStopRequested to false",
+                    !testPipeline.isStopRequested());
         }
     }
 
     @Test
-    public void testFailingSink() {
+    public void testExecuteFailingSink() {
         final Source<Record<String>> testSource = new TestSource();
         final Sink<Record<String>> testSink = new TestSink(true);
         try {
@@ -99,13 +101,13 @@ public class PipelineTests {
     }
 
     @Test
-    public void testFailingProcessor() {
+    public void testExecuteFailingProcessor() {
         final Source<Record<String>> testSource = new TestSource();
         final Sink<Record<String>> testSink = new TestSink();
-        final Processor<Record<String>, Record<String>> testProcessor = new Processor<Record<String>, Record<String>>() {
+        final Prepper<Record<String>, Record<String>> testPrepper = new Prepper<Record<String>, Record<String>>() {
             @Override
             public Collection<Record<String>> execute(Collection<Record<String>> records) {
-                throw new RuntimeException("Processor is expected to fail");
+                throw new RuntimeException("Prepper is expected to fail");
             }
 
             @Override
@@ -115,13 +117,34 @@ public class PipelineTests {
         };
         try {
             testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
-                    Collections.singletonList(testProcessor), Collections.singletonList(testSink), TEST_PROCESSOR_THREADS,
+                    Collections.singletonList(testPrepper), Collections.singletonList(testSink), TEST_PROCESSOR_THREADS,
                     TEST_READ_BATCH_TIMEOUT);
             testPipeline.execute();
             Thread.sleep(TEST_READ_BATCH_TIMEOUT);
         } catch (Exception ex) {
-            assertThat("Incorrect exception message", ex.getMessage().contains("Processor is expected to fail"));
-            assertThat("Exception from processor should trigger shutdown of pipeline", testPipeline.isStopRequested());
+            assertThat("Incorrect exception message", ex.getMessage().contains("Prepper is expected to fail"));
+            assertThat("Exception from prepper should trigger shutdown of pipeline", testPipeline.isStopRequested());
         }
+    }
+
+    @Test
+    public void testGetSource() {
+        final Source<Record<String>> testSource = new TestSource();
+        final TestSink testSink = new TestSink();
+        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, Collections.singletonList(testSink),
+                TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT);
+
+        assertEquals(testSource, testPipeline.getSource());
+    }
+
+    @Test
+    public void testGetSinks() {
+        final Source<Record<String>> testSource = new TestSource();
+        final TestSink testSink = new TestSink();
+        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, Collections.singletonList(testSink),
+                TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT);
+
+        assertEquals(1, testPipeline.getSinks().size());
+        assertEquals(testSink, testPipeline.getSinks().iterator().next());
     }
 }

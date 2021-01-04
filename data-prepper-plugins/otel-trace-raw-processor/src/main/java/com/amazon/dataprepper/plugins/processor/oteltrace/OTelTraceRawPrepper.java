@@ -3,7 +3,7 @@ package com.amazon.dataprepper.plugins.processor.oteltrace;
 import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.processor.AbstractPrepper;
+import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.processor.oteltrace.model.OTelProtoHelper;
 import com.amazon.dataprepper.plugins.processor.oteltrace.model.RawSpanBuilder;
@@ -25,7 +25,7 @@ import java.util.Map;
 
 
 @DataPrepperPlugin(name = "otel_trace_raw_processor", type = PluginType.PROCESSOR)
-public class OTelTraceRawProcessor extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
+public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String INSTRUMENTATION_LIBRARY_SPANS = "instrumentationLibrarySpans";
@@ -39,7 +39,7 @@ public class OTelTraceRawProcessor extends AbstractPrepper<Record<ExportTraceSer
     private static final String END_TIME = "endTime";
     private static final BigDecimal MILLIS_TO_NANOS = new BigDecimal(1_000_000);
     private static final BigDecimal SEC_TO_MILLIS = new BigDecimal(1_000);
-    private static final Logger log = LoggerFactory.getLogger(OTelTraceRawProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(OTelTraceRawPrepper.class);
 
     public static final String SPAN_PROCESSING_ERRORS = "spanProcessingErrors";
     public static final String RESOURCE_SPANS_PROCESSING_ERRORS = "resourceSpansProcessingErrors";
@@ -51,7 +51,7 @@ public class OTelTraceRawProcessor extends AbstractPrepper<Record<ExportTraceSer
 
 
     //TODO: https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/66
-    public OTelTraceRawProcessor(final PluginSetting pluginSetting) {
+    public OTelTraceRawPrepper(final PluginSetting pluginSetting) {
         super(pluginSetting);
         spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
         resourceSpanErrorsCounter = pluginMetrics.counter(RESOURCE_SPANS_PROCESSING_ERRORS);
@@ -60,7 +60,7 @@ public class OTelTraceRawProcessor extends AbstractPrepper<Record<ExportTraceSer
 
 
     /**
-     * execute the processor logic which could potentially modify the incoming record. The level to which the record has
+     * execute the prepper logic which could potentially modify the incoming record. The level to which the record has
      * been modified depends on the implementation
      *
      * @param records Input records that will be modified/processed

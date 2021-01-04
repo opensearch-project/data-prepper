@@ -13,9 +13,9 @@ The OpenTelemetry source accepts trace data from the OpenTelemetry collector. Th
 
 ## Processors
 
-We have two processors for the Trace Analytics feature,
-* *otel_trace_raw_processor* -  This processor is responsible for converting the trace data in [OpenTelemetry specification](https://github.com/open-telemetry/opentelemetry-proto/tree/master/opentelemetry/proto/trace/v1) to elasticsearch friendly (JSON) docs. These elasticsearch friendly docs have certain additional fields like duration which are not part of the original OpenTelemetry specification. These additional fields are to make the instant kibana dashboards user-friendly.
-* *service_map_stateful* -  This processor performs the required preprocessing on the trace data and build metadata to display the service-map kibana dashboards.
+We have two preppers for the Trace Analytics feature,
+* *otel_trace_raw_processor* -  This prepper is responsible for converting the trace data in [OpenTelemetry specification](https://github.com/open-telemetry/opentelemetry-proto/tree/master/opentelemetry/proto/trace/v1) to elasticsearch friendly (JSON) docs. These elasticsearch friendly docs have certain additional fields like duration which are not part of the original OpenTelemetry specification. These additional fields are to make the instant kibana dashboards user-friendly.
+* *service_map_stateful* -  This prepper performs the required preprocessing on the trace data and build metadata to display the service-map kibana dashboards.
 
 
 ## Elasticsearch sink
@@ -23,8 +23,8 @@ We have two processors for the Trace Analytics feature,
 We have a generic sink that writes the data to elasticsearch as the destination. The elasticsearch sink has configuration options related to elasticsearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc. 
 For the trace analytics feature, the sink has specific configurations which enables the sink to use indices and index templates specific to this feature. Trace analytics specific elasticsearch indices are,
                                                                                                                                                                  
-* *otel-v1-apm-span* -  This index stores the output from otel-trace-raw-processor. 
-* *otel-v1-apm-service-map* - This index stores the output from the service-map-processor.
+* *otel-v1-apm-span* -  This index stores the output from otel-trace-raw-prepper. 
+* *otel-v1-apm-service-map* - This index stores the output from the service-map-prepper.
 
 
 ## Trace Analytics Pipeline Configuration
@@ -45,7 +45,7 @@ raw-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  processor:
+  prepper:
     - otel_trace_raw_processor:
   sink:
     - elasticsearch:
@@ -59,7 +59,7 @@ service-map-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  processor:
+  prepper:
     - service_map_stateful:
   sink:
     - elasticsearch:

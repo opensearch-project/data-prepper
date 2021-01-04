@@ -76,7 +76,7 @@ public class RawBuilderTest {
     }
 
     /**
-     * You can submit empty object and the processor will process it without any error
+     * You can submit empty object and the prepper will process it without any error
      */
     @Test
     public void testRawSpanEmpty() {

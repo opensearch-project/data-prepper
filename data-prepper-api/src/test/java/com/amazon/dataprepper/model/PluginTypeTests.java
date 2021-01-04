@@ -1,7 +1,7 @@
 package com.amazon.dataprepper.model;
 
 import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
 import org.junit.Test;
@@ -21,7 +21,7 @@ public class PluginTypeTests {
         checkPluginTypeValues(bufferPluginType, "buffer", Buffer.class);
 
         final PluginType processorPluginType = PluginType.PROCESSOR;
-        checkPluginTypeValues(processorPluginType, "processor", Processor.class);
+        checkPluginTypeValues(processorPluginType, "prepper", Prepper.class);
 
         final PluginType sinkPluginType = PluginType.SINK;
         checkPluginTypeValues(sinkPluginType, "sink", Sink.class);
