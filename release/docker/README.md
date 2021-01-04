@@ -26,6 +26,6 @@ The root project has some usage examples for reference included in `examples` di
 Below is an example command which can also be used to run the built image.
 
 ```
-docker run --name data-prepper-test --expose 21890 --read-only -v /home/ec2-user/data-prepper-config.yml:/usr/share/data-prepper/data-prepper.yml data-prepper/data-prepper:0.1.0
+docker run --name data-prepper-test --expose 21890 --read-only -v /home/ec2-user/data-prepper-config.yml:/usr/share/data-prepper/data-prepper.yml data-prepper/data-prepper:0.7.0
 
 ```

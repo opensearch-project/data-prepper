@@ -38,7 +38,7 @@ subprojects {
         // incl. linuxarm64DistZip, linuxarm64WithJDKDistZip
         distributions {
             "${distName}" {
-                distributionBaseName = "${project.rootProject.name}-v${project.rootProject.version}-${platform}-${architecture}"
+                distributionBaseName = "${project.rootProject.name}-${project.rootProject.version}-${platform}-${architecture}"
                 contents {
                     with archiveToTar()
                     into('') {
@@ -48,7 +48,7 @@ subprojects {
                 }
             }
             "${distNameWithJDK}" {
-                distributionBaseName = "${project.rootProject.name}-jdk-v${project.rootProject.version}-${platform}-${architecture}"
+                distributionBaseName = "${project.rootProject.name}-jdk-${project.rootProject.version}-${platform}-${architecture}"
                 contents {
                     with archiveToTar()
                     into('openjdk') {
