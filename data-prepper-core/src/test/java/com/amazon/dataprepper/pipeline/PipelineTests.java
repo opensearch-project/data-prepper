@@ -17,6 +17,7 @@ import java.util.Collections;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class PipelineTests {
@@ -70,7 +71,7 @@ public class PipelineTests {
     }
 
     @Test
-    public void testFailingSource() {
+    public void testExecuteFailingSource() {
         final Source<Record<String>> testSource = new TestSource(true);
         final TestSink testSink = new TestSink();
         try {
@@ -79,12 +80,13 @@ public class PipelineTests {
             testPipeline.execute();
         } catch (Exception ex) {
             assertThat("Incorrect exception message", ex.getMessage().contains("Source is expected to fail"));
-            assertThat("Exception while starting the source should have pipeline.isStopRequested to false", !testPipeline.isStopRequested());
+            assertThat("Exception while starting the source should have pipeline.isStopRequested to false",
+                    !testPipeline.isStopRequested());
         }
     }
 
     @Test
-    public void testFailingSink() {
+    public void testExecuteFailingSink() {
         final Source<Record<String>> testSource = new TestSource();
         final Sink<Record<String>> testSink = new TestSink(true);
         try {
@@ -99,7 +101,7 @@ public class PipelineTests {
     }
 
     @Test
-    public void testFailingProcessor() {
+    public void testExecuteFailingProcessor() {
         final Source<Record<String>> testSource = new TestSource();
         final Sink<Record<String>> testSink = new TestSink();
         final Processor<Record<String>, Record<String>> testProcessor = new Processor<Record<String>, Record<String>>() {
@@ -123,5 +125,26 @@ public class PipelineTests {
             assertThat("Incorrect exception message", ex.getMessage().contains("Processor is expected to fail"));
             assertThat("Exception from processor should trigger shutdown of pipeline", testPipeline.isStopRequested());
         }
+    }
+
+    @Test
+    public void testGetSource() {
+        final Source<Record<String>> testSource = new TestSource();
+        final TestSink testSink = new TestSink();
+        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, Collections.singletonList(testSink),
+                TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT);
+
+        assertEquals(testSource, testPipeline.getSource());
+    }
+
+    @Test
+    public void testGetSinks() {
+        final Source<Record<String>> testSource = new TestSource();
+        final TestSink testSink = new TestSink();
+        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, Collections.singletonList(testSink),
+                TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT);
+
+        assertEquals(1, testPipeline.getSinks().size());
+        assertEquals(testSink, testPipeline.getSinks().iterator().next());
     }
 }
