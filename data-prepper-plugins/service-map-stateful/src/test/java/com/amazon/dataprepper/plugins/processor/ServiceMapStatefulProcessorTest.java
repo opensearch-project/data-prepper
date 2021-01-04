@@ -60,6 +60,15 @@ public class ServiceMapStatefulProcessorTest {
     }
 
     @Test
+    public void testPluginSettingConstructor() {
+        final PluginSetting pluginSetting = new PluginSetting("testPluginSetting", Collections.emptyMap());
+        pluginSetting.setProcessWorkers(4);
+        pluginSetting.setPipelineName("TestPipeline");
+        //Nothing is accessible to validate, so just verify that no exception is thrown.
+        final ServiceMapStatefulProcessor serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(pluginSetting);
+    }
+
+    @Test
     public void testTraceGroups() throws Exception {
         final Clock clock = Mockito.mock(Clock.class);
         Mockito.when(clock.millis()).thenReturn(1L);
