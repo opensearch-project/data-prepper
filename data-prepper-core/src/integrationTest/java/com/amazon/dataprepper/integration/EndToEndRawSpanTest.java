@@ -78,7 +78,7 @@ public class EndToEndRawSpanTest {
                     final List<Map<String, Object>> foundSources = getSourcesFromSearchHits(searchResponse.getHits());
                     Assert.assertEquals(expectedDocuments.size(), foundSources.size());
                     /**
-                     * Our raw trace processor add more fields than the actual sent object. These are defaults from the proto.
+                     * Our raw trace prepper add more fields than the actual sent object. These are defaults from the proto.
                      * So assertion is done if all the expected fields exists.
                      *
                      * TODO: Can we do better?

@@ -11,7 +11,7 @@ import java.util.*;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
-public abstract class ProcessorStateTest {
+public abstract class PrepperStateTest {
 
     protected static final Random random = new Random();
 
@@ -22,7 +22,7 @@ public abstract class ProcessorStateTest {
 
     @Test
     public void testSize() {
-        //Put two random Pojos in the processor state
+        //Put two random Pojos in the prepper state
         final DataClass data1 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
         final byte[] key1 = UUID.randomUUID().toString().getBytes();
 
@@ -37,7 +37,7 @@ public abstract class ProcessorStateTest {
 
     @Test
     public void testPutAndGet() {
-        //Put two random Pojos in the processor state
+        //Put two random Pojos in the prepper state
         final DataClass data1 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
         final byte[] key1 = UUID.randomUUID().toString().getBytes();
 
@@ -55,7 +55,7 @@ public abstract class ProcessorStateTest {
 
     @Test
     public void testPutAndGetAll() {
-        //Put two random Pojos in the processor state
+        //Put two random Pojos in the prepper state
         final DataClass data1 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
         final byte[] key1 = UUID.randomUUID().toString().getBytes();
 

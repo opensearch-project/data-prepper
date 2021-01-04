@@ -59,7 +59,7 @@ public class PipelineThreadPoolExecutor extends ThreadPoolExecutor {
         super.afterExecute(runnable, throwable);
 
         // If submit() method is used instead of execute(), the exceptions are wrapped in Future
-        // Processor or Sink failures will enter into this loop
+        // Prepper or Sink failures will enter into this loop
         if (throwable == null && runnable instanceof Future<?>) {
             try {
                 ((Future<?>) runnable).get();

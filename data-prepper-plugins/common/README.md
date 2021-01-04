@@ -9,7 +9,7 @@ A buffer based off `LinkedBlockingQueue` bounded to the specified capacity. One 
 
 ## `string_coverter`
 
-A processor plugin to generate new string records with upper or lower case conversion on the content of input records.
+A prepper plugin to generate new string records with upper or lower case conversion on the content of input records.
 
 - upper_case (boolean): convert to upper case if true; otherwise convert to lower case
 

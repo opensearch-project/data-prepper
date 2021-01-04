@@ -29,17 +29,17 @@ import java.util.StringJoiner;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-public class OTelTraceRawProcessorTest {
+public class OTelTraceRawPrepperTest {
 
     private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     PluginSetting pluginSetting;
-    public OTelTraceRawProcessor oTelTraceRawProcessor;
+    public OTelTraceRawPrepper oTelTraceRawProcessor;
 
     @Before
     public void setup() {
         pluginSetting = new PluginSetting("OTelTrace", Collections.EMPTY_MAP);
         pluginSetting.setPipelineName("pipelineOTelTrace");
-        oTelTraceRawProcessor = new OTelTraceRawProcessor(pluginSetting);
+        oTelTraceRawProcessor = new OTelTraceRawPrepper(pluginSetting);
     }
 
     @Test
@@ -59,10 +59,10 @@ public class OTelTraceRawProcessorTest {
 
         final List<Measurement> resourceSpansErrorsMeasurement = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add("pipelineOTelTrace").add("OTelTrace")
-                        .add(OTelTraceRawProcessor.RESOURCE_SPANS_PROCESSING_ERRORS).toString());
+                        .add(OTelTraceRawPrepper.RESOURCE_SPANS_PROCESSING_ERRORS).toString());
         final List<Measurement> totalErrorsMeasurement = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add("pipelineOTelTrace").add("OTelTrace")
-                        .add(OTelTraceRawProcessor.TOTAL_PROCESSING_ERRORS).toString());
+                        .add(OTelTraceRawPrepper.TOTAL_PROCESSING_ERRORS).toString());
 
         Assert.assertEquals(1, resourceSpansErrorsMeasurement.size());
         Assert.assertEquals(1.0, resourceSpansErrorsMeasurement.get(0).getValue(), 0);
@@ -94,7 +94,7 @@ public class OTelTraceRawProcessorTest {
 
         final List<Measurement> spanErrorsMeasurement = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add("pipelineOTelTrace").add("OTelTrace")
-                        .add(OTelTraceRawProcessor.SPAN_PROCESSING_ERRORS).toString());
+                        .add(OTelTraceRawPrepper.SPAN_PROCESSING_ERRORS).toString());
         Assert.assertEquals(1, spanErrorsMeasurement.size());
         Assert.assertEquals(1.0, spanErrorsMeasurement.get(0).getValue(), 0);
     }

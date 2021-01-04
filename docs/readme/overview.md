@@ -10,7 +10,7 @@ The broader vision for Data Prepper is to enable an end-to-end data analysis lif
 Below are the fundamental concepts of Data Prepper,
 
 ### Pipeline
-A Data Prepper pipeline has four key components a *source*, a *buffer*, one or more *processors*, and one or more *sinks*. A single instance of Data Prepper can have one or more pipelines. A pipeline definition contains two required components *source* and *sink*. If other components are missing the Data Prepper pipeline will use default buffer and no-op processor. All the components are pluggable and enable customers to plugin their custom implementations. Please note that custom implementations will have implications on guarantees however the basic interfaces will remain same.
+A Data Prepper pipeline has four key components a *source*, a *buffer*, one or more *preppers*, and one or more *sinks*. A single instance of Data Prepper can have one or more pipelines. A pipeline definition contains two required components *source* and *sink*. If other components are missing the Data Prepper pipeline will use default buffer and no-op prepper. All the components are pluggable and enable customers to plugin their custom implementations. Please note that custom implementations will have implications on guarantees however the basic interfaces will remain same.
 
 ### Source
 Source is the input component of a pipeline, it defines the mechanism through which a Data Prepper pipeline will consume records. A pipeline can have only one source. Source component could consume records either by receiving over http/s or reading from external endpoints like Kafka, SQS, Cloudwatch etc.  Source will have its own configuration options based on the type like the format of the records (string/json/cloudwatch logs/open telemetry trace) , security, concurrency threads etc . The source component will consume records and write them to the buffer component. 
@@ -22,7 +22,7 @@ The buffer component will act as the layer between the *source* and *sink.* The 
 Sink in the output component of pipeline, it defines the one or more destinations to which a Data Prepper pipeline will publish the records. A sink destination could be either services like elastic search, s3 or another Data Prepper pipeline. By using another Data Prepper pipeline as sink, we could chain multiple Data Prepper pipelines. Sink will have its own configuration options based on the destination type like security, request batching etc. 
 
 ### Processor
-Processor component of the pipeline, these are intermediary processing units using which users can filter, transform and enrich the records into desired format before publishing to the sink. The processor is an optional component of the pipeline, if not defined the records will be published in the format as defined in the source. You can have more than one processor, and they are executed in the order they are defined in the pipeline spec.
+Processor component of the pipeline, these are intermediary processing units using which users can filter, transform and enrich the records into desired format before publishing to the sink. The prepper is an optional component of the pipeline, if not defined the records will be published in the format as defined in the source. You can have more than one prepper, and they are executed in the order they are defined in the pipeline spec.
 
 ### Sample Pipeline configuration
 
@@ -52,7 +52,7 @@ sample-pipeline:
     bounded_blocking:
       buffer_size: 1024 # max number of records the buffer will accept
       batch_size: 256 # max number of records the buffer will drain for each read
-  processor:
+  prepper:
     - string_converter:
        upper_case: true
   sink:
@@ -60,14 +60,14 @@ sample-pipeline:
        path: path/to/output-file
 ```
 
-The above pipeline has a file source that reads string records from the `input-file`. The source pushes the data to buffer bounded by max size of `1024`. The pipeline configured to have `4` workers each of them reading maximum of `256` records from the buffer for every `100 milliseconds`. Each worker will execute the `string_converter` processor and write the output of the processor to the `output-file`
+The above pipeline has a file source that reads string records from the `input-file`. The source pushes the data to buffer bounded by max size of `1024`. The pipeline configured to have `4` workers each of them reading maximum of `256` records from the buffer for every `100 milliseconds`. Each worker will execute the `string_converter` prepper and write the output of the prepper to the `output-file`
 
 
 
 
 ## Pipeline Connectors
 
-Some use-cases requires to use one or more heterogeneous sinks/processors. This means the pipeline architecture is now dependent on heterogeneous components which are diverse and could impact the availability and performance of one another. To avoid this, Data Prepper offers Pipeline Connectors. Pipeline Connectors help to process data from single source in multiple pipelines which are made up of heterogeneous components. Pipeline connectors are simple components which act as sink and source.
+Some use-cases requires to use one or more heterogeneous sinks/preppers. This means the pipeline architecture is now dependent on heterogeneous components which are diverse and could impact the availability and performance of one another. To avoid this, Data Prepper offers Pipeline Connectors. Pipeline Connectors help to process data from single source in multiple pipelines which are made up of heterogeneous components. Pipeline connectors are simple components which act as sink and source.
 
 ### Sample configuration 
 
@@ -85,7 +85,7 @@ output-pipeline-1:
   source:
     pipeline:
       name: "input-pipeline"
-  processor:
+  prepper:
     - string_converter:
        upper_case: true
   sink:
@@ -95,7 +95,7 @@ output-pipeline-2:
   source:
     pipeline:
       name: "input-pipeline"
-  processor:
+  prepper:
     - string_converter:
        upper_case: false
   sink:

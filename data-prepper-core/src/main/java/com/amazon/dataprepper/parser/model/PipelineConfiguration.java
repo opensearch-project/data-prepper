@@ -30,7 +30,7 @@ public class PipelineConfiguration {
     public PipelineConfiguration(
             @JsonProperty("source") final Map.Entry<String, Map<String, Object>> source,
             @JsonProperty("buffer") final Map.Entry<String, Map<String, Object>> buffer,
-            @JsonProperty("processor") final List<Map.Entry<String, Map<String, Object>>> processors,
+            @JsonProperty("prepper") final List<Map.Entry<String, Map<String, Object>>> processors,
             @JsonProperty("sink") final List<Map.Entry<String, Map<String, Object>>> sinks,
             @JsonProperty("workers") final Integer workers,
             @JsonProperty("delay") final Integer delay) {

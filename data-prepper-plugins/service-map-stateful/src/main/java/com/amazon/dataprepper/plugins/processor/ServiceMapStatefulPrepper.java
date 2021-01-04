@@ -3,8 +3,7 @@ package com.amazon.dataprepper.plugins.processor;
 import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.processor.AbstractPrepper;
-import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.processor.state.MapDbProcessorState;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -25,9 +24,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @DataPrepperPlugin(name = "service_map_stateful", type = PluginType.PROCESSOR)
-public class ServiceMapStatefulProcessor extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
+public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ServiceMapStatefulProcessor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ServiceMapStatefulPrepper.class);
     private static final String EMPTY_SUFFIX = "-empty";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Collection<Record<String>> EMPTY_COLLECTION = Collections.emptySet();
@@ -49,25 +48,25 @@ public class ServiceMapStatefulProcessor extends AbstractPrepper<Record<ExportTr
 
     private final int thisProcessorId;
 
-    public ServiceMapStatefulProcessor(final PluginSetting pluginSetting) {
+    public ServiceMapStatefulPrepper(final PluginSetting pluginSetting) {
      this(pluginSetting.getIntegerOrDefault(ServiceMapProcessorConfig.WINDOW_DURATION, ServiceMapProcessorConfig.DEFAULT_WINDOW_DURATION)*TO_MILLIS,
              new File(ServiceMapProcessorConfig.DEFAULT_LMDB_PATH),
              Clock.systemUTC(), pluginSetting.getNumberOfProcessWorkers(), pluginSetting);
     }
 
-    public ServiceMapStatefulProcessor(final long windowDurationMillis,
-                                       final File databasePath,
-                                       final Clock clock,
-                                       final int processWorkers,
-                                       final PluginSetting pluginSetting) {
+    public ServiceMapStatefulPrepper(final long windowDurationMillis,
+                                     final File databasePath,
+                                     final Clock clock,
+                                     final int processWorkers,
+                                     final PluginSetting pluginSetting) {
         super(pluginSetting);
-        ServiceMapStatefulProcessor.clock = clock;
+        ServiceMapStatefulPrepper.clock = clock;
         this.thisProcessorId = processorsCreated.getAndIncrement();
         if(isMasterInstance()) {
-            previousTimestamp = ServiceMapStatefulProcessor.clock.millis();
-            ServiceMapStatefulProcessor.windowDurationMillis = windowDurationMillis;
-            ServiceMapStatefulProcessor.dbPath = createPath(databasePath);
-            ServiceMapStatefulProcessor.processWorkers = processWorkers;
+            previousTimestamp = ServiceMapStatefulPrepper.clock.millis();
+            ServiceMapStatefulPrepper.windowDurationMillis = windowDurationMillis;
+            ServiceMapStatefulPrepper.dbPath = createPath(databasePath);
+            ServiceMapStatefulPrepper.processWorkers = processWorkers;
             currentWindow = new MapDbProcessorState<>(dbPath, getNewDbName(), processWorkers);
             previousWindow = new MapDbProcessorState<>(dbPath, getNewDbName() + EMPTY_SUFFIX, processWorkers);
             currentTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName(), processWorkers);
@@ -291,7 +290,7 @@ public class ServiceMapStatefulProcessor extends AbstractPrepper<Record<ExportTr
     }
 
     /**
-     * Rotate windows for processor state
+     * Rotate windows for prepper state
      */
     private void rotateWindows() {
         LOG.debug("Rotating windows at " + clock.instant().toString());
@@ -331,7 +330,7 @@ public class ServiceMapStatefulProcessor extends AbstractPrepper<Record<ExportTr
 
     /**
      * Master instance is needed to do things like window rotation that should only be done once
-     * @return Boolean indicating whether this object is the master ServiceMapStatefulProcessor instance
+     * @return Boolean indicating whether this object is the master ServiceMapStatefulPrepper instance
      */
     private boolean isMasterInstance() {
         return thisProcessorId == 0;

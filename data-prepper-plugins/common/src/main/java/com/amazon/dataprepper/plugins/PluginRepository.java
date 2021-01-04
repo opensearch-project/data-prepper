@@ -3,7 +3,7 @@ package com.amazon.dataprepper.plugins;
 import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
 import org.reflections.Reflections;
@@ -23,7 +23,7 @@ public final class  PluginRepository {
     private static final String DEFAULT_PLUGINS_CLASSPATH = "com.amazon.dataprepper.plugins";
     private static final Map<String, Class<Source>> SOURCES = new HashMap<>();
     private static final Map<String, Class<Buffer>> BUFFERS = new HashMap<>();
-    private static final Map<String, Class<Processor>> PROCESSORS = new HashMap<>();
+    private static final Map<String, Class<Prepper>> PROCESSORS = new HashMap<>();
     private static final Map<String, Class<Sink>> SINKS = new HashMap<>();
 
     static {
@@ -46,7 +46,7 @@ public final class  PluginRepository {
                     BUFFERS.put(pluginName, (Class<Buffer>) annotatedClass);
                     break;
                 case PROCESSOR:
-                    PROCESSORS.put(pluginName, (Class<Processor>) annotatedClass);
+                    PROCESSORS.put(pluginName, (Class<Prepper>) annotatedClass);
                     break;
                 case SINK:
                     SINKS.put(pluginName, (Class<Sink>) annotatedClass);
@@ -77,7 +77,7 @@ public final class  PluginRepository {
         return BUFFERS.get(name);
     }
 
-    public static Class<Processor> getProcessorClass(final String name) {
+    public static Class<Prepper> getProcessorClass(final String name) {
         return PROCESSORS.get(name);
     }
 

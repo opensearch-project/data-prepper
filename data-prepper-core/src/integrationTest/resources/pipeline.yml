@@ -1,7 +1,7 @@
 entry-pipeline:
   source:
     otel_trace_source:
-  processor:
+  prepper:
     - peer_forwarder:
         discovery_mode: "static"
         static_endpoints: ["data-prepper1", "data-prepper2"]
@@ -14,7 +14,7 @@ raw-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  processor:
+  prepper:
     - otel_trace_raw_processor:
   sink:
     - elasticsearch:
@@ -26,7 +26,7 @@ service-map-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  processor:
+  prepper:
     - service_map_stateful:
         window_duration: 3
   sink:
