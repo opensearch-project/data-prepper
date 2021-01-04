@@ -65,7 +65,7 @@ public class ServiceMapStatefulPrepperTest {
         pluginSetting.setProcessWorkers(4);
         pluginSetting.setPipelineName("TestPipeline");
         //Nothing is accessible to validate, so just verify that no exception is thrown.
-        final ServiceMapStatefulProcessor serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(pluginSetting);
+        final ServiceMapStatefulPrepper serviceMapStatefulPrepper = new ServiceMapStatefulPrepper(pluginSetting);
     }
 
     @Test
