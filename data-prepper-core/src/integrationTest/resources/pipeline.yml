@@ -15,7 +15,7 @@ raw-pipeline:
     pipeline:
       name: "entry-pipeline"
   prepper:
-    - otel_trace_raw_processor:
+    - otel_trace_raw_prepper:
   sink:
     - elasticsearch:
         hosts: [ "https://node-0.example.com:9200" ]
