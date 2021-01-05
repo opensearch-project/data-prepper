@@ -18,7 +18,7 @@ public abstract class PrepperStateTest {
     protected PrepperState<byte[], DataClass> prepperState;
 
     @Before
-    public abstract void setProcessorState() throws Exception;
+    public abstract void setPrepperState() throws Exception;
 
     @Test
     public void testSize() {

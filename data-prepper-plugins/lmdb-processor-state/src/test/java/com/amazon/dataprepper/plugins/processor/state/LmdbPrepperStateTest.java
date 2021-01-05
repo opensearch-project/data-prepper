@@ -15,7 +15,7 @@ public class LmdbPrepperStateTest extends PrepperStateTest {
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Override
-    public void setProcessorState() throws Exception {
+    public void setPrepperState() throws Exception {
         this.prepperState = new LmdbPrepperState<>(temporaryFolder.newFile(), "testDb", DataClass.class);
     }
 
