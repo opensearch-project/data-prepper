@@ -13,7 +13,7 @@ import java.util.Collection;
  * An simple String implementation of {@link Prepper} which generates new Records with upper case or lowercase content. The current
  * simpler implementation does not handle errors (if any).
  */
-@DataPrepperPlugin(name = "string_converter", type = PluginType.PROCESSOR)
+@DataPrepperPlugin(name = "string_converter", type = PluginType.PREPPER)
 public class StringPrepper implements Prepper<Record<String>, Record<String>> {
 
     private final boolean upperCase;

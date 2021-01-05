@@ -20,8 +20,8 @@ public class PluginTypeTests {
         final PluginType bufferPluginType = PluginType.BUFFER;
         checkPluginTypeValues(bufferPluginType, "buffer", Buffer.class);
 
-        final PluginType processorPluginType = PluginType.PROCESSOR;
-        checkPluginTypeValues(processorPluginType, "prepper", Prepper.class);
+        final PluginType prepperPluginType = PluginType.PREPPER;
+        checkPluginTypeValues(prepperPluginType, "prepper", Prepper.class);
 
         final PluginType sinkPluginType = PluginType.SINK;
         checkPluginTypeValues(sinkPluginType, "sink", Sink.class);

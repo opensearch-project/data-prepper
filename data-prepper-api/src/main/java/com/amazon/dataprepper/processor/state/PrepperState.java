@@ -5,11 +5,11 @@ import java.util.Map;
 import java.util.function.BiFunction;
 
 /**
- * Holds state for processors as a key/value mapping
+ * Holds state for preppers as a key/value mapping
  * @param <T>
  *     Type parameter for the value type. Keys will be Strings.
  */
-public interface ProcessorState<K, V> {
+public interface PrepperState<K, V> {
 
     /**
      * Puts a key value pair in the prepper state

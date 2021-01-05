@@ -8,7 +8,7 @@ import com.amazon.dataprepper.model.source.Source;
 public enum PluginType {
     SOURCE("source", Source.class),
     BUFFER("buffer", Buffer.class),
-    PROCESSOR("prepper", Prepper.class),
+    PREPPER("prepper", Prepper.class),
     SINK("sink", Sink.class);
 
     private final String pluginName;

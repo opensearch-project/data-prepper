@@ -9,7 +9,7 @@ import com.amazon.dataprepper.parser.model.PipelineConfiguration;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.PipelineConnector;
 import com.amazon.dataprepper.plugins.buffer.BufferFactory;
-import com.amazon.dataprepper.plugins.processor.ProcessorFactory;
+import com.amazon.dataprepper.plugins.processor.PrepperFactory;
 import com.amazon.dataprepper.plugins.sink.SinkFactory;
 import com.amazon.dataprepper.plugins.source.SourceFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -83,8 +83,8 @@ public class PipelineParser {
             final Buffer buffer = BufferFactory.newBuffer(pipelineConfiguration.getBufferPluginSetting());
 
             LOG.info("Building preppers for the pipeline [{}]", pipelineName);
-            final List<Prepper> preppers = pipelineConfiguration.getProcessorPluginSettings().stream()
-                    .map(ProcessorFactory::newProcessor)
+            final List<Prepper> preppers = pipelineConfiguration.getPrepperPluginSettings().stream()
+                    .map(PrepperFactory::newPrepper)
                     .collect(Collectors.toList());
             final int processorThreads = pipelineConfiguration.getWorkers();
             final int readBatchDelay = pipelineConfiguration.getReadBatchDelay();

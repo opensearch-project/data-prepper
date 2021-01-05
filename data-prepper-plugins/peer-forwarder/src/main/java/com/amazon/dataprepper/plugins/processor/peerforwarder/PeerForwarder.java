@@ -24,7 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@DataPrepperPlugin(name = "peer_forwarder", type = PluginType.PROCESSOR)
+@DataPrepperPlugin(name = "peer_forwarder", type = PluginType.PREPPER)
 public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<ExportTraceServiceRequest>> {
     public static final String FORWARD_REQUEST_LATENCY_PREFIX = "forwardRequestLatency";
     public static final String FORWARD_REQUEST_SUCCESS_PREFIX = "forwardRequestSuccess";

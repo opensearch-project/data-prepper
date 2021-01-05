@@ -16,7 +16,7 @@ public class LmdbPrepperStateTest extends PrepperStateTest {
 
     @Override
     public void setProcessorState() throws Exception {
-        this.processorState = new LmdbProcessorState<>(temporaryFolder.newFile(), "testDb", DataClass.class);
+        this.prepperState = new LmdbPrepperState<>(temporaryFolder.newFile(), "testDb", DataClass.class);
     }
 
     @Test
@@ -34,10 +34,10 @@ public class LmdbPrepperStateTest extends PrepperStateTest {
             put(key2, value2);
         }};
 
-        ((LmdbProcessorState)processorState).putAll(batch);
+        ((LmdbPrepperState) prepperState).putAll(batch);
 
-        Assert.assertEquals(value1, processorState.get(key1));
-        Assert.assertEquals(value2, processorState.get(key2));
+        Assert.assertEquals(value1, prepperState.get(key1));
+        Assert.assertEquals(value2, prepperState.get(key2));
 
     }
 }

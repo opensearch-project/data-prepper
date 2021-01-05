@@ -8,7 +8,7 @@ import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
-@DataPrepperPlugin(name = "no-op", type = PluginType.PROCESSOR)
+@DataPrepperPlugin(name = "no-op", type = PluginType.PREPPER)
 public class NoOpPrepper<InputT extends Record<?>> implements Prepper<InputT, InputT> {
 
     /**

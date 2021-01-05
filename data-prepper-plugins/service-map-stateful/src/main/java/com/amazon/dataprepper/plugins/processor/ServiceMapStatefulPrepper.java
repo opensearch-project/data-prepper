@@ -5,7 +5,7 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.processor.state.MapDbProcessorState;
+import com.amazon.dataprepper.plugins.processor.state.MapDbPrepperState;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.primitives.SignedBytes;
@@ -23,7 +23,7 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@DataPrepperPlugin(name = "service_map_stateful", type = PluginType.PROCESSOR)
+@DataPrepperPlugin(name = "service_map_stateful", type = PluginType.PREPPER)
 public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(ServiceMapStatefulPrepper.class);
@@ -36,10 +36,10 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
     private static long windowDurationMillis;
     private static CountDownLatch edgeEvaluationLatch;
     private static CountDownLatch windowRotationLatch = new CountDownLatch(1);
-    private volatile static MapDbProcessorState<ServiceMapStateData> previousWindow;
-    private volatile static MapDbProcessorState<ServiceMapStateData> currentWindow;
-    private volatile static MapDbProcessorState<String> previousTraceGroupWindow;
-    private volatile static MapDbProcessorState<String> currentTraceGroupWindow;
+    private volatile static MapDbPrepperState<ServiceMapStateData> previousWindow;
+    private volatile static MapDbPrepperState<ServiceMapStateData> currentWindow;
+    private volatile static MapDbPrepperState<String> previousTraceGroupWindow;
+    private volatile static MapDbPrepperState<String> currentTraceGroupWindow;
     //TODO: Consider keeping this state in lmdb
     private volatile static  HashSet<ServiceMapRelationship> relationshipState = new HashSet<>();
     private static File dbPath;
@@ -67,10 +67,10 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
             ServiceMapStatefulPrepper.windowDurationMillis = windowDurationMillis;
             ServiceMapStatefulPrepper.dbPath = createPath(databasePath);
             ServiceMapStatefulPrepper.processWorkers = processWorkers;
-            currentWindow = new MapDbProcessorState<>(dbPath, getNewDbName(), processWorkers);
-            previousWindow = new MapDbProcessorState<>(dbPath, getNewDbName() + EMPTY_SUFFIX, processWorkers);
-            currentTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName(), processWorkers);
-            previousTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName() + EMPTY_SUFFIX, processWorkers);
+            currentWindow = new MapDbPrepperState<>(dbPath, getNewDbName(), processWorkers);
+            previousWindow = new MapDbPrepperState<>(dbPath, getNewDbName() + EMPTY_SUFFIX, processWorkers);
+            currentTraceGroupWindow = new MapDbPrepperState<>(dbPath, getNewTraceDbName(), processWorkers);
+            previousTraceGroupWindow = new MapDbPrepperState<>(dbPath, getNewTraceDbName() + EMPTY_SUFFIX, processWorkers);
         }
     }
 
@@ -297,9 +297,9 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
         previousWindow.delete();
         previousTraceGroupWindow.delete();
         previousWindow = currentWindow;
-        currentWindow = new MapDbProcessorState<>(dbPath, getNewDbName(), processWorkers);
+        currentWindow = new MapDbPrepperState<>(dbPath, getNewDbName(), processWorkers);
         previousTraceGroupWindow = currentTraceGroupWindow;
-        currentTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName(), processWorkers);
+        currentTraceGroupWindow = new MapDbPrepperState<>(dbPath, getNewTraceDbName(), processWorkers);
         previousTimestamp = clock.millis();
         doneRotatingWindows();
     }

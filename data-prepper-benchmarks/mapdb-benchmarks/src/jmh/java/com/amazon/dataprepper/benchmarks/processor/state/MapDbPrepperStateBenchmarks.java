@@ -1,6 +1,6 @@
 package com.amazon.dataprepper.benchmarks.processor.state;
 
-import com.amazon.dataprepper.plugins.processor.state.LmdbProcessorState;
+import com.amazon.dataprepper.plugins.processor.state.MapDbPrepperState;
 import com.google.common.primitives.SignedBytes;
 import org.openjdk.jmh.annotations.*;
 
@@ -8,14 +8,14 @@ import java.io.File;
 import java.util.*;
 
 @State(Scope.Benchmark)
-public class LmdbProcessorStateBenchmarks {
+public class MapDbPrepperStateBenchmarks {
     private static final int BATCH_SIZE = 100;
     private static final int NUM_BATCHES = 10000;
     private static final Random RANDOM = new Random();
     private static final String DB_PATH = "data/benchmark";
     private static final String DB_NAME = "benchmarkDb";
 
-    private LmdbProcessorState<String> lmdbProcessorState;
+    private MapDbPrepperState<String> mapDbProcessorState;
     private List<Map<byte[], String>> data = new ArrayList<Map<byte[], String>>(){{
         for(int i=0; i<NUM_BATCHES; i++) {
             final TreeMap<byte[], String> batch = new TreeMap<>(SignedBytes.lexicographicalComparator());
@@ -40,12 +40,13 @@ public class LmdbProcessorStateBenchmarks {
                 throw new RuntimeException(String.format("Unable to create the directory at the provided path: %s", path.getName()));
             }
         }
-        lmdbProcessorState = new LmdbProcessorState<>(new File(String.join("/", DB_PATH, DB_NAME)), DB_NAME, String.class);
+        mapDbProcessorState = new MapDbPrepperState<>(new File(DB_PATH), DB_NAME);
+
     }
 
     @TearDown(Level.Iteration)
     public void teardown() {
-        lmdbProcessorState.delete();
+        mapDbProcessorState.delete();
     }
 
     @Benchmark
@@ -54,7 +55,8 @@ public class LmdbProcessorStateBenchmarks {
     @Threads(value = 2)
     @Measurement(iterations = 5)
     public void benchmarkPutAll() {
-        lmdbProcessorState.putAll(data.get(RANDOM.nextInt(NUM_BATCHES)));
+        mapDbProcessorState.putAll(data.get(RANDOM.nextInt(NUM_BATCHES)));
     }
+
 
 }

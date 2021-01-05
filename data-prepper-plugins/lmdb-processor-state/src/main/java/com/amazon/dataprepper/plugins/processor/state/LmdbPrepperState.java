@@ -1,6 +1,6 @@
 package com.amazon.dataprepper.plugins.processor.state;
 
-import com.amazon.dataprepper.processor.state.ProcessorState;
+import com.amazon.dataprepper.processor.state.PrepperState;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -20,8 +20,8 @@ import org.lmdbjava.Txn;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
-    private static final Logger LOG = LoggerFactory.getLogger(LmdbProcessorState.class);
+public class LmdbPrepperState<T> implements PrepperState<byte[], T> {
+    private static final Logger LOG = LoggerFactory.getLogger(LmdbPrepperState.class);
     static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final Dbi<ByteBuffer> db;
     private final Env<ByteBuffer> env;
@@ -35,7 +35,7 @@ public class LmdbProcessorState<T> implements ProcessorState<byte[], T> {
      * @param dbName Name of the database
      * @param clazz Class type for value storage
      */
-    public LmdbProcessorState(final File dbFile, final String dbName, final Class<T> clazz) {
+    public LmdbPrepperState(final File dbFile, final String dbName, final Class<T> clazz) {
         //TODO: These need to be configurable
         env = Env.create()
                 .setMapSize(10_485_760)
