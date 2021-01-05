@@ -1,7 +1,7 @@
 package com.amazon.dataprepper.plugins.processor.state;
 
 import com.google.common.primitives.SignedBytes;
-import com.amazon.dataprepper.processor.state.ProcessorState;
+import com.amazon.dataprepper.processor.state.PrepperState;
 import java.io.File;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -14,7 +14,7 @@ import org.mapdb.DBMaker;
 import org.mapdb.Serializer;
 import org.mapdb.serializer.SerializerByteArray;
 
-public class MapDbProcessorState<V> implements ProcessorState<byte[], V> {
+public class MapDbPrepperState<V> implements PrepperState<byte[], V> {
 
 
     private static class SignedByteArraySerializer extends SerializerByteArray {
@@ -28,7 +28,7 @@ public class MapDbProcessorState<V> implements ProcessorState<byte[], V> {
 
     private final BTreeMap<byte[], V> map;
 
-    public MapDbProcessorState(final File dbPath, final String dbName, final int concurrencyScale) {
+    public MapDbPrepperState(final File dbPath, final String dbName, final int concurrencyScale) {
         map =
                 (BTreeMap<byte[], V>) DBMaker.fileDB(new File(String.join("/", dbPath.getPath(), dbName)))
                         .fileDeleteAfterClose()

@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 
-@DataPrepperPlugin(name = "otel_trace_raw_processor", type = PluginType.PROCESSOR)
+@DataPrepperPlugin(name = "otel_trace_raw_processor", type = PluginType.PREPPER)
 public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();

@@ -51,7 +51,7 @@ public class ZipkinElasticToOtel {
         while (sources.size() > 0) {
             System.out.println(String.format("Processing batch %d as ExportTraceServiceRequest", i));
             try {
-                final ExportTraceServiceRequest exportTraceServiceRequest = ZipkinElasticToOtelProcessor.sourcesToRequest(sources);
+                final ExportTraceServiceRequest exportTraceServiceRequest = ZipkinElasticToOtelPrepper.sourcesToRequest(sources);
                 client.export(exportTraceServiceRequest);
             } catch (Exception e) {
                 LOG.error(e.getMessage(), e);

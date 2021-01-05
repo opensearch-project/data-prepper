@@ -19,20 +19,20 @@ import static org.junit.Assert.assertThrows;
 public class PrepperFactoryTests {
     private static String TEST_PIPELINE = "test-pipeline";
     /**
-     * Tests if ProcessorFactory is able to retrieve default Source plugins by name
+     * Tests if PrepperFactory is able to retrieve default Source plugins by name
      */
     @Test
     public void testNewSinkClassByNameThatExists() {
-        final PluginSetting noOpProcessorConfiguration = new PluginSetting("no-op", new HashMap<>());
-        noOpProcessorConfiguration.setPipelineName(TEST_PIPELINE);
-        final Prepper actualPrepper = ProcessorFactory.newProcessor(noOpProcessorConfiguration);
+        final PluginSetting noOpPrepperConfiguration = new PluginSetting("no-op", new HashMap<>());
+        noOpPrepperConfiguration.setPipelineName(TEST_PIPELINE);
+        final Prepper actualPrepper = PrepperFactory.newPrepper(noOpPrepperConfiguration);
         final Prepper expectedPrepper = new NoOpPrepper();
         assertThat(actualPrepper, notNullValue());
         assertThat(actualPrepper.getClass().getSimpleName(), is(equalTo(expectedPrepper.getClass().getSimpleName())));
     }
 
     /**
-     * Tests if ProcessorFactory fails with correct Exception when queried for a non-existent plugin
+     * Tests if PrepperFactory fails with correct Exception when queried for a non-existent plugin
      */
     @Test
     public void testNonExistentSinkRetrieval() {

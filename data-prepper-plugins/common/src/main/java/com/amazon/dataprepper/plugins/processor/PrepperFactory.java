@@ -6,9 +6,9 @@ import com.amazon.dataprepper.plugins.PluginFactory;
 import com.amazon.dataprepper.plugins.PluginRepository;
 
 @SuppressWarnings({"rawtypes"})
-public class ProcessorFactory extends PluginFactory {
+public class PrepperFactory extends PluginFactory {
 
-    public static Prepper newProcessor(final PluginSetting pluginSetting) {
+    public static Prepper newPrepper(final PluginSetting pluginSetting) {
         return (Prepper) newPlugin(pluginSetting, PluginRepository.getProcessorClass(pluginSetting.getName()));
     }
 }
