@@ -15,7 +15,7 @@ public class PeerForwarderConfig {
     public static final String MAX_NUM_SPANS_PER_REQUEST = "span_agg_count";
     public static final int NUM_VIRTUAL_NODES = 10;
     public static final String DISCOVERY_MODE = "discovery_mode";
-    public static final String HOSTNAME_FOR_DNS_LOOKUP = "hostname_for_dns_lookup";
+    public static final String DOMAIN_NAME = "domain_name";
     public static final String STATIC_ENDPOINTS = "static_endpoints";
     public static final String SSL = "ssl";
     public static final String SSL_KEY_CERT_FILE = "sslKeyCertChainFile";

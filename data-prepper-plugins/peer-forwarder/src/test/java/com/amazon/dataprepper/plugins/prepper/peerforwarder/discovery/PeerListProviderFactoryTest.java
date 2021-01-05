@@ -87,7 +87,7 @@ public class PeerListProviderFactoryTest {
     @Test
     public void testCreateProviderDnsInstance() {
         pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.DNS.toString());
-        pluginSetting.getSettings().put(PeerForwarderConfig.HOSTNAME_FOR_DNS_LOOKUP, ENDPOINT);
+        pluginSetting.getSettings().put(PeerForwarderConfig.DOMAIN_NAME, ENDPOINT);
 
         when(dnsAddressEndpointGroupBuilder.build()).thenReturn(dnsAddressEndpointGroup);
         when(dnsAddressEndpointGroupBuilder.ttl(anyInt(), anyInt())).thenReturn(dnsAddressEndpointGroupBuilder);
