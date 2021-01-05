@@ -62,7 +62,7 @@ public final class  PluginRepository {
             case BUFFER:
                 return getBufferClass(name);
             case PREPPER:
-                return getProcessorClass(name);
+                return getPrepperClass(name);
             case SINK:
                 return getSinkClass(name);
         }
@@ -77,7 +77,7 @@ public final class  PluginRepository {
         return BUFFERS.get(name);
     }
 
-    public static Class<Prepper> getProcessorClass(final String name) {
+    public static Class<Prepper> getPrepperClass(final String name) {
         return PREPPERS.get(name);
     }
 

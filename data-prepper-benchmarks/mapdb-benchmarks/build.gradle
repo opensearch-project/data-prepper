@@ -13,5 +13,5 @@ repositories {
 }
 
 dependencies {
-    compile project(':data-prepper-plugins:mapdb-processor-state')
+    compile project(':data-prepper-plugins:mapdb-prepper-state')
 }

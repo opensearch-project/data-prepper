@@ -13,5 +13,5 @@ repositories {
 }
 
 dependencies {
-    compile project(':data-prepper-plugins:lmdb-processor-state')
+    compile project(':data-prepper-plugins:lmdb-prepper-state')
 }

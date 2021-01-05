@@ -9,7 +9,7 @@ import com.amazon.dataprepper.parser.model.PipelineConfiguration;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.PipelineConnector;
 import com.amazon.dataprepper.plugins.buffer.BufferFactory;
-import com.amazon.dataprepper.plugins.processor.PrepperFactory;
+import com.amazon.dataprepper.plugins.prepper.PrepperFactory;
 import com.amazon.dataprepper.plugins.sink.SinkFactory;
 import com.amazon.dataprepper.plugins.source.SourceFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -86,7 +86,7 @@ public class PipelineParser {
             final List<Prepper> preppers = pipelineConfiguration.getPrepperPluginSettings().stream()
                     .map(PrepperFactory::newPrepper)
                     .collect(Collectors.toList());
-            final int processorThreads = pipelineConfiguration.getWorkers();
+            final int prepperThreads = pipelineConfiguration.getWorkers();
             final int readBatchDelay = pipelineConfiguration.getReadBatchDelay();
 
             LOG.info("Building sinks for the pipeline [{}]", pipelineName);
@@ -94,7 +94,7 @@ public class PipelineParser {
                     .map(this::buildSinkOrConnector)
                     .collect(Collectors.toList());
 
-            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, preppers, sinks, processorThreads, readBatchDelay);
+            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, preppers, sinks, prepperThreads, readBatchDelay);
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
             //If pipeline construction errors out, we will skip that pipeline and proceed

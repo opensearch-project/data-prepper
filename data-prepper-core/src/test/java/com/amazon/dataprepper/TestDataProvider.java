@@ -34,7 +34,7 @@ public class TestDataProvider {
     public static final String MISSING_NAME_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/missing_name_multiple_pipeline_configuration.yml";
     public static final String MISSING_PIPELINE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/missing_pipeline_multiple_pipeline_configuration.yml";
     public static final String VALID_MULTIPLE_SINKS_CONFIG_FILE = "src/test/resources/valid_multiple_sinks.yml";
-    public static final String VALID_MULTIPLE_PROCESSORS_CONFIG_FILE = "src/test/resources/valid_multiple_sinks.yml";
+    public static final String VALID_MULTIPLE_PREPPERS_CONFIG_FILE = "src/test/resources/valid_multiple_sinks.yml";
     public static final String NO_PIPELINES_EXECUTE_CONFIG_FILE = "src/test/resources/no_pipelines_to_execute.yml";
     public static final String VALID_DATA_PREPPER_CONFIG_FILE = "src/test/resources/valid_data_prepper_config.yml";
     public static final String VALID_DATA_PREPPER_DEFAULT_LOG4J_CONFIG_FILE = "src/test/resources/valid_data_prepper_config_default_log4j.yml";

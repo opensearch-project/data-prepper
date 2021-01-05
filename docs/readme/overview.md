@@ -21,8 +21,8 @@ The buffer component will act as the layer between the *source* and *sink.* The 
 ### Sink
 Sink in the output component of pipeline, it defines the one or more destinations to which a Data Prepper pipeline will publish the records. A sink destination could be either services like elastic search, s3 or another Data Prepper pipeline. By using another Data Prepper pipeline as sink, we could chain multiple Data Prepper pipelines. Sink will have its own configuration options based on the destination type like security, request batching etc. 
 
-### Processor
-Processor component of the pipeline, these are intermediary processing units using which users can filter, transform and enrich the records into desired format before publishing to the sink. The prepper is an optional component of the pipeline, if not defined the records will be published in the format as defined in the source. You can have more than one prepper, and they are executed in the order they are defined in the pipeline spec.
+### Prepper
+Prepper component of the pipeline, these are intermediary processing units using which users can filter, transform and enrich the records into desired format before publishing to the sink. The prepper is an optional component of the pipeline, if not defined the records will be published in the format as defined in the source. You can have more than one prepper, and they are executed in the order they are defined in the pipeline spec.
 
 ### Sample Pipeline configuration
 

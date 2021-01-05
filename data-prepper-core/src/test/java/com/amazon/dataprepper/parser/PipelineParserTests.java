@@ -13,7 +13,7 @@ import static com.amazon.dataprepper.TestDataProvider.MISSING_NAME_MULTIPLE_PIPE
 import static com.amazon.dataprepper.TestDataProvider.MISSING_PIPELINE_MULTIPLE_PIPELINE_CONFIG_FILE;
 import static com.amazon.dataprepper.TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE;
 import static com.amazon.dataprepper.TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES;
-import static com.amazon.dataprepper.TestDataProvider.VALID_MULTIPLE_PROCESSORS_CONFIG_FILE;
+import static com.amazon.dataprepper.TestDataProvider.VALID_MULTIPLE_PREPPERS_CONFIG_FILE;
 import static com.amazon.dataprepper.TestDataProvider.VALID_MULTIPLE_SINKS_CONFIG_FILE;
 import static com.amazon.dataprepper.TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -99,8 +99,8 @@ public class PipelineParserTests {
     }
 
     @Test
-    public void testMultipleProcessors() {
-        final PipelineParser pipelineParser = new PipelineParser(VALID_MULTIPLE_PROCESSORS_CONFIG_FILE);
+    public void testMultiplePreppers() {
+        final PipelineParser pipelineParser = new PipelineParser(VALID_MULTIPLE_PREPPERS_CONFIG_FILE);
         pipelineParser.parseConfiguration();
     }
 
