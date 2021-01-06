@@ -25,10 +25,10 @@ public class PeerListProviderFactory {
 
         switch (discoveryMode) {
             case DNS:
-                final String hostname = pluginSetting.getStringOrDefault(PeerForwarderConfig.HOSTNAME_FOR_DNS_LOOKUP, null);
-                Objects.requireNonNull(hostname, String.format("Missing '%s' configuration value", PeerForwarderConfig.HOSTNAME_FOR_DNS_LOOKUP));
+                final String domainName = pluginSetting.getStringOrDefault(PeerForwarderConfig.DOMAIN_NAME, null);
+                Objects.requireNonNull(domainName, String.format("Missing '%s' configuration value",PeerForwarderConfig. DOMAIN_NAME));
 
-                final DnsAddressEndpointGroup endpointGroup = DnsAddressEndpointGroup.builder(hostname)
+                final DnsAddressEndpointGroup endpointGroup = DnsAddressEndpointGroup.builder(domainName)
                         .ttl(MIN_TTL, MAX_TTL)
                         .build();
 
