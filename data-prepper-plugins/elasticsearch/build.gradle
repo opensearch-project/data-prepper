@@ -89,6 +89,7 @@ jacocoTestReport {
     afterEvaluate {
         classDirectories.from = files(classDirectories.files.collect {
             fileTree(dir: it, exclude: [
+                    // TODO: find a way to include the classes covered by ES test framework
                     'com/amazon/dataprepper/plugins/sink/elasticsearch/ElasticsearchSink.class',
                     'com/amazon/dataprepper/plugins/sink/elasticsearch/IndexStateManagement.class'
             ])
@@ -102,6 +103,7 @@ jacocoTestCoverageVerification {
         rule {
             element = 'CLASS'
             excludes = [
+                    // TODO: find a way to include the classes covered by ES test framework
                     'com.amazon.dataprepper.plugins.sink.elasticsearch.ElasticsearchSink',
                     'com.amazon.dataprepper.plugins.sink.elasticsearch.IndexStateManagement'
             ]
