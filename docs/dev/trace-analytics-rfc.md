@@ -37,11 +37,11 @@ The buffer component will act as the layer between the source and sink. The buff
 *Sink:*
 Sink in the output component of the pipeline, it defines the one or more destinations to which a Data Prepper pipeline will publish the records. A sink destination could be either service like elastic search, s3. The sink will have its own configuration options based on the destination type like security, request batching, etc. A sink can be another Data Prepper pipeline, this would provide users the benefit chain multiple Data Prepper pipelines.
 
-*Processor:*
-Processor component of the pipeline, these are intermediary processing units using which users can filter, transform, and enrich the records into the desired format before publishing to the sink. The prepper is an optional component of the pipeline, if not defined the records will be published in the format as defined in the source. You can have more than one prepper and they are executed in the order they are defined in the pipeline spec.
+*Prepper:*
+Prepper component of the pipeline, these are intermediary processing units using which users can filter, transform, and enrich the records into the desired format before publishing to the sink. The prepper is an optional component of the pipeline, if not defined the records will be published in the format as defined in the source. You can have more than one prepper and they are executed in the order they are defined in the pipeline spec.
 
 
-Data Prepper will be an ODFE community-driven project, the end goal is to make multiple Source, Sink, and Processor plugins available.
+Data Prepper will be an ODFE community-driven project, the end goal is to make multiple Source, Sink, and Prepper plugins available.
 
 #### 3.1.2 Trace Analytics
 
@@ -57,7 +57,7 @@ In the first release of Data Prepper, we will support only one Data Prepper pipe
 The OpenTelemetry source will be accepting trace data from the OpenTelemetry collector. The source will depend on [OpenTelemetry Protocol](https://github.com/open-telemetry/opentelemetry-specification/tree/master/specification/protocol). This would
 mean we will support transport over gRPC, HTTP/Proto and HTTP/JSON. The source will support industry-standard encryption (TLS/HTTPS). 
 
-##### Processors
+##### Preppers
 
 We are building two preppers for the Trace Analytics feature,
 * *otel-trace-raw-prepper* -  This prepper will be responsible for converting the trace data in [OpenTelemetry specification](https://github.com/open-telemetry/opentelemetry-proto/tree/master/opentelemetry/proto/trace/v1) to elasticsearch friendly (JSON) docs. These elasticsearch friendly docs will have minimal additional fields like duration which are not part of the original specification. These additional fields are to make the instant kibana dashboards user-friendly.

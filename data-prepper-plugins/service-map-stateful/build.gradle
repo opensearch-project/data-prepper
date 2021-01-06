@@ -14,8 +14,8 @@ repositories {
 dependencies {
     compile project(':data-prepper-api')
     compile project(':data-prepper-plugins:common')
-    compile project(':data-prepper-plugins:lmdb-processor-state')
-    compile project(':data-prepper-plugins:mapdb-processor-state')
+    compile project(':data-prepper-plugins:lmdb-prepper-state')
+    compile project(':data-prepper-plugins:mapdb-prepper-state')
     implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
     testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"

@@ -19,26 +19,26 @@ public class AbstractPrepperTest {
 
     @Test
     public void testMetrics() {
-        final String processorName = "testProcessor";
+        final String prepperName = "testPrepper";
         final String pipelineName = "pipelineName";
         MetricsTestUtil.initMetrics();
 
-        PluginSetting pluginSetting = new PluginSetting(processorName, Collections.emptyMap());
+        PluginSetting pluginSetting = new PluginSetting(prepperName, Collections.emptyMap());
         pluginSetting.setPipelineName(pipelineName);
-        AbstractPrepper<Record<String>, Record<String>> processor = new PrepperImpl(pluginSetting);
+        AbstractPrepper<Record<String>, Record<String>> prepper = new PrepperImpl(pluginSetting);
 
-        processor.execute(Arrays.asList(
+        prepper.execute(Arrays.asList(
                 new Record<>("Value1"),
                 new Record<>("Value2"),
                 new Record<>("Value3")
         ));
 
         final List<Measurement> recordsInMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(processorName).add(MetricNames.RECORDS_IN).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(prepperName).add(MetricNames.RECORDS_IN).toString());
         final List<Measurement> recordsOutMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(processorName).add(MetricNames.RECORDS_OUT).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(prepperName).add(MetricNames.RECORDS_OUT).toString());
         final List<Measurement> elapsedTimeMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(processorName).add(MetricNames.TIME_ELAPSED).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(prepperName).add(MetricNames.TIME_ELAPSED).toString());
 
         Assert.assertEquals(1, recordsInMeasurements.size());
         Assert.assertEquals(3.0, recordsInMeasurements.get(0).getValue(), 0);
