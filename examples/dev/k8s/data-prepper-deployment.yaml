@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: data-prepper
+  name: data-prepper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-prepper
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.network/my-network: "true"
+        app: data-prepper
+    spec:
+      containers:
+      - args:
+        - sh
+        - /appconfig/data-prepper-wait-for-odfe-and-start.sh
+        image: amazon/opendistro-for-elasticsearch-data-prepper:latest
+        imagePullPolicy: "IfNotPresent"
+        name: data-prepper
+        ports:
+        - containerPort: 21890
+        resources: {}
+        volumeMounts:
+        - mountPath: /appconfig
+          name: prepper-configmap-claim0
+      restartPolicy: Always
+      serviceAccountName: ""
+      volumes:
+      - name: prepper-configmap-claim0
+        configMap:
+          name: data-prepper-config
+status: {}

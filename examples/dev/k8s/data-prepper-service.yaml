@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: data-prepper
+  name: data-prepper
+spec:
+  ports:
+  - name: "21890"
+    port: 21890
+    targetPort: 21890
+  selector:
+    app: data-prepper
+status:
+  loadBalancer: {}

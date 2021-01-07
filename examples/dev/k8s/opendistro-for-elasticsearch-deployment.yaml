@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: opendistro-for-elasticsearch
+  name: opendistro-for-elasticsearch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opendistro-for-elasticsearch
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app.network/my-network: "true"
+        app: opendistro-for-elasticsearch
+    spec:
+      containers:
+      - env:
+        - name: discovery.type
+          value: single-node
+        image: amazon/opendistro-for-elasticsearch:1.10.1
+        imagePullPolicy: ""
+        name: odfe
+        ports:
+        - containerPort: 9200
+        - containerPort: 9600
+        resources: {}
+      restartPolicy: Always
+      serviceAccountName: ""
+      volumes: null
+status: {}

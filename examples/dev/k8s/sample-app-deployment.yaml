@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: sample-app
+  name: sample-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sample-app
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app.network/my-network: "true"
+        app: sample-app
+    spec:
+      containers:
+      - env:
+        - name: MYSQL_HOST
+          value: mysql
+        - name: MYSQL_PORT
+          value: "3306"
+        - name: OTEL_EXPORTER
+          value: otlp
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: otel-collector:55680
+        - name: OTEL_RESOURCE_ATTRIBUTES
+          value: service.name=analytics-service
+        - name: OTLP
+          value: otel-collector
+        - name: WAIT_HOSTS
+          value: otel-collector:55680, mysql:3306
+        image: example-k8s/sample-app
+        imagePullPolicy: "Never"
+        name: sample-app
+        ports:
+        - containerPort: 8082
+        - containerPort: 8083
+        - containerPort: 8084
+        - containerPort: 8085
+        - containerPort: 8086
+        - containerPort: 8087
+        - containerPort: 8088
+        - containerPort: 8089
+        resources: {}
+      restartPolicy: Always
+      serviceAccountName: ""
+      volumes: null
+status: {}

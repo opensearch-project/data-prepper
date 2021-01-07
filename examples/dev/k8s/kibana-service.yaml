@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kibana
+  name: kibana
+spec:
+  ports:
+  - name: "5601"
+    port: 5601
+    targetPort: 5601
+  selector:
+    app: kibana
+status:
+  loadBalancer: {}

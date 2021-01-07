@@ -1,0 +1,107 @@
+
+apiVersion: v1
+data:
+  data-prepper-wait-for-odfe-and-start.sh: |-
+    #!/bin/bash
+
+    until [[ $(curl --write-out %{http_code} --output /dev/null --silent --head --fail https://opendistro-for-elasticsearch:9200 -u admin:admin --insecure) == 200 ]]; do
+      echo "Waiting for ODFE to be ready"
+      sleep 1
+    done
+
+    java -Xms128m -Xmx128m -jar /usr/share/data-prepper/data-prepper.jar /appconfig/trace_analytics_no_ssl.yml
+  root-ca.pem: |
+    -----BEGIN CERTIFICATE-----
+    MIID/jCCAuagAwIBAgIBATANBgkqhkiG9w0BAQsFADCBjzETMBEGCgmSJomT8ixk
+    ARkWA2NvbTEXMBUGCgmSJomT8ixkARkWB2V4YW1wbGUxGTAXBgNVBAoMEEV4YW1w
+    bGUgQ29tIEluYy4xITAfBgNVBAsMGEV4YW1wbGUgQ29tIEluYy4gUm9vdCBDQTEh
+    MB8GA1UEAwwYRXhhbXBsZSBDb20gSW5jLiBSb290IENBMB4XDTE4MDQyMjAzNDM0
+    NloXDTI4MDQxOTAzNDM0NlowgY8xEzARBgoJkiaJk/IsZAEZFgNjb20xFzAVBgoJ
+    kiaJk/IsZAEZFgdleGFtcGxlMRkwFwYDVQQKDBBFeGFtcGxlIENvbSBJbmMuMSEw
+    HwYDVQQLDBhFeGFtcGxlIENvbSBJbmMuIFJvb3QgQ0ExITAfBgNVBAMMGEV4YW1w
+    bGUgQ29tIEluYy4gUm9vdCBDQTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoC
+    ggEBAK/u+GARP5innhpXK0c0q7s1Su1VTEaIgmZr8VWI6S8amf5cU3ktV7WT9SuV
+    TsAm2i2A5P+Ctw7iZkfnHWlsC3HhPUcd6mvzGZ4moxnamM7r+a9otRp3owYoGStX
+    ylVTQusAjbq9do8CMV4hcBTepCd+0w0v4h6UlXU8xjhj1xeUIz4DKbRgf36q0rv4
+    VIX46X72rMJSETKOSxuwLkov1ZOVbfSlPaygXIxqsHVlj1iMkYRbQmaTib6XWHKf
+    MibDaqDejOhukkCjzpptGZOPFQ8002UtTTNv1TiaKxkjMQJNwz6jfZ53ws3fh1I0
+    RWT6WfM4oeFRFnyFRmc4uYTUgAkCAwEAAaNjMGEwDwYDVR0TAQH/BAUwAwEB/zAf
+    BgNVHSMEGDAWgBSSNQzgDx4rRfZNOfN7X6LmEpdAczAdBgNVHQ4EFgQUkjUM4A8e
+    K0X2TTnze1+i5hKXQHMwDgYDVR0PAQH/BAQDAgGGMA0GCSqGSIb3DQEBCwUAA4IB
+    AQBoQHvwsR34hGO2m8qVR9nQ5Klo5HYPyd6ySKNcT36OZ4AQfaCGsk+SecTi35QF
+    RHL3g2qffED4tKR0RBNGQSgiLavmHGCh3YpDupKq2xhhEeS9oBmQzxanFwWFod4T
+    nnsG2cCejyR9WXoRzHisw0KJWeuNlwjUdJY0xnn16srm1zL/M/f0PvCyh9HU1mF1
+    ivnOSqbDD2Z7JSGyckgKad1Omsg/rr5XYtCeyJeXUPcmpeX6erWJJNTUh6yWC/hY
+    G/dFC4xrJhfXwz6Z0ytUygJO32bJG4Np2iGAwvvgI9EfxzEv/KP+FGrJOvQJAq4/
+    BU36ZAa80W/8TBnqZTkNnqZV
+    -----END CERTIFICATE-----
+  trace_analytics_no_ssl.yml: |
+    entry-pipeline:
+      delay: "100"
+      source:
+        otel_trace_source:
+      #processor:
+      #  - peer_forwarder:
+      #      discovery_mode: "dns"
+      #      domain_name: "data-prepper-headless"
+      sink:
+        - pipeline:
+            name: "raw-pipeline"
+        - pipeline:
+            name: "service-map-pipeline"
+    raw-pipeline:
+      source:
+        pipeline:
+          name: "entry-pipeline"
+      processor:
+        - otel_trace_raw_processor:
+      sink:
+        - elasticsearch:
+            hosts: [ "https://opendistro-for-elasticsearch:9200" ]
+            insecure: true
+            # cert: "/app/root-ca.pem"
+            username: "admin"
+            password: "admin"
+            trace_analytics_raw: true
+    service-map-pipeline:
+      delay: "100"
+      source:
+        pipeline:
+          name: "entry-pipeline"
+      processor:
+        - service_map_stateful:
+      sink:
+        - elasticsearch:
+            hosts: ["https://opendistro-for-elasticsearch:9200"]
+            insecure: true
+            # cert: "/app/root-ca.pem"
+            username: "admin"
+            password: "admin"
+            trace_analytics_service_map: true
+kind: ConfigMap
+metadata:
+  creationTimestamp: "2020-12-11T18:07:51Z"
+  managedFields:
+  - apiVersion: v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:data:
+        .: {}
+        f:root-ca.pem: {}
+    manager: kubectl-create
+    operation: Update
+    time: "2020-12-11T18:07:51Z"
+  - apiVersion: v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:data:
+        f:data-prepper-wait-for-odfe-and-start.sh: {}
+        f:trace_analytics_no_ssl.yml: {}
+    manager: dashboard
+    operation: Update
+    time: "2020-12-11T20:15:33Z"
+  name: data-prepper-config
+  namespace: default
+  resourceVersion: "42689"
+  selfLink: /api/v1/namespaces/default/configmaps/data-prepper-config
+  uid: f15ec902-17fd-4e7c-be6f-8d1f60442b3a

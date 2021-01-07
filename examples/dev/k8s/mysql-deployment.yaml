@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: mysql
+  name: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app.network/my-network: "true"
+        app: mysql
+    spec:
+      containers:
+      - env:
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "yes"
+        image: mysql:latest
+        imagePullPolicy: ""
+        name: mysql
+        ports:
+        - containerPort: 3306
+        resources: {}
+      restartPolicy: Always
+      serviceAccountName: ""
+      volumes: null
+status: {}

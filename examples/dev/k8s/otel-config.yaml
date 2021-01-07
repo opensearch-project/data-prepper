@@ -1,0 +1,38 @@
+apiVersion: v1
+data:
+  otel-collector-config.yml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:55680
+
+    exporters:
+      otlp/2:
+        endpoint: data-prepper:21890
+        insecure: true
+      logging:
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [logging, otlp/2]
+kind: ConfigMap
+metadata:
+  creationTimestamp: "2020-12-11T17:34:39Z"
+  managedFields:
+  - apiVersion: v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:data:
+        .: {}
+        f:otel-collector-config.yml: {}
+    manager: kubectl-create
+    operation: Update
+    time: "2020-12-11T17:34:39Z"
+  name: otel-config
+  namespace: default
+  resourceVersion: "28157"
+  selfLink: /api/v1/namespaces/default/configmaps/otel-config
+  uid: b5f10ee2-ccdb-4412-a693-4f5a626bb5cc

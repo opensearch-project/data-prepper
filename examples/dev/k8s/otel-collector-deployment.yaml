@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: otel-collector
+  name: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.network/my-network: "true"
+        app: otel-collector
+    spec:
+      containers:
+      - args:
+        - --config=/etc/otelconfig/otel-collector-config.yml
+        image: otel/opentelemetry-collector:0.14.0
+        imagePullPolicy: ""
+        name: otel-collector
+        ports:
+        - containerPort: 55680
+        resources: {}
+        volumeMounts:
+        - mountPath: /etc/otelconfig
+          name: otel-collector-claim0
+      restartPolicy: Always
+      serviceAccountName: ""
+      volumes:
+      - name: otel-collector-claim0
+        configMap:
+          name: otel-config
+status: {}
