@@ -16,6 +16,8 @@ import java.util.Collection;
 @DataPrepperPlugin(name = "string_converter", type = PluginType.PREPPER)
 public class StringPrepper implements Prepper<Record<String>, Record<String>> {
 
+    public static final String UPPER_CASE = "upper_case";
+
     private final boolean upperCase;
 
     /**
@@ -27,7 +29,7 @@ public class StringPrepper implements Prepper<Record<String>, Record<String>> {
      * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
      */
     public StringPrepper(final PluginSetting pluginSetting) {
-        this.upperCase = pluginSetting.getBooleanOrDefault("upper_case", true);
+        this.upperCase = pluginSetting.getBooleanOrDefault(UPPER_CASE, true);
     }
 
     @Override
