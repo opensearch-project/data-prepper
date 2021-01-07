@@ -19,6 +19,8 @@ import static java.lang.String.format;
 public class FileSink implements Sink<Record<String>> {
     private static final String SAMPLE_FILE_PATH = "src/resources/file-test-sample-output.txt";
 
+    public static final String FILE_PATH = "path";
+
     private final String outputFilePath;
     private boolean isStopRequested;
 
@@ -31,7 +33,7 @@ public class FileSink implements Sink<Record<String>> {
      * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
      */
     public FileSink(final PluginSetting pluginSetting) {
-        this((String) pluginSetting.getAttributeFromSettings("path"));
+        this((String) pluginSetting.getAttributeFromSettings(FILE_PATH));
     }
 
     public FileSink() {
