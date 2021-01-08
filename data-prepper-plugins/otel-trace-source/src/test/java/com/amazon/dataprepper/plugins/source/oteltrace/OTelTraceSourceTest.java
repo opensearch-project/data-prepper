@@ -12,6 +12,9 @@ import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
+import com.linecorp.armeria.server.Server;
+import com.linecorp.armeria.server.ServerBuilder;
+import com.linecorp.armeria.server.grpc.GrpcService;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
@@ -21,13 +24,36 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 public class OTelTraceSourceTest {
+
+    @Mock
+    private ServerBuilder serverBuilder;
+
+    @Mock
+    private Server server;
+
+    @Mock
+    private CompletableFuture<Void> completableFuture;
 
     private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
             .addResourceSpans(ResourceSpans.newBuilder()
@@ -158,5 +184,104 @@ public class OTelTraceSourceTest {
     public void testStartWithEmptyBuffer() {
         final OTelTraceSource source = new OTelTraceSource(new PluginSetting(null, null));
         Assertions.assertThrows(IllegalStateException.class, () -> source.start(null));
+    }
+
+    @Test
+    public void testStartWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
+        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
+            armeriaServerMock.when(() -> Server.builder()).thenReturn(serverBuilder);
+            when(serverBuilder.service(any(GrpcService.class))).thenReturn(serverBuilder);
+            when(serverBuilder.http(anyInt())).thenReturn(serverBuilder);
+            when(serverBuilder.build()).thenReturn(server);
+            when(server.start()).thenReturn(completableFuture);
+            when(completableFuture.get()).thenThrow(new ExecutionException("", null));
+            final OTelTraceSource source = new OTelTraceSource(new PluginSetting(null, null));
+            assertThrows(RuntimeException.class, () -> source.start(BUFFER));
+        }
+    }
+
+    @Test
+    public void testStartWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
+        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
+            armeriaServerMock.when(() -> Server.builder()).thenReturn(serverBuilder);
+            when(serverBuilder.service(any(GrpcService.class))).thenReturn(serverBuilder);
+            when(serverBuilder.http(anyInt())).thenReturn(serverBuilder);
+            when(serverBuilder.build()).thenReturn(server);
+            when(server.start()).thenReturn(completableFuture);
+            final NullPointerException expCause = new NullPointerException();
+            when(completableFuture.get()).thenThrow(new ExecutionException("", expCause));
+            final OTelTraceSource source = new OTelTraceSource(new PluginSetting(null, null));
+            final RuntimeException ex = assertThrows(RuntimeException.class, () -> source.start(BUFFER));
+            assertEquals(expCause, ex);
+        }
+    }
+
+    @Test
+    public void testStopWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
+        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
+            armeriaServerMock.when(() -> Server.builder()).thenReturn(serverBuilder);
+            when(serverBuilder.service(any(GrpcService.class))).thenReturn(serverBuilder);
+            when(serverBuilder.http(anyInt())).thenReturn(serverBuilder);
+            when(serverBuilder.build()).thenReturn(server);
+            when(server.start()).thenReturn(completableFuture);
+            final OTelTraceSource source = new OTelTraceSource(new PluginSetting(null, null));
+            source.start(BUFFER);
+
+            when(server.stop()).thenReturn(completableFuture);
+            when(completableFuture.get()).thenThrow(new ExecutionException("", null));
+            assertThrows(RuntimeException.class, source::stop);
+        }
+    }
+
+    @Test
+    public void testStartWithInterruptedException() throws ExecutionException, InterruptedException {
+        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
+            armeriaServerMock.when(() -> Server.builder()).thenReturn(serverBuilder);
+            when(serverBuilder.service(any(GrpcService.class))).thenReturn(serverBuilder);
+            when(serverBuilder.http(anyInt())).thenReturn(serverBuilder);
+            when(serverBuilder.build()).thenReturn(server);
+            when(server.start()).thenReturn(completableFuture);
+            when(completableFuture.get()).thenThrow(new InterruptedException());
+            final OTelTraceSource source = new OTelTraceSource(new PluginSetting(null, null));
+            assertThrows(RuntimeException.class, () -> source.start(BUFFER));
+            assertTrue(Thread.interrupted());
+        }
+    }
+
+    @Test
+    public void testStopWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
+        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
+            armeriaServerMock.when(() -> Server.builder()).thenReturn(serverBuilder);
+            when(serverBuilder.service(any(GrpcService.class))).thenReturn(serverBuilder);
+            when(serverBuilder.http(anyInt())).thenReturn(serverBuilder);
+            when(serverBuilder.build()).thenReturn(server);
+            when(server.start()).thenReturn(completableFuture);
+            final OTelTraceSource source = new OTelTraceSource(new PluginSetting(null, null));
+            source.start(BUFFER);
+
+            when(server.stop()).thenReturn(completableFuture);
+            final NullPointerException expCause = new NullPointerException();
+            when(completableFuture.get()).thenThrow(new ExecutionException("", expCause));
+            final RuntimeException ex = assertThrows(RuntimeException.class, source::stop);
+            assertEquals(expCause, ex);
+        }
+    }
+
+    @Test
+    public void testStopWithInterruptedException() throws ExecutionException, InterruptedException {
+        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
+            armeriaServerMock.when(() -> Server.builder()).thenReturn(serverBuilder);
+            when(serverBuilder.service(any(GrpcService.class))).thenReturn(serverBuilder);
+            when(serverBuilder.http(anyInt())).thenReturn(serverBuilder);
+            when(serverBuilder.build()).thenReturn(server);
+            when(server.start()).thenReturn(completableFuture);
+            final OTelTraceSource source = new OTelTraceSource(new PluginSetting(null, null));
+            source.start(BUFFER);
+
+            when(server.stop()).thenReturn(completableFuture);
+            when(completableFuture.get()).thenThrow(new InterruptedException());
+            assertThrows(RuntimeException.class, source::stop);
+            assertTrue(Thread.interrupted());
+        }
     }
 }
