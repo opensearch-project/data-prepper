@@ -55,20 +55,6 @@ public final class  PluginRepository {
         }
     }
 
-    public static Class<?> getPluginClass(final String name, final PluginType pluginType) {
-        switch (pluginType) {
-            case SOURCE:
-                return getSourceClass(name);
-            case BUFFER:
-                return getBufferClass(name);
-            case PREPPER:
-                return getPrepperClass(name);
-            case SINK:
-                return getSinkClass(name);
-        }
-        throw new PluginException("Unrecognized plugin type: " + pluginType);
-    }
-
     public static Class<Source> getSourceClass(final String name) {
         return SOURCES.get(name);
     }
