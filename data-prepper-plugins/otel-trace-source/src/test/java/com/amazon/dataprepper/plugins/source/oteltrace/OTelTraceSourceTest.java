@@ -41,6 +41,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -80,10 +81,10 @@ public class OTelTraceSourceTest {
 
     @BeforeEach
     public void beforeEach() {
-        when(serverBuilder.service(any(GrpcService.class))).thenReturn(serverBuilder);
-        when(serverBuilder.http(anyInt())).thenReturn(serverBuilder);
-        when(serverBuilder.build()).thenReturn(server);
-        when(server.start()).thenReturn(completableFuture);
+        lenient().when(serverBuilder.service(any(GrpcService.class))).thenReturn(serverBuilder);
+        lenient().when(serverBuilder.http(anyInt())).thenReturn(serverBuilder);
+        lenient().when(serverBuilder.build()).thenReturn(server);
+        lenient().when(server.start()).thenReturn(completableFuture);
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("request_timeout", 1);
         SOURCE = new OTelTraceSource(new PluginSetting("otel_trace_source", integerHashMap));
