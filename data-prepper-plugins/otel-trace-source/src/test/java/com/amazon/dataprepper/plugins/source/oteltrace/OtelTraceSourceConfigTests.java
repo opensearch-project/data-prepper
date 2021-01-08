@@ -21,8 +21,11 @@ public class OtelTraceSourceConfigTests {
 
     @Test
     public void testDefault() {
+        // Prepare
         final OTelTraceSourceConfig otelTraceSourceConfig =  OTelTraceSourceConfig.buildConfig(
                 new PluginSetting(PLUGIN_NAME, new HashMap<>()));
+
+        // When/Then
         assertEquals(DEFAULT_REQUEST_TIMEOUT, otelTraceSourceConfig.getRequestTimeoutInMillis());
         assertEquals(DEFAULT_PORT, otelTraceSourceConfig.getPort());
         assertFalse(otelTraceSourceConfig.hasHealthCheck());
@@ -34,9 +37,14 @@ public class OtelTraceSourceConfigTests {
 
     @Test
     public void testValidConfig() {
+        // Prepare
         final PluginSetting validPluginSetting = completePluginSettingForOtelTraceSource(
                 DEFAULT_REQUEST_TIMEOUT, DEFAULT_PORT, true, true, true, TEST_KEY_CERT, TEST_KEY);
+
+        // When
         final OTelTraceSourceConfig otelTraceSourceConfig =  OTelTraceSourceConfig.buildConfig(validPluginSetting);
+
+        // Then
         assertEquals(DEFAULT_REQUEST_TIMEOUT, otelTraceSourceConfig.getRequestTimeoutInMillis());
         assertEquals(DEFAULT_PORT, otelTraceSourceConfig.getPort());
         assertTrue(otelTraceSourceConfig.hasHealthCheck());
@@ -48,20 +56,28 @@ public class OtelTraceSourceConfigTests {
 
     @Test
     public void testInvalidConfig() {
+        // Prepare
         final PluginSetting sslNullKeyCertPluginSetting = completePluginSettingForOtelTraceSource(
                 DEFAULT_REQUEST_TIMEOUT, DEFAULT_PORT, false, false, true, null, TEST_KEY);
+        // When/Then
         assertThrows(IllegalArgumentException.class, () -> OTelTraceSourceConfig.buildConfig(sslNullKeyCertPluginSetting));
 
+        // Prepare
         final PluginSetting sslEmptyKeyCertPluginSetting = completePluginSettingForOtelTraceSource(
                 DEFAULT_REQUEST_TIMEOUT, DEFAULT_PORT, false, false, true, "", TEST_KEY);
+        // When/Then
         assertThrows(IllegalArgumentException.class, () -> OTelTraceSourceConfig.buildConfig(sslEmptyKeyCertPluginSetting));
 
+        // Prepare
         final PluginSetting sslNullKeyFilePluginSetting = completePluginSettingForOtelTraceSource(
                 DEFAULT_REQUEST_TIMEOUT, DEFAULT_PORT, false, false, true, TEST_KEY_CERT, null);
+        // When/Then
         assertThrows(IllegalArgumentException.class, () -> OTelTraceSourceConfig.buildConfig(sslNullKeyFilePluginSetting));
 
+        // Prepare
         final PluginSetting sslEmptyKeyFilePluginSetting = completePluginSettingForOtelTraceSource(
                 DEFAULT_REQUEST_TIMEOUT, DEFAULT_PORT, false, false, true, TEST_KEY_CERT, "");
+        // When/Then
         assertThrows(IllegalArgumentException.class, () -> OTelTraceSourceConfig.buildConfig(sslEmptyKeyFilePluginSetting));
     }
 
