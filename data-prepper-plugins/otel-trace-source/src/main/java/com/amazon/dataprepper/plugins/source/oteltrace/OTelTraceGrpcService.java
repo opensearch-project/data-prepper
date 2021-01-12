@@ -14,14 +14,12 @@ import java.util.concurrent.TimeoutException;
 
 public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase {
 
-    public static final String BUFFER_SIZE = "bufferSize";
     public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String REQUESTS_RECEIVED = "requestsReceived";
 
     private final int bufferWriteTimeoutInMillis;
     private final Buffer<Record<ExportTraceServiceRequest>> buffer;
 
-    private final PluginMetrics pluginMetrics;
     private final Counter requestTimeoutCounter;
     private final Counter requestsReceivedCounter;
 
@@ -31,7 +29,6 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
                                 final PluginMetrics pluginMetrics) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
-        this.pluginMetrics = pluginMetrics;
 
         requestTimeoutCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
@@ -41,10 +38,10 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
     @Override
     public void export(ExportTraceServiceRequest request, StreamObserver<ExportTraceServiceResponse> responseObserver) {
         try {
+            requestsReceivedCounter.increment();
             buffer.write(new Record<>(request), bufferWriteTimeoutInMillis);
             responseObserver.onNext(ExportTraceServiceResponse.newBuilder().build());
             responseObserver.onCompleted();
-            requestsReceivedCounter.increment();
         } catch (TimeoutException e) {
             responseObserver
                     .onError(Status.RESOURCE_EXHAUSTED.withDescription("Buffer is full, request timed out.")
