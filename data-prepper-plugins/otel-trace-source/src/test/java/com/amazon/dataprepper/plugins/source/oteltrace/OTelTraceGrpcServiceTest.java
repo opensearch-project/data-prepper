@@ -45,9 +45,9 @@ public class OTelTraceGrpcServiceTest {
 
         ExportTraceServiceRequest request = ExportTraceServiceRequest.newBuilder().build();
         StreamObserver response = mock(StreamObserver.class);
-        Counter mockRecordsWrittenCounter = mock(Counter.class);
+        Counter mockRequestsReceivedCounter = mock(Counter.class);
         Counter mockTimeoutCounter = mock(Counter.class);
-        when(mockPluginMetrics.counter(OTelTraceGrpcService.RECORDS_WRITTEN)).thenReturn(mockRecordsWrittenCounter);
+        when(mockPluginMetrics.counter(OTelTraceGrpcService.REQUESTS_RECEIVED)).thenReturn(mockRequestsReceivedCounter);
         when(mockPluginMetrics.counter(OTelTraceGrpcService.REQUEST_TIMEOUTS)).thenReturn(mockTimeoutCounter);
 
         oTelTraceGrpcService = new OTelTraceGrpcService(bufferWriteTimeoutInMillis, mock(Buffer.class), mockPluginMetrics);
@@ -55,7 +55,7 @@ public class OTelTraceGrpcServiceTest {
 
         verify(response, times(1)).onNext(ExportTraceServiceResponse.newBuilder().build());
         verify(response, times(1)).onCompleted();
-        verify(mockRecordsWrittenCounter, times(1)).increment();
+        verify(mockRequestsReceivedCounter, times(1)).increment();
         verifyZeroInteractions(mockTimeoutCounter);
     }
 
@@ -67,7 +67,7 @@ public class OTelTraceGrpcServiceTest {
         MetricsTestUtil.initMetrics();
         ExportTraceServiceRequest request = ExportTraceServiceRequest.newBuilder().build();
         StreamObserver response = mock(StreamObserver.class);
-        Counter mockRecordsWrittenCounter = mock(Counter.class);
+        Counter mockRequestsReceivedCounter = mock(Counter.class);
         Counter mockTimeoutCounter = mock(Counter.class);
         doThrow(new TimeoutException()).when(mockBuffer).write(any(Record.class), anyInt());
         when(mockPluginMetrics.counter(OTelTraceGrpcService.REQUEST_TIMEOUTS)).thenReturn(mockTimeoutCounter);
@@ -78,6 +78,6 @@ public class OTelTraceGrpcServiceTest {
         verify(response, times(0)).onNext(ExportTraceServiceResponse.newBuilder().build());
         verify(response, times(0)).onCompleted();
         verify(mockTimeoutCounter, times(1)).increment();
-        verifyZeroInteractions(mockRecordsWrittenCounter);
+        verifyZeroInteractions(mockRequestsReceivedCounter);
     }
 }
