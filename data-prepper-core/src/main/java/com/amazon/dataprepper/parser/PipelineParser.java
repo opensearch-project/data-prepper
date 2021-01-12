@@ -2,14 +2,14 @@ package com.amazon.dataprepper.parser;
 
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.parser.model.PipelineConfiguration;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.PipelineConnector;
 import com.amazon.dataprepper.plugins.buffer.BufferFactory;
-import com.amazon.dataprepper.plugins.processor.ProcessorFactory;
+import com.amazon.dataprepper.plugins.prepper.PrepperFactory;
 import com.amazon.dataprepper.plugins.sink.SinkFactory;
 import com.amazon.dataprepper.plugins.source.SourceFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -82,11 +82,11 @@ public class PipelineParser {
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
             final Buffer buffer = BufferFactory.newBuffer(pipelineConfiguration.getBufferPluginSetting());
 
-            LOG.info("Building processors for the pipeline [{}]", pipelineName);
-            final List<Processor> processors = pipelineConfiguration.getProcessorPluginSettings().stream()
-                    .map(ProcessorFactory::newProcessor)
+            LOG.info("Building preppers for the pipeline [{}]", pipelineName);
+            final List<Prepper> preppers = pipelineConfiguration.getPrepperPluginSettings().stream()
+                    .map(PrepperFactory::newPrepper)
                     .collect(Collectors.toList());
-            final int processorThreads = pipelineConfiguration.getWorkers();
+            final int prepperThreads = pipelineConfiguration.getWorkers();
             final int readBatchDelay = pipelineConfiguration.getReadBatchDelay();
 
             LOG.info("Building sinks for the pipeline [{}]", pipelineName);
@@ -94,7 +94,7 @@ public class PipelineParser {
                     .map(this::buildSinkOrConnector)
                     .collect(Collectors.toList());
 
-            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, processors, sinks, processorThreads, readBatchDelay);
+            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, preppers, sinks, prepperThreads, readBatchDelay);
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
             //If pipeline construction errors out, we will skip that pipeline and proceed

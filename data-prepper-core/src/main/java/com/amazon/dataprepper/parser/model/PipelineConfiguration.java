@@ -21,7 +21,7 @@ public class PipelineConfiguration {
 
     private final PluginSetting sourcePluginSetting;
     private final PluginSetting bufferPluginSetting;
-    private final List<PluginSetting> processorPluginSettings;
+    private final List<PluginSetting> prepperPluginSettings;
     private final List<PluginSetting> sinkPluginSettings;
     private final Integer workers;
     private final Integer readBatchDelay;
@@ -30,13 +30,13 @@ public class PipelineConfiguration {
     public PipelineConfiguration(
             @JsonProperty("source") final Map.Entry<String, Map<String, Object>> source,
             @JsonProperty("buffer") final Map.Entry<String, Map<String, Object>> buffer,
-            @JsonProperty("processor") final List<Map.Entry<String, Map<String, Object>>> processors,
+            @JsonProperty("prepper") final List<Map.Entry<String, Map<String, Object>>> preppers,
             @JsonProperty("sink") final List<Map.Entry<String, Map<String, Object>>> sinks,
             @JsonProperty("workers") final Integer workers,
             @JsonProperty("delay") final Integer delay) {
         this.sourcePluginSetting = getSourceFromConfiguration(source);
         this.bufferPluginSetting = getBufferFromConfigurationOrDefault(buffer);
-        this.processorPluginSettings = getProcessorsFromConfiguration(processors);
+        this.prepperPluginSettings = getPreppersFromConfiguration(preppers);
         this.sinkPluginSettings = getSinksFromConfiguration(sinks);
         this.workers = getWorkersFromConfiguration(workers);
         this.readBatchDelay = getReadBatchDelayFromConfiguration(delay);
@@ -50,8 +50,8 @@ public class PipelineConfiguration {
         return bufferPluginSetting;
     }
 
-    public List<PluginSetting> getProcessorPluginSettings() {
-        return processorPluginSettings;
+    public List<PluginSetting> getPrepperPluginSettings() {
+        return prepperPluginSettings;
     }
 
     public List<PluginSetting> getSinkPluginSettings() {
@@ -69,8 +69,8 @@ public class PipelineConfiguration {
     public void updateCommonPipelineConfiguration(final String pipelineName) {
         updatePluginSetting(sourcePluginSetting, pipelineName);
         updatePluginSetting(bufferPluginSetting, pipelineName);
-        processorPluginSettings.forEach(processorPluginSettings ->
-                updatePluginSetting(processorPluginSettings, pipelineName));
+        prepperPluginSettings.forEach(prepperPluginSettings ->
+                updatePluginSetting(prepperPluginSettings, pipelineName));
         sinkPluginSettings.forEach(sinkPluginSettings ->
                 updatePluginSetting(sinkPluginSettings, pipelineName));
     }
@@ -105,12 +105,12 @@ public class PipelineConfiguration {
                 .collect(Collectors.toList());
     }
 
-    private List<PluginSetting> getProcessorsFromConfiguration(
-            final List<Map.Entry<String, Map<String, Object>>> processorConfigurations) {
-        if (processorConfigurations == null || processorConfigurations.isEmpty()) {
+    private List<PluginSetting> getPreppersFromConfiguration(
+            final List<Map.Entry<String, Map<String, Object>>> prepperConfigurations) {
+        if (prepperConfigurations == null || prepperConfigurations.isEmpty()) {
             return Collections.emptyList();
         }
-        return processorConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration)
+        return prepperConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration)
                 .collect(Collectors.toList());
     }
 

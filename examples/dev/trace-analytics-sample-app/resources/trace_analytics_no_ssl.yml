@@ -11,8 +11,8 @@ raw-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  processor:
-    - otel_trace_raw_processor:
+  prepper:
+    - otel_trace_raw_prepper:
   sink:
     - elasticsearch:
         hosts: [ "https://node-0.example.com:9200" ]
@@ -25,7 +25,7 @@ service-map-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  processor:
+  prepper:
     - service_map_stateful:
   sink:
     - elasticsearch:

@@ -1,6 +1,6 @@
 # Service Map Stateful Benchmarks
 
-This package contains benchmarks for the service map stateful processor using JMH: https://openjdk.java.net/projects/code-tools/jmh/ . 
+This package contains benchmarks for the service map stateful prepper using JMH: https://openjdk.java.net/projects/code-tools/jmh/ . 
 
 Integration with gradle is done with the following gradle plugin for JMH: https://github.com/melix/jmh-gradle-plugin.
 

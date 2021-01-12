@@ -1,0 +1,43 @@
+package com.amazon.dataprepper.plugins.prepper.state;
+
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+public class LmdbPrepperStateTest extends PrepperStateTest {
+
+    @Rule
+    public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+    @Override
+    public void setPrepperState() throws Exception {
+        this.prepperState = new LmdbPrepperState<>(temporaryFolder.newFile(), "testDb", DataClass.class);
+    }
+
+    @Test
+    public void testPutAll() {
+        final byte[] key1 = new byte[8];
+        random.nextBytes(key1);
+        final byte[] key2 = new byte[8];
+        random.nextBytes(key2);
+
+        DataClass value1 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
+        DataClass value2 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
+
+        final Map<byte[], DataClass> batch = new HashMap<byte[], DataClass>(){{
+            put(key1, value1);
+            put(key2, value2);
+        }};
+
+        ((LmdbPrepperState) prepperState).putAll(batch);
+
+        Assert.assertEquals(value1, prepperState.get(key1));
+        Assert.assertEquals(value2, prepperState.get(key2));
+
+    }
+}

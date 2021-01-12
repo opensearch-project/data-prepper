@@ -14,7 +14,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
- * The {@link Pipeline} process workers that execute pipeline processors and sinks each run in independent threads. If
+ * The {@link Pipeline} process workers that execute pipeline preppers and sinks each run in independent threads. If
  * any of these threads fail, have an error, or throw an exception, the pipeline needs to shutdown. We extend the
  * {@link ThreadPoolExecutor} to override {@link ThreadPoolExecutor#afterExecute(Runnable, Throwable)} method
  * to control the behavior of the pipeline when any of the threads (process worker) fail, have an error, or throw an
@@ -35,13 +35,6 @@ public class PipelineThreadPoolExecutor extends ThreadPoolExecutor {
             final Pipeline pipeline) {
         super(corePoolSize, maximumPoolSize, keepAliveTime, unit, workQueue, threadFactory);
         this.pipeline = pipeline;
-    }
-
-    public static PipelineThreadPoolExecutor newSingleThreadExecutor(
-            final ThreadFactory threadFactory,
-            final Pipeline pipeline) {
-        return new PipelineThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(), threadFactory, pipeline);
     }
 
     public static PipelineThreadPoolExecutor newFixedThreadPool(
@@ -66,7 +59,7 @@ public class PipelineThreadPoolExecutor extends ThreadPoolExecutor {
         super.afterExecute(runnable, throwable);
 
         // If submit() method is used instead of execute(), the exceptions are wrapped in Future
-        // Processor or Sink failures will enter into this loop
+        // Prepper or Sink failures will enter into this loop
         if (throwable == null && runnable instanceof Future<?>) {
             try {
                 ((Future<?>) runnable).get();
@@ -83,7 +76,7 @@ public class PipelineThreadPoolExecutor extends ThreadPoolExecutor {
         // If we ever use the execute instead of submit
         else if (throwable != null) {
             LOG.error("Pipeline {} encountered a fatal exception, terminating", pipeline.getName(), throwable);
-            pipeline.shutdown(); //Stop the source and wait for processors to finish draining the buffer
+            pipeline.shutdown(); //Stop the source and wait for preppers to finish draining the buffer
         }
     }
 

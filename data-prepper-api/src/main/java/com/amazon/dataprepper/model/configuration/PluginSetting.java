@@ -25,7 +25,7 @@ public class PluginSetting {
     /**
      * Returns the number of process workers the pipeline is using; This is only required for special plugin use-cases
      * where plugin implementation depends on the number of process workers. For example, Trace analytics service map
-     * processor plugin uses memory mapped databases and it requires to know the number of workers that operate on it
+     * prepper plugin uses memory mapped databases and it requires to know the number of workers that operate on it
      * concurrently.
      * @return Number of process workers
      */

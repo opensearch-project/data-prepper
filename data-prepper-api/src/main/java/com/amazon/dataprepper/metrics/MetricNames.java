@@ -4,19 +4,19 @@ public class MetricNames {
     private MetricNames() {}
     /**
      * Metric representing the ingress of records to a pipeline component.
-     * Applicable to processors and sinks
+     * Applicable to preppers and sinks
      */
     public static final String RECORDS_IN = "recordsIn";
 
     /**
      * Metric representing the egress of records from a pipeline component.
-     * Applicable to processors and sources.
+     * Applicable to preppers and sources.
      */
     public static final String RECORDS_OUT = "recordsOut";
 
     /**
      * Metric representing the time elapsed during execution of a pipeline component.
-     * Applicable to processors and sinks.
+     * Applicable to preppers and sinks.
      */
     public static final String TIME_ELAPSED = "timeElapsed";
 

@@ -65,6 +65,38 @@ public class BulkRetryStrategyTests {
     }
 
     @Test
+    public void testExecuteSuccessOnFirstAttempt() throws Exception {
+        final String testIndex = "bar";
+        final FakeClient client = new FakeClient(testIndex);
+        client.successOnFirstAttempt = true;
+        final FakeLogger logger = new FakeLogger();
+
+        final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
+                client::bulk, logger::logFailure, PLUGIN_METRICS, BulkRequest::new);
+        final BulkRequest testBulkRequest = new BulkRequest();
+        testBulkRequest.add(new IndexRequest(testIndex).id("1"));
+        testBulkRequest.add(new IndexRequest(testIndex).id("2"));
+        testBulkRequest.add(new IndexRequest(testIndex).id("3"));
+        testBulkRequest.add(new IndexRequest(testIndex).id("4"));
+
+        bulkRetryStrategy.execute(testBulkRequest);
+
+        assertEquals(1, client.attempt);
+
+        // verify metrics
+        final List<Measurement> documentsSuccessFirstAttemptMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_SUCCESS_FIRST_ATTEMPT).toString());
+        assertEquals(1, documentsSuccessFirstAttemptMeasurements.size());
+        assertEquals(4.0, documentsSuccessFirstAttemptMeasurements.get(0).getValue(), 0);
+        final List<Measurement> documentsSuccessMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
+        assertEquals(1, documentsSuccessMeasurements.size());
+        assertEquals(4.0, documentsSuccessMeasurements.get(0).getValue(), 0);
+    }
+
+    @Test
     public void testExecuteRetryable() throws Exception {
         final String testIndex = "bar";
         final FakeClient client = new FakeClient(testIndex);
@@ -143,6 +175,43 @@ public class BulkRetryStrategyTests {
         assertEquals(4.0, documentErrorsMeasurements.get(0).getValue(), 0);
     }
 
+    @Test
+    public void testExecuteNonRetryableResponse() throws Exception {
+        final String testIndex = "bar";
+        final FakeClient client = new FakeClient(testIndex);
+        client.retryable = false;
+        client.nonRetryableException = false;
+        final FakeLogger logger = new FakeLogger();
+
+        final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
+                client::bulk, logger::logFailure, PLUGIN_METRICS, BulkRequest::new);
+        final BulkRequest testBulkRequest = new BulkRequest();
+        testBulkRequest.add(new IndexRequest(testIndex).id("1"));
+        testBulkRequest.add(new IndexRequest(testIndex).id("2"));
+        testBulkRequest.add(new IndexRequest(testIndex).id("3"));
+        testBulkRequest.add(new IndexRequest(testIndex).id("4"));
+
+        bulkRetryStrategy.execute(testBulkRequest);
+
+        assertEquals(1, client.attempt);
+        final String logging = logger.msg.toString();
+        for (int i = 2; i <= 4; i++) {
+            assertTrue(logging.contains(String.format("[bar][_doc][%d]", i)));
+        }
+
+        // verify metrics
+        final List<Measurement> documentsSuccessMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
+        assertEquals(1, documentsSuccessMeasurements.size());
+        assertEquals(1.0, documentsSuccessMeasurements.get(0).getValue(), 0);
+        final List<Measurement> documentErrorsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
+        assertEquals(1, documentErrorsMeasurements.size());
+        assertEquals(3.0, documentErrorsMeasurements.get(0).getValue(), 0);
+    }
+
     private static BulkItemResponse successItemResponse(final String index) {
         final String docId = UUID.randomUUID().toString();
         return new BulkItemResponse(1, DocWriteRequest.OpType.INDEX,
@@ -173,7 +242,9 @@ public class BulkRetryStrategyTests {
 
     private static class FakeClient {
 
+        boolean successOnFirstAttempt = false;
         boolean retryable = true;
+        boolean nonRetryableException = true;
         int attempt = 0;
         String index;
         BulkRequest finalRequest;
@@ -184,9 +255,17 @@ public class BulkRetryStrategyTests {
         }
 
         public BulkResponse bulk(final BulkRequest bulkRequest) throws IOException {
+            if (successOnFirstAttempt) {
+                attempt++;
+                return bulkSuccessResponse(bulkRequest);
+            }
             if (!retryable) {
                 attempt++;
-                throw new IllegalArgumentException();
+                if (nonRetryableException) {
+                    throw new IllegalArgumentException();
+                } else {
+                    return bulkNonRetryableResponse(bulkRequest);
+                }
             }
             finalRequest = bulkRequest;
             final int requestSize = bulkRequest.requests().size();
@@ -222,6 +301,24 @@ public class BulkRetryStrategyTests {
             assert requestSize == 2;
             final BulkItemResponse[] bulkItemResponses = new BulkItemResponse[]{
                     successItemResponse(index), successItemResponse(index)};
+            return new BulkResponse(bulkItemResponses, 10);
+        }
+
+        private BulkResponse bulkNonRetryableResponse(final BulkRequest bulkRequest) {
+            final int requestSize = bulkRequest.requests().size();
+            assert requestSize == 4;
+            final BulkItemResponse[] bulkItemResponses = new BulkItemResponse[]{
+                    successItemResponse(index), badRequestItemResponse(index), badRequestItemResponse(index),
+                    badRequestItemResponse(index)};
+            return new BulkResponse(bulkItemResponses, 10);
+        }
+
+        private BulkResponse bulkSuccessResponse(final BulkRequest bulkRequest) {
+            final int requestSize = bulkRequest.requests().size();
+            assert requestSize == 4;
+            final BulkItemResponse[] bulkItemResponses = new BulkItemResponse[]{
+                    successItemResponse(index), successItemResponse(index), successItemResponse(index),
+                    successItemResponse(index)};
             return new BulkResponse(bulkItemResponses, 10);
         }
     }

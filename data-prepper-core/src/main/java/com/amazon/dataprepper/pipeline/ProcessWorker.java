@@ -1,7 +1,7 @@
 package com.amazon.dataprepper.pipeline;
 
 import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.pipeline.common.FutureHelper;
@@ -18,18 +18,18 @@ public class ProcessWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessWorker.class);
 
     private final Buffer readBuffer;
-    private final List<Processor> processors;
+    private final List<Prepper> preppers;
     private final Collection<Sink> sinks;
     private final Pipeline pipeline;
     private boolean isEmptyRecordsLogged = false;
 
     public ProcessWorker(
             final Buffer readBuffer,
-            final List<Processor> processors,
+            final List<Prepper> preppers,
             final Collection<Sink> sinks,
             final Pipeline pipeline) {
         this.readBuffer = readBuffer;
-        this.processors = processors;
+        this.preppers = preppers;
         this.sinks = sinks;
         this.pipeline = pipeline;
     }
@@ -48,9 +48,9 @@ public class ProcessWorker implements Runnable {
                 } else {
                     LOG.info(" {} Worker: Processing {} records from buffer", pipeline.getName(), records.size());
                 }
-                //Should Empty list from buffer should be sent to the processors? For now sending as the Stateful processors expects it.
-                for (final Processor processor : processors) {
-                    records = processor.execute(records);
+                //Should Empty list from buffer should be sent to the preppers? For now sending as the Stateful preppers expects it.
+                for (final Prepper prepper : preppers) {
+                    records = prepper.execute(records);
                 }
                 if (!records.isEmpty()) {
                     postToSink(records); //TODO use the response to ack the buffer on failure?
