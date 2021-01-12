@@ -16,14 +16,14 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
 
     public static final String BUFFER_SIZE = "bufferSize";
     public static final String REQUEST_TIMEOUTS = "requestTimeouts";
-    public static final String RECORDS_WRITTEN = "recordsWritten";
+    public static final String REQUESTS_RECEIVED = "requestsReceived";
 
     private final int bufferWriteTimeoutInMillis;
     private final Buffer<Record<ExportTraceServiceRequest>> buffer;
 
     private final PluginMetrics pluginMetrics;
     private final Counter requestTimeoutCounter;
-    private final Counter recordsWrittenCounter;
+    private final Counter requestsReceivedCounter;
 
 
     public OTelTraceGrpcService(int bufferWriteTimeoutInMillis,
@@ -34,7 +34,7 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
         this.pluginMetrics = pluginMetrics;
 
         requestTimeoutCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
-        recordsWrittenCounter = pluginMetrics.counter(RECORDS_WRITTEN);
+        requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
     }
 
 
@@ -44,8 +44,7 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
             buffer.write(new Record<>(request), bufferWriteTimeoutInMillis);
             responseObserver.onNext(ExportTraceServiceResponse.newBuilder().build());
             responseObserver.onCompleted();
-            recordsWrittenCounter.increment();
-            pluginMetrics.gauge(BUFFER_SIZE, buffer.read(bufferWriteTimeoutInMillis).size());
+            requestsReceivedCounter.increment();
         } catch (TimeoutException e) {
             responseObserver
                     .onError(Status.RESOURCE_EXHAUSTED.withDescription("Buffer is full, request timed out.")
