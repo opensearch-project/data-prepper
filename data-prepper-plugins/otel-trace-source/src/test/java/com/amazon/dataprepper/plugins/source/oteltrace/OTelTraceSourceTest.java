@@ -29,6 +29,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class OTelTraceSourceTest {
 
+    PluginSetting pluginSetting;
+    PluginSetting testPluginSetting;
+
     private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
             .addResourceSpans(ResourceSpans.newBuilder()
                     .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
@@ -56,7 +59,9 @@ public class OTelTraceSourceTest {
     public void beforeEach() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("request_timeout", 1);
-        SOURCE = new OTelTraceSource(new PluginSetting("otel_trace_source", integerHashMap));
+        pluginSetting = new PluginSetting("otel_trace", integerHashMap);
+        pluginSetting.setPipelineName("pipeline");
+        SOURCE = new OTelTraceSource(pluginSetting);
         SOURCE.start(BUFFER);
         CLIENT = Clients.newClient(getUri(), TraceServiceGrpc.TraceServiceBlockingStub.class);
     }
@@ -149,14 +154,18 @@ public class OTelTraceSourceTest {
 
     @Test
     public void testRunAnotherSourceWithSamePort() {
-        final OTelTraceSource source = new OTelTraceSource(new PluginSetting(null, null));
+        testPluginSetting = new PluginSetting(null, null);
+        testPluginSetting.setPipelineName("pipeline");
+        final OTelTraceSource source = new OTelTraceSource(testPluginSetting);
         //Expect RuntimeException because when port is already in use, BindException is thrown which is not RuntimeException
         Assertions.assertThrows(RuntimeException.class, () -> source.start(BUFFER));
     }
 
     @Test
     public void testStartWithEmptyBuffer() {
-        final OTelTraceSource source = new OTelTraceSource(new PluginSetting(null, null));
+        testPluginSetting = new PluginSetting(null, null);
+        testPluginSetting.setPipelineName("pipeline");
+        final OTelTraceSource source = new OTelTraceSource(testPluginSetting);
         Assertions.assertThrows(IllegalStateException.class, () -> source.start(null));
     }
 }
