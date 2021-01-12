@@ -38,7 +38,7 @@ public class OTelTraceGrpcServiceTest {
     }
 
     @Test
-    public void testRecordsWrittenCounter() {
+    public void testRequestsReceivedCounter() {
 
         PluginMetrics mockPluginMetrics = mock(PluginMetrics.class);
         MetricsTestUtil.initMetrics();
@@ -69,6 +69,7 @@ public class OTelTraceGrpcServiceTest {
         StreamObserver response = mock(StreamObserver.class);
         Counter mockRequestsReceivedCounter = mock(Counter.class);
         Counter mockTimeoutCounter = mock(Counter.class);
+        when(mockPluginMetrics.counter(OTelTraceGrpcService.REQUESTS_RECEIVED)).thenReturn(mockRequestsReceivedCounter);
         doThrow(new TimeoutException()).when(mockBuffer).write(any(Record.class), anyInt());
         when(mockPluginMetrics.counter(OTelTraceGrpcService.REQUEST_TIMEOUTS)).thenReturn(mockTimeoutCounter);
 
@@ -78,6 +79,6 @@ public class OTelTraceGrpcServiceTest {
         verify(response, times(0)).onNext(ExportTraceServiceResponse.newBuilder().build());
         verify(response, times(0)).onCompleted();
         verify(mockTimeoutCounter, times(1)).increment();
-        verifyZeroInteractions(mockRequestsReceivedCounter);
+        verify(mockRequestsReceivedCounter, times(1)).increment();
     }
 }
