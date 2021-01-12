@@ -16,5 +16,12 @@ dependencies {
     testImplementation 'org.assertj:assertj-core:3.6.2'
     testImplementation "org.mockito:mockito-inline:2.13.0"
     testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
+    testImplementation(platform('org.junit:junit-bom:5.7.0'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
 }
+
+test {
+    useJUnitPlatform()
+}
+
 
