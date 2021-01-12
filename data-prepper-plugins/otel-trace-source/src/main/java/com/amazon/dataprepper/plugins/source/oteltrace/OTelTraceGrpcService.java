@@ -38,7 +38,6 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
     }
 
 
-
     @Override
     public void export(ExportTraceServiceRequest request, StreamObserver<ExportTraceServiceResponse> responseObserver) {
         try {
