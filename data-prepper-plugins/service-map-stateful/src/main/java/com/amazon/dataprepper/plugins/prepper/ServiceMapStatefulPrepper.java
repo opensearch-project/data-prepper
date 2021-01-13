@@ -9,6 +9,7 @@ import com.amazon.dataprepper.plugins.prepper.state.MapDbPrepperState;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.primitives.SignedBytes;
+import io.micrometer.core.instrument.Counter;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +17,12 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.Serializable;
 import java.time.Clock;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
@@ -25,6 +31,9 @@ import java.util.stream.Stream;
 
 @DataPrepperPlugin(name = "service_map_stateful", type = PluginType.PREPPER)
 public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
+
+    public static final String UNIQUE_RELATIONSHIPS = "uniqueRelationships";
+    public static final String UNIQUE_TRACE_GROUPS = "uniqueTraceGroups";
 
     private static final Logger LOG = LoggerFactory.getLogger(ServiceMapStatefulPrepper.class);
     private static final String EMPTY_SUFFIX = "-empty";
@@ -48,6 +57,10 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
 
     private final int thisPrepperId;
 
+    private final Counter uniqueRelationshipsCounter;
+    private final Counter uniqueTraceGroupsCounter;
+
+
     public ServiceMapStatefulPrepper(final PluginSetting pluginSetting) {
      this(pluginSetting.getIntegerOrDefault(ServiceMapPrepperConfig.WINDOW_DURATION, ServiceMapPrepperConfig.DEFAULT_WINDOW_DURATION)*TO_MILLIS,
              new File(ServiceMapPrepperConfig.DEFAULT_LMDB_PATH),
@@ -60,6 +73,8 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
                                      final int processWorkers,
                                      final PluginSetting pluginSetting) {
         super(pluginSetting);
+        uniqueRelationshipsCounter = pluginMetrics.counter(UNIQUE_RELATIONSHIPS);
+        uniqueTraceGroupsCounter = pluginMetrics.counter(UNIQUE_TRACE_GROUPS);
         ServiceMapStatefulPrepper.clock = clock;
         this.thisPrepperId = preppersCreated.getAndIncrement();
         if(isMasterInstance()) {
@@ -120,6 +135,7 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
                                         if (span.getParentSpanId().isEmpty()) {
                                             try {
                                                 currentTraceGroupWindow.put(span.getTraceId().toByteArray(), span.getName());
+                                                uniqueTraceGroupsCounter.increment();
                                             } catch (RuntimeException e) {
                                                 LOG.error("Caught exception trying to put trace group name", e);
                                             }
@@ -154,6 +170,7 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
                             .map(serviceMapRelationship -> {
                                 try {
                                     relationshipState.add(serviceMapRelationship);
+                                    uniqueRelationshipsCounter.increment();
                                     return new Record<>(OBJECT_MAPPER.writeValueAsString(serviceMapRelationship));
                                 } catch (JsonProcessingException e) {
                                     throw new RuntimeException(e);
