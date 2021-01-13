@@ -1,5 +1,6 @@
 package com.amazon.dataprepper.plugins.source.oteltrace;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
@@ -24,9 +25,11 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceSource.class);
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
     private Server server;
+    private final PluginMetrics pluginMetrics;
 
     public OTelTraceSource(final PluginSetting pluginSetting) {
         oTelTraceSourceConfig = OTelTraceSourceConfig.buildConfig(pluginSetting);
+        pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
     }
 
     @Override
@@ -38,7 +41,11 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
         if (server == null) {
             final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                     .builder()
-                    .addService(new OTelTraceGrpcService(oTelTraceSourceConfig.getRequestTimeoutInMillis(), buffer))
+                    .addService(new OTelTraceGrpcService(
+                            oTelTraceSourceConfig.getRequestTimeoutInMillis(),
+                            buffer,
+                            pluginMetrics
+                    ))
                     .addService(new HealthGrpcService())
                     .useClientTimeoutHeader(false);
 
