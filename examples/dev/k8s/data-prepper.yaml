@@ -1,4 +1,76 @@
-
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: data-prepper
+  name: data-prepper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-prepper
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.network/my-network: "true"
+        app: data-prepper
+    spec:
+      containers:
+      - args:
+        - sh
+        - /appconfig/data-prepper-wait-for-odfe-and-start.sh
+        image: amazon/opendistro-for-elasticsearch-data-prepper:latest
+        imagePullPolicy: "IfNotPresent"
+        name: data-prepper
+        ports:
+        - containerPort: 21890
+        resources: {}
+        volumeMounts:
+        - mountPath: /appconfig
+          name: prepper-configmap-claim0
+      restartPolicy: Always
+      serviceAccountName: ""
+      volumes:
+      - name: prepper-configmap-claim0
+        configMap:
+          name: data-prepper-config
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: data-prepper
+  name: data-prepper
+spec:
+  ports:
+  - name: "21890"
+    port: 21890
+    targetPort: 21890
+  selector:
+    app: data-prepper
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: data-prepper
+  name: data-prepper-headless
+spec:
+  clusterIP: None
+  ports:
+  - name: "21890"
+    port: 21890
+    targetPort: 21890
+  selector:
+    app: data-prepper
+status:
+  loadBalancer: {}
+---
 apiVersion: v1
 data:
   data-prepper-wait-for-odfe-and-start.sh: |-
@@ -10,31 +82,6 @@ data:
     done
 
     java -Xms128m -Xmx128m -jar /usr/share/data-prepper/data-prepper.jar /appconfig/trace_analytics_no_ssl.yml
-  root-ca.pem: |
-    -----BEGIN CERTIFICATE-----
-    MIID/jCCAuagAwIBAgIBATANBgkqhkiG9w0BAQsFADCBjzETMBEGCgmSJomT8ixk
-    ARkWA2NvbTEXMBUGCgmSJomT8ixkARkWB2V4YW1wbGUxGTAXBgNVBAoMEEV4YW1w
-    bGUgQ29tIEluYy4xITAfBgNVBAsMGEV4YW1wbGUgQ29tIEluYy4gUm9vdCBDQTEh
-    MB8GA1UEAwwYRXhhbXBsZSBDb20gSW5jLiBSb290IENBMB4XDTE4MDQyMjAzNDM0
-    NloXDTI4MDQxOTAzNDM0NlowgY8xEzARBgoJkiaJk/IsZAEZFgNjb20xFzAVBgoJ
-    kiaJk/IsZAEZFgdleGFtcGxlMRkwFwYDVQQKDBBFeGFtcGxlIENvbSBJbmMuMSEw
-    HwYDVQQLDBhFeGFtcGxlIENvbSBJbmMuIFJvb3QgQ0ExITAfBgNVBAMMGEV4YW1w
-    bGUgQ29tIEluYy4gUm9vdCBDQTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoC
-    ggEBAK/u+GARP5innhpXK0c0q7s1Su1VTEaIgmZr8VWI6S8amf5cU3ktV7WT9SuV
-    TsAm2i2A5P+Ctw7iZkfnHWlsC3HhPUcd6mvzGZ4moxnamM7r+a9otRp3owYoGStX
-    ylVTQusAjbq9do8CMV4hcBTepCd+0w0v4h6UlXU8xjhj1xeUIz4DKbRgf36q0rv4
-    VIX46X72rMJSETKOSxuwLkov1ZOVbfSlPaygXIxqsHVlj1iMkYRbQmaTib6XWHKf
-    MibDaqDejOhukkCjzpptGZOPFQ8002UtTTNv1TiaKxkjMQJNwz6jfZ53ws3fh1I0
-    RWT6WfM4oeFRFnyFRmc4uYTUgAkCAwEAAaNjMGEwDwYDVR0TAQH/BAUwAwEB/zAf
-    BgNVHSMEGDAWgBSSNQzgDx4rRfZNOfN7X6LmEpdAczAdBgNVHQ4EFgQUkjUM4A8e
-    K0X2TTnze1+i5hKXQHMwDgYDVR0PAQH/BAQDAgGGMA0GCSqGSIb3DQEBCwUAA4IB
-    AQBoQHvwsR34hGO2m8qVR9nQ5Klo5HYPyd6ySKNcT36OZ4AQfaCGsk+SecTi35QF
-    RHL3g2qffED4tKR0RBNGQSgiLavmHGCh3YpDupKq2xhhEeS9oBmQzxanFwWFod4T
-    nnsG2cCejyR9WXoRzHisw0KJWeuNlwjUdJY0xnn16srm1zL/M/f0PvCyh9HU1mF1
-    ivnOSqbDD2Z7JSGyckgKad1Omsg/rr5XYtCeyJeXUPcmpeX6erWJJNTUh6yWC/hY
-    G/dFC4xrJhfXwz6Z0ytUygJO32bJG4Np2iGAwvvgI9EfxzEv/KP+FGrJOvQJAq4/
-    BU36ZAa80W/8TBnqZTkNnqZV
-    -----END CERTIFICATE-----
   trace_analytics_no_ssl.yml: |
     entry-pipeline:
       delay: "100"
@@ -59,7 +106,6 @@ data:
         - elasticsearch:
             hosts: [ "https://opendistro-for-elasticsearch:9200" ]
             insecure: true
-            # cert: "/app/root-ca.pem"
             username: "admin"
             password: "admin"
             trace_analytics_raw: true
@@ -74,7 +120,6 @@ data:
         - elasticsearch:
             hosts: ["https://opendistro-for-elasticsearch:9200"]
             insecure: true
-            # cert: "/app/root-ca.pem"
             username: "admin"
             password: "admin"
             trace_analytics_service_map: true
