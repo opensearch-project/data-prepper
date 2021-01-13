@@ -16,6 +16,7 @@ dependencies {
     compile project(':data-prepper-plugins:common')
     compile project(':data-prepper-plugins:lmdb-prepper-state')
     compile project(':data-prepper-plugins:mapdb-prepper-state')
+    implementation "io.micrometer:micrometer-core:1.5.1"
     implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
     testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
