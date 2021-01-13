@@ -1,6 +1,5 @@
 package com.amazon.dataprepper.plugins.source.oteltrace;
 
-import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
@@ -17,12 +16,12 @@ import java.util.concurrent.TimeoutException;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.when;
 
 
 public class OTelTraceGrpcServiceTest {
@@ -41,7 +40,6 @@ public class OTelTraceGrpcServiceTest {
     public void testRequestsReceivedCounter() {
 
         PluginMetrics mockPluginMetrics = mock(PluginMetrics.class);
-        MetricsTestUtil.initMetrics();
 
         ExportTraceServiceRequest request = ExportTraceServiceRequest.newBuilder().build();
         StreamObserver response = mock(StreamObserver.class);
@@ -64,7 +62,6 @@ public class OTelTraceGrpcServiceTest {
 
         PluginMetrics mockPluginMetrics = mock(PluginMetrics.class);
         Buffer mockBuffer = mock(Buffer.class);
-        MetricsTestUtil.initMetrics();
         ExportTraceServiceRequest request = ExportTraceServiceRequest.newBuilder().build();
         StreamObserver response = mock(StreamObserver.class);
         Counter mockRequestsReceivedCounter = mock(Counter.class);
