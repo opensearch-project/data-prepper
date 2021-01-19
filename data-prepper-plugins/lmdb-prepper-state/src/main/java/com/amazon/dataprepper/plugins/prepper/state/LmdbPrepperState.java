@@ -154,7 +154,7 @@ public class LmdbPrepperState<T> implements PrepperState<byte[], T> {
      */
     @Override
     public long sizeInBytes() {
-        return 2097152;
+        return 0;
     }
 
     private KeyRange getRange(int segments, int index) {
