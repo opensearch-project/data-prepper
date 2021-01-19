@@ -9,7 +9,6 @@ import com.amazon.dataprepper.plugins.prepper.state.MapDbPrepperState;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.primitives.SignedBytes;
-import io.micrometer.core.instrument.Counter;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
