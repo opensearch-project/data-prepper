@@ -33,7 +33,6 @@ public abstract class PrepperStateTest {
         prepperState.put(key2, data2);
 
         Assert.assertEquals(2, prepperState.size());
-        Assert.assertEquals(2097152, prepperState.sizeInBytes());
     }
 
     @Test
