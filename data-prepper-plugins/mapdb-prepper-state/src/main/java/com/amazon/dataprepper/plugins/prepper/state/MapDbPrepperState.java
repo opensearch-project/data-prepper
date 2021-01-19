@@ -27,10 +27,12 @@ public class MapDbPrepperState<V> implements PrepperState<byte[], V> {
     private static final SignedByteArraySerializer SIGNED_BYTE_ARRAY_SERIALIZER = new SignedByteArraySerializer();
 
     private final BTreeMap<byte[], V> map;
+    private final File completeDbPath;
 
     public MapDbPrepperState(final File dbPath, final String dbName, final int concurrencyScale) {
+        this.completeDbPath = new File(String.join("/", dbPath.getPath(), dbName));
         map =
-                (BTreeMap<byte[], V>) DBMaker.fileDB(new File(String.join("/", dbPath.getPath(), dbName)))
+                (BTreeMap<byte[], V>) DBMaker.fileDB(completeDbPath)
                         .fileDeleteAfterClose()
                         .fileMmapEnable() //MapDB uses the (slower) Random Access Files by default
                         .fileMmapPreclearDisable()
@@ -106,6 +108,12 @@ public class MapDbPrepperState<V> implements PrepperState<byte[], V> {
     @Override
     public long size() {
         return map.size();
+    }
+
+
+    @Override
+    public long sizeInBytes() {
+        return completeDbPath.length();
     }
 
     @Override
