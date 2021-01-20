@@ -18,6 +18,7 @@ dependencies {
     testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
     testImplementation(platform('org.junit:junit-bom:5.7.0'))
     testImplementation('org.junit.jupiter:junit-jupiter')
+    // TODO: update versionMap to use a higher version of mockito for all subprojects
     testImplementation("org.mockito:mockito-core:3.7.0")
     testImplementation("org.mockito:mockito-junit-jupiter:3.7.0")
 }
