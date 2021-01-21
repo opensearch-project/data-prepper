@@ -5,4 +5,4 @@ until [[ $(curl --write-out %{http_code} --output /dev/null --silent --head --fa
   sleep 1
 done
 
-java -Xms128m -Xmx128m -jar data-prepper.jar /app/data-prepper.yml
+java -Xms128m -Xmx128m -jar data-prepper.jar data-prepper.yml

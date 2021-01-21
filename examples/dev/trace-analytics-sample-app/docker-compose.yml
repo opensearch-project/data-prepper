@@ -49,15 +49,17 @@ services:
 
   data-prepper:
     restart: unless-stopped
+    dns: 10.10.1.1
     container_name: data-prepper
     build:
       context: ../../..
       dockerfile: examples/dev/trace-analytics-sample-app/Dockerfile
-    working_dir: /app
+    working_dir: /usr/share/data-prepper/
     command: sh data-prepper-wait-for-odfe-and-start.sh
     volumes:
-      - ./resources/data-prepper-wait-for-odfe-and-start.sh:/app/data-prepper-wait-for-odfe-and-start.sh
-      - ./resources/trace_analytics_no_ssl.yml:/app/data-prepper.yml
+      - ./resources/data-prepper-wait-for-odfe-and-start.sh:/usr/share/data-prepper/data-prepper-wait-for-odfe-and-start.sh
+      - ./resources/trace_analytics_no_ssl.yml:/usr/share/data-prepper/data-prepper.yml
+      - ../../../shared-config/log4j.properties:/usr/share/data-prepper/log4j.properties
       - ../../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
     ports:
       - "21890:21890"
@@ -95,7 +97,7 @@ services:
 
   otel-collector:
     restart: unless-stopped
-    dns: 10.10.0.1
+    dns: 10.10.1.1
     image: otel/opentelemetry-collector:0.14.0
     command: ["--config=/etc/otel-collector-config.yml"]
     volumes:

@@ -41,6 +41,8 @@ DNS discovery is recommended when scaling out a Data Prepper cluster. The core c
 ### With Kubernetes (Recommended)
 [Kubernetes](https://kubernetes.io/) is the recommended approach to managing a Data Prepper cluster. In addition to handling tasks like failure detection and host replacement, it also maintains an internal DNS service for pod discovery. [Headless services](https://kubernetes.io/docs/concepts/services-networking/service/#headless-services) allow for a single service address to map to all Data Prepper pods. This DNS entry is automatically kept up-to-date as pods are created/replaced/destroyed.
 
+See the /examples/dev/k8s directory for a working example using minikube.
+
 ### With a custom DNS server
 A DNS server (like [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html)) can be configured to maintain a list of Data Prepper hosts via config files. Data Prepper hosts must be configured to use the custom DNS server as their DNS provider. The list of hosts must be manually updated whenever a new Data Prepper host is created. See the [/examples/dev/dns directory](https://github.com/opendistro-for-elasticsearch/data-prepper/tree/master/examples/dev/dns) for a set of sample dnsmasq configuration files.
 

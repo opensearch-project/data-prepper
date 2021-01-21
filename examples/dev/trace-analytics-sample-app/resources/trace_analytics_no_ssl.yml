@@ -2,6 +2,10 @@ entry-pipeline:
   delay: "100"
   source:
     otel_trace_source:
+  prepper:
+    - peer_forwarder:
+        discovery_mode: "dns"
+        domain_name: "prepper-cluster"
   sink:
     - pipeline:
         name: "raw-pipeline"
