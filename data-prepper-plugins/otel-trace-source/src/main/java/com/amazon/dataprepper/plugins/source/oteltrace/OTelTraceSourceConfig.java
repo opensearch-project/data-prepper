@@ -3,13 +3,13 @@ package com.amazon.dataprepper.plugins.source.oteltrace;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 
 public class OTelTraceSourceConfig {
-    private static final String REQUEST_TIMEOUT = "request_timeout";
-    private static final String PORT = "port";
-    private static final String SSL = "ssl";
-    private static final String HEALTH_CHECK_SERVICE = "health_check_service";
-    private static final String PROTO_REFLECTION_SERVICE = "proto_reflection_service";
-    private static final String SSL_KEY_CERT_FILE = "sslKeyCertChainFile";
-    private static final String SSL_KEY_FILE = "sslKeyFile";
+    static final String REQUEST_TIMEOUT = "request_timeout";
+    static final String PORT = "port";
+    static final String SSL = "ssl";
+    static final String HEALTH_CHECK_SERVICE = "health_check_service";
+    static final String PROTO_REFLECTION_SERVICE = "proto_reflection_service";
+    static final String SSL_KEY_CERT_FILE = "sslKeyCertChainFile";
+    static final String SSL_KEY_FILE = "sslKeyFile";
     private static final int DEFAULT_REQUEST_TIMEOUT = 10_000;
     private static final int DEFAULT_PORT = 21890;
     private static final boolean DEFAULT_SSL = false;
