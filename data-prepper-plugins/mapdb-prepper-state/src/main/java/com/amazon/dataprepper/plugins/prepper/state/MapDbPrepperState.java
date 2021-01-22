@@ -37,12 +37,14 @@ public class MapDbPrepperState<V> implements PrepperState<byte[], V> {
                         .fileMmapEnable() //MapDB uses the (slower) Random Access Files by default
                         .fileMmapPreclearDisable()
                         .executorEnable()
+                        .transactionEnable()
+                        .closeOnJvmShutdown()
                         .concurrencyScale(concurrencyScale)
                         .make()
                         .treeMap(dbName)
                         .counterEnable() //Treemap doesnt keep:q size counter by default
                         .keySerializer(SIGNED_BYTE_ARRAY_SERIALIZER)
-                        .valueSerializer(Serializer.JAVA).create();
+                        .valueSerializer(Serializer.JAVA).createOrOpen();
     }
 
     @Override
