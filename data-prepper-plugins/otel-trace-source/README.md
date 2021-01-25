@@ -16,3 +16,5 @@ source:
 * ssl => Default is ```false```.
 * sslKeyCertChainFile => Should be provided if ```ssl``` is set to ```true```
 * sslKeyFile => Should be provided if ```ssl``` is set to ```true```
+* thread_count => the number of threads to keep in the ScheduledThreadPool. Default is `200`
+* max_connection_count => the maximum allowed number of open connections. Default is `500`
