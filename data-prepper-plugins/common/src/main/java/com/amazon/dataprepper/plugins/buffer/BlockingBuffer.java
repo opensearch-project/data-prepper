@@ -6,6 +6,7 @@ import com.amazon.dataprepper.model.buffer.AbstractBuffer;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.model.CheckpointState;
 import com.google.common.base.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,9 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
@@ -41,8 +45,15 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
 
     private final int batchSize;
+    private final int bufferCapacity;
     private final BlockingQueue<T> blockingQueue;
     private final String pipelineName;
+    private final AtomicInteger numInflightRecords = new AtomicInteger();
+
+    /** Lock held by doWrite */
+    private final ReentrantLock writeLock = new ReentrantLock();
+    /** Wait queue for waiting doWrites. Needs to be guarded by writeLock */
+    private final Condition notFull = writeLock.newCondition();
 
     /**
      * Creates a BlockingBuffer with the given (fixed) capacity.
@@ -54,6 +65,7 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     public BlockingBuffer(final int bufferCapacity, final int batchSize, final String pipelineName) {
         super("BlockingBuffer", pipelineName);
         this.batchSize = batchSize;
+        this.bufferCapacity = bufferCapacity;
         this.blockingQueue = new LinkedBlockingQueue<>(bufferCapacity);
         this.pipelineName = pipelineName;
     }
@@ -80,15 +92,29 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
 
     @Override
     public void doWrite(T record, int timeoutInMillis) throws TimeoutException {
+        long nanos = TimeUnit.MILLISECONDS.toNanos(timeoutInMillis);
+        final int c;
         try {
-            boolean isSuccess = blockingQueue.offer(record, timeoutInMillis, TimeUnit.MILLISECONDS);
-            if (!isSuccess) {
-                throw new TimeoutException(format("Pipeline [%s] - Buffer is full, timed out waiting for a slot",
-                        pipelineName));
+            writeLock.lockInterruptibly();
+            final AtomicInteger count = this.numInflightRecords;
+            while (count.get() == this.bufferCapacity) {
+                if (nanos <= 0L) {
+                    throw new TimeoutException(format("Pipeline [%s] - Buffer is full, timed out waiting for a slot",
+                            pipelineName));
+                }
+                nanos = notFull.awaitNanos(nanos);
+            }
+            blockingQueue.offer(record);
+            c = count.incrementAndGet();
+            if (c < this.bufferCapacity) {
+                // Wake up other doWrite waiting threads due to previous full buffer state.
+                notFull.signal();
             }
         } catch (InterruptedException ex) {
             LOG.error("Pipeline [{}] - Buffer is full, interrupted while waiting to write the record", pipelineName, ex);
             throw new TimeoutException("Buffer is full, timed out waiting for a slot");
+        } finally {
+            writeLock.unlock();
         }
     }
 
@@ -131,5 +157,28 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
         settings.put(ATTRIBUTE_BUFFER_CAPACITY, DEFAULT_BUFFER_CAPACITY);
         settings.put(ATTRIBUTE_BATCH_SIZE, DEFAULT_BATCH_SIZE);
         return new PluginSetting(PLUGIN_NAME, settings);
+    }
+
+    @Override
+    public void checkpoint(final CheckpointState checkpointState) {
+        final int numCheckedRecords = checkpointState.getNumCheckedRecords();
+        final int c = numInflightRecords.getAndAdd(-numCheckedRecords);
+        if (c == this.bufferCapacity) {
+            // Wake up a doWrite thread if the previous buffer is full
+            signalNotFull();
+        }
+    }
+
+    /**
+     * Signals a waiting write.
+     */
+    private void signalNotFull() {
+        final ReentrantLock putLock = this.writeLock;
+        putLock.lock();
+        try {
+            notFull.signal();
+        } finally {
+            putLock.unlock();
+        }
     }
 }
