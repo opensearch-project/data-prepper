@@ -6,10 +6,13 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.OTelProtoHelper;
+import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpan;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanBuilder;
+import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanSet;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.primitives.Ints;
 import io.micrometer.core.instrument.Counter;
-
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
@@ -19,9 +22,15 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.DelayQueue;
+import java.util.concurrent.Delayed;
+import java.util.concurrent.TimeUnit;
 
 
 @DataPrepperPlugin(name = "otel_trace_raw_prepper", type = PluginType.PREPPER)
@@ -45,9 +54,19 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     public static final String RESOURCE_SPANS_PROCESSING_ERRORS = "resourceSpansProcessingErrors";
     public static final String TOTAL_PROCESSING_ERRORS = "totalProcessingErrors";
 
+    // TODO: Allow this to be configured
+    private static final long GC_INTERVAL_MS = 30000L;
+    // TODO: Allow this to be configured
+    private static final long PARENT_SPAN_FLUSH_DELAY_MS = 5000L;
+
     private final Counter spanErrorsCounter;
     private final Counter resourceSpanErrorsCounter;
     private final Counter totalProcessingErrorsCounter;
+
+    private final Queue<DelayedParentSpan> delayedParentSpanQueue = new DelayQueue<>();
+    private final Map<String, RawSpanSet> traceIdRawSpanSetMap = new HashMap<>();
+
+    private long lastGarbageCollectionTime = 0L;
 
 
     //TODO: https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/66
@@ -58,7 +77,6 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
         totalProcessingErrorsCounter = pluginMetrics.counter(TOTAL_PROCESSING_ERRORS);
     }
 
-
     /**
      * execute the prepper logic which could potentially modify the incoming record. The level to which the record has
      * been modified depends on the implementation
@@ -68,7 +86,12 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
      */
     @Override
     public Collection<Record<String>> doExecute(Collection<Record<ExportTraceServiceRequest>> records) {
-        final List<Record<String>> finalRecords = new LinkedList<>();
+        final List<RawSpan> rawSpans = new LinkedList<>();
+        // TODO: Track messages in and messages out (for those that get TTL'd by mapdb)
+
+        rawSpans.addAll(getTracesToFlushByParentSpan());
+        rawSpans.addAll(getTracesToFlushByGarbageCollection());
+
         for (Record<ExportTraceServiceRequest> ets : records) {
             for (ResourceSpans rs : ets.getData().getResourceSpansList()) {
                 try {
@@ -76,14 +99,24 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                     final Map<String, Object> resourceAttributes = OTelProtoHelper.getResourceAttributes(rs.getResource());
                     for (InstrumentationLibrarySpans is : rs.getInstrumentationLibrarySpansList()) {
                         for (Span sp : is.getSpansList()) {
-                            try {
-                                finalRecords.add(new Record<>(new RawSpanBuilder()
-                                        .setFromSpan(sp, is.getInstrumentationLibrary(), serviceName, resourceAttributes)
-                                        .build().toJson()));
-                            } catch (Exception ex) {
-                                log.error("Unable to process invalid Span {}:", sp, ex);
-                                spanErrorsCounter.increment();
-                                totalProcessingErrorsCounter.increment();
+                            final long now = System.currentTimeMillis();
+                            final long nowPlusOffset = now + PARENT_SPAN_FLUSH_DELAY_MS;
+
+                            final RawSpan rawSpan = new RawSpanBuilder()
+                                    .setFromSpan(sp, is.getInstrumentationLibrary(), serviceName, resourceAttributes)
+                                    .build();
+                            final String traceId = rawSpan.getTraceId();
+
+                            if (rawSpan.getParentSpanId() == null || "".equals(rawSpan.getParentSpanId())) {
+                                // Handle parent spans
+                                final DelayedParentSpan delayedParentSpan = new DelayedParentSpan(rawSpan, nowPlusOffset);
+                                delayedParentSpanQueue.add(delayedParentSpan);
+                            } else {
+                                // Handle child spans
+                                if (!traceIdRawSpanSetMap.containsKey(traceId)) {
+                                    traceIdRawSpanSetMap.put(traceId, new RawSpanSet());
+                                }
+                                traceIdRawSpanSetMap.get(traceId).addRawSpan(rawSpan);
                             }
                         }
                     }
@@ -94,11 +127,150 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                 }
             }
         }
-        return finalRecords;
+
+        return convertRawSpansToJsonRecords(rawSpans);
     }
+
+    private List<Record<String>> convertRawSpansToJsonRecords(final List<RawSpan> rawSpans) {
+        final List<Record<String>> records = new LinkedList<>();
+
+        for (RawSpan rawSpan : rawSpans) {
+            String rawSpanJson;
+            try {
+                rawSpanJson = rawSpan.toJson();
+            } catch (JsonProcessingException e) {
+                log.error("Unable to process invalid Span {}:", rawSpan, e);
+                spanErrorsCounter.increment();
+                totalProcessingErrorsCounter.increment();
+                continue;
+            }
+
+            records.add(new Record<>(rawSpanJson));
+        }
+
+        return records;
+    }
+
+    private List<RawSpan> getTracesToFlushByParentSpan() {
+        final List<RawSpan> recordsToFlush = new LinkedList<>();
+
+        // TODO: can change this do "do while" and remove peek
+        while (delayedParentSpanQueue.peek() != null) {
+            DelayedParentSpan delayedParentSpan = delayedParentSpanQueue.poll();
+            if (delayedParentSpan == null) {
+                break;
+            }
+
+            RawSpan parentSpan = delayedParentSpan.getRawSpan();
+            recordsToFlush.add(parentSpan);
+
+            String traceGroup = parentSpan.getTraceGroup();
+            String parentSpanTraceId = parentSpan.getTraceId();
+
+            if (traceIdRawSpanSetMap.containsKey(parentSpanTraceId)) {
+                for (RawSpan rawSpan : traceIdRawSpanSetMap.get(parentSpanTraceId).getRawSpans()) {
+                    rawSpan.setTraceGroup(traceGroup);
+                    recordsToFlush.add(rawSpan);
+                }
+
+                traceIdRawSpanSetMap.remove(parentSpanTraceId);
+            }
+        }
+
+        return recordsToFlush;
+    }
+
+
+    private List<RawSpan> getTracesToFlushByGarbageCollection() {
+        final List<RawSpan> recordsToFlush = new LinkedList<>();
+
+        if (shouldGarbageCollect()) {
+            final long now = System.currentTimeMillis();
+            lastGarbageCollectionTime = now;
+
+            Set<String> keys = traceIdRawSpanSetMap.keySet();
+            for (String traceId : keys) {
+                long traceTime = traceIdRawSpanSetMap.get(traceId).getTimeSeen();
+                if (now - traceTime >= GC_INTERVAL_MS) {
+                    Set<RawSpan> rawSpans = traceIdRawSpanSetMap.get(traceId).getRawSpans();
+                    for (RawSpan rawSpan : rawSpans) {
+                        rawSpan.setTraceGroup("ERROR");
+                        recordsToFlush.add(rawSpan);
+                    }
+
+                    traceIdRawSpanSetMap.remove(traceId);
+                }
+            }
+            // TODO: Replace
+            log.error("Flushing {} records due to GC", recordsToFlush.size());
+        }
+
+        return recordsToFlush;
+    }
+
+    private boolean shouldGarbageCollect() {
+        return System.currentTimeMillis() - lastGarbageCollectionTime >= GC_INTERVAL_MS;
+    }
+
+    //    @Override
+//    public Collection<Record<String>> doExecut2e(Collection<Record<ExportTraceServiceRequest>> records) {
+//        final List<Record<String>> finalRecords = new LinkedList<>();
+//        for (Record<ExportTraceServiceRequest> ets : records) {
+//            for (ResourceSpans rs : ets.getData().getResourceSpansList()) {
+//                try {
+//                    final String serviceName = OTelProtoHelper.getServiceName(rs.getResource()).orElse(null);
+//                    final Map<String, Object> resourceAttributes = OTelProtoHelper.getResourceAttributes(rs.getResource());
+//                    for (InstrumentationLibrarySpans is : rs.getInstrumentationLibrarySpansList()) {
+//                        for (Span sp : is.getSpansList()) {
+//                            try {
+//                                finalRecords.add(new Record<>(new RawSpanBuilder()
+//                                        .setFromSpan(sp, is.getInstrumentationLibrary(), serviceName, resourceAttributes)
+//                                        .build().toJson()));
+//                            } catch (Exception ex) {
+//                                log.error("Unable to process invalid Span {}:", sp, ex);
+//                                spanErrorsCounter.increment();
+//                                totalProcessingErrorsCounter.increment();
+//                            }
+//                        }
+//                    }
+//                } catch (Exception ex) {
+//                    log.error("Unable to process invalid ResourceSpan {} :", rs, ex);
+//                    resourceSpanErrorsCounter.increment();
+//                    totalProcessingErrorsCounter.increment();
+//                }
+//            }
+//        }
+//        return finalRecords;
+//    }
 
     @Override
     public void shutdown() {
 
+    }
+
+    class DelayedParentSpan implements Delayed {
+        private RawSpan rawSpan;
+        private long delayTime;
+
+        public DelayedParentSpan(RawSpan rawSpan, long startTime) {
+            this.rawSpan = rawSpan;
+            this.delayTime = startTime;
+        }
+
+        @Override
+        public long getDelay(TimeUnit unit) {
+            long diff = delayTime - System.currentTimeMillis();
+            return unit.convert(diff, TimeUnit.MILLISECONDS);
+        }
+
+        @Override
+        public int compareTo(Delayed o) {
+            return Ints.saturatedCast(
+                    this.delayTime - ((DelayedParentSpan) o).delayTime);
+        }
+
+        public RawSpan getRawSpan() {
+            return rawSpan;
+        }
     }
 }

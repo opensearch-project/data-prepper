@@ -42,6 +42,7 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
         if (server == null) {
             final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                     .builder()
+                    .enableUnframedRequests(true)
                     .addService(new OTelTraceGrpcService(
                             oTelTraceSourceConfig.getRequestTimeoutInMillis(),
                             buffer,

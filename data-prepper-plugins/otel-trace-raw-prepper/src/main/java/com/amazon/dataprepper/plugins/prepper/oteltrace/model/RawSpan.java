@@ -91,7 +91,7 @@ public final class RawSpan {
      * traceGroup = this.name;
      * }
      */
-    private final String traceGroup;
+    private String traceGroup;
 
 
     public String getTraceId() {
@@ -152,6 +152,10 @@ public final class RawSpan {
 
     public int getDroppedLinksCount() {
         return droppedLinksCount;
+    }
+
+    public void setTraceGroup(String traceGroup) {
+        this.traceGroup = traceGroup;
     }
 
     RawSpan(RawSpanBuilder builder) {
