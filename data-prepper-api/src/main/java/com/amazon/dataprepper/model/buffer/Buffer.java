@@ -1,6 +1,7 @@
 package com.amazon.dataprepper.model.buffer;
 
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.model.CheckpointState;
 
 import java.util.Collection;
 import java.util.concurrent.TimeoutException;
@@ -27,4 +28,10 @@ public interface Buffer<T extends Record<?>> {
      */
     Collection<T> read(int timeoutInMillis);
 
+    /**
+     * Check summary of records processed by data-prepper downstreams(preppers, sinks, pipelines).
+     *
+     * @param checkpointState the summary object of checkpoint variables
+     */
+    void checkpoint(CheckpointState checkpointState);
 }
