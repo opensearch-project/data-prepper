@@ -6,6 +6,7 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.pipeline.common.FutureHelper;
 import com.amazon.dataprepper.pipeline.common.FutureHelperResult;
+import com.amazon.dataprepper.model.CheckpointState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +55,7 @@ public class ProcessWorker implements Runnable {
                 }
                 if (!records.isEmpty()) {
                     postToSink(records); //TODO use the response to ack the buffer on failure?
+                    readBuffer.checkpoint(new CheckpointState(records.size()));
                 }
             } while (!shouldStop());
         } catch (final Exception ex) {
