@@ -62,7 +62,8 @@ services:
       - ../../../shared-config/log4j.properties:/usr/share/data-prepper/log4j.properties
       - ../../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
     ports:
-      - "21890:21890"
+      - "4900:4900" # DataPrepperServer port
+      - "21890:21890" # OTelTraceSource port
     networks:
       my_network:
         ipv4_address: 10.10.1.2
