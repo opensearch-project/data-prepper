@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 
 @DataPrepperPlugin(name = "otel_trace_source", type = PluginType.SOURCE)
 public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>> {
@@ -68,7 +69,11 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
                 sb.http(oTelTraceSourceConfig.getPort());
             }
 
-            //TODO: Expose BlockingTaskExecutor/Connections
+            sb.maxNumConnections(oTelTraceSourceConfig.getMaxConnectionCount());
+            sb.blockingTaskExecutor(
+                    Executors.newScheduledThreadPool(oTelTraceSourceConfig.getThreadCount()),
+                    true);
+
             server = sb.build();
         }
         try {

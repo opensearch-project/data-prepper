@@ -62,6 +62,7 @@ services:
       - ../../../shared-config/log4j.properties:/usr/share/data-prepper/log4j.properties
       - ../../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
     ports:
+      - "4900:4900"
       - "21890:21890"
     networks:
       my_network:
