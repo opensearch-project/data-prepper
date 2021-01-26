@@ -197,6 +197,8 @@ public class ServiceMapStatefulPrepperTest {
                         .add(ServiceMapStatefulPrepper.TRACE_GROUP_DB_SIZE).toString());
         Assert.assertEquals(1, traceGroupDbSizeMeasurement.size());
 
+        System.out.println("SpansDB: " + spansDbSizeMeasurement.get(0).getValue());
+
 
         //Make sure that future relationships that are equivalent are caught by cache
         final byte[] rootSpanId3 = ServiceMapTestUtils.getRandomBytes(8);

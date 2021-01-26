@@ -57,8 +57,8 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
     private static int processWorkers;
 
     private final int thisPrepperId;
-    private final Pair<MapDbPrepperState<ServiceMapStateData>, MapDbPrepperState<ServiceMapStateData>> spanDbPair;
-    private final Pair<MapDbPrepperState<String>, MapDbPrepperState<String>> traceDbPair;
+    private Pair<MapDbPrepperState<ServiceMapStateData>, MapDbPrepperState<ServiceMapStateData>> spanDbPair;
+    private Pair<MapDbPrepperState<String>, MapDbPrepperState<String>> traceDbPair;
 
 
     public ServiceMapStatefulPrepper(final PluginSetting pluginSetting) {
@@ -74,11 +74,6 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
                                      final PluginSetting pluginSetting) {
         super(pluginSetting);
 
-        this.spanDbPair = Pair.of(previousWindow, currentWindow);
-        this.traceDbPair = Pair.of(previousTraceGroupWindow, currentTraceGroupWindow);
-        pluginMetrics.gauge(SPANS_DB_SIZE, spanDbPair, pair -> pair.getLeft().sizeInBytes() + pair.getRight().sizeInBytes());
-        pluginMetrics.gauge(TRACE_GROUP_DB_SIZE, traceDbPair, pair -> pair.getLeft().sizeInBytes() + pair.getRight().sizeInBytes());
-
         ServiceMapStatefulPrepper.clock = clock;
         this.thisPrepperId = preppersCreated.getAndIncrement();
         if (isMasterInstance()) {
@@ -91,6 +86,11 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
             currentTraceGroupWindow = new MapDbPrepperState<>(dbPath, getNewTraceDbName(), processWorkers);
             previousTraceGroupWindow = new MapDbPrepperState<>(dbPath, getNewTraceDbName() + EMPTY_SUFFIX, processWorkers);
         }
+
+        this.spanDbPair = Pair.of(previousWindow, currentWindow);
+        this.traceDbPair = Pair.of(previousTraceGroupWindow, currentTraceGroupWindow);
+        pluginMetrics.gauge(SPANS_DB_SIZE, this, serviceMapStateful -> serviceMapStateful.getSpansDbSize());
+        pluginMetrics.gauge(TRACE_GROUP_DB_SIZE, this, serviceMapStateful -> serviceMapStateful.getTraceGroupDbSize());
     }
 
     /**
@@ -327,6 +327,14 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
         currentTraceGroupWindow = new MapDbPrepperState<>(dbPath, getNewTraceDbName(), processWorkers);
         previousTimestamp = clock.millis();
         doneRotatingWindows();
+    }
+
+    public double getSpansDbSize() {
+        return currentWindow.sizeInBytes() + previousWindow.sizeInBytes();
+    }
+
+    public double getTraceGroupDbSize() {
+        return currentTraceGroupWindow.sizeInBytes() + previousTraceGroupWindow.sizeInBytes();
     }
 
     /**
