@@ -10,7 +10,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.primitives.SignedBytes;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
-import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,9 +55,6 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
     private static int processWorkers;
 
     private final int thisPrepperId;
-    private Pair<MapDbPrepperState<ServiceMapStateData>, MapDbPrepperState<ServiceMapStateData>> spanDbPair;
-    private Pair<MapDbPrepperState<String>, MapDbPrepperState<String>> traceDbPair;
-
 
     public ServiceMapStatefulPrepper(final PluginSetting pluginSetting) {
         this(pluginSetting.getIntegerOrDefault(ServiceMapPrepperConfig.WINDOW_DURATION, ServiceMapPrepperConfig.DEFAULT_WINDOW_DURATION) * TO_MILLIS,
@@ -86,8 +82,6 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
             previousTraceGroupWindow = new MapDbPrepperState<>(dbPath, getNewTraceDbName() + EMPTY_SUFFIX, processWorkers);
         }
 
-        this.spanDbPair = Pair.of(previousWindow, currentWindow);
-        this.traceDbPair = Pair.of(previousTraceGroupWindow, currentTraceGroupWindow);
         pluginMetrics.gauge(SPANS_DB_SIZE, this, serviceMapStateful -> serviceMapStateful.getSpansDbSize());
         pluginMetrics.gauge(TRACE_GROUP_DB_SIZE, this, serviceMapStateful -> serviceMapStateful.getTraceGroupDbSize());
     }
