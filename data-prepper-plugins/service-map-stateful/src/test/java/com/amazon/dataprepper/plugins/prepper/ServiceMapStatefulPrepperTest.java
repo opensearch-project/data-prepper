@@ -191,13 +191,13 @@ public class ServiceMapStatefulPrepperTest {
                 new StringJoiner(MetricNames.DELIMITER).add("testPipelineName").add("testServiceMapPrepper")
                         .add(ServiceMapStatefulPrepper.SPANS_DB_SIZE).toString());
         Assert.assertEquals(1, spansDbSizeMeasurement.size());
+        Assert.assertEquals(2097152, spansDbSizeMeasurement.get(0).getValue(), 0);
 
         final List<Measurement> traceGroupDbSizeMeasurement = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add("testPipelineName").add("testServiceMapPrepper")
                         .add(ServiceMapStatefulPrepper.TRACE_GROUP_DB_SIZE).toString());
         Assert.assertEquals(1, traceGroupDbSizeMeasurement.size());
-
-        System.out.println("SpansDB: " + spansDbSizeMeasurement.get(0).getValue());
+        Assert.assertEquals(2097152, traceGroupDbSizeMeasurement.get(0).getValue(), 0);
 
 
         //Make sure that future relationships that are equivalent are caught by cache
