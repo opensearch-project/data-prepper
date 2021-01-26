@@ -32,7 +32,6 @@ import java.util.stream.Stream;
 @DataPrepperPlugin(name = "service_map_stateful", type = PluginType.PREPPER)
 public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
 
-    //TODO: Implement the following gauges
     public static final String SPANS_DB_SIZE = "spansDbSize";
     public static final String TRACE_GROUP_DB_SIZE = "traceGroupDbSize";
 
@@ -167,8 +166,8 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
      */
     private Collection<Record<String>> evaluateEdges() {
         try {
-            final Stream<ServiceMapRelationship> previousStream = previousWindow.iterate(realtionshipIterationFunction, preppersCreated.get(), thisPrepperId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
-            final Stream<ServiceMapRelationship> currentStream = currentWindow.iterate(realtionshipIterationFunction, preppersCreated.get(), thisPrepperId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
+            final Stream<ServiceMapRelationship> previousStream = previousWindow.iterate(relationshipIterationFunction, preppersCreated.get(), thisPrepperId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
+            final Stream<ServiceMapRelationship> currentStream = currentWindow.iterate(relationshipIterationFunction, preppersCreated.get(), thisPrepperId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
 
             final Collection<Record<String>> serviceDependencyRecords =
                     Stream.concat(previousStream, currentStream).filter(Objects::nonNull)
@@ -212,7 +211,7 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
      * This function is used to iterate over the current window and find parent/child relationships in the current and
      * previous windows.
      */
-    private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> realtionshipIterationFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
+    private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> relationshipIterationFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
         @Override
         public Stream<ServiceMapRelationship> apply(byte[] s, ServiceMapStateData serviceMapStateData) {
             return lookupParentSpan(serviceMapStateData, true);
@@ -329,10 +328,16 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
         doneRotatingWindows();
     }
 
+    /**
+     * @return Spans database size in bytes
+     */
     public double getSpansDbSize() {
         return currentWindow.sizeInBytes() + previousWindow.sizeInBytes();
     }
 
+    /**
+     * @return Trace group database size in bytes
+     */
     public double getTraceGroupDbSize() {
         return currentTraceGroupWindow.sizeInBytes() + previousTraceGroupWindow.sizeInBytes();
     }
