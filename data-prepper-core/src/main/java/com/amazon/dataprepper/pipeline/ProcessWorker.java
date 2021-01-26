@@ -40,6 +40,7 @@ public class ProcessWorker implements Runnable {
         try {
             do {
                 Collection records = readBuffer.read(pipeline.getReadBatchTimeoutInMillis());
+                final CheckpointState checkpointState = new CheckpointState(records.size());
                 //TODO Hacky way to avoid logging continuously - Will be removed as part of metrics implementation
                 if (records.isEmpty()) {
                     if(!isEmptyRecordsLogged) {
@@ -55,8 +56,9 @@ public class ProcessWorker implements Runnable {
                 }
                 if (!records.isEmpty()) {
                     postToSink(records); //TODO use the response to ack the buffer on failure?
-                    readBuffer.checkpoint(new CheckpointState(records.size()));
                 }
+                // Checkpoint the current batch read from the buffer after being processed by prepper and sinks.
+                readBuffer.checkpoint(checkpointState);
             } while (!shouldStop());
         } catch (final Exception ex) {
             LOG.error("Encountered exception during pipeline processing", ex); //do not halt the execution
