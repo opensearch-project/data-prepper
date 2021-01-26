@@ -93,7 +93,6 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     @Override
     public void doWrite(T record, int timeoutInMillis) throws TimeoutException {
         long nanos = TimeUnit.MILLISECONDS.toNanos(timeoutInMillis);
-        final int c;
         try {
             writeLock.lockInterruptibly();
             final AtomicInteger count = this.numInflightRecords;
@@ -105,7 +104,7 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
                 nanos = notFull.awaitNanos(nanos);
             }
             blockingQueue.offer(record);
-            c = count.incrementAndGet();
+            final int c = count.incrementAndGet();
             if (c < this.bufferCapacity) {
                 // Wake up other doWrite waiting threads due to previous full buffer state.
                 notFull.signal();
