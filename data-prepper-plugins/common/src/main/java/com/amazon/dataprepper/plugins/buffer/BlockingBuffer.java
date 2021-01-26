@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,15 +46,11 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
 
     private final int batchSize;
-    private final int bufferCapacity;
     private final BlockingQueue<T> blockingQueue;
     private final String pipelineName;
-    private final AtomicInteger numInflightRecords = new AtomicInteger();
 
-    /** Lock held by doWrite */
-    private final ReentrantLock writeLock = new ReentrantLock();
-    /** Wait queue for waiting doWrites. Needs to be guarded by writeLock */
-    private final Condition notFull = writeLock.newCondition();
+    // A counting semaphore to control inflight records below buffer capacity.
+    private final Semaphore available;
 
     /**
      * Creates a BlockingBuffer with the given (fixed) capacity.
@@ -65,8 +62,8 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     public BlockingBuffer(final int bufferCapacity, final int batchSize, final String pipelineName) {
         super("BlockingBuffer", pipelineName);
         this.batchSize = batchSize;
-        this.bufferCapacity = bufferCapacity;
         this.blockingQueue = new LinkedBlockingQueue<>(bufferCapacity);
+        this.available = new Semaphore(bufferCapacity);
         this.pipelineName = pipelineName;
     }
 
@@ -92,28 +89,16 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
 
     @Override
     public void doWrite(T record, int timeoutInMillis) throws TimeoutException {
-        long nanos = TimeUnit.MILLISECONDS.toNanos(timeoutInMillis);
         try {
-            writeLock.lockInterruptibly();
-            final AtomicInteger count = this.numInflightRecords;
-            while (count.get() == this.bufferCapacity) {
-                if (nanos <= 0L) {
-                    throw new TimeoutException(format("Pipeline [%s] - Buffer is full, timed out waiting for a slot",
-                            pipelineName));
-                }
-                nanos = notFull.awaitNanos(nanos);
+            final boolean isSuccess = available.tryAcquire(timeoutInMillis, TimeUnit.MILLISECONDS);
+            if (!isSuccess) {
+                throw new TimeoutException(format("Pipeline [%s] - Buffer is full, timed out waiting for a slot",
+                        pipelineName));
             }
             blockingQueue.offer(record);
-            final int c = count.incrementAndGet();
-            if (c < this.bufferCapacity) {
-                // Wake up other doWrite waiting threads due to previous full buffer state.
-                notFull.signal();
-            }
         } catch (InterruptedException ex) {
             LOG.error("Pipeline [{}] - Buffer is full, interrupted while waiting to write the record", pipelineName, ex);
             throw new TimeoutException("Buffer is full, timed out waiting for a slot");
-        } finally {
-            writeLock.unlock();
         }
     }
 
@@ -161,23 +146,6 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     @Override
     public void checkpoint(final CheckpointState checkpointState) {
         final int numCheckedRecords = checkpointState.getNumCheckedRecords();
-        final int c = numInflightRecords.getAndAdd(-numCheckedRecords);
-        if (c == this.bufferCapacity) {
-            // Wake up a doWrite thread if the previous buffer is full
-            signalNotFull();
-        }
-    }
-
-    /**
-     * Signals a waiting write.
-     */
-    private void signalNotFull() {
-        final ReentrantLock putLock = this.writeLock;
-        putLock.lock();
-        try {
-            notFull.signal();
-        } finally {
-            putLock.unlock();
-        }
+        available.release(numCheckedRecords);
     }
 }
