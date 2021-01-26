@@ -62,7 +62,7 @@ public class MapDbPrepperStateTest extends PrepperStateTest {
                 data4.stringVal
         )));
 
-        Assert.assertTrue( prepperState.sizeInBytes() > 0 && prepperState.sizeInBytes() <= 2097152);
+        Assert.assertEquals( 1048576, prepperState.sizeInBytes());
     }
 
 }
