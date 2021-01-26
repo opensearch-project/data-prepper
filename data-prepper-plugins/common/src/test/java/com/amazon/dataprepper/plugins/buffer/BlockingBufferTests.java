@@ -74,22 +74,32 @@ public class BlockingBufferTests {
 
     @Test
     public void testNoEmptySpaceAfterUncheckedRead() throws TimeoutException {
+        // Given
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(1, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
         blockingBuffer.write(new Record<>("FILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
+
+        // When
         blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+
+        // Then
         assertThrows(TimeoutException.class, () -> blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT));
     }
 
     @Test
     public void testWriteIntoEmptySpaceAfterCheckedRead() throws TimeoutException {
+        // Given
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(1, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
         blockingBuffer.write(new Record<>("FILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
+
+        // When
         final Collection<Record<String>> exportedRecords = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
         blockingBuffer.checkpoint(new CheckpointState(exportedRecords.size()));
+
+        // Then
         blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT);
     }
 
@@ -130,6 +140,7 @@ public class BlockingBufferTests {
 
     @Test
     public void testWriteAfterCheckedBatchReads() throws Exception {
+        // Given
         final PluginSetting completePluginSetting = completePluginSettingForBlockingBuffer();
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(completePluginSetting);
         assertThat(blockingBuffer, notNullValue());
@@ -137,14 +148,19 @@ public class BlockingBufferTests {
             Record<String> record = new Record<>("TEST" + i);
             blockingBuffer.write(record, TEST_WRITE_TIMEOUT);
         }
+
+        // When
         Collection<Record<String>> partialRecords1 = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
         final int numPartialRecords1 = partialRecords1.size();
         blockingBuffer.checkpoint(new CheckpointState(numPartialRecords1));
         Collection<Record<String>> partialRecords2 = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
         final int numPartialRecords2 = partialRecords2.size();
         blockingBuffer.checkpoint(new CheckpointState(numPartialRecords2));
+
+        // Then
         for (int i = 0; i < numPartialRecords1 + numPartialRecords2; i++) {
             Record<String> record = new Record<>("TEST" + i + TEST_BUFFER_SIZE);
+            // Should succeed without exception
             blockingBuffer.write(record, TEST_WRITE_TIMEOUT);
         }
         assertThrows(TimeoutException.class, () -> blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT));
