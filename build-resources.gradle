@@ -13,7 +13,8 @@ ext.versionMap = [
         slf4j_log4j12          : '1.7.30',
         validation_api         : '2.0.1.Final',
         opentelemetry_proto    : '0.10.0',
-        mockito                : '2.1.0'
+        mockito                : '2.1.0',
+        mockito_inline         : '3.6.28'
 ]
 
 ext.coreProjects = [project(':data-prepper-api'), project(':data-prepper-core'), project('data-prepper-plugins:common')]

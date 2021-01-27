@@ -16,7 +16,12 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.Serializable;
 import java.time.Clock;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
@@ -25,6 +30,9 @@ import java.util.stream.Stream;
 
 @DataPrepperPlugin(name = "service_map_stateful", type = PluginType.PREPPER)
 public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
+
+    public static final String SPANS_DB_SIZE = "spansDbSize";
+    public static final String TRACE_GROUP_DB_SIZE = "traceGroupDbSize";
 
     private static final Logger LOG = LoggerFactory.getLogger(ServiceMapStatefulPrepper.class);
     private static final String EMPTY_SUFFIX = "-empty";
@@ -41,7 +49,7 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
     private volatile static MapDbPrepperState<String> previousTraceGroupWindow;
     private volatile static MapDbPrepperState<String> currentTraceGroupWindow;
     //TODO: Consider keeping this state in lmdb
-    private volatile static  HashSet<ServiceMapRelationship> relationshipState = new HashSet<>();
+    private volatile static HashSet<ServiceMapRelationship> relationshipState = new HashSet<>();
     private static File dbPath;
     private static Clock clock;
     private static int processWorkers;
@@ -49,9 +57,9 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
     private final int thisPrepperId;
 
     public ServiceMapStatefulPrepper(final PluginSetting pluginSetting) {
-     this(pluginSetting.getIntegerOrDefault(ServiceMapPrepperConfig.WINDOW_DURATION, ServiceMapPrepperConfig.DEFAULT_WINDOW_DURATION)*TO_MILLIS,
-             new File(ServiceMapPrepperConfig.DEFAULT_LMDB_PATH),
-             Clock.systemUTC(), pluginSetting.getNumberOfProcessWorkers(), pluginSetting);
+        this(pluginSetting.getIntegerOrDefault(ServiceMapPrepperConfig.WINDOW_DURATION, ServiceMapPrepperConfig.DEFAULT_WINDOW_DURATION) * TO_MILLIS,
+                new File(ServiceMapPrepperConfig.DEFAULT_LMDB_PATH),
+                Clock.systemUTC(), pluginSetting.getNumberOfProcessWorkers(), pluginSetting);
     }
 
     public ServiceMapStatefulPrepper(final long windowDurationMillis,
@@ -60,9 +68,10 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
                                      final int processWorkers,
                                      final PluginSetting pluginSetting) {
         super(pluginSetting);
+
         ServiceMapStatefulPrepper.clock = clock;
         this.thisPrepperId = preppersCreated.getAndIncrement();
-        if(isMasterInstance()) {
+        if (isMasterInstance()) {
             previousTimestamp = ServiceMapStatefulPrepper.clock.millis();
             ServiceMapStatefulPrepper.windowDurationMillis = windowDurationMillis;
             ServiceMapStatefulPrepper.dbPath = createPath(databasePath);
@@ -72,17 +81,21 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
             currentTraceGroupWindow = new MapDbPrepperState<>(dbPath, getNewTraceDbName(), processWorkers);
             previousTraceGroupWindow = new MapDbPrepperState<>(dbPath, getNewTraceDbName() + EMPTY_SUFFIX, processWorkers);
         }
+
+        pluginMetrics.gauge(SPANS_DB_SIZE, this, serviceMapStateful -> serviceMapStateful.getSpansDbSize());
+        pluginMetrics.gauge(TRACE_GROUP_DB_SIZE, this, serviceMapStateful -> serviceMapStateful.getTraceGroupDbSize());
     }
 
     /**
      * This function creates the directory if it doesn't exists and returns the File.
+     *
      * @param path
      * @return path
      * @throws RuntimeException if the directory can not be created.
      */
     private static File createPath(File path) {
-        if(!path.exists()){
-            if(!path.mkdirs()){
+        if (!path.exists()) {
+            if (!path.mkdirs()) {
                 throw new RuntimeException(String.format("Unable to create the directory at the provided path: %s", path.getName()));
             }
         }
@@ -91,6 +104,7 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
 
     /**
      * Adds the data for spans from the ResourceSpans object to the current window
+     *
      * @param records Input records that will be modified/processed
      * @return If the window is reached, returns a list of ServiceMapRelationship objects representing the edges to be
      * added to the service map index. Otherwise, returns an empty set.
@@ -99,7 +113,7 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
     public Collection<Record<String>> doExecute(Collection<Record<ExportTraceServiceRequest>> records) {
         final Collection<Record<String>> relationships = windowDurationHasPassed() ? evaluateEdges() : EMPTY_COLLECTION;
         final Map<byte[], ServiceMapStateData> batchStateData = new TreeMap<>(SignedBytes.lexicographicalComparator());
-        records.forEach( i -> i.getData().getResourceSpansList().forEach(resourceSpans -> {
+        records.forEach(i -> i.getData().getResourceSpansList().forEach(resourceSpans -> {
             OTelHelper.getServiceName(resourceSpans.getResource()).ifPresent(serviceName -> resourceSpans.getInstrumentationLibrarySpansList().forEach(
                     instrumentationLibrarySpans -> {
                         instrumentationLibrarySpans.getSpansList().forEach(
@@ -141,12 +155,13 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
 
     /**
      * This function parses the current and previous windows to find the edges, and rotates the window state objects.
+     *
      * @return Set of Record<String> containing json representation of ServiceMapRelationships found
      */
     private Collection<Record<String>> evaluateEdges() {
         try {
-            final Stream<ServiceMapRelationship> previousStream = previousWindow.iterate(realtionshipIterationFunction, preppersCreated.get(), thisPrepperId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
-            final Stream<ServiceMapRelationship> currentStream = currentWindow.iterate(realtionshipIterationFunction, preppersCreated.get(), thisPrepperId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
+            final Stream<ServiceMapRelationship> previousStream = previousWindow.iterate(relationshipIterationFunction, preppersCreated.get(), thisPrepperId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
+            final Stream<ServiceMapRelationship> currentStream = currentWindow.iterate(relationshipIterationFunction, preppersCreated.get(), thisPrepperId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
 
             final Collection<Record<String>> serviceDependencyRecords =
                     Stream.concat(previousStream, currentStream).filter(Objects::nonNull)
@@ -161,13 +176,13 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
                             })
                             .collect(Collectors.toSet());
 
-            if(edgeEvaluationLatch == null) {
+            if (edgeEvaluationLatch == null) {
                 initEdgeEvaluationLatch();
             }
             doneEvaluatingEdges();
             waitForEvaluationFinish();
 
-            if(isMasterInstance()) {
+            if (isMasterInstance()) {
                 rotateWindows();
                 resetWorkState();
             } else {
@@ -181,7 +196,7 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
     }
 
     private static synchronized void initEdgeEvaluationLatch() {
-        if(edgeEvaluationLatch==null){
+        if (edgeEvaluationLatch == null) {
             edgeEvaluationLatch = new CountDownLatch(preppersCreated.get());
         }
     }
@@ -190,7 +205,7 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
      * This function is used to iterate over the current window and find parent/child relationships in the current and
      * previous windows.
      */
-    private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> realtionshipIterationFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
+    private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> relationshipIterationFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
         @Override
         public Stream<ServiceMapRelationship> apply(byte[] s, ServiceMapStateData serviceMapStateData) {
             return lookupParentSpan(serviceMapStateData, true);
@@ -229,7 +244,8 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
     }
 
     /**
-     *  Checks both current and previous trace group windows for the trace id
+     * Checks both current and previous trace group windows for the trace id
+     *
      * @param traceId
      * @return Trace group name for the given trace if it exists. Otherwise null.
      */
@@ -260,6 +276,7 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
 
     /**
      * Wait on all instances to finish evaluating edges
+     *
      * @throws InterruptedException
      */
     private void waitForEvaluationFinish() throws InterruptedException {
@@ -275,6 +292,7 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
 
     /**
      * Wait on window rotation to complete
+     *
      * @throws InterruptedException
      */
     private void waitForRotationFinish() throws InterruptedException {
@@ -305,6 +323,20 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
     }
 
     /**
+     * @return Spans database size in bytes
+     */
+    public double getSpansDbSize() {
+        return currentWindow.sizeInBytes() + previousWindow.sizeInBytes();
+    }
+
+    /**
+     * @return Trace group database size in bytes
+     */
+    public double getTraceGroupDbSize() {
+        return currentTraceGroupWindow.sizeInBytes() + previousTraceGroupWindow.sizeInBytes();
+    }
+
+    /**
      * @return Next database name
      */
     private String getNewDbName() {
@@ -322,7 +354,7 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
      * @return Boolean indicating whether the window duration has lapsed
      */
     private boolean windowDurationHasPassed() {
-        if ((clock.millis() - previousTimestamp)  >= windowDurationMillis) {
+        if ((clock.millis() - previousTimestamp) >= windowDurationMillis) {
             return true;
         }
         return false;
@@ -330,6 +362,7 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
 
     /**
      * Master instance is needed to do things like window rotation that should only be done once
+     *
      * @return Boolean indicating whether this object is the master ServiceMapStatefulPrepper instance
      */
     private boolean isMasterInstance() {

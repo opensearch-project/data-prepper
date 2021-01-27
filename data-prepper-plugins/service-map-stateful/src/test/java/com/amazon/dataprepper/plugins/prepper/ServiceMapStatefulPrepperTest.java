@@ -1,10 +1,14 @@
 package com.amazon.dataprepper.plugins.prepper;
 
+import com.amazon.dataprepper.metrics.MetricNames;
+import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
+import io.micrometer.core.instrument.Measurement;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -19,10 +23,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
+
+import static org.mockito.Mockito.when;
 
 
 public class ServiceMapStatefulPrepperTest {
@@ -36,13 +43,19 @@ public class ServiceMapStatefulPrepperTest {
     private static final String PASSWORD_DATABASE = "PASS";
     private static final String PAYMENT_SERVICE = "PAY";
     private static final String CART_SERVICE = "CART";
-    private static final PluginSetting PLUGIN_SETTING = new PluginSetting("testServiceMapPrepper", Collections.emptyMap()){{
+    private static final PluginSetting PLUGIN_SETTING = new PluginSetting("testServiceMapPrepper", Collections.emptyMap()) {{
         setPipelineName("testPipelineName");
     }};
+
+    @Before
+    public void setup() {
+        MetricsTestUtil.initMetrics();
+    }
 
     /**
      * This function mocks what the frontend will do to resolve the data in the service map index to find the edges
      * for the service map.
+     *
      * @param serviceMapRelationships List of ServiceMapRelationship objects to be evaluated
      * @return Set of ServiceMapSourceDest objects representing service map edges that were found.
      */
@@ -61,6 +74,7 @@ public class ServiceMapStatefulPrepperTest {
 
     @Test
     public void testPluginSettingConstructor() {
+
         final PluginSetting pluginSetting = new PluginSetting("testPluginSetting", Collections.emptyMap());
         pluginSetting.setProcessWorkers(4);
         pluginSetting.setPipelineName("TestPipeline");
@@ -117,7 +131,7 @@ public class ServiceMapStatefulPrepperTest {
         Future<Set<ServiceMapRelationship>> r1 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1,
                 Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(frontendSpans1, checkoutSpansServer))));
         Future<Set<ServiceMapRelationship>> r2 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2,
-                Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(frontendSpans2,checkoutSpansClient))));
+                Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(frontendSpans2, checkoutSpansClient))));
         relationshipsFound.addAll(r1.get());
         relationshipsFound.addAll(r2.get());
 
@@ -127,10 +141,10 @@ public class ServiceMapStatefulPrepperTest {
         //Second batch
         Mockito.when(clock.millis()).thenReturn(220L);
         Future<Set<ServiceMapRelationship>> r3 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1,
-                Arrays.asList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(authenticationSpansServer,authenticationSpansClient)),
+                Arrays.asList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(authenticationSpansServer, authenticationSpansClient)),
                         new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(cartSpans))));
         Future<Set<ServiceMapRelationship>> r4 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2,
-                Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(passwordDbSpans,paymentSpans))));
+                Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(passwordDbSpans, paymentSpans))));
         relationshipsFound.addAll(r3.get());
         relationshipsFound.addAll(r4.get());
 
@@ -172,13 +186,27 @@ public class ServiceMapStatefulPrepperTest {
 
         Assert.assertTrue(evaluateEdges(relationshipsFound).containsAll(expectedSourceDests));
 
+        // Verify gauges
+        final List<Measurement> spansDbSizeMeasurement = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add("testPipelineName").add("testServiceMapPrepper")
+                        .add(ServiceMapStatefulPrepper.SPANS_DB_SIZE).toString());
+        Assert.assertEquals(1, spansDbSizeMeasurement.size());
+        Assert.assertEquals(2097152, spansDbSizeMeasurement.get(0).getValue(), 0);
+
+        final List<Measurement> traceGroupDbSizeMeasurement = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add("testPipelineName").add("testServiceMapPrepper")
+                        .add(ServiceMapStatefulPrepper.TRACE_GROUP_DB_SIZE).toString());
+        Assert.assertEquals(1, traceGroupDbSizeMeasurement.size());
+        Assert.assertEquals(2097152, traceGroupDbSizeMeasurement.get(0).getValue(), 0);
+
+
         //Make sure that future relationships that are equivalent are caught by cache
         final byte[] rootSpanId3 = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] traceId3 = ServiceMapTestUtils.getRandomBytes(16);
         final ResourceSpans frontendSpans3 = ServiceMapTestUtils.getResourceSpans(FRONTEND_SERVICE, traceGroup1, rootSpanId3, rootSpanId3, traceId3, Span.SpanKind.SPAN_KIND_CLIENT);
         final ResourceSpans authenticationSpansServer2 = ServiceMapTestUtils.getResourceSpans(AUTHENTICATION_SERVICE, "reset", ServiceMapTestUtils.getRandomBytes(8), ServiceMapTestUtils.getSpanId(frontendSpans3), traceId3, Span.SpanKind.SPAN_KIND_SERVER);
 
-        Mockito.when(clock.millis()).thenReturn(450L);
+        when(clock.millis()).thenReturn(450L);
         Future<Set<ServiceMapRelationship>> r7 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1,
                 Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(frontendSpans3))));
         Future<Set<ServiceMapRelationship>> r8 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2,
@@ -186,7 +214,7 @@ public class ServiceMapStatefulPrepperTest {
         Assert.assertTrue(r7.get().isEmpty());
         Assert.assertTrue(r8.get().isEmpty());
 
-        Mockito.when(clock.millis()).thenReturn(560L);
+        when(clock.millis()).thenReturn(560L);
         Future<Set<ServiceMapRelationship>> r9 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1, Arrays.asList());
         Future<Set<ServiceMapRelationship>> r10 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2, Arrays.asList());
         Assert.assertTrue(r9.get().isEmpty());

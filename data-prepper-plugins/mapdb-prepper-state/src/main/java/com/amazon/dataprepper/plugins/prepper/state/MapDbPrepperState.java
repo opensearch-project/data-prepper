@@ -27,20 +27,24 @@ public class MapDbPrepperState<V> implements PrepperState<byte[], V> {
     private static final SignedByteArraySerializer SIGNED_BYTE_ARRAY_SERIALIZER = new SignedByteArraySerializer();
 
     private final BTreeMap<byte[], V> map;
+    private final File dbFile;
 
     public MapDbPrepperState(final File dbPath, final String dbName, final int concurrencyScale) {
+        this.dbFile = new File(String.join("/", dbPath.getPath(), dbName));
         map =
-                (BTreeMap<byte[], V>) DBMaker.fileDB(new File(String.join("/", dbPath.getPath(), dbName)))
+                (BTreeMap<byte[], V>) DBMaker.fileDB(dbFile)
                         .fileDeleteAfterClose()
                         .fileMmapEnable() //MapDB uses the (slower) Random Access Files by default
                         .fileMmapPreclearDisable()
                         .executorEnable()
+                        .transactionEnable()
+                        .closeOnJvmShutdown()
                         .concurrencyScale(concurrencyScale)
                         .make()
                         .treeMap(dbName)
                         .counterEnable() //Treemap doesnt keep:q size counter by default
                         .keySerializer(SIGNED_BYTE_ARRAY_SERIALIZER)
-                        .valueSerializer(Serializer.JAVA).create();
+                        .valueSerializer(Serializer.JAVA).createOrOpen();
     }
 
     @Override
@@ -106,6 +110,12 @@ public class MapDbPrepperState<V> implements PrepperState<byte[], V> {
     @Override
     public long size() {
         return map.size();
+    }
+
+
+    @Override
+    public long sizeInBytes() {
+        return dbFile.length();
     }
 
     @Override

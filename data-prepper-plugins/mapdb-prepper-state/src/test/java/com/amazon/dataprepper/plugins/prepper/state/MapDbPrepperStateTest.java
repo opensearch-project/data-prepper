@@ -62,6 +62,7 @@ public class MapDbPrepperStateTest extends PrepperStateTest {
                 data4.stringVal
         )));
 
+        Assert.assertEquals( 1048576, prepperState.sizeInBytes());
     }
 
 }

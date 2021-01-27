@@ -28,6 +28,7 @@ public class LmdbPrepperState<T> implements PrepperState<byte[], T> {
     private final Class<T> clazz; //Needed for deserialization
     private final File dbFile;
 
+
     /**
      * Constructor for LMDB prepper state. See LMDB-Java for more info:
      * https://github.com/lmdbjava/lmdbjava
@@ -145,6 +146,15 @@ public class LmdbPrepperState<T> implements PrepperState<byte[], T> {
         try (Txn<ByteBuffer> txn = env.txnRead()) {
             return db.stat(txn).entries;
         }
+    }
+
+    /**
+     * TODO: Implement the sizeInBytes function
+     * @return Size of the prepper state file, in bytes.
+     */
+    @Override
+    public long sizeInBytes() {
+        return 0;
     }
 
     private KeyRange getRange(int segments, int index) {
