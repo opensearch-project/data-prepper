@@ -138,34 +138,6 @@ public class BlockingBufferTests {
         }
     }
 
-    @Test
-    public void testWriteAfterCheckedBatchReads() throws Exception {
-        // Given
-        final PluginSetting completePluginSetting = completePluginSettingForBlockingBuffer();
-        final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(completePluginSetting);
-        assertThat(blockingBuffer, notNullValue());
-        for (int i = 0; i < TEST_BUFFER_SIZE; i++) {
-            Record<String> record = new Record<>("TEST" + i);
-            blockingBuffer.write(record, TEST_WRITE_TIMEOUT);
-        }
-
-        // When
-        Collection<Record<String>> partialRecords1 = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
-        final int numPartialRecords1 = partialRecords1.size();
-        blockingBuffer.checkpoint(new CheckpointState(numPartialRecords1));
-        Collection<Record<String>> partialRecords2 = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
-        final int numPartialRecords2 = partialRecords2.size();
-        blockingBuffer.checkpoint(new CheckpointState(numPartialRecords2));
-
-        // Then
-        for (int i = 0; i < numPartialRecords1 + numPartialRecords2; i++) {
-            Record<String> record = new Record<>("TEST" + i + TEST_BUFFER_SIZE);
-            // Should succeed without exception
-            blockingBuffer.write(record, TEST_WRITE_TIMEOUT);
-        }
-        assertThrows(TimeoutException.class, () -> blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT));
-    }
-
     private PluginSetting completePluginSettingForBlockingBuffer() {
         final String pluginName = "bounded_blocking";
         final Map<String, Object> settings = new HashMap<>();
