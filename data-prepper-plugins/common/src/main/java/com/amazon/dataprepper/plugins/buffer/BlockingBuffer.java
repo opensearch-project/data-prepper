@@ -87,8 +87,8 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     @Override
     public void doWrite(T record, int timeoutInMillis) throws TimeoutException {
         try {
-            final boolean isSuccess = available.tryAcquire(timeoutInMillis, TimeUnit.MILLISECONDS);
-            if (!isSuccess) {
+            final boolean permitAcquired = available.tryAcquire(timeoutInMillis, TimeUnit.MILLISECONDS);
+            if (!permitAcquired) {
                 throw new TimeoutException(format("Pipeline [%s] - Buffer is full, timed out waiting for a slot",
                         pipelineName));
             }
