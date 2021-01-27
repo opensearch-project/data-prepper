@@ -46,8 +46,7 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     private final BlockingQueue<T> blockingQueue;
     private final String pipelineName;
 
-    // A counting semaphore to control inflight records below buffer capacity.
-    private final Semaphore available;
+    private final Semaphore capacitySemaphore;
 
     /**
      * Creates a BlockingBuffer with the given (fixed) capacity.
@@ -60,7 +59,7 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
         super("BlockingBuffer", pipelineName);
         this.batchSize = batchSize;
         this.blockingQueue = new LinkedBlockingQueue<>(bufferCapacity);
-        this.available = new Semaphore(bufferCapacity);
+        this.capacitySemaphore = new Semaphore(bufferCapacity);
         this.pipelineName = pipelineName;
     }
 
@@ -87,7 +86,7 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     @Override
     public void doWrite(T record, int timeoutInMillis) throws TimeoutException {
         try {
-            final boolean permitAcquired = available.tryAcquire(timeoutInMillis, TimeUnit.MILLISECONDS);
+            final boolean permitAcquired = capacitySemaphore.tryAcquire(timeoutInMillis, TimeUnit.MILLISECONDS);
             if (!permitAcquired) {
                 throw new TimeoutException(format("Pipeline [%s] - Buffer is full, timed out waiting for a slot",
                         pipelineName));
@@ -143,6 +142,6 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     @Override
     public void checkpoint(final CheckpointState checkpointState) {
         final int numCheckedRecords = checkpointState.getNumCheckedRecords();
-        available.release(numCheckedRecords);
+        capacitySemaphore.release(numCheckedRecords);
     }
 }
