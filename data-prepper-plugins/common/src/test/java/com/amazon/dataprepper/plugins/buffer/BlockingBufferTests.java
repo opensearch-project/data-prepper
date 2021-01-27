@@ -77,7 +77,6 @@ public class BlockingBufferTests {
         // Given
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(1, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
-        assertThat(blockingBuffer, notNullValue());
         blockingBuffer.write(new Record<>("FILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
 
         // When
