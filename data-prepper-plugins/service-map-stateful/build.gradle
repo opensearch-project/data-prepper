@@ -21,7 +21,7 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
     testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
-    testImplementation "org.mockito:mockito-inline:3.6.28"
+    testImplementation "org.mockito:mockito-inline:${versionMap.mockito_inline}"
 }
 
 jacocoTestCoverageVerification {
