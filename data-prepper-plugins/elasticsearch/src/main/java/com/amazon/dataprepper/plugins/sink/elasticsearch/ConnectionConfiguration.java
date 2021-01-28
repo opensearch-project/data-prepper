@@ -33,6 +33,7 @@ import java.security.cert.CertificateFactory;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class ConnectionConfiguration {
   private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchSink.class);
@@ -292,7 +293,7 @@ public class ConnectionConfiguration {
     }
 
     public Builder withAwsRegion(final String awsRegion) {
-      checkArgument(awsRegion != null, "awsRegion cannot be null");
+      checkNotNull(awsRegion, "awsRegion cannot be null");
       this.awsRegion = awsRegion;
       return this;
     }
