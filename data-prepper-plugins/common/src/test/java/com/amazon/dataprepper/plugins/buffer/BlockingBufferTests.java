@@ -2,6 +2,7 @@ package com.amazon.dataprepper.plugins.buffer;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.model.CheckpointState;
 import org.junit.Test;
 
 import java.util.Collection;
@@ -13,6 +14,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertThrows;
 
 public class BlockingBufferTests {
     private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
@@ -62,11 +64,41 @@ public class BlockingBufferTests {
     }
 
     @Test(expected = TimeoutException.class)
-    public void testNoEmptySpace() throws TimeoutException {
+    public void testNoEmptySpaceWriteOnly() throws TimeoutException {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(1, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
         blockingBuffer.write(new Record<>("FILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
+        blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT);
+    }
+
+    @Test
+    public void testNoEmptySpaceAfterUncheckedRead() throws TimeoutException {
+        // Given
+        final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(1, TEST_BATCH_SIZE,
+                TEST_PIPELINE_NAME);
+        blockingBuffer.write(new Record<>("FILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
+
+        // When
+        blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+
+        // Then
+        assertThrows(TimeoutException.class, () -> blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT));
+    }
+
+    @Test
+    public void testWriteIntoEmptySpaceAfterCheckedRead() throws TimeoutException {
+        // Given
+        final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(1, TEST_BATCH_SIZE,
+                TEST_PIPELINE_NAME);
+        assertThat(blockingBuffer, notNullValue());
+        blockingBuffer.write(new Record<>("FILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
+
+        // When
+        final Collection<Record<String>> exportedRecords = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        blockingBuffer.checkpoint(new CheckpointState(exportedRecords.size()));
+
+        // Then
         blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT);
     }
 

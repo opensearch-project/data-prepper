@@ -1,5 +1,6 @@
 package com.amazon.dataprepper.model.buffer;
 
+import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
@@ -120,6 +121,11 @@ public class AbstractBufferTest {
                 }
             }
             return records;
+        }
+
+        @Override
+        public void checkpoint(final CheckpointState checkpointState) {
+
         }
     }
 

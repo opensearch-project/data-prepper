@@ -2,6 +2,7 @@ package com.amazon.dataprepper.plugins.buffer;
 
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.model.CheckpointState;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,6 +45,11 @@ public class TestBuffer implements Buffer<Record<String>> {
             index++;
         }
         return records;
+    }
+
+    @Override
+    public void checkpoint(final CheckpointState checkpointState) {
+
     }
 
     public int size() {

@@ -6,6 +6,7 @@ import com.amazon.dataprepper.model.buffer.AbstractBuffer;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.model.CheckpointState;
 import com.google.common.base.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -44,6 +46,8 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     private final BlockingQueue<T> blockingQueue;
     private final String pipelineName;
 
+    private final Semaphore capacitySemaphore;
+
     /**
      * Creates a BlockingBuffer with the given (fixed) capacity.
      *
@@ -55,6 +59,7 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
         super("BlockingBuffer", pipelineName);
         this.batchSize = batchSize;
         this.blockingQueue = new LinkedBlockingQueue<>(bufferCapacity);
+        this.capacitySemaphore = new Semaphore(bufferCapacity);
         this.pipelineName = pipelineName;
     }
 
@@ -81,11 +86,12 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     @Override
     public void doWrite(T record, int timeoutInMillis) throws TimeoutException {
         try {
-            boolean isSuccess = blockingQueue.offer(record, timeoutInMillis, TimeUnit.MILLISECONDS);
-            if (!isSuccess) {
+            final boolean permitAcquired = capacitySemaphore.tryAcquire(timeoutInMillis, TimeUnit.MILLISECONDS);
+            if (!permitAcquired) {
                 throw new TimeoutException(format("Pipeline [%s] - Buffer is full, timed out waiting for a slot",
                         pipelineName));
             }
+            blockingQueue.offer(record);
         } catch (InterruptedException ex) {
             LOG.error("Pipeline [{}] - Buffer is full, interrupted while waiting to write the record", pipelineName, ex);
             throw new TimeoutException("Buffer is full, timed out waiting for a slot");
@@ -131,5 +137,11 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
         settings.put(ATTRIBUTE_BUFFER_CAPACITY, DEFAULT_BUFFER_CAPACITY);
         settings.put(ATTRIBUTE_BATCH_SIZE, DEFAULT_BATCH_SIZE);
         return new PluginSetting(PLUGIN_NAME, settings);
+    }
+
+    @Override
+    public void checkpoint(final CheckpointState checkpointState) {
+        final int numCheckedRecords = checkpointState.getNumCheckedRecords();
+        capacitySemaphore.release(numCheckedRecords);
     }
 }
