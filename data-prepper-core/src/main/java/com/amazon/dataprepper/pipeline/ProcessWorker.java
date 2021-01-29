@@ -57,7 +57,7 @@ public class ProcessWorker implements Runnable {
                     records = prepper.execute(records);
                 }
                 if (!records.isEmpty()) {
-                    postToSink(records); //TODO use the response to ack the buffer on failure?
+                    postToSink(records);
                 }
                 // Checkpoint the current batch read from the buffer after being processed by prepper and sinks.
                 readBuffer.checkpoint(checkpointState);
