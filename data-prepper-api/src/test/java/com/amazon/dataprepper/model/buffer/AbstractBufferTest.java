@@ -5,11 +5,14 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.model.record.Record;
+
+import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.StringJoiner;
 import java.util.UUID;
@@ -108,7 +111,7 @@ public class AbstractBufferTest {
         }
 
         @Override
-        public Collection<Record<String>> doRead(int timeoutInMillis) {
+        public Map.Entry<Collection<Record<String>>, CheckpointState> doRead(int timeoutInMillis) {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
@@ -120,7 +123,8 @@ public class AbstractBufferTest {
                     records.add(queue.remove());
                 }
             }
-            return records;
+            final CheckpointState checkpointState = new CheckpointState(records.size());
+            return new AbstractMap.SimpleEntry<>(records, checkpointState);
         }
 
         @Override
