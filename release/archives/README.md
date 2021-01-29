@@ -19,8 +19,8 @@ To build all archives, check out the corresponding branch for the version and fo
 4. Generated archives includes a script file which can be used to execute the data prepper using
  
 ```
-tar -xzf data-prepper-jdk-v<VERSION>-<PLATFORM>-<ARCHITECTURE>.tar.gz
-./data-prepper-jdk-v<VERSION>-<PLATFORM>-<ARCHITECTURE>/data-prepper-tar-install.sh <CONFIG FILE LOCATION>
+tar -xzf opendistroforelasticsearch-data-prepper-jdk-v<VERSION>-<PLATFORM>-<ARCHITECTURE>.tar.gz
+./opendistroforelasticsearch-data-prepper-jdk-v<VERSION>-<PLATFORM>-<ARCHITECTURE>/data-prepper-tar-install.sh <CONFIG FILE LOCATION>
 ```
 
 #### For platform specific archive
