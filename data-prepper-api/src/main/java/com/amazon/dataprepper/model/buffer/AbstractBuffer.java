@@ -78,15 +78,16 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     @Override
     public Map.Entry<Collection<T>, CheckpointState> read(int timeoutInMillis) {
         final Map.Entry<Collection<T>, CheckpointState> readResult = readTimer.record(() -> doRead(timeoutInMillis));
-        recordsInflightCounter.increment(readResult.getValue().getNumCheckedRecords()*1.0);
+        recordsInflightCounter.increment(readResult.getValue().getNumRecordsToBeChecked()*1.0);
         return readResult;
     }
 
     @Override
     public void checkpoint(final CheckpointState checkpointState) {
         doCheckpoint(checkpointState);
-        recordsInflightCounter.increment(-checkpointState.getNumCheckedRecords());
-        recordsProcessedCounter.increment(checkpointState.getNumCheckedRecords());
+        final int numRecordsToBeChecked = checkpointState.getNumRecordsToBeChecked();
+        recordsInflightCounter.increment(-numRecordsToBeChecked);
+        recordsProcessedCounter.increment(numRecordsToBeChecked);
     }
 
     /**
