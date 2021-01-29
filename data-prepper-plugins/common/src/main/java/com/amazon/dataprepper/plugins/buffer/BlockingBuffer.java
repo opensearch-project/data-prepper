@@ -124,8 +124,6 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
         } catch (InterruptedException ex) {
             LOG.warn("Pipeline [{}] - Retrieving records from buffer to batch size timed out, returning already " +
                     "retrieved records", pipelineName, ex);
-            final CheckpointState checkpointState = new CheckpointState(records.size());
-            return new AbstractMap.SimpleEntry<>(records, checkpointState);
         }
         final CheckpointState checkpointState = new CheckpointState(records.size());
         return new AbstractMap.SimpleEntry<>(records, checkpointState);
