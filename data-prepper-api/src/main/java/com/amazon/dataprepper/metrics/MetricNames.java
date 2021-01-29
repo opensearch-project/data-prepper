@@ -26,9 +26,14 @@ public class MetricNames {
     public static final String RECORDS_WRITTEN = "recordsWritten";
 
     /**
-     * Metric representing the number of records read from a buffer
+     * Metric representing the number of records read from a buffer but unchecked.
      */
-    public static final String RECORDS_READ = "recordsRead";
+    public static final String RECORDS_INFLIGHT = "recordsInflight";
+
+    /**
+     * Metric representing the number of records read from a buffer and checked.
+     */
+    public static final String RECORDS_PROCESSED = "recordsProcessed";
 
     /**
      * Metric representing the time elapsed while writing to a Buffer
