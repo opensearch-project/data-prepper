@@ -51,6 +51,8 @@ public class AbstractBufferTest {
                 new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.WRITE_TIME_ELAPSED).toString());
         final List<Measurement> readTimeMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.READ_TIME_ELAPSED).toString());
+        final List<Measurement> checkpointTimeMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.CHECKPOINT_TIME_ELAPSED).toString());
         Assert.assertEquals(1, recordsWrittenMeasurements.size());
         Assert.assertEquals(5.0, recordsWrittenMeasurements.get(0).getValue(), 0);
         Assert.assertEquals(1, recordsInflightMeasurements.size());
@@ -70,6 +72,8 @@ public class AbstractBufferTest {
                 MetricsTestUtil.getMeasurementFromList(readTimeMeasurements, Statistic.TOTAL_TIME).getValue(),
                 0.1,
                 0.2));
+        Assert.assertEquals(0.0, MetricsTestUtil.getMeasurementFromList(checkpointTimeMeasurements, Statistic.COUNT).getValue(), 0);
+        Assert.assertEquals(0.0, MetricsTestUtil.getMeasurementFromList(checkpointTimeMeasurements, Statistic.TOTAL_TIME).getValue(), 0);
 
         // When
         abstractBuffer.checkpoint(readResult.getValue());
@@ -77,6 +81,11 @@ public class AbstractBufferTest {
         // Then
         Assert.assertEquals(0.0, recordsInflightMeasurement.getValue(), 0);
         Assert.assertEquals(5.0, recordsProcessedMeasurement.getValue(), 0);
+        Assert.assertEquals(1.0, MetricsTestUtil.getMeasurementFromList(checkpointTimeMeasurements, Statistic.COUNT).getValue(), 0);
+        Assert.assertTrue(MetricsTestUtil.isBetween(
+                MetricsTestUtil.getMeasurementFromList(checkpointTimeMeasurements, Statistic.TOTAL_TIME).getValue(),
+                0.0,
+                0.001));
     }
 
     @Test

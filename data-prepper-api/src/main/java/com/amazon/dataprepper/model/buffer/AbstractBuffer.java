@@ -22,6 +22,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     private final Counter writeTimeoutCounter;
     private final Timer writeTimer;
     private final Timer readTimer;
+    private final Timer checkpointTimer;
 
     public AbstractBuffer(final PluginSetting pluginSetting) {
         this(PluginMetrics.fromPluginSetting(pluginSetting));
@@ -39,6 +40,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         this.writeTimeoutCounter = pluginMetrics.counter(MetricNames.WRITE_TIMEOUTS);
         this.writeTimer = pluginMetrics.timer(MetricNames.WRITE_TIME_ELAPSED);
         this.readTimer = pluginMetrics.timer(MetricNames.READ_TIME_ELAPSED);
+        this.checkpointTimer = pluginMetrics.timer(MetricNames.CHECKPOINT_TIME_ELAPSED);
     }
 
     /**
@@ -84,7 +86,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
 
     @Override
     public void checkpoint(final CheckpointState checkpointState) {
-        doCheckpoint(checkpointState);
+        checkpointTimer.record(() -> doCheckpoint(checkpointState));
         final int numRecordsToBeChecked = checkpointState.getNumRecordsToBeChecked();
         recordsInflightCounter.increment(-numRecordsToBeChecked);
         recordsProcessedCounter.increment(numRecordsToBeChecked);

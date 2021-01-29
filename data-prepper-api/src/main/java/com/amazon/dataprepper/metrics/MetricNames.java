@@ -46,6 +46,11 @@ public class MetricNames {
     public static final String READ_TIME_ELAPSED = "readTimeElapsed";
 
     /**
+     * Metric representing the time elapsed while checkpointing
+     */
+    public static final String CHECKPOINT_TIME_ELAPSED = "checkpointTimeElapsed";
+
+    /**
      * Metric representing the count of write timeouts to a Buffer
      */
     public static final String WRITE_TIMEOUTS = "writeTimeouts";
