@@ -36,6 +36,8 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${versionMap.jackson_dataformat_yaml}"
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
+    implementation "com.amazonaws:aws-java-sdk-core:1.11.452"
+    implementation "com.github.awslabs:aws-request-signing-apache-interceptor:b3772780da"
     testImplementation("junit:junit:${versionMap.junit}") {
         exclude group:'org.hamcrest' // workaround for jarHell
     }
@@ -49,12 +51,17 @@ compileJava.options.warnings = false
 // Resolve dependency conflict between ES sink and main project
 configurations.all {
     resolutionStrategy {
+        force 'com.amazonaws:aws-java-sdk-core:1.11.452'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.1'
         force 'com.fasterxml.jackson.core:jackson-databind:2.11.1'
         force 'com.fasterxml.jackson.core:jackson-core:2.11.1'
+        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.10.4'
         force 'com.google.guava:guava:29.0-jre'
+        force 'commons-logging:commons-logging:1.2'
         force 'org.apache.bval:bval-jsr:2.0.4'
+        force 'org.apache.httpcomponents:httpclient:4.5.10'
         force 'junit:junit:4.13'
+        force 'joda-time:joda-time:2.10.4'
     }
 }
 

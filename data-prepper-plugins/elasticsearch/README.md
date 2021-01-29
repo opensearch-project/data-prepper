@@ -42,30 +42,52 @@ pipeline:
 
 The elasticsearch sink will reserve `otel-v1-apm-service-map` as index for record ingestion.
 
-### Custom data
+### Send Trace data to Amazon Elasticsearch domain
+
+You can use the Elasticsearch sink plugin to send data to Amazon Elasticsearch domain. 
+
+#### Send Raw span data 
 
 ```$xslt
 pipeline:
   ...
   sink:
     elasticsearch:
-      hosts: ["https://localhost:9200"]
-      username: YOUR_USERNAME_HERE
-      password: YOUR_PASSWORD_HERE
-      index: "some-index"
-      template_file: /your/local/template-file.json
-      document_id_field: "someId"
-      dlq_file: /your/local/dlq-file
-      bulk_size: 4
+      hosts:["https://foo.us-east-1.es.amazonaws.com"]
+      aws_sigv4:true
+      aws_region: "us-east-1"
+      trace_analytics_raw: true
 ```
 
-User needs to provide custom index for record ingestion.
+#### Send Service Map span data 
+
+```$xslt
+pipeline:
+  ...
+  sink:
+    elasticsearch:
+      hosts:["https://foo.us-east-1.es.amazonaws.com"]
+      aws_sigv4:true
+      aws_region: "us-east-1"
+      trace_analytics_service_map: true
+```
+
+The plugin uses the default credential chain. Run `aws configure` using the AWS CLI to set your credentials. 
+
 
 ## Parameters
 
 ### Hosts
 
-A list of IP addresses of elasticsearch nodes.
+A list of IP addresses of Opendistro for elasticsearch cluster or url of the Amazon Elasticsearch domain.
+
+### Amazon Elasticsearch
+
+`aws_sigv4` boolean flag to use the sink plugin to send data to Amazon Elasticsearch domain. Default value is `false`. 
+
+### Amazon Elasticsearch Region
+
+`aws_region` the aws region where the aes domain is located. Default value is `us-east-1`
 
 ### cert
 CA certificate that is pem encoded. Accepts both .pem or .crt. This enables the client to trust the CA that has signed the certificate that ODFE is using.

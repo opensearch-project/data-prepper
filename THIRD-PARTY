@@ -4,6 +4,9 @@ https://git-wip-us.apache.org/repos/asf?p=logging-log4j2.git;a=tree;h=a5864fb8b9
 https://github.com/androidannotations/androidannotations
 ** Apache Lucene; version 8.5.1 -- http://lucene.apache.org/
 ** armeria; version 1.0.0 -- https://github.com/line/armeria
+** aws-request-signing-apache-interceptor; version b3772780da --
+https://github.com/awslabs/aws-request-signing-apache-interceptor
+** aws-sdk-java; version 1.11 -- https://aws.amazon.com/sdk-for-java/
 ** bval; version 2.0.4 -- https://github.com/apache/bval
 ** byte-buddy; version 1.10.9 -- http://bytebuddy.net
 ** Caffeine; version 2.8.5 -- https://github.com/ben-manes/caffeine
@@ -311,6 +314,28 @@ limitations under the License.
       * https://armeria.dev/
 
     Copyright 2015 LINE Corporation
+* For aws-request-signing-apache-interceptor see also this required NOTICE:
+    AWS Request Signing Interceptor
+    Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* For aws-sdk-java see also this required NOTICE:
+    AWS SDK for Java
+    Copyright 2010-2014 Amazon.com, Inc. or its affiliates. All Rights
+    Reserved.
+
+    This product includes software developed by
+    Amazon Technologies, Inc (http://www.amazon.com/).
+
+    **********************
+    THIRD PARTY COMPONENTS
+    **********************
+    This software includes third party software subject to the following
+    copyrights:
+    - XML parsing and utility functions from JetS3t - Copyright 2006-2009 James
+    Murty.
+    - PKCS#1 PEM encoded private key parsing and utility functions from
+    oauth.googlecode.com - Copyright 1998-2010 AOL Inc.
+
+    The licenses for these third party components are included in LICENSE.txt
 * For bval see also this required NOTICE:
     Apache BVal project
     Copyright 2010-2018 The Apache Software Foundation.

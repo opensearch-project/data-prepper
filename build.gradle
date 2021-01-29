@@ -4,6 +4,7 @@ allprojects {
     version = '0.7.0-alpha'
     repositories {
         mavenCentral()
+        maven { url "https://jitpack.io" }
     }
 }
 
