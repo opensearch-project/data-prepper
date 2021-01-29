@@ -1,10 +1,12 @@
 package com.amazon.dataprepper.model.buffer;
 
+import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.record.Record;
 import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
@@ -69,13 +71,13 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
      * Records egress and time elapsed metrics, while calling the doRead function to
      * do the actual read
      * @param timeoutInMillis how long to wait before giving up
-     * @return Collection<Records> read
+     * @return Records collection and checkpoint state read from the buffer
      */
     @Override
-    public Collection<T> read(int timeoutInMillis) {
-        Collection<T> records = readTimer.record(() -> doRead(timeoutInMillis));
-        recordsReadCounter.increment(records.size()*1.0);
-        return records;
+    public Map.Entry<Collection<T>, CheckpointState> read(int timeoutInMillis) {
+        final Map.Entry<Collection<T>, CheckpointState> readResult = readTimer.record(() -> doRead(timeoutInMillis));
+        recordsReadCounter.increment(readResult.getKey().size()*1.0);
+        return readResult;
     }
 
     /**
@@ -89,7 +91,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     /**
      * This method should implement the logic for reading from the buffer
      * @param timeoutInMillis Timeout in millis
-     * @return Records read from the buffer
+     * @return Records collection and checkpoint state read from the buffer
      */
-    public abstract Collection<T> doRead(int timeoutInMillis);
+    public abstract Map.Entry<Collection<T>, CheckpointState> doRead(int timeoutInMillis);
 }
