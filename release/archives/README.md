@@ -42,10 +42,10 @@ gradle linuxTar -Prelease
 
 cd release/archives/linux/build/distributions/
 
-tar -xzf data-prepper-jdk-v<VERSION>-linux-<ARCHITECTURE>.tar.gz
-//e.g tar -xzf data-prepper-jdk-v0.1.0-linux-x64.tar.gz
+tar -xzf opendistroforelasticsearch-data-prepper-jdk-<VERSION>-linux-<ARCHITECTURE>.tar.gz
+//e.g tar -xzf opendistroforelasticsearch-data-prepper-jdk-0.1.0-linux-x64.tar.gz
 
-./data-prepper-jdk-v<VERSION>-linux-<ARCHITECTURE>/data-prepper-tar-install.sh <CONFIG FILE LOCATION>
+./opendistroforelasticsearch-data-prepper-jdk-<VERSION>-linux-<ARCHITECTURE>/data-prepper-tar-install.sh <CONFIG FILE LOCATION>
 
 ```
 
