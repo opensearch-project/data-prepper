@@ -11,6 +11,7 @@ import com.google.common.base.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -107,7 +108,7 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
      * @return The earliest batch of records in the buffer which are still not read.
      */
     @Override
-    public Collection<T> doRead(int timeoutInMillis) {
+    public Map.Entry<Collection<T>, CheckpointState> doRead(int timeoutInMillis) {
         final List<T> records = new ArrayList<>();
         final Stopwatch stopwatch = Stopwatch.createStarted();
         try {
@@ -123,9 +124,11 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
         } catch (InterruptedException ex) {
             LOG.warn("Pipeline [{}] - Retrieving records from buffer to batch size timed out, returning already " +
                     "retrieved records", pipelineName, ex);
-            return records;
+            final CheckpointState checkpointState = new CheckpointState(records.size());
+            return new AbstractMap.SimpleEntry<>(records, checkpointState);
         }
-        return records;
+        final CheckpointState checkpointState = new CheckpointState(records.size());
+        return new AbstractMap.SimpleEntry<>(records, checkpointState);
     }
 
     /**
