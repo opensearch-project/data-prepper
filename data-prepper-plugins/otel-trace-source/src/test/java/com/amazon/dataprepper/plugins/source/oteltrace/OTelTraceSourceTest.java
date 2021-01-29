@@ -1,5 +1,6 @@
 package com.amazon.dataprepper.plugins.source.oteltrace;
 
+import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.buffer.BlockingBuffer;
@@ -30,8 +31,10 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -113,9 +116,12 @@ public class OTelTraceSourceTest {
     }
 
     private void validateBuffer() {
-        List<Record<ExportTraceServiceRequest>> drainedBuffer = (List<Record<ExportTraceServiceRequest>>) BUFFER.read(100000);
+        Map.Entry<Collection<Record<ExportTraceServiceRequest>>, CheckpointState> drainedBufferResult = BUFFER.read(100000);
+        List<Record<ExportTraceServiceRequest>> drainedBuffer = (List<Record<ExportTraceServiceRequest>>) drainedBufferResult.getKey();
+        CheckpointState checkpointState = drainedBufferResult.getValue();
         assertThat(drainedBuffer.size()).isEqualTo(1);
         assertThat(drainedBuffer.get(0).getData()).isEqualTo(SUCCESS_REQUEST);
+        assertEquals(1, checkpointState.getNumCheckedRecords());
     }
 
     @Test
