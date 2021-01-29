@@ -4,9 +4,11 @@ import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.CheckpointState;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.TimeoutException;
 
@@ -36,7 +38,7 @@ public class TestBuffer implements Buffer<Record<String>> {
     }
 
     @Override
-    public Collection<Record<String>> read(int timeoutInMillis) {
+    public Map.Entry<Collection<Record<String>>, CheckpointState> read(int timeoutInMillis) {
         final List<Record<String>> records = new ArrayList<>();
         int index = 0;
         Record<String> record;
@@ -44,7 +46,8 @@ public class TestBuffer implements Buffer<Record<String>> {
             records.add(record);
             index++;
         }
-        return records;
+        final CheckpointState checkpointState = new CheckpointState(records.size());
+        return new AbstractMap.SimpleEntry<>(records, checkpointState);
     }
 
     @Override

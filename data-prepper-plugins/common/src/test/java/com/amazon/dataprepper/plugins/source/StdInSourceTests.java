@@ -1,5 +1,6 @@
 package com.amazon.dataprepper.plugins.source;
 
+import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.buffer.TestBuffer;
@@ -12,6 +13,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Queue;
 
 import static java.lang.String.format;
@@ -92,7 +94,8 @@ public class StdInSourceTests {
         assertThat(buffer.size(), is(equalTo(0)));
         stdInSource.start(buffer);
         assertThat(buffer.size(), is(equalTo(1)));
-        final Collection<Record<String>> recordsFromBuffer = buffer.read(TEST_WRITE_TIMEOUT);
+        final Map.Entry<Collection<Record<String>>, CheckpointState> readResult = buffer.read(TEST_WRITE_TIMEOUT);
+        final Collection<Record<String>> recordsFromBuffer = readResult.getKey();
         assertThat(recordsFromBuffer.size(), is(equalTo(1)));
         recordsFromBuffer.forEach(actualRecord -> assertThat(actualRecord.getData(), is(equalTo(READ_CONTENT))));
     }
