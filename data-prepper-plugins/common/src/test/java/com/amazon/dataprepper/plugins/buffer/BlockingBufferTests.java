@@ -14,6 +14,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
 public class BlockingBufferTests {
@@ -95,8 +96,8 @@ public class BlockingBufferTests {
         blockingBuffer.write(new Record<>("FILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
 
         // When
-        final Collection<Record<String>> exportedRecords = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
-        blockingBuffer.checkpoint(new CheckpointState(exportedRecords.size()));
+        final Map.Entry<Collection<Record<String>>, CheckpointState> readResult = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        blockingBuffer.checkpoint(readResult.getValue());
 
         // Then
         blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT);
@@ -107,8 +108,8 @@ public class BlockingBufferTests {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_SIZE, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
-        Collection<Record<String>> records = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
-        assertThat(records.size(), is(0));
+        final Map.Entry<Collection<Record<String>>, CheckpointState> readResult = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        assertThat(readResult.getKey().size(), is(0));
     }
 
     @Test
@@ -121,16 +122,22 @@ public class BlockingBufferTests {
             Record<String> record = new Record<>("TEST" + i);
             blockingBuffer.write(record, TEST_WRITE_TIMEOUT);
         }
-        Collection<Record<String>> partialRecords = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        final Map.Entry<Collection<Record<String>>, CheckpointState> partialReadResult = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        final Collection<Record<String>> partialRecords = partialReadResult.getKey();
+        final CheckpointState partialCheckpointState = partialReadResult.getValue();
         final int expectedBatchSize = (Integer) completePluginSetting.getAttributeFromSettings(ATTRIBUTE_BATCH_SIZE);
         assertThat(partialRecords.size(), is(expectedBatchSize));
+        assertEquals(expectedBatchSize, partialCheckpointState.getNumCheckedRecords());
         int i = 0;
         for (Record<String> record : partialRecords) {
             assertThat(record.getData(), equalTo("TEST" + i));
             i++;
         }
-        Collection<Record<String>> finalBatch = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        final Map.Entry<Collection<Record<String>>, CheckpointState> finalReadResult = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        final Collection<Record<String>> finalBatch = finalReadResult.getKey();
+        final CheckpointState finalCheckpointState = finalReadResult.getValue();
         assertThat(finalBatch.size(), is(testSize - expectedBatchSize));
+        assertEquals(testSize - expectedBatchSize, finalCheckpointState.getNumCheckedRecords());
         for (Record<String> record : finalBatch) {
             assertThat(record.getData(), equalTo("TEST" + i));
             i++;

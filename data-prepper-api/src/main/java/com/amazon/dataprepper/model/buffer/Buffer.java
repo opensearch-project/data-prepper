@@ -4,6 +4,7 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.CheckpointState;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -24,9 +25,9 @@ public interface Buffer<T extends Record<?>> {
      * Retrieves and removes the batch of records from the head of the queue. The batch size is defined/determined by
      * the configuration attribute "batch_size" or the @param timeoutInMillis
      * @param timeoutInMillis how long to wait before giving up
-     * @return The earliest batch of records in the buffer which are still not read.
+     * @return The earliest batch of records in the buffer which are still not read and its corresponding checkpoint state.
      */
-    Collection<T> read(int timeoutInMillis);
+    Map.Entry<Collection<T>, CheckpointState> read(int timeoutInMillis);
 
     /**
      * Check summary of records processed by data-prepper downstreams(preppers, sinks, pipelines).

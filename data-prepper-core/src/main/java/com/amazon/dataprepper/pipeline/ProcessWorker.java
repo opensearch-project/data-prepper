@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Future;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
@@ -39,8 +40,9 @@ public class ProcessWorker implements Runnable {
     public void run() {
         try {
             do {
-                Collection records = readBuffer.read(pipeline.getReadBatchTimeoutInMillis());
-                final CheckpointState checkpointState = new CheckpointState(records.size());
+                final Map.Entry<Collection, CheckpointState> readResult = readBuffer.read(pipeline.getReadBatchTimeoutInMillis());
+                Collection records = readResult.getKey();
+                final CheckpointState checkpointState = readResult.getValue();
                 //TODO Hacky way to avoid logging continuously - Will be removed as part of metrics implementation
                 if (records.isEmpty()) {
                     if(!isEmptyRecordsLogged) {
@@ -55,7 +57,7 @@ public class ProcessWorker implements Runnable {
                     records = prepper.execute(records);
                 }
                 if (!records.isEmpty()) {
-                    postToSink(records); //TODO use the response to ack the buffer on failure?
+                    postToSink(records);
                 }
                 // Checkpoint the current batch read from the buffer after being processed by prepper and sinks.
                 readBuffer.checkpoint(checkpointState);

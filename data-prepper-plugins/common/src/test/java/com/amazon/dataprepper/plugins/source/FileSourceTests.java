@@ -1,5 +1,6 @@
 package com.amazon.dataprepper.plugins.source;
 
+import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.buffer.BlockingBuffer;
@@ -111,7 +112,8 @@ public class FileSourceTests {
         assertThat(buffer.size(), is(equalTo(0)));
         fileSource.start(buffer);
         assertThat(buffer.size(), is(equalTo(1)));
-        final Collection<Record<String>> recordsFromBuffer = buffer.read(TEST_WRITE_TIMEOUT);
+        final Map.Entry<Collection<Record<String>>, CheckpointState> readResult = buffer.read(TEST_WRITE_TIMEOUT);
+        final Collection<Record<String>> recordsFromBuffer = readResult.getKey();
         assertThat(recordsFromBuffer.size(), is(equalTo(1)));
         recordsFromBuffer.forEach(actualRecord -> assertThat(actualRecord.getData(), is(equalTo(FILE_CONTENT))));
     }
