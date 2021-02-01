@@ -26,7 +26,7 @@ public class MetricNames {
     public static final String RECORDS_WRITTEN = "recordsWritten";
 
     /**
-     * Metric representing the number of records read from a buffer
+     * Metric representing the number of records read from a buffer.
      */
     public static final String RECORDS_READ = "recordsRead";
 
