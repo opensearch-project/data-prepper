@@ -43,6 +43,8 @@ public class AbstractBufferTest {
         // Then
         final List<Measurement> recordsWrittenMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.RECORDS_WRITTEN).toString());
+        final List<Measurement> recordsReadMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.RECORDS_READ).toString());
         final List<Measurement> recordsInflightMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.RECORDS_INFLIGHT).toString());
         final List<Measurement> recordsProcessedMeasurements = MetricsTestUtil.getMeasurementList(
@@ -55,6 +57,8 @@ public class AbstractBufferTest {
                 new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.CHECKPOINT_TIME_ELAPSED).toString());
         Assert.assertEquals(1, recordsWrittenMeasurements.size());
         Assert.assertEquals(5.0, recordsWrittenMeasurements.get(0).getValue(), 0);
+        Assert.assertEquals(1, recordsReadMeasurements.size());
+        Assert.assertEquals(5.0, recordsReadMeasurements.get(0).getValue(), 0);
         Assert.assertEquals(1, recordsInflightMeasurements.size());
         final Measurement recordsInflightMeasurement = recordsInflightMeasurements.get(0);
         Assert.assertEquals(5.0, recordsInflightMeasurement.getValue(), 0);
