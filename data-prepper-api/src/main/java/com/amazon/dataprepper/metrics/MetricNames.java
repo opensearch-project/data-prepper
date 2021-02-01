@@ -38,7 +38,7 @@ public class MetricNames {
     /**
      * Metric representing the number of records read from a buffer and checked.
      */
-    public static final String RECORDS_PROCESSED = "recordsProcessed";
+    public static final String RECORDS_CHECKED = "recordsChecked";
 
     /**
      * Metric representing the time elapsed while writing to a Buffer
