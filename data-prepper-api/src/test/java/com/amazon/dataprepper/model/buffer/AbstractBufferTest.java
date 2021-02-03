@@ -48,7 +48,7 @@ public class AbstractBufferTest {
         final List<Measurement> recordsInflightMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.RECORDS_INFLIGHT).toString());
         final List<Measurement> recordsCheckedMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.RECORDS_CHECKED).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(MetricNames.RECORDS_CHECKED).toString());
         final List<Measurement> writeTimeMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.WRITE_TIME_ELAPSED).toString());
         final List<Measurement> readTimeMeasurements = MetricsTestUtil.getMeasurementList(

@@ -28,19 +28,19 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     private final Timer checkpointTimer;
 
     public AbstractBuffer(final PluginSetting pluginSetting) {
-        this(PluginMetrics.fromPluginSetting(pluginSetting));
+        this(PluginMetrics.fromPluginSetting(pluginSetting), pluginSetting.getPipelineName());
     }
 
     public AbstractBuffer(final String bufferName, final String pipelineName) {
-        this(PluginMetrics.fromNames(bufferName, pipelineName));
+        this(PluginMetrics.fromNames(bufferName, pipelineName), pipelineName);
     }
 
-    private AbstractBuffer(final PluginMetrics pluginMetrics) {
+    private AbstractBuffer(final PluginMetrics pluginMetrics, final String pipelineName) {
         this.pluginMetrics = pluginMetrics;
         this.recordsWrittenCounter = pluginMetrics.counter(MetricNames.RECORDS_WRITTEN);
         this.recordsReadCounter = pluginMetrics.counter(MetricNames.RECORDS_READ);
         this.recordsInflight = pluginMetrics.gauge(MetricNames.RECORDS_INFLIGHT, new AtomicLong());
-        this.recordsCheckedCounter = pluginMetrics.counter(MetricNames.RECORDS_CHECKED);
+        this.recordsCheckedCounter = pluginMetrics.counter(MetricNames.RECORDS_CHECKED, pipelineName);
         this.writeTimeoutCounter = pluginMetrics.counter(MetricNames.WRITE_TIMEOUTS);
         this.writeTimer = pluginMetrics.timer(MetricNames.WRITE_TIME_ELAPSED);
         this.readTimer = pluginMetrics.timer(MetricNames.READ_TIME_ELAPSED);
