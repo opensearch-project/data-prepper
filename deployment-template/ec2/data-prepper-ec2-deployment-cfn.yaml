@@ -5,30 +5,30 @@ Parameters:
   AWSElasticsearchEndpoint:
     Description: Endpoint of the AWS Elasticsearch Service domain (including https://)
     Type: String
-    AllowedPattern: .+
-    ConstraintDescription: cannot be empty
+    AllowedPattern: https:\/\/[a-z0-9-\.]+(es.amazonaws.com)
+    ConstraintDescription: must be a valid Amazon Elasticsearch Service domain endpoint starting with https://
   AWSElasticsearchRegion:
     Description: Region of the AWS Elasticsearch Service domain
     Type: String
-    AllowedPattern: .+
+    AllowedPattern: "[a-z]+-[a-z]+-[0-9]+"
     Default: us-east-1
-    ConstraintDescription: cannot be empty
+    ConstraintDescription: must be a valid AWS region (e.g. us-west-2)
   DataPrepperVersion:
     Description: Version of Data Prepper to download and run
     Type: String
-    AllowedPattern: .+
+    AllowedPattern: "[0-9]+\\.[0-9]+\\.[0-9]+[a-z-]*"
     Default: 0.7.1-alpha
-    ConstraintDescription: cannot be empty
+    ConstraintDescription: must be a valid release number
   IAMRole:
     Description: Pre-existing IAM Role to associate with the EC2 instance, to be used for authentication when calling Elasticsearch
     Type: String
-    AllowedPattern: .+
+    AllowedPattern: "[a-zA-Z0-9+=,\\.@\\-_]+"
     Default: DataPrepperRole
-    ConstraintDescription: cannot be empty
+    ConstraintDescription: must be a valid IAM role name
   InstanceType:
     Description: EC2 instance type
     Type: String
-    AllowedPattern: .+
+    AllowedPattern: "[a-z0-9]+\\.[a-z0-9]+"
     Default: t2.medium
     ConstraintDescription: cannot be empty
   KeyName:
