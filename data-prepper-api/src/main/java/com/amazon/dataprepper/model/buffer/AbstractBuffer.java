@@ -20,8 +20,8 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     protected final PluginMetrics pluginMetrics;
     private final Counter recordsWrittenCounter;
     private final Counter recordsReadCounter;
-    private final AtomicLong recordsInflight;
-    private final Counter recordsCheckedCounter;
+    private final AtomicLong recordsInFlight;
+    private final Counter recordsProcessedCounter;
     private final Counter writeTimeoutCounter;
     private final Timer writeTimer;
     private final Timer readTimer;
@@ -39,8 +39,8 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         this.pluginMetrics = pluginMetrics;
         this.recordsWrittenCounter = pluginMetrics.counter(MetricNames.RECORDS_WRITTEN);
         this.recordsReadCounter = pluginMetrics.counter(MetricNames.RECORDS_READ);
-        this.recordsInflight = pluginMetrics.gauge(MetricNames.RECORDS_INFLIGHT, new AtomicLong());
-        this.recordsCheckedCounter = pluginMetrics.counter(MetricNames.RECORDS_CHECKED, pipelineName);
+        this.recordsInFlight = pluginMetrics.gauge(MetricNames.RECORDS_INFLIGHT, new AtomicLong());
+        this.recordsProcessedCounter = pluginMetrics.counter(MetricNames.RECORDS_PROCESSED, pipelineName);
         this.writeTimeoutCounter = pluginMetrics.counter(MetricNames.WRITE_TIMEOUTS);
         this.writeTimer = pluginMetrics.timer(MetricNames.WRITE_TIME_ELAPSED);
         this.readTimer = pluginMetrics.timer(MetricNames.READ_TIME_ELAPSED);
@@ -85,7 +85,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     public Map.Entry<Collection<T>, CheckpointState> read(int timeoutInMillis) {
         final Map.Entry<Collection<T>, CheckpointState> readResult = readTimer.record(() -> doRead(timeoutInMillis));
         recordsReadCounter.increment(readResult.getKey().size()*1.0);
-        recordsInflight.addAndGet(readResult.getValue().getNumRecordsToBeChecked());
+        recordsInFlight.addAndGet(readResult.getValue().getNumRecordsToBeChecked());
         return readResult;
     }
 
@@ -93,8 +93,8 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     public void checkpoint(final CheckpointState checkpointState) {
         checkpointTimer.record(() -> doCheckpoint(checkpointState));
         final int numRecordsToBeChecked = checkpointState.getNumRecordsToBeChecked();
-        recordsInflight.addAndGet(-numRecordsToBeChecked);
-        recordsCheckedCounter.increment(numRecordsToBeChecked);
+        recordsInFlight.addAndGet(-numRecordsToBeChecked);
+        recordsProcessedCounter.increment(numRecordsToBeChecked);
     }
 
     /**

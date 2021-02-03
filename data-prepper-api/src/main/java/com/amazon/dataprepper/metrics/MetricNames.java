@@ -33,12 +33,12 @@ public class MetricNames {
     /**
      * Metric representing the number of records read from a buffer but unchecked.
      */
-    public static final String RECORDS_INFLIGHT = "recordsInflight";
+    public static final String RECORDS_INFLIGHT = "recordsInFlight";
 
     /**
-     * Metric representing the number of records read from a buffer and checked.
+     * Metric representing the number of records read from a buffer and processed by the pipeline.
      */
-    public static final String RECORDS_CHECKED = "recordsChecked";
+    public static final String RECORDS_PROCESSED = "recordsProcessed";
 
     /**
      * Metric representing the time elapsed while writing to a Buffer
