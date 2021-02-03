@@ -4,7 +4,7 @@ This is a special prepper that consumes Opentelemetry traces, stores them in a L
 The lmdb databases are stored in the ```data/service-map/*``` path.
 
 # Usages
-
+Example `.yaml` configuration:
 ```
 prepper:
     service-map-stateful:
@@ -12,7 +12,7 @@ prepper:
 
 ## Configurations
 
-* window_duration => An `int` represents the fixed time window in seconds to evaluate service-map relationships. Default is ```180```. 
+* window_duration(Optional) => An `int` represents the fixed time window in seconds to evaluate service-map relationships. Default is ```180```. 
 
 ## Metrics
 Besides common metrics in [AbstractPrepper](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/data-prepper-api/src/main/java/com/amazon/dataprepper/model/prepper/AbstractPrepper.java), peer-forwarder introduces the following custom metrics.
