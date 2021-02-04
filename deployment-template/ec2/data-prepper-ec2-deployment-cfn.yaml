@@ -121,7 +121,7 @@ Resources:
           #!/bin/bash
           export RELEASE=opendistroforelasticsearch-data-prepper-${DataPrepperVersion}-linux-x64
           yum install java-11-amazon-corretto-headless -y
-          wget https://github.com/opendistro-for-elasticsearch/data-prepper/releases/download/${DataPrepperVersion}/$RELEASE.tar.gz -O /tmp/$RELEASE.tar.gz
+          wget https://github.com/opendistro-for-elasticsearch/data-prepper/releases/download/v${DataPrepperVersion}/$RELEASE.tar.gz -O /tmp/$RELEASE.tar.gz
           tar -xzf /tmp/$RELEASE.tar.gz --directory /usr/local/bin
           /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default
           nohup /usr/local/bin/$RELEASE/data-prepper-tar-install.sh /etc/data-prepper/config.yaml > /var/log/data-prepper.out &
