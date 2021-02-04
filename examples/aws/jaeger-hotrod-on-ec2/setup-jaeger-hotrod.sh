@@ -2,12 +2,21 @@
 # Script to install and run the Jaeger Hot R.O.D. sample application.
 # Installs docker, docker-compose, writes configuration files, then runs 'docker-compose up'
 
+# Install Docker
 sudo yum install docker -y
+
+# Remove need for sudo when running docker commands
 sudo usermod -aG docker $USER
+
+# Start the docker dameon
 sudo systemctl start docker
+
+# Download docker-compose 1.28.2 and make it executable
 sudo curl -L "https://github.com/docker/compose/releases/download/1.28.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
 sudo chmod +x /usr/local/bin/docker-compose
 
+# Write an OpenTelemetry Collector configuration file to receive from Jaeger and export to Data Prepper
+# See more documentation at https://opentelemetry.io/docs/collector/configuration/
 cat <<EOT >> otel-collector-config.yml
 receivers:
   jaeger:
@@ -28,6 +37,9 @@ service:
 
 EOT
 
+# Write a Docker Compose file necessary to stand up the HotROD application, a Jaeger agent,
+# and an OpenTelemetry Collector.
+# See more HotROD documentation at https://github.com/jaegertracing/jaeger/tree/master/examples/hotrod
 cat <<EOT >> docker-compose.yml
 version: "3.7"
 services:
