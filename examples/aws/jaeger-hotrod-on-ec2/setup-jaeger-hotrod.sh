@@ -68,4 +68,6 @@ services:
 
 EOT
 
+# Run Docker compose to start the HotROD application
+# The application can be shut down and cleaned up later by running `sudo /usr/local/bin/docker-compose down`
 sudo /usr/local/bin/docker-compose up -d
