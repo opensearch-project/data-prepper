@@ -13,6 +13,9 @@ Parameters:
     AllowedPattern: "[a-z]+-[a-z]+-[0-9]+"
     Default: us-east-1
     ConstraintDescription: must be a valid AWS region (e.g. us-west-2)
+  AWSElasticsearchSubnetId:
+    Description: The subnet ID of the AWS Elasticsearch Service domain (Leave blank if the domain is not in a VPC)
+    Type: String
   DataPrepperVersion:
     Description: Version of Data Prepper to download and run
     Type: String
@@ -47,6 +50,9 @@ Parameters:
     Default: 0.0.0.0/0
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+Conditions:
+  DomainIsPublic: !Equals [!Ref AWSElasticsearchSubnetId, ""]
+  DomainIsInVPC: !Not [Condition: DomainIsPublic]
 Resources:
   EC2Instance:
     Type: AWS::EC2::Instance
@@ -97,6 +103,8 @@ Resources:
               owner: root
               group: root
     Properties:
+      SubnetId:
+        !If [DomainIsInVPC, !Ref AWSElasticsearchSubnetId, !Ref "AWS::NoValue"]
       InstanceType:
         Ref: InstanceType
       IamInstanceProfile:
@@ -106,7 +114,7 @@ Resources:
       ImageId:
         Ref: LatestAmi
       SecurityGroups:
-        - Ref: InstanceSecurityGroup
+        !If [DomainIsPublic, [!Ref InstanceSecurityGroup], !Ref "AWS::NoValue"]
       UserData:
         # Script to download and run Data Prepper
         Fn::Base64: !Sub |
@@ -124,6 +132,7 @@ Resources:
         Timeout: "PT15M"
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    Condition: DomainIsPublic
     Properties:
       GroupDescription: Enable SSH access via port 22
       SecurityGroupIngress:
