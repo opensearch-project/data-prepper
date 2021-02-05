@@ -42,26 +42,6 @@ pipeline:
 
 The elasticsearch sink will reserve `otel-v1-apm-service-map` as index for record ingestion.
 
-### Custom data
-
-If both `trace_analytics_raw` and `trace_analytics_service_map` are set to false, the ES sink will ingest custom data type, i.e.
-user needs to provide custom [index](#index).
-
-```$xslt
-pipeline:
-  ...
-  sink:
-    elasticsearch:
-      hosts: ["https://localhost:9200"]
-      username: YOUR_USERNAME_HERE
-      password: YOUR_PASSWORD_HERE
-      index: "some-index"
-      template_file: /your/local/template-file.json
-      document_id_field: "someId"
-      dlq_file: /your/local/dlq-file
-      bulk_size: 4
-```
-
 ## Configuration
 
 - `hosts`: A list of IP addresses of elasticsearch nodes.
