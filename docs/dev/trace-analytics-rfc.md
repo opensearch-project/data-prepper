@@ -8,7 +8,7 @@ As the first step, in 2020 we will offer Trace Analytics, which will allow users
 ## 2. Approach
 The Trace Analytics feature will embrace the Open Telemetry standard and provide the required plugins and adapters to integrate with the ecosystem. 
 Adoption to the OpenTelemetry ecosystem will benefit users of existing tracing standards like Zipkin and OpenTracing to use the Trace Analytics feature.
-To support the trace analytics feature we will build a new service called Data Prepper, which receives trace data from the OpenTelemetry collector, process them to elasticsearch friendly docs, and stores them in users' elasticsearch cluster. The trace analytics will also provide a Kibana plugin that will provide user-friendly dashboards on the stored trace data. 
+To support the trace analytics feature we will build a new service called Data Prepper, which receives trace data from the OpenTelemetry collector, process them to Elasticsearch friendly docs, and stores them in users' elasticsearch cluster. The trace analytics will also provide a Kibana plugin that will provide user-friendly dashboards on the stored trace data. 
 
 ![Kibana Notebooks Architecture](images/HighLevelDesign.jpg)
 
@@ -60,14 +60,14 @@ mean we will support transport over gRPC, HTTP/Proto and HTTP/JSON. The source w
 ##### Processors
 
 We are building two processors for the Trace Analytics feature,
-* *otel-trace-raw-processor* -  This processor will be responsible for converting the trace data in [OpenTelemetry specification](https://github.com/open-telemetry/opentelemetry-proto/tree/master/opentelemetry/proto/trace/v1) to elasticsearch friendly (JSON) docs. These elasticsearch friendly docs will have minimal additional fields like duration which are not part of the original specification. These additional fields are to make the instant kibana dashboards user-friendly.
+* *otel-trace-raw-processor* -  This processor will be responsible for converting the trace data in [OpenTelemetry specification](https://github.com/open-telemetry/opentelemetry-proto/tree/master/opentelemetry/proto/trace/v1) to Elasticsearch friendly (JSON) docs. These elasticsearch friendly docs will have minimal additional fields like duration which are not part of the original specification. These additional fields are to make the instant kibana dashboards user-friendly.
 * *service-map-processor* -  This processor will perform the required preprocessing on the trace data and build metadata to display the service-map kibana dashboards.
 
 
 ##### Elasticsearch sink
 
-We will build a generic sink that will write the data to elasticsearch as the destination. The elasticsearch sink will have configuration options related to elasticsearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc. 
-For the trace analytics feature, the sink will have specific configurations which will make the sink to use indices and index templates specific to the feature. Trace analytics specific elasticsearch indices are,
+We will build a generic sink that will write the data to Elasticsearch as the destination. The Elasticsearch sink will have configuration options related to elasticsearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc. 
+For the trace analytics feature, the sink will have specific configurations which will make the sink to use indices and index templates specific to the feature. Trace analytics specific Elasticsearch indices are,
                                                                                                                                                                  
 * *apm-trace-raw-v1* -  This index will store the output from otel-trace-raw-processor. 
 * *apm-service-map-v1* - This index will store the output from the service-map-processor.

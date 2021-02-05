@@ -22,7 +22,7 @@ pipeline:
       bulk_size: 4
 ```
 
-The elasticsearch sink will reserve `otel-v1-apm-span-*` as index pattern and `otel-v1-apm-span` as index alias for record ingestion.
+The Elasticsearch sink will reserve `otel-v1-apm-span-*` as index pattern and `otel-v1-apm-span` as index alias for record ingestion.
 
 ### Service map trace analytics
 
@@ -40,7 +40,7 @@ pipeline:
       bulk_size: 4
 ```
 
-The elasticsearch sink will reserve `otel-v1-apm-service-map` as index for record ingestion.
+The Elasticsearch sink will reserve `otel-v1-apm-service-map` as index for record ingestion.
 
 ### Send Trace data to Amazon Elasticsearch domain
 
@@ -79,7 +79,7 @@ The plugin uses the default credential chain. Run `aws configure` using the AWS 
 
 ### Hosts
 
-A list of IP addresses of Opendistro for elasticsearch cluster or url of the Amazon Elasticsearch domain.
+A list of IP addresses of Opendistro for Elasticsearch cluster or url of the Amazon Elasticsearch domain.
 
 ### Amazon Elasticsearch
 
@@ -157,7 +157,7 @@ A String used as index name for custom data type.
 ### <a name="template_file"></a>Template file (Optional)
 
 A json file path to be read as index template for custom data ingestion. The json file content should be the json value of
-`"template"` key in the json content of elasticsearch [Index templates API](https://www.elastic.co/guide/en/elasticsearch/reference/7.8/index-templates.html), 
+`"template"` key in the json content of Elasticsearch [Index templates API](https://www.elastic.co/guide/en/elasticsearch/reference/7.8/index-templates.html), 
 e.g. [otel-v1-apm-span-index-template.json](https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/blob/master/dataPrepper-plugins/elasticsearch/src/main/resources/otel-v1-apm-span-index-template.json)
 
 ### DLQ file (Optional)
