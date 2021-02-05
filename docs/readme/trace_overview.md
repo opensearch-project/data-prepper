@@ -31,14 +31,14 @@ The [OpenTelemetry source](../../data-prepper-plugins/otel-trace-source/README.m
 ### Processors
 
 We have two processors for the Trace Analytics feature,
-* *otel_trace_raw_processor* -  This processor is responsible for converting the trace data in [OpenTelemetry specification](https://github.com/open-telemetry/opentelemetry-proto/tree/master/opentelemetry/proto/trace/v1) to elasticsearch friendly (JSON) docs. These elasticsearch friendly docs have certain additional fields like duration which are not part of the original OpenTelemetry specification. These additional fields are to make the instant kibana dashboards user-friendly.
+* *otel_trace_raw_processor* -  This processor is responsible for converting the trace data in [OpenTelemetry specification](https://github.com/open-telemetry/opentelemetry-proto/tree/master/opentelemetry/proto/trace/v1) to Elasticsearch friendly (JSON) docs. These elasticsearch friendly docs have certain additional fields like duration which are not part of the original OpenTelemetry specification. These additional fields are to make the instant kibana dashboards user-friendly.
 * *service_map_stateful* -  This processor performs the required preprocessing on the trace data and build metadata to display the service-map kibana dashboards.
 
 
 ### Elasticsearch sink
 
-We have a generic sink that writes the data to elasticsearch as the destination. The [elasticsearch sink](../../data-prepper-plugins/elasticsearch/README.md) has configuration options related to elasticsearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc. 
-For the trace analytics feature, the sink has specific configurations which enables the sink to use indices and index templates specific to this feature. Trace analytics specific elasticsearch indices are,
+We have a generic sink that writes the data to Elasticsearch as the destination. The [elasticsearch sink](../../data-prepper-plugins/elasticsearch/README.md) has configuration options related to elasticsearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc. 
+For the trace analytics feature, the sink has specific configurations which enables the sink to use indices and index templates specific to this feature. Trace analytics specific Elasticsearch indices are,
                                                                                                                                                                  
 * *otel-v1-apm-span* -  This index stores the output from [otel-trace-raw-processor](../../data-prepper-plugins/otel-trace-raw-processor/README.md). 
 * *otel-v1-apm-service-map* - This index stores the output from the [service-map-processor](../../data-prepper-plugins/service-map-stateful/README.md).
@@ -95,4 +95,4 @@ Please check this [link](https://opendistro.github.io/for-elasticsearch-docs/doc
 
 ##AWS Elasticsearch
 
-Please check this [link](../../deployment/aws/README.md)  for launching Data Prepper to send data to AWS Elasticseaech service.
+Please check this [link](../../deployment/aws/README.md)  for launching Data Prepper to send data to AWS Elasticsearch service.
