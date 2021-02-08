@@ -141,8 +141,8 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     }
 
     @Override
-    public void checkpoint(final CheckpointState checkpointState) {
-        final int numCheckedRecords = checkpointState.getNumCheckedRecords();
+    public void doCheckpoint(final CheckpointState checkpointState) {
+        final int numCheckedRecords = checkpointState.getNumRecordsToBeChecked();
         capacitySemaphore.release(numCheckedRecords);
     }
 }

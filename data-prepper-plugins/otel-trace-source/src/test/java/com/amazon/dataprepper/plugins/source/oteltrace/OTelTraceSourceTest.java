@@ -121,7 +121,7 @@ public class OTelTraceSourceTest {
         CheckpointState checkpointState = drainedBufferResult.getValue();
         assertThat(drainedBuffer.size()).isEqualTo(1);
         assertThat(drainedBuffer.get(0).getData()).isEqualTo(SUCCESS_REQUEST);
-        assertEquals(1, checkpointState.getNumCheckedRecords());
+        assertEquals(1, checkpointState.getNumRecordsToBeChecked());
     }
 
     @Test

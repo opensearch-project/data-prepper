@@ -10,6 +10,6 @@ public class CheckpointStateTest {
     @Test
     public void testSimple() {
         final CheckpointState checkpointState = new CheckpointState(TEST_NUM_CHECKED_RECORDS);
-        assertEquals(TEST_NUM_CHECKED_RECORDS, checkpointState.getNumCheckedRecords());
+        assertEquals(TEST_NUM_CHECKED_RECORDS, checkpointState.getNumRecordsToBeChecked());
     }
 }
