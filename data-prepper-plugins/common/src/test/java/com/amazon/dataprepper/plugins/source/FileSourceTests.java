@@ -3,7 +3,7 @@ package com.amazon.dataprepper.plugins.source;
 import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.buffer.BlockingBuffer;
+import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.amazon.dataprepper.plugins.buffer.TestBuffer;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Test;

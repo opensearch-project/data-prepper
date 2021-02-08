@@ -3,7 +3,7 @@ package com.amazon.dataprepper.plugins.source.oteltrace;
 import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.buffer.BlockingBuffer;
+import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.linecorp.armeria.client.Clients;

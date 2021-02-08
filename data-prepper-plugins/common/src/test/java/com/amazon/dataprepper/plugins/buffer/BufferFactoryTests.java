@@ -3,6 +3,7 @@ package com.amazon.dataprepper.plugins.buffer;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.PluginException;
+import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.junit.Test;
 
 import java.util.HashMap;
@@ -17,6 +18,7 @@ import static org.junit.Assert.assertThrows;
 @SuppressWarnings("rawtypes")
 public class BufferFactoryTests {
     private static String TEST_PIPELINE = "test-pipeline";
+
     /**
      * Tests if BufferFactory is able to retrieve default Source plugins by name
      */

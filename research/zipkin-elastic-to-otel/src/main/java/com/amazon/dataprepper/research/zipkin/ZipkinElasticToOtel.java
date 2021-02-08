@@ -2,7 +2,7 @@ package com.amazon.dataprepper.research.zipkin;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.buffer.BlockingBuffer;
+import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration;
 import com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSource;
 import com.linecorp.armeria.client.Clients;

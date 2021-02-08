@@ -7,7 +7,7 @@ import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.plugins.TestPrepper;
 import com.amazon.dataprepper.plugins.TestSink;
 import com.amazon.dataprepper.plugins.TestSource;
-import com.amazon.dataprepper.plugins.buffer.BlockingBuffer;
+import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.junit.After;
 import org.junit.Test;
 
