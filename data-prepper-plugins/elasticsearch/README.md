@@ -6,7 +6,7 @@ This is the Data Prepper Elasticsearch sink plugin, sending records to Elasticse
 
 The Elasticsearch sink should be configured as part of Data Prepper pipeline yaml file according to the following use cases.
 
-### Raw span trace analytics
+### <a name="raw_span_trace_analytics"></a>Raw span trace analytics
 
 ```$xslt
 pipeline:
@@ -24,7 +24,7 @@ pipeline:
 
 The elasticsearch sink will reserve `otel-v1-apm-span-*` as index pattern and `otel-v1-apm-span` as index alias for record ingestion.
 
-### Service map trace analytics
+### <a name="service_map_trace_analytics"></a>Service map trace analytics
 
 ```$xslt
 pipeline:
@@ -66,7 +66,7 @@ Default is null.
   ...
 }
 ```
-Default value is false.
+Default value is false. Set it to true for [Raw span trace analytics](#raw_span_trace_analytics). Set it to false for [Service map trace analytics](#service_map_trace_analytics).
 
 - `trace_analytics_service_map`(optional): A boolean flag indicates APM trace analytics service map data type. e.g.
 ```$xslt
@@ -87,7 +87,7 @@ Default value is false.
   "traceGroupName": "MakePayement.auto"
 }
 ```
-Default value is false. 
+Default value is false. Set it to true for [Service map trace analytics](#service_map_trace_analytics). Set it to false for [Raw span trace analytics](#raw_span_trace_analytics).
 
 - <a name="index"></a>`index`: A String used as index name for custom data type. Applicable and required only If both `trace_analytics_raw` and `trace_analytics_service_map` are set to false.
 
