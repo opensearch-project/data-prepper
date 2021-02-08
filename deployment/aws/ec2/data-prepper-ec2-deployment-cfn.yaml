@@ -28,12 +28,16 @@ Parameters:
     AllowedPattern: "[a-zA-Z0-9+=,\\.@\\-_]+"
     Default: DataPrepperRole
     ConstraintDescription: must be a valid IAM role name
-  InstanceType:
+  EC2InstanceType:
     Description: EC2 instance type
     Type: String
     AllowedPattern: "[a-z0-9]+\\.[a-z0-9]+"
     Default: t2.medium
     ConstraintDescription: cannot be empty
+  EC2VolumeSize:
+    Description: EC2 instance storage volume size (GB)
+    Type: Number
+    Default: 8
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
     Type: AWS::EC2::KeyPair::KeyName
@@ -42,6 +46,18 @@ Parameters:
     Description: AMI to deploy to EC2, defaults to Amazon Linux 2
     Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
     Default: "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-ebs"
+  PipelineBatchSize:
+    Description: Max number of records the Data Prepper internal buffer drains after each read
+    Type: Number
+    Default: 256
+  PipelineBufferSize:
+    Description: Max number of records the Data Prepper internal buffer accepts
+    Type: Number
+    Default: 1024
+  PipelineWorkerCount:
+    Description: The number of worker threads dedicated to the Data Prepper pipeline
+    Type: Number
+    Default: 4
   SSHLocation:
     Description: The IP address range that can be used to SSH to the EC2 instances
     Type: String
@@ -66,7 +82,12 @@ Resources:
             "/etc/data-prepper/config.yaml":
               content: !Sub |
                 entry-pipeline:
-                  delay: "100"
+                  workers: ${PipelineWorkerCount}
+                  delay: 100
+                  buffer:
+                    bounded_blocking:
+                      buffer_size: ${PipelineBufferSize}
+                      batch_size: ${PipelineBatchSize}
                   source:
                     otel_trace_source:
                   sink:
@@ -103,10 +124,14 @@ Resources:
               owner: root
               group: root
     Properties:
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: !Ref EC2VolumeSize
       SubnetId:
         !If [DomainIsInVPC, !Ref AWSElasticsearchSubnetId, !Ref "AWS::NoValue"]
       InstanceType:
-        Ref: InstanceType
+        Ref: EC2InstanceType
       IamInstanceProfile:
         Ref: IAMRole
       KeyName:
