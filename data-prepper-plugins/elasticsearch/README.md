@@ -96,7 +96,7 @@ Default value is false. Set it to true for [Service map trace analytics](#servic
 e.g. [otel-v1-apm-span-index-template.json](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/data-prepper-plugins/elasticsearch/src/main/resources/otel-v1-apm-span-index-template.json)
 
 - `dlq_file`(optional): A String of absolute file path for DLQ failed output records. Defaults to null.
-If not provided, failed records will be written into the default log file.
+If not provided, failed records will be written into the default data-prepper log file (`logs/Data-Prepper.log`).
 
 - `bulk_size` (optional): A long of bulk size in bulk requests in MB. Default to 5 MB. If set to be less than 0, 
 all the records received from the upstream prepper at a time will be sent as a single bulk request. 
