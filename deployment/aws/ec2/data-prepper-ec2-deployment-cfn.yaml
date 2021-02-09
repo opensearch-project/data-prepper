@@ -81,7 +81,7 @@ Resources:
           files:
             "/etc/data-prepper/config.yaml":
               content: !Sub |
-                entry-pipeline:
+                otel-trace-pipeline:
                   workers: ${PipelineWorkerCount}
                   delay: 100
                   buffer:
@@ -98,7 +98,7 @@ Resources:
                 raw-pipeline:
                   source:
                     pipeline:
-                      name: "entry-pipeline"
+                      name: "otel-trace-pipeline"
                   processor:
                     - otel_trace_raw_processor:
                   sink:
@@ -111,7 +111,7 @@ Resources:
                   delay: "100"
                   source:
                     pipeline:
-                      name: "entry-pipeline"
+                      name: "otel-trace-pipeline"
                   processor:
                     - service_map_stateful:
                   sink:
