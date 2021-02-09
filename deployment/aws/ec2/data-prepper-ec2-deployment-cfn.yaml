@@ -158,14 +158,14 @@ Resources:
         # Script to download and run Data Prepper
         Fn::Base64: !Sub |
           #!/bin/bash
-          export JAVA_OPTS="-xms${HeapInMb}m -xmx${HeapInMb}m"
+          export JAVA_OPTS="-Xms${HeapInMb}m -Xmx${HeapInMb}m"
           echo $JAVA_OPTS > /var/log/java_opts.txt
           export RELEASE=opendistroforelasticsearch-data-prepper-${DataPrepperVersion}-linux-x64
           yum install java-11-amazon-corretto-headless -y
           wget https://github.com/opendistro-for-elasticsearch/data-prepper/releases/download/v${DataPrepperVersion}/$RELEASE.tar.gz -O /tmp/$RELEASE.tar.gz
           tar -xzf /tmp/$RELEASE.tar.gz --directory /usr/local/bin
           /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default
-          nohup /usr/local/bin/$RELEASE/data-prepper-tar-install.sh /etc/data-prepper/config.yaml > /var/log/data-prepper.out &
+          nohup /usr/local/bin/$RELEASE/data-prepper-tar-install.sh /etc/data-prepper/config.yaml > /var/log/data-prepper.out 2>&1
           /opt/aws/bin/cfn-signal --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}
     CreationPolicy:
       ResourceSignal:
