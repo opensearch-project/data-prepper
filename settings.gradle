@@ -25,5 +25,3 @@ include 'data-prepper-plugins:otel-trace-raw-prepper'
 include 'data-prepper-plugins:otel-trace-source'
 include 'data-prepper-plugins:peer-forwarder'
 include 'data-prepper-plugins:blocking-buffer'
-findProject(':data-prepper-plugins:blocking-buffer')?.name = 'blocking-buffer'
-

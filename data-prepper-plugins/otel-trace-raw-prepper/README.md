@@ -9,6 +9,9 @@ prepper:
     - otel_trace_raw_prepper:
 ```
 
+## Configuration
+
+
 ## Metrics
 Apart from common metrics in [AbstractPrepper](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/data-prepper-api/src/main/java/com/amazon/dataprepper/model/prepper/AbstractPrepper.java), otel-trace-raw-prepper introduces the following custom metrics.
 
