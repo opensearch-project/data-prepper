@@ -6,6 +6,7 @@
 - [Overview](docs/readme/overview.md)
 - Trace Analytics
   - [Overview](docs/readme/trace_overview.md)
+  - [Trace Analytics Setup](docs/readme/trace_setup.md)
 - Project Details
   - [Error Handling](docs/readme/error_handling.md)
   - [Contribute](#Contribute)
