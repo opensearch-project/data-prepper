@@ -49,15 +49,19 @@ Parameters:
   PipelineBatchSize:
     Description: Max number of records the Data Prepper internal buffer drains after each read
     Type: Number
-    Default: 256
+    Default: 8
   PipelineBufferSize:
     Description: Max number of records the Data Prepper internal buffer accepts
     Type: Number
-    Default: 1024
+    Default: 512
   PipelineWorkerCount:
     Description: The number of worker threads dedicated to the Data Prepper pipeline
     Type: Number
-    Default: 4
+    Default: 1
+  HeapInMb:
+    Description: The heap in MB that Data Prepper should use. This heap value will be used for both min and max.
+    Type: Number
+    Default: 256
   SSHLocation:
     Description: The IP address range that can be used to SSH to the EC2 instances
     Type: String
@@ -82,8 +86,8 @@ Resources:
             "/etc/data-prepper/config.yaml":
               content: !Sub |
                 otel-trace-pipeline:
-                  workers: ${PipelineWorkerCount}
                   delay: 100
+                  workers: ${PipelineWorkerCount}
                   buffer:
                     bounded_blocking:
                       buffer_size: ${PipelineBufferSize}
@@ -96,6 +100,11 @@ Resources:
                     - pipeline:
                         name: "service-map-pipeline"
                 raw-pipeline:
+                  workers: ${PipelineWorkerCount}
+                  buffer:
+                    bounded_blocking:
+                      buffer_size: ${PipelineBufferSize}
+                      batch_size: ${PipelineBatchSize}
                   source:
                     pipeline:
                       name: "otel-trace-pipeline"
@@ -109,6 +118,11 @@ Resources:
                         trace_analytics_raw: true
                 service-map-pipeline:
                   delay: "100"
+                  workers: ${PipelineWorkerCount}
+                  buffer:
+                    bounded_blocking:
+                      buffer_size: ${PipelineBufferSize}
+                      batch_size: ${PipelineBatchSize}
                   source:
                     pipeline:
                       name: "otel-trace-pipeline"
@@ -144,12 +158,14 @@ Resources:
         # Script to download and run Data Prepper
         Fn::Base64: !Sub |
           #!/bin/bash
+          export JAVA_OPTS="-Xms${HeapInMb}m -Xmx${HeapInMb}m"
+          echo $JAVA_OPTS > /var/log/java_opts.txt
           export RELEASE=opendistroforelasticsearch-data-prepper-${DataPrepperVersion}-linux-x64
           yum install java-11-amazon-corretto-headless -y
           wget https://github.com/opendistro-for-elasticsearch/data-prepper/releases/download/v${DataPrepperVersion}/$RELEASE.tar.gz -O /tmp/$RELEASE.tar.gz
           tar -xzf /tmp/$RELEASE.tar.gz --directory /usr/local/bin
           /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default
-          nohup /usr/local/bin/$RELEASE/data-prepper-tar-install.sh /etc/data-prepper/config.yaml > /var/log/data-prepper.out &
+          nohup /usr/local/bin/$RELEASE/data-prepper-tar-install.sh /etc/data-prepper/config.yaml > /var/log/data-prepper.out 2>&1
           /opt/aws/bin/cfn-signal --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}
     CreationPolicy:
       ResourceSignal:
