@@ -3,7 +3,6 @@ package com.amazon.dataprepper.plugins.source;
 import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.amazon.dataprepper.plugins.buffer.TestBuffer;
 import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
@@ -25,6 +24,7 @@ public class FileSourceTests {
     private static final String TEST_FILE_PATH = "src/test/resources/test-file-source.tst";
     private static final String FILE_DOES_NOT_EXIST = "file_does_not_exist";
     private static final String FILE_CONTENT = "THIS IS A TEST";
+
 
     @Test
     public void testFileSourceWithEmptyFilePath() {
@@ -82,9 +82,10 @@ public class FileSourceTests {
 
     @Test
     public void testFileSourceWithNonExistentFile() {
+        final Queue<Record<String>> bufferQueue = new LinkedList<>();
         final FileSource fileSource = new FileSource(FILE_DOES_NOT_EXIST, TEST_WRITE_TIMEOUT, TEST_PIPELINE_NAME);
         try {
-            fileSource.start(new BlockingBuffer<Record<String>>(TEST_PIPELINE_NAME));
+            fileSource.start(new TestBuffer(bufferQueue, 1, true));
         } catch (RuntimeException ex) {
             assertThat(ex.getMessage(), is(equalTo(format("Pipeline [%s] - Error processing the input file %s",
                     TEST_PIPELINE_NAME, FILE_DOES_NOT_EXIST))));
