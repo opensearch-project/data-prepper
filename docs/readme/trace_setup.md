@@ -86,7 +86,7 @@ service-map-pipeline:
   delay: "100"
   source:
     pipeline:
-      name: "entry-pipeline"
+      name: "otel-trace-pipeline"
   processor:
     - service_map_stateful:
   sink:
