@@ -1,21 +1,38 @@
 package com.amazon.dataprepper.plugins.buffer;
 
+import com.amazon.dataprepper.model.PluginType;
+import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.CheckpointState;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.TimeoutException;
 
+@DataPrepperPlugin(name = "test_buffer", type = PluginType.BUFFER)
 public class TestBuffer implements Buffer<Record<String>> {
-    private final Queue<Record<String>> buffer;
-    private final int batchSize;
-    private final boolean imitateTimeout;
+    private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
+    private static final String ATTRIBUTE_IMITATE_TIMEOUT = "imitate_timeout";
+    private static final int DEFAULT_BATCH_SIZE = 8;
+    private static final boolean DEFAULT_IMITATE_TIMEOUT = false;
+
+    private Queue<Record<String>> buffer;
+    private int batchSize;
+    private boolean imitateTimeout;
+
+
+    public TestBuffer(final PluginSetting pluginSetting) {
+        this(new LinkedList<>(),
+                pluginSetting.getIntegerOrDefault(ATTRIBUTE_BATCH_SIZE, DEFAULT_BATCH_SIZE),
+                pluginSetting.getBooleanOrDefault(ATTRIBUTE_IMITATE_TIMEOUT, DEFAULT_IMITATE_TIMEOUT));
+    }
 
     public TestBuffer(final Queue<Record<String>> buffer, final int batchSize) {
         this.buffer = buffer;
@@ -29,9 +46,10 @@ public class TestBuffer implements Buffer<Record<String>> {
         this.imitateTimeout = imitateTimeout;
     }
 
+
     @Override
     public void write(Record<String> record, int timeoutInMillis) throws TimeoutException {
-        if(imitateTimeout) {
+        if (imitateTimeout) {
             throw new TimeoutException();
         }
         buffer.add(record);
@@ -42,7 +60,7 @@ public class TestBuffer implements Buffer<Record<String>> {
         final List<Record<String>> records = new ArrayList<>();
         int index = 0;
         Record<String> record;
-        while(index < batchSize && (record = buffer.poll()) != null) {
+        while (index < batchSize && (record = buffer.poll()) != null) {
             records.add(record);
             index++;
         }
