@@ -118,7 +118,6 @@ Resources:
                         trace_analytics_raw: true
                 service-map-pipeline:
                   delay: "100"
-                  workers: ${PipelineWorkerCount}
                   buffer:
                     bounded_blocking:
                       buffer_size: ${PipelineBufferSize}
