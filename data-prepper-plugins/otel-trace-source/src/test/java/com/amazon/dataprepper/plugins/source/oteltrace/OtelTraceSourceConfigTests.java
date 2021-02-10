@@ -3,6 +3,7 @@ package com.amazon.dataprepper.plugins.source.oteltrace;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -10,6 +11,7 @@ import static com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSourceCon
 import static com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_PORT;
 import static com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 import static com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_THREAD_COUNT;
+import static com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.SSL;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -29,7 +31,7 @@ public class OtelTraceSourceConfigTests {
     public void testDefault() {
         // Prepare
         final OTelTraceSourceConfig otelTraceSourceConfig = OTelTraceSourceConfig.buildConfig(
-                new PluginSetting(PLUGIN_NAME, new HashMap<>()));
+                new PluginSetting(PLUGIN_NAME, Collections.singletonMap(SSL, false)));
 
         // When/Then
         assertEquals(DEFAULT_REQUEST_TIMEOUT_MS, otelTraceSourceConfig.getRequestTimeoutInMillis());

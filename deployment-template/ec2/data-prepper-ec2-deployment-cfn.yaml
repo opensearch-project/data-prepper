@@ -69,6 +69,7 @@ Resources:
                   delay: "100"
                   source:
                     otel_trace_source:
+                      ssl: false
                   sink:
                     - pipeline:
                         name: "raw-pipeline"

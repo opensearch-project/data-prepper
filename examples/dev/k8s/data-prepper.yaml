@@ -14,10 +14,12 @@ data:
       delay: "100"
       source:
         otel_trace_source:
+          ssl: false
       prepper:
         - peer_forwarder:
             discovery_mode: "dns"
             domain_name: "data-prepper-headless"
+            ssl: false
       sink:
         - pipeline:
             name: "raw-pipeline"
