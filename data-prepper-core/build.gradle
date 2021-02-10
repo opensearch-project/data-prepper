@@ -15,16 +15,16 @@ apply from: "integrationTest.gradle"
 dependencies {
     compile project(':data-prepper-api')
     compile project(':data-prepper-plugins')
-    implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
-    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${versionMap.jackson_dataformat_yaml}"
-    implementation "javax.validation:validation-api:${versionMap.validation_api}"
-    implementation "org.apache.bval:bval-extras:${versionMap.bval_extras}"
-    implementation "org.apache.bval:bval-jsr:${versionMap.bval_jsr}"
-    implementation "org.reflections:reflections:${versionMap.reflections}"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.10.0"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.1"
+    implementation "javax.validation:validation-api:2.0.1.Final"
+    implementation "org.apache.bval:bval-extras:2.0.4"
+    implementation "org.apache.bval:bval-jsr:2.0.4"
+    implementation "org.reflections:reflections:0.9.11"
     implementation "io.micrometer:micrometer-core:1.5.1"
     implementation "io.micrometer:micrometer-registry-prometheus:1.5.1"
-    testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
-    testImplementation "org.mockito:mockito-core:${versionMap.mockito}"
+    testImplementation "org.hamcrest:hamcrest:2.2"
+    testImplementation "org.mockito:mockito-core:2.1.0"
 }
 
 jar {
