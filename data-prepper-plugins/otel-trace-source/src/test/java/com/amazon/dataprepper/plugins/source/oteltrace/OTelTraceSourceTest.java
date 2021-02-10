@@ -32,12 +32,14 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import static com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.SSL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
@@ -90,9 +92,10 @@ public class OTelTraceSourceTest {
         lenient().when(serverBuilder.http(anyInt())).thenReturn(serverBuilder);
         lenient().when(serverBuilder.build()).thenReturn(server);
         lenient().when(server.start()).thenReturn(completableFuture);
-        final HashMap<String, Object> integerHashMap = new HashMap<>();
-        integerHashMap.put("request_timeout", 1);
-        pluginSetting = new PluginSetting("otel_trace", integerHashMap);
+        final HashMap<String, Object> settingsMap = new HashMap<>();
+        settingsMap.put("request_timeout", 1);
+        settingsMap.put(SSL, false);
+        pluginSetting = new PluginSetting("otel_trace", settingsMap);
         pluginSetting.setPipelineName("pipeline");
         SOURCE = new OTelTraceSource(pluginSetting);
         SOURCE.start(BUFFER);
@@ -190,7 +193,7 @@ public class OTelTraceSourceTest {
 
     @Test
     public void testRunAnotherSourceWithSamePort() {
-        testPluginSetting = new PluginSetting(null, null);
+        testPluginSetting = new PluginSetting(null, Collections.singletonMap(SSL, false));
         testPluginSetting.setPipelineName("pipeline");
         final OTelTraceSource source = new OTelTraceSource(testPluginSetting);
         //Expect RuntimeException because when port is already in use, BindException is thrown which is not RuntimeException
@@ -199,7 +202,7 @@ public class OTelTraceSourceTest {
 
     @Test
     public void testStartWithEmptyBuffer() {
-        testPluginSetting = new PluginSetting(null, null);
+        testPluginSetting = new PluginSetting(null, Collections.singletonMap(SSL, false));
         testPluginSetting.setPipelineName("pipeline");
         final OTelTraceSource source = new OTelTraceSource(testPluginSetting);
         Assertions.assertThrows(IllegalStateException.class, () -> source.start(null));

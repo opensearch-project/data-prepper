@@ -1,10 +1,12 @@
 entry-pipeline:
   source:
     otel_trace_source:
+      ssl: false
   prepper:
     - peer_forwarder:
         discovery_mode: "static"
         static_endpoints: ["data-prepper1", "data-prepper2"]
+        ssl: false
   sink:
     - pipeline:
         name: "raw-pipeline"
