@@ -22,7 +22,8 @@ You should ensure that the credentials you configure have the required permissio
         "arn:aws:es:us-east-1:<AccountId>:domain/<domain-name>/otel-v1*",
         "arn:aws:es:us-east-1:<AccountId>:domain/<domain-name>/_template/otel-v1*",
         "arn:aws:es:us-east-1:<AccountId>:domain/<domain-name>/_opendistro/_ism/policies/raw-span-policy",
-        "arn:aws:es:us-east-1:<AccountId>:domain/<domain-name>/_alias/otel-v1*"
+        "arn:aws:es:us-east-1:<AccountId>:domain/<domain-name>/_alias/otel-v1*",
+        "arn:aws:es:us-east-1:<AccountId>:domain/<domain-name>/_alias/_bulk"
       ]
     },
     {
