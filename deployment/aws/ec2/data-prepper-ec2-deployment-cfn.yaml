@@ -165,7 +165,7 @@ Resources:
           wget https://github.com/opendistro-for-elasticsearch/data-prepper/releases/download/v${DataPrepperVersion}/$RELEASE.tar.gz -O /tmp/$RELEASE.tar.gz
           tar -xzf /tmp/$RELEASE.tar.gz --directory /usr/local/bin
           /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default
-          nohup /usr/local/bin/$RELEASE/data-prepper-tar-install.sh /etc/data-prepper/config.yaml > /var/log/data-prepper.out 2>&1
+          nohup /usr/local/bin/$RELEASE/data-prepper-tar-install.sh /etc/data-prepper/config.yaml > /var/log/data-prepper.out 2>&1&
           /opt/aws/bin/cfn-signal --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}
     CreationPolicy:
       ResourceSignal:
