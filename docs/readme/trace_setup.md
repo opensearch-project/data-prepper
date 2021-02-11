@@ -89,6 +89,17 @@ service-map-pipeline:
       name: "otel-trace-pipeline"
   processor:
     - service_map_stateful:
+  buffer:
+      bounded_blocking:
+         # buffer_size is the number of ExportTraceRequest from otel-collector the data prepper should hold in memeory. 
+         # We recommend to keep the same buffer_size for all pipelines. 
+         # Make sure you configure sufficient heap
+         # default value is 512
+         buffer_size: 512
+         # This is the maximum number of request each worker thread will process within the delay.
+         # Default is 8.
+         # Make sure buffer_size >= workers * batch_size
+         batch_size: 8
   sink:
     - elasticsearch:
         hosts: [ "your-es-endpoint" ]
@@ -96,6 +107,9 @@ service-map-pipeline:
         # Add aws_sigv4 configuration for Amazon Elasticsearch
         # Add certificates/user cerdentials for Opendistro for Elasticsearch
 ```
+
+Note: `service-map-pipeline` currently works only with the default `workers` value which is 1. Please avoid setting any other value to that pipeline. 
+
 
 ### Sink Setup
 
@@ -108,6 +122,4 @@ Please check this [link](../../deployment/aws/README.md) for launching Data Prep
 
 
 Please check this [link](https://opendistro.github.io/for-elasticsearch-docs/docs/trace/data-prepper/)  for launching Data Prepper to send data to Open Distro For Elasticsearch.
-
-
 
