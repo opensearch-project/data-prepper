@@ -12,6 +12,9 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
  */
 public class DataPrepperConfiguration {
     private int serverPort = 4900;
+    private boolean useTls = true;
+    private String keyStoreFilePath = "";
+    private String keyStorePassphrase = "";
     private Log4JConfiguration log4JConfiguration = Log4JConfiguration.DEFAULT_CONFIG;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
@@ -35,11 +38,43 @@ public class DataPrepperConfiguration {
 
     @JsonCreator
     public DataPrepperConfiguration(
+            @JsonProperty("useTls") final Boolean useTls,
+            @JsonProperty("keyStoreFilePath") final String keyStoreFilePath,
+            @JsonProperty("keyStorePassphrase") final String keyStorePassphrase,
             @JsonProperty("serverPort") final String serverPort,
             @JsonProperty("log4jConfig") final Log4JConfiguration log4JConfiguration
     ) {
+        setUseTls(useTls);
+        this.keyStoreFilePath = keyStoreFilePath;
+        this.keyStorePassphrase = keyStorePassphrase;
         setServerPort(serverPort);
         setLog4JConfiguration(log4JConfiguration);
+    }
+
+    public int getServerPort() {
+        return serverPort;
+    }
+
+    public Log4JConfiguration getLog4JConfiguration() {
+        return log4JConfiguration;
+    }
+
+    public boolean useTls() {
+        return useTls;
+    }
+
+    public String getKeyStoreFilePath() {
+        return keyStoreFilePath;
+    }
+
+    public String getKeyStorePassphrase() {
+        return keyStorePassphrase;
+    }
+
+    private void setUseTls(final Boolean useTls) {
+        if (useTls != null) {
+            this.useTls = useTls;
+        }
     }
 
     private void setServerPort(final String serverPort) {
@@ -60,13 +95,5 @@ public class DataPrepperConfiguration {
         if(log4JConfiguration != null) {
             this.log4JConfiguration = log4JConfiguration;
         }
-    }
-
-    public int getServerPort() {
-        return serverPort;
-    }
-
-    public Log4JConfiguration getLog4JConfiguration() {
-        return log4JConfiguration;
     }
 }

@@ -1,0 +1,3 @@
+useTls: true
+keyStoreFilePath: "/usr/share/data-prepper/keystore.jks"
+keyStorePassphrase: "password"
