@@ -16,18 +16,16 @@ import static org.junit.Assert.assertThrows;
 
 @SuppressWarnings("rawtypes")
 public class BufferFactoryTests {
-    private static String TEST_PIPELINE = "test-pipeline";
     /**
      * Tests if BufferFactory is able to retrieve default Source plugins by name
      */
     @Test
     public void testNewBufferClassByNameThatExists() {
-        final PluginSetting pluginSetting = new PluginSetting("bounded_blocking", new HashMap<>());
-        pluginSetting.setPipelineName(TEST_PIPELINE);
-        final Buffer actualBuffer = BufferFactory.newBuffer(pluginSetting);
-        final Buffer expectedBuffer = new BlockingBuffer(TEST_PIPELINE);
-        assertThat(actualBuffer, notNullValue());
-        assertThat(actualBuffer.getClass().getSimpleName(), is(equalTo(expectedBuffer.getClass().getSimpleName())));
+        final PluginSetting pluginSetting = new PluginSetting("test_buffer", new HashMap<>());
+        final Buffer testBuffer = BufferFactory.newBuffer(pluginSetting);
+        final Buffer expectedBuffer = new TestBuffer(pluginSetting);
+        assertThat(testBuffer, notNullValue());
+        assertThat(testBuffer.getClass().getSimpleName(), is(equalTo(expectedBuffer.getClass().getSimpleName())));
     }
 
     /**

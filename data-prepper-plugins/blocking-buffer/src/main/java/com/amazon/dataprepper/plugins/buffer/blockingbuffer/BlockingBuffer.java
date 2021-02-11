@@ -1,4 +1,4 @@
-package com.amazon.dataprepper.plugins.buffer;
+package com.amazon.dataprepper.plugins.buffer.blockingbuffer;
 
 import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;

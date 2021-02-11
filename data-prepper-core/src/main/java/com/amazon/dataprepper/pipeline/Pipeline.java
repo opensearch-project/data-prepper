@@ -7,7 +7,7 @@ import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.pipeline.common.PipelineThreadFactory;
 import com.amazon.dataprepper.pipeline.common.PipelineThreadPoolExecutor;
-import com.amazon.dataprepper.plugins.buffer.BlockingBuffer;
+import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

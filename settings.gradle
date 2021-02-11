@@ -24,4 +24,4 @@ include 'data-prepper-benchmarks:service-map-stateful-benchmarks'
 include 'data-prepper-plugins:otel-trace-raw-prepper'
 include 'data-prepper-plugins:otel-trace-source'
 include 'data-prepper-plugins:peer-forwarder'
-
+include 'data-prepper-plugins:blocking-buffer'
