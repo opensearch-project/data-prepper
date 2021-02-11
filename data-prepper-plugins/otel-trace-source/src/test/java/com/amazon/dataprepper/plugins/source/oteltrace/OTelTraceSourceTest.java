@@ -32,12 +32,14 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import static com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.SSL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
@@ -61,6 +63,8 @@ public class OTelTraceSourceTest {
     PluginSetting pluginSetting;
     PluginSetting testPluginSetting;
 
+    private BlockingBuffer<Record<ExportTraceServiceRequest>> buffer;
+
     private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
             .addResourceSpans(ResourceSpans.newBuilder()
                     .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
@@ -71,7 +75,6 @@ public class OTelTraceSourceTest {
                     .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
                             .addSpans(Span.newBuilder().setTraceState("FAILURE").build())).build()).build();
     private static TraceServiceGrpc.TraceServiceBlockingStub CLIENT;
-    private static final BlockingBuffer<Record<ExportTraceServiceRequest>> BUFFER = getBuffer();
 
     private static String getUri() {
         return "gproto+http://127.0.0.1:" + SOURCE.getoTelTraceSourceConfig().getPort() + '/';
@@ -90,12 +93,17 @@ public class OTelTraceSourceTest {
         lenient().when(serverBuilder.http(anyInt())).thenReturn(serverBuilder);
         lenient().when(serverBuilder.build()).thenReturn(server);
         lenient().when(server.start()).thenReturn(completableFuture);
-        final HashMap<String, Object> integerHashMap = new HashMap<>();
-        integerHashMap.put("request_timeout", 1);
-        pluginSetting = new PluginSetting("otel_trace", integerHashMap);
+
+        final HashMap<String, Object> settingsMap = new HashMap<>();
+        settingsMap.put("request_timeout", 1);
+        settingsMap.put(SSL, false);
+        pluginSetting = new PluginSetting("otel_trace", settingsMap);
         pluginSetting.setPipelineName("pipeline");
         SOURCE = new OTelTraceSource(pluginSetting);
-        SOURCE.start(BUFFER);
+
+        buffer = getBuffer();
+        SOURCE.start(buffer);
+
         CLIENT = Clients.newClient(getUri(), TraceServiceGrpc.TraceServiceBlockingStub.class);
     }
 
@@ -116,7 +124,7 @@ public class OTelTraceSourceTest {
     }
 
     private void validateBuffer() {
-        Map.Entry<Collection<Record<ExportTraceServiceRequest>>, CheckpointState> drainedBufferResult = BUFFER.read(100000);
+        Map.Entry<Collection<Record<ExportTraceServiceRequest>>, CheckpointState> drainedBufferResult = buffer.read(100000);
         List<Record<ExportTraceServiceRequest>> drainedBuffer = (List<Record<ExportTraceServiceRequest>>) drainedBufferResult.getKey();
         CheckpointState checkpointState = drainedBufferResult.getValue();
         assertThat(drainedBuffer.size()).isEqualTo(1);
@@ -185,21 +193,21 @@ public class OTelTraceSourceTest {
 
     @Test
     public void testDoubleStart() {
-        Assertions.assertThrows(IllegalStateException.class, () -> SOURCE.start(BUFFER));
+        Assertions.assertThrows(IllegalStateException.class, () -> SOURCE.start(buffer));
     }
 
     @Test
     public void testRunAnotherSourceWithSamePort() {
-        testPluginSetting = new PluginSetting(null, null);
+        testPluginSetting = new PluginSetting(null, Collections.singletonMap(SSL, false));
         testPluginSetting.setPipelineName("pipeline");
         final OTelTraceSource source = new OTelTraceSource(testPluginSetting);
         //Expect RuntimeException because when port is already in use, BindException is thrown which is not RuntimeException
-        Assertions.assertThrows(RuntimeException.class, () -> source.start(BUFFER));
+        Assertions.assertThrows(RuntimeException.class, () -> source.start(buffer));
     }
 
     @Test
     public void testStartWithEmptyBuffer() {
-        testPluginSetting = new PluginSetting(null, null);
+        testPluginSetting = new PluginSetting(null, Collections.singletonMap(SSL, false));
         testPluginSetting.setPipelineName("pipeline");
         final OTelTraceSource source = new OTelTraceSource(testPluginSetting);
         Assertions.assertThrows(IllegalStateException.class, () -> source.start(null));
@@ -214,7 +222,7 @@ public class OTelTraceSourceTest {
             when(completableFuture.get()).thenThrow(new ExecutionException("", null));
 
             // When/Then
-            assertThrows(RuntimeException.class, () -> source.start(BUFFER));
+            assertThrows(RuntimeException.class, () -> source.start(buffer));
         }
     }
 
@@ -228,7 +236,7 @@ public class OTelTraceSourceTest {
             when(completableFuture.get()).thenThrow(new ExecutionException("", expCause));
 
             // When/Then
-            final RuntimeException ex = assertThrows(RuntimeException.class, () -> source.start(BUFFER));
+            final RuntimeException ex = assertThrows(RuntimeException.class, () -> source.start(buffer));
             assertEquals(expCause, ex);
         }
     }
@@ -239,7 +247,7 @@ public class OTelTraceSourceTest {
         final OTelTraceSource source = new OTelTraceSource(pluginSetting);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(() -> Server.builder()).thenReturn(serverBuilder);
-            source.start(BUFFER);
+            source.start(buffer);
             when(server.stop()).thenReturn(completableFuture);
 
             // When/Then
@@ -257,7 +265,7 @@ public class OTelTraceSourceTest {
             when(completableFuture.get()).thenThrow(new InterruptedException());
 
             // When/Then
-            assertThrows(RuntimeException.class, () -> source.start(BUFFER));
+            assertThrows(RuntimeException.class, () -> source.start(buffer));
             assertTrue(Thread.interrupted());
         }
     }
@@ -268,7 +276,7 @@ public class OTelTraceSourceTest {
         final OTelTraceSource source = new OTelTraceSource(pluginSetting);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(() -> Server.builder()).thenReturn(serverBuilder);
-            source.start(BUFFER);
+            source.start(buffer);
             when(server.stop()).thenReturn(completableFuture);
             final NullPointerException expCause = new NullPointerException();
             when(completableFuture.get()).thenThrow(new ExecutionException("", expCause));
@@ -285,7 +293,7 @@ public class OTelTraceSourceTest {
         final OTelTraceSource source = new OTelTraceSource(pluginSetting);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(() -> Server.builder()).thenReturn(serverBuilder);
-            source.start(BUFFER);
+            source.start(buffer);
             when(server.stop()).thenReturn(completableFuture);
             when(completableFuture.get()).thenThrow(new InterruptedException());
 

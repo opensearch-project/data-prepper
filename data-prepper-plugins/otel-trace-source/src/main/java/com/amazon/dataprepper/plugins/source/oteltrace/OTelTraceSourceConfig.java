@@ -16,7 +16,7 @@ public class OTelTraceSourceConfig {
     static final int DEFAULT_PORT = 21890;
     static final int DEFAULT_THREAD_COUNT = 200;
     static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
-    static final boolean DEFAULT_SSL = false;
+    static final boolean DEFAULT_SSL = true;
     private final int requestTimeoutInMillis;
     private final int port;
     private final boolean healthCheck;
@@ -46,10 +46,10 @@ public class OTelTraceSourceConfig {
         this.threadCount = threadCount;
         this.maxConnectionCount = maxConnectionCount;
         if (ssl && (sslKeyCertChainFile == null || sslKeyCertChainFile.isEmpty())) {
-            throw new IllegalArgumentException(String.format("%s is enable, %s can not be empty or null", SSL, SSL_KEY_CERT_FILE));
+            throw new IllegalArgumentException(String.format("%s is enabled, %s can not be empty or null", SSL, SSL_KEY_CERT_FILE));
         }
         if (ssl && (sslKeyFile == null || sslKeyFile.isEmpty())) {
-            throw new IllegalArgumentException(String.format("%s is enable, %s can not be empty or null", SSL, SSL_KEY_CERT_FILE));
+            throw new IllegalArgumentException(String.format("%s is enabled, %s can not be empty or null", SSL, SSL_KEY_CERT_FILE));
         }
     }
 
