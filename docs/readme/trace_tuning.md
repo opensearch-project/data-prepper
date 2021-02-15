@@ -38,7 +38,7 @@ As mentioned in the [setup](trace_setup.md#opentelemetry-collector), set `otel_s
 
 Data Prepper uses disk to store metadata required for service-map processing, we store only key fields `traceId`, `spanId`, `parentSpanId`, `spanKind`, `spanName` and `serviceName`. The service-map plugin ensures it only stores two files with each storing `window_duration` seconds of data. In our tests we found that for a throughput of `3000 spans/second`, the total disk usages was `4 MB`.
 
-Data Prepper uses the disk to write logs. In the current version, you can redirecting the logs to the path of your preference.
+Data Prepper uses the disk to write logs. In the current version, you can redirect the logs to the path of your preference.
 
 
 ## AWS
@@ -47,10 +47,10 @@ Data Prepper uses the disk to write logs. In the current version, you can redire
 
 ## Benchmark
 
-We ran tests in a `r4.xlarge` with the below configuration,
+We ran tests in a `r5.xlarge` with the below configuration,
  
  * `buffer_size` : `4096`
- * `batch_size` : `258`
+ * `batch_size` : `256`
  * `workers` : 8
  * `Heap` : 10GB
  
