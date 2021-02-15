@@ -14,6 +14,11 @@ receivers:
       grpc:
   zipkin:
 
+processors:
+  batch/traces:
+    timeout: 1s
+    send_batch_size: 50
+
 exporters:
   otlp/data-prepper:
     endpoint: <data-prepper-address>:21890
@@ -89,6 +94,10 @@ service-map-pipeline:
       name: "otel-trace-pipeline"
   processor:
     - service_map_stateful:
+        # The window duration is the maximum length of time the data prepper stores the most recent trace data to evaluvate service-map relationships. 
+        # The default is 3 minutes, this means we can detect relationships between services from spans reported in last 3 minutes.
+        # Set higher value if your applications have higher latency. 
+        window_duration: 180 
   buffer:
       bounded_blocking:
          # buffer_size is the number of ExportTraceRequest from otel-collector the data prepper should hold in memeory. 
