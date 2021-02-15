@@ -24,7 +24,7 @@ public class DataPrepperServer {
                     0
             );
             server.createContext("/metrics/prometheus", new PrometheusMetricsHandler());
-            server.createContext("/metrics/sys", new PrometheusMetricsHandler(DataPrepper.sysJVMMeterRegistry));
+            server.createContext("/metrics/sys", new PrometheusMetricsHandler(DataPrepper.getSysJVMMeterRegistry()));
             server.createContext("/list", new ListPipelinesHandler(dataPrepper));
             server.createContext("/shutdown", new ShutdownHandler(dataPrepper));
 

@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 public class DataPrepper {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepper.class);
 
-    public static final PrometheusMeterRegistry sysJVMMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+    private static final PrometheusMeterRegistry sysJVMMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
 
     private Map<String, Pipeline> transformationPipelines;
 
@@ -71,6 +71,10 @@ public class DataPrepper {
         }
         startPrometheusBackend();
         dataPrepperServer = new DataPrepperServer(this);
+    }
+
+    public static PrometheusMeterRegistry getSysJVMMeterRegistry() {
+        return sysJVMMeterRegistry;
     }
 
     /**
