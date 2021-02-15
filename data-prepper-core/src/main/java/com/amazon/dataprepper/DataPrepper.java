@@ -7,6 +7,11 @@ import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
 import java.io.File;
 import java.util.Map;
 import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
+import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.apache.log4j.PropertyConfigurator;
@@ -22,12 +27,22 @@ import org.slf4j.LoggerFactory;
 public class DataPrepper {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepper.class);
 
+    public static final PrometheusMeterRegistry sysJVMMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+
     private Map<String, Pipeline> transformationPipelines;
 
     private static volatile DataPrepper dataPrepper;
 
     private static DataPrepperServer dataPrepperServer;
     private static DataPrepperConfiguration configuration = DataPrepperConfiguration.DEFAULT_CONFIG;
+
+    static {
+        new ClassLoaderMetrics().bindTo(sysJVMMeterRegistry);
+        new JvmMemoryMetrics().bindTo(sysJVMMeterRegistry);
+        new JvmGcMetrics().bindTo(sysJVMMeterRegistry);
+        new ProcessorMetrics().bindTo(sysJVMMeterRegistry);
+        new JvmThreadMetrics().bindTo(sysJVMMeterRegistry);
+    }
 
     /**
      * Set the DataPrepperConfiguration from a file
