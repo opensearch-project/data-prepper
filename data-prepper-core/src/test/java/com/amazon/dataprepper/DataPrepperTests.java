@@ -1,6 +1,7 @@
 package com.amazon.dataprepper;
 
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
+import io.micrometer.core.instrument.Measurement;
 import org.apache.log4j.Level;
 import org.junit.After;
 import org.junit.Assert;
@@ -8,6 +9,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.security.Permission;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static com.amazon.dataprepper.TestDataProvider.NO_PIPELINES_EXECUTE_CONFIG_FILE;
 import static com.amazon.dataprepper.TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE;
@@ -37,6 +41,25 @@ public class DataPrepperTests {
         assertThat("Failed to retrieve a valid Data Prepper instance", testDataPrepper1, is(notNullValue()));
         DataPrepper testDataPrepper2 = DataPrepper.getInstance();
         assertThat("Data Prepper has to be singleton", testDataPrepper2, is(testDataPrepper1));
+    }
+
+    @Test
+    public void testDataPrepperSysMetrics() {
+        // Test retrieve gauge in ClassLoaderMetrics
+        final List<Measurement> classesLoaded = getSysMeasurementList("jvm.classes.loaded");
+        Assert.assertEquals(1, classesLoaded.size());
+        // Test retrieve gauge in JvmMemoryMetrics
+        final List<Measurement> jvmBufferCount = getSysMeasurementList("jvm.buffer.count");
+        Assert.assertEquals(1, jvmBufferCount.size());
+        // Test retrieve gauge in JvmGcMetrics
+        final List<Measurement> jvmGcMaxDataSize = getSysMeasurementList("jvm.gc.max.data.size");
+        Assert.assertEquals(1, jvmGcMaxDataSize.size());
+        // Test retrieve gauge in ProcessorMetrics
+        final List<Measurement> sysCPUCount = getSysMeasurementList("system.cpu.count");
+        Assert.assertEquals(1, sysCPUCount.size());
+        // Test retrieve gauge in JvmThreadMetrics
+        final List<Measurement> jvmThreadsPeak = getSysMeasurementList("jvm.threads.peak");
+        Assert.assertEquals(1, jvmThreadsPeak.size());
     }
 
     @Test
@@ -103,5 +126,10 @@ public class DataPrepperTests {
         public int getExitStatus() {
             return this.status;
         }
+    }
+
+    private static List<Measurement> getSysMeasurementList(final String meterName) {
+        return StreamSupport.stream(DataPrepper.getSysJVMMeterRegistry().find(meterName).meter().measure().spliterator(), false)
+                .collect(Collectors.toList());
     }
 }
