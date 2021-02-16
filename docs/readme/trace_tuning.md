@@ -1,4 +1,4 @@
-#Scaling and Tuning
+# Scaling and Tuning
 
 Data Prepper for Trace Analytics in v0.7.x supports only vertical scaling. This is because the pipeline setup of Data Prepper uses stateful Service-Map processing. For this Service-Map processing to work Data Prepper needs to receive all span related to a single trace workflow to the same host. 
 

@@ -2,19 +2,19 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "Template to install Data Prepper on a single EC2 instance"
 Parameters:
-  AWSElasticsearchEndpoint:
-    Description: Endpoint of the AWS Elasticsearch Service domain (including https://)
+  AmazonEsEndpoint:
+    Description: Endpoint of the Amazon Elasticsearch Service domain (including https://)
     Type: String
     AllowedPattern: https:\/\/[a-z0-9-\.]+(es.amazonaws.com)
     ConstraintDescription: must be a valid Amazon Elasticsearch Service domain endpoint starting with https://
-  AWSElasticsearchRegion:
-    Description: Region of the AWS Elasticsearch Service domain
+  AmazonEsRegion:
+    Description: Region of the Amazon Elasticsearch Service domain
     Type: String
     AllowedPattern: "[a-z]+-[a-z]+-[0-9]+"
     Default: us-east-1
     ConstraintDescription: must be a valid AWS region (e.g. us-west-2)
-  AWSElasticsearchSubnetId:
-    Description: The subnet ID of the AWS Elasticsearch Service domain (Leave blank if the domain is not in a VPC)
+  AmazonEsSubnetId:
+    Description: The subnet ID of the Amazon Elasticsearch Service domain (Leave blank if the domain is not in a VPC)
     Type: String
   DataPrepperVersion:
     Description: Version of Data Prepper to download and run
@@ -71,7 +71,7 @@ Parameters:
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
 Conditions:
-  DomainIsPublic: !Equals [!Ref AWSElasticsearchSubnetId, ""]
+  DomainIsPublic: !Equals [!Ref AmazonEsSubnetId, ""]
   DomainIsInVPC: !Not [Condition: DomainIsPublic]
 Resources:
   EC2Instance:
@@ -112,9 +112,9 @@ Resources:
                     - otel_trace_raw_processor:
                   sink:
                     - elasticsearch:
-                        hosts: [ "${AWSElasticsearchEndpoint}" ]
+                        hosts: [ "${AmazonEsEndpoint}" ]
                         aws_sigv4: true
-                        aws_region: "${AWSElasticsearchRegion}"
+                        aws_region: "${AmazonEsRegion}"
                         trace_analytics_raw: true
                 service-map-pipeline:
                   delay: "100"
@@ -129,9 +129,9 @@ Resources:
                     - service_map_stateful:
                   sink:
                     - elasticsearch:
-                        hosts: [ "${AWSElasticsearchEndpoint}" ]
+                        hosts: [ "${AmazonEsEndpoint}" ]
                         aws_sigv4: true
-                        aws_region: "${AWSElasticsearchRegion}"
+                        aws_region: "${AmazonEsRegion}"
                         trace_analytics_service_map: true
               mode: "000400"
               owner: root
@@ -142,7 +142,7 @@ Resources:
           Ebs:
             VolumeSize: !Ref EC2VolumeSize
       SubnetId:
-        !If [DomainIsInVPC, !Ref AWSElasticsearchSubnetId, !Ref "AWS::NoValue"]
+        !If [DomainIsInVPC, !Ref AmazonEsSubnetId, !Ref "AWS::NoValue"]
       InstanceType:
         Ref: EC2InstanceType
       IamInstanceProfile:
