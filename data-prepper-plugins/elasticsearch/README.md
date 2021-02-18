@@ -49,9 +49,9 @@ The elasticsearch sink will reserve `otel-v1-apm-service-map` as index for recor
 - `cert`(optional): CA certificate that is pem encoded. Accepts both .pem or .crt. This enables the client to trust the CA that has signed the certificate that ODFE is using.
 Default is null. 
 
-- `username`(optional): A String of username used in the [cognito](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles) of ODFE cluster. Default is null.
+- `username`(optional): A String of username used in the [internal users](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles) of ODFE cluster. Default is null.
 
-- `password`(optional): A String of password used in the [cognito](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles) of ODFE cluster. Default is null.
+- `password`(optional): A String of password used in the [internal users](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles) of ODFE cluster. Default is null.
 
 - `trace_analytics_raw`(optional): A boolean flag indicates APM trace analytics raw span data type. e.g.
 ```$xslt
