@@ -47,4 +47,32 @@ Please check this [doc](https://docs.aws.amazon.com/elasticsearch-service/latest
 
 ## Opendistro For Elasticsearch
 
-[We are working, deatils soon.]
+Elasticsearch sink can send data to opendistro-for-elasticsearch (ODFE) cluster by administrative credentials as follows:
+
+```
+sink:
+  - elasticsearch:
+      ...
+      username: "admin"
+      password: "admin"
+```
+
+or through internal user credential assigned with roles of required permissions. With administrative privilege, one can create an internal user, a role 
+and map the user to the role by following the ODFE [instructions](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles/). 
+For sending data to ODFE, one need the following minimum permissions assigned to the role:
+
+### Cluster permissions
+
+- `cluster_all`
+- `indices:admin/template/get`
+- `indices:admin/template/put`
+
+Note that `indices:admin/template/*` needs to be in cluster permissions to allow index templates creation.
+
+### Index permissions
+
+- `Index`: `otel-v1*`; `Index permissions`: `indices_all`
+- `Index`: `.opendistro-ism-config`; `Index permissions`: `indices_all`
+- `Index`: `*`; `Index permissions`: `manage_aliases`
+
+`Field level security` and `Anonymization` should be left with default values.
