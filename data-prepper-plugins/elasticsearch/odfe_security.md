@@ -15,5 +15,6 @@ Note that `indices:admin/template/*` need to be in cluster permissions.
 
 - `Index`: `otel-v1*`; `Index permissions`: `indices_all`
 - `Index`: `.opendistro-ism-config`; `Index permissions`: `indices_all`
+- `Index`: `*`; `Index permission`: `manage_aliases`
 
 With administrative privilege, one can create an internal user, a role and map the user to the role by following the ODFE [instructions](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles/). 
