@@ -73,5 +73,6 @@ Note that `indices:admin/template/*` needs to be in cluster permissions to allow
 
 - `Index`: `otel-v1*`; `Index permissions`: `indices_all`
 - `Index`: `.opendistro-ism-config`; `Index permissions`: `indices_all`
+- `Index`: `*`; `Index permissions`: `manage_aliases`
 
 `Field level security` and `Anonymization` should be left with default values.
