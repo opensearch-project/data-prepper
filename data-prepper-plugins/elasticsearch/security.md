@@ -67,7 +67,7 @@ For sending data to ODFE, one need the following minimum permissions assigned to
 - `indices:admin/template/get`
 - `indices:admin/template/put`
 
-Note that `indices:admin/template/*` need to be in cluster permissions.
+Note that `indices:admin/template/*` needs to be in cluster permissions to allow index templates creation.
 
 ### Index permissions
 
