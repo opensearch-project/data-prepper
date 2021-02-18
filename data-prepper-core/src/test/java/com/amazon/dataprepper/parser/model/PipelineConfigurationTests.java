@@ -1,7 +1,7 @@
 package com.amazon.dataprepper.parser.model;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.plugins.buffer.BlockingBuffer;
+import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.junit.Test;
 
 import java.util.ArrayList;

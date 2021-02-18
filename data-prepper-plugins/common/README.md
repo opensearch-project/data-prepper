@@ -1,12 +1,5 @@
 # Common Data Prepper plugins
 
-## `bounded_blocking`
-
-A buffer based off `LinkedBlockingQueue` bounded to the specified capacity. One can read and write records with specified timeout value.
-
-- buffer_size (int): the capacity of the buffer
-- batch_size (int): the maximum number of records that can be returned on read before timeout.
-
 ## `string_coverter`
 
 A prepper plugin to generate new string records with upper or lower case conversion on the content of input records.

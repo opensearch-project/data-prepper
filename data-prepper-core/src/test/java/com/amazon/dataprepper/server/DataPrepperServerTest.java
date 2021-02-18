@@ -2,6 +2,7 @@ package com.amazon.dataprepper.server;
 
 import com.amazon.dataprepper.DataPrepper;
 import com.amazon.dataprepper.TestDataProvider;
+import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -21,6 +22,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 public class DataPrepperServerTest {
@@ -51,7 +53,7 @@ public class DataPrepperServerTest {
     }
 
     @Test
-    public void testGetMetrics() throws IOException, InterruptedException, URISyntaxException {
+    public void testGetGlobalMetrics() throws IOException, InterruptedException, URISyntaxException {
         setupDataPrepper();
         final String scrape = UUID.randomUUID().toString();
         final PrometheusMeterRegistry prometheusMeterRegistry = new PrometheusRegistryMockScrape(PrometheusConfig.DEFAULT, scrape);
@@ -68,7 +70,7 @@ public class DataPrepperServerTest {
     }
 
     @Test
-    public void testScrapeFailure() throws IOException, InterruptedException, URISyntaxException {
+    public void testScrapeGlobalFailure() throws IOException, InterruptedException, URISyntaxException {
         setupDataPrepper();
         setRegistry(new PrometheusRegistryThrowingScrape(PrometheusConfig.DEFAULT));
         dataPrepperServer = new DataPrepperServer(dataPrepper);
@@ -79,6 +81,45 @@ public class DataPrepperServerTest {
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_INTERNAL_ERROR, response.statusCode());
         dataPrepperServer.stop();
+    }
+
+    @Test
+    public void testGetSysMetrics() throws IOException, InterruptedException, URISyntaxException {
+        final String scrape = UUID.randomUUID().toString();
+        final PrometheusMeterRegistry prometheusMeterRegistry = new PrometheusRegistryMockScrape(PrometheusConfig.DEFAULT, scrape);
+        setupDataPrepper();
+        final DataPrepperConfiguration dataPrepperConfiguration = DataPrepper.getConfiguration();
+        try (final MockedStatic<DataPrepper> dataPrepperMockedStatic = Mockito.mockStatic(DataPrepper.class)) {
+            dataPrepperMockedStatic.when(DataPrepper::getSysJVMMeterRegistry).thenReturn(prometheusMeterRegistry);
+            dataPrepperMockedStatic.when(DataPrepper::getConfiguration).thenReturn(dataPrepperConfiguration);
+            dataPrepperServer = new DataPrepperServer(dataPrepper);
+            dataPrepperServer.start();
+
+            HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:"+ port + "/metrics/sys"))
+                    .GET().build();
+            HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+            Assert.assertEquals(HttpURLConnection.HTTP_OK, response.statusCode());
+            dataPrepperServer.stop();
+        }
+    }
+
+    @Test
+    public void testScrapeSysMetricsFailure() throws IOException, InterruptedException, URISyntaxException {
+        final PrometheusMeterRegistry prometheusMeterRegistry = new PrometheusRegistryThrowingScrape(PrometheusConfig.DEFAULT);
+        setupDataPrepper();
+        final DataPrepperConfiguration dataPrepperConfiguration = DataPrepper.getConfiguration();
+        try (final MockedStatic<DataPrepper> dataPrepperMockedStatic = Mockito.mockStatic(DataPrepper.class)) {
+            dataPrepperMockedStatic.when(DataPrepper::getSysJVMMeterRegistry).thenReturn(prometheusMeterRegistry);
+            dataPrepperMockedStatic.when(DataPrepper::getConfiguration).thenReturn(dataPrepperConfiguration);
+            dataPrepperServer = new DataPrepperServer(dataPrepper);
+            dataPrepperServer.start();
+
+            HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:"+ port + "/metrics/sys"))
+                    .GET().build();
+            HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+            Assert.assertEquals(HttpURLConnection.HTTP_INTERNAL_ERROR, response.statusCode());
+            dataPrepperServer.stop();
+        }
     }
 
     @Test

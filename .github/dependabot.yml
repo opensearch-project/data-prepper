@@ -1,0 +1,7 @@
+version: 2
+updates:
+- package-ecosystem: gradle
+  directory: "/data-prepper-core"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 3

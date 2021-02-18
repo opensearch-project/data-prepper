@@ -60,6 +60,7 @@ public class PeerForwarderConfigTest {
         settings.put(PeerForwarderConfig.STATIC_ENDPOINTS, TEST_ENDPOINTS);
         settings.put(PeerForwarderConfig.MAX_NUM_SPANS_PER_REQUEST, testNumSpansPerRequest);
         settings.put(PeerForwarderConfig.TIME_OUT, testTimeout);
+        settings.put(PeerForwarderConfig.SSL, false);
 
         final PeerForwarderConfig peerForwarderConfig = PeerForwarderConfig.buildConfig(
                 new PluginSetting("peer_forwarder", settings){{ setPipelineName(PIPELINE_NAME); }});
