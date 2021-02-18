@@ -42,9 +42,9 @@ Please check this [doc](https://docs.aws.amazon.com/elasticsearch-service/latest
 
 ### Fine-Grained Access Control in Amazon Elasticsearch Service
 
-The Elasticsearch sink creates ISM policy for Trace Analytics indices and Amazon Elasticsearch service allows only the `master user` to create ISM policy. So if you use,
+The Elasticsearch sink creates ISM policy for Trace Analytics indices and Amazon Elasticsearch service allows only the `master user` to create ISM policy. So,
  
- * IAM for your master user in FGAC domain, configure the sink as below,
+ * If you use IAM for your master user in FGAC domain, configure the sink as below,
   
   ```
   sink:
@@ -52,8 +52,9 @@ The Elasticsearch sink creates ISM policy for Trace Analytics indices and Amazon
         hosts: ["https://your-fgac-amazon-elasticssearch-service-endpoint"]
         aws_sigv4: true 
   ```
+Run `aws configure` using the AWS CLI to set your credentials to the master IAM user. 
  
- * Internal database for your master user in FGAC domain, configure the sink as below,
+ * If you use internal database for your master user in FGAC domain, configure the sink as below,
  
  ```
  sink:
