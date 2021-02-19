@@ -40,11 +40,33 @@ You should ensure that the credentials you configure have the required permissio
 
 Please check this [doc](https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/es-ac.html) to know how to set IAM to your Elasticsearch domain,
 
+### Fine-Grained Access Control in Amazon Elasticsearch Service
+
+The Elasticsearch sink creates ISM policy for Trace Analytics indices and Amazon Elasticsearch service allows only the `master user` to create ISM policy. So,
+ 
+ * If you use IAM for your master user in FGAC domain, configure the sink as below,
+  
+  ```
+  sink:
+      elasticsearch:
+        hosts: ["https://your-fgac-amazon-elasticssearch-service-endpoint"]
+        aws_sigv4: true 
+  ```
+Run `aws configure` using the AWS CLI to set your credentials to the master IAM user. 
+ 
+ * If you use internal database for your master user in FGAC domain, configure the sink as below,
+ 
+ ```
+ sink:
+     elasticsearch:
+       hosts: ["https://your-fgac-amazon-elasticssearch-service-endpoint"]
+       aws_sigv4: false
+       username: "master-username"
+       password: "master-password" 
+ ```
+
+Note: You can create a new IAM/internal user with `all_access` and use instead of the master IAM/internal user.
+
 ### Limitations
 
 * The Elasticsearch sink will not work with [custom endpoint](https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/es-customendpoint.html) domains.
-* The Elasticsearch sink will not with domains that use both IAM and FGAC. (Should be available in next release. :) )
-
-## Opendistro For Elasticsearch
-
-[We are working, deatils soon.]
