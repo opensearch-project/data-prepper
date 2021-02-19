@@ -40,9 +40,9 @@ You should ensure that the credentials you configure have the required permissio
 
 Please check this [doc](https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/es-ac.html) to know how to set IAM to your Elasticsearch domain,
 
-### Fine-Grained Access Control in Amazon Elasticsearch Service
+### Fine-Grained Access Control (FGAC) in Amazon Elasticsearch Service
 
-The Elasticsearch sink creates ISM policy for Trace Analytics indices and Amazon Elasticsearch service allows only the `master user` to create ISM policy. So,
+The Elasticsearch sink creates an [Index State Management (ISM)](https://opendistro.github.io/for-elasticsearch-docs/docs/ism/) policy for Trace Analytics indices but Amazon Elasticsearch Service allows only the `master user` to create an ISM policy. So,
  
  * If you use IAM for your master user in FGAC domain, configure the sink as below,
   

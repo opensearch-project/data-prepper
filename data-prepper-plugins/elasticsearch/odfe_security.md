@@ -1,4 +1,4 @@
-## Opendistro For Elasticsearch
+## Open Distro For Elasticsearch
 
 
 The Elasticsearch sink can send trace data to opendistro-for-elasticsearch (ODFE) cluster by administrative credentials as follows:
