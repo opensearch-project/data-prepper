@@ -10,7 +10,7 @@ This directory contains the same sample app under the /examples directory, excep
         - URL: `http://localhost:9090`; Access: `Browser`
    Then checkout the metrics graph in `Explore` of the sidebar such as the following: 
 
-![grafana_metrics_sample](images/grafana_metrics_sample.png)
+        ![grafana_metrics_sample](images/grafana_metrics_sample.png)
 
 <br />
 
