@@ -40,39 +40,33 @@ You should ensure that the credentials you configure have the required permissio
 
 Please check this [doc](https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/es-ac.html) to know how to set IAM to your Elasticsearch domain,
 
+### Fine-Grained Access Control in Amazon Elasticsearch Service
+
+The Elasticsearch sink creates ISM policy for Trace Analytics indices and Amazon Elasticsearch service allows only the `master user` to create ISM policy. So,
+ 
+ * If you use IAM for your master user in FGAC domain, configure the sink as below,
+  
+  ```
+  sink:
+      elasticsearch:
+        hosts: ["https://your-fgac-amazon-elasticssearch-service-endpoint"]
+        aws_sigv4: true 
+  ```
+Run `aws configure` using the AWS CLI to set your credentials to the master IAM user. 
+ 
+ * If you use internal database for your master user in FGAC domain, configure the sink as below,
+ 
+ ```
+ sink:
+     elasticsearch:
+       hosts: ["https://your-fgac-amazon-elasticssearch-service-endpoint"]
+       aws_sigv4: false
+       username: "master-username"
+       password: "master-password" 
+ ```
+
+Note: You can create a new IAM/internal user with `all_access` and use instead of the master IAM/internal user.
+
 ### Limitations
 
 * The Elasticsearch sink will not work with [custom endpoint](https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/es-customendpoint.html) domains.
-* The Elasticsearch sink will not with domains that use both IAM and FGAC. (Should be available in next release. :) )
-
-## Opendistro For Elasticsearch
-
-Elasticsearch sink can send data to opendistro-for-elasticsearch (ODFE) cluster by administrative credentials as follows:
-
-```
-sink:
-  - elasticsearch:
-      ...
-      username: "admin"
-      password: "admin"
-```
-
-or through internal user credential assigned with roles of required permissions. With administrative privilege, one can create an internal user, a role 
-and map the user to the role by following the ODFE [instructions](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles/). 
-For sending data to ODFE, one need the following minimum permissions assigned to the role:
-
-### Cluster permissions
-
-- `cluster_all`
-- `indices:admin/template/get`
-- `indices:admin/template/put`
-
-Note that `indices:admin/template/*` needs to be in cluster permissions to allow index templates creation.
-
-### Index permissions
-
-- `Index`: `otel-v1*`; `Index permissions`: `indices_all`
-- `Index`: `.opendistro-ism-config`; `Index permissions`: `indices_all`
-- `Index`: `*`; `Index permissions`: `manage_aliases`
-
-`Field level security` and `Anonymization` should be left with default values.
