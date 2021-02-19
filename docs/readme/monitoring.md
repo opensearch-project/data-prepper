@@ -9,7 +9,7 @@ garbage collection, threads, etc. See https://micrometer.io/docs/ref/jvm for det
 
 ### Naming
 
-JVM and system metrics in Data Prepper follows pre-defined names in Micrometer.io, e.g. `jvm.classes.loaded`, `jvm.memory.used`.
+JVM and system metrics in Data Prepper follows pre-defined names in Micrometer.io, e.g. `jvm_classes_loaded`, `jvm_memory_used`.
 
 ### Serving
 
@@ -53,5 +53,3 @@ would have a qualified name of **output-pipeline_elasticsearch_sink_recordsIn**.
 ### Serving
 Metrics are served from the **metrics/prometheus** endpoint on the Data Prepper server. The format
 is a text Prometheus scrape. This port can be used for any frontend which accepts Prometheus metrics.
-
-[Example](https://prometheus.io/docs/visualization/grafana/) setup for Grafana frontend.
