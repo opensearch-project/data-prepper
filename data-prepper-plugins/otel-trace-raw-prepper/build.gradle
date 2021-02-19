@@ -11,11 +11,11 @@ dependencies {
     implementation 'com.google.protobuf:protobuf-java-util:3.13.0'
     implementation "com.linecorp.armeria:armeria:1.0.0"
     implementation "com.linecorp.armeria:armeria-grpc:1.0.0"
-    implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
-    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${versionMap.jackson_dataformat_yaml}"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.12.1"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.1"
     testImplementation 'org.assertj:assertj-core:3.6.2'
-    testImplementation "org.mockito:mockito-inline:${versionMap.mockito_inline}"
-    testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
+    testImplementation "org.mockito:mockito-inline:3.6.28"
+    testImplementation "org.hamcrest:hamcrest:2.2"
 }
 
 jacocoTestCoverageVerification {

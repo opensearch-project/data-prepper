@@ -1,20 +1,6 @@
 //preferably try to main the alphabetical order
 ext.versionMap = [
-        bval_extras            : '2.0.4',
-        bval_jsr               : '2.0.4',
-        guava                  : '29.0-jre',
-        hamcrest               : '2.2',
-        jackson_databind       : '2.10.0',
-        jackson_dataformat_yaml: '2.11.1',
-        junit                  : '4.13',
-        log4j_core             : '2.11.1',
-        reflections            : '0.9.11',
-        slf4j_api              : '1.7.30',
-        slf4j_log4j12          : '1.7.30',
-        validation_api         : '2.0.1.Final',
-        opentelemetry_proto    : '0.10.0',
-        mockito                : '2.1.0',
-        mockito_inline         : '3.6.28'
+        opentelemetry_proto    : '0.10.0'
 ]
 
 ext.coreProjects = [project(':data-prepper-api'), project(':data-prepper-core'), project('data-prepper-plugins:common')]

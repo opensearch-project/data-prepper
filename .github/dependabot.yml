@@ -1,7 +1,27 @@
+# Docs: https://docs.github.com/en/github/administering-a-repository/configuration-options-for-dependency-updates
 version: 2
 updates:
+- package-ecosystem: gradle
+  directory: "/data-prepper-api"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 3
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-benchmarks"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 3
+
 - package-ecosystem: gradle
   directory: "/data-prepper-core"
   schedule:
     interval: daily
   open-pull-requests-limit: 3
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 3
+
