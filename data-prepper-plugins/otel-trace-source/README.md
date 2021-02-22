@@ -17,7 +17,7 @@ source:
 * health_check_service(Optional) => A boolean enables a gRPC health check service under ```grpc.health.v1 / Health / Check```. Default is ```false```.
 * proto_reflection_service(Optional) => A boolean enables a reflection service for Protobuf services (see [ProtoReflectionService](https://grpc.github.io/grpc-java/javadoc/io/grpc/protobuf/services/ProtoReflectionService.html) and [gRPC reflection](https://github.com/grpc/grpc-java/blob/master/documentation/server-reflection-tutorial.md) docs). Default is ```false```.
 * ssl(Optional) => A boolean enables TLS/SSL. Default is ```true```.
-* sslKeyCertChainFile(Optional) => A `String` represents the SSL certificate chain file path. Should be provided if ```ssl``` is set to ```true```
+* sslKeyCertChainFile(Optional) => A `String` represents the SSL certificate chain file path. Required if ```ssl``` is set to ```true```
 * sslKeyFile(Optional) => A `String` represents the SSL key file path. Should be provided if ```ssl``` is set to ```true```
 * thread_count(Optional) => the number of threads to keep in the ScheduledThreadPool. Default is `200`
 * max_connection_count(Optional) => the maximum allowed number of open connections. Default is `500`
