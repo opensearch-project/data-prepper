@@ -125,7 +125,7 @@ public class ConnectionConfigurationTests {
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         assertEquals("us-east-1", connectionConfiguration.getAwsRegion());
-        assertTrue(connectionConfiguration.isAwsSigv4());;
+        assertTrue(connectionConfiguration.isAwsSigv4());
     }
 
     @Test

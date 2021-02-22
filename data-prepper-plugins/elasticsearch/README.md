@@ -42,9 +42,9 @@ pipeline:
 
 The elasticsearch sink will reserve `otel-v1-apm-service-map` as index for record ingestion.
 
-### Amazon Elasticsearch Service (AES)
+### Amazon Elasticsearch Service (Amazon ES)
 
-The elasticsearch sink can also be configured for AES domain. See [security](security.md) for details.
+The elasticsearch sink can also be configured for Amazon ES domain. See [security](security.md) for details.
 
 ```$xslt
 pipeline:
@@ -66,9 +66,9 @@ pipeline:
 - `cert`(optional): CA certificate that is pem encoded. Accepts both .pem or .crt. This enables the client to trust the CA that has signed the certificate that ODFE is using.
 Default is null. 
 
-- `aws_sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Only applies to AES. See [security](security.md) for details. Default to `false`. 
+- `aws_sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Only applies to Amazon ES. See [security](security.md) for details. Default to `false`. 
 
-- `aws_region`: A String represents the region of AES domain, e.g. us-west-2. Only applies to AES. Defaults to `us-east-1`.
+- `aws_region`: A String represents the region of Amazon ES domain, e.g. us-west-2. Only applies to Amazon ES. Defaults to `us-east-1`.
 
 - `insecure`: A boolean flag to turn off SSL certificate verification. If set to true, CA certificate verification will be turned off and insecure HTTP requests will be sent. Default to `false`.
 
