@@ -22,6 +22,6 @@ Besides common metrics in [AbstractPrepper](https://github.com/opendistro-for-el
 - `traceGroupDbSize`: measures total trace group byte sizes in MapDB across the current and previous trace group window durations. 
 
 ## Developer Guide
-This plugin is compatible with Java 14. See 
+This plugin is compatible with Java 8. See 
 - [CONTRIBUTING](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/CONTRIBUTING.md) 
 - [monitoring](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/docs/readme/monitoring.md)
