@@ -13,7 +13,7 @@ JVM and system metrics in Data Prepper follows pre-defined names in Micrometer.i
 
 ### Serving
 
-Metrics are served from the **metrics/sys** endpoint on the Data Prepper server. The format
+Metrics are served from the **/metrics/sys** endpoint on the Data Prepper server. The format
 is a text Prometheus scrape. This port can be used for any frontend which accepts Prometheus metrics, e.g. 
 [Grafana](https://prometheus.io/docs/visualization/grafana/).
 
@@ -27,8 +27,8 @@ plugin types.
     - Counter
         - `recordsWritten`: number of records written into a buffer.
         - `recordsRead`: number of records read from a buffer.
-        - `recordsInflight`: number of records read from a buffer but not checkpointed.
-        - `recordsProcessed`: number of records read from a buffer and checkpointed.
+        - `recordsInFlight`: number of records read from a buffer and being processed by data-prepper downstreams (e.g. prepper, sink).
+        - `recordsProcessed`: number of records read from a buffer and marked as processed.
         - `writeTimeouts`: count of write timeouts in a buffer.
     - Timer
         - `readTimeElapsed`: time elapsed while reading from a buffer
