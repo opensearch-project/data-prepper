@@ -1,7 +1,12 @@
 package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazonaws.auth.AWS4Signer;
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.http.AWSRequestSigningApacheInterceptor;
 import org.apache.http.HttpHost;
+import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
@@ -28,9 +33,13 @@ import java.security.cert.CertificateFactory;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class ConnectionConfiguration {
   private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchSink.class);
+
+  private static final String SERVICE_NAME = "es";
+  private static final String DEFAULT_AWS_REGION = "us-east-1";
 
   public static final String HOSTS = "hosts";
   public static final String USERNAME = "username";
@@ -39,6 +48,8 @@ public class ConnectionConfiguration {
   public static final String CONNECT_TIMEOUT = "connect_timeout";
   public static final String CERT_PATH = "cert";
   public static final String INSECURE = "insecure";
+  public static final String AWS_SIGV4 = "aws_sigv4";
+  public static final String AWS_REGION = "aws_region";
 
   private final List<String> hosts;
   private final String username;
@@ -47,6 +58,8 @@ public class ConnectionConfiguration {
   private final Integer socketTimeout;
   private final Integer connectTimeout;
   private final boolean insecure;
+  private final boolean awsSigv4;
+  private final String awsRegion;
 
   public List<String> getHosts() {
     return hosts;
@@ -58,6 +71,14 @@ public class ConnectionConfiguration {
 
   public String getPassword() {
     return password;
+  }
+
+  public boolean isAwsSigv4() {
+    return awsSigv4;
+  }
+
+  public String getAwsRegion() {
+    return awsRegion;
   }
 
   public Integer getSocketTimeout() {
@@ -76,6 +97,8 @@ public class ConnectionConfiguration {
     this.connectTimeout = builder.connectTimeout;
     this.certPath = builder.certPath;
     this.insecure = builder.insecure;
+    this.awsSigv4 = builder.awsSigv4;
+    this.awsRegion = builder.awsRegion;
   }
 
   public static ConnectionConfiguration readConnectionConfiguration(final PluginSetting pluginSetting){
@@ -98,6 +121,10 @@ public class ConnectionConfiguration {
     if (connectTimeout != null) {
       builder = builder.withConnectTimeout(connectTimeout);
     }
+
+    builder.withAwsSigv4(pluginSetting.getBooleanOrDefault(AWS_SIGV4, false));
+    builder.withAwsRegion(pluginSetting.getStringOrDefault(AWS_REGION, DEFAULT_AWS_REGION));
+
     final String certPath = pluginSetting.getStringOrDefault(CERT_PATH, null);
     final boolean insecure = pluginSetting.getBooleanOrDefault(INSECURE, false);
     if (certPath != null) {
@@ -121,6 +148,43 @@ public class ConnectionConfiguration {
       i++;
     }
     final RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
+    /**
+     * Given that this is a patch release, we will support only the IAM based access policy AES domains.
+     * We will not support FGAC and Custom endpoint domains. This will be followed in the next version.
+     */
+    if(awsSigv4) {
+      attachAWSSigV4Callback(restClientBuilder);
+    } else {
+      attachSSLUsernameContext(restClientBuilder);
+    }
+    restClientBuilder.setRequestConfigCallback(
+            requestConfigBuilder -> {
+              if (connectTimeout != null) {
+                requestConfigBuilder.setConnectTimeout(connectTimeout);
+              }
+              if (socketTimeout != null) {
+                requestConfigBuilder.setSocketTimeout(socketTimeout);
+              }
+              return requestConfigBuilder;
+            });
+    return new RestHighLevelClient(restClientBuilder);
+  }
+
+  private void attachAWSSigV4Callback(final RestClientBuilder restClientBuilder) {
+    //if aws signing is enabled we will add AWSRequestSigningApacheInterceptor interceptor,
+    //if not follow regular credentials process
+    LOG.info("{} is set, will sign requests using AWSRequestSigningApacheInterceptor", AWS_SIGV4);
+    final AWS4Signer aws4Signer = new AWS4Signer();
+    aws4Signer.setServiceName(SERVICE_NAME);
+    aws4Signer.setRegionName(awsRegion);
+    final AWSCredentialsProvider credentialsProvider = new DefaultAWSCredentialsProviderChain();
+    final HttpRequestInterceptor httpRequestInterceptor = new AWSRequestSigningApacheInterceptor(SERVICE_NAME, aws4Signer,
+            credentialsProvider);
+    restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder.addInterceptorLast(
+            httpRequestInterceptor));
+  }
+
+  private void attachSSLUsernameContext(final RestClientBuilder restClientBuilder) {
     final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
     if (username != null) {
       LOG.info("Using the username provided in the config.");
@@ -139,17 +203,6 @@ public class ConnectionConfiguration {
               return httpClientBuilder;
             }
     );
-    restClientBuilder.setRequestConfigCallback(
-            requestConfigBuilder -> {
-              if (connectTimeout != null) {
-                requestConfigBuilder.setConnectTimeout(connectTimeout);
-              }
-              if (socketTimeout != null) {
-                requestConfigBuilder.setSocketTimeout(socketTimeout);
-              }
-              return requestConfigBuilder;
-            });
-    return new RestHighLevelClient(restClientBuilder);
   }
 
   private SSLContext getCAStrategy(Path certPath) {
@@ -189,6 +242,8 @@ public class ConnectionConfiguration {
     private Integer connectTimeout;
     private Path certPath;
     private boolean insecure;
+    private boolean awsSigv4;
+    private String awsRegion;
 
 
     public Builder(final List<String> hosts) {
@@ -229,6 +284,17 @@ public class ConnectionConfiguration {
 
     public Builder withInsecure(final boolean insecure) {
       this.insecure = insecure;
+      return this;
+    }
+
+    public Builder withAwsSigv4(final boolean awsSigv4) {
+      this.awsSigv4 = awsSigv4;
+      return this;
+    }
+
+    public Builder withAwsRegion(final String awsRegion) {
+      checkNotNull(awsRegion, "awsRegion cannot be null");
+      this.awsRegion = awsRegion;
       return this;
     }
 

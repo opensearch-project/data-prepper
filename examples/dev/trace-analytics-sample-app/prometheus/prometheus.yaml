@@ -11,3 +11,8 @@ scrape_configs:
     metrics_path: "/metrics/prometheus"
     static_configs:
       - targets: ["data-prepper:4900"]
+
+  - job_name: "sys"
+    metrics_path: "/metrics/sys"
+    static_configs:
+      - targets: ["data-prepper:4900"]

@@ -19,7 +19,7 @@ public class PeerForwarderConfig {
     public static final String STATIC_ENDPOINTS = "static_endpoints";
     public static final String SSL = "ssl";
     public static final String SSL_KEY_CERT_FILE = "sslKeyCertChainFile";
-    private static final boolean DEFAULT_SSL = false;
+    private static final boolean DEFAULT_SSL = true;
 
     private final HashRing hashRing;
     private final PeerClientPool peerClientPool;
@@ -49,9 +49,9 @@ public class PeerForwarderConfig {
         final File sslKeyCertChainFile;
         if (ssl) {
             if (sslKeyCertChainFilePath == null || sslKeyCertChainFilePath.isEmpty()) {
-                throw new IllegalArgumentException(String.format("%s is enable, %s can not be empty or null", SSL, SSL_KEY_CERT_FILE));
+                throw new IllegalArgumentException(String.format("%s is enabled, %s can not be empty or null", SSL, SSL_KEY_CERT_FILE));
             } else if (!Files.exists(Paths.get(sslKeyCertChainFilePath))) {
-                throw new IllegalArgumentException(String.format("%s is enable, %s does not exist", SSL, SSL_KEY_CERT_FILE));
+                throw new IllegalArgumentException(String.format("%s is enabled, %s does not exist", SSL, SSL_KEY_CERT_FILE));
             } else {
                 sslKeyCertChainFile = new File(sslKeyCertChainFilePath);
             }

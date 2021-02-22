@@ -21,6 +21,10 @@ public class PrometheusMetricsHandler implements HttpHandler {
         prometheusMeterRegistry = (PrometheusMeterRegistry) Metrics.globalRegistry.getRegistries().iterator().next();
     }
 
+    public PrometheusMetricsHandler(final PrometheusMeterRegistry prometheusMeterRegistry) {
+        this.prometheusMeterRegistry = prometheusMeterRegistry;
+    }
+
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         try {

@@ -30,6 +30,15 @@ public class PluginMetricsTest {
     }
 
     @Test
+    public void testCustomMetricsPrefixCounter() {
+        final Counter counter = PLUGIN_METRICS.counter("counter", PIPELINE_NAME);
+        Assert.assertEquals(
+                new StringJoiner(MetricNames.DELIMITER)
+                        .add(PIPELINE_NAME).add("counter").toString(),
+                counter.getId().getName());
+    }
+
+    @Test
     public void testTimer() {
         final Timer counter = PLUGIN_METRICS.timer("timer");
         Assert.assertEquals(

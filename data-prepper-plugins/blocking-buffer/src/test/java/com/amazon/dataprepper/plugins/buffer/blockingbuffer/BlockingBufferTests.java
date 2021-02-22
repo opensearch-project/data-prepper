@@ -1,4 +1,4 @@
-package com.amazon.dataprepper.plugins.buffer;
+package com.amazon.dataprepper.plugins.buffer.blockingbuffer;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
@@ -127,7 +127,7 @@ public class BlockingBufferTests {
         final CheckpointState partialCheckpointState = partialReadResult.getValue();
         final int expectedBatchSize = (Integer) completePluginSetting.getAttributeFromSettings(ATTRIBUTE_BATCH_SIZE);
         assertThat(partialRecords.size(), is(expectedBatchSize));
-        assertEquals(expectedBatchSize, partialCheckpointState.getNumCheckedRecords());
+        assertEquals(expectedBatchSize, partialCheckpointState.getNumRecordsToBeChecked());
         int i = 0;
         for (Record<String> record : partialRecords) {
             assertThat(record.getData(), equalTo("TEST" + i));
@@ -137,7 +137,7 @@ public class BlockingBufferTests {
         final Collection<Record<String>> finalBatch = finalReadResult.getKey();
         final CheckpointState finalCheckpointState = finalReadResult.getValue();
         assertThat(finalBatch.size(), is(testSize - expectedBatchSize));
-        assertEquals(testSize - expectedBatchSize, finalCheckpointState.getNumCheckedRecords());
+        assertEquals(testSize - expectedBatchSize, finalCheckpointState.getNumRecordsToBeChecked());
         for (Record<String> record : finalBatch) {
             assertThat(record.getData(), equalTo("TEST" + i));
             i++;

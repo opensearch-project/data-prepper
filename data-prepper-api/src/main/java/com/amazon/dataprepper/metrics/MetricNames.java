@@ -26,9 +26,19 @@ public class MetricNames {
     public static final String RECORDS_WRITTEN = "recordsWritten";
 
     /**
-     * Metric representing the number of records read from a buffer
+     * Metric representing the number of records read from a buffer.
      */
     public static final String RECORDS_READ = "recordsRead";
+
+    /**
+     * Metric representing the number of records read from a buffer but unchecked.
+     */
+    public static final String RECORDS_INFLIGHT = "recordsInFlight";
+
+    /**
+     * Metric representing the number of records read from a buffer and processed by the pipeline.
+     */
+    public static final String RECORDS_PROCESSED = "recordsProcessed";
 
     /**
      * Metric representing the time elapsed while writing to a Buffer
@@ -39,6 +49,11 @@ public class MetricNames {
      * Metric representing the time elapsed while reading from a buffer
      */
     public static final String READ_TIME_ELAPSED = "readTimeElapsed";
+
+    /**
+     * Metric representing the time elapsed while checkpointing
+     */
+    public static final String CHECKPOINT_TIME_ELAPSED = "checkpointTimeElapsed";
 
     /**
      * Metric representing the count of write timeouts to a Buffer

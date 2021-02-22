@@ -38,6 +38,10 @@ public class PluginMetrics {
         return Metrics.counter(getMeterName(name));
     }
 
+    public Counter counter(final String name, final String metricsPrefix) {
+        return Metrics.counter(new StringJoiner(MetricNames.DELIMITER).add(metricsPrefix).add(name).toString());
+    }
+
     public Timer timer(final String name) {
         return Metrics.timer(getMeterName(name));
     }

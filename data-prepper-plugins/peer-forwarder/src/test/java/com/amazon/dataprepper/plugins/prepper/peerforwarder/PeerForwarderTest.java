@@ -300,6 +300,7 @@ public class PeerForwarderTest {
         settings.put(PeerForwarderConfig.STATIC_ENDPOINTS, staticEndpoints);
         settings.put(PeerForwarderConfig.MAX_NUM_SPANS_PER_REQUEST, spansPerRequest);
         settings.put(PeerForwarderConfig.TIME_OUT, 300);
+        settings.put(PeerForwarderConfig.SSL, false);
         return new PeerForwarder(new PluginSetting("peer_forwarder", settings) {{setPipelineName(TEST_PIPELINE_NAME);}});
     }
 }

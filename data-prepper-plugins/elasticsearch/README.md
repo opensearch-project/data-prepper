@@ -2,11 +2,11 @@
 
 This is the Data Prepper Elasticsearch sink plugin, sending records to Elasticsearch cluster via REST client.
 
-## Configuration
+## Usages
 
 The Elasticsearch sink should be configured as part of Data Prepper pipeline yaml file according to the following use cases.
 
-### Raw span trace analytics
+### <a name="raw_span_trace_analytics"></a>Raw span trace analytics
 
 ```$xslt
 pipeline:
@@ -24,7 +24,7 @@ pipeline:
 
 The elasticsearch sink will reserve `otel-v1-apm-span-*` as index pattern and `otel-v1-apm-span` as index alias for record ingestion.
 
-### Service map trace analytics
+### <a name="service_map_trace_analytics"></a>Service map trace analytics
 
 ```$xslt
 pipeline:
@@ -42,47 +42,18 @@ pipeline:
 
 The elasticsearch sink will reserve `otel-v1-apm-service-map` as index for record ingestion.
 
-### Custom data
+## Configuration
 
-```$xslt
-pipeline:
-  ...
-  sink:
-    elasticsearch:
-      hosts: ["https://localhost:9200"]
-      username: YOUR_USERNAME_HERE
-      password: YOUR_PASSWORD_HERE
-      index: "some-index"
-      template_file: /your/local/template-file.json
-      document_id_field: "someId"
-      dlq_file: /your/local/dlq-file
-      bulk_size: 4
-```
+- `hosts`: A list of IP addresses of elasticsearch nodes.
 
-User needs to provide custom index for record ingestion.
-
-## Parameters
-
-### Hosts
-
-A list of IP addresses of elasticsearch nodes.
-
-### cert
-CA certificate that is pem encoded. Accepts both .pem or .crt. This enables the client to trust the CA that has signed the certificate that ODFE is using.
+- `cert`(optional): CA certificate that is pem encoded. Accepts both .pem or .crt. This enables the client to trust the CA that has signed the certificate that ODFE is using.
 Default is null. 
 
-### Username
+- `username`(optional): A String of username used in the [internal users](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles) of ODFE cluster. Default is null.
 
-A String of username used in the [cognito](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles) of ODFE cluster.
+- `password`(optional): A String of password used in the [internal users](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles) of ODFE cluster. Default is null.
 
-### Password
-
-A String of password used in the [cognito](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles) of ODFE cluster.
-
-### Trace analytics raw
-
-A boolean flag indicates APM trace analytics raw span data type. e.g.
-
+- `trace_analytics_raw`(optional): A boolean flag indicates APM trace analytics raw span data type. e.g.
 ```$xslt
 {
   "traceId":"bQ/2NNEmtuwsGAOR5ntCNw==",
@@ -95,13 +66,9 @@ A boolean flag indicates APM trace analytics raw span data type. e.g.
   ...
 }
 ```
+Default value is false. Set it to true for [Raw span trace analytics](#raw_span_trace_analytics). Set it to false for [Service map trace analytics](#service_map_trace_analytics).
 
-Default value is false.
-
-### Trace analytics service map
-
-A boolean flag indicates APM trace analytics service map data type. e.g.
-
+- `trace_analytics_service_map`(optional): A boolean flag indicates APM trace analytics service map data type. e.g.
 ```$xslt
 {
   "hashId": "aQ/2NNEmtuwsGAOR5ntCNwk=",
@@ -120,35 +87,39 @@ A boolean flag indicates APM trace analytics service map data type. e.g.
   "traceGroupName": "MakePayement.auto"
 }
 ```
+Default value is false. Set it to true for [Service map trace analytics](#service_map_trace_analytics). Set it to false for [Raw span trace analytics](#raw_span_trace_analytics).
 
-Default value is false. 
+- <a name="index"></a>`index`: A String used as index name for custom data type. Applicable and required only If both `trace_analytics_raw` and `trace_analytics_service_map` are set to false.
 
-### Custom data type
-
-If both `trace_analytics_raw` and `trace_analytics_service_map` are set to false, the ES sink will ingest custom data type, i.e.
-user needs to provide custom [index](#index).
-
-### <a name="index"></a>Index
-
-A String used as index name for custom data type.
-
-### <a name="template_file"></a>Template file (Optional)
-
-A json file path to be read as index template for custom data ingestion. The json file content should be the json value of
+- <a name="template_file"></a>`template_file`(optional): A json file path to be read as index template for custom data ingestion. The json file content should be the json value of
 `"template"` key in the json content of elasticsearch [Index templates API](https://www.elastic.co/guide/en/elasticsearch/reference/7.8/index-templates.html), 
-e.g. [otel-v1-apm-span-index-template.json](https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/blob/master/dataPrepper-plugins/elasticsearch/src/main/resources/otel-v1-apm-span-index-template.json)
+e.g. [otel-v1-apm-span-index-template.json](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/data-prepper-plugins/elasticsearch/src/main/resources/otel-v1-apm-span-index-template.json)
 
-### DLQ file (Optional)
+- `dlq_file`(optional): A String of absolute file path for DLQ failed output records. Defaults to null.
+If not provided, failed records will be written into the default data-prepper log file (`logs/Data-Prepper.log`).
 
-A String of absolute file path for DLQ failed output records. 
-If not provided, failed records will be written into the default log file.
-
-### Bulk size (Optional)
-
-A long of bulk size in bulk requests in MB. Default to 5 MB. If set to be less than 0, 
+- `bulk_size` (optional): A long of bulk size in bulk requests in MB. Default to 5 MB. If set to be less than 0, 
 all the records received from the upstream prepper at a time will be sent as a single bulk request. 
 If a single record turns out to be larger than the set bulk size, it will be sent as a bulk request of a single document.
 
-## Compatibility
+## Metrics
 
-This plugin is compatible with Java 14.
+Besides common metrics in [AbstractSink](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/data-prepper-api/src/main/java/com/amazon/dataprepper/model/sink/AbstractSink.java), elasticsearch sink introduces the following custom metrics.
+
+### Timer
+
+- `bulkRequestLatency`: measures latency of sending each bulk request including retries.
+
+### Counter
+
+- `bulkRequestErrors`: measures number of errors encountered in sending bulk requests.
+- `documentsSuccess`: measures number of documents successfully sent to ES by bulk requests including retries.
+- `documentsSuccessFirstAttempt`: measures number of documents successfully sent to ES by bulk requests on first attempt.
+- `documentErrors`: measures number of documents failed to be sent by bulk requests. 
+
+## Developer Guide
+
+This plugin is compatible with Java 14. See 
+
+- [CONTRIBUTING](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/CONTRIBUTING.md) 
+- [monitoring](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/docs/readme/monitoring.md)

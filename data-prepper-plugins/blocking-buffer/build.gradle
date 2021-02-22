@@ -1,0 +1,18 @@
+plugins {
+    id 'java'
+}
+dependencies {
+    compile project(':data-prepper-api')
+    testImplementation "junit:junit:${versionMap.junit}"
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule { //in addition to core projects rule
+            limit {
+                minimum = 0.90
+            }
+        }
+    }
+}
