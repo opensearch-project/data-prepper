@@ -118,6 +118,26 @@ public class ConnectionConfigurationTests {
         assertTrue(connectionConfiguration.isAwsSigv4());;
     }
 
+    @Test
+    public void testCreateClientWithAWSSigV4AndInsecure() throws IOException {
+        final PluginSetting pluginSetting = generatePluginSetting(
+                TEST_HOSTS, null, null, null, null, true, null, null, true);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertEquals("us-east-1", connectionConfiguration.getAwsRegion());
+        assertTrue(connectionConfiguration.isAwsSigv4());;
+    }
+
+    @Test
+    public void testCreateClientWithAWSSigV4AndCertPath() throws IOException {
+        final PluginSetting pluginSetting = generatePluginSetting(
+                TEST_HOSTS, null, null, null, null, true, null, TEST_CERT_PATH, false);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertEquals("us-east-1", connectionConfiguration.getAwsRegion());
+        assertTrue(connectionConfiguration.isAwsSigv4());;
+    }
+
     private PluginSetting generatePluginSetting(
             final List<String> hosts, final String username, final String password,
             final Integer connectTimeout, final Integer socketTimeout, final boolean awsSigv4, final String awsRegion,
