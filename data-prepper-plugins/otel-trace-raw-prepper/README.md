@@ -21,6 +21,6 @@ Apart from common metrics in [AbstractPrepper](https://github.com/opendistro-for
 - `totalProcessingErrors`: records the total number of processing errors for spans and resource spans.
 
 ## Developer Guide
-This plugin is compatible with Java 14. See 
+This plugin is compatible with Java 8. See 
 - [CONTRIBUTING](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/CONTRIBUTING.md) 
 - [monitoring](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/docs/readme/monitoring.md)
