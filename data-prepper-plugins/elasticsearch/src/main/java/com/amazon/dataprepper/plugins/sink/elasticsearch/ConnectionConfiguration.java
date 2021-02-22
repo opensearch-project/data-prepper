@@ -153,7 +153,7 @@ public class ConnectionConfiguration {
      * We will not support FGAC and Custom endpoint domains. This will be followed in the next version.
      */
     if(awsSigv4) {
-      attachAWSSigV4Callback(restClientBuilder);
+      attachAWSSigV4CallbackAndSSLContext(restClientBuilder);
     } else {
       attachSSLUsernameContext(restClientBuilder);
     }
@@ -170,7 +170,7 @@ public class ConnectionConfiguration {
     return new RestHighLevelClient(restClientBuilder);
   }
 
-  private void attachAWSSigV4Callback(final RestClientBuilder restClientBuilder) {
+  private void attachAWSSigV4CallbackAndSSLContext(final RestClientBuilder restClientBuilder) {
     //if aws signing is enabled we will add AWSRequestSigningApacheInterceptor interceptor,
     //if not follow regular credentials process
     LOG.info("{} is set, will sign requests using AWSRequestSigningApacheInterceptor", AWS_SIGV4);
@@ -180,8 +180,14 @@ public class ConnectionConfiguration {
     final AWSCredentialsProvider credentialsProvider = new DefaultAWSCredentialsProviderChain();
     final HttpRequestInterceptor httpRequestInterceptor = new AWSRequestSigningApacheInterceptor(SERVICE_NAME, aws4Signer,
             credentialsProvider);
-    restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder.addInterceptorLast(
-            httpRequestInterceptor));
+    final SSLContext sslContext = certPath != null ? getCAStrategy(certPath) : getTrustAllStrategy();
+    restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
+      httpClientBuilder.setSSLContext(sslContext).addInterceptorLast(httpRequestInterceptor);
+      if (this.insecure) {
+        httpClientBuilder.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE);
+      }
+      return httpClientBuilder;
+    });
   }
 
   private void attachSSLUsernameContext(final RestClientBuilder restClientBuilder) {
