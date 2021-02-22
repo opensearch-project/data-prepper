@@ -14,6 +14,8 @@ import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.TrustAllStrategy;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
 import org.elasticsearch.client.RestClient;
@@ -180,12 +182,9 @@ public class ConnectionConfiguration {
     final AWSCredentialsProvider credentialsProvider = new DefaultAWSCredentialsProviderChain();
     final HttpRequestInterceptor httpRequestInterceptor = new AWSRequestSigningApacheInterceptor(SERVICE_NAME, aws4Signer,
             credentialsProvider);
-    final SSLContext sslContext = certPath != null ? getCAStrategy(certPath) : getTrustAllStrategy();
     restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
-      httpClientBuilder.setSSLContext(sslContext).addInterceptorLast(httpRequestInterceptor);
-      if (this.insecure) {
-        httpClientBuilder.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE);
-      }
+      httpClientBuilder.addInterceptorLast(httpRequestInterceptor);
+      attachSSLContext(httpClientBuilder);
       return httpClientBuilder;
     });
   }
@@ -197,18 +196,21 @@ public class ConnectionConfiguration {
       credentialsProvider.setCredentials(
               AuthScope.ANY, new UsernamePasswordCredentials(username, password));
     }
-    final SSLContext sslContext = certPath != null ? getCAStrategy(certPath) : getTrustAllStrategy();
     restClientBuilder.setHttpClientConfigCallback(
             httpClientBuilder -> {
-              httpClientBuilder
-                      .setDefaultCredentialsProvider(credentialsProvider)
-                      .setSSLContext(sslContext);
-              if (this.insecure) {
-                httpClientBuilder.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE);
-              }
+              httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+              attachSSLContext(httpClientBuilder);
               return httpClientBuilder;
             }
     );
+  }
+
+  private void attachSSLContext(final HttpAsyncClientBuilder httpClientBuilder) {
+    final SSLContext sslContext = certPath != null ? getCAStrategy(certPath) : getTrustAllStrategy();
+    httpClientBuilder.setSSLContext(sslContext);
+    if (this.insecure) {
+      httpClientBuilder.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE);
+    }
   }
 
   private SSLContext getCAStrategy(Path certPath) {
