@@ -30,7 +30,7 @@ dependencies {
     implementation "io.micrometer:micrometer-registry-prometheus:1.5.5"
 
     testImplementation "org.hamcrest:hamcrest:2.2"
-    testImplementation "org.mockito:mockito-core:3.7.7"
+    testImplementation "org.mockito:mockito-core:3.8.0"
 }
 
 jar {
