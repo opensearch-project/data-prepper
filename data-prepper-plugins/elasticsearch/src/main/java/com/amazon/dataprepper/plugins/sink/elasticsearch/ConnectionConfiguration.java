@@ -155,9 +155,9 @@ public class ConnectionConfiguration {
      * We will not support FGAC and Custom endpoint domains. This will be followed in the next version.
      */
     if(awsSigv4) {
-      attachAWSSigV4CallbackAndSSLContext(restClientBuilder);
+      attachSigV4(restClientBuilder);
     } else {
-      attachSSLUsernameContext(restClientBuilder);
+      attachUserCredentials(restClientBuilder);
     }
     restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder -> {
@@ -172,7 +172,7 @@ public class ConnectionConfiguration {
     return new RestHighLevelClient(restClientBuilder);
   }
 
-  private void attachAWSSigV4CallbackAndSSLContext(final RestClientBuilder restClientBuilder) {
+  private void attachSigV4(final RestClientBuilder restClientBuilder) {
     //if aws signing is enabled we will add AWSRequestSigningApacheInterceptor interceptor,
     //if not follow regular credentials process
     LOG.info("{} is set, will sign requests using AWSRequestSigningApacheInterceptor", AWS_SIGV4);
@@ -189,7 +189,7 @@ public class ConnectionConfiguration {
     });
   }
 
-  private void attachSSLUsernameContext(final RestClientBuilder restClientBuilder) {
+  private void attachUserCredentials(final RestClientBuilder restClientBuilder) {
     final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
     if (username != null) {
       LOG.info("Using the username provided in the config.");
