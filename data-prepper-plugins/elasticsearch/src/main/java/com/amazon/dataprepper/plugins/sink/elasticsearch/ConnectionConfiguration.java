@@ -14,6 +14,8 @@ import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.TrustAllStrategy;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
 import org.elasticsearch.client.RestClient;
@@ -153,9 +155,9 @@ public class ConnectionConfiguration {
      * We will not support FGAC and Custom endpoint domains. This will be followed in the next version.
      */
     if(awsSigv4) {
-      attachAWSSigV4Callback(restClientBuilder);
+      attachSigV4(restClientBuilder);
     } else {
-      attachSSLUsernameContext(restClientBuilder);
+      attachUserCredentials(restClientBuilder);
     }
     restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder -> {
@@ -170,7 +172,7 @@ public class ConnectionConfiguration {
     return new RestHighLevelClient(restClientBuilder);
   }
 
-  private void attachAWSSigV4Callback(final RestClientBuilder restClientBuilder) {
+  private void attachSigV4(final RestClientBuilder restClientBuilder) {
     //if aws signing is enabled we will add AWSRequestSigningApacheInterceptor interceptor,
     //if not follow regular credentials process
     LOG.info("{} is set, will sign requests using AWSRequestSigningApacheInterceptor", AWS_SIGV4);
@@ -180,29 +182,35 @@ public class ConnectionConfiguration {
     final AWSCredentialsProvider credentialsProvider = new DefaultAWSCredentialsProviderChain();
     final HttpRequestInterceptor httpRequestInterceptor = new AWSRequestSigningApacheInterceptor(SERVICE_NAME, aws4Signer,
             credentialsProvider);
-    restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder.addInterceptorLast(
-            httpRequestInterceptor));
+    restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
+      httpClientBuilder.addInterceptorLast(httpRequestInterceptor);
+      attachSSLContext(httpClientBuilder);
+      return httpClientBuilder;
+    });
   }
 
-  private void attachSSLUsernameContext(final RestClientBuilder restClientBuilder) {
+  private void attachUserCredentials(final RestClientBuilder restClientBuilder) {
     final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
     if (username != null) {
       LOG.info("Using the username provided in the config.");
       credentialsProvider.setCredentials(
               AuthScope.ANY, new UsernamePasswordCredentials(username, password));
     }
-    final SSLContext sslContext = certPath != null ? getCAStrategy(certPath) : getTrustAllStrategy();
     restClientBuilder.setHttpClientConfigCallback(
             httpClientBuilder -> {
-              httpClientBuilder
-                      .setDefaultCredentialsProvider(credentialsProvider)
-                      .setSSLContext(sslContext);
-              if (this.insecure) {
-                httpClientBuilder.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE);
-              }
+              httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+              attachSSLContext(httpClientBuilder);
               return httpClientBuilder;
             }
     );
+  }
+
+  private void attachSSLContext(final HttpAsyncClientBuilder httpClientBuilder) {
+    final SSLContext sslContext = certPath != null ? getCAStrategy(certPath) : getTrustAllStrategy();
+    httpClientBuilder.setSSLContext(sslContext);
+    if (this.insecure) {
+      httpClientBuilder.setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE);
+    }
   }
 
   private SSLContext getCAStrategy(Path certPath) {
