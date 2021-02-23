@@ -12,11 +12,11 @@ repositories {
 dependencies {
     compile project(':data-prepper-api')
     testCompile project(':data-prepper-api').sourceSets.test.output
-    implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
+    implementation "io.opentelemetry:opentelemetry-proto:0.10.0"
     implementation "com.linecorp.armeria:armeria:1.0.0"
     implementation "com.linecorp.armeria:armeria-grpc:1.0.0"
-    testImplementation "junit:junit:4.12"
-    testImplementation "org.mockito:mockito-inline:${versionMap.mockito_inline}"
+    testImplementation "junit:junit:4.13"
+    testImplementation "org.mockito:mockito-inline:3.6.28"
 }
 
 jacocoTestCoverageVerification {
