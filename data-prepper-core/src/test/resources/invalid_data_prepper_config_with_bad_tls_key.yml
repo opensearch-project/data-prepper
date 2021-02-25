@@ -1,4 +1,4 @@
 serverPort: 1234
 ssl: true
-sslKeyFile: "src/test/resources/tls/test_rsa.pkcs8"
+sslKeyFile: "src/test/resources/tls/test_empty_key.pkcs8"
 sslKeyCertChainFile: "src/test/resources/tls/test_cert.cer"
