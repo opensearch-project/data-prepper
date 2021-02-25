@@ -53,7 +53,8 @@ public class Pipeline {
      * @param name                     name of the pipeline
      * @param source                   source from where the pipeline reads the records
      * @param buffer                   buffer for the source to queue records
-     * @param prepperSets               prepper that is applied to records
+     * @param prepperSets               prepper sets that will be applied to records. Each set includes either a single shared prepper instance
+     *                                  or multiple instances with each to be accessed only by a single {@link ProcessWorker}.
      * @param sinks                    sink to which the transformed records are posted
      * @param prepperThreads         configured or default threads to parallelize prepper work
      * @param readBatchTimeoutInMillis configured or default timeout for reading batch of records from buffer
