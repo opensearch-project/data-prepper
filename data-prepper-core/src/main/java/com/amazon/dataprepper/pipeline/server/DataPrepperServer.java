@@ -8,14 +8,10 @@ import com.sun.net.httpserver.HttpsServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
-import javax.net.ssl.TrustManagerFactory;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.security.KeyStore;
 
 /**
  * Class to handle any serving that the data prepper instance needs to do.
@@ -27,14 +23,15 @@ public class DataPrepperServer {
 
     public DataPrepperServer(final DataPrepper dataPrepper) {
         final int port = DataPrepper.getConfiguration().getServerPort();
-        final boolean useTls = DataPrepper.getConfiguration().useTls();
+        final boolean ssl = DataPrepper.getConfiguration().ssl();
         final String keyStoreFilePath = DataPrepper.getConfiguration().getKeyStoreFilePath();
-        final String keyStorePassphrase = DataPrepper.getConfiguration().getKeyStorePassphrase();
+        final String keyStorePassword = DataPrepper.getConfiguration().getKeyStorePassword();
+        final String privateKeyPassword = DataPrepper.getConfiguration().getPrivateKeyPassword();
 
         try {
-            if (useTls) {
+            if (ssl) {
                 LOG.info("Creating Data Prepper server with TLS");
-                this.server = createHttpsServer(port, keyStoreFilePath, keyStorePassphrase);
+                this.server = createHttpsServer(port, keyStoreFilePath, keyStorePassword, privateKeyPassword);
             } else {
                 LOG.info("Creating Data Prepper server without TLS");
                 this.server = createHttpServer(port);
@@ -71,32 +68,16 @@ public class DataPrepperServer {
     }
 
     private HttpServer createHttpsServer(final int port,
-                                         final String keystoreFilePath,
-                                         final String passphrase) throws IOException {
-        final SSLContext sslContext;
-
-        try {
-            char[] passphraseArray = passphrase.toCharArray();
-            KeyStore keyStore = KeyStore.getInstance("JKS");
-            keyStore.load(new FileInputStream(keystoreFilePath), passphraseArray);
-
-            KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance("SunX509");
-            keyManagerFactory.init(keyStore, passphraseArray);
-
-            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("SunX509");
-            trustManagerFactory.init(keyStore);
-
-            sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), null);
-        } catch (Exception e) {
-            throw new IllegalStateException("Problem loading keystore to enable TLS", e);
-        }
+                                         final String keyStoreFilePath,
+                                         final String keyStorePassword,
+                                         final String privateKeyPassword) throws IOException {
+        final SSLContext sslContext = SslUtil.createSslContext(keyStoreFilePath, keyStorePassword, privateKeyPassword);
 
         final HttpsServer server = HttpsServer.create(new InetSocketAddress(port), 0);
         server.setHttpsConfigurator(new HttpsConfigurator(sslContext) {
             public void configure(HttpsParameters params) {
-                SSLContext c = getSSLContext();
-                SSLParameters sslparams = c.getDefaultSSLParameters();
+                SSLContext context = getSSLContext();
+                SSLParameters sslparams = context.getDefaultSSLParameters();
                 params.setSSLParameters(sslparams);
             }
         });

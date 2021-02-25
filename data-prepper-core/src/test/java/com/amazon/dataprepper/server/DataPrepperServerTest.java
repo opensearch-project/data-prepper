@@ -228,10 +228,9 @@ public class DataPrepperServerTest {
     }
 
     @Test(expected = IllegalStateException.class)
-    public void testTlsWithInvalidPassphrase() {
+    public void testTlsWithInvalidPassword() {
         setupDataPrepper();
-        DataPrepper.configure(TestDataProvider.INVALID_TLS_PASSPHRASE_DATA_PREPPER_CONFIG_FILE);
-
+        DataPrepper.configure(TestDataProvider.INVALID_KEYSTORE_PASSWORD_DATA_PREPPER_CONFIG_FILE);
 
         new DataPrepperServer(dataPrepper);
     }

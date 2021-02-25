@@ -1,3 +1,2 @@
-useTls: true
-keyStoreFilePath: "/usr/share/data-prepper/keystore.jks"
-keyStorePassphrase: "password"
+ssl: true
+keyStoreFilePath: "/usr/share/data-prepper/test_keystore.p12"

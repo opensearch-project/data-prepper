@@ -12,9 +12,10 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
  */
 public class DataPrepperConfiguration {
     private int serverPort = 4900;
-    private boolean useTls = true;
+    private boolean ssl = true;
     private String keyStoreFilePath = "";
-    private String keyStorePassphrase = "";
+    private String keyStorePassword = "";
+    private String privateKeyPassword = "";
     private Log4JConfiguration log4JConfiguration = Log4JConfiguration.DEFAULT_CONFIG;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
@@ -38,15 +39,17 @@ public class DataPrepperConfiguration {
 
     @JsonCreator
     public DataPrepperConfiguration(
-            @JsonProperty("useTls") final Boolean useTls,
+            @JsonProperty("ssl") final Boolean ssl,
             @JsonProperty("keyStoreFilePath") final String keyStoreFilePath,
-            @JsonProperty("keyStorePassphrase") final String keyStorePassphrase,
+            @JsonProperty("keyStorePassword") final String keyStorePassword,
+            @JsonProperty("privateKeyPassword") final String privateKeyPassword,
             @JsonProperty("serverPort") final String serverPort,
             @JsonProperty("log4jConfig") final Log4JConfiguration log4JConfiguration
     ) {
-        setUseTls(useTls);
-        this.keyStoreFilePath = keyStoreFilePath;
-        this.keyStorePassphrase = keyStorePassphrase;
+        setSsl(ssl);
+        this.keyStoreFilePath = keyStoreFilePath != null ? keyStoreFilePath : "";
+        this.keyStorePassword = keyStorePassword != null ? keyStorePassword : "";
+        this.privateKeyPassword = privateKeyPassword != null ? privateKeyPassword : "";
         setServerPort(serverPort);
         setLog4JConfiguration(log4JConfiguration);
     }
@@ -59,21 +62,25 @@ public class DataPrepperConfiguration {
         return log4JConfiguration;
     }
 
-    public boolean useTls() {
-        return useTls;
+    public boolean ssl() {
+        return ssl;
     }
 
     public String getKeyStoreFilePath() {
         return keyStoreFilePath;
     }
 
-    public String getKeyStorePassphrase() {
-        return keyStorePassphrase;
+    public String getKeyStorePassword() {
+        return keyStorePassword;
     }
 
-    private void setUseTls(final Boolean useTls) {
-        if (useTls != null) {
-            this.useTls = useTls;
+    public String getPrivateKeyPassword() {
+        return privateKeyPassword;
+    }
+
+    private void setSsl(final Boolean ssl) {
+        if (ssl != null) {
+            this.ssl = ssl;
         }
     }
 
