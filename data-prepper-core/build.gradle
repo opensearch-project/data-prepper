@@ -15,17 +15,22 @@ apply from: "integrationTest.gradle"
 dependencies {
     compile project(':data-prepper-api')
     compile project(':data-prepper-plugins')
+    testCompile project(':data-prepper-plugins:common').sourceSets.test.output
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.1"
-    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.1"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.1"
     implementation "javax.validation:validation-api:2.0.1.Final"
     implementation "org.apache.bval:bval-extras:2.0.5"
     implementation "org.apache.bval:bval-jsr:2.0.5"
     implementation "org.reflections:reflections:0.9.12"
-    implementation "io.micrometer:micrometer-core:1.6.4"
-    implementation "io.micrometer:micrometer-registry-prometheus:1.6.4"
-    testCompile project(':data-prepper-plugins:common').sourceSets.test.output
+
+    // Micrometer versions greater than 1.5.5 compile and target JDK 15 (even though build.gradle specifies
+    // compatibility with JDK 8). Our GitHub actions workflow uses JDK 14, which causes Elasticsearch jarhell to complain about
+    // the latest micrometer version requiring JDK 15. Jacoco doesn't support 15 yet,
+    // so this is why we're currently stuck on micrometer 1.5.5.
+    implementation "io.micrometer:micrometer-core:1.5.5"
+    implementation "io.micrometer:micrometer-registry-prometheus:1.5.5"
     testImplementation "org.hamcrest:hamcrest:2.2"
-    testImplementation "org.mockito:mockito-core:3.7.7"
+    testImplementation "org.mockito:mockito-core:3.8.0"
 }
 
 jar {

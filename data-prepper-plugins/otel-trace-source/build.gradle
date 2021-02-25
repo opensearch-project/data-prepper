@@ -8,19 +8,19 @@ dependencies {
     compile 'commons-codec:commons-codec:1.15'
     testCompile project(':data-prepper-api').sourceSets.test.output
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
-    implementation 'com.google.protobuf:protobuf-java-util:3.13.0'
-    implementation "com.linecorp.armeria:armeria:1.0.0"
-    implementation "com.linecorp.armeria:armeria-grpc:1.0.0"
-    implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
-    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${versionMap.jackson_dataformat_yaml}"
-    testImplementation 'org.assertj:assertj-core:3.6.2'
-    testImplementation "org.mockito:mockito-inline:2.13.0"
-    testImplementation "org.hamcrest:hamcrest:${versionMap.hamcrest}"
-    testImplementation(platform('org.junit:junit-bom:5.7.0'))
+    implementation 'com.google.protobuf:protobuf-java-util:3.15.2'
+    implementation "com.linecorp.armeria:armeria:1.5.0"
+    implementation "com.linecorp.armeria:armeria-grpc:1.5.0"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.12.1"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.1"
+    testImplementation 'org.assertj:assertj-core:3.19.0'
+    testImplementation "org.mockito:mockito-inline:3.8.0"
+    testImplementation "org.hamcrest:hamcrest:2.2"
+    testImplementation(platform('org.junit:junit-bom:5.7.1'))
     testImplementation('org.junit.jupiter:junit-jupiter')
     // TODO: update versionMap to use a higher version of mockito for all subprojects
-    testImplementation("org.mockito:mockito-core:3.7.0")
-    testImplementation("org.mockito:mockito-junit-jupiter:3.7.0")
+    testImplementation("org.mockito:mockito-core:3.8.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:3.8.0")
 }
 
 test {

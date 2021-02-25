@@ -1,7 +1,57 @@
+# Docs: https://docs.github.com/en/github/administering-a-repository/configuration-options-for-dependency-updates
 version: 2
 updates:
 - package-ecosystem: gradle
+  directory: "/data-prepper-api"
+  schedule:
+    interval: weekly
+
+- package-ecosystem: gradle
   directory: "/data-prepper-core"
   schedule:
-    interval: daily
-  open-pull-requests-limit: 3
+    interval: weekly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/blocking-buffer"
+  schedule:
+    interval: weekly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/common"
+  schedule:
+    interval: weekly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/elasticsearch"
+  schedule:
+    interval: weekly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/lmdb-prepper-state"
+  schedule:
+    interval: weekly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/mapdb-prepper-state"
+  schedule:
+    interval: weekly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/otel-trace-raw-prepper"
+  schedule:
+    interval: weekly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/otel-trace-source"
+  schedule:
+    interval: weekly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/peer-forwarder"
+  schedule:
+    interval: weekly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/service-map-stateful"
+  schedule:
+    interval: weekly

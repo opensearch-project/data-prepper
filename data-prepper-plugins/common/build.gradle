@@ -3,10 +3,10 @@ plugins {
 }
 dependencies {
     compile project(':data-prepper-api')
-    implementation "com.fasterxml.jackson.core:jackson-databind:${versionMap.jackson_databind}"
-    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${versionMap.jackson_dataformat_yaml}"
-    implementation "org.reflections:reflections:${versionMap.reflections}"
-    testImplementation "junit:junit:${versionMap.junit}"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.12.1"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.1"
+    implementation "org.reflections:reflections:0.9.12"
+    testImplementation "junit:junit:4.13.2"
     testImplementation "commons-io:commons-io:2.8.0"
 }
 
