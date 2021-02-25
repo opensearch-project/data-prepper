@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.Properties;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.apache.log4j.Level;
+import org.apache.logging.log4j.Level;
 
 /**
  * Class to hold Log4J properties
