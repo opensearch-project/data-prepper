@@ -1,20 +1,20 @@
 package com.amazon.dataprepper.pipeline;
 
+import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
-import com.amazon.dataprepper.plugins.TestPrepper;
+import com.amazon.dataprepper.plugins.prepper.TestPrepper;
 import com.amazon.dataprepper.plugins.TestSink;
 import com.amazon.dataprepper.plugins.TestSource;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.junit.After;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
+import java.util.HashMap;
 
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -40,13 +40,11 @@ public class PipelineTests {
     public void testPipelineState() {
         final Source<Record<String>> testSource = new TestSource();
         final TestSink testSink = new TestSink();
-        final List<List<Prepper>> prepperSets = Collections.singletonList(Collections.emptyList());
-        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME), prepperSets,
-                Collections.singletonList(testSink), TEST_PREPPER_THREADS, TEST_READ_BATCH_TIMEOUT);
+        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
+                Collections.emptyList(), Collections.singletonList(testSink), TEST_PREPPER_THREADS, TEST_READ_BATCH_TIMEOUT);
         assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
         assertThat("Pipeline is expected to have a default buffer", testPipeline.getBuffer(), notNullValue());
-        assertEquals("Pipeline prepperSets size should be the same as workers", TEST_PREPPER_THREADS, testPipeline.getPrepperSets().size());
-        assertEquals("Number of prepper instance for each worker should be 0", 0, testPipeline.getPrepperSets().get(0).size());
+        assertTrue("Pipeline preppers should be empty", testPipeline.getPrepperSets().isEmpty());
         testPipeline.execute();
         assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
         testPipeline.shutdown();
@@ -58,15 +56,14 @@ public class PipelineTests {
     public void testPipelineStateWithPrepper() {
         final Source<Record<String>> testSource = new TestSource();
         final TestSink testSink = new TestSink();
-        final TestPrepper testPrepper = new TestPrepper();
+        final TestPrepper testPrepper = new TestPrepper(new PluginSetting("test_prepper", new HashMap<>()));
         final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
                 Collections.singletonList(Collections.singletonList(testPrepper)),
                 Collections.singletonList(testSink),
                 TEST_PREPPER_THREADS, TEST_READ_BATCH_TIMEOUT);
         assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
         assertThat("Pipeline is expected to have a default buffer", testPipeline.getBuffer(), notNullValue());
-        assertEquals("Pipeline prepperSets size should be the same as workers", TEST_PREPPER_THREADS, testPipeline.getPrepperSets().size());
-        assertEquals("Number of prepper instance for each worker should be 1", 1, testPipeline.getPrepperSets().get(0).size());
+        assertEquals("Pipeline prepperSets size should be 1", 1, testPipeline.getPrepperSets().size());
         testPipeline.execute();
         assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
         testPipeline.shutdown();
@@ -78,11 +75,10 @@ public class PipelineTests {
     @Test
     public void testExecuteFailingSource() {
         final Source<Record<String>> testSource = new TestSource(true);
-        final List<List<Prepper>> prepperSets = Collections.singletonList(Collections.emptyList());
         final TestSink testSink = new TestSink();
         try {
             final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
-                    prepperSets, Collections.singletonList(testSink), TEST_PREPPER_THREADS, TEST_READ_BATCH_TIMEOUT);
+                    Collections.emptyList(), Collections.singletonList(testSink), TEST_PREPPER_THREADS, TEST_READ_BATCH_TIMEOUT);
             testPipeline.execute();
         } catch (Exception ex) {
             assertThat("Incorrect exception message", ex.getMessage().contains("Source is expected to fail"));
@@ -94,11 +90,10 @@ public class PipelineTests {
     @Test
     public void testExecuteFailingSink() {
         final Source<Record<String>> testSource = new TestSource();
-        final List<List<Prepper>> prepperSets = Collections.singletonList(Collections.emptyList());
         final Sink<Record<String>> testSink = new TestSink(true);
         try {
             testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
-                    prepperSets, Collections.singletonList(testSink), TEST_PREPPER_THREADS, TEST_READ_BATCH_TIMEOUT);
+                    Collections.emptyList(), Collections.singletonList(testSink), TEST_PREPPER_THREADS, TEST_READ_BATCH_TIMEOUT);
             testPipeline.execute();
             Thread.sleep(TEST_READ_BATCH_TIMEOUT);
         } catch (Exception ex) {
@@ -137,10 +132,9 @@ public class PipelineTests {
     @Test
     public void testGetSource() {
         final Source<Record<String>> testSource = new TestSource();
-        final List<List<Prepper>> prepperSets = Collections.singletonList(Collections.emptyList());
         final TestSink testSink = new TestSink();
         final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
-                prepperSets, Collections.singletonList(testSink), TEST_PREPPER_THREADS, TEST_READ_BATCH_TIMEOUT);
+                Collections.emptyList(), Collections.singletonList(testSink), TEST_PREPPER_THREADS, TEST_READ_BATCH_TIMEOUT);
 
         assertEquals(testSource, testPipeline.getSource());
     }
@@ -148,10 +142,10 @@ public class PipelineTests {
     @Test
     public void testGetSinks() {
         final Source<Record<String>> testSource = new TestSource();
-        final List<List<Prepper>> prepperSets = Collections.singletonList(Collections.emptyList());
         final TestSink testSink = new TestSink();
         final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
-                prepperSets, Collections.singletonList(testSink), TEST_PREPPER_THREADS, TEST_READ_BATCH_TIMEOUT);
+                Collections.emptyList(), Collections.singletonList(testSink),
+                TEST_PREPPER_THREADS, TEST_READ_BATCH_TIMEOUT);
 
         assertEquals(1, testPipeline.getSinks().size());
         assertEquals(testSink, testPipeline.getSinks().iterator().next());

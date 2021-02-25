@@ -20,6 +20,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 
@@ -65,8 +66,8 @@ public class Pipeline {
             @Nonnull final List<Sink> sinks,
             final int prepperThreads,
             final int readBatchTimeoutInMillis) {
-        Preconditions.checkArgument(prepperSets.size() == prepperThreads);
-        Preconditions.checkArgument(prepperSets.stream().allMatch(Objects::nonNull));
+        Preconditions.checkArgument(prepperSets.stream().allMatch(
+                prepperSet -> Objects.nonNull(prepperSet) && (prepperSet.size() == 1 || prepperSet.size() == prepperThreads)));
         this.name = name;
         this.source = source;
         this.buffer = buffer;
@@ -134,7 +135,16 @@ public class Pipeline {
             source.start(buffer);
             LOG.info("Pipeline [{}] - Submitting request to initiate the pipeline processing", name);
             for (int i = 0; i < prepperThreads; i++) {
-                final List<Prepper> preppers = prepperSets.get(i);
+                final int finalI = i;
+                final List<Prepper> preppers = prepperSets.stream().map(
+                        prepperSet -> {
+                            if (prepperSet.size() == 1) {
+                                return prepperSet.get(0);
+                            } else {
+                                return prepperSet.get(finalI);
+                            }
+                        }
+                ).collect(Collectors.toList());
                 prepperSinkExecutorService.submit(new ProcessWorker(buffer, preppers, sinks, this));
             }
         } catch (Exception ex) {
@@ -161,7 +171,7 @@ public class Pipeline {
         try {
             source.stop();
             stopRequested = true;
-            prepperSets.forEach(preppers -> { preppers.forEach(Prepper::shutdown); });
+            prepperSets.forEach(prepperSet -> { prepperSet.forEach(Prepper::shutdown); });
             sinks.forEach(Sink::shutdown);
         } catch (Exception ex) {
             LOG.error("Pipeline [{}] - Encountered exception while stopping the source, " +

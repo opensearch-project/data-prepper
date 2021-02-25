@@ -85,14 +85,9 @@ public class PipelineParser {
 
             LOG.info("Building preppers for the pipeline [{}]", pipelineName);
             final int prepperThreads = pipelineConfiguration.getWorkers();
-            final List<List<Prepper>> prepperSets = new ArrayList<>();
-            for (int i = 0; i < prepperThreads; i++) {
-                prepperSets.add(
-                        pipelineConfiguration.getPrepperPluginSettings().stream()
-                                .map(PrepperFactory::newPrepper)
-                                .collect(Collectors.toList())
-                );
-            }
+            final List<List<Prepper>> prepperSets = pipelineConfiguration.getPrepperPluginSettings().stream()
+                    .map(PrepperFactory::newPreppers)
+                    .collect(Collectors.toList());
             final int readBatchDelay = pipelineConfiguration.getReadBatchDelay();
 
             LOG.info("Building sinks for the pipeline [{}]", pipelineName);
