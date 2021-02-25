@@ -62,8 +62,7 @@ services:
       - ./resources/data_prepper_config.yml:/usr/share/data-prepper/data_prepper_config.yml
       - ../../../shared-config/log4j.properties:/usr/share/data-prepper/log4j.properties
       - ../../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
-      - ../../demo/demo-data-prepper.key:/usr/share/data-prepper/demo-data-prepper.key
-      - ../../demo/demo-data-prepper.crt:/usr/share/data-prepper/demo-data-prepper.crt
+      - ../../demo/keystore.jks:/usr/share/data-prepper/keystore.jks
     ports:
       - "4900:4900" # DataPrepperServer port
       - "21890:21890" # OTelTraceSource port

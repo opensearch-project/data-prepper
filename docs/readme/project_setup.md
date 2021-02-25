@@ -42,9 +42,9 @@ To run the example app against your local changes, use the docker found [here](h
 ## Data Prepper configuration
 Data Prepper allows the following properties to be configured
 
-* `ssl`: boolean indicating TLS should be used for server APIs. Defaults to `true`
-* `sslKeyFile`: string path to PKCS8 private key file. Required if `ssl` is `true`
-* `sslKeyCertChainFile` string path to certificate chain file. Required is `ssl` is `true`
+* `useTls`: boolean indicating TLS should be used for server APIs. Defaults to `true`
+* `keyStoreFilePath`: string path to .jks keystore file. Required if `useTls` is `true`
+* `keyStorePassphrase` string passphrase for keystore. Required if `useTls` is `true`
 * `serverPort`: integer port number to use for server APIs
 * `log4jConfig`
   * `logLevel`
@@ -57,9 +57,9 @@ More details on Log4J properties [here](logs.md)
 Below is an example of a Data Prepper configuration file:
 
 ```
-ssl: true
-sslKeyFile: "/usr/share/data-prepper/demo-data-prepper.key"
-sslKeyCertChainFile: "/usr/share/data-prepper/demo-data-prepper.crt"
+useTls: true
+keyStoreFilePath: "/usr/share/data-prepper/keystore.jks"
+keyStorePassphrase: "password"
 serverPort: 1234
 log4jConfig:
   logLevel: "DEBUG"

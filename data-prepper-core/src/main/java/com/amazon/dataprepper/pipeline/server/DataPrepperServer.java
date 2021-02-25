@@ -12,7 +12,7 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.TrustManagerFactory;
-import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.security.KeyStore;
@@ -23,19 +23,18 @@ import java.security.KeyStore;
  */
 public class DataPrepperServer {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperServer.class);
-    private final SslUtil sslUtil = new SslUtil();
     private HttpServer server;
 
     public DataPrepperServer(final DataPrepper dataPrepper) {
         final int port = DataPrepper.getConfiguration().getServerPort();
-        final boolean ssl = DataPrepper.getConfiguration().ssl();
-        final String sslKeyFilePath = DataPrepper.getConfiguration().getSslKeyFile();
-        final String sslKeyCertChainFilePath = DataPrepper.getConfiguration().getSslKeyCertChainFile();
+        final boolean useTls = DataPrepper.getConfiguration().useTls();
+        final String keyStoreFilePath = DataPrepper.getConfiguration().getKeyStoreFilePath();
+        final String keyStorePassphrase = DataPrepper.getConfiguration().getKeyStorePassphrase();
 
         try {
-            if (ssl) {
+            if (useTls) {
                 LOG.info("Creating Data Prepper server with TLS");
-                this.server = createHttpsServer(port, sslKeyFilePath, sslKeyCertChainFilePath);
+                this.server = createHttpsServer(port, keyStoreFilePath, keyStorePassphrase);
             } else {
                 LOG.info("Creating Data Prepper server without TLS");
                 this.server = createHttpServer(port);
@@ -72,18 +71,19 @@ public class DataPrepperServer {
     }
 
     private HttpServer createHttpsServer(final int port,
-                                         final String sslKeyFilePath,
-                                         final String sslKeyCertChainFilePath) throws IOException {
+                                         final String keystoreFilePath,
+                                         final String passphrase) throws IOException {
         final SSLContext sslContext;
 
         try {
-            KeyStore keyStore = sslUtil.loadKeyStore(new File(sslKeyCertChainFilePath), new File(sslKeyFilePath));
+            char[] passphraseArray = passphrase.toCharArray();
+            KeyStore keyStore = KeyStore.getInstance("JKS");
+            keyStore.load(new FileInputStream(keystoreFilePath), passphraseArray);
 
-            KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-            char[] passphraseArray = "".toCharArray();
+            KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance("SunX509");
             keyManagerFactory.init(keyStore, passphraseArray);
 
-            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("SunX509");
             trustManagerFactory.init(keyStore);
 
             sslContext = SSLContext.getInstance("TLS");
@@ -95,8 +95,8 @@ public class DataPrepperServer {
         final HttpsServer server = HttpsServer.create(new InetSocketAddress(port), 0);
         server.setHttpsConfigurator(new HttpsConfigurator(sslContext) {
             public void configure(HttpsParameters params) {
-                SSLContext context = getSSLContext();
-                SSLParameters sslparams = context.getDefaultSSLParameters();
+                SSLContext c = getSSLContext();
+                SSLParameters sslparams = c.getDefaultSSLParameters();
                 params.setSSLParameters(sslparams);
             }
         });

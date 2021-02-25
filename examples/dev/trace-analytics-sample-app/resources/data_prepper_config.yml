@@ -1,3 +1,3 @@
-ssl: true
-sslKeyFile: "/usr/share/data-prepper/demo-data-prepper.key"
-sslKeyCertChainFile: "/usr/share/data-prepper/demo-data-prepper.crt"
+useTls: true
+keyStoreFilePath: "/usr/share/data-prepper/keystore.jks"
+keyStorePassphrase: "password"

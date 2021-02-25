@@ -1,4 +1,4 @@
 serverPort: 1234
 useTls: true
 keyStoreFilePath: "src/test/resources/keystore.jks"
-keyStorePassphrase: "password"
+keyStorePassphrase: "bad_password"

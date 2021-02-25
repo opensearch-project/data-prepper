@@ -1,2 +1,2 @@
 serverPort: 1234
-ssl: false
+useTls: false
