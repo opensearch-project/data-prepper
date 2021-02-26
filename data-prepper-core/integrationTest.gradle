@@ -33,6 +33,7 @@ dependencies {
     integrationTestImplementation "com.linecorp.armeria:armeria:1.0.0"
     integrationTestImplementation "com.linecorp.armeria:armeria-grpc:1.0.0"
     integrationTestImplementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:7.8.1"
+    integrationTestImplementation "com.fasterxml.jackson.core:jackson-databind:2.12.1"
 }
 
 /**
