@@ -14,7 +14,8 @@ import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
-import org.apache.log4j.PropertyConfigurator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +52,12 @@ public class DataPrepper {
     public static void configure(final String configurationFile) {
         final DataPrepperConfiguration dataPrepperConfiguration =
                 DataPrepperConfiguration.fromFile(new File(configurationFile));
-        PropertyConfigurator.configure(dataPrepperConfiguration.getLog4JConfiguration().getProperties());
+
+        File file = new File(configurationFile);
+
+        LoggerContext context = (org.apache.logging.log4j.core.LoggerContext) LogManager.getContext(false);
+        context.setConfigLocation(file.toURI());
+
         configuration = dataPrepperConfiguration;
     }
 

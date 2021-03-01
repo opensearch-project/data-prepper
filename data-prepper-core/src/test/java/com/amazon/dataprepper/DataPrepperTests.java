@@ -2,7 +2,7 @@ package com.amazon.dataprepper;
 
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import io.micrometer.core.instrument.Measurement;
-import org.apache.log4j.Level;
+import org.apache.logging.log4j.Level;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

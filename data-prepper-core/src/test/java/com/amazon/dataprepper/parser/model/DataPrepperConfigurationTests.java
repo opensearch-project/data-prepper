@@ -1,7 +1,8 @@
 package com.amazon.dataprepper.parser.model;
 
 import java.io.File;
-import org.apache.log4j.Level;
+
+import org.apache.logging.log4j.Level;
 import org.junit.Assert;
 import org.junit.Test;
 import static com.amazon.dataprepper.TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE;
