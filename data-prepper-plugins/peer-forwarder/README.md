@@ -54,7 +54,7 @@ A DNS server (like [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html)) can
 
 ## Metrics
 
-Besides common metrics in [AbstractPrepper](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/data-prepper-api/src/main/java/com/amazon/dataprepper/model/prepper/AbstractPrepper.java), peer-forwarder introduces the following custom metrics.
+Besides common metrics in [AbstractPrepper](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/prepper/AbstractPrepper.java), peer-forwarder introduces the following custom metrics.
 
 ### Timer
 
@@ -73,5 +73,5 @@ Besides common metrics in [AbstractPrepper](https://github.com/opendistro-for-el
 
 This plugin is compatible with Java 14. See 
 
-- [CONTRIBUTING](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/CONTRIBUTING.md) 
-- [monitoring](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/docs/readme/monitoring.md)
+- [CONTRIBUTING](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/CONTRIBUTING.md) 
+- [monitoring](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/docs/readme/monitoring.md)
