@@ -42,18 +42,26 @@ To run the example app against your local changes, use the docker found [here](h
 ## Data Prepper configuration
 Data Prepper allows the following properties to be configured
 
-* Server port
-* Log4J Properties
-  * Log level
-  * Log file
-  * Max file size
-  * Max backup index
+* `ssl`: boolean indicating TLS should be used for server APIs. Defaults to `true`
+* `keyStoreFilePath`: string path to .jks keystore file. Required if `ssl` is `true`
+* `keyStorePassword` string password for keystore. Optional, defaults to empty string
+* `privateKeyPassword` string password for private key within keystore. Optional, defaults to empty string
+* `serverPort`: integer port number to use for server APIs
+* `log4jConfig`
+  * `logLevel`
+  * `filePath`
+  * `maxFileSize`
+  * `maxBackupIndex`
   
 More details on Log4J properties [here](logs.md)
 
 Below is an example of a Data Prepper configuration file:
 
 ```
+ssl: true
+keyStoreFilePath: "/usr/share/data-prepper/keystore.jks"
+keyStorePassword: "password"
+privateKeyPassword: "other_password"
 serverPort: 1234
 log4jConfig:
   logLevel: "DEBUG"

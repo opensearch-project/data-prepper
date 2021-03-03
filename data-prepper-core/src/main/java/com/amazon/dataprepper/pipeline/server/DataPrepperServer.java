@@ -1,11 +1,17 @@
 package com.amazon.dataprepper.pipeline.server;
 
 import com.amazon.dataprepper.DataPrepper;
-import java.io.IOException;
-import java.net.InetSocketAddress;
 import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpsConfigurator;
+import com.sun.net.httpserver.HttpsParameters;
+import com.sun.net.httpserver.HttpsServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
+import java.io.IOException;
+import java.net.InetSocketAddress;
 
 /**
  * Class to handle any serving that the data prepper instance needs to do.
@@ -13,24 +19,31 @@ import org.slf4j.LoggerFactory;
  */
 public class DataPrepperServer {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperServer.class);
-    private final HttpServer server;
-    private final int port;
+    private HttpServer server;
 
     public DataPrepperServer(final DataPrepper dataPrepper) {
-        try {
-            this.port = DataPrepper.getConfiguration().getServerPort();
-            server = HttpServer.create(
-                    new InetSocketAddress(this.port),
-                    0
-            );
-            server.createContext("/metrics/prometheus", new PrometheusMetricsHandler());
-            server.createContext("/metrics/sys", new PrometheusMetricsHandler(DataPrepper.getSysJVMMeterRegistry()));
-            server.createContext("/list", new ListPipelinesHandler(dataPrepper));
-            server.createContext("/shutdown", new ShutdownHandler(dataPrepper));
+        final int port = DataPrepper.getConfiguration().getServerPort();
+        final boolean ssl = DataPrepper.getConfiguration().ssl();
+        final String keyStoreFilePath = DataPrepper.getConfiguration().getKeyStoreFilePath();
+        final String keyStorePassword = DataPrepper.getConfiguration().getKeyStorePassword();
+        final String privateKeyPassword = DataPrepper.getConfiguration().getPrivateKeyPassword();
 
+        try {
+            if (ssl) {
+                LOG.info("Creating Data Prepper server with TLS");
+                this.server = createHttpsServer(port, keyStoreFilePath, keyStorePassword, privateKeyPassword);
+            } else {
+                LOG.info("Creating Data Prepper server without TLS");
+                this.server = createHttpServer(port);
+            }
         } catch (IOException e) {
             throw new RuntimeException("Failed to create server", e);
         }
+
+        server.createContext("/metrics/prometheus", new PrometheusMetricsHandler());
+        server.createContext("/metrics/sys", new PrometheusMetricsHandler(DataPrepper.getSysJVMMeterRegistry()));
+        server.createContext("/list", new ListPipelinesHandler(dataPrepper));
+        server.createContext("/shutdown", new ShutdownHandler(dataPrepper));
     }
 
     /**
@@ -38,7 +51,7 @@ public class DataPrepperServer {
      */
     public void start() {
         server.start();
-        LOG.info("Data Prepper server running at :{}", port);
+        LOG.info("Data Prepper server running at :{}", server.getAddress().getPort());
 
     }
 
@@ -48,5 +61,27 @@ public class DataPrepperServer {
     public void stop() {
         server.stop(0);
         LOG.info("Data Prepper server stopped");
+    }
+
+    private HttpServer createHttpServer(final int port) throws IOException {
+        return HttpServer.create(new InetSocketAddress(port), 0);
+    }
+
+    private HttpServer createHttpsServer(final int port,
+                                         final String keyStoreFilePath,
+                                         final String keyStorePassword,
+                                         final String privateKeyPassword) throws IOException {
+        final SSLContext sslContext = SslUtil.createSslContext(keyStoreFilePath, keyStorePassword, privateKeyPassword);
+
+        final HttpsServer server = HttpsServer.create(new InetSocketAddress(port), 0);
+        server.setHttpsConfigurator(new HttpsConfigurator(sslContext) {
+            public void configure(HttpsParameters params) {
+                SSLContext context = getSSLContext();
+                SSLParameters sslparams = context.getDefaultSSLParameters();
+                params.setSSLParameters(sslparams);
+            }
+        });
+
+        return server;
     }
 }
