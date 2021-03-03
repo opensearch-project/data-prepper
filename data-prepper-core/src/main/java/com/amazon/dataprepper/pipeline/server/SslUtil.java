@@ -15,13 +15,13 @@ public class SslUtil {
         final SSLContext sslContext;
 
         try {
-            KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+            final KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
             keyStore.load(Files.newInputStream(Path.of(keyStoreFilePath)), keyStorePassword.toCharArray());
 
-            KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            final KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
             keyManagerFactory.init(keyStore, privateKeyPassword.toCharArray());
 
-            TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+            final TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
             trustManagerFactory.init(keyStore);
 
             sslContext = SSLContext.getInstance("TLS");
