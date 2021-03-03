@@ -2,7 +2,8 @@ package com.amazon.dataprepper.parser.model;
 
 import java.util.Properties;
 import java.util.UUID;
-import org.apache.log4j.Level;
+
+import org.apache.logging.log4j.Level;
 import org.junit.Assert;
 import org.junit.Test;
 

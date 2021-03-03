@@ -15,9 +15,9 @@ buffer:
 - batch_size => An `int` representing max number of records the buffer returns on read. Default is `8`.
 
 ##Metrics
-This plugin inherits the common metrics defined in [AbstractBuffer](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/data-prepper-api/src/main/java/com/amazon/dataprepper/model/buffer/AbstractBuffer.java)
+This plugin inherits the common metrics defined in [AbstractBuffer](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/buffer/AbstractBuffer.java)
 
 ## Developer Guide
 This plugin is compatible with Java 14. See 
-- [CONTRIBUTING](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/CONTRIBUTING.md) 
-- [monitoring](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/master/docs/readme/monitoring.md)
+- [CONTRIBUTING](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/CONTRIBUTING.md) 
+- [monitoring](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/docs/readme/monitoring.md)
