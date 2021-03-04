@@ -193,7 +193,9 @@ CopySpec archiveToTar() {
             fileMode 0755
         }
         into('config') {
-            from("${rootDir}/shared-resources/log4j.properties")
+            from("${rootDir}/shared-config/log4j2.properties")
+            from("${rootDir}/examples/config/example-data-prepper.yml")
+            from("${rootDir}/examples/config/example-pipelines.yml")
         }
         into('') {
             from("${rootDir}/LICENSE")
