@@ -1,7 +1,6 @@
-## Project Setup
+# Project Setup
 
 ## Building from source
-
 To build the project from source, run 
 
 ```
@@ -15,11 +14,12 @@ from the project root.
 After building, the project can be run from the executable JAR **data-prepper-core-$VERSION**
 found in the **build/libs** directory of the **data-prepper-core** subproject. The executable JAR takes
 two arguments:
-1. A Pipeline configuration file. More details [here](overview.md#sample-pipeline-configuration)
-2. A Data Prepper configuration file. More details [here](project_setup.md#data-prepper-configuration)
+1. A Pipeline configuration file
+2. A Data Prepper configuration file
 
-Example running command:
+See [configuration](configuration.md) docs for more information.
 
+Example java command:
 ```
 java -jar data-prepper-core-$VERSION.jar pipelines.yml data-prepper.yml
 ```
@@ -41,34 +41,3 @@ APIs are available:
 
 ### Running the example app
 To run the example app against your local changes, use the docker found [here](https://github.com/opendistro-for-elasticsearch/data-prepper/tree/master/examples/dev/trace-analytics-sample-app)
-
-## Data Prepper configuration
-Data Prepper allows the following properties to be configured:
-
-* `ssl`: boolean indicating TLS should be used for server APIs. Defaults to `true`
-* `keyStoreFilePath`: string path to .jks keystore file. Required if `ssl` is `true`
-* `keyStorePassword` string password for keystore. Optional, defaults to empty string
-* `privateKeyPassword` string password for private key within keystore. Optional, defaults to empty string
-* `serverPort`: integer port number to use for server APIs
-* `log4jConfig`
-  * `logLevel`
-  * `filePath`
-  * `maxFileSize`
-  * `maxBackupIndex`
-  
-More details on Log4J properties [here](logs.md)
-
-Below is an example of a Data Prepper configuration file:
-
-```
-ssl: true
-keyStoreFilePath: "/usr/share/data-prepper/keystore.jks"
-keyStorePassword: "password"
-privateKeyPassword: "other_password"
-serverPort: 1234
-log4jConfig:
-  logLevel: "DEBUG"
-  filePath: "file.txt"
-  maxFileSize: "1GB"
-  maxBackupIndex: "10"
-```
