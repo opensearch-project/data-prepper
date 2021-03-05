@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,10 +84,10 @@ public class PipelineParser {
             final Buffer buffer = BufferFactory.newBuffer(pipelineConfiguration.getBufferPluginSetting());
 
             LOG.info("Building preppers for the pipeline [{}]", pipelineName);
-            final List<Prepper> preppers = pipelineConfiguration.getPrepperPluginSettings().stream()
-                    .map(PrepperFactory::newPrepper)
-                    .collect(Collectors.toList());
             final int prepperThreads = pipelineConfiguration.getWorkers();
+            final List<List<Prepper>> prepperSets = pipelineConfiguration.getPrepperPluginSettings().stream()
+                    .map(PrepperFactory::newPreppers)
+                    .collect(Collectors.toList());
             final int readBatchDelay = pipelineConfiguration.getReadBatchDelay();
 
             LOG.info("Building sinks for the pipeline [{}]", pipelineName);
@@ -94,7 +95,7 @@ public class PipelineParser {
                     .map(this::buildSinkOrConnector)
                     .collect(Collectors.toList());
 
-            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, preppers, sinks, prepperThreads, readBatchDelay);
+            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, prepperSets, sinks, prepperThreads, readBatchDelay);
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
             //If pipeline construction errors out, we will skip that pipeline and proceed

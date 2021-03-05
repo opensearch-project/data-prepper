@@ -15,6 +15,7 @@ apply from: "integrationTest.gradle"
 dependencies {
     compile project(':data-prepper-api')
     compile project(':data-prepper-plugins')
+    testCompile project(':data-prepper-plugins:common').sourceSets.test.output
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.1"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.1"
     implementation "javax.validation:validation-api:2.0.1.Final"
@@ -28,7 +29,6 @@ dependencies {
     // so this is why we're currently stuck on micrometer 1.5.5.
     implementation "io.micrometer:micrometer-core:1.5.5"
     implementation "io.micrometer:micrometer-registry-prometheus:1.5.5"
-
     testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation "org.mockito:mockito-core:3.8.0"
 }
