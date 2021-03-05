@@ -36,5 +36,5 @@ fi
 
 export JAVA_HOME=$DATA_PREPPER_HOME/openjdk/$OPENJDK/Contents/Home
 export PATH=$JAVA_HOME/bin:$PATH
-DATA_PREPPER_JAVA_OPTS="-Dlog4j.configurationFile=$DATA_PREPPER_HOME/config/log4j2.properties"
+DATA_PREPPER_JAVA_OPTS="-Dlog4j.configurationFile=$DATA_PREPPER_HOME/config/log4j2-rolling.properties"
 $JAVA_HOME/bin/java $JAVA_OPTS $DATA_PREPPER_JAVA_OPTS -jar $EXECUTABLE_JAR $PIPELINES_FILE_LOCATION $CONFIG_FILE_LOCATION
