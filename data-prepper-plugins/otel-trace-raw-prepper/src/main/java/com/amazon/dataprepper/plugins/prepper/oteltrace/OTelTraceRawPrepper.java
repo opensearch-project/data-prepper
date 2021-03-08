@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import java.util.Set;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 
 @DataPrepperPlugin(name = "otel_trace_raw_prepper", type = PluginType.PREPPER)
@@ -188,7 +190,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
             final long now = System.currentTimeMillis();
             lastGarbageCollectionTime = now;
 
-            Set<String> keys = traceIdRawSpanSetMap.keySet();
+            Set<String> keys = new HashSet<>(traceIdRawSpanSetMap.keySet());
             for (String traceId : keys) {
                 long traceTime = traceIdRawSpanSetMap.get(traceId).getTimeSeen();
                 if (now - traceTime >= GC_INTERVAL_MS) {
