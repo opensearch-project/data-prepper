@@ -24,7 +24,7 @@ Example running command:
 java -jar data-prepper-core-$VERSION.jar pipelines.yml data-prepper.yml
 ```
 
-Optionally add `"-Dlog4j.configurationFile=config/log4j2.properties"` to the command if you would like to pass a custom log4j2 properties file.
+Optionally add `"-Dlog4j.configurationFile=config/log4j2.properties"` to the command if you would like to pass a custom log4j2 properties file. If no properties file is provided, Data Prepper will default to the log4j2.properties file in the *shared-config* directory.
 
 ### APIs
 Running the project locally will expose a server on port 4900 by default. The following 

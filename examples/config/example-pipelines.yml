@@ -16,7 +16,7 @@ raw-pipeline:
     - otel_trace_raw_prepper:
   sink:
     - elasticsearch:
-        hosts: [ "replace_me" ]
+        hosts: [ "https://<your-domain>.<region>.es.amazonaws.com" ]
         aws_sigv4: true
         aws_region: "us-east-1"
         trace_analytics_raw: true
@@ -29,7 +29,7 @@ service-map-pipeline:
     - service_map_stateful:
   sink:
     - elasticsearch:
-        hosts: [ "replace_me" ]
+        hosts: [ "https://<your-domain>.<region>.es.amazonaws.com" ]
         aws_sigv4: true
         aws_region: "us-east-1"
         trace_analytics_service_map: true
