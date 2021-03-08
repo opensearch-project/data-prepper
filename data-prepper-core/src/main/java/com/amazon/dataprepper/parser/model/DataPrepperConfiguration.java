@@ -16,7 +16,6 @@ public class DataPrepperConfiguration {
     private String keyStoreFilePath = "";
     private String keyStorePassword = "";
     private String privateKeyPassword = "";
-    private Log4JConfiguration log4JConfiguration = Log4JConfiguration.DEFAULT_CONFIG;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
 
@@ -43,23 +42,17 @@ public class DataPrepperConfiguration {
             @JsonProperty("keyStoreFilePath") final String keyStoreFilePath,
             @JsonProperty("keyStorePassword") final String keyStorePassword,
             @JsonProperty("privateKeyPassword") final String privateKeyPassword,
-            @JsonProperty("serverPort") final String serverPort,
-            @JsonProperty("log4jConfig") final Log4JConfiguration log4JConfiguration
+            @JsonProperty("serverPort") final String serverPort
     ) {
         setSsl(ssl);
         this.keyStoreFilePath = keyStoreFilePath != null ? keyStoreFilePath : "";
         this.keyStorePassword = keyStorePassword != null ? keyStorePassword : "";
         this.privateKeyPassword = privateKeyPassword != null ? privateKeyPassword : "";
         setServerPort(serverPort);
-        setLog4JConfiguration(log4JConfiguration);
     }
 
     public int getServerPort() {
         return serverPort;
-    }
-
-    public Log4JConfiguration getLog4JConfiguration() {
-        return log4JConfiguration;
     }
 
     public boolean ssl() {
@@ -95,12 +88,6 @@ public class DataPrepperConfiguration {
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException("Server port must be a positive integer");
             }
-        }
-    }
-
-    private void setLog4JConfiguration(Log4JConfiguration log4JConfiguration) {
-        if(log4JConfiguration != null) {
-            this.log4JConfiguration = log4JConfiguration;
         }
     }
 }
