@@ -52,10 +52,11 @@ compileJava.options.warnings = false
 configurations.all {
     resolutionStrategy {
         force 'com.amazonaws:aws-java-sdk-core:1.11.965'
-        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.1'
-        force 'com.fasterxml.jackson.core:jackson-databind:2.12.1'
-        force 'com.fasterxml.jackson.core:jackson-core:2.12.1'
-        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.12.1'
+        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.2'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.12.2'
+        force 'com.fasterxml.jackson.core:jackson-core:2.12.2'
+        force 'com.fasterxml.jackson:jackson-bom:2.12.2'
+        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.12.2'
         force 'commons-logging:commons-logging:1.2'
         force 'org.apache.httpcomponents:httpclient:4.5.10'
         force "org.hdrhistogram:HdrHistogram:2.1.12"
