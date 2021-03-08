@@ -61,7 +61,7 @@ configurations.all {
         force "org.hdrhistogram:HdrHistogram:2.1.12"
         force 'joda-time:joda-time:2.10.10'
         force 'org.yaml:snakeyaml:1.28'
-        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-smile:2.12.1'
+        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-smile:2.12.2'
         force 'junit:junit:4.13'
         force "org.slf4j:slf4j-api:1.7.30"
         force "org.apache.logging.log4j:log4j-api:2.14.0"
