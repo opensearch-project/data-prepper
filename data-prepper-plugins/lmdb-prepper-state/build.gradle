@@ -17,7 +17,7 @@ dependencies {
     compile project(':data-prepper-api')
     compile project(':data-prepper-plugins:common')
     implementation 'org.lmdbjava:lmdbjava:0.8.1'
-    implementation "com.fasterxml.jackson.core:jackson-databind:2.12.1"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.12.2"
     testCompile project(':data-prepper-plugins:common').sourceSets.test.output
     testImplementation "org.hamcrest:hamcrest:2.2"
 }
