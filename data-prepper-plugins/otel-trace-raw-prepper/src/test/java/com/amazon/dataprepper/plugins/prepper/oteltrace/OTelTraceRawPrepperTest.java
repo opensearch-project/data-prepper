@@ -10,10 +10,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import io.micrometer.core.instrument.Measurement;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
-import io.opentelemetry.proto.resource.v1.Resource;
-import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
-import io.opentelemetry.proto.trace.v1.Span;
 import org.assertj.core.api.Assertions;
 import org.junit.Assert;
 import org.junit.Test;
@@ -22,7 +19,6 @@ import org.junit.Before;
 import static org.mockito.Mockito.mock;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
@@ -67,33 +63,6 @@ public class OTelTraceRawPrepperTest {
         Assert.assertEquals(1.0, resourceSpansErrorsMeasurement.get(0).getValue(), 0);
         Assert.assertEquals(1, totalErrorsMeasurement.size());
         Assert.assertEquals(1.0, totalErrorsMeasurement.get(0).getValue(), 0);
-    }
-
-    @Test
-    public void testSpanProcessingErrors() {
-        ExportTraceServiceRequest mockData = mock(ExportTraceServiceRequest.class);
-        Record record = new Record(mockData);
-        ResourceSpans mockResourceSpans = mock(ResourceSpans.class);
-        List<ResourceSpans> mockResourceSpansList = Collections.singletonList(mockResourceSpans);
-        Resource mockResource = mock(Resource.class);
-        InstrumentationLibrarySpans mockInstrumentationSpans = mock(InstrumentationLibrarySpans.class);
-        List<InstrumentationLibrarySpans> mockInstrumentationSpansList = Collections.singletonList(mockInstrumentationSpans);
-        Span mockSpans = mock(Span.class);
-        List<Span> mockSpansList = Collections.singletonList(mockSpans);
-
-        when(mockData.getResourceSpansList()).thenReturn(mockResourceSpansList);
-        when(mockResourceSpans.getResource()).thenReturn(mockResource);
-        when(mockResourceSpans.getInstrumentationLibrarySpansList()).thenReturn(mockInstrumentationSpansList);
-        when(mockInstrumentationSpans.getSpansList()).thenReturn(mockSpansList);
-        when(mockInstrumentationSpans.getInstrumentationLibrary()).thenThrow(new RuntimeException());
-
-        oTelTraceRawPrepper.doExecute(Collections.singletonList(record));
-
-        final List<Measurement> spanErrorsMeasurement = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add("pipelineOTelTrace").add("OTelTrace")
-                        .add(OTelTraceRawPrepper.SPAN_PROCESSING_ERRORS).toString());
-        Assert.assertEquals(1, spanErrorsMeasurement.size());
-        Assert.assertEquals(1.0, spanErrorsMeasurement.get(0).getValue(), 0);
     }
 
     @Test
