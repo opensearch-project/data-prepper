@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +51,9 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     private final Counter resourceSpanErrorsCounter;
     private final Counter totalProcessingErrorsCounter;
 
+    // TODO: replace with file store, e.g. MapDB?
     private final Queue<DelayedParentSpan> delayedParentSpanQueue = new DelayQueue<>();
+    // TODO: replace with file store, e.g. MapDB?
     private final Map<String, RawSpanSet> traceIdRawSpanSetMap = new ConcurrentHashMap<>();
 
     private long lastGarbageCollectionTime = 0L;
@@ -78,7 +81,6 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     @Override
     public Collection<Record<String>> doExecute(Collection<Record<ExportTraceServiceRequest>> records) {
         final List<RawSpan> rawSpans = new LinkedList<>();
-        // TODO: Track messages in and messages out (for those that get TTL'd by mapdb)
 
         rawSpans.addAll(getTracesToFlushByParentSpan());
         rawSpans.addAll(getTracesToFlushByGarbageCollection());
@@ -104,8 +106,13 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                                 delayedParentSpanQueue.add(delayedParentSpan);
                             } else {
                                 // Handle child spans
-                                traceIdRawSpanSetMap.putIfAbsent(traceId, new RawSpanSet());
-                                traceIdRawSpanSetMap.get(traceId).addRawSpan(rawSpan);
+                                traceIdRawSpanSetMap.compute(traceId, (trId, rawSpanSet) -> {
+                                    if (rawSpanSet == null) {
+                                        rawSpanSet = new RawSpanSet();
+                                    }
+                                    rawSpanSet.addRawSpan(rawSpan);
+                                    return rawSpanSet;
+                                });
                             }
                         }
                     }
@@ -143,13 +150,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     private List<RawSpan> getTracesToFlushByParentSpan() {
         final List<RawSpan> recordsToFlush = new LinkedList<>();
 
-        // TODO: can change this do "do while" and remove peek
-        while (delayedParentSpanQueue.peek() != null) {
-            DelayedParentSpan delayedParentSpan = delayedParentSpanQueue.poll();
-            if (delayedParentSpan == null) {
-                break;
-            }
-
+        for (DelayedParentSpan delayedParentSpan; (delayedParentSpan = delayedParentSpanQueue.poll()) != null;) {
             RawSpan parentSpan = delayedParentSpan.getRawSpan();
             recordsToFlush.add(parentSpan);
 
@@ -178,20 +179,22 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
             final long now = System.currentTimeMillis();
             lastGarbageCollectionTime = now;
 
-            Set<String> keys = new HashSet<>(traceIdRawSpanSetMap.keySet());
-            for (String traceId : keys) {
-                long traceTime = traceIdRawSpanSetMap.get(traceId).getTimeSeen();
+            // fail-safe
+            Iterator<Map.Entry<String, RawSpanSet>> entryIterator = traceIdRawSpanSetMap.entrySet().iterator();
+            while (entryIterator.hasNext()) {
+                Map.Entry<String, RawSpanSet> entry = entryIterator.next();
+                RawSpanSet rawSpanSet = entry.getValue();
+                long traceTime = rawSpanSet.getTimeSeen();
                 if (now - traceTime >= gcInterval) {
-                    Set<RawSpan> rawSpans = traceIdRawSpanSetMap.get(traceId).getRawSpans();
+                    Set<RawSpan> rawSpans = rawSpanSet.getRawSpans();
                     for (RawSpan rawSpan : rawSpans) {
                         rawSpan.setTraceGroup("ERROR");
                         recordsToFlush.add(rawSpan);
                     }
 
-                    traceIdRawSpanSetMap.remove(traceId);
+                    entryIterator.remove();
                 }
             }
-            // TODO: Replace
             log.error("Flushing {} records due to GC", recordsToFlush.size());
         }
 
