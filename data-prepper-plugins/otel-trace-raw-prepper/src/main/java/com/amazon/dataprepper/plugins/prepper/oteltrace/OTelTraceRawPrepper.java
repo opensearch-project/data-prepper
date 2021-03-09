@@ -20,7 +20,6 @@ import io.opentelemetry.proto.trace.v1.Span;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -37,18 +36,7 @@ import java.util.concurrent.TimeUnit;
 @DataPrepperPlugin(name = "otel_trace_raw_prepper", type = PluginType.PREPPER)
 public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final String INSTRUMENTATION_LIBRARY_SPANS = "instrumentationLibrarySpans";
-    private static final String INSTRUMENTATION_LIBRARY = "instrumentationLibrary";
-    private static final String SPANS = "spans";
-    private static final String RESOURCE = "resource";
-    private static final String ATTRIBUTES = "attributes";
-    private static final String START_TIME_UNIX_NANOS = "startTimeUnixNano";
-    private static final String END_TIME_UNIX_NANOS = "endTimeUnixNano";
-    private static final String START_TIME = "startTime";
-    private static final String END_TIME = "endTime";
-    private static final BigDecimal MILLIS_TO_NANOS = new BigDecimal(1_000_000);
-    private static final BigDecimal SEC_TO_MILLIS = new BigDecimal(1_000);
+    private static final long SEC_TO_MILLIS = 1_000L;
     private static final Logger log = LoggerFactory.getLogger(OTelTraceRawPrepper.class);
 
     public static final String SPAN_PROCESSING_ERRORS = "spanProcessingErrors";
@@ -71,8 +59,10 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     //TODO: https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/66
     public OTelTraceRawPrepper(final PluginSetting pluginSetting) {
         super(pluginSetting);
-        gcInterval = pluginSetting.getLongOrDefault(OtelTraceRawPrepperConfig.GC_INTERVAL, OtelTraceRawPrepperConfig.DEFAULT_GC_INTERVAL_MS);
-        parentSpanFlushDelay = pluginSetting.getLongOrDefault(OtelTraceRawPrepperConfig.PARENT_SPAN_FLUSH_DELAY, OtelTraceRawPrepperConfig.DEFAULT_PARENT_SPAN_FLUSH_DELAY_MS);
+        gcInterval = SEC_TO_MILLIS * pluginSetting.getLongOrDefault(
+                OtelTraceRawPrepperConfig.GC_INTERVAL, OtelTraceRawPrepperConfig.DEFAULT_GC_INTERVAL_MS);
+        parentSpanFlushDelay = SEC_TO_MILLIS * pluginSetting.getLongOrDefault(
+                OtelTraceRawPrepperConfig.PARENT_SPAN_FLUSH_DELAY, OtelTraceRawPrepperConfig.DEFAULT_PARENT_SPAN_FLUSH_DELAY_MS);
         spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
         resourceSpanErrorsCounter = pluginMetrics.counter(RESOURCE_SPANS_PROCESSING_ERRORS);
         totalProcessingErrorsCounter = pluginMetrics.counter(TOTAL_PROCESSING_ERRORS);
