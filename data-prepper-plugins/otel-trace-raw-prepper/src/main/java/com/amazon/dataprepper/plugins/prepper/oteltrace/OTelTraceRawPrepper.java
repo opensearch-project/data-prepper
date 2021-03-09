@@ -55,10 +55,8 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     public static final String RESOURCE_SPANS_PROCESSING_ERRORS = "resourceSpansProcessingErrors";
     public static final String TOTAL_PROCESSING_ERRORS = "totalProcessingErrors";
 
-    // TODO: Allow this to be configured
-    private static final long GC_INTERVAL_MS = 30000L;
-    // TODO: Allow this to be configured
-    private static final long PARENT_SPAN_FLUSH_DELAY_MS = 5000L;
+    private final long gcInterval;
+    private final long parentSpanFlushDelay;
 
     private final Counter spanErrorsCounter;
     private final Counter resourceSpanErrorsCounter;
@@ -73,6 +71,8 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     //TODO: https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/66
     public OTelTraceRawPrepper(final PluginSetting pluginSetting) {
         super(pluginSetting);
+        gcInterval = pluginSetting.getLongOrDefault(OtelTraceRawPrepperConfig.GC_INTERVAL, OtelTraceRawPrepperConfig.DEFAULT_GC_INTERVAL_MS);
+        parentSpanFlushDelay = pluginSetting.getLongOrDefault(OtelTraceRawPrepperConfig.PARENT_SPAN_FLUSH_DELAY, OtelTraceRawPrepperConfig.DEFAULT_PARENT_SPAN_FLUSH_DELAY_MS);
         spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
         resourceSpanErrorsCounter = pluginMetrics.counter(RESOURCE_SPANS_PROCESSING_ERRORS);
         totalProcessingErrorsCounter = pluginMetrics.counter(TOTAL_PROCESSING_ERRORS);
@@ -101,7 +101,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                     for (InstrumentationLibrarySpans is : rs.getInstrumentationLibrarySpansList()) {
                         for (Span sp : is.getSpansList()) {
                             final long now = System.currentTimeMillis();
-                            final long nowPlusOffset = now + PARENT_SPAN_FLUSH_DELAY_MS;
+                            final long nowPlusOffset = now + parentSpanFlushDelay;
 
                             final RawSpan rawSpan = new RawSpanBuilder()
                                     .setFromSpan(sp, is.getInstrumentationLibrary(), serviceName, resourceAttributes)
@@ -191,7 +191,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
             Set<String> keys = new HashSet<>(traceIdRawSpanSetMap.keySet());
             for (String traceId : keys) {
                 long traceTime = traceIdRawSpanSetMap.get(traceId).getTimeSeen();
-                if (now - traceTime >= GC_INTERVAL_MS) {
+                if (now - traceTime >= gcInterval) {
                     Set<RawSpan> rawSpans = traceIdRawSpanSetMap.get(traceId).getRawSpans();
                     for (RawSpan rawSpan : rawSpans) {
                         rawSpan.setTraceGroup("ERROR");
@@ -209,7 +209,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     }
 
     private boolean shouldGarbageCollect() {
-        return System.currentTimeMillis() - lastGarbageCollectionTime >= GC_INTERVAL_MS;
+        return System.currentTimeMillis() - lastGarbageCollectionTime >= gcInterval;
     }
 
     @Override

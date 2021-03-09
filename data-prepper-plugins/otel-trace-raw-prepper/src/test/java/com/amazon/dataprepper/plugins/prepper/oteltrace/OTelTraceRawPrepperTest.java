@@ -5,7 +5,6 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import io.micrometer.core.instrument.Measurement;
@@ -20,6 +19,7 @@ import static org.mockito.Mockito.mock;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.StringJoiner;
 
@@ -28,14 +28,21 @@ import static org.mockito.Mockito.when;
 
 public class OTelTraceRawPrepperTest {
 
-    private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final long TEST_GC_INTERVAL = 5000L;
+    private static final long TEST_PARENT_SPAN_FLUSH_DELAY = 1000L;
+
     PluginSetting pluginSetting;
     public OTelTraceRawPrepper oTelTraceRawPrepper;
 
     @Before
     public void setup() {
         MetricsTestUtil.initMetrics();
-        pluginSetting = new PluginSetting("OTelTrace", Collections.EMPTY_MAP);
+        pluginSetting = new PluginSetting(
+                "OTelTrace",
+                new HashMap<String, Object>() {{
+                    put(OtelTraceRawPrepperConfig.GC_INTERVAL, TEST_GC_INTERVAL);
+                    put(OtelTraceRawPrepperConfig.PARENT_SPAN_FLUSH_DELAY, TEST_PARENT_SPAN_FLUSH_DELAY);
+                }});
         pluginSetting.setPipelineName("pipelineOTelTrace");
         oTelTraceRawPrepper = new OTelTraceRawPrepper(pluginSetting);
     }
@@ -90,7 +97,7 @@ public class OTelTraceRawPrepperTest {
         final ExportTraceServiceRequest exportTraceServiceRequest = builder.build();
         List<Record<String>> processedRecords = (List<Record<String>>) oTelTraceRawPrepper.doExecute(Collections.singletonList(new Record<>(exportTraceServiceRequest)));
         Assertions.assertThat(processedRecords.size()).isEqualTo(0);
-        Thread.sleep(5000L);
+        Thread.sleep(TEST_PARENT_SPAN_FLUSH_DELAY);
         processedRecords = (List<Record<String>>) oTelTraceRawPrepper.doExecute(Collections.emptyList());
         Assertions.assertThat(processedRecords.size()).isEqualTo(6);
     }
@@ -102,10 +109,10 @@ public class OTelTraceRawPrepperTest {
         JsonFormat.parser().merge(sampleRequestWithOrphanedSpans, builder);
         final ExportTraceServiceRequest exportTraceServiceRequest = builder.build();
         oTelTraceRawPrepper.doExecute(Collections.singletonList(new Record<>(exportTraceServiceRequest)));
-        Thread.sleep(5000L);
+        Thread.sleep(TEST_PARENT_SPAN_FLUSH_DELAY);
         List<Record<String>> processedRecords = (List<Record<String>>) oTelTraceRawPrepper.doExecute(Collections.emptyList());
         Assertions.assertThat(processedRecords.size()).isEqualTo(0);
-        Thread.sleep(30000L - 5000L);
+        Thread.sleep(TEST_GC_INTERVAL - TEST_PARENT_SPAN_FLUSH_DELAY);
         processedRecords = (List<Record<String>>) oTelTraceRawPrepper.doExecute(Collections.emptyList());
         Assertions.assertThat(processedRecords.size()).isEqualTo(4);
     }
