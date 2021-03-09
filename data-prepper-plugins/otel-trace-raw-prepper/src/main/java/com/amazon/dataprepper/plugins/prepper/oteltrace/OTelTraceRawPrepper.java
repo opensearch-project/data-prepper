@@ -22,17 +22,16 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 
 @DataPrepperPlugin(name = "otel_trace_raw_prepper", type = PluginType.PREPPER)
@@ -66,7 +65,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     private final Counter totalProcessingErrorsCounter;
 
     private final Queue<DelayedParentSpan> delayedParentSpanQueue = new DelayQueue<>();
-    private final Map<String, RawSpanSet> traceIdRawSpanSetMap = new HashMap<>();
+    private final Map<String, RawSpanSet> traceIdRawSpanSetMap = new ConcurrentHashMap<>();
 
     private long lastGarbageCollectionTime = 0L;
 
@@ -115,9 +114,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                                 delayedParentSpanQueue.add(delayedParentSpan);
                             } else {
                                 // Handle child spans
-                                if (!traceIdRawSpanSetMap.containsKey(traceId)) {
-                                    traceIdRawSpanSetMap.put(traceId, new RawSpanSet());
-                                }
+                                traceIdRawSpanSetMap.putIfAbsent(traceId, new RawSpanSet());
                                 traceIdRawSpanSetMap.get(traceId).addRawSpan(rawSpan);
                             }
                         }
@@ -169,8 +166,9 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
             String traceGroup = parentSpan.getTraceGroup();
             String parentSpanTraceId = parentSpan.getTraceId();
 
-            if (traceIdRawSpanSetMap.containsKey(parentSpanTraceId)) {
-                for (RawSpan rawSpan : traceIdRawSpanSetMap.get(parentSpanTraceId).getRawSpans()) {
+            RawSpanSet rawSpanSet = traceIdRawSpanSetMap.get(parentSpanTraceId);
+            if (rawSpanSet != null) {
+                for (RawSpan rawSpan : rawSpanSet.getRawSpans()) {
                     rawSpan.setTraceGroup(traceGroup);
                     recordsToFlush.add(rawSpan);
                 }
@@ -213,37 +211,6 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     private boolean shouldGarbageCollect() {
         return System.currentTimeMillis() - lastGarbageCollectionTime >= GC_INTERVAL_MS;
     }
-
-    //    @Override
-//    public Collection<Record<String>> doExecut2e(Collection<Record<ExportTraceServiceRequest>> records) {
-//        final List<Record<String>> finalRecords = new LinkedList<>();
-//        for (Record<ExportTraceServiceRequest> ets : records) {
-//            for (ResourceSpans rs : ets.getData().getResourceSpansList()) {
-//                try {
-//                    final String serviceName = OTelProtoHelper.getServiceName(rs.getResource()).orElse(null);
-//                    final Map<String, Object> resourceAttributes = OTelProtoHelper.getResourceAttributes(rs.getResource());
-//                    for (InstrumentationLibrarySpans is : rs.getInstrumentationLibrarySpansList()) {
-//                        for (Span sp : is.getSpansList()) {
-//                            try {
-//                                finalRecords.add(new Record<>(new RawSpanBuilder()
-//                                        .setFromSpan(sp, is.getInstrumentationLibrary(), serviceName, resourceAttributes)
-//                                        .build().toJson()));
-//                            } catch (Exception ex) {
-//                                log.error("Unable to process invalid Span {}:", sp, ex);
-//                                spanErrorsCounter.increment();
-//                                totalProcessingErrorsCounter.increment();
-//                            }
-//                        }
-//                    }
-//                } catch (Exception ex) {
-//                    log.error("Unable to process invalid ResourceSpan {} :", rs, ex);
-//                    resourceSpanErrorsCounter.increment();
-//                    totalProcessingErrorsCounter.increment();
-//                }
-//            }
-//        }
-//        return finalRecords;
-//    }
 
     @Override
     public void shutdown() {
