@@ -28,8 +28,9 @@ import static org.mockito.Mockito.when;
 
 public class OTelTraceRawPrepperTest {
 
-    private static final long TEST_GC_INTERVAL = 5000L;
-    private static final long TEST_PARENT_SPAN_FLUSH_DELAY = 1000L;
+    private static final long SEC_TO_MILLIS = 1_000L;
+    private static final long TEST_GC_INTERVAL = 3L;
+    private static final long TEST_PARENT_SPAN_FLUSH_DELAY = 1L;
 
     PluginSetting pluginSetting;
     public OTelTraceRawPrepper oTelTraceRawPrepper;
@@ -97,7 +98,7 @@ public class OTelTraceRawPrepperTest {
         final ExportTraceServiceRequest exportTraceServiceRequest = builder.build();
         List<Record<String>> processedRecords = (List<Record<String>>) oTelTraceRawPrepper.doExecute(Collections.singletonList(new Record<>(exportTraceServiceRequest)));
         Assertions.assertThat(processedRecords.size()).isEqualTo(0);
-        Thread.sleep(TEST_PARENT_SPAN_FLUSH_DELAY);
+        Thread.sleep(TEST_PARENT_SPAN_FLUSH_DELAY * SEC_TO_MILLIS);
         processedRecords = (List<Record<String>>) oTelTraceRawPrepper.doExecute(Collections.emptyList());
         Assertions.assertThat(processedRecords.size()).isEqualTo(6);
     }
@@ -109,10 +110,10 @@ public class OTelTraceRawPrepperTest {
         JsonFormat.parser().merge(sampleRequestWithOrphanedSpans, builder);
         final ExportTraceServiceRequest exportTraceServiceRequest = builder.build();
         oTelTraceRawPrepper.doExecute(Collections.singletonList(new Record<>(exportTraceServiceRequest)));
-        Thread.sleep(TEST_PARENT_SPAN_FLUSH_DELAY);
+        Thread.sleep(TEST_PARENT_SPAN_FLUSH_DELAY * SEC_TO_MILLIS);
         List<Record<String>> processedRecords = (List<Record<String>>) oTelTraceRawPrepper.doExecute(Collections.emptyList());
         Assertions.assertThat(processedRecords.size()).isEqualTo(0);
-        Thread.sleep(TEST_GC_INTERVAL - TEST_PARENT_SPAN_FLUSH_DELAY);
+        Thread.sleep((TEST_GC_INTERVAL - TEST_PARENT_SPAN_FLUSH_DELAY) * SEC_TO_MILLIS);
         processedRecords = (List<Record<String>>) oTelTraceRawPrepper.doExecute(Collections.emptyList());
         Assertions.assertThat(processedRecords.size()).isEqualTo(4);
     }
