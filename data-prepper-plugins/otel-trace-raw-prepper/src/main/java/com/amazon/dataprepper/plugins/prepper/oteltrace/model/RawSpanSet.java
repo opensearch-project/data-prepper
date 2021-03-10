@@ -14,7 +14,8 @@ public class RawSpanSet {
     }
 
     public Set<RawSpan> getRawSpans() {
-        return rawSpans;
+        // return a copy to avoid ConcurrentModificationException
+        return new HashSet<>(rawSpans);
     }
 
     public long getTimeSeen() {
