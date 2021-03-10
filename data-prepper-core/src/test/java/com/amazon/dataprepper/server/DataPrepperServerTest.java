@@ -4,16 +4,6 @@ import com.amazon.dataprepper.DataPrepper;
 import com.amazon.dataprepper.TestDataProvider;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.prometheus.PrometheusConfig;
@@ -24,6 +14,23 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Properties;
+import java.util.UUID;
+
 
 public class DataPrepperServerTest {
 
@@ -44,12 +51,18 @@ public class DataPrepperServerTest {
 
     @Before
     public void setup() {
+        // Required to trust any self-signed certs, used in https tests
+        Properties props = System.getProperties();
+        props.setProperty("jdk.internal.httpclient.disableHostnameVerification", Boolean.TRUE.toString());
+
         setRegistry(new PrometheusRegistryMockScrape(PrometheusConfig.DEFAULT, ""));
     }
 
     @After
     public void stopServer() {
-        dataPrepperServer.stop();
+        if (dataPrepperServer != null) {
+            dataPrepperServer.stop();
+        }
     }
 
     @Test
@@ -61,7 +74,7 @@ public class DataPrepperServerTest {
         dataPrepperServer = new DataPrepperServer(dataPrepper);
         dataPrepperServer.start();
 
-        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:"+ port + "/metrics/prometheus"))
+        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/metrics/prometheus"))
                 .GET().build();
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_OK, response.statusCode());
@@ -76,7 +89,7 @@ public class DataPrepperServerTest {
         dataPrepperServer = new DataPrepperServer(dataPrepper);
         dataPrepperServer.start();
 
-        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:"+ port + "/metrics/prometheus"))
+        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/metrics/prometheus"))
                 .GET().build();
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_INTERNAL_ERROR, response.statusCode());
@@ -132,7 +145,7 @@ public class DataPrepperServerTest {
         dataPrepperServer = new DataPrepperServer(dataPrepper);
         dataPrepperServer.start();
 
-        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:"+ port +"/list"))
+        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/list"))
                 .GET().build();
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         final String expectedResponse = OBJECT_MAPPER.writeValueAsString(
@@ -152,7 +165,7 @@ public class DataPrepperServerTest {
         dataPrepperServer = new DataPrepperServer(dataPrepper);
         dataPrepperServer.start();
 
-        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:"+ port +"/list"))
+        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/list"))
                 .GET().build();
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_INTERNAL_ERROR, response.statusCode());
@@ -165,7 +178,7 @@ public class DataPrepperServerTest {
         dataPrepperServer = new DataPrepperServer(dataPrepper);
         dataPrepperServer.start();
 
-        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:"+ port +"/shutdown"))
+        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/shutdown"))
                 .GET().build();
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_OK, response.statusCode());
@@ -180,7 +193,7 @@ public class DataPrepperServerTest {
         dataPrepperServer = new DataPrepperServer(dataPrepper);
         dataPrepperServer.start();
 
-        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:"+ port +"/shutdown"))
+        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/shutdown"))
                 .GET().build();
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
         Assert.assertEquals(HttpURLConnection.HTTP_INTERNAL_ERROR, response.statusCode());
@@ -188,8 +201,66 @@ public class DataPrepperServerTest {
         dataPrepperServer.stop();
     }
 
+    @Test
+    public void testGetMetricsWithHttps() throws Exception {
+        setupDataPrepper();
+        DataPrepper.configure(TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE_WITH_TLS);
+        final String scrape = UUID.randomUUID().toString();
+        final PrometheusMeterRegistry prometheusMeterRegistry = new PrometheusRegistryMockScrape(PrometheusConfig.DEFAULT, scrape);
+        setRegistry(prometheusMeterRegistry);
+        dataPrepperServer = new DataPrepperServer(dataPrepper);
+        dataPrepperServer.start();
+
+        HttpClient httpsClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(3))
+                .sslContext(getSslContextTrustingInsecure())
+                .build();
+
+        HttpRequest request = HttpRequest.newBuilder(new URI("https://localhost:" + port + "/metrics/prometheus"))
+                .GET()
+                .timeout(Duration.ofSeconds(3))
+                .build();
+
+        HttpResponse response = httpsClient.send(request, HttpResponse.BodyHandlers.ofString());
+        Assert.assertEquals(HttpURLConnection.HTTP_OK, response.statusCode());
+        Assert.assertEquals(scrape, response.body());
+        dataPrepperServer.stop();
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testTlsWithInvalidPassword() {
+        setupDataPrepper();
+        DataPrepper.configure(TestDataProvider.INVALID_KEYSTORE_PASSWORD_DATA_PREPPER_CONFIG_FILE);
+
+        new DataPrepperServer(dataPrepper);
+    }
+
+    private SSLContext getSslContextTrustingInsecure() throws Exception {
+        TrustManager[] trustAllCerts = new TrustManager[]{
+                new X509TrustManager() {
+                    public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                        return null;
+                    }
+
+                    public void checkClientTrusted(
+                            java.security.cert.X509Certificate[] certs, String authType) {
+                    }
+
+                    public void checkServerTrusted(
+                            java.security.cert.X509Certificate[] certs, String authType) {
+                    }
+                }
+        };
+
+        SSLContext sslContext = SSLContext.getInstance("SSL");
+        sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+
+        return sslContext;
+    }
+
     private static class PrometheusRegistryMockScrape extends PrometheusMeterRegistry {
         final String scrape;
+
         public PrometheusRegistryMockScrape(PrometheusConfig config, final String scrape) {
             super(config);
             this.scrape = scrape;

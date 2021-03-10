@@ -1,0 +1,2 @@
+ssl: true
+keyStoreFilePath: "/usr/share/data-prepper/test_keystore.p12"

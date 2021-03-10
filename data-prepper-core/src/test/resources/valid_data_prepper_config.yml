@@ -1,4 +1,5 @@
-serverPort: 1234
+serverPort: 5678
+ssl: false
 log4jConfig:
   logLevel: "DEBUG"
   filePath: "file.txt"

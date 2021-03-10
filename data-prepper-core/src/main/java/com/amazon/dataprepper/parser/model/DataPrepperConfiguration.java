@@ -12,6 +12,10 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
  */
 public class DataPrepperConfiguration {
     private int serverPort = 4900;
+    private boolean ssl = true;
+    private String keyStoreFilePath = "";
+    private String keyStorePassword = "";
+    private String privateKeyPassword = "";
     private Log4JConfiguration log4JConfiguration = Log4JConfiguration.DEFAULT_CONFIG;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
@@ -35,11 +39,49 @@ public class DataPrepperConfiguration {
 
     @JsonCreator
     public DataPrepperConfiguration(
+            @JsonProperty("ssl") final Boolean ssl,
+            @JsonProperty("keyStoreFilePath") final String keyStoreFilePath,
+            @JsonProperty("keyStorePassword") final String keyStorePassword,
+            @JsonProperty("privateKeyPassword") final String privateKeyPassword,
             @JsonProperty("serverPort") final String serverPort,
             @JsonProperty("log4jConfig") final Log4JConfiguration log4JConfiguration
     ) {
+        setSsl(ssl);
+        this.keyStoreFilePath = keyStoreFilePath != null ? keyStoreFilePath : "";
+        this.keyStorePassword = keyStorePassword != null ? keyStorePassword : "";
+        this.privateKeyPassword = privateKeyPassword != null ? privateKeyPassword : "";
         setServerPort(serverPort);
         setLog4JConfiguration(log4JConfiguration);
+    }
+
+    public int getServerPort() {
+        return serverPort;
+    }
+
+    public Log4JConfiguration getLog4JConfiguration() {
+        return log4JConfiguration;
+    }
+
+    public boolean ssl() {
+        return ssl;
+    }
+
+    public String getKeyStoreFilePath() {
+        return keyStoreFilePath;
+    }
+
+    public String getKeyStorePassword() {
+        return keyStorePassword;
+    }
+
+    public String getPrivateKeyPassword() {
+        return privateKeyPassword;
+    }
+
+    private void setSsl(final Boolean ssl) {
+        if (ssl != null) {
+            this.ssl = ssl;
+        }
     }
 
     private void setServerPort(final String serverPort) {
@@ -60,13 +102,5 @@ public class DataPrepperConfiguration {
         if(log4JConfiguration != null) {
             this.log4JConfiguration = log4JConfiguration;
         }
-    }
-
-    public int getServerPort() {
-        return serverPort;
-    }
-
-    public Log4JConfiguration getLog4JConfiguration() {
-        return log4JConfiguration;
     }
 }

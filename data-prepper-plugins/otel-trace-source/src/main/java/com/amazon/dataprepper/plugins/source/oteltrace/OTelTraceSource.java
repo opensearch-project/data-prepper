@@ -52,10 +52,12 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
                     .useClientTimeoutHeader(false);
 
             if (oTelTraceSourceConfig.hasHealthCheck()) {
+                LOG.info("Health check is enabled");
                 grpcServiceBuilder.addService(new HealthGrpcService());
             }
 
             if (oTelTraceSourceConfig.hasProtoReflectionService()) {
+                LOG.info("Proto reflection service is enabled");
                 grpcServiceBuilder.addService(ProtoReflectionService.newInstance());
             }
 
@@ -64,6 +66,7 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
             sb.requestTimeoutMillis(oTelTraceSourceConfig.getRequestTimeoutInMillis());
 
             if (oTelTraceSourceConfig.isSsl()) {
+                LOG.info("SSL/TLS is enabled");
                 sb.https(oTelTraceSourceConfig.getPort()).tls(new File(oTelTraceSourceConfig.getSslKeyCertChainFile()),
                         new File(oTelTraceSourceConfig.getSslKeyFile()));
             } else {

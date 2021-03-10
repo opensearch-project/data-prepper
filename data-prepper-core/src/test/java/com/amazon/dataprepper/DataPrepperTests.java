@@ -2,7 +2,7 @@ package com.amazon.dataprepper;
 
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import io.micrometer.core.instrument.Measurement;
-import org.apache.log4j.Level;
+import org.apache.logging.log4j.Level;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -28,6 +28,7 @@ public class DataPrepperTests {
     public void setup() throws Exception {
         actualSecurityManager = System.getSecurityManager();
         System.setSecurityManager(new CustomSecurityManager());
+        DataPrepper.configure(TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE);
     }
 
     @After
@@ -64,9 +65,8 @@ public class DataPrepperTests {
 
     @Test
     public void testCustomConfiguration() {
-        DataPrepper.configure(TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE);
         DataPrepper testInstance = DataPrepper.getInstance();
-        Assert.assertEquals(1234, DataPrepper.getConfiguration().getServerPort());
+        Assert.assertEquals(5678, DataPrepper.getConfiguration().getServerPort());
         Assert.assertEquals(Level.DEBUG, DataPrepper.getConfiguration().getLog4JConfiguration().getLevel());
         Assert.assertEquals("file.txt", DataPrepper.getConfiguration().getLog4JConfiguration().getFilePath());
         Assert.assertEquals("1GB", DataPrepper.getConfiguration().getLog4JConfiguration().getMaxFileSize());

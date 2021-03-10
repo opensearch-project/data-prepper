@@ -33,7 +33,7 @@ public class PrometheusMetricsHandler implements HttpHandler {
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
             exchange.getResponseBody().write(response);
         } catch (Exception e) {
-            LOG.error("Encountered exception scarping prometheus meter registry", e);
+            LOG.error("Encountered exception scraping prometheus meter registry", e);
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_INTERNAL_ERROR, 0);
         } finally {
             exchange.getResponseBody().close();

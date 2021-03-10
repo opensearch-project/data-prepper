@@ -5,9 +5,9 @@ name: Data Prepper Trace Analytics End-to-end test with Gradle
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   build:

@@ -33,6 +33,7 @@ dependencies {
     integrationTestImplementation "com.linecorp.armeria:armeria:1.0.0"
     integrationTestImplementation "com.linecorp.armeria:armeria-grpc:1.0.0"
     integrationTestImplementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:7.8.1"
+    integrationTestImplementation "com.fasterxml.jackson.core:jackson-databind:2.12.1"
 }
 
 /**
@@ -59,7 +60,8 @@ task createDataPrepperDockerFile(type: Dockerfile) {
     workingDir("/app")
     copyFile("build/libs/${jar.archiveName}", "/app/data-prepper.jar")
     copyFile("src/integrationTest/resources/pipeline.yml", "/app/pipeline.yml")
-    defaultCommand("java", "-jar", "data-prepper.jar", "/app/pipeline.yml")
+    copyFile("src/integrationTest/resources/data_prepper.yml", "/app/data_prepper.yml")
+    defaultCommand("java", "-jar", "data-prepper.jar", "/app/pipeline.yml", "/app/data_prepper.yml")
 }
 
 task buildDataPrepperDockerImage(type: DockerBuildImage) {
