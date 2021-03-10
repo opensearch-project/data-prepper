@@ -80,11 +80,6 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
      */
     @Override
     public Collection<Record<String>> doExecute(Collection<Record<ExportTraceServiceRequest>> records) {
-        final List<RawSpan> rawSpans = new LinkedList<>();
-
-        rawSpans.addAll(getTracesToFlushByParentSpan());
-        rawSpans.addAll(getTracesToFlushByGarbageCollection());
-
         for (Record<ExportTraceServiceRequest> ets : records) {
             for (ResourceSpans rs : ets.getData().getResourceSpansList()) {
                 try {
@@ -123,6 +118,10 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                 }
             }
         }
+
+        final List<RawSpan> rawSpans = new LinkedList<>();
+        rawSpans.addAll(getTracesToFlushByParentSpan());
+        rawSpans.addAll(getTracesToFlushByGarbageCollection());
 
         return convertRawSpansToJsonRecords(rawSpans);
     }
