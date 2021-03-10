@@ -130,13 +130,13 @@ public class OTelTraceRawPrepperTest {
         final ExportTraceServiceRequest exportTraceServiceRequest2 = buildExportTraceServiceRequestFromJson(sampleRequest2);
         final List<Record<String>> processedRecords = new ArrayList<>();
         List<Future<Collection<Record<String>>>> futures = new ArrayList<>();
-        futures.addAll(submitExportTraceServiceRequests(executorService, Collections.singletonList(exportTraceServiceRequest1)));
-        futures.addAll(submitExportTraceServiceRequests(executorService, Collections.singletonList(exportTraceServiceRequest2)));
+        futures.addAll(submitExportTraceServiceRequests(Collections.singletonList(exportTraceServiceRequest1)));
+        futures.addAll(submitExportTraceServiceRequests(Collections.singletonList(exportTraceServiceRequest2)));
         for (Future<Collection<Record<String>>> future : futures) {
             processedRecords.addAll(future.get());
         }
         await().atMost(2 * TEST_PARENT_SPAN_FLUSH_DELAY, TimeUnit.SECONDS).untilAsserted(() -> {
-            List<Future<Collection<Record<String>>>> futureList = submitExportTraceServiceRequests(executorService, Collections.emptyList());
+            List<Future<Collection<Record<String>>>> futureList = submitExportTraceServiceRequests(Collections.emptyList());
             for (Future<Collection<Record<String>>> future : futureList) {
                 processedRecords.addAll(future.get());
             }
@@ -165,13 +165,13 @@ public class OTelTraceRawPrepperTest {
         final ExportTraceServiceRequest exportTraceServiceRequest2 = buildExportTraceServiceRequestFromJson(sampleRequest2);
         List<Record<String>> processedRecords = new ArrayList<>();
         List<Future<Collection<Record<String>>>> futures = new ArrayList<>();
-        futures.addAll(submitExportTraceServiceRequests(executorService, Collections.singletonList(exportTraceServiceRequest1)));
-        futures.addAll(submitExportTraceServiceRequests(executorService, Collections.singletonList(exportTraceServiceRequest2)));
+        futures.addAll(submitExportTraceServiceRequests(Collections.singletonList(exportTraceServiceRequest1)));
+        futures.addAll(submitExportTraceServiceRequests(Collections.singletonList(exportTraceServiceRequest2)));
         for (Future<Collection<Record<String>>> future : futures) {
             processedRecords.addAll(future.get());
         }
         await().atMost(2 * TEST_GC_INTERVAL, TimeUnit.SECONDS).untilAsserted(() -> {
-            List<Future<Collection<Record<String>>>> futureList = submitExportTraceServiceRequests(executorService, Collections.emptyList());
+            List<Future<Collection<Record<String>>>> futureList = submitExportTraceServiceRequests(Collections.emptyList());
             for (Future<Collection<Record<String>>> future : futureList) {
                 processedRecords.addAll(future.get());
             }
@@ -186,7 +186,7 @@ public class OTelTraceRawPrepperTest {
         return builder.build();
     }
 
-    private List<Future<Collection<Record<String>>>> submitExportTraceServiceRequests(ExecutorService executorService, Collection<ExportTraceServiceRequest> exportTraceServiceRequests) {
+    private List<Future<Collection<Record<String>>>> submitExportTraceServiceRequests(Collection<ExportTraceServiceRequest> exportTraceServiceRequests) {
         final List<Future<Collection<Record<String>>>> futures = new ArrayList<>();
         final List<Record<ExportTraceServiceRequest>> records = exportTraceServiceRequests.stream().map(Record::new).collect(Collectors.toList());
         futures.add(executorService.submit(() -> oTelTraceRawPrepper.doExecute(records)));
