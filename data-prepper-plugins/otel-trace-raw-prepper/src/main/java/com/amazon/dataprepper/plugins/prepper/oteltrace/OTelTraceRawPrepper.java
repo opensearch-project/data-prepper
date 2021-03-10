@@ -63,9 +63,9 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     public OTelTraceRawPrepper(final PluginSetting pluginSetting) {
         super(pluginSetting);
         gcInterval = SEC_TO_MILLIS * pluginSetting.getLongOrDefault(
-                OtelTraceRawPrepperConfig.GC_INTERVAL, OtelTraceRawPrepperConfig.DEFAULT_GC_INTERVAL_MS);
+                OtelTraceRawPrepperConfig.GC_INTERVAL, OtelTraceRawPrepperConfig.DEFAULT_GC_INTERVAL);
         parentSpanFlushDelay = SEC_TO_MILLIS * pluginSetting.getLongOrDefault(
-                OtelTraceRawPrepperConfig.PARENT_SPAN_FLUSH_DELAY, OtelTraceRawPrepperConfig.DEFAULT_PARENT_SPAN_FLUSH_DELAY_MS);
+                OtelTraceRawPrepperConfig.PARENT_SPAN_FLUSH_DELAY, OtelTraceRawPrepperConfig.DEFAULT_PARENT_SPAN_FLUSH_DELAY);
         spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
         resourceSpanErrorsCounter = pluginMetrics.counter(RESOURCE_SPANS_PROCESSING_ERRORS);
         totalProcessingErrorsCounter = pluginMetrics.counter(TOTAL_PROCESSING_ERRORS);
