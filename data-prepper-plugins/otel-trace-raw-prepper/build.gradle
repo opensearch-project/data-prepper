@@ -16,6 +16,7 @@ dependencies {
     testImplementation 'org.assertj:assertj-core:3.19.0'
     testImplementation "org.mockito:mockito-inline:3.8.0"
     testImplementation "org.hamcrest:hamcrest:2.2"
+    testImplementation "org.awaitility:awaitility:4.0.3"
 }
 
 jacocoTestCoverageVerification {
