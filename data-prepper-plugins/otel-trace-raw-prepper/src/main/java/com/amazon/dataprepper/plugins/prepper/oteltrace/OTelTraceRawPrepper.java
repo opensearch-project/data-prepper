@@ -52,8 +52,10 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     private final Counter totalProcessingErrorsCounter;
 
     // TODO: replace with file store, e.g. MapDB?
+    // TODO: introduce a gauge to monitor the size
     private final Queue<DelayedParentSpan> delayedParentSpanQueue = new DelayQueue<>();
     // TODO: replace with file store, e.g. MapDB?
+    // TODO: introduce a gauge to monitor the size
     private final Map<String, RawSpanSet> traceIdRawSpanSetMap = new ConcurrentHashMap<>();
 
     private long lastGarbageCollectionTime = 0L;
@@ -194,7 +196,9 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                     entryIterator.remove();
                 }
             }
-            log.error("Flushing {} records due to GC", recordsToFlush.size());
+            if (recordsToFlush.size() > 0) {
+                log.error("Flushing {} records due to GC", recordsToFlush.size());
+            }
         }
 
         return recordsToFlush;
