@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.DelayQueue;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 @DataPrepperPlugin(name = "otel_trace_raw_prepper", type = PluginType.PREPPER)
@@ -60,6 +61,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
 
     private long lastGarbageCollectionTime = 0L;
 
+    private final ReentrantLock gcLock = new ReentrantLock();
 
     //TODO: https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/66
     public OTelTraceRawPrepper(final PluginSetting pluginSetting) {
@@ -177,27 +179,35 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
         final List<RawSpan> recordsToFlush = new LinkedList<>();
 
         if (shouldGarbageCollect()) {
-            final long now = System.currentTimeMillis();
-            lastGarbageCollectionTime = now;
+            boolean isLockAcquired = gcLock.tryLock();
 
-            // fail-safe
-            Iterator<Map.Entry<String, RawSpanSet>> entryIterator = traceIdRawSpanSetMap.entrySet().iterator();
-            while (entryIterator.hasNext()) {
-                Map.Entry<String, RawSpanSet> entry = entryIterator.next();
-                RawSpanSet rawSpanSet = entry.getValue();
-                long traceTime = rawSpanSet.getTimeSeen();
-                if (now - traceTime >= gcInterval) {
-                    Set<RawSpan> rawSpans = rawSpanSet.getRawSpans();
-                    for (RawSpan rawSpan : rawSpans) {
-                        rawSpan.setTraceGroup("ERROR");
-                        recordsToFlush.add(rawSpan);
+            if (isLockAcquired) {
+                try {
+                    final long now = System.currentTimeMillis();
+                    lastGarbageCollectionTime = now;
+
+                    // fail-safe
+                    Iterator<Map.Entry<String, RawSpanSet>> entryIterator = traceIdRawSpanSetMap.entrySet().iterator();
+                    while (entryIterator.hasNext()) {
+                        Map.Entry<String, RawSpanSet> entry = entryIterator.next();
+                        RawSpanSet rawSpanSet = entry.getValue();
+                        long traceTime = rawSpanSet.getTimeSeen();
+                        if (now - traceTime >= gcInterval) {
+                            Set<RawSpan> rawSpans = rawSpanSet.getRawSpans();
+                            for (RawSpan rawSpan : rawSpans) {
+                                rawSpan.setTraceGroup("ERROR");
+                                recordsToFlush.add(rawSpan);
+                            }
+
+                            entryIterator.remove();
+                        }
                     }
-
-                    entryIterator.remove();
+                    if (recordsToFlush.size() > 0) {
+                        log.error("Flushing {} records due to GC", recordsToFlush.size());
+                    }
+                } finally {
+                    gcLock.unlock();
                 }
-            }
-            if (recordsToFlush.size() > 0) {
-                log.error("Flushing {} records due to GC", recordsToFlush.size());
             }
         }
 
