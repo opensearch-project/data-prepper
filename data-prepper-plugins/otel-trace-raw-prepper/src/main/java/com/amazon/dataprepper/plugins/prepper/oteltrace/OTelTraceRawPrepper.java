@@ -11,6 +11,7 @@ import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanBuilder;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanSet;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Preconditions;
 import com.google.common.primitives.Ints;
 import io.micrometer.core.instrument.Counter;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
@@ -70,6 +71,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                 OtelTraceRawPrepperConfig.GC_INTERVAL, OtelTraceRawPrepperConfig.DEFAULT_GC_INTERVAL);
         parentSpanFlushDelay = SEC_TO_MILLIS * pluginSetting.getLongOrDefault(
                 OtelTraceRawPrepperConfig.PARENT_SPAN_FLUSH_DELAY, OtelTraceRawPrepperConfig.DEFAULT_PARENT_SPAN_FLUSH_DELAY);
+        Preconditions.checkArgument(parentSpanFlushDelay <= gcInterval, "parentSpanFlushDelay should not be greater than gcInterval.");
         spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
         resourceSpanErrorsCounter = pluginMetrics.counter(RESOURCE_SPANS_PROCESSING_ERRORS);
         totalProcessingErrorsCounter = pluginMetrics.counter(TOTAL_PROCESSING_ERRORS);
