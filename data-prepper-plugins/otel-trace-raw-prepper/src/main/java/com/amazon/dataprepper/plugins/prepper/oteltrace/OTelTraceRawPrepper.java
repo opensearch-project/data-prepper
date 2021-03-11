@@ -210,7 +210,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                         }
                     }
                     if (recordsToFlush.size() > 0) {
-                        log.error("Flushing {} records due to GC", recordsToFlush.size());
+                        log.info("Flushing {} records due to GC", recordsToFlush.size());
                     }
                 } finally {
                     gcLock.unlock();
