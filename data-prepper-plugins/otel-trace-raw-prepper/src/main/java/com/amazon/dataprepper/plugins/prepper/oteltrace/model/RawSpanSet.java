@@ -1,6 +1,7 @@
 package com.amazon.dataprepper.plugins.prepper.oteltrace.model;
 
-import java.util.HashSet;
+import com.google.common.collect.Sets;
+
 import java.util.Set;
 
 public class RawSpanSet {
@@ -9,13 +10,12 @@ public class RawSpanSet {
     private final long timeSeen;
 
     public RawSpanSet() {
-        this.rawSpans = new HashSet<>();
+        this.rawSpans = Sets.newConcurrentHashSet();
         this.timeSeen = System.currentTimeMillis();
     }
 
     public Set<RawSpan> getRawSpans() {
-        // return a copy to avoid ConcurrentModificationException
-        return new HashSet<>(rawSpans);
+        return rawSpans;
     }
 
     public long getTimeSeen() {
