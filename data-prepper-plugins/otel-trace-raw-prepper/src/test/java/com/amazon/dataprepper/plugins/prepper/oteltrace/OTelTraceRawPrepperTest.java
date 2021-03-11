@@ -198,7 +198,7 @@ public class OTelTraceRawPrepperTest {
         for (Record<String> record: records) {
             String spanJson = record.getData();
             Map<String, Object> spanMap = OBJECT_MAPPER.readValue(spanJson, new TypeReference<Map<String, Object>>() {});
-            if (spanMap.get("traceGroup").equals("ERROR")) {
+            if (spanMap.get("traceGroup") == null) {
                 count += 1;
             }
         }
