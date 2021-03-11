@@ -114,20 +114,20 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
 
     private void processRawSpan(final RawSpan rawSpan) {
         if (rawSpan.getParentSpanId() == null || "".equals(rawSpan.getParentSpanId())) {
-            processParentRawSpan(rawSpan);
+            processRootRawSpan(rawSpan);
         } else {
-            processChildRawSpan(rawSpan);
+            processDescendantRawSpan(rawSpan);
         }
     }
 
-    private void processParentRawSpan(final RawSpan rawSpan) {
+    private void processRootRawSpan(final RawSpan rawSpan) {
         final long now = System.currentTimeMillis();
         final long nowPlusOffset = now + parentSpanFlushDelay;
         final DelayedParentSpan delayedParentSpan = new DelayedParentSpan(rawSpan, nowPlusOffset);
         delayedParentSpanQueue.add(delayedParentSpan);
     }
 
-    private void processChildRawSpan(final RawSpan rawSpan) {
+    private void processDescendantRawSpan(final RawSpan rawSpan) {
         traceIdRawSpanSetMap.compute(rawSpan.getTraceId(), (traceId, rawSpanSet) -> {
             if (rawSpanSet == null) {
                 rawSpanSet = new RawSpanSet();
