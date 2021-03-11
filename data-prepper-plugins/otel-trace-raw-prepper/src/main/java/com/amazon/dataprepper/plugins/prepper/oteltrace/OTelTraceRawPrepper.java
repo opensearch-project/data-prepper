@@ -202,8 +202,8 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                         if (now - traceTime >= gcInterval) {
                             Set<RawSpan> rawSpans = rawSpanSet.getRawSpans();
                             for (RawSpan rawSpan : rawSpans) {
-                                rawSpan.setTraceGroup("ERROR");
                                 recordsToFlush.add(rawSpan);
+                                log.warn("Missing root span for SpanId: {}", rawSpan.getSpanId());
                             }
 
                             entryIterator.remove();
