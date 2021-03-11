@@ -10,7 +10,6 @@ import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpan;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanBuilder;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanSet;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Ints;
 import io.micrometer.core.instrument.Counter;
@@ -22,7 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -93,28 +91,10 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                     final Map<String, Object> resourceAttributes = OTelProtoHelper.getResourceAttributes(rs.getResource());
                     for (InstrumentationLibrarySpans is : rs.getInstrumentationLibrarySpansList()) {
                         for (Span sp : is.getSpansList()) {
-                            final long now = System.currentTimeMillis();
-                            final long nowPlusOffset = now + parentSpanFlushDelay;
-
                             final RawSpan rawSpan = new RawSpanBuilder()
                                     .setFromSpan(sp, is.getInstrumentationLibrary(), serviceName, resourceAttributes)
                                     .build();
-                            final String traceId = rawSpan.getTraceId();
-
-                            if (rawSpan.getParentSpanId() == null || "".equals(rawSpan.getParentSpanId())) {
-                                // Handle parent spans
-                                final DelayedParentSpan delayedParentSpan = new DelayedParentSpan(rawSpan, nowPlusOffset);
-                                delayedParentSpanQueue.add(delayedParentSpan);
-                            } else {
-                                // Handle child spans
-                                traceIdRawSpanSetMap.compute(traceId, (trId, rawSpanSet) -> {
-                                    if (rawSpanSet == null) {
-                                        rawSpanSet = new RawSpanSet();
-                                    }
-                                    rawSpanSet.addRawSpan(rawSpan);
-                                    return rawSpanSet;
-                                });
-                            }
+                            processRawSpan(rawSpan);
                         }
                     }
                 } catch (Exception ex) {
@@ -130,6 +110,31 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
         rawSpans.addAll(getTracesToFlushByGarbageCollection());
 
         return convertRawSpansToJsonRecords(rawSpans);
+    }
+
+    private void processRawSpan(final RawSpan rawSpan) {
+        if (rawSpan.getParentSpanId() == null || "".equals(rawSpan.getParentSpanId())) {
+            processParentRawSpan(rawSpan);
+        } else {
+            processChildRawSpan(rawSpan);
+        }
+    }
+
+    private void processParentRawSpan(final RawSpan rawSpan) {
+        final long now = System.currentTimeMillis();
+        final long nowPlusOffset = now + parentSpanFlushDelay;
+        final DelayedParentSpan delayedParentSpan = new DelayedParentSpan(rawSpan, nowPlusOffset);
+        delayedParentSpanQueue.add(delayedParentSpan);
+    }
+
+    private void processChildRawSpan(final RawSpan rawSpan) {
+        traceIdRawSpanSetMap.compute(rawSpan.getTraceId(), (traceId, rawSpanSet) -> {
+            if (rawSpanSet == null) {
+                rawSpanSet = new RawSpanSet();
+            }
+            rawSpanSet.addRawSpan(rawSpan);
+            return rawSpanSet;
+        });
     }
 
     private List<Record<String>> convertRawSpansToJsonRecords(final List<RawSpan> rawSpans) {
