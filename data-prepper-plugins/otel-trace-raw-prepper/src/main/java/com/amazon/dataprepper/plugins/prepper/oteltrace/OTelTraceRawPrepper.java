@@ -60,7 +60,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
 
     private long lastTraceFlushTime = 0L;
 
-    private final ReentrantLock gcLock = new ReentrantLock();
+    private final ReentrantLock traceFlushLock = new ReentrantLock();
 
     //TODO: https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/66
     public OTelTraceRawPrepper(final PluginSetting pluginSetting) {
@@ -70,7 +70,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
         rootSpanFlushDelay = SEC_TO_MILLIS * pluginSetting.getLongOrDefault(
                 OtelTraceRawPrepperConfig.ROOT_SPAN_FLUSH_DELAY, OtelTraceRawPrepperConfig.DEFAULT_ROOT_SPAN_FLUSH_DELAY);
         Preconditions.checkArgument(rootSpanFlushDelay <= traceFlushInterval,
-                "rootSpanSetFlushDelay should not be greater than missingRootSpanSetFlushInterval.");
+                "rootSpanSetFlushDelay should not be greater than traceFlushInterval.");
         spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
         resourceSpanErrorsCounter = pluginMetrics.counter(RESOURCE_SPANS_PROCESSING_ERRORS);
         totalProcessingErrorsCounter = pluginMetrics.counter(TOTAL_PROCESSING_ERRORS);
@@ -187,14 +187,13 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
         final List<RawSpan> recordsToFlush = new LinkedList<>();
 
         if (shouldGarbageCollect()) {
-            boolean isLockAcquired = gcLock.tryLock();
+            boolean isLockAcquired = traceFlushLock.tryLock();
 
             if (isLockAcquired) {
                 try {
                     final long now = System.currentTimeMillis();
                     lastTraceFlushTime = now;
 
-                    // fail-safe
                     Iterator<Map.Entry<String, RawSpanSet>> entryIterator = traceIdRawSpanSetMap.entrySet().iterator();
                     while (entryIterator.hasNext()) {
                         Map.Entry<String, RawSpanSet> entry = entryIterator.next();
@@ -214,7 +213,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                         log.info("Flushing {} records due to GC", recordsToFlush.size());
                     }
                 } finally {
-                    gcLock.unlock();
+                    traceFlushLock.unlock();
                 }
             }
         }
