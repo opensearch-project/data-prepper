@@ -18,6 +18,8 @@ raw-pipeline:
       name: "entry-pipeline"
   prepper:
     - otel_trace_raw_prepper:
+        root_span_flush_delay: 1
+        trace_flush_interval: 3
   sink:
     - elasticsearch:
         hosts: [ "https://node-0.example.com:9200" ]

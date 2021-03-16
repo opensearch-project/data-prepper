@@ -6,10 +6,13 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.OTelProtoHelper;
+import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpan;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanBuilder;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanSet;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.base.Preconditions;
+import com.google.common.primitives.Ints;
 import io.micrometer.core.instrument.Counter;
-
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
@@ -17,47 +20,61 @@ import io.opentelemetry.proto.trace.v1.Span;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.DelayQueue;
+import java.util.concurrent.Delayed;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 @DataPrepperPlugin(name = "otel_trace_raw_prepper", type = PluginType.PREPPER)
 public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final String INSTRUMENTATION_LIBRARY_SPANS = "instrumentationLibrarySpans";
-    private static final String INSTRUMENTATION_LIBRARY = "instrumentationLibrary";
-    private static final String SPANS = "spans";
-    private static final String RESOURCE = "resource";
-    private static final String ATTRIBUTES = "attributes";
-    private static final String START_TIME_UNIX_NANOS = "startTimeUnixNano";
-    private static final String END_TIME_UNIX_NANOS = "endTimeUnixNano";
-    private static final String START_TIME = "startTime";
-    private static final String END_TIME = "endTime";
-    private static final BigDecimal MILLIS_TO_NANOS = new BigDecimal(1_000_000);
-    private static final BigDecimal SEC_TO_MILLIS = new BigDecimal(1_000);
+    private static final long SEC_TO_MILLIS = 1_000L;
     private static final Logger log = LoggerFactory.getLogger(OTelTraceRawPrepper.class);
 
     public static final String SPAN_PROCESSING_ERRORS = "spanProcessingErrors";
     public static final String RESOURCE_SPANS_PROCESSING_ERRORS = "resourceSpansProcessingErrors";
     public static final String TOTAL_PROCESSING_ERRORS = "totalProcessingErrors";
 
+    private final long traceFlushInterval;
+    private final long rootSpanFlushDelay;
+
     private final Counter spanErrorsCounter;
     private final Counter resourceSpanErrorsCounter;
     private final Counter totalProcessingErrorsCounter;
 
+    // TODO: replace with file store, e.g. MapDB?
+    // TODO: introduce a gauge to monitor the size
+    private final Queue<DelayedParentSpan> delayedParentSpanQueue = new DelayQueue<>();
+    // TODO: replace with file store, e.g. MapDB?
+    // TODO: introduce a gauge to monitor the size
+    private final Map<String, RawSpanSet> traceIdRawSpanSetMap = new ConcurrentHashMap<>();
+
+    private long lastTraceFlushTime = 0L;
+
+    private final ReentrantLock traceFlushLock = new ReentrantLock();
 
     //TODO: https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/66
     public OTelTraceRawPrepper(final PluginSetting pluginSetting) {
         super(pluginSetting);
+        traceFlushInterval = SEC_TO_MILLIS * pluginSetting.getLongOrDefault(
+                OtelTraceRawPrepperConfig.TRACE_FLUSH_INTERVAL, OtelTraceRawPrepperConfig.DEFAULT_TG_FLUSH_INTERVAL);
+        rootSpanFlushDelay = SEC_TO_MILLIS * pluginSetting.getLongOrDefault(
+                OtelTraceRawPrepperConfig.ROOT_SPAN_FLUSH_DELAY, OtelTraceRawPrepperConfig.DEFAULT_ROOT_SPAN_FLUSH_DELAY);
+        Preconditions.checkArgument(rootSpanFlushDelay <= traceFlushInterval,
+                "rootSpanSetFlushDelay should not be greater than traceFlushInterval.");
         spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
         resourceSpanErrorsCounter = pluginMetrics.counter(RESOURCE_SPANS_PROCESSING_ERRORS);
         totalProcessingErrorsCounter = pluginMetrics.counter(TOTAL_PROCESSING_ERRORS);
     }
-
 
     /**
      * execute the prepper logic which could potentially modify the incoming record. The level to which the record has
@@ -68,7 +85,6 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
      */
     @Override
     public Collection<Record<String>> doExecute(Collection<Record<ExportTraceServiceRequest>> records) {
-        final List<Record<String>> finalRecords = new LinkedList<>();
         for (Record<ExportTraceServiceRequest> ets : records) {
             for (ResourceSpans rs : ets.getData().getResourceSpansList()) {
                 try {
@@ -76,15 +92,10 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                     final Map<String, Object> resourceAttributes = OTelProtoHelper.getResourceAttributes(rs.getResource());
                     for (InstrumentationLibrarySpans is : rs.getInstrumentationLibrarySpansList()) {
                         for (Span sp : is.getSpansList()) {
-                            try {
-                                finalRecords.add(new Record<>(new RawSpanBuilder()
-                                        .setFromSpan(sp, is.getInstrumentationLibrary(), serviceName, resourceAttributes)
-                                        .build().toJson()));
-                            } catch (Exception ex) {
-                                log.error("Unable to process invalid Span {}:", sp, ex);
-                                spanErrorsCounter.increment();
-                                totalProcessingErrorsCounter.increment();
-                            }
+                            final RawSpan rawSpan = new RawSpanBuilder()
+                                    .setFromSpan(sp, is.getInstrumentationLibrary(), serviceName, resourceAttributes)
+                                    .build();
+                            processRawSpan(rawSpan);
                         }
                     }
                 } catch (Exception ex) {
@@ -94,11 +105,154 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                 }
             }
         }
-        return finalRecords;
+
+        final List<RawSpan> rawSpans = new LinkedList<>();
+        rawSpans.addAll(getTracesToFlushByRootSpan());
+        rawSpans.addAll(getTracesToFlushByGarbageCollection());
+
+        return convertRawSpansToJsonRecords(rawSpans);
+    }
+
+    private void processRawSpan(final RawSpan rawSpan) {
+        if (rawSpan.getParentSpanId() == null || "".equals(rawSpan.getParentSpanId())) {
+            processRootRawSpan(rawSpan);
+        } else {
+            processDescendantRawSpan(rawSpan);
+        }
+    }
+
+    private void processRootRawSpan(final RawSpan rawSpan) {
+        final long now = System.currentTimeMillis();
+        final long nowPlusOffset = now + rootSpanFlushDelay;
+        final DelayedParentSpan delayedParentSpan = new DelayedParentSpan(rawSpan, nowPlusOffset);
+        delayedParentSpanQueue.add(delayedParentSpan);
+    }
+
+    private void processDescendantRawSpan(final RawSpan rawSpan) {
+        traceIdRawSpanSetMap.compute(rawSpan.getTraceId(), (traceId, rawSpanSet) -> {
+            if (rawSpanSet == null) {
+                rawSpanSet = new RawSpanSet();
+            }
+            rawSpanSet.addRawSpan(rawSpan);
+            return rawSpanSet;
+        });
+    }
+
+    private List<Record<String>> convertRawSpansToJsonRecords(final List<RawSpan> rawSpans) {
+        final List<Record<String>> records = new LinkedList<>();
+
+        for (RawSpan rawSpan : rawSpans) {
+            String rawSpanJson;
+            try {
+                rawSpanJson = rawSpan.toJson();
+            } catch (JsonProcessingException e) {
+                log.error("Unable to process invalid Span {}:", rawSpan, e);
+                spanErrorsCounter.increment();
+                totalProcessingErrorsCounter.increment();
+                continue;
+            }
+
+            records.add(new Record<>(rawSpanJson));
+        }
+
+        return records;
+    }
+
+    private List<RawSpan> getTracesToFlushByRootSpan() {
+        final List<RawSpan> recordsToFlush = new LinkedList<>();
+
+        for (DelayedParentSpan delayedParentSpan; (delayedParentSpan = delayedParentSpanQueue.poll()) != null;) {
+            RawSpan parentSpan = delayedParentSpan.getRawSpan();
+            recordsToFlush.add(parentSpan);
+
+            String traceGroup = parentSpan.getTraceGroup();
+            String parentSpanTraceId = parentSpan.getTraceId();
+
+            RawSpanSet rawSpanSet = traceIdRawSpanSetMap.get(parentSpanTraceId);
+            if (rawSpanSet != null) {
+                for (RawSpan rawSpan : rawSpanSet.getRawSpans()) {
+                    rawSpan.setTraceGroup(traceGroup);
+                    recordsToFlush.add(rawSpan);
+                }
+
+                traceIdRawSpanSetMap.remove(parentSpanTraceId);
+            }
+        }
+
+        return recordsToFlush;
+    }
+
+
+    private List<RawSpan> getTracesToFlushByGarbageCollection() {
+        final List<RawSpan> recordsToFlush = new LinkedList<>();
+
+        if (shouldGarbageCollect()) {
+            boolean isLockAcquired = traceFlushLock.tryLock();
+
+            if (isLockAcquired) {
+                try {
+                    final long now = System.currentTimeMillis();
+                    lastTraceFlushTime = now;
+
+                    Iterator<Map.Entry<String, RawSpanSet>> entryIterator = traceIdRawSpanSetMap.entrySet().iterator();
+                    while (entryIterator.hasNext()) {
+                        Map.Entry<String, RawSpanSet> entry = entryIterator.next();
+                        RawSpanSet rawSpanSet = entry.getValue();
+                        long traceTime = rawSpanSet.getTimeSeen();
+                        if (now - traceTime >= traceFlushInterval) {
+                            Set<RawSpan> rawSpans = rawSpanSet.getRawSpans();
+                            for (RawSpan rawSpan : rawSpans) {
+                                recordsToFlush.add(rawSpan);
+                                log.warn("Missing root span for SpanId: {}", rawSpan.getSpanId());
+                            }
+
+                            entryIterator.remove();
+                        }
+                    }
+                    if (recordsToFlush.size() > 0) {
+                        log.info("Flushing {} records due to GC", recordsToFlush.size());
+                    }
+                } finally {
+                    traceFlushLock.unlock();
+                }
+            }
+        }
+
+        return recordsToFlush;
+    }
+
+    private boolean shouldGarbageCollect() {
+        return System.currentTimeMillis() - lastTraceFlushTime >= traceFlushInterval;
     }
 
     @Override
     public void shutdown() {
 
+    }
+
+    class DelayedParentSpan implements Delayed {
+        private RawSpan rawSpan;
+        private long delayTime;
+
+        public DelayedParentSpan(RawSpan rawSpan, long startTime) {
+            this.rawSpan = rawSpan;
+            this.delayTime = startTime;
+        }
+
+        @Override
+        public long getDelay(TimeUnit unit) {
+            long diff = delayTime - System.currentTimeMillis();
+            return unit.convert(diff, TimeUnit.MILLISECONDS);
+        }
+
+        @Override
+        public int compareTo(Delayed o) {
+            return Ints.saturatedCast(
+                    this.delayTime - ((DelayedParentSpan) o).delayTime);
+        }
+
+        public RawSpan getRawSpan() {
+            return rawSpan;
+        }
     }
 }
