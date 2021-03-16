@@ -126,6 +126,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     }
 
     private void processRootRawSpan(final RawSpan rawSpan) {
+        // TODO: flush descendants here to get rid of DelayQueue
         // TODO: safe-guard against null traceGroup for rootSpan?
         traceIdTraceGroupCache.put(rawSpan.getTraceId(), rawSpan.getTraceGroup());
         final long now = System.currentTimeMillis();
