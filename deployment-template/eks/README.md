@@ -1,5 +1,5 @@
 # Deploying on Amazon EKS
-This directory contains an _ingress.yaml_ file capable of deploying an [AWS Application Load Balancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html)
+This directory contains an [ingress.yaml](ingress.yaml) file capable of deploying an [AWS Application Load Balancer](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/introduction.html)
 so that traffic can be routed to the Data Prepper cluster. 
 
 ### Prerequisites 

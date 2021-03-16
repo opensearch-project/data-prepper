@@ -1,7 +1,7 @@
 # Deploying with Kubernetes (k8s)
-This directory contains a Kubernetes configuration file capable of provisioning a Data Prepper cluster.
+This directory contains a Kubernetes [configuration file](data-prepper-k8s.yaml) capable of provisioning a Data Prepper cluster.
 
-Use [kubectl](https://kubernetes.io/docs/reference/kubectl/kubectl/) to apply these configurations files with `kubectl apply -f data-prepper.yaml` 
+Use [kubectl](https://kubernetes.io/docs/reference/kubectl/kubectl/) to apply these configurations files with `kubectl apply -f data-prepper-k8s.yaml` 
 
 This will provision a scalable Data Prepper cluster capable of receiving trace data, however it is up to the user to decide how the service will be accessed by clients. A few examples include:
 1. Adding a load balancer with an ingress controller (for server-side load balancing)

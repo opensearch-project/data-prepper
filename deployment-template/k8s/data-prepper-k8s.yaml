@@ -59,6 +59,23 @@ spec:
 status:
   loadBalancer: {}
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: data-prepper
+  name: data-prepper-metrics
+spec:
+  type: NodePort
+  ports:
+    - name: "4900"
+      port: 4900
+      targetPort: 4900
+  selector:
+    app: data-prepper
+status:
+  loadBalancer: {}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
