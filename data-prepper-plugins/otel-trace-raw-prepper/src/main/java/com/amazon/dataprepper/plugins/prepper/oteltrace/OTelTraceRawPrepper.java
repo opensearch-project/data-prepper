@@ -5,6 +5,7 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.plugins.prepper.oteltrace.model.MapDBTraceIdTraceGroupCache;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.OTelProtoHelper;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpan;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanBuilder;
@@ -58,6 +59,8 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     // TODO: introduce a gauge to monitor the size
     private final Map<String, RawSpanSet> traceIdRawSpanSetMap = new ConcurrentHashMap<>();
 
+    private final MapDBTraceIdTraceGroupCache traceIdTraceGroupCache;
+
     private long lastTraceFlushTime = 0L;
 
     private final ReentrantLock traceFlushLock = new ReentrantLock();
@@ -71,6 +74,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                 OtelTraceRawPrepperConfig.ROOT_SPAN_FLUSH_DELAY, OtelTraceRawPrepperConfig.DEFAULT_ROOT_SPAN_FLUSH_DELAY);
         Preconditions.checkArgument(rootSpanFlushDelay <= traceFlushInterval,
                 "rootSpanSetFlushDelay should not be greater than traceFlushInterval.");
+        traceIdTraceGroupCache = new MapDBTraceIdTraceGroupCache(pluginSetting.getNumberOfProcessWorkers(), OtelTraceRawPrepperConfig.DEFAULT_TRACE_ID_TTL);
         spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
         resourceSpanErrorsCounter = pluginMetrics.counter(RESOURCE_SPANS_PROCESSING_ERRORS);
         totalProcessingErrorsCounter = pluginMetrics.counter(TOTAL_PROCESSING_ERRORS);
@@ -122,6 +126,8 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     }
 
     private void processRootRawSpan(final RawSpan rawSpan) {
+        // TODO: safe-guard against null traceGroup for rootSpan?
+        traceIdTraceGroupCache.put(rawSpan.getTraceId(), rawSpan.getTraceGroup());
         final long now = System.currentTimeMillis();
         final long nowPlusOffset = now + rootSpanFlushDelay;
         final DelayedParentSpan delayedParentSpan = new DelayedParentSpan(rawSpan, nowPlusOffset);
@@ -197,13 +203,22 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                     Iterator<Map.Entry<String, RawSpanSet>> entryIterator = traceIdRawSpanSetMap.entrySet().iterator();
                     while (entryIterator.hasNext()) {
                         Map.Entry<String, RawSpanSet> entry = entryIterator.next();
+                        String traceId = entry.getKey();
+                        String traceGroup = traceIdTraceGroupCache.get(traceId);
                         RawSpanSet rawSpanSet = entry.getValue();
                         long traceTime = rawSpanSet.getTimeSeen();
                         if (now - traceTime >= traceFlushInterval) {
                             Set<RawSpan> rawSpans = rawSpanSet.getRawSpans();
-                            for (RawSpan rawSpan : rawSpans) {
-                                recordsToFlush.add(rawSpan);
-                                log.warn("Missing root span for SpanId: {}", rawSpan.getSpanId());
+                            if (traceGroup != null) {
+                                rawSpans.forEach(rawSpan -> {
+                                    rawSpan.setTraceGroup(traceGroup);
+                                    recordsToFlush.add(rawSpan);
+                                });
+                            } else {
+                                rawSpans.forEach(rawSpan -> {
+                                    recordsToFlush.add(rawSpan);
+                                    log.warn("Missing root span for SpanId: {}", rawSpan.getSpanId());
+                                });
                             }
 
                             entryIterator.remove();
@@ -227,7 +242,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
 
     @Override
     public void shutdown() {
-
+        traceIdTraceGroupCache.delete();
     }
 
     class DelayedParentSpan implements Delayed {
