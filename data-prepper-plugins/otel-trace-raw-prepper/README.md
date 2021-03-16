@@ -11,8 +11,8 @@ prepper:
 
 ## Configuration
 
-* `root_span_flush_delay`: An `int` represents the time interval in seconds to flush all the root spans in the prepper together with their descendants. Default to 5.
-* `trace_flush_interval`: An `int` represents the time interval in seconds to flush all the descendant spans without any root span. Default to 30.
+* `root_span_flush_delay`: An `int` represents the time interval in seconds to flush all the root spans in the prepper together with their descendants. Default to 30.
+* `trace_flush_interval`: An `int` represents the time interval in seconds to flush all the descendant spans without any root span. Default to 180.
 
 ## Metrics
 Apart from common metrics in [AbstractPrepper](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/prepper/AbstractPrepper.java), otel-trace-raw-prepper introduces the following custom metrics.
