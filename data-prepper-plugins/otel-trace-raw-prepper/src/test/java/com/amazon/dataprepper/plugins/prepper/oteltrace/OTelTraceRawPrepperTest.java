@@ -76,6 +76,7 @@ public class OTelTraceRawPrepperTest {
 
     @After
     public void tearDown() {
+        oTelTraceRawPrepper.shutdown();
         executorService.shutdown();
     }
 
