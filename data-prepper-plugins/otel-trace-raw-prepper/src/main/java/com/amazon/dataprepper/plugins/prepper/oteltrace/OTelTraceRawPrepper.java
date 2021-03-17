@@ -74,7 +74,9 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                 OtelTraceRawPrepperConfig.ROOT_SPAN_FLUSH_DELAY, OtelTraceRawPrepperConfig.DEFAULT_ROOT_SPAN_FLUSH_DELAY);
         Preconditions.checkArgument(rootSpanFlushDelay <= traceFlushInterval,
                 "rootSpanSetFlushDelay should not be greater than traceFlushInterval.");
-        traceIdTraceGroupCache = new MapDBTraceIdTraceGroupCache(pluginSetting.getNumberOfProcessWorkers(), OtelTraceRawPrepperConfig.DEFAULT_TRACE_ID_TTL);
+        traceIdTraceGroupCache = new MapDBTraceIdTraceGroupCache(
+                pluginSetting.getNumberOfProcessWorkers(),
+                SEC_TO_MILLIS * OtelTraceRawPrepperConfig.DEFAULT_TRACE_ID_TTL);
         spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
         resourceSpanErrorsCounter = pluginMetrics.counter(RESOURCE_SPANS_PROCESSING_ERRORS);
         totalProcessingErrorsCounter = pluginMetrics.counter(TOTAL_PROCESSING_ERRORS);
