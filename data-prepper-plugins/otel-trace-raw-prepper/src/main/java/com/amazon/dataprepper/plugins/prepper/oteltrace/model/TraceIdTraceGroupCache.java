@@ -9,11 +9,11 @@ public class TraceIdTraceGroupCache {
 
     private final Cache<String, String> map;
 
-    public TraceIdTraceGroupCache(final int concurrencyLevel, final long maximumSize, final long ttl) {
+    public TraceIdTraceGroupCache(final int concurrencyLevel, final long maximumSize, final long ttlSeconds) {
         map = CacheBuilder.newBuilder()
                 .concurrencyLevel(concurrencyLevel)
                 .maximumSize(maximumSize)
-                .expireAfterWrite(ttl, TimeUnit.SECONDS)
+                .expireAfterWrite(ttlSeconds, TimeUnit.SECONDS)
                 .build();
     }
 
