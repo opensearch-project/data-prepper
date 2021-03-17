@@ -222,7 +222,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                             } else {
                                 rawSpans.forEach(rawSpan -> {
                                     recordsToFlush.add(rawSpan);
-                                    log.warn("Missing root span for SpanId: {}", rawSpan.getSpanId());
+                                    log.warn("Missing trace group for SpanId: {}", rawSpan.getSpanId());
                                 });
                             }
 
