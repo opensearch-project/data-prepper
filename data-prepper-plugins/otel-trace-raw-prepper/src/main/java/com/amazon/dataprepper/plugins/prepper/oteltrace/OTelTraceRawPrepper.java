@@ -9,9 +9,10 @@ import com.amazon.dataprepper.plugins.prepper.oteltrace.model.OTelProtoHelper;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpan;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanBuilder;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanSet;
-import com.amazon.dataprepper.plugins.prepper.oteltrace.model.TraceIdTraceGroupCache;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Preconditions;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.primitives.Ints;
 import io.micrometer.core.instrument.Counter;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
@@ -59,7 +60,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     // TODO: introduce a gauge to monitor the size
     private final Map<String, RawSpanSet> traceIdRawSpanSetMap = new ConcurrentHashMap<>();
 
-    private final TraceIdTraceGroupCache traceIdTraceGroupCache;
+    private final Cache<String, String> traceIdTraceGroupCache;
 
     private long lastTraceFlushTime = 0L;
 
@@ -75,10 +76,11 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
         Preconditions.checkArgument(rootSpanFlushDelay <= traceFlushInterval,
                 "rootSpanSetFlushDelay should not be greater than traceFlushInterval.");
         final int numProcessWorkers = pluginSetting.getNumberOfProcessWorkers();
-        traceIdTraceGroupCache = new TraceIdTraceGroupCache(
-                numProcessWorkers,
-                OtelTraceRawPrepperConfig.MAX_TRACE_ID_CACHE_SIZE_PER_THREAD * numProcessWorkers,
-                OtelTraceRawPrepperConfig.DEFAULT_TRACE_ID_TTL_SEC);
+        traceIdTraceGroupCache = CacheBuilder.newBuilder()
+                .concurrencyLevel(numProcessWorkers)
+                .maximumSize(OtelTraceRawPrepperConfig.MAX_TRACE_ID_CACHE_SIZE_PER_THREAD * numProcessWorkers)
+                .expireAfterWrite(OtelTraceRawPrepperConfig.DEFAULT_TRACE_ID_TTL_SEC, TimeUnit.SECONDS)
+                .build();
         spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
         resourceSpanErrorsCounter = pluginMetrics.counter(RESOURCE_SPANS_PROCESSING_ERRORS);
         totalProcessingErrorsCounter = pluginMetrics.counter(TOTAL_PROCESSING_ERRORS);
@@ -209,7 +211,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                     while (entryIterator.hasNext()) {
                         Map.Entry<String, RawSpanSet> entry = entryIterator.next();
                         String traceId = entry.getKey();
-                        String traceGroup = traceIdTraceGroupCache.get(traceId);
+                        String traceGroup = traceIdTraceGroupCache.getIfPresent(traceId);
                         RawSpanSet rawSpanSet = entry.getValue();
                         long traceTime = rawSpanSet.getTimeSeen();
                         if (now - traceTime >= traceFlushInterval) {
@@ -247,7 +249,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
 
     @Override
     public void shutdown() {
-        traceIdTraceGroupCache.delete();
+        traceIdTraceGroupCache.cleanUp();
     }
 
     class DelayedParentSpan implements Delayed {
