@@ -10,6 +10,7 @@ import com.amazon.dataprepper.plugins.prepper.oteltrace.model.OTelProtoHelper;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpan;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanBuilder;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanSet;
+import com.amazon.dataprepper.plugins.prepper.oteltrace.model.TraceIdTraceGroupCache;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Ints;
@@ -59,7 +60,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     // TODO: introduce a gauge to monitor the size
     private final Map<String, RawSpanSet> traceIdRawSpanSetMap = new ConcurrentHashMap<>();
 
-    private final MapDBTraceIdTraceGroupCache traceIdTraceGroupCache;
+    private final TraceIdTraceGroupCache traceIdTraceGroupCache;
 
     private long lastTraceFlushTime = 0L;
 
@@ -74,9 +75,11 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                 OtelTraceRawPrepperConfig.ROOT_SPAN_FLUSH_DELAY, OtelTraceRawPrepperConfig.DEFAULT_ROOT_SPAN_FLUSH_DELAY);
         Preconditions.checkArgument(rootSpanFlushDelay <= traceFlushInterval,
                 "rootSpanSetFlushDelay should not be greater than traceFlushInterval.");
-        traceIdTraceGroupCache = new MapDBTraceIdTraceGroupCache(
-                pluginSetting.getNumberOfProcessWorkers(),
-                SEC_TO_MILLIS * OtelTraceRawPrepperConfig.DEFAULT_TRACE_ID_TTL);
+        final int numProcessWorkers = pluginSetting.getNumberOfProcessWorkers();
+        traceIdTraceGroupCache = new TraceIdTraceGroupCache(
+                numProcessWorkers,
+                OtelTraceRawPrepperConfig.MAX_TRACE_ID_CACHE_SIZE_PER_THREAD * numProcessWorkers,
+                OtelTraceRawPrepperConfig.DEFAULT_TRACE_ID_TTL);
         spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
         resourceSpanErrorsCounter = pluginMetrics.counter(RESOURCE_SPANS_PROCESSING_ERRORS);
         totalProcessingErrorsCounter = pluginMetrics.counter(TOTAL_PROCESSING_ERRORS);
