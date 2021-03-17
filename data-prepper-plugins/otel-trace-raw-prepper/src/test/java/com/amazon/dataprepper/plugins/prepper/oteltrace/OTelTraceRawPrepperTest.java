@@ -70,6 +70,7 @@ public class OTelTraceRawPrepperTest {
                     put(OtelTraceRawPrepperConfig.ROOT_SPAN_FLUSH_DELAY, TEST_ROOT_SPAN_FLUSH_DELAY);
                 }});
         pluginSetting.setPipelineName("pipelineOTelTrace");
+        pluginSetting.setProcessWorkers(2);
         oTelTraceRawPrepper = new OTelTraceRawPrepper(pluginSetting);
         executorService = Executors.newFixedThreadPool(2);
     }
