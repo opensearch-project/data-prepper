@@ -1,16 +1,55 @@
 # Monitoring
-Metrics in Data Prepper are instrumented using [Micrometer.io](https://micrometer.io/).
-Each plugin (and if needed, each class within a plugin) is responsible for posting relevant 
-metrics. Prometheus is used as the metrics backend, and metrics are served from the "/metrics/prometheus"
-endpoint.
+Metrics in Data Prepper are instrumented using [Micrometer.io](https://micrometer.io/). There are two types of metrics: 
+(1) JVM and system metrics; (2) Plugin metrics. Prometheus is used as the metrics backend.
 
-## Naming
+## JVM and system metrics
+
+JVM and system metrics are Data Prepper instance runtime metrics including metrics on classloaders, memory, 
+garbage collection, threads, etc. See https://micrometer.io/docs/ref/jvm for details.
+
+### Naming
+
+JVM and system metrics in Data Prepper follows pre-defined names in Micrometer.io, e.g. `jvm_classes_loaded`, `jvm_memory_used`.
+
+### Serving
+
+Metrics are served from the **/metrics/sys** endpoint on the Data Prepper server. The format
+is a text Prometheus scrape. This port can be used for any frontend which accepts Prometheus metrics, e.g. 
+[Grafana](https://prometheus.io/docs/visualization/grafana/).
+
+## Plugin metrics
+
+Each plugin (and if needed, each class within a plugin) is responsible for posting relevant 
+metrics. Besides custom metrics introduced by specific plugins, data-prepper-api already introduced the following common metrics for
+plugin types.
+
+1. AbstractBuffer
+    - Counter
+        - `recordsWritten`: number of records written into a buffer.
+        - `recordsRead`: number of records read from a buffer.
+        - `recordsInFlight`: number of records read from a buffer and being processed by data-prepper downstreams (e.g. prepper, sink).
+        - `recordsProcessed`: number of records read from a buffer and marked as processed.
+        - `writeTimeouts`: count of write timeouts in a buffer.
+    - Timer
+        - `readTimeElapsed`: time elapsed while reading from a buffer
+        - `checkpointTimeElapsed`: time elapsed while checkpointing.
+2. AbstractPrepper
+    - Counter
+        - `recordsIn`: number of ingress records into a prepper.
+        - `recordsOut`: number of egress records from a prepper.
+    - Timer
+        - `timeElapsed`: time elapsed during execution of a prepper.
+3. AbstractSink
+    - Counter
+        - `recordsIn`: number of ingress records into a sink.
+    - Timer
+        - `timeElapsed`: time elapsed during execution of a sink. 
+
+### Naming
 Metrics follow a naming convention of **PIPELINE_NAME_PLUGIN_NAME_METRIC_NAME** . For example, a 
 **recordsIn** metric for the **elasticsearch-sink** plugin in a pipeline named **output-pipeline**
-would have a qualified name of **output-pipeline_elasticsearch-sink_recordsIn**.
+would have a qualified name of **output-pipeline_elasticsearch_sink_recordsIn**.
 
-## Serving
+### Serving
 Metrics are served from the **metrics/prometheus** endpoint on the Data Prepper server. The format
 is a text Prometheus scrape. This port can be used for any frontend which accepts Prometheus metrics.
-
-[Example](https://prometheus.io/docs/visualization/grafana/) setup for Grafana frontend.
