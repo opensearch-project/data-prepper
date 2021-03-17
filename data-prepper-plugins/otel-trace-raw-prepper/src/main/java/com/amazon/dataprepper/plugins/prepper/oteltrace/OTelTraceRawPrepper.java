@@ -69,16 +69,16 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     public OTelTraceRawPrepper(final PluginSetting pluginSetting) {
         super(pluginSetting);
         traceFlushInterval = SEC_TO_MILLIS * pluginSetting.getLongOrDefault(
-                OtelTraceRawPrepperConfig.TRACE_FLUSH_INTERVAL, OtelTraceRawPrepperConfig.DEFAULT_TG_FLUSH_INTERVAL);
+                OtelTraceRawPrepperConfig.TRACE_FLUSH_INTERVAL, OtelTraceRawPrepperConfig.DEFAULT_TG_FLUSH_INTERVAL_SEC);
         rootSpanFlushDelay = SEC_TO_MILLIS * pluginSetting.getLongOrDefault(
-                OtelTraceRawPrepperConfig.ROOT_SPAN_FLUSH_DELAY, OtelTraceRawPrepperConfig.DEFAULT_ROOT_SPAN_FLUSH_DELAY);
+                OtelTraceRawPrepperConfig.ROOT_SPAN_FLUSH_DELAY, OtelTraceRawPrepperConfig.DEFAULT_ROOT_SPAN_FLUSH_DELAY_SEC);
         Preconditions.checkArgument(rootSpanFlushDelay <= traceFlushInterval,
                 "rootSpanSetFlushDelay should not be greater than traceFlushInterval.");
         final int numProcessWorkers = pluginSetting.getNumberOfProcessWorkers();
         traceIdTraceGroupCache = new TraceIdTraceGroupCache(
                 numProcessWorkers,
                 OtelTraceRawPrepperConfig.MAX_TRACE_ID_CACHE_SIZE_PER_THREAD * numProcessWorkers,
-                OtelTraceRawPrepperConfig.DEFAULT_TRACE_ID_TTL);
+                OtelTraceRawPrepperConfig.DEFAULT_TRACE_ID_TTL_SEC);
         spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
         resourceSpanErrorsCounter = pluginMetrics.counter(RESOURCE_SPANS_PROCESSING_ERRORS);
         totalProcessingErrorsCounter = pluginMetrics.counter(TOTAL_PROCESSING_ERRORS);
