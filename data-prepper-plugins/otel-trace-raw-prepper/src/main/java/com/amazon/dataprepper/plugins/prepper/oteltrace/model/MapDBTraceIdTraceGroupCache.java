@@ -7,7 +7,6 @@ import org.mapdb.Serializer;
 import java.io.File;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
 
 public class MapDBTraceIdTraceGroupCache {
     private static final String DB_PATH = "data/otel-trace-raw/";
@@ -55,14 +54,6 @@ public class MapDBTraceIdTraceGroupCache {
 
     public String get(final String key) {
         return map.get(key);
-    }
-
-    public String remove(final String key) {
-        return map.remove(key);
-    }
-
-    public String compute(final String key, final BiFunction<String, String, String> remappingFunction) {
-        return map.compute(key, remappingFunction);
     }
 
     public Set<Map.Entry<String, String>> entrySet() {
