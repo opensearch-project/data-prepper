@@ -5,7 +5,6 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.prepper.oteltrace.model.MapDBTraceIdTraceGroupCache;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.OTelProtoHelper;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpan;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanBuilder;
