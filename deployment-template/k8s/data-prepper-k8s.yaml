@@ -39,7 +39,7 @@ data:
         - service_map_stateful:
       sink:
         - stdout:
-  data-prepper.yaml: |
+  data-prepper-config.yaml: |
     ssl: false
 ---
 apiVersion: v1
@@ -100,7 +100,7 @@ spec:
             - -jar
             - /usr/share/data-prepper/data-prepper.jar
             - /etc/data-prepper/pipelines.yaml
-            - /etc/data-prepper/data-prepper.yaml
+            - /etc/data-prepper/data-prepper-config.yaml
           image: amazon/opendistro-for-elasticsearch-data-prepper:latest
           name: data-prepper
           ports:

@@ -59,7 +59,7 @@ services:
     volumes:
       - ./resources/data-prepper-wait-for-odfe-and-start.sh:/usr/share/data-prepper/data-prepper-wait-for-odfe-and-start.sh
       - ./resources/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml
-      - ./resources/data-prepper.yaml:/usr/share/data-prepper/data-prepper.yaml
+      - ./resources/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
       - ../../../shared-config/log4j2.properties:/usr/share/data-prepper/log4j.properties
       - ../../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
       - ../../demo/test_keystore.p12:/usr/share/data-prepper/test_keystore.p12
