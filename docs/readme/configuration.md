@@ -7,14 +7,14 @@ A Data Prepper instance requires 2 configuration files to run, and allows an opt
 
 The resulting `.jar` file expects the pipeline configuration file path followed by the server configuration file path. Example:
 ```
-java -jar data-prepper-core-$VERSION.jar pipelines.yml data-prepper.yml
+java -jar data-prepper-core-$VERSION.jar pipelines.yaml data-prepper-config.yaml
 ```
 
 Optionally add `"-Dlog4j.configurationFile=config/log4j2.properties"` to the command if you would like to pass a custom Log4j 2 configuration file. If no properties file is provided, Data Prepper will default to the log4j2.properties file in the shared-config directory.
 
 ## Pipeline Configuration
 
-Example Pipeline configuration file (pipelines.yml):
+Example Pipeline configuration file (pipelines.yaml):
 
 ```yaml
 entry-pipeline:
@@ -60,7 +60,7 @@ Data Prepper allows the following properties to be configured:
 * `privateKeyPassword` string password for private key within keystore. Optional, defaults to empty string
 * `serverPort`: integer port number to use for server APIs. Defaults to `4900`
 
-Example Data Prepper configuration file (data-prepper.yml):
+Example Data Prepper configuration file (data-prepper-config.yaml):
 ```yaml
 ssl: true
 keyStoreFilePath: "/usr/share/data-prepper/keystore.jks"

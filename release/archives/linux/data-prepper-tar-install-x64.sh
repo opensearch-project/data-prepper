@@ -16,7 +16,7 @@ if [[ $# -ne 2 ]]
   then
     echo
     echo "Error: Paths to pipeline and data-prepper configuration files are required. Example:"
-    echo "./data-prepper-tar-install.sh config/example-pipelines.yml config/example-data-prepper.yml"
+    echo "./data-prepper-tar-install.sh config/example-pipelines.yaml config/example-data-prepper-config.yaml"
     echo
     exit 1
 fi

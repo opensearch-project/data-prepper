@@ -12,14 +12,14 @@ This will provision a scalable Data Prepper cluster capable of receiving trace d
 
 ## File Contents
 ### kind: ConfigMap
-Contains a [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) which provides pods the 2 configuration files required to launch a Data Prepper instance: _pipelines.yaml_ and _data-prepper.yaml_.
+Contains a [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) which provides pods the 2 configuration files required to launch a Data Prepper instance: _pipelines.yaml_ and _data-prepper-config.yaml_.
 
 #### pipelines.yaml
 This file contains the standard Trace Analytics usecase pipeline configuration. A few adjustments are needed by the user:
 1. Replace the 2 `stdout` sinks with Elasticsearch sinks to actually send data to Elasticsearch.
 2. Optionally enable TLS by providing the necessary key files for the `otel_trace_source` and `peer_forwarder` plugins.
 
-#### data-prepper.yaml
+#### data-prepper-config.yaml
 This file disables TLS for the Data Prepper service APIs (e.g. /metrics), so please adjust this if you wish to enable encrpytion in transit.
 
 ### kind: Service

@@ -7,5 +7,5 @@ Users are able to override these logging settings by setting their own "log4j.co
 
 Example:
 ```
-java "-Dlog4j.configurationFile=config/custom-log4j2.properties" -jar data-prepper-core-$VERSION.jar pipelines.yml data-prepper.yml
+java "-Dlog4j.configurationFile=config/custom-log4j2.properties" -jar data-prepper-core-$VERSION.jar pipelines.yaml data-prepper-config.yaml
 ```
