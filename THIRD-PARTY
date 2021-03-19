@@ -1,41 +1,37 @@
-** Log4j-core; version 2.11.0 --
-https://git-wip-us.apache.org/repos/asf?p=logging-log4j2.git;a=tree;h=a5864fb8b9f87a699d349c3e688f0cb3b78baa35;hb=097426a2154a6079cddd897502b6fb3ce5d50338
-** android annotations; version 4.1.4 --
+**  Log4j-core; version 2.14.0 -- https://logging.apache.org/log4j/2.x/
+** Amazon ION Java; version 1.0.2 -- https://github.com/amzn/ion-java
+** android annotations; version 4.1.1.4 --
 https://github.com/androidannotations/androidannotations
 ** Apache Lucene; version 8.5.1 -- http://lucene.apache.org/
-** armeria; version 1.0.0 -- https://github.com/line/armeria
+** armeria; version 1.5.0 -- https://github.com/line/armeria
+** armeria-grpc; version 1.5.0 -- https://github.com/line/armeria
+** aws-java-sdk-core; version 1.11.965 -- https://aws.amazon.com/sdk-for-java/
 ** aws-request-signing-apache-interceptor; version b3772780da --
 https://github.com/awslabs/aws-request-signing-apache-interceptor
-** aws-sdk-java; version 1.11 -- https://aws.amazon.com/sdk-for-java/
 ** bval; version 2.0.4 -- https://github.com/apache/bval
 ** byte-buddy; version 1.10.9 -- http://bytebuddy.net
-** Caffeine; version 2.8.5 -- https://github.com/ben-manes/caffeine
 ** commons-codec; version 1.15 -- https://github.com/apache/commons-codec
-** commons-logging; version 1.1.3 --
+** commons-logging; version 1.2 --
 https://github.com/apache/commons-logging/tree/LOGGING_1_1_3
-** Elasticsearch; version 7.8 -- https://github.com/elastic/elasticsearch
-** Elasticsearch Java High Level Rest Client; version 7.8.0 --
+** Elasticsearch; version 7.8.0 -- https://github.com/elastic/elasticsearch
+** Elasticsearch Java High Level Rest Client; version 7.8.1 --
 https://www.elastic.co/guide/en/elasticsearch/client/java-rest/master/java-rest-high.html
 ** Error Prone; version 2.3.4 -- https://github.com/google/error-prone
-** fastutil; version 8.5.1 -- https://github.com/vigna/fastutil
 ** Findbugs Jsr305; version 3.0.2 --
 https://search.maven.org/artifact/com.google.code.findbugs/jsr305/3.0.2/jar
 ** Google Gson; version 2.8.6 -- https://github.com/google/gson
-** gRPC; version 1.31.1 -- https://github.com/grpc/grpc
-** gRPC; version 1.17.0 -- https://github.com/grpc/grpc
+** gRPC; version 1.35.0 -- https://github.com/grpc/grpc
 ** guava; version 29.0 -- https://github.com/google/guava
 ** Hppc; version 0.8.1 --
 https://github.com/carrotsearch/hppc/blob/master/LICENSE.txt
 ** httpcomponents-core; version 4.4.12 --
 https://github.com/apache/httpcomponents-core/blob/rel/v4.4.1
-** J2ObjC; version 1.3.0 -- https://developers.google.com/j2objc/
-** Jackson; version 2.10 -- http://github.com/FasterXML/jackson
-** JavaAssist; version 3.21.0-GA --
+** J2ObjC; version 1.3 -- https://developers.google.com/j2objc/
+** Jackson; version 2.12.1 -- http://github.com/FasterXML/jackson
+** JavaAssist; version 3.26.0-GA --
 https://github.com/jboss-javassist/javassist
-** JavaxValidationApi; version 2.1.0.Final --
-https://github.com/eclipse-ee4j/beanvalidation-api
-** JCTools; version 3.1.0 -- https://github.com/JCTools/JCTools
-** jetbrains-annotations; version 13.x --
+** JavaxValidationApi; version 2.0.1.Final -- http://beanvalidation.org
+** jetbrains-annotations; version 13.0 --
 https://github.com/JetBrains/java-annotations/blob/master/LICENSE.txt
 ** jffi; version 1.2.23 -- https://github.com/jnr/jffi/blob/jffi-1.2.23
 ** jna; version 4.5.1 -- https://github.com/java-native-access/jna
@@ -46,19 +42,20 @@ https://github.com/jnr/jnr-constants/tree/jnr-constants-0.9.15
 ** joda-time; version 2.10.4 -- http://www.joda.org/joda-time/
 ** Kotlin; version 1.2.71 -- https://github.com/JetBrains/kotlin
 ** lmdbjava; version 0.8.1 -- https://github.com/lmdbjava/lmdbjava
-** lucene-solr; version 8.5.1 --
-https://github.com/apache/lucene-solr/tree/releases/lucene-solr/8.5.1
+** log4j-slf4j-impl; version 2.14.0 -- https://logging.apache.org/log4j/2.x/
 ** lz4-java; version 1.3.0 -- https://github.com/lz4/lz4-java/tree/1.3.0
 ** MapDB; version 3.0.8 -- http://www.mapdb.org/
-** micrometer; version 1.5.1 --
+** micrometer; version 1.5.5 --
+https://github.com/micrometer-metrics/micrometer
+** micrometer-registry-prometheus; version 1.5.5 --
 https://github.com/micrometer-metrics/micrometer
 ** MustacheJava; version 0.9.6 -- https://github.com/spullara/mustache.java
-** netty 4.1.51; version 4.1.51 --
+** netty 4.1.51; version 4.1.58.Final --
 https://github.com/netty/netty/tree/netty-4.1.50.Final
 ** OpenTelemetry 0.10.0; version 0.10.0 --
 https://github.com/open-telemetry/opentelemetry-java
-** perfmark-api; version 0.19.0 -- https://github.com/perfmark/perfmark
-** SnakeYAML; version 1.26 -- https://bitbucket.org/asomov/snakeyaml
+** perfmark-api; version 0.23.0 -- https://github.com/perfmark/perfmark
+** SnakeYAML; version 1.28 -- http://www.snakeyaml.org
 ** t-digest; version 3.2 --
 https://github.com/tdunning/t-digest/tree/t-digest-3.2
 
@@ -269,6 +266,10 @@ limitations under the License.
 
     ResolverUtil.java
     Copyright 2005-2006 Tim Fennell
+* For Amazon ION Java see also this required NOTICE:
+    Amazon Ion Java
+    Copyright 2007-2019 Amazon.com, Inc. or its affiliates. All Rights
+    Reserved.
 * For android annotations see also this required NOTICE:
     Copyright (C) 2010-2016 eBusiness Information, Excilys Group
         Copyright (C) 2016-2020 the AndroidAnnotations project
@@ -312,30 +313,19 @@ limitations under the License.
     Please visit the official web site for more information:
 
       * https://armeria.dev/
+* For armeria-grpc see also this required NOTICE:
+    Armeria
+    =======
 
-    Copyright 2015 LINE Corporation
+    Please visit the official web site for more information:
+
+      * https://armeria.dev/
+* For aws-java-sdk-core see also this required NOTICE:
+    Copyright 2013-2018 Amazon.com, Inc. or its affiliates. All Rights
+    Reserved.
 * For aws-request-signing-apache-interceptor see also this required NOTICE:
     AWS Request Signing Interceptor
     Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-* For aws-sdk-java see also this required NOTICE:
-    AWS SDK for Java
-    Copyright 2010-2014 Amazon.com, Inc. or its affiliates. All Rights
-    Reserved.
-
-    This product includes software developed by
-    Amazon Technologies, Inc (http://www.amazon.com/).
-
-    **********************
-    THIRD PARTY COMPONENTS
-    **********************
-    This software includes third party software subject to the following
-    copyrights:
-    - XML parsing and utility functions from JetS3t - Copyright 2006-2009 James
-    Murty.
-    - PKCS#1 PEM encoded private key parsing and utility functions from
-    oauth.googlecode.com - Copyright 1998-2010 AOL Inc.
-
-    The licenses for these third party components are included in LICENSE.txt
 * For bval see also this required NOTICE:
     Apache BVal project
     Copyright 2010-2018 The Apache Software Foundation.
@@ -363,8 +353,6 @@ limitations under the License.
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-* For Caffeine see also this required NOTICE:
-    Copyright 2020 Ben Manes
 * For commons-codec see also this required NOTICE:
     Apache Commons Codec
     Copyright 2002-2020 The Apache Software Foundation
@@ -387,7 +375,7 @@ limitations under the License.
     Copyright (c) 2008 Alexander Beider & Stephen P. Morse.
 * For commons-logging see also this required NOTICE:
     Apache Commons Logging
-    Copyright 2003-2013 The Apache Software Foundation
+    Copyright 2003-2014 The Apache Software Foundation
 
     This product includes software developed at
     The Apache Software Foundation (http://www.apache.org/).
@@ -414,19 +402,12 @@ limitations under the License.
     Copyright 2018 The Error Prone Authors.
     Copyright 2019 The Error Prone Authors.
     Copyright 2020 The Error Prone Authors.
-* For fastutil see also this required NOTICE:
-    Copyright (C) 2002-2020 Sebastiano Vigna
 * For Findbugs Jsr305 see also this required NOTICE:
     Copyright (C) 2006, University of Maryland
 * For Google Gson see also this required NOTICE:
     Copyright (C) 2008-2018 Google Inc.
 * For gRPC see also this required NOTICE:
-    Dropbox, Inc.
-    Google Inc.
-    Skyscanner Ltd.
-    WeWork Companies Inc.
-* For gRPC see also this required NOTICE:
-    Copyright 2014 gRPC authors
+    Copyright 2014 The gRPC Authors
 * For guava see also this required NOTICE:
     Copyright (C) 2011 The Guava Authors
 * For Hppc see also this required NOTICE:
@@ -506,8 +487,6 @@ limitations under the License.
      * [JCommander](https://github.com/cbeust/jcommander) - Apache License 2.0
      * [SnakeYAML](https://bitbucket.org/asomov/snakeyaml/src) - Apache License
      2.0
-* For JCTools see also this required NOTICE:
-    Copyright 2012 Real Logic Ltd.
 * For jetbrains-annotations see also this required NOTICE:
     "Copyright 2000-2020 JetBrains s.r.o."
     "Copyright 2000-2016 JetBrains s.r.o."
@@ -581,9 +560,9 @@ limitations under the License.
      * limitations under the License.
      * #L%
      */
-* For lucene-solr see also this required NOTICE:
-    Apache Solr
-     Copyright 2006-2020 The Apache Software Foundation
+* For log4j-slf4j-impl see also this required NOTICE:
+    Apache Log4j SLF4J Binding
+    Copyright 1999-2020 The Apache Software Foundation
 * For lz4-java see also this required NOTICE:
     Copyright 2020 Adrien Grand and the lz4-java contributors.
 * For MapDB see also this required NOTICE:
@@ -644,6 +623,53 @@ limitations under the License.
     Micrometer
 
     Copyright (c) 2017-Present VMware, Inc. All Rights Reserved.
+* For micrometer-registry-prometheus see also this required NOTICE:
+    Micrometer
+
+    Copyright (c) 2017-Present VMware, Inc. All Rights Reserved.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+       https://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+    -------------------------------------------------------------------------------
+
+    This product contains a modified portion of
+    'io.netty.util.internal.logging',
+    in the Netty/Common library distributed by The Netty Project:
+
+      * Copyright 2013 The Netty Project
+      * License: Apache License v2.0
+      * Homepage: https://netty.io
+
+    This product contains a modified portion of 'StringUtils.isBlank()',
+    in the Commons Lang library distributed by The Apache Software Foundation:
+
+      * Copyright 2001-2019 The Apache Software Foundation
+      * License: Apache License v2.0
+      * Homepage: https://commons.apache.org/proper/commons-lang/
+
+    This product contains a modified portion of 'JsonUtf8Writer',
+    in the Moshi library distributed by Square, Inc:
+
+      * Copyright 2010 Google Inc.
+      * License: Apache License v2.0
+      * Homepage: https://github.com/square/moshi
+
+    This product contains a modified portion of the 'org.springframework.lang'
+    package in the Spring Framework library, distributed by VMware, Inc:
+
+      * Copyright 2002-2019 the original author or authors.
+      * License: Apache License v2.0
+      * Homepage: https://spring.io/projects/spring-framework
 * For MustacheJava see also this required NOTICE:
     Copyright 2010 RightTime, Inc.
 * For netty 4.1.51 see also this required NOTICE:
@@ -673,8 +699,7 @@ limitations under the License.
 
 ------
 
-** HdrHistogram; version 2.1.12 --
-https://mvnrepository.com/artifact/org.hdrhistogram/HdrHistogram/2.1.11
+** HdrHistogram; version 2.1.12 -- https://github.com/HdrHistogram/HdrHistogram
 Copyright (c) 2012, 2013, 2014, 2015, 2016 Gil Tene
  Copyright (c) 2014 Michael Barker
  Copyright (c) 2014 Matt Warren
@@ -721,45 +746,6 @@ the Author.
  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  THE POSSIBILITY OF SUCH DAMAGE.
-
-------
-
-** google-protobuf; version 3.13.0 --
-https://github.com/protocolbuffers/protobuf
-Copyright 2008 Google Inc.  All rights reserved.
-
-Copyright 2008 Google Inc.  All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
-
-    * Redistributions of source code must retain the above copyright
-notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above
-copyright notice, this list of conditions and the following disclaimer
-in the documentation and/or other materials provided with the
-distribution.
-    * Neither the name of Google Inc. nor the names of its
-contributors may be used to endorse or promote products derived from
-this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-Code generated by the Protocol Buffer compiler is owned by the owner
-of the input file used when generating it.  This code is not
-standalone and requires a support library to be linked with it.  This
-support library is itself covered by the above license.
 
 ------
 
@@ -844,8 +830,60 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 ------
 
-** eclipse-collections; version 9.x --
-https://github.com/eclipse/eclipse-collections/tree/11.0.0.M1
+** google-protobuf; version 3.15.3 --
+https://github.com/protocolbuffers/protobuf
+Copyright 2008 Google Inc.  All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+    * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+    * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Code generated by the Protocol Buffer compiler is owned by the owner
+of the input file used when generating it.  This code is not
+standalone and requires a support library to be linked with it.  This
+support library is itself covered by the above license.
+
+------
+
+** reactive-streams; version 1.0.3 --
+https://github.com/reactive-streams/reactive-streams-jvm/tree/v1.0.3
+No copyright statement found
+
+Licensed under Public Domain (CC0)
+
+To the extent possible under law, the person who associated CC0 with
+this code has waived all copyright and related or neighboring
+rights to this code.
+
+You should have received a copy of the CC0 legalcode along with this
+work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
+
+------
+
+** eclipse-collections; version 11.0.0.M1 --
+https://github.com/eclipse/eclipse-collections
 Copyright (c) 2016 Shotaro Sano.
 
 Copyright (c) 2015 Goldman Sachs.
@@ -1054,7 +1092,7 @@ in any resulting litigation.
 ------
 
 ** common-annotations-api; version 1.3.5 --
-https://github.com/eclipse-ee4j/common-annotations-api/tree/1.3.5
+https://projects.eclipse.org/projects/ee4j.ca
 Notices for Jakarta Annotations
 
 This content is produced and maintained by the Jakarta Annotations project.
@@ -1749,7 +1787,7 @@ SOFTWARE.
 
 ------
 
-** curiostack; version protobuf-jackson-1.1.0 --
+** curiostack; version protobuf-jackson-1.2.0 --
 https://github.com/curioswitch/curiostack/tree/protobuf-jackson-1.1.0
 Copyright (c) 2020 Choko (choko@curioswitch.org)
 
@@ -1777,7 +1815,7 @@ SOFTWARE.
 
 ------
 
-** animal-sniffer-annotations; version 1.18 --
+** animal-sniffer-annotations; version 1.19 --
 https://www.mojohaus.org/animal-sniffer/animal-sniffer-annotations/
 Copyright (c) 2009 codehaus.org.
 
@@ -1803,104 +1841,28 @@ THE SOFTWARE.
 
 ------
 
-** reactive-streams-jvm; version 1.0.3 --
-https://github.com/reactive-streams/reactive-streams-jvm/tree/v1.0.3
-Copyright 2014 Reactive Streams
-
-MIT No Attribution
-
-Copyright 2014 Reactive Streams
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-of the Software, and to permit persons to whom the Software is furnished to do
-so.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-------
-
-** checkerframework-checker-qual; version 2.11.1 --
-https://github.com/typetools/checker-framework/blob/master/checker-qual/LICENSE.txt
-Copyright (c) 2005 Brian Goetz and Tim Peierls
-Copyright 2004-present by the Checker Framework developers
-** checkerframework-checker-qual; version 2.11.1 --
-https://github.com/typetools/checker-framework/blob/master/checker-qual/LICENSE.txt
-Copyright (c) 2005 Brian Goetz and Tim Peierls
-Copyright 2004-present by the Checker Framework developers
-** JOpt-Simple; version 5.0.2 -- https://github.com/jopt-simple/jopt-simple
-Copyright (c) 2004-2014 Paul R. Holser, Jr.
-** slf4j-api; version 1.7.30 --
-https://mvnrepository.com/artifact/org.slf4j/slf4j-api
-Copyright (c) 2004-2017 QOS.ch
- All rights reserved.
-** slf4j-log4j12; version 1.7.30 -- http://www.slf4j.org
+** slf4j-api; version 1.7.30 -- http://www.slf4j.org
 Copyright (c) 2004-2017 QOS.ch
  All rights reserved.
 
-MIT License
+Permission is hereby granted, free  of charge, to any person obtaining
+ a  copy  of this  software  and  associated  documentation files  (the
+ "Software"), to  deal in  the Software without  restriction, including
+ without limitation  the rights to  use, copy, modify,  merge, publish,
+ distribute,  sublicense, and/or sell  copies of  the Software,  and to
+ permit persons to whom the Software  is furnished to do so, subject to
+ the following conditions:
 
-Copyright (c) <year> <copyright holders>
+ The  above  copyright  notice  and  this permission  notice  shall  be
+ included in all copies or substantial portions of the Software.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-of the Software, and to permit persons to whom the Software is furnished to do
-so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-------
-
-** BountyCastle Java; version 1.66 --
-https://github.com/bcgit/bc-java/tree/r1rv66
-Copyright (c) 2000 - 2020 The Legion of the Bouncy Castle Inc.
-(https://www.bouncycastle.org)
-
-Please note this should be read in the same way as the MIT license.
-
-Please also note this licensing model is made possible through funding from
-donations and the sale of support contracts.
-License
-
-Copyright (c) 2000 - 2020 The Legion of the Bouncy Castle Inc.
-(https://www.bouncycastle.org)
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-of the Software, and to permit persons to whom the Software is furnished to do
-so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+ THE  SOFTWARE IS  PROVIDED  "AS  IS", WITHOUT  WARRANTY  OF ANY  KIND,
+ EXPRESS OR  IMPLIED, INCLUDING  BUT NOT LIMITED  TO THE  WARRANTIES OF
+ MERCHANTABILITY,    FITNESS    FOR    A   PARTICULAR    PURPOSE    AND
+ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ OF CONTRACT, TORT OR OTHERWISE,  ARISING FROM, OUT OF OR IN CONNECTION
+ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ------
 
@@ -1934,7 +1896,35 @@ Copyright (C) 2010 Wayne Meissner
 
 ------
 
-** reflections; version 0.9.11 -- https://github.com/ronmamo/reflections
+** JOpt-Simple; version 5.0.2 -- https://github.com/jopt-simple/jopt-simple
+Copyright (c) 2004-2014 Paul R. Holser, Jr.
+
+ The MIT License
+
+ Copyright (c) 2004-2016 Paul R. Holser, Jr.
+
+ Permission is hereby granted, free of charge, to any person obtaining
+ a copy of this software and associated documentation files (the
+ "Software"), to deal in the Software without restriction, including
+ without limitation the rights to use, copy, modify, merge, publish,
+ distribute, sublicense, and/or sell copies of the Software, and to
+ permit persons to whom the Software is furnished to do so, subject to
+ the following conditions:
+
+ The above copyright notice and this permission notice shall be
+ included in all copies or substantial portions of the Software.
+
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+------
+
+** reflections; version 0.9.12 -- https://github.com/ronmamo/reflections
 Copyright (C) 2004 Sam Hocevar <sam@hocevar.net>
 
  DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
