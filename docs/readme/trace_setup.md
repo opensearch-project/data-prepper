@@ -14,7 +14,7 @@ receivers:
       grpc:
   zipkin:
 
-processors:
+preppers:
   batch/traces:
     timeout: 1s
     send_batch_size: 50
@@ -47,6 +47,7 @@ otel-trace-pipeline:
   delay: "100" 
   source:
     otel_trace_source:
+      ssl: false # Change this to enable encryption in transit
   buffer:
     bounded_blocking:
        # buffer_size is the number of ExportTraceRequest from otel-collector the data prepper should hold in memeory. 
@@ -77,22 +78,23 @@ raw-pipeline:
          # Make sure you configure sufficient heap
          # default value is 512
          buffer_size: 512
-         # The raw processor does bulk request to your elasticsearch sink, so configure the batch_size higher.
+         # The raw prepper does bulk request to your elasticsearch sink, so configure the batch_size higher.
          # If you use the recommended otel-collector setup each ExportTraceRequest could contain max 50 spans. https://github.com/opendistro-for-elasticsearch/data-prepper/tree/v0.7.x/deployment/aws
          # With 64 as batch size each worker thread could process upto 3200 spans (64 * 50)
          batch_size: 64
-  processor:
-    - otel_trace_raw_processor:
+  prepper:
+    - otel_trace_raw_prepper:
   sink:
     - elasticsearch:
         hosts: [ "your-es-endpoint" ]
         trace_analytics_raw: true
 service-map-pipeline:
+  workers: 8
   delay: "100"
   source:
     pipeline:
       name: "otel-trace-pipeline"
-  processor:
+  prepper:
     - service_map_stateful:
         # The window duration is the maximum length of time the data prepper stores the most recent trace data to evaluvate service-map relationships. 
         # The default is 3 minutes, this means we can detect relationships between services from spans reported in last 3 minutes.
