@@ -1,5 +1,30 @@
+buildscript {
+    ext {
+        es_version = System.getProperty("es.version", "7.8.0")
+        es_group = "org.elasticsearch"
+        distribution = 'oss-zip'
+    }
+
+    repositories {
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+
+    dependencies {
+        classpath "${es_group}.gradle:build-tools:${es_version}"
+    }
+}
+
 plugins {
     id 'java'
+}
+apply plugin: 'elasticsearch.testclusters'
+apply plugin: 'elasticsearch.build'
+apply plugin: 'elasticsearch.rest-test'
+
+// To pass elasticsearch plugin check
+ext {
+    licenseFile = rootProject.file('LICENSE')
+    noticeFile = rootProject.file('NOTICE')
 }
 
 group 'com.amazon'
@@ -10,5 +35,26 @@ repositories {
 }
 
 dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.12'
+    implementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:${es_version}"
+    testImplementation("junit:junit:4.13") {
+        exclude group:'org.hamcrest' // workaround for jarHell
+    }
 }
+
+// Resolve dependency conflict between ES sink and main project
+configurations.all {
+    resolutionStrategy {
+        force "org.slf4j:slf4j-api:1.7.30"
+        force "org.apache.logging.log4j:log4j-api:2.14.1"
+        force "org.apache.logging.log4j:log4j-core:2.14.1"
+    }
+}
+
+checkstyleMain.ignoreFailures = true
+checkstyleTest.ignoreFailures = true
+forbiddenApis.ignoreFailures = true
+testingConventions.enabled = false
+licenseHeaders.enabled = false
+dependencyLicenses.enabled = false
+thirdPartyAudit.enabled = false
+validateNebulaPom.enabled = false
