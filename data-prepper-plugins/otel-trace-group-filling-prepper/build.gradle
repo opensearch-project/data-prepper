@@ -1,0 +1,14 @@
+plugins {
+    id 'java'
+}
+
+group 'com.amazon'
+version '0.7.0-alpha'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
