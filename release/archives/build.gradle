@@ -200,6 +200,7 @@ CopySpec archiveToTar() {
         into('') {
             from("${rootDir}/LICENSE")
             from("${rootDir}/NOTICE")
+            from("${rootDir}/THIRD-PARTY")
             fileMode 0755
         }
     }

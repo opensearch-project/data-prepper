@@ -1,6 +1,4 @@
-# building on CentOS 7 to be in line with
-# https://github.com/opendistro-for-elasticsearch/opendistro-build/blob/master/elasticsearch
-
+# For the v0.7.0-alpha release we will use the amazoncorretto amazon linux.
 FROM amazoncorretto:15-al2-full
 ARG CONFIG_FILEPATH
 ARG JAR_FILE
