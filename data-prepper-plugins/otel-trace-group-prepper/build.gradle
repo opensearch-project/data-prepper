@@ -38,6 +38,8 @@ dependencies {
     compile project(':data-prepper-api')
     compile project(':data-prepper-plugins:elasticsearch')
     implementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:${es_version}"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.12.2"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.2"
     testImplementation("junit:junit:4.13") {
         exclude group:'org.hamcrest' // workaround for jarHell
     }
