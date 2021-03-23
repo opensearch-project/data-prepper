@@ -43,6 +43,7 @@ dependencies {
     testImplementation("junit:junit:4.13") {
         exclude group:'org.hamcrest' // workaround for jarHell
     }
+    testImplementation "org.elasticsearch.test:framework:${es_version}"
 }
 
 // Resolve dependency conflict between ES sink and main project

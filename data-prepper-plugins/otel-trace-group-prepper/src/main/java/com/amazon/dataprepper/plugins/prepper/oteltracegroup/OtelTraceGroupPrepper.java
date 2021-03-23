@@ -82,7 +82,8 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                         .must(QueryBuilders.matchQuery("traceId", traceId))
                         .must(QueryBuilders.matchQuery("parentSpanId", ""))
         );
-        searchSourceBuilder.storedFields(Arrays.asList("traceId", "traceGroup"));
+        searchSourceBuilder.docValueField("traceId");
+        searchSourceBuilder.docValueField("traceGroup");
         searchSourceBuilder.fetchSource(false);
         searchRequest.source(searchSourceBuilder);
         try {
@@ -101,7 +102,7 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                 // TODO: log missing traceGroup
                 return false;
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             // TODO: log error properly
             e.printStackTrace();
             return false;
