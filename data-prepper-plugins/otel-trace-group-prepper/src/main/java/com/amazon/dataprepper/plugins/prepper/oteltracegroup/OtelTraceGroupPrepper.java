@@ -13,6 +13,7 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.document.DocumentField;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -90,7 +91,12 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                 return false;
             }
             final SearchHit searchHit = searchHits[0];
-            final String traceGroup = searchHit.field("traceGroup").getValue();
+            final DocumentField traceGroupField = searchHit.field("traceGroup");
+            if (traceGroupField == null) {
+                LOG.info("Failed to populate traceGroup for spanId: {} due to traceGroup missing for traceId: {}", spanId, traceId);
+                return false;
+            }
+            final String traceGroup = traceGroupField.getValue();
             if (traceGroup != null && !traceGroup.isEmpty()) {
                 rawSpanMap.put("traceGroup", traceGroup);
                 return true;
