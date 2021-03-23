@@ -20,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -37,6 +36,7 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
 
     private final OtelTraceGroupPrepperConfig otelTraceGroupPrepperConfig;
     private final RestHighLevelClient restHighLevelClient;
+    // TODO: add metrics
 
     public OtelTraceGroupPrepper(final PluginSetting pluginSetting) {
         super(pluginSetting);
@@ -46,34 +46,33 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
 
     @Override
     public Collection<Record<String>> doExecute(final Collection<Record<String>> records) {
-        final List<Record<String>> RecordsOut = new LinkedList<>();
+        final List<Record<String>> recordsOut = new LinkedList<>();
         for (Record<String> record: records) {
             Map<String, Object> rawSpanMap = null;
             try {
                 rawSpanMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
                 final String traceGroup = (String) rawSpanMap.get("traceGroup");
                 if (traceGroup == null || traceGroup.equals("")) {
-                    boolean isSuccess = searchAndPopulateTraceGroup(rawSpanMap);
-                    if (!isSuccess) {
-                        // TODO: properly log the failure
-                        String spanId = (String) rawSpanMap.get("spanId");
-                        LOG.error("Failed to find traceGroup for spanId: {}", spanId);
+                    final boolean isSuccess = searchAndPopulateTraceGroup(rawSpanMap);
+                    if (isSuccess) {
+                        final String newData = OBJECT_MAPPER.writeValueAsString(rawSpanMap);
+                        recordsOut.add(new Record<>(newData, record.getMetadata()));
+                    } else {
+                        recordsOut.add(record);
                     }
-                    String newData = OBJECT_MAPPER.writeValueAsString(rawSpanMap);
-                    RecordsOut.add(new Record<>(newData, record.getMetadata()));
                 } else {
-                    RecordsOut.add(record);
+                    recordsOut.add(record);
                 }
             } catch (JsonProcessingException e) {
-                // TODO: log error properly
-                e.printStackTrace();
+                LOG.error("Failed to parse the record: [{}]", record.getData());
             }
         }
-        return null;
+        return recordsOut;
     }
 
     private boolean searchAndPopulateTraceGroup(final Map<String, Object> rawSpanMap) {
         final String traceId = (String) rawSpanMap.get("traceId");
+        final String spanId = (String) rawSpanMap.get("spanId");
         final SearchRequest searchRequest = new SearchRequest(RAW_INDEX_ALIAS);
         final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(
@@ -88,7 +87,7 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
             final SearchHit[] searchHits = searchResponse.getHits().getHits();
             if (searchHits.length == 0) {
-                // TODO: log failure to find traceGroup
+                LOG.info("Failed to populate traceGroup for spanId: {} due to root span not found for traceId: {}", spanId, traceId);
                 return false;
             }
             final SearchHit searchHit = searchHits[0];
@@ -97,12 +96,11 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                 rawSpanMap.put("traceGroup", traceGroup);
                 return true;
             } else {
-                // TODO: log missing traceGroup
+                LOG.info("Failed to populate traceGroup for spanId: {} due to traceGroup missing for traceId: {}", spanId, traceId);
                 return false;
             }
         } catch (Exception e) {
-            // TODO: log error properly
-            e.printStackTrace();
+            LOG.error("Failed to populate traceGroup for spanId: {} due to {}", spanId, e.getMessage());
             return false;
         }
     }
