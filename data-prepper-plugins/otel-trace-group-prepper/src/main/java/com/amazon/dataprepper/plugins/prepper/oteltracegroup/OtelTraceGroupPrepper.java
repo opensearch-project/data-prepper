@@ -48,9 +48,8 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
     public Collection<Record<String>> doExecute(final Collection<Record<String>> records) {
         final List<Record<String>> recordsOut = new LinkedList<>();
         for (Record<String> record: records) {
-            Map<String, Object> rawSpanMap = null;
             try {
-                rawSpanMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
+                final Map<String, Object> rawSpanMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
                 final String traceGroup = (String) rawSpanMap.get("traceGroup");
                 if (traceGroup == null || traceGroup.equals("")) {
                     final boolean isSuccess = searchAndPopulateTraceGroup(rawSpanMap);
