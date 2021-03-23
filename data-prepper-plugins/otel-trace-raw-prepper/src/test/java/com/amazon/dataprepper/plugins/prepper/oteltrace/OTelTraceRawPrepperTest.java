@@ -7,7 +7,6 @@ import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import io.micrometer.core.instrument.Measurement;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
@@ -49,6 +48,8 @@ public class OTelTraceRawPrepperTest {
     private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final long TEST_TRACE_FLUSH_INTERVAL = 3L;
     private static final long TEST_ROOT_SPAN_FLUSH_DELAY = 1L;
+    private static final int TEST_CONCURRENCY_SCALE = 2;
+
     private static final String TEST_REQUEST_ONE_FULL_TRACE_GROUP_JSON_FILE = "sample-request-one-full-trace-group.json";
     private static final String TEST_REQUEST_ONE_TRACE_GROUP_MISSING_ROOT_JSON_FILE = "sample-request-one-trace-group-missing-root.json";
     private static final String TEST_REQUEST_TWO_FULL_TRACE_GROUP_JSON_FILE = "sample-request-two-full-trace-group.json";
@@ -70,12 +71,14 @@ public class OTelTraceRawPrepperTest {
                     put(OtelTraceRawPrepperConfig.ROOT_SPAN_FLUSH_DELAY, TEST_ROOT_SPAN_FLUSH_DELAY);
                 }});
         pluginSetting.setPipelineName("pipelineOTelTrace");
+        pluginSetting.setProcessWorkers(TEST_CONCURRENCY_SCALE);
         oTelTraceRawPrepper = new OTelTraceRawPrepper(pluginSetting);
-        executorService = Executors.newFixedThreadPool(2);
+        executorService = Executors.newFixedThreadPool(TEST_CONCURRENCY_SCALE);
     }
 
     @After
     public void tearDown() {
+        oTelTraceRawPrepper.shutdown();
         executorService.shutdown();
     }
 
