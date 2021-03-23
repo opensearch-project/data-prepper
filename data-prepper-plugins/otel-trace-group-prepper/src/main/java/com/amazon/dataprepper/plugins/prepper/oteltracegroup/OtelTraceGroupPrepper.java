@@ -72,29 +72,27 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
         return null;
     }
 
-    private boolean searchAndPopulateTraceGroup(Map<String, Object> rawSpanMap) {
-        String traceId = (String) rawSpanMap.get("traceId");
-        // TODO: query elasticsearch for traceId to traceGroup
-        SearchRequest searchRequest = new SearchRequest(RAW_INDEX_ALIAS);
-        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    private boolean searchAndPopulateTraceGroup(final Map<String, Object> rawSpanMap) {
+        final String traceId = (String) rawSpanMap.get("traceId");
+        final SearchRequest searchRequest = new SearchRequest(RAW_INDEX_ALIAS);
+        final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(
                 QueryBuilders.boolQuery()
                         .must(QueryBuilders.matchQuery("traceId", traceId))
                         .must(QueryBuilders.matchQuery("parentSpanId", ""))
         );
-        searchSourceBuilder.docValueField("traceId");
         searchSourceBuilder.docValueField("traceGroup");
         searchSourceBuilder.fetchSource(false);
         searchRequest.source(searchSourceBuilder);
         try {
-            SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-            SearchHit[] searchHits = searchResponse.getHits().getHits();
+            final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
+            final SearchHit[] searchHits = searchResponse.getHits().getHits();
             if (searchHits.length == 0) {
                 // TODO: log failure to find traceGroup
                 return false;
             }
-            SearchHit searchHit = searchHits[0];
-            String traceGroup = searchHit.field("traceGroup").getValue();
+            final SearchHit searchHit = searchHits[0];
+            final String traceGroup = searchHit.field("traceGroup").getValue();
             if (traceGroup != null && !traceGroup.isEmpty()) {
                 rawSpanMap.put("traceGroup", traceGroup);
                 return true;
