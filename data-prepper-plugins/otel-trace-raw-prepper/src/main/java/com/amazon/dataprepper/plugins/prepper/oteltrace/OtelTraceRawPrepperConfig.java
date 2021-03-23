@@ -6,5 +6,5 @@ public class OtelTraceRawPrepperConfig {
     static final String ROOT_SPAN_FLUSH_DELAY = "root_span_flush_delay";
     static final long DEFAULT_ROOT_SPAN_FLUSH_DELAY_SEC = 30L;
     static final long DEFAULT_TRACE_ID_TTL_SEC = 300L;
-    static final long MAX_TRACE_ID_CACHE_SIZE_PER_THREAD = 10_0000L;
+    static final long MAX_TRACE_ID_CACHE_SIZE = 1000_000L;
 }
