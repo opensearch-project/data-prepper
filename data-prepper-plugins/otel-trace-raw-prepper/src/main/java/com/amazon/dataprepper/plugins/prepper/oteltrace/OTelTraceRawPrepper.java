@@ -78,7 +78,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
         final int numProcessWorkers = pluginSetting.getNumberOfProcessWorkers();
         traceIdTraceGroupCache = CacheBuilder.newBuilder()
                 .concurrencyLevel(numProcessWorkers)
-                .maximumSize(OtelTraceRawPrepperConfig.MAX_TRACE_ID_CACHE_SIZE_PER_THREAD * numProcessWorkers)
+                .maximumSize(OtelTraceRawPrepperConfig.MAX_TRACE_ID_CACHE_SIZE)
                 .expireAfterWrite(OtelTraceRawPrepperConfig.DEFAULT_TRACE_ID_TTL_SEC, TimeUnit.SECONDS)
                 .build();
         spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
