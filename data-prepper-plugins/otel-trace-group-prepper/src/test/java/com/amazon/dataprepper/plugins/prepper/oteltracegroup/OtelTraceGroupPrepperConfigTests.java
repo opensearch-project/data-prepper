@@ -11,7 +11,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.HashMap;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -27,7 +27,7 @@ public class OtelTraceGroupPrepperConfigTests {
                     .thenReturn(connectionConfigurationMock);
             PluginSetting testPluginSetting = new PluginSetting("otel_trace_group_prepper", new HashMap<>());
             OtelTraceGroupPrepperConfig otelTraceGroupPrepperConfig = OtelTraceGroupPrepperConfig.buildConfig(testPluginSetting);
-            assertNotNull(otelTraceGroupPrepperConfig.getEsConnectionConfig());
+            assertEquals(connectionConfigurationMock, otelTraceGroupPrepperConfig.getEsConnectionConfig());
         }
     }
 }
