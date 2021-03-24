@@ -29,6 +29,9 @@ public final class OTelProtoHelper {
     static final String INSTRUMENTATION_LIBRARY_VERSION = "instrumentationLibrary.version";
     static final String STATUS_CODE = "status.code";
     static final String STATUS_MESSAGE = "status.message";
+    static final String NAME = "name";
+    static final String DURATION_IN_NANOS = "durationInNanos";
+    static final String END_TIME = "endTime";
     /**
      * To make it ES friendly we will replace '.' in keys with '@' in all the Keys in {@link io.opentelemetry.proto.common.v1.KeyValue}
      */
@@ -106,11 +109,12 @@ public final class OTelProtoHelper {
      * <p>
      * Note: The reason this method is part of the helper class is because the trace group definition will be expanded in the future when we support Links in Kibana Trace Analytics.
      */
-    public static String getTraceGroup(final Span span) {
+    public static TraceGroup getTraceGroup(final Span span) {
+        final TraceGroup.TraceGroupBuilder traceGroupBuilder = new TraceGroup.TraceGroupBuilder();
         if (span.getParentSpanId().isEmpty()) {
-            return span.getName();
+            traceGroupBuilder.setFromSpan(span);
         }
-        return null;
+        return traceGroupBuilder.build();
     }
 
 

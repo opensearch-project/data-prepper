@@ -29,7 +29,7 @@ public final class RawSpanBuilder {
     int droppedAttributesCount;
     int droppedEventsCount;
     int droppedLinksCount;
-    String traceGroup;
+    TraceGroup traceGroup;
 
 
     public RawSpanBuilder() {
@@ -100,7 +100,7 @@ public final class RawSpanBuilder {
         return this;
     }
 
-    private RawSpanBuilder setTraceGroup(final String traceGroup) {
+    private RawSpanBuilder setTraceGroup(final TraceGroup traceGroup) {
         this.traceGroup = traceGroup;
         return this;
     }
