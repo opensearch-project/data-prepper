@@ -27,13 +27,21 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
@@ -47,10 +55,12 @@ public class OtelTraceGroupPrepperTests {
     private static final String TEST_TRACE_GROUP = "/test_trace_group";
     private static final String TEST_RAW_SPAN_COMPLETE_JSON_FILE = "raw-span-complete.json";
     private static final String TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE = "raw-span-missing-trace-group.json";
+    private static final int TEST_NUM_WORKERS = 3;
 
     private MockedStatic<ConnectionConfiguration> connectionConfigurationMockedStatic;
 
     private OtelTraceGroupPrepper otelTraceGroupPrepper;
+    private ExecutorService executorService;
 
     @Mock
     private ConnectionConfiguration connectionConfigurationMock;
@@ -82,12 +92,14 @@ public class OtelTraceGroupPrepperTests {
             setPipelineName("testPipelineName");
         }};
         otelTraceGroupPrepper = new OtelTraceGroupPrepper(testPluginSetting);
+        executorService = Executors.newFixedThreadPool(TEST_NUM_WORKERS);
     }
 
     @After
     public void tearDown() {
         otelTraceGroupPrepper.shutdown();
         connectionConfigurationMockedStatic.close();
+        executorService.shutdown();
     }
 
     @Test
@@ -164,6 +176,33 @@ public class OtelTraceGroupPrepperTests {
         assertEquals(testRecord, recordOut);
     }
 
+    @Test
+    public void testTraceGroupProcessMultiWorker() throws IOException, ExecutionException, InterruptedException {
+        /*
+         * Note: we only test the threadsafety of the business logic in OtelTraceGroupPrepper. The elasticsearch REST client
+         * is thread-safe {https://www.elastic.co/guide/en/elasticsearch/client/java-rest/current/_changing_the_client_8217_s_initialization_code.html}.
+         */
+        // Given
+        Record<String> testCompleteRecord = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE);
+        Record<String> testMissingRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE);
+        final List<Record<String>> processedRecords = new ArrayList<>();
+        List<Future<Collection<Record<String>>>> futures = new ArrayList<>();
+
+        // When
+        for (int i = 0; i < TEST_NUM_WORKERS; i++) {
+            futures.addAll(submitBatchRecords(Arrays.asList(testCompleteRecord, testMissingRecord)));
+        }
+        for (Future<Collection<Record<String>>> future : futures) {
+            processedRecords.addAll(future.get());
+        }
+
+        // Then
+        assertEquals(6, processedRecords.size());
+        for (Record<String> record: processedRecords) {
+            assertNotNull(extractTraceGroupFromRecord(record));
+        }
+    }
+
     private Record<String> buildRawSpanRecord(String rawSpanJsonFileName) throws IOException {
         final StringBuilder jsonBuilder = new StringBuilder();
         try (final InputStream inputStream = Objects.requireNonNull(
@@ -177,5 +216,11 @@ public class OtelTraceGroupPrepperTests {
     private String extractTraceGroupFromRecord(final Record<String> record) throws JsonProcessingException {
         Map<String, Object> rawSpanMap = OBJECT_MAPPER.readValue(record.getData(), new TypeReference<Map<String, Object>>() {});
         return (String) rawSpanMap.get("traceGroup");
+    }
+
+    private List<Future<Collection<Record<String>>>> submitBatchRecords(List<Record<String>> records) {
+        final List<Future<Collection<Record<String>>>> futures = new ArrayList<>();
+        futures.add(executorService.submit(() -> otelTraceGroupPrepper.doExecute(records)));
+        return futures;
     }
 }
