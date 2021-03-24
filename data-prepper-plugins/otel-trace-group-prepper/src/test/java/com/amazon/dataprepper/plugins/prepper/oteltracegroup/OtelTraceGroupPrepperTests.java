@@ -180,7 +180,7 @@ public class OtelTraceGroupPrepperTests {
     public void testTraceGroupProcessMultiWorker() throws IOException, ExecutionException, InterruptedException {
         /*
          * Note: we only test the threadsafety of the business logic in OtelTraceGroupPrepper. The elasticsearch REST client
-         * is thread-safe {https://www.elastic.co/guide/en/elasticsearch/client/java-rest/current/_changing_the_client_8217_s_initialization_code.html}.
+         * itself is thread-safe {https://www.elastic.co/guide/en/elasticsearch/client/java-rest/current/_changing_the_client_8217_s_initialization_code.html}.
          */
         // Given
         Record<String> testCompleteRecord = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE);
