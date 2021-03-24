@@ -9,7 +9,8 @@ Other configuration options can be specified by editing the _ingress.yaml_ file;
 
 ## Steps
 1. Provision an Amazon EKS cluster: <https://docs.aws.amazon.com/eks/latest/userguide/create-cluster.html>
-2. Configure kubectl to connect with the cluster: <https://aws.amazon.com/premiumsupport/knowledge-center/eks-cluster-connection/>
-3. Install the AWS Load Balancer Controller: <https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html>
-4. Run `kubectl apply -f ingress.yaml` in this directory
-5. Confirm an ALB with Target Group was created in the Load Balancer AWS Console
+1. Configure kubectl to connect with the cluster: <https://aws.amazon.com/premiumsupport/knowledge-center/eks-cluster-connection/>
+1. Apply the Data Prepper Kubernetes config files located in the [/k8s](../k8s) directory to provision Data Prepper pods
+1. Install the AWS Load Balancer Controller: <https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html>
+1. Run `kubectl apply -f ingress.yaml` in this directory
+1. Confirm an ALB with Target Group was created in the Load Balancer AWS Console
