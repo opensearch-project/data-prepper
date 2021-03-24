@@ -1,30 +1,9 @@
-buildscript {
-    ext {
-        es_version = System.getProperty("es.version", "7.8.0")
-        es_group = "org.elasticsearch"
-        distribution = 'oss-zip'
-    }
-
-    repositories {
-        maven { url "https://plugins.gradle.org/m2/" }
-    }
-
-    dependencies {
-        classpath "${es_group}.gradle:build-tools:${es_version}"
-    }
-}
-
 plugins {
     id 'java'
 }
-apply plugin: 'elasticsearch.testclusters'
-apply plugin: 'elasticsearch.build'
-apply plugin: 'elasticsearch.rest-test'
 
-// To pass elasticsearch plugin check
 ext {
-    licenseFile = rootProject.file('LICENSE')
-    noticeFile = rootProject.file('NOTICE')
+    es_version = System.getProperty("es.version", "7.8.0")
 }
 
 group 'com.amazon'
@@ -41,39 +20,5 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.2"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.2"
     testImplementation "org.mockito:mockito-core:3.8.0"
-    testImplementation("junit:junit:4.13") {
-        exclude group:'org.hamcrest' // workaround for jarHell
-    }
-    testImplementation "org.elasticsearch.test:framework:${es_version}"
+    testImplementation "junit:junit:4.13"
 }
-
-// Resolve dependency conflict between ES sink and main project
-configurations.all {
-    resolutionStrategy {
-        force 'com.amazonaws:aws-java-sdk-core:1.11.965'
-        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.2'
-        force 'com.fasterxml.jackson.core:jackson-databind:2.12.2'
-        force 'com.fasterxml.jackson.core:jackson-core:2.12.2'
-        force 'com.fasterxml.jackson:jackson-bom:2.12.2'
-        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.12.2'
-        force 'commons-logging:commons-logging:1.2'
-        force 'org.apache.httpcomponents:httpclient:4.5.10'
-        force "org.hdrhistogram:HdrHistogram:2.1.12"
-        force 'joda-time:joda-time:2.10.10'
-        force 'org.yaml:snakeyaml:1.28'
-        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-smile:2.12.2'
-        force 'junit:junit:4.13'
-        force "org.slf4j:slf4j-api:1.7.30"
-        force "org.apache.logging.log4j:log4j-api:2.14.1"
-        force "org.apache.logging.log4j:log4j-core:2.14.1"
-    }
-}
-
-checkstyleMain.ignoreFailures = true
-checkstyleTest.ignoreFailures = true
-forbiddenApis.ignoreFailures = true
-testingConventions.enabled = false
-licenseHeaders.enabled = false
-dependencyLicenses.enabled = false
-thirdPartyAudit.enabled = false
-validateNebulaPom.enabled = false
