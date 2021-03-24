@@ -29,8 +29,6 @@ import java.util.Map;
 @DataPrepperPlugin(name = "otel_trace_group_prepper", type = PluginType.PREPPER)
 public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Record<String>> {
 
-    private static final String RAW_INDEX_ALIAS = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
-
     private static final Logger LOG = LoggerFactory.getLogger(OtelTraceGroupPrepper.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
@@ -71,16 +69,16 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
     }
 
     private boolean searchAndPopulateTraceGroup(final Map<String, Object> rawSpanMap) {
-        final String traceId = (String) rawSpanMap.get("traceId");
-        final String spanId = (String) rawSpanMap.get("spanId");
-        final SearchRequest searchRequest = new SearchRequest(RAW_INDEX_ALIAS);
+        final String traceId = (String) rawSpanMap.get(OtelTraceGroupPrepperConfig.TRACE_ID_FIELD);
+        final String spanId = (String) rawSpanMap.get(OtelTraceGroupPrepperConfig.SPAN_ID_FIELD);
+        final SearchRequest searchRequest = new SearchRequest(OtelTraceGroupPrepperConfig.RAW_INDEX_ALIAS);
         final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(
                 QueryBuilders.boolQuery()
-                        .must(QueryBuilders.matchQuery("traceId", traceId))
-                        .must(QueryBuilders.matchQuery("parentSpanId", ""))
+                        .must(QueryBuilders.matchQuery(OtelTraceGroupPrepperConfig.TRACE_ID_FIELD, traceId))
+                        .must(QueryBuilders.matchQuery(OtelTraceGroupPrepperConfig.PARENT_SPAN_ID_FIELD, ""))
         );
-        searchSourceBuilder.docValueField("traceGroup");
+        searchSourceBuilder.docValueField(OtelTraceGroupPrepperConfig.TRACE_GROUP_FIELD);
         searchSourceBuilder.fetchSource(false);
         searchRequest.source(searchSourceBuilder);
         try {
@@ -91,14 +89,14 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                 return false;
             }
             final SearchHit searchHit = searchHits[0];
-            final DocumentField traceGroupField = searchHit.field("traceGroup");
+            final DocumentField traceGroupField = searchHit.field(OtelTraceGroupPrepperConfig.TRACE_GROUP_FIELD);
             if (traceGroupField == null) {
                 LOG.info("Failed to populate traceGroup for spanId: {} due to traceGroup missing for traceId: {}", spanId, traceId);
                 return false;
             }
             final String traceGroup = traceGroupField.getValue();
             if (traceGroup != null && !traceGroup.isEmpty()) {
-                rawSpanMap.put("traceGroup", traceGroup);
+                rawSpanMap.put(OtelTraceGroupPrepperConfig.TRACE_GROUP_FIELD, traceGroup);
                 return true;
             } else {
                 LOG.info("Failed to populate traceGroup for spanId: {} due to traceGroup missing for traceId: {}", spanId, traceId);
