@@ -75,8 +75,8 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
         final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(
                 QueryBuilders.boolQuery()
-                        .must(QueryBuilders.matchQuery(OtelTraceGroupPrepperConfig.TRACE_ID_FIELD, traceId))
-                        .must(QueryBuilders.matchQuery(OtelTraceGroupPrepperConfig.PARENT_SPAN_ID_FIELD, ""))
+                        .must(QueryBuilders.termQuery(OtelTraceGroupPrepperConfig.TRACE_ID_FIELD, traceId))
+                        .must(QueryBuilders.termQuery(OtelTraceGroupPrepperConfig.PARENT_SPAN_ID_FIELD, ""))
         );
         searchSourceBuilder.docValueField(OtelTraceGroupPrepperConfig.TRACE_GROUP_FIELD);
         searchSourceBuilder.fetchSource(false);
