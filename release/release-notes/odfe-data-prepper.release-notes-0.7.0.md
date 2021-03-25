@@ -1,4 +1,4 @@
-## 2020-12-10 Version 0.7.0 (Current)
+# 2020-12-10 Version 0.7.0 (alpha)
 
 This is the first official release of Data Prepper.
 

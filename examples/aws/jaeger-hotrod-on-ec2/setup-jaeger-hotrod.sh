@@ -23,8 +23,13 @@ receivers:
     protocols:
       grpc:
 
+processors:
+  batch/traces:
+    timeout: 1s
+    send_batch_size: 50
+
 exporters:
-  otlp/2:
+  otlp/data-prepper:
     endpoint: localhost:21890
     insecure: true
   logging:
@@ -33,7 +38,7 @@ service:
   pipelines:
     traces:
       receivers: [jaeger]
-      exporters: [logging, otlp/2]
+      exporters: [logging, otlp/data-prepper]
 
 EOT
 

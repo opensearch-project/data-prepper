@@ -19,8 +19,8 @@ To build all archives, check out the corresponding branch for the version and fo
 4. Generated archives includes a script file which can be used to execute the data prepper using
  
 ```
-tar -xzf data-prepper-jdk-<VERSION>-<PLATFORM>-<ARCHITECTURE>.tar.gz
-./data-prepper-jdk-v<VERSION>-<PLATFORM>-<ARCHITECTURE>/data-prepper-tar-install.sh <CONFIG FILE LOCATION>
+tar -xzf opendistroforelasticsearch-data-prepper-jdk-v<VERSION>-<PLATFORM>-<ARCHITECTURE>.tar.gz
+./opendistroforelasticsearch-data-prepper-jdk-v<VERSION>-<PLATFORM>-<ARCHITECTURE>/data-prepper-tar-install.sh <CONFIG FILE LOCATION>
 ```
 
 #### For platform specific archive
@@ -42,10 +42,10 @@ gradle linuxTar -Prelease
 
 cd release/archives/linux/build/distributions/
 
-tar -xzf data-prepper-jdk-<VERSION>-linux-<ARCHITECTURE>.tar.gz
-//e.g tar -xzf data-prepper-jdk-0.7.0-linux-x64.tar.gz
+tar -xzf opendistroforelasticsearch-data-prepper-jdk-<VERSION>-linux-<ARCHITECTURE>.tar.gz
+//e.g tar -xzf opendistroforelasticsearch-data-prepper-jdk-0.1.0-linux-x64.tar.gz
 
-./data-prepper-jdk-<VERSION>-linux-<ARCHITECTURE>/data-prepper-tar-install.sh <CONFIG FILE LOCATION>
+./opendistroforelasticsearch-data-prepper-jdk-<VERSION>-linux-<ARCHITECTURE>/data-prepper-tar-install.sh <CONFIG FILE LOCATION>
 
 ```
 

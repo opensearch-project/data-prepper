@@ -1,4 +1,4 @@
-rootProject.name = 'data-prepper'
+rootProject.name = 'opendistroforelasticsearch-data-prepper'
 
 if(startParameter.getProjectProperties().containsKey("release")){
     include 'release'

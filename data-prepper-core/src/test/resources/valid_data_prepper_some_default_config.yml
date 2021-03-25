@@ -1,2 +1,1 @@
-log4jConfig:
-  filePath: "file.txt"
+ssl: false
