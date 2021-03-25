@@ -49,14 +49,16 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
     public void output(final Collection<T> records) {
         if (buffer != null && !isStopRequested.get()) {
             for (T record : records) {
-                try {
-                    buffer.write(record, DEFAULT_WRITE_TIMEOUT);
-                } catch (TimeoutException ex) {
-                    LOG.error("PipelineConnector [{}-{}]: Timed out writing to pipeline [{}]",
-                            sinkPipelineName, sourcePipelineName, sourcePipelineName, ex);
-                    throw new RuntimeException(format("PipelineConnector [%s-%s]: Timed out writing to pipeline [%s]'s " +
-                                    "buffer", sinkPipelineName, sourcePipelineName, sourcePipelineName), ex);
+                while (true) {
+                    try {
+                        buffer.write(record, DEFAULT_WRITE_TIMEOUT);
+                        break;
+                    } catch (TimeoutException ex) {
+                        LOG.error("PipelineConnector [{}-{}]: Timed out writing to pipeline [{}]",
+                                sinkPipelineName, sourcePipelineName, sourcePipelineName, ex);
+                    }
                 }
+
             }
         } else {
             LOG.error("PipelineConnector [{}-{}]: Pipeline [{}] is currently not initialized or has been halted",

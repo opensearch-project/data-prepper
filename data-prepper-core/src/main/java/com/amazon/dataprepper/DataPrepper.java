@@ -4,8 +4,6 @@ import com.amazon.dataprepper.parser.PipelineParser;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
-import java.io.File;
-import java.util.Map;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
@@ -14,10 +12,11 @@ import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.core.LoggerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.util.Map;
 
 /**
  * DataPrepper is the entry point into the execution engine. An instance of this class is provided by
@@ -52,11 +51,6 @@ public class DataPrepper {
     public static void configure(final String configurationFile) {
         final DataPrepperConfiguration dataPrepperConfiguration =
                 DataPrepperConfiguration.fromFile(new File(configurationFile));
-
-        File file = new File(configurationFile);
-
-        LoggerContext context = (org.apache.logging.log4j.core.LoggerContext) LogManager.getContext(false);
-        context.setConfigLocation(file.toURI());
 
         configuration = dataPrepperConfiguration;
     }
