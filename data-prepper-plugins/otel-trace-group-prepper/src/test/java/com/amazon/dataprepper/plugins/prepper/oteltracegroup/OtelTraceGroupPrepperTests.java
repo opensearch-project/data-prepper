@@ -52,10 +52,15 @@ import static org.mockito.Mockito.when;
 public class OtelTraceGroupPrepperTests {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final String TEST_TRACE_GROUP = "/test_trace_group";
-    private static final String TEST_RAW_SPAN_COMPLETE_JSON_FILE = "raw-span-complete.json";
-    private static final String TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE = "raw-span-missing-trace-group.json";
-    private static final int TEST_NUM_WORKERS = 3;
+    private static final String TEST_TRACE_ID_1 = "6d0ff634d126b6ec2c180391e67b4237";
+    private static final String TEST_TRACE_GROUP_1 = "/test_trace_group_1";
+    private static final String TEST_TRACE_ID_2 = "ffa576d321173ac6cef3601c8f4bde75";
+    private static final String TEST_TRACE_GROUP_2 = "/test_trace_group_2";
+    private static final String TEST_RAW_SPAN_COMPLETE_JSON_FILE_1 = "raw-span-complete-1.json";
+    private static final String TEST_RAW_SPAN_COMPLETE_JSON_FILE_2 = "raw-span-complete-2.json";
+    private static final String TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1 = "raw-span-missing-trace-group-1.json";
+    private static final String TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_2 = "raw-span-missing-trace-group-2.json";
+    private static final int TEST_NUM_WORKERS = 2;
 
     private MockedStatic<ConnectionConfiguration> connectionConfigurationMockedStatic;
 
@@ -75,7 +80,10 @@ public class OtelTraceGroupPrepperTests {
     private SearchHits testSearchHits;
 
     @Mock
-    private SearchHit testSearchHit;
+    private SearchHit testSearchHit1;
+
+    @Mock
+    private SearchHit testSearchHit2;
 
     @Before
     public void setUp() throws Exception{
@@ -86,8 +94,11 @@ public class OtelTraceGroupPrepperTests {
         when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class))).thenReturn(testSearchResponse);
         doNothing().when(restHighLevelClient).close();
         when(testSearchResponse.getHits()).thenReturn(testSearchHits);
-        when(testSearchHits.getHits()).thenReturn(new SearchHit[] {testSearchHit});
-        when(testSearchHit.field("traceGroup")).thenReturn(new DocumentField("traceGroup", Collections.singletonList(TEST_TRACE_GROUP)));
+        when(testSearchHits.getHits()).thenReturn(new SearchHit[] {testSearchHit1});
+        when(testSearchHit1.field("traceId")).thenReturn(new DocumentField("traceId", Collections.singletonList(TEST_TRACE_ID_1)));
+        when(testSearchHit1.field("traceGroup")).thenReturn(new DocumentField("traceGroup", Collections.singletonList(TEST_TRACE_GROUP_1)));
+        when(testSearchHit2.field("traceId")).thenReturn(new DocumentField("traceId", Collections.singletonList(TEST_TRACE_ID_2)));
+        when(testSearchHit2.field("traceGroup")).thenReturn(new DocumentField("traceGroup", Collections.singletonList(TEST_TRACE_GROUP_2)));
         final PluginSetting testPluginSetting = new PluginSetting("otel_trace_group_prepper", new HashMap<>()) {{
             setPipelineName("testPipelineName");
         }};
@@ -114,7 +125,7 @@ public class OtelTraceGroupPrepperTests {
     @Test
     public void testTraceGroupFillSuccess() throws IOException {
         // Given
-        Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE);
+        Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
 
         // When
@@ -123,13 +134,13 @@ public class OtelTraceGroupPrepperTests {
         // Then
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
-        assertEquals(TEST_TRACE_GROUP, extractTraceGroupFromRecord(recordOut));
+        assertEquals(TEST_TRACE_GROUP_1, extractTraceGroupFromRecord(recordOut));
     }
 
     @Test
     public void testTraceGroupFillFailDueToRequest() throws IOException {
         // Given
-        Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE);
+        Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
         when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class)))
                 .thenThrow(new ElasticsearchException("Failure due to search request"));
@@ -146,7 +157,7 @@ public class OtelTraceGroupPrepperTests {
     @Test
     public void testTraceGroupFillFailDueToNoHits() throws IOException {
         // Given
-        Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE);
+        Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
         when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class))).thenReturn(testSearchResponse);
         when(testSearchResponse.getHits()).thenReturn(testSearchHits);
@@ -164,7 +175,7 @@ public class OtelTraceGroupPrepperTests {
     @Test
     public void testTraceGroupNoProcess() throws IOException {
         // Given
-        Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE);
+        Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
 
         // When
@@ -183,21 +194,23 @@ public class OtelTraceGroupPrepperTests {
          * itself is thread-safe {https://www.elastic.co/guide/en/elasticsearch/client/java-rest/current/_changing_the_client_8217_s_initialization_code.html}.
          */
         // Given
-        Record<String> testCompleteRecord = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE);
-        Record<String> testMissingRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE);
+        when(testSearchHits.getHits()).thenReturn(new SearchHit[] {testSearchHit1, testSearchHit2});
+        Record<String> testCompleteRecord1 = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE_1);
+        Record<String> testMissingRecord1 = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
+        Record<String> testCompleteRecord2 = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE_2);
+        Record<String> testMissingRecord2 = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_2);
         final List<Record<String>> processedRecords = new ArrayList<>();
         List<Future<Collection<Record<String>>>> futures = new ArrayList<>();
 
         // When
-        for (int i = 0; i < TEST_NUM_WORKERS; i++) {
-            futures.addAll(submitBatchRecords(Arrays.asList(testCompleteRecord, testMissingRecord)));
-        }
+        futures.addAll(submitBatchRecords(Arrays.asList(testCompleteRecord1, testMissingRecord1)));
+        futures.addAll(submitBatchRecords(Arrays.asList(testCompleteRecord2, testMissingRecord2)));
         for (Future<Collection<Record<String>>> future : futures) {
             processedRecords.addAll(future.get());
         }
 
         // Then
-        assertEquals(6, processedRecords.size());
+        assertEquals(4, processedRecords.size());
         for (Record<String> record: processedRecords) {
             assertNotNull(extractTraceGroupFromRecord(record));
         }
