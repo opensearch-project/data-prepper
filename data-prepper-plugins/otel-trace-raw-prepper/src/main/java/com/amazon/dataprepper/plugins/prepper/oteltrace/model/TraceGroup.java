@@ -49,28 +49,28 @@ public class TraceGroup {
         return Objects.hash(name, endTime, statusCode, durationInNanos);
     }
 
-    static class TraceGroupBuilder {
+    public static class TraceGroupBuilder {
         private String name;
         private String endTime;
         private Integer statusCode;
         private Long durationInNanos;
 
-        private TraceGroupBuilder setName(final String name) {
+        public TraceGroupBuilder setName(final String name) {
             this.name = name;
             return this;
         }
 
-        private TraceGroupBuilder setEndTime(final String endTime) {
+        public TraceGroupBuilder setEndTime(final String endTime) {
             this.endTime = endTime;
             return this;
         }
 
-        private TraceGroupBuilder setStatusCode(final Integer statusCode) {
+        public TraceGroupBuilder setStatusCode(final Integer statusCode) {
             this.statusCode = statusCode;
             return this;
         }
 
-        private TraceGroupBuilder setDurationInNanos(final Long durationInNanos) {
+        public TraceGroupBuilder setDurationInNanos(final Long durationInNanos) {
             this.durationInNanos = durationInNanos;
             return this;
         }

@@ -6,6 +6,7 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.record.RecordMetadata;
+import com.amazon.dataprepper.plugins.prepper.oteltrace.model.TraceGroup;
 import com.amazon.dataprepper.plugins.sink.elasticsearch.IndexConstants;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -58,9 +59,9 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
         for (Record<String> record: records) {
             try {
                 final Map<String, Object> rawSpanMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
-                final String traceGroup = (String) rawSpanMap.get(OtelTraceGroupPrepperConfig.TRACE_GROUP_FIELD);
+                final String traceGroupName = (String) rawSpanMap.get(OtelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD);
                 final String traceId = (String) rawSpanMap.get(OtelTraceGroupPrepperConfig.TRACE_ID_FIELD);
-                if (traceGroup == null || traceGroup.equals("")) {
+                if (traceGroupName == null || traceGroupName.equals("")) {
                     traceIdsToLookUp.add(traceId);
                     recordsMissingTraceGroup.add(record);
                     rawSpanMapsMissingTraceGroup.add(rawSpanMap);
@@ -73,15 +74,18 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             }
         }
 
-        final Map<String, String> traceIdToTraceGroup = searchTraceGroupByTraceIds(traceIdsToLookUp);
+        final Map<String, TraceGroup> traceIdToTraceGroup = searchTraceGroupByTraceIds(traceIdsToLookUp);
         for (int i = 0; i < recordsMissingTraceGroup.size(); i++) {
             final Map<String, Object> rawSpanMap = rawSpanMapsMissingTraceGroup.get(i);
             final Record<String> record = recordsMissingTraceGroup.get(i);
             final String traceId = (String) rawSpanMap.get(OtelTraceGroupPrepperConfig.TRACE_ID_FIELD);
             final String spanId = (String) rawSpanMap.get(OtelTraceGroupPrepperConfig.SPAN_ID_FIELD);
-            final String traceGroup = traceIdToTraceGroup.get(traceId);
-            if (traceGroup != null && !traceGroup.isEmpty()) {
-                rawSpanMap.put(OtelTraceGroupPrepperConfig.TRACE_GROUP_FIELD, traceGroup);
+            final TraceGroup traceGroup = traceIdToTraceGroup.get(traceId);
+            if (traceGroup != null) {
+                rawSpanMap.put(OtelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD, traceGroup.getName());
+                rawSpanMap.put(OtelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD, traceGroup.getEndTime());
+                rawSpanMap.put(OtelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD, traceGroup.getDurationInNanos());
+                rawSpanMap.put(OtelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD, traceGroup.getStatusCode());
                 try {
                     final String newData = OBJECT_MAPPER.writeValueAsString(rawSpanMap);
                     recordsOut.add(new Record<>(newData, record.getMetadata()));
@@ -98,8 +102,8 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
         return recordsOut;
     }
 
-    private Map<String, String> searchTraceGroupByTraceIds(final Collection<String> traceIds) {
-        final Map<String, String> traceIdToTraceGroup = new HashMap<>();
+    private Map<String, TraceGroup> searchTraceGroupByTraceIds(final Collection<String> traceIds) {
+        final Map<String, TraceGroup> traceIdToTraceGroup = new HashMap<>();
         final SearchRequest searchRequest = new SearchRequest(OtelTraceGroupPrepperConfig.RAW_INDEX_ALIAS);
         final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(
@@ -108,7 +112,10 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                         .must(QueryBuilders.termQuery(OtelTraceGroupPrepperConfig.PARENT_SPAN_ID_FIELD, ""))
         );
         searchSourceBuilder.docValueField(OtelTraceGroupPrepperConfig.TRACE_ID_FIELD);
-        searchSourceBuilder.docValueField(OtelTraceGroupPrepperConfig.TRACE_GROUP_FIELD);
+        searchSourceBuilder.docValueField(OtelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD);
+        searchSourceBuilder.docValueField(OtelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD);
+        searchSourceBuilder.docValueField(OtelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD);
+        searchSourceBuilder.docValueField(OtelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD);
         searchSourceBuilder.fetchSource(false);
         searchRequest.source(searchSourceBuilder);
 
@@ -117,8 +124,18 @@ public class OtelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             final SearchHit[] searchHits = searchResponse.getHits().getHits();
             Arrays.asList(searchHits).forEach(searchHit -> {
                 final String traceId = searchHit.field(OtelTraceGroupPrepperConfig.TRACE_ID_FIELD).getValue();
-                final String traceGroup = searchHit.field(OtelTraceGroupPrepperConfig.TRACE_GROUP_FIELD).getValue();
-                traceIdToTraceGroup.put(traceId, traceGroup);
+                final String traceGroupName = searchHit.field(OtelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD).getValue();
+                final String traceGroupEndTime = searchHit.field(OtelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD).getValue();
+                final Number traceGroupDurationInNanos = searchHit.field(OtelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD).getValue();
+                final Number traceGroupStatusCode = searchHit.field(OtelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD).getValue();
+                traceIdToTraceGroup.put(traceId,
+                        new TraceGroup.TraceGroupBuilder()
+                                .setName(traceGroupName)
+                                .setEndTime(traceGroupEndTime)
+                                .setDurationInNanos(traceGroupDurationInNanos.longValue())
+                                .setStatusCode(traceGroupStatusCode.intValue())
+                                .build()
+                );
             });
         } catch (Exception e) {
             // TODO: retry for status code 429 of ElasticsearchException?
