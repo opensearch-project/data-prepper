@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -186,8 +187,8 @@ public class OTelProtoHelperTest {
     @Test
     public void testTraceGroup() {
         final Span span1 = Span.newBuilder().setParentSpanId(ByteString.copyFrom("PArentIdExists", StandardCharsets.UTF_8)).build();
-        assertThat(OTelProtoHelper.getTraceGroup(span1)).isNull();
+        assertThat(OTelProtoHelper.getTraceGroup(span1)).isEqualTo(new TraceGroup.TraceGroupBuilder().build());
         final Span span2 = Span.newBuilder().setName("TraceGroup").build();
-        assertThat(OTelProtoHelper.getTraceGroup(span2)).isEqualToIgnoringCase("TraceGroup");
+        assertThat(OTelProtoHelper.getTraceGroup(span2)).isEqualTo(new TraceGroup.TraceGroupBuilder().setFromSpan(span2).build());
     }
 }

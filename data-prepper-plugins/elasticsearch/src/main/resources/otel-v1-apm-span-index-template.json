@@ -40,8 +40,21 @@
         "type": "keyword"
       },
       "traceGroup": {
-        "ignore_above": 1024,
-        "type": "keyword"
+        "properties": {
+          "name": {
+            "ignore_above": 1024,
+            "type": "keyword"
+          },
+          "endTime": {
+            "type": "date_nanos"
+          },
+          "durationInNanos": {
+            "type": "long"
+          },
+          "statusCode": {
+            "type": "integer"
+          }
+        }
       },
       "kind": {
         "ignore_above": 128,
