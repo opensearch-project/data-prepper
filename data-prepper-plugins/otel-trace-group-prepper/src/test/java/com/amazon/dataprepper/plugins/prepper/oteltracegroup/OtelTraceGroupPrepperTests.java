@@ -173,6 +173,23 @@ public class OtelTraceGroupPrepperTests {
     }
 
     @Test
+    public void testTraceGroupFillFailDueToException() throws IOException {
+        // Given
+        Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
+        List<Record<String>> testRecords = Collections.singletonList(testRecord);
+        when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class)))
+                .thenThrow(new ElasticsearchException("Test exception"));
+
+        // When
+        List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
+
+        // Then
+        assertEquals(1, recordsOut.size());
+        Record<String> recordOut = recordsOut.get(0);
+        assertEquals(testRecord, recordOut);
+    }
+
+    @Test
     public void testTraceGroupNoProcess() throws IOException {
         // Given
         Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE_1);
