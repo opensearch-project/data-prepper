@@ -132,4 +132,5 @@ testingConventions.enabled = false
 licenseHeaders.enabled = false
 dependencyLicenses.enabled = false
 thirdPartyAudit.enabled = false
+loggerUsageCheck.enabled = false
 validateNebulaPom.enabled = false
