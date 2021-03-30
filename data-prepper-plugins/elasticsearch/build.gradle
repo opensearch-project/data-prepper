@@ -1,6 +1,6 @@
 buildscript {
     ext {
-        es_version = System.getProperty("es.version", "7.8.0")
+        es_version = System.getProperty("es.version", "${versionMap.es_version}")
         es_group = "org.elasticsearch"
         distribution = 'oss-zip'
     }
@@ -87,7 +87,7 @@ testClusters.integTest {
     testDistribution = "OSS"
 }
 
-integTest.runner {
+integTest {
     systemProperty 'tests.security.manager', 'false'
 
     systemProperty "odfe", System.getProperty("odfe")

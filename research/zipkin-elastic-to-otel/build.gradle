@@ -4,7 +4,7 @@ plugins {
 }
 
 ext {
-    es_version = System.getProperty("es.version", "7.8.0")
+    es_version = System.getProperty("es.version", "${versionMap.es_version}")
 }
 
 group 'com.amazon'
