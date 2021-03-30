@@ -1,13 +1,14 @@
 # Scaling and Tuning
 
-Data Prepper for Trace Analytics in v0.7.x supports only vertical scaling. This is because the pipeline setup of Data Prepper uses stateful Service-Map processing. For this Service-Map processing to work Data Prepper needs to receive all span related to a single trace workflow to the same host. 
+Data Prepper for Trace Analytics in v0.8.x supports both vertical and horizontal scaling. 
 
-In the next release we will support horizontal scaling through peer-forwarder plugin, which will route spans belonging to single trace workflow to the same host consistently using hashing techniques. 
+To scale vertically, simply adjust the size of your single Data Prepper instance to meet your workload's demands. 
 
+To scale horizontally, deploy multiple Data Prepper instances to form a cluster by using the [Peer Forwarder plugin](../../data-prepper-plugins/peer-forwarder/README.md). This plugin enables Data Preppers to communicate with others in the cluster and is required for horizontally-scaling deployments.
 
 ## Scaling Tips
 
-We would like to provide the users with some useful tips for scaling the v0.7.x version of Trace Analytics. We recommend the users to modify parameters based on their requirements. Also, monitor the Data Prepper host metrics and Elasticsearch metrics to ensure the configuration is working as expected.
+We would like to provide the users with some useful tips for scaling. We recommend the users to modify parameters based on their requirements. Also, monitor the Data Prepper host metrics and Elasticsearch metrics to ensure the configuration is working as expected.
 
 ### Buffer
 
@@ -43,7 +44,9 @@ Data Prepper uses the disk to write logs. In the current version, you can redire
 
 ## AWS
 
-[AWS EC2 Cloudformation](../../deployment/aws/ec2/data-prepper-ec2-deployment-cfn.yaml) template provides user-friendly mechanism to configure the above scaling attributes.
+[AWS EC2 Cloudformation](../../deployment-template/ec2/data-prepper-ec2-deployment-cfn.yaml) template provides user-friendly mechanism to configure the above scaling attributes.
+
+[Kubernetes config files](../../deployment-template/k8s/README.md) and [EKS config files](../../deployment-template/eks/README.md) are available to configure these attributes in a cluster deployment.
 
 ## Benchmark
 
