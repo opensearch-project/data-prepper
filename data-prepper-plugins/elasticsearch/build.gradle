@@ -81,8 +81,6 @@ test {
     }
 }
 
-integTest {}
-
 testClusters.integTest {
     testDistribution = "OSS"
 }
