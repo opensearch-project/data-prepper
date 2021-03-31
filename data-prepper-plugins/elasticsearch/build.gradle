@@ -48,6 +48,8 @@ dependencies {
 // Workaround for Werror
 compileJava.options.warnings = false
 
+compileJava.finalizedBy(jar)
+
 // Resolve dependency conflict between ES sink and main project
 configurations.all {
     resolutionStrategy {
