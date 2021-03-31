@@ -49,7 +49,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class OtelTraceGroupPrepperTests {
+public class OTelTraceGroupPrepperTests {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String TEST_TRACE_ID_1 = "6d0ff634d126b6ec2c180391e67b4237";
@@ -64,7 +64,7 @@ public class OtelTraceGroupPrepperTests {
 
     private MockedStatic<ConnectionConfiguration> connectionConfigurationMockedStatic;
 
-    private OtelTraceGroupPrepper otelTraceGroupPrepper;
+    private OTelTraceGroupPrepper otelTraceGroupPrepper;
     private ExecutorService executorService;
 
     @Mock
@@ -102,7 +102,7 @@ public class OtelTraceGroupPrepperTests {
         final PluginSetting testPluginSetting = new PluginSetting("otel_trace_group_prepper", new HashMap<>()) {{
             setPipelineName("testPipelineName");
         }};
-        otelTraceGroupPrepper = new OtelTraceGroupPrepper(testPluginSetting);
+        otelTraceGroupPrepper = new OTelTraceGroupPrepper(testPluginSetting);
         executorService = Executors.newFixedThreadPool(TEST_NUM_WORKERS);
     }
 
