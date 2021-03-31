@@ -48,6 +48,7 @@ dependencies {
 // Workaround for Werror
 compileJava.options.warnings = false
 
+// FIXME: hacky workaround for :data-prepper-core:jar
 compileJava.finalizedBy(jar)
 
 // Resolve dependency conflict between ES sink and main project
