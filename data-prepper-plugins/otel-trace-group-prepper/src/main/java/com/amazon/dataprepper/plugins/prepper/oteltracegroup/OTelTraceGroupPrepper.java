@@ -47,12 +47,12 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
     }
 
     @Override
-    public Collection<Record<String>> doExecute(final Collection<Record<String>> records) {
+    public Collection<Record<String>> doExecute(final Collection<Record<String>> rawSpanStringRecords) {
         final List<Record<String>> recordsOut = new LinkedList<>();
         final List<Record<String>> recordsMissingTraceGroup = new ArrayList<>();
         final List<Map<String, Object>> rawSpanMapsMissingTraceGroup = new ArrayList<>();
         final Set<String> traceIdsToLookUp = new HashSet<>();
-        for (Record<String> record: records) {
+        for (Record<String> record: rawSpanStringRecords) {
             try {
                 final Map<String, Object> rawSpanMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
                 final String traceGroup = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_GROUP_FIELD);
