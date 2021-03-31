@@ -49,8 +49,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
     @Override
     public Collection<Record<String>> doExecute(final Collection<Record<String>> rawSpanStringRecords) {
         final List<Record<String>> recordsOut = new LinkedList<>();
-        final List<Record<String>> recordsMissingTraceGroup = new ArrayList<>();
-        final List<Map<String, Object>> rawSpanMapsMissingTraceGroup = new ArrayList<>();
+        final Map<Record<String>, Map<String, Object>> recordMissingTraceGroupToRawSpanMap = new HashMap<>();
         final Set<String> traceIdsToLookUp = new HashSet<>();
         for (Record<String> record: rawSpanStringRecords) {
             try {
@@ -59,8 +58,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                 final String traceId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
                 if (traceGroup == null || traceGroup.equals("")) {
                     traceIdsToLookUp.add(traceId);
-                    recordsMissingTraceGroup.add(record);
-                    rawSpanMapsMissingTraceGroup.add(rawSpanMap);
+                    recordMissingTraceGroupToRawSpanMap.put(record, rawSpanMap);
                 } else {
                     recordsOut.add(record);
                 }
@@ -71,9 +69,9 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
         }
 
         final Map<String, String> traceIdToTraceGroup = searchTraceGroupByTraceIds(traceIdsToLookUp);
-        for (int i = 0; i < recordsMissingTraceGroup.size(); i++) {
-            final Map<String, Object> rawSpanMap = rawSpanMapsMissingTraceGroup.get(i);
-            final Record<String> record = recordsMissingTraceGroup.get(i);
+        for (final Map.Entry<Record<String>, Map<String, Object>> entry: recordMissingTraceGroupToRawSpanMap.entrySet()) {
+            final Record<String> record = entry.getKey();
+            final Map<String, Object> rawSpanMap = entry.getValue();
             final String traceId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
             final String traceGroup = traceIdToTraceGroup.get(traceId);
             if (traceGroup != null && !traceGroup.isEmpty()) {
