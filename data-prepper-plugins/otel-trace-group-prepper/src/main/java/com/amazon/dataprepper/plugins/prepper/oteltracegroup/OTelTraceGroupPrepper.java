@@ -75,7 +75,6 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             final Map<String, Object> rawSpanMap = rawSpanMapsMissingTraceGroup.get(i);
             final Record<String> record = recordsMissingTraceGroup.get(i);
             final String traceId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
-            final String spanId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.SPAN_ID_FIELD);
             final String traceGroup = traceIdToTraceGroup.get(traceId);
             if (traceGroup != null && !traceGroup.isEmpty()) {
                 rawSpanMap.put(OTelTraceGroupPrepperConfig.TRACE_GROUP_FIELD, traceGroup);
@@ -88,6 +87,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                 }
             } else {
                 recordsOut.add(record);
+                final String spanId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.SPAN_ID_FIELD);
                 LOG.info("Failed to find traceGroup for spanId: {} due to traceGroup missing for traceId: {}", spanId, traceId);
             }
         }
