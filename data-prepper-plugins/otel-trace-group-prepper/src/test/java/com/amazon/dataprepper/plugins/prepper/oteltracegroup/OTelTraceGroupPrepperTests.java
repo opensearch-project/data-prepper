@@ -173,7 +173,7 @@ public class OTelTraceGroupPrepperTests {
     }
 
     @Test
-    public void testTraceGroupNoProcess() throws IOException {
+    public void testTraceGroupFieldAlreadyPopulated() throws IOException {
         // Given
         Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
