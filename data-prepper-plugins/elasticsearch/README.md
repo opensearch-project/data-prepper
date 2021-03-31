@@ -8,7 +8,7 @@ The Elasticsearch sink should be configured as part of Data Prepper pipeline yam
 
 ### <a name="raw_span_trace_analytics"></a>Raw span trace analytics
 
-```$xslt
+```
 pipeline:
   ...
   sink:
@@ -26,7 +26,7 @@ The elasticsearch sink will reserve `otel-v1-apm-span-*` as index pattern and `o
 
 ### <a name="service_map_trace_analytics"></a>Service map trace analytics
 
-```$xslt
+```
 pipeline:
   ...
   sink:
@@ -46,7 +46,7 @@ The elasticsearch sink will reserve `otel-v1-apm-service-map` as index for recor
 
 The elasticsearch sink can also be configured for Amazon Elasticsearch Service domain. See [security](security.md) for details.
 
-```$xslt
+```
 pipeline:
   ...
   sink:
@@ -77,7 +77,7 @@ Default is null.
 - `password`(optional): A String of password used in the [internal users](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles) of ODFE cluster. Default is null.
 
 - `trace_analytics_raw`(optional): A boolean flag indicates APM trace analytics raw span data type. e.g.
-```$xslt
+```
 {
   "traceId":"bQ/2NNEmtuwsGAOR5ntCNw==",
   "spanId":"mnO/qUT5ye4=",
@@ -92,7 +92,7 @@ Default is null.
 Default value is false. Set it to true for [Raw span trace analytics](#raw_span_trace_analytics). Set it to false for [Service map trace analytics](#service_map_trace_analytics).
 
 - `trace_analytics_service_map`(optional): A boolean flag indicates APM trace analytics service map data type. e.g.
-```$xslt
+```
 {
   "hashId": "aQ/2NNEmtuwsGAOR5ntCNwk=",
   "serviceName": "Payment",

@@ -7,7 +7,7 @@ It finds the missing trace group info for a spanId by looking up the relevant fi
 
 ### Opendistro-for-elasticsearch
 
-```$xslt
+```
 pipeline:
   ...
   prepper:
@@ -20,7 +20,7 @@ pipeline:
 
 ### Amazon Elasticsearch Service
 
-```$xslt
+```
 pipeline:
   ...
   prepper:
