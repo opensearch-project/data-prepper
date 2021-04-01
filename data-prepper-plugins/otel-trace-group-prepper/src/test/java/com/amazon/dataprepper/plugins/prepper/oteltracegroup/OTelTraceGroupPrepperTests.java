@@ -115,23 +115,23 @@ public class OTelTraceGroupPrepperTests {
 
     @Test
     public void testShutDown() throws IOException {
-        // When
+        // Act
         otelTraceGroupPrepper.shutdown();
 
-        // Then
+        // Assert
         verify(restHighLevelClient, times(1)).close();
     }
 
     @Test
     public void testTraceGroupFillSuccess() throws IOException {
-        // Given
+        // Arrange
         Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
 
-        // When
+        // Act
         List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
 
-        // Then
+        // Assert
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(TEST_TRACE_GROUP_1, extractTraceGroupFromRecord(recordOut));
@@ -139,16 +139,16 @@ public class OTelTraceGroupPrepperTests {
 
     @Test
     public void testTraceGroupFillFailDueToFailedRequest() throws IOException {
-        // Given
+        // Arrange
         Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
         when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class)))
                 .thenThrow(new ElasticsearchException("Failure due to search request"));
 
-        // When
+        // Act
         List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
 
-        // Then
+        // Assert
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
@@ -156,17 +156,17 @@ public class OTelTraceGroupPrepperTests {
 
     @Test
     public void testTraceGroupFillFailDueToNoHits() throws IOException {
-        // Given
+        // Arrange
         Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
         when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class))).thenReturn(testSearchResponse);
         when(testSearchResponse.getHits()).thenReturn(testSearchHits);
         when(testSearchHits.getHits()).thenReturn(new SearchHit[] {});
 
-        // When
+        // Act
         List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
 
-        // Then
+        // Assert
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
@@ -174,14 +174,14 @@ public class OTelTraceGroupPrepperTests {
 
     @Test
     public void testTraceGroupFieldAlreadyPopulated() throws IOException {
-        // Given
+        // Arrange
         Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
 
-        // When
+        // Act
         List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
 
-        // Then
+        // Assert
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
@@ -193,7 +193,7 @@ public class OTelTraceGroupPrepperTests {
          * Note: we only test the threadsafety of the business logic in OtelTraceGroupPrepper. The elasticsearch REST client
          * itself is thread-safe {https://www.elastic.co/guide/en/elasticsearch/client/java-rest/current/_changing_the_client_8217_s_initialization_code.html}.
          */
-        // Given
+        // Arrange
         when(testSearchHits.getHits()).thenReturn(new SearchHit[] {testSearchHit1, testSearchHit2});
         Record<String> testCompleteRecord1 = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE_1);
         Record<String> testMissingRecord1 = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
@@ -202,14 +202,14 @@ public class OTelTraceGroupPrepperTests {
         final List<Record<String>> processedRecords = new ArrayList<>();
         List<Future<Collection<Record<String>>>> futures = new ArrayList<>();
 
-        // When
+        // Act
         futures.addAll(submitBatchRecords(Arrays.asList(testCompleteRecord1, testMissingRecord1)));
         futures.addAll(submitBatchRecords(Arrays.asList(testCompleteRecord2, testMissingRecord2)));
         for (Future<Collection<Record<String>>> future : futures) {
             processedRecords.addAll(future.get());
         }
 
-        // Then
+        // Assert
         assertEquals(4, processedRecords.size());
         for (Record<String> record: processedRecords) {
             assertNotNull(extractTraceGroupFromRecord(record));
