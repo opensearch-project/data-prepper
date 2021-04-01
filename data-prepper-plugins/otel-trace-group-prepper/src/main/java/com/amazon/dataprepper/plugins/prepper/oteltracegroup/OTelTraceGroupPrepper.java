@@ -95,17 +95,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
 
     private Map<String, String> searchTraceGroupByTraceIds(final Collection<String> traceIds) {
         final Map<String, String> traceIdToTraceGroup = new HashMap<>();
-        final SearchRequest searchRequest = new SearchRequest(OTelTraceGroupPrepperConfig.RAW_INDEX_ALIAS);
-        final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-        searchSourceBuilder.query(
-                QueryBuilders.boolQuery()
-                        .must(QueryBuilders.termsQuery(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD, traceIds))
-                        .must(QueryBuilders.termQuery(OTelTraceGroupPrepperConfig.PARENT_SPAN_ID_FIELD, ""))
-        );
-        searchSourceBuilder.docValueField(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
-        searchSourceBuilder.docValueField(OTelTraceGroupPrepperConfig.TRACE_GROUP_FIELD);
-        searchSourceBuilder.fetchSource(false);
-        searchRequest.source(searchSourceBuilder);
+        final SearchRequest searchRequest = createSearchRequest(traceIds);
 
         try {
             final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
@@ -121,6 +111,22 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
         }
 
         return traceIdToTraceGroup;
+    }
+
+    private SearchRequest createSearchRequest(final Collection<String> traceIds) {
+        final SearchRequest searchRequest = new SearchRequest(OTelTraceGroupPrepperConfig.RAW_INDEX_ALIAS);
+        final SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.query(
+                QueryBuilders.boolQuery()
+                        .must(QueryBuilders.termsQuery(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD, traceIds))
+                        .must(QueryBuilders.termQuery(OTelTraceGroupPrepperConfig.PARENT_SPAN_ID_FIELD, ""))
+        );
+        searchSourceBuilder.docValueField(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
+        searchSourceBuilder.docValueField(OTelTraceGroupPrepperConfig.TRACE_GROUP_FIELD);
+        searchSourceBuilder.fetchSource(false);
+        searchRequest.source(searchSourceBuilder);
+
+        return searchRequest;
     }
 
     @Override
