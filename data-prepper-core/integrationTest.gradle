@@ -71,54 +71,39 @@ task buildDataPrepperDockerImage(type: DockerBuildImage) {
     images.add("integ-test-pipeline-image")
 }
 
-task createDataPrepper1DockerContainer(type: DockerCreateContainer) {
-    dependsOn buildDataPrepperDockerImage
-    dependsOn createDataPrepperNetwork
-    containerName = "data-prepper1"
-    hostConfig.portBindings = ['21890:21890', '4900:4900']
-    hostConfig.network = createDataPrepperNetwork.getNetworkName()
-    targetImageId buildDataPrepperDockerImage.getImageId()
-}
-
-task createDataPrepper2DockerContainer(type: DockerCreateContainer) {
-    dependsOn buildDataPrepperDockerImage
-    dependsOn createDataPrepperNetwork
-    containerName = "data-prepper2"
-    hostConfig.portBindings = ['21891:21890', '4901:4900']
-    hostConfig.network = createDataPrepperNetwork.getNetworkName()
-    targetImageId buildDataPrepperDockerImage.getImageId()
-}
-
-task startDataPrepper1DockerContainer(type: DockerStartContainer) {
-    dependsOn createDataPrepper1DockerContainer
-    targetContainerId createDataPrepper1DockerContainer.getContainerId()
-    doLast {
-        sleep(10*1000)
+def createDataPrepperDockerContainer(final String taskBaseName, final String dataPrepperName, final int grpcPort,
+                                     final int serverPort, final String pipelineConfigYAML) {
+    return tasks.create("create${taskBaseName}", DockerCreateContainer) {
+        dependsOn buildDataPrepperDockerImage
+        dependsOn createDataPrepperNetwork
+        containerName = dataPrepperName
+        hostConfig.portBindings = ['%d:21890'.formatted(grpcPort), '%d:4900'.formatted(serverPort)]
+        hostConfig.network = createDataPrepperNetwork.getNetworkName()
+        cmd = ["java", "-jar", "data-prepper.jar", pipelineConfigYAML, "/app/data_prepper.yml"]
+        targetImageId buildDataPrepperDockerImage.getImageId()
     }
 }
 
-task startDataPrepper2DockerContainer(type: DockerStartContainer) {
-    dependsOn createDataPrepper2DockerContainer
-    targetContainerId createDataPrepper2DockerContainer.getContainerId()
-    doLast {
-        sleep(10*1000)
+def startDataPrepperDockerContainer(final DockerCreateContainer createDataPrepperDockerContainerTask) {
+    return tasks.create("start${createDataPrepperDockerContainerTask.getName()}", DockerStartContainer) {
+        dependsOn createDataPrepperDockerContainerTask
+        targetContainerId createDataPrepperDockerContainerTask.getContainerId()
+        doLast {
+            sleep(10*1000)
+        }
     }
 }
 
-task stopDataPrepper1DockerContainer(type: DockerStopContainer) {
-    targetContainerId createDataPrepper1DockerContainer.getContainerId()
+def stopDataPrepperDockerContainer(final DockerStartContainer startDataPrepperDockerContainerTask) {
+    return tasks.create("stop${startDataPrepperDockerContainerTask.getName()}", DockerStopContainer) {
+        targetContainerId startDataPrepperDockerContainerTask.getContainerId()
+    }
 }
 
-task stopDataPrepper2DockerContainer(type: DockerStopContainer) {
-    targetContainerId createDataPrepper2DockerContainer.getContainerId()
-}
-
-task removeDataPrepper1DockerContainer(type: DockerRemoveContainer) {
-    targetContainerId stopDataPrepper1DockerContainer.getContainerId()
-}
-
-task removeDataPrepper2DockerContainer(type: DockerRemoveContainer) {
-    targetContainerId stopDataPrepper2DockerContainer.getContainerId()
+def removeDataPrepperDockerContainer(final DockerStopContainer stopDataPrepperDockerContainerTask) {
+    return tasks.create("remove${stopDataPrepperDockerContainerTask.getName()}", DockerRemoveContainer) {
+        targetContainerId stopDataPrepperDockerContainerTask.getContainerId()
+    }
 }
 
 /**
@@ -159,8 +144,10 @@ task stopOdfeDockerContainer(type: DockerStopContainer) {
 task rawSpanEndToEndTest(type: Test) {
     dependsOn build
     dependsOn startOdfeDockerContainer
-    dependsOn startDataPrepper1DockerContainer
-    startDataPrepper1DockerContainer.mustRunAfter 'startOdfeDockerContainer'
+    def createDataPrepperTask = createDataPrepperDockerContainer("rawSpanDataPrepper1", "data-prepper1", 21890, 4900, "/app/pipeline.yml")
+    def startDataPrepperTask = startDataPrepperDockerContainer(createDataPrepperTask as DockerCreateContainer)
+    dependsOn startDataPrepperTask
+    startDataPrepperTask.mustRunAfter 'startOdfeDockerContainer'
 
     description = 'Runs the raw span integration tests.'
     group = 'verification'
@@ -172,18 +159,23 @@ task rawSpanEndToEndTest(type: Test) {
     }
 
     finalizedBy stopOdfeDockerContainer
-    finalizedBy stopDataPrepper1DockerContainer
-    finalizedBy removeDataPrepper1DockerContainer
+    def stopDataPrepperTask = stopDataPrepperDockerContainer(startDataPrepperTask as DockerStartContainer)
+    finalizedBy stopDataPrepperTask
+    finalizedBy removeDataPrepperDockerContainer(stopDataPrepperTask as DockerStopContainer)
     finalizedBy removeDataPrepperNetwork
 }
 
 task serviceMapEndToEndTest(type: Test) {
     dependsOn build
     dependsOn startOdfeDockerContainer
-    dependsOn startDataPrepper1DockerContainer
-    dependsOn startDataPrepper2DockerContainer
-    startDataPrepper1DockerContainer.mustRunAfter 'startOdfeDockerContainer'
-    startDataPrepper2DockerContainer.mustRunAfter 'startOdfeDockerContainer'
+    def createDataPrepper1Task = createDataPrepperDockerContainer("serviceMapDataPrepper1", "data-prepper1", 21890, 4900, "/app/pipeline.yml")
+    def createDataPrepper2Task = createDataPrepperDockerContainer("serviceMapDataPrepper2", "data-prepper2", 21891, 4901, "/app/pipeline.yml")
+    def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
+    def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
+    dependsOn startDataPrepper1Task
+    dependsOn startDataPrepper2Task
+    startDataPrepper1Task.mustRunAfter 'startOdfeDockerContainer'
+    startDataPrepper2Task.mustRunAfter 'startOdfeDockerContainer'
 
     description = 'Runs the raw span integration tests.'
     group = 'verification'
@@ -195,9 +187,11 @@ task serviceMapEndToEndTest(type: Test) {
     }
 
     finalizedBy stopOdfeDockerContainer
-    finalizedBy stopDataPrepper1DockerContainer
-    finalizedBy stopDataPrepper2DockerContainer
-    finalizedBy removeDataPrepper1DockerContainer
-    finalizedBy removeDataPrepper2DockerContainer
+    def stopDataPrepper1Task = stopDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
+    def stopDataPrepper2Task = stopDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
+    finalizedBy stopDataPrepper1Task
+    finalizedBy stopDataPrepper2Task
+    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper1Task as DockerStopContainer)
+    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper2Task as DockerStopContainer)
     finalizedBy removeDataPrepperNetwork
 }
