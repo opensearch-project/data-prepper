@@ -8,6 +8,7 @@ import com.amazon.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jdk.internal.joptsimple.internal.Strings;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
@@ -77,7 +78,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             final Map<String, Object> rawSpanMap = entry.getValue();
             final String traceId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
             final String traceGroup = traceIdToTraceGroup.get(traceId);
-            if (traceGroup != null && !traceGroup.isEmpty()) {
+            if (!Strings.isNullOrEmpty(traceGroup)) {
                 rawSpanMap.put(OTelTraceGroupPrepperConfig.TRACE_GROUP_FIELD, traceGroup);
                 try {
                     final String newData = OBJECT_MAPPER.writeValueAsString(rawSpanMap);
