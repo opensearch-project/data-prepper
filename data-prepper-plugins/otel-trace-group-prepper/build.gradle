@@ -6,13 +6,6 @@ ext {
     es_version = System.getProperty("es.version", "7.8.0")
 }
 
-group 'com.amazon'
-version '0.7.0-alpha'
-
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     compile project(':data-prepper-api')
     compile project(':data-prepper-plugins:elasticsearch')
