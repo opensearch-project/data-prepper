@@ -18,6 +18,8 @@ pipeline:
         password: YOUR_PASSWORD_HERE
 ``` 
 
+See [odfe_security.md](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/data-prepper-plugins/elasticsearch/odfe_security.md) for detailed explanation.
+
 ### Amazon Elasticsearch Service
 
 ```
@@ -30,6 +32,8 @@ pipeline:
         cert: path/to/cert
         insecure: false
 ```
+
+See [security.md](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/data-prepper-plugins/elasticsearch/security.md) for detailed explanation.
 
 ## Configuration
 
