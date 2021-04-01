@@ -2,6 +2,13 @@ plugins {
     id 'java'
 }
 
+group 'com.amazon'
+version '0.1.0'
+
+repositories {
+    mavenCentral()
+}
+
 dependencies {
     compile project(':data-prepper-api')
     testCompile project(':data-prepper-api').sourceSets.test.output
