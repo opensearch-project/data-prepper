@@ -67,7 +67,6 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                     recordsOut.add(record);
                 }
             } catch (JsonProcessingException e) {
-                recordsOut.add(record);
                 LOG.error("Failed to parse the record: [{}]", record.getData());
             }
         }
