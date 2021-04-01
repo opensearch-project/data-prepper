@@ -12,6 +12,7 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.document.DocumentField;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -27,7 +28,9 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 
 @DataPrepperPlugin(name = "otel_trace_group_prepper", type = PluginType.PREPPER)
 public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Record<String>> {
@@ -101,9 +104,13 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
             final SearchHit[] searchHits = searchResponse.getHits().getHits();
             Arrays.asList(searchHits).forEach(searchHit -> {
-                final String traceId = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD).getValue();
-                final String traceGroup = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_FIELD).getValue();
-                traceIdToTraceGroup.put(traceId, traceGroup);
+                final DocumentField traceIdDocField = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
+                final DocumentField traceGroupDocField = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_FIELD);
+                if (Stream.of(traceIdDocField, traceGroupDocField).allMatch(Objects::nonNull)) {
+                    final String traceId = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD).getValue();
+                    final String traceGroup = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_FIELD).getValue();
+                    traceIdToTraceGroup.put(traceId, traceGroup);
+                }
             });
         } catch (Exception e) {
             // TODO: retry for status code 429 of ElasticsearchException?
