@@ -41,32 +41,32 @@ public class EndToEndServiceMapTest {
     private static final String TEST_TRACEID_2 = "CBA";
     private static final int DATA_PREPPER_PORT_1 = 21890;
     private static final int DATA_PREPPER_PORT_2 = 21891;
-    private static final List<EndToEndTestData> testDataSet11 = Arrays.asList(
+    private static final List<EndToEndTestData> TEST_DATA_SET_11 = Arrays.asList(
             EndToEndTestData.DATA_100, EndToEndTestData.DATA_200, EndToEndTestData.DATA_500, EndToEndTestData.DATA_600,
             EndToEndTestData.DATA_700, EndToEndTestData.DATA_1000);
-    private static final List<EndToEndTestData> testDataSet12 = Arrays.asList(
+    private static final List<EndToEndTestData> TEST_DATA_SET_12 = Arrays.asList(
             EndToEndTestData.DATA_300, EndToEndTestData.DATA_400, EndToEndTestData.DATA_800,
             EndToEndTestData.DATA_900, EndToEndTestData.DATA_1100);
-    private static final List<EndToEndTestData> testDataSet21 = Arrays.asList(
+    private static final List<EndToEndTestData> TEST_DATA_SET_21 = Arrays.asList(
             EndToEndTestData.DATA_101, EndToEndTestData.DATA_201, EndToEndTestData.DATA_401, EndToEndTestData.DATA_501);
-    private static final List<EndToEndTestData> testDataSet22 = Collections.singletonList(EndToEndTestData.DATA_301);
+    private static final List<EndToEndTestData> TEST_DATA_SET_22 = Collections.singletonList(EndToEndTestData.DATA_301);
     private static final String SERVICE_MAP_INDEX_NAME = "otel-v1-apm-service-map";
 
     @Test
     public void testPipelineEndToEnd() throws IOException, InterruptedException {
         // Send test trace group 1
         final ExportTraceServiceRequest exportTraceServiceRequest11 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_1, testDataSet11)
+                getResourceSpansBatch(TEST_TRACEID_1, TEST_DATA_SET_11)
         );
         final ExportTraceServiceRequest exportTraceServiceRequest12 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_1, testDataSet12)
+                getResourceSpansBatch(TEST_TRACEID_1, TEST_DATA_SET_12)
         );
 
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest11);
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest12);
 
         //Verify data in elasticsearch sink
-        final List<EndToEndTestData> testDataSet1 = Stream.of(testDataSet11, testDataSet12)
+        final List<EndToEndTestData> testDataSet1 = Stream.of(TEST_DATA_SET_11, TEST_DATA_SET_12)
                 .flatMap(Collection::stream).collect(Collectors.toList());
         final List<Map<String, Object>> possibleEdges = getPossibleEdges(TEST_TRACEID_1, testDataSet1);
         final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
@@ -91,16 +91,16 @@ public class EndToEndServiceMapTest {
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest12);
         // Send test trace group 2
         final ExportTraceServiceRequest exportTraceServiceRequest21 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_2, testDataSet21)
+                getResourceSpansBatch(TEST_TRACEID_2, TEST_DATA_SET_21)
         );
         final ExportTraceServiceRequest exportTraceServiceRequest22 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_2, testDataSet22)
+                getResourceSpansBatch(TEST_TRACEID_2, TEST_DATA_SET_22)
         );
 
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest21);
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest22);
 
-        final List<EndToEndTestData> testDataSet2 = Stream.of(testDataSet21, testDataSet22)
+        final List<EndToEndTestData> testDataSet2 = Stream.of(TEST_DATA_SET_21, TEST_DATA_SET_22)
                 .flatMap(Collection::stream).collect(Collectors.toList());
         possibleEdges.addAll(getPossibleEdges(TEST_TRACEID_2, testDataSet2));
         // Wait for service map prepper by 2 * window_duration

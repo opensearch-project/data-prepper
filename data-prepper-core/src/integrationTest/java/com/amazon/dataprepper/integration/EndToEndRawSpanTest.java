@@ -44,32 +44,32 @@ public class EndToEndRawSpanTest {
        put(Hex.toHexString(TEST_TRACEID_1.getBytes()), EndToEndTestData.DATA_100.name);
         put(Hex.toHexString(TEST_TRACEID_2.getBytes()), EndToEndTestData.DATA_101.name);
     }};
-    private static final List<EndToEndTestData> testDataSet11 = Arrays.asList(
+    private static final List<EndToEndTestData> TEST_DATA_SET_1_WITH_ROOT_SPAN = Arrays.asList(
             EndToEndTestData.DATA_100, EndToEndTestData.DATA_200, EndToEndTestData.DATA_300,
             EndToEndTestData.DATA_400, EndToEndTestData.DATA_500, EndToEndTestData.DATA_600);
-    private static final List<EndToEndTestData> testDataSet12 = Arrays.asList(
+    private static final List<EndToEndTestData> TEST_DATA_SET_1_WITHOUT_ROOT_SPAN = Arrays.asList(
             EndToEndTestData.DATA_700, EndToEndTestData.DATA_800, EndToEndTestData.DATA_900,
             EndToEndTestData.DATA_1000, EndToEndTestData.DATA_1100);
-    private static final List<EndToEndTestData> testDataSet21 = Arrays.asList(
+    private static final List<EndToEndTestData> TEST_DATA_SET_2_WITH_ROOT_SPAN = Arrays.asList(
             EndToEndTestData.DATA_101, EndToEndTestData.DATA_201, EndToEndTestData.DATA_301);
-    private static final List<EndToEndTestData> testDataSet22 = Arrays.asList(
+    private static final List<EndToEndTestData> TEST_DATA_SET_2_WITHOUT_ROOT_SPAN = Arrays.asList(
             EndToEndTestData.DATA_401, EndToEndTestData.DATA_501);
     private static final String INDEX_NAME = "otel-v1-apm-span-000001";
 
     @Test
-    public void testPipelineEndToEnd() throws IOException, InterruptedException {
+    public void testPipelineEndToEnd() throws InterruptedException {
         //Send data to otel trace source
         final ExportTraceServiceRequest exportTraceServiceRequest11 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_1, testDataSet11)
+                getResourceSpansBatch(TEST_TRACEID_1, TEST_DATA_SET_1_WITH_ROOT_SPAN)
         );
         final ExportTraceServiceRequest exportTraceServiceRequest12 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_1, testDataSet12)
+                getResourceSpansBatch(TEST_TRACEID_1, TEST_DATA_SET_1_WITHOUT_ROOT_SPAN)
         );
         final ExportTraceServiceRequest exportTraceServiceRequest21 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_2, testDataSet21)
+                getResourceSpansBatch(TEST_TRACEID_2, TEST_DATA_SET_2_WITH_ROOT_SPAN)
         );
         final ExportTraceServiceRequest exportTraceServiceRequest22 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_2, testDataSet22)
+                getResourceSpansBatch(TEST_TRACEID_2, TEST_DATA_SET_2_WITHOUT_ROOT_SPAN)
         );
 
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest11);
