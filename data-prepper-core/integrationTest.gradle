@@ -48,6 +48,9 @@ task removeDataPrepperNetwork(type: DockerRemoveNetwork) {
     networkId = createDataPrepperNetwork.getNetworkId()
 }
 
+def RAW_SPAN_PIPELINE_YAML = "raw-span-e2e-pipeline.yml"
+def SERVICE_MAP_PIPELINE_YAML = "service-map-e2e-pipeline.yml"
+
 /**
  * DataPrepper Docker tasks
  */
@@ -59,9 +62,10 @@ task createDataPrepperDockerFile(type: Dockerfile) {
     exposePort(4900)
     workingDir("/app")
     copyFile("build/libs/${jar.archiveName}", "/app/data-prepper.jar")
-    copyFile("src/integrationTest/resources/pipeline.yml", "/app/pipeline.yml")
+    copyFile("src/integrationTest/resources/${RAW_SPAN_PIPELINE_YAML}", "/app/${RAW_SPAN_PIPELINE_YAML}")
+    copyFile("src/integrationTest/resources/${SERVICE_MAP_PIPELINE_YAML}", "/app/${SERVICE_MAP_PIPELINE_YAML}")
     copyFile("src/integrationTest/resources/data_prepper.yml", "/app/data_prepper.yml")
-    defaultCommand("java", "-jar", "data-prepper.jar", "/app/pipeline.yml", "/app/data_prepper.yml")
+    defaultCommand("java", "-jar", "data-prepper.jar", "/app/${RAW_SPAN_PIPELINE_YAML}", "/app/data_prepper.yml")
 }
 
 task buildDataPrepperDockerImage(type: DockerBuildImage) {
@@ -144,7 +148,8 @@ task stopOdfeDockerContainer(type: DockerStopContainer) {
 task rawSpanEndToEndTest(type: Test) {
     dependsOn build
     dependsOn startOdfeDockerContainer
-    def createDataPrepperTask = createDataPrepperDockerContainer("rawSpanDataPrepper1", "data-prepper1", 21890, 4900, "/app/pipeline.yml")
+    def createDataPrepperTask = createDataPrepperDockerContainer(
+            "rawSpanDataPrepper1", "data-prepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_YAML}")
     def startDataPrepperTask = startDataPrepperDockerContainer(createDataPrepperTask as DockerCreateContainer)
     dependsOn startDataPrepperTask
     startDataPrepperTask.mustRunAfter 'startOdfeDockerContainer'
@@ -168,8 +173,10 @@ task rawSpanEndToEndTest(type: Test) {
 task serviceMapEndToEndTest(type: Test) {
     dependsOn build
     dependsOn startOdfeDockerContainer
-    def createDataPrepper1Task = createDataPrepperDockerContainer("serviceMapDataPrepper1", "data-prepper1", 21890, 4900, "/app/pipeline.yml")
-    def createDataPrepper2Task = createDataPrepperDockerContainer("serviceMapDataPrepper2", "data-prepper2", 21891, 4901, "/app/pipeline.yml")
+    def createDataPrepper1Task = createDataPrepperDockerContainer(
+            "serviceMapDataPrepper1", "data-prepper1", 21890, 4900, "/app/${SERVICE_MAP_PIPELINE_YAML}")
+    def createDataPrepper2Task = createDataPrepperDockerContainer(
+            "serviceMapDataPrepper2", "data-prepper2", 21891, 4901, "/app/${SERVICE_MAP_PIPELINE_YAML}")
     def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
     def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
     dependsOn startDataPrepper1Task
