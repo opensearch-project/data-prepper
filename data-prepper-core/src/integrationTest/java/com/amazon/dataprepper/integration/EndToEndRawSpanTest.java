@@ -25,7 +25,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -33,34 +32,52 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
 
 public class EndToEndRawSpanTest {
+    private static final int DATA_PREPPER_PORT_1 = 21890;
+    private static final int DATA_PREPPER_PORT_2 = 21891;
 
-    private static final Random RANDOM = new Random();
-    private static final List<Span.SpanKind> SPAN_KINDS =
-            Arrays.asList(Span.SpanKind.SPAN_KIND_CLIENT, Span.SpanKind.SPAN_KIND_CONSUMER, Span.SpanKind.SPAN_KIND_INTERNAL, Span.SpanKind.SPAN_KIND_PRODUCER, Span.SpanKind.SPAN_KIND_SERVER);
+    private static final String TEST_TRACEID_1 = "ABC";
+    private static final String TEST_TRACEID_2 = "CBA";
+    private static final List<ServiceMapTestData> testDataSet11 = Arrays.asList(
+            ServiceMapTestData.DATA_100, ServiceMapTestData.DATA_200, ServiceMapTestData.DATA_500, ServiceMapTestData.DATA_600,
+            ServiceMapTestData.DATA_700, ServiceMapTestData.DATA_1000);
+    private static final List<ServiceMapTestData> testDataSet12 = Arrays.asList(
+            ServiceMapTestData.DATA_300, ServiceMapTestData.DATA_400, ServiceMapTestData.DATA_800,
+            ServiceMapTestData.DATA_900, ServiceMapTestData.DATA_1100);
+    private static final List<ServiceMapTestData> testDataSet21 = Arrays.asList(
+            ServiceMapTestData.DATA_101, ServiceMapTestData.DATA_201, ServiceMapTestData.DATA_401, ServiceMapTestData.DATA_501);
+    private static final List<ServiceMapTestData> testDataSet22 = Collections.singletonList(ServiceMapTestData.DATA_301);
     private static final String INDEX_NAME = "otel-v1-apm-span-000001";
 
     @Test
     public void testPipelineEndToEnd() throws IOException, InterruptedException {
         //Send data to otel trace source
-        final ExportTraceServiceRequest exportTraceServiceRequest1 = getExportTraceServiceRequest(
-                getRandomResourceSpans(10)
+        final ExportTraceServiceRequest exportTraceServiceRequest11 = getExportTraceServiceRequest(
+                getResourceSpansBatch(TEST_TRACEID_1, testDataSet11)
+        );
+        final ExportTraceServiceRequest exportTraceServiceRequest12 = getExportTraceServiceRequest(
+                getResourceSpansBatch(TEST_TRACEID_1, testDataSet12)
+        );
+        final ExportTraceServiceRequest exportTraceServiceRequest21 = getExportTraceServiceRequest(
+                getResourceSpansBatch(TEST_TRACEID_2, testDataSet21)
+        );
+        final ExportTraceServiceRequest exportTraceServiceRequest22 = getExportTraceServiceRequest(
+                getResourceSpansBatch(TEST_TRACEID_2, testDataSet22)
         );
 
-        final ExportTraceServiceRequest exportTraceServiceRequest2 = getExportTraceServiceRequest(
-                getRandomResourceSpans(10)
-        );
-
-        sendExportTraceServiceRequestToSource(exportTraceServiceRequest1);
-        sendExportTraceServiceRequestToSource(exportTraceServiceRequest2);
+        sendExportTraceServiceRequestToSource(exportTraceServiceRequest11);
+        sendExportTraceServiceRequestToSource(exportTraceServiceRequest12);
+        sendExportTraceServiceRequestToSource(exportTraceServiceRequest21);
+        sendExportTraceServiceRequestToSource(exportTraceServiceRequest22);
 
         //Verify data in elasticsearch sink
-        final List<Map<String, Object>> expectedDocuments = getExpectedDocuments(exportTraceServiceRequest1, exportTraceServiceRequest2);
+        final List<Map<String, Object>> expectedDocuments = getExpectedDocuments(
+                exportTraceServiceRequest11, exportTraceServiceRequest12,
+                exportTraceServiceRequest21, exportTraceServiceRequest22);
         final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
                 Collections.singletonList("https://127.0.0.1:9200"));
         builder.withUsername("admin");
@@ -88,7 +105,7 @@ public class EndToEndRawSpanTest {
                      */
                     expectedDocuments.forEach(expectedDoc -> {
                         Assert.assertTrue(foundSources.stream()
-                                .filter(i -> i.get("traceId").equals(expectedDoc.get("traceId")))
+                                .filter(i -> i.get("spanId").equals(expectedDoc.get("spanId")))
                                 .findFirst().get()
                                 .entrySet().containsAll(expectedDoc.entrySet()));
                     });
@@ -113,15 +130,9 @@ public class EndToEndRawSpanTest {
         return sources;
     }
 
-
     public static ResourceSpans getResourceSpans(final String serviceName, final String spanName, final byte[]
-            spanId, final byte[] parentId, final byte[] traceId, final Span.SpanKind spanKind, final int statusCode, final String statusMessage) {
+            spanId, final byte[] parentId, final byte[] traceId, final Span.SpanKind spanKind) {
         final ByteString parentSpanId = parentId != null ? ByteString.copyFrom(parentId) : ByteString.EMPTY;
-        final Status.Builder statusBuilder = Status.newBuilder().setCodeValue(statusCode);
-        if (statusMessage != null) {
-            statusBuilder.setMessage(statusMessage);
-        }
-        final Status status = statusBuilder.build();
         return ResourceSpans.newBuilder()
                 .setResource(
                         Resource.newBuilder()
@@ -139,7 +150,6 @@ public class EndToEndRawSpanTest {
                                                 .setKind(spanKind)
                                                 .setSpanId(ByteString.copyFrom(spanId))
                                                 .setParentSpanId(parentSpanId)
-                                                .setStatus(status)
                                                 .setTraceId(ByteString.copyFrom(traceId))
                                                 .build()
                                 )
@@ -152,6 +162,28 @@ public class EndToEndRawSpanTest {
         return ExportTraceServiceRequest.newBuilder()
                 .addAllResourceSpans(spans)
                 .build();
+    }
+
+    private List<ResourceSpans> getResourceSpansBatch(final String traceId, final List<ServiceMapTestData> data) {
+        final ArrayList<ResourceSpans> spansList = new ArrayList<>();
+        for(int i=0; i < data.size(); i++) {
+            final ServiceMapTestData currData = data.get(i);
+            final String parentId = currData.parentId;
+            final String spanId = currData.spanId;
+            final String serviceName = currData.serviceName;
+            final String spanName = currData.name;
+            final Span.SpanKind spanKind = currData.spanKind;
+            final ResourceSpans rs = getResourceSpans(
+                    serviceName,
+                    spanName,
+                    spanId.getBytes(),
+                    parentId != null ? parentId.getBytes() : null,
+                    traceId.getBytes(),
+                    spanKind
+            );
+            spansList.add(rs);
+        }
+        return spansList;
     }
 
     private List<Map<String, Object>> getExpectedDocuments(ExportTraceServiceRequest...exportTraceServiceRequests) {
@@ -177,37 +209,11 @@ public class EndToEndRawSpanTest {
         esDocSource.put("name", span.getName());
         esDocSource.put("kind", span.getKind().name());
         esDocSource.put("status.code", span.getStatus().getCodeValue());
-        esDocSource.put("status.message", span.getStatus().getMessage());
         esDocSource.put("serviceName", serviceName);
         if (span.getParentSpanId().isEmpty()) {
             esDocSource.put("traceGroup", span.getName());
         }
         return esDocSource;
-    }
-
-    private byte[] getRandomBytes(int len) {
-        final byte[] bytes = new byte[len];
-        RANDOM.nextBytes(bytes);
-        return bytes;
-    }
-
-    private List<ResourceSpans> getRandomResourceSpans(int len) throws UnsupportedEncodingException {
-        final ArrayList<ResourceSpans> spansList = new ArrayList<>();
-        for(int i=0; i<len; i++) {
-            spansList.add(
-                    getResourceSpans(
-                            UUID.randomUUID().toString(),
-                            UUID.randomUUID().toString(),
-                            getRandomBytes(8),
-                            getRandomBytes(8),
-                            getRandomBytes(16),
-                            SPAN_KINDS.get(RANDOM.nextInt(SPAN_KINDS.size())),
-                            RANDOM.nextInt(17),
-                            UUID.randomUUID().toString()
-                    )
-            );
-        }
-        return spansList;
     }
 
     private String getServiceName(final ResourceSpans resourceSpans) {
