@@ -41,19 +41,19 @@ public class EndToEndRawSpanTest {
     private static final String TEST_TRACEID_1 = "ABC";
     private static final String TEST_TRACEID_2 = "CBA";
     private static final Map<String, String> TEST_TRACEID_TO_TRACE_GROUP = new HashMap<String, String>() {{
-       put(Hex.toHexString(TEST_TRACEID_1.getBytes()), ServiceMapTestData.DATA_100.name);
-        put(Hex.toHexString(TEST_TRACEID_2.getBytes()), ServiceMapTestData.DATA_101.name);
+       put(Hex.toHexString(TEST_TRACEID_1.getBytes()), EndToEndTestData.DATA_100.name);
+        put(Hex.toHexString(TEST_TRACEID_2.getBytes()), EndToEndTestData.DATA_101.name);
     }};
-    private static final List<ServiceMapTestData> testDataSet11 = Arrays.asList(
-            ServiceMapTestData.DATA_100, ServiceMapTestData.DATA_200, ServiceMapTestData.DATA_300,
-            ServiceMapTestData.DATA_400, ServiceMapTestData.DATA_500, ServiceMapTestData.DATA_600);
-    private static final List<ServiceMapTestData> testDataSet12 = Arrays.asList(
-            ServiceMapTestData.DATA_700, ServiceMapTestData.DATA_800, ServiceMapTestData.DATA_900,
-            ServiceMapTestData.DATA_1000, ServiceMapTestData.DATA_1100);
-    private static final List<ServiceMapTestData> testDataSet21 = Arrays.asList(
-            ServiceMapTestData.DATA_101, ServiceMapTestData.DATA_201, ServiceMapTestData.DATA_301);
-    private static final List<ServiceMapTestData> testDataSet22 = Arrays.asList(
-            ServiceMapTestData.DATA_401, ServiceMapTestData.DATA_501);
+    private static final List<EndToEndTestData> testDataSet11 = Arrays.asList(
+            EndToEndTestData.DATA_100, EndToEndTestData.DATA_200, EndToEndTestData.DATA_300,
+            EndToEndTestData.DATA_400, EndToEndTestData.DATA_500, EndToEndTestData.DATA_600);
+    private static final List<EndToEndTestData> testDataSet12 = Arrays.asList(
+            EndToEndTestData.DATA_700, EndToEndTestData.DATA_800, EndToEndTestData.DATA_900,
+            EndToEndTestData.DATA_1000, EndToEndTestData.DATA_1100);
+    private static final List<EndToEndTestData> testDataSet21 = Arrays.asList(
+            EndToEndTestData.DATA_101, EndToEndTestData.DATA_201, EndToEndTestData.DATA_301);
+    private static final List<EndToEndTestData> testDataSet22 = Arrays.asList(
+            EndToEndTestData.DATA_401, EndToEndTestData.DATA_501);
     private static final String INDEX_NAME = "otel-v1-apm-span-000001";
 
     @Test
@@ -166,10 +166,10 @@ public class EndToEndRawSpanTest {
                 .build();
     }
 
-    private List<ResourceSpans> getResourceSpansBatch(final String traceId, final List<ServiceMapTestData> data) {
+    private List<ResourceSpans> getResourceSpansBatch(final String traceId, final List<EndToEndTestData> data) {
         final ArrayList<ResourceSpans> spansList = new ArrayList<>();
         for(int i=0; i < data.size(); i++) {
-            final ServiceMapTestData currData = data.get(i);
+            final EndToEndTestData currData = data.get(i);
             final String parentId = currData.parentId;
             final String spanId = currData.spanId;
             final String serviceName = currData.serviceName;
