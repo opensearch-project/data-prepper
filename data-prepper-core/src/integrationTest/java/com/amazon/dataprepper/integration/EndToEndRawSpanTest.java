@@ -69,10 +69,10 @@ public class EndToEndRawSpanTest {
                 getResourceSpansBatch(TEST_TRACEID_2, testDataSet22)
         );
 
-        sendExportTraceServiceRequestToSource(exportTraceServiceRequest11);
-        sendExportTraceServiceRequestToSource(exportTraceServiceRequest12);
-        sendExportTraceServiceRequestToSource(exportTraceServiceRequest21);
-        sendExportTraceServiceRequestToSource(exportTraceServiceRequest22);
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest11);
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest21);
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest12);
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest22);
 
         //Verify data in elasticsearch sink
         final List<Map<String, Object>> expectedDocuments = getExpectedDocuments(
@@ -122,6 +122,11 @@ public class EndToEndRawSpanTest {
         final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.newClient(
                 "gproto+http://127.0.0.1:21890/", TraceServiceGrpc.TraceServiceBlockingStub.class);
         client.export(request);
+    }
+
+    private void sendExportTraceServiceRequestToSource(final int port, final ExportTraceServiceRequest request) {
+        Clients.newClient(String.format("gproto+http://127.0.0.1:%d/", port),
+                TraceServiceGrpc.TraceServiceBlockingStub.class).export(request);
     }
 
     private List<Map<String, Object>> getSourcesFromSearchHits(final SearchHits searchHits) {

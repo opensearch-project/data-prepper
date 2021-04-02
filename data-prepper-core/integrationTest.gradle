@@ -148,11 +148,16 @@ task stopOdfeDockerContainer(type: DockerStopContainer) {
 task rawSpanEndToEndTest(type: Test) {
     dependsOn build
     dependsOn startOdfeDockerContainer
-    def createDataPrepperTask = createDataPrepperDockerContainer(
+    def createDataPrepper1Task = createDataPrepperDockerContainer(
             "rawSpanDataPrepper1", "data-prepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_YAML}")
-    def startDataPrepperTask = startDataPrepperDockerContainer(createDataPrepperTask as DockerCreateContainer)
-    dependsOn startDataPrepperTask
-    startDataPrepperTask.mustRunAfter 'startOdfeDockerContainer'
+    def createDataPrepper2Task = createDataPrepperDockerContainer(
+            "rawSpanDataPrepper2", "data-prepper2", 21891, 4901, "/app/${RAW_SPAN_PIPELINE_YAML}")
+    def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
+    def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
+    dependsOn startDataPrepper1Task
+    dependsOn startDataPrepper2Task
+    startDataPrepper1Task.mustRunAfter 'startOdfeDockerContainer'
+    startDataPrepper2Task.mustRunAfter 'startOdfeDockerContainer'
 
     description = 'Runs the raw span integration tests.'
     group = 'verification'
@@ -164,9 +169,12 @@ task rawSpanEndToEndTest(type: Test) {
     }
 
     finalizedBy stopOdfeDockerContainer
-    def stopDataPrepperTask = stopDataPrepperDockerContainer(startDataPrepperTask as DockerStartContainer)
-    finalizedBy stopDataPrepperTask
-    finalizedBy removeDataPrepperDockerContainer(stopDataPrepperTask as DockerStopContainer)
+    def stopDataPrepper1Task = stopDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
+    def stopDataPrepper2Task = stopDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
+    finalizedBy stopDataPrepper1Task
+    finalizedBy stopDataPrepper2Task
+    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper1Task as DockerStopContainer)
+    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper2Task as DockerStopContainer)
     finalizedBy removeDataPrepperNetwork
 }
 
@@ -184,7 +192,7 @@ task serviceMapEndToEndTest(type: Test) {
     startDataPrepper1Task.mustRunAfter 'startOdfeDockerContainer'
     startDataPrepper2Task.mustRunAfter 'startOdfeDockerContainer'
 
-    description = 'Runs the raw span integration tests.'
+    description = 'Runs the service-map integration tests.'
     group = 'verification'
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
     classpath = sourceSets.integrationTest.runtimeClasspath
