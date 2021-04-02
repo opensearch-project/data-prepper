@@ -3,13 +3,13 @@
 from flask import Flask, jsonify, request, make_response
 from opentelemetry import trace
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
-from opentelemetry.exporter.otlp.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import (
     ConsoleSpanExporter,
-    SimpleExportSpanProcessor,
+    SimpleSpanProcessor,
 )
 from Error import Error
 from requests.adapters import HTTPAdapter
@@ -42,11 +42,11 @@ tracerProvider = trace.get_tracer_provider()
 tracer = tracerProvider.get_tracer(__name__)
 
 tracerProvider.add_span_processor(
-    SimpleExportSpanProcessor(ConsoleSpanExporter())
+    SimpleSpanProcessor(ConsoleSpanExporter())
 )
-otlp_exporter = OTLPSpanExporter(endpoint="{}:55680".format(OTLP))
+otlp_exporter = OTLPSpanExporter(endpoint="{}:55680".format(OTLP), insecure=True)
 tracerProvider.add_span_processor(
-    SimpleExportSpanProcessor(otlp_exporter)
+    SimpleSpanProcessor(otlp_exporter)
 )
 
 FlaskInstrumentor().instrument_app(app)

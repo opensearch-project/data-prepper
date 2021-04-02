@@ -1,0 +1,17 @@
+plugins {
+    id 'java'
+}
+
+ext {
+    es_version = System.getProperty("es.version", "7.8.0")
+}
+
+dependencies {
+    compile project(':data-prepper-api')
+    compile project(':data-prepper-plugins:elasticsearch')
+    implementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:${es_version}"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.12.2"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.2"
+    testImplementation "org.mockito:mockito-core:3.8.0"
+    testImplementation "junit:junit:4.13.2"
+}

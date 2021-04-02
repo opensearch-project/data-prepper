@@ -7,11 +7,11 @@ import dash
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import (
     ConsoleSpanExporter,
-    SimpleExportSpanProcessor,
+    SimpleSpanProcessor,
 )
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
@@ -107,11 +107,11 @@ tracerProvider = trace.get_tracer_provider()
 tracer = tracerProvider.get_tracer(__name__)
 
 tracerProvider.add_span_processor(
-    SimpleExportSpanProcessor(ConsoleSpanExporter())
+    SimpleSpanProcessor(ConsoleSpanExporter())
 )
-otlp_exporter = OTLPSpanExporter(endpoint="{}:55680".format(OTLP))
+otlp_exporter = OTLPSpanExporter(endpoint="{}:55680".format(OTLP), insecure=True)
 tracerProvider.add_span_processor(
-    SimpleExportSpanProcessor(otlp_exporter)
+    SimpleSpanProcessor(otlp_exporter)
 )
 RequestsInstrumentor().instrument(tracer_provider=tracerProvider)
 

@@ -78,7 +78,7 @@ services:
       - '8089:8089' # client-dashboard
     environment:
       - OTEL_EXPORTER=otlp
-      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:55680
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:55680
       - OTEL_RESOURCE_ATTRIBUTES=service.name=analytics-service
       - OTLP=otel-collector
       - MYSQL_HOST=mysql
