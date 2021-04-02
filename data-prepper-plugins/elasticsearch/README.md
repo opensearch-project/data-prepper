@@ -1,12 +1,12 @@
 # Elasticsearch sink
 
-This is the Data Prepper Elasticsearch sink plugin, sending records to Elasticsearch cluster via REST client.
+This is the Data Prepper Elasticsearch sink plugin that sends records to Elasticsearch cluster via REST client. You can use the sink to send data to Amazon Elasticsearch Service or Opendistro for Elasticsearch.
 
 ## Usages
 
-The Elasticsearch sink should be configured as part of Data Prepper pipeline yaml file according to the following use cases.
+The Elasticsearch sink should be configured as part of Data Prepper pipeline yaml file.
 
-### <a name="raw_span_trace_analytics"></a>Raw span trace analytics
+### Raw span trace analytics
 
 ```
 pipeline:
@@ -24,7 +24,7 @@ pipeline:
 
 The elasticsearch sink will reserve `otel-v1-apm-span-*` as index pattern and `otel-v1-apm-span` as index alias for record ingestion.
 
-### <a name="service_map_trace_analytics"></a>Service map trace analytics
+### </a>Service map trace analytics
 
 ```
 pipeline:

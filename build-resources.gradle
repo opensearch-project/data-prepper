@@ -1,6 +1,6 @@
 //preferably try to main the alphabetical order
 ext.versionMap = [
-        opentelemetry_proto    : '0.10.0'
+        opentelemetry_proto    : '1.0.1-alpha'
 ]
 
 ext.coreProjects = [project(':data-prepper-api'), project(':data-prepper-core'), project('data-prepper-plugins:common')]

@@ -13,5 +13,5 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.2"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.2"
     testImplementation "org.mockito:mockito-core:3.8.0"
-    testImplementation "junit:junit:4.13"
+    testImplementation "junit:junit:4.13.2"
 }

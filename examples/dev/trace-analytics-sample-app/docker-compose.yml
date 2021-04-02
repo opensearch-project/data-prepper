@@ -58,8 +58,8 @@ services:
     command: sh data-prepper-wait-for-odfe-and-start.sh
     volumes:
       - ./resources/data-prepper-wait-for-odfe-and-start.sh:/usr/share/data-prepper/data-prepper-wait-for-odfe-and-start.sh
-      - ./resources/trace_analytics_no_ssl.yml:/usr/share/data-prepper/data-prepper.yml
-      - ./resources/data_prepper_config.yml:/usr/share/data-prepper/data_prepper_config.yml
+      - ./resources/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml
+      - ./resources/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
       - ../../../shared-config/log4j2.properties:/usr/share/data-prepper/log4j.properties
       - ../../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
       - ../../demo/test_keystore.p12:/usr/share/data-prepper/test_keystore.p12
@@ -138,7 +138,7 @@ services:
       - "8089:8089" # client-dashboard
     environment:
       - OTEL_EXPORTER=otlp
-      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:55680
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:55680
       - OTEL_RESOURCE_ATTRIBUTES=service.name=analytics-service
       - OTLP=otel-collector
       - MYSQL_HOST=mysql

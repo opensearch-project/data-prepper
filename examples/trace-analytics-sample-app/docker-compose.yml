@@ -4,8 +4,11 @@ services:
     restart: unless-stopped
     container_name: data-prepper
     image: amazon/opendistro-for-elasticsearch-data-prepper:latest
+    command: sh data-prepper-wait-for-odfe-and-start.sh
     volumes:
-      - ../trace_analytics_no_ssl.yml:/usr/share/data-prepper/data-prepper.yml
+      - ./resources/data-prepper-wait-for-odfe-and-start.sh:/usr/share/data-prepper/data-prepper-wait-for-odfe-and-start.sh
+      - ../trace_analytics_no_ssl.yml:/usr/share/data-prepper/pipelines.yaml
+      - ../data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
       - ../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
     ports:
       - "21890:21890"
@@ -75,7 +78,7 @@ services:
       - '8089:8089' # client-dashboard
     environment:
       - OTEL_EXPORTER=otlp
-      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:55680
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:55680
       - OTEL_RESOURCE_ATTRIBUTES=service.name=analytics-service
       - OTLP=otel-collector
       - MYSQL_HOST=mysql

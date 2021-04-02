@@ -1,27 +1,11 @@
 # Logging
+Data Prepper uses [SLF4J](http://www.slf4j.org/) with a [Log4j 2 binding](http://logging.apache.org/log4j/2.x/log4j-slf4j-impl/). 
 
-In Data Prepper, logging is handled in each plugin using SLF4J, with Log4J as the logging backend.
-Default properties for Log4J can be found in the log4j.properties file in the *shared-config* directory.
-The following Log4J properties are configurable via the Data Prepper configuration file:
+Default properties for Log4j 2 can be found in the log4j2.properties file in the *shared-config* directory.
 
-* Log level
-  * Valid options are TRACE,  DEBUG, INFO, WARN, ERROR, FATAL, and OFF
-* Log file
-  * Path to file for log output
-* Max file size
-  * Max size of the log file
-* Max backup index
-  * Max number of backup log files before the oldest is erased
- 
-## Example
+Users are able to override these logging settings by setting their own "log4j.configurationFile" system property (see [Log4j 2 configuration docs](https://logging.apache.org/log4j/2.x/manual/configuration.html)).
 
-Below is an example of a Data Prepper configuration file setting
-custom values for Log4J properties
-
+Example:
 ```
-log4jConfig:
-  logLevel: "DEBUG"
-  filePath: "logs/DataPrepper.log"
-  maxFileSize: "1GB"
-  maxBackupIndex: 10
+java "-Dlog4j.configurationFile=config/custom-log4j2.properties" -jar data-prepper-core-$VERSION.jar pipelines.yaml data-prepper-config.yaml
 ```

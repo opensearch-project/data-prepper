@@ -1,0 +1,36 @@
+entry-pipeline:
+  delay: "100"
+  source:
+    otel_trace_source:
+      ssl: false
+  sink:
+    - pipeline:
+        name: "raw-pipeline"
+    - pipeline:
+        name: "service-map-pipeline"
+raw-pipeline:
+  source:
+    pipeline:
+      name: "entry-pipeline"
+  prepper:
+    - otel_trace_raw_prepper:
+  sink:
+    - elasticsearch:
+        hosts: [ "https://<your-domain>.<region>.es.amazonaws.com" ]
+        aws_sigv4: true
+        aws_region: "us-east-1"
+        trace_analytics_raw: true
+service-map-pipeline:
+  delay: "100"
+  source:
+    pipeline:
+      name: "entry-pipeline"
+  prepper:
+    - service_map_stateful:
+  sink:
+    - elasticsearch:
+        hosts: [ "https://<your-domain>.<region>.es.amazonaws.com" ]
+        aws_sigv4: true
+        aws_region: "us-east-1"
+        trace_analytics_service_map: true
+  

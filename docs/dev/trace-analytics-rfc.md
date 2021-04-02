@@ -8,7 +8,7 @@ As the first step, in 2020 we will offer Trace Analytics, which will allow users
 ## 2. Approach
 The Trace Analytics feature will embrace the Open Telemetry standard and provide the required plugins and adapters to integrate with the ecosystem. 
 Adoption to the OpenTelemetry ecosystem will benefit users of existing tracing standards like Zipkin and OpenTracing to use the Trace Analytics feature.
-To support the trace analytics feature we will build a new service called Data Prepper, which receives trace data from the OpenTelemetry collector, process them to elasticsearch friendly docs, and stores them in users' elasticsearch cluster. The trace analytics will also provide a Kibana plugin that will provide user-friendly dashboards on the stored trace data. 
+To support the trace analytics feature we will build a new service called Data Prepper, which receives trace data from the OpenTelemetry collector, process them to Elasticsearch friendly docs, and stores them in users' elasticsearch cluster. The trace analytics will also provide a Kibana plugin that will provide user-friendly dashboards on the stored trace data. 
 
 ![Kibana Notebooks Architecture](images/HighLevelDesign.jpg)
 
@@ -66,8 +66,8 @@ We are building two preppers for the Trace Analytics feature,
 
 ##### Elasticsearch sink
 
-We will build a generic sink that will write the data to elasticsearch as the destination. The elasticsearch sink will have configuration options related to elasticsearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc. 
-For the trace analytics feature, the sink will have specific configurations which will make the sink to use indices and index templates specific to the feature. Trace analytics specific elasticsearch indices are,
+We will build a generic sink that will write the data to Elasticsearch as the destination. The Elasticsearch sink will have configuration options related to elasticsearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc. 
+For the trace analytics feature, the sink will have specific configurations which will make the sink to use indices and index templates specific to the feature. Trace analytics specific Elasticsearch indices are,
                                                                                                                                                                  
 * *apm-trace-raw-v1* -  This index will store the output from otel-trace-raw-prepper. 
 * *apm-service-map-v1* - This index will store the output from the service-map-prepper.
