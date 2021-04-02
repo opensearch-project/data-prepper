@@ -5,8 +5,6 @@ entry-pipeline:
   sink:
     - pipeline:
         name: "raw-pipeline"
-    - pipeline:
-        name: "service-map-pipeline"
 raw-pipeline:
   source:
     pipeline:
@@ -25,16 +23,3 @@ raw-pipeline:
         username: "admin"
         password: "admin"
         trace_analytics_raw: true
-service-map-pipeline:
-  source:
-    pipeline:
-      name: "entry-pipeline"
-  prepper:
-    - service_map_stateful:
-        window_duration: 3
-  sink:
-    - elasticsearch:
-        hosts: ["https://node-0.example.com:9200"]
-        username: "admin"
-        password: "admin"
-        trace_analytics_service_map: true
