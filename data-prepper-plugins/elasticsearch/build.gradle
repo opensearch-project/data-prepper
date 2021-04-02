@@ -1,6 +1,6 @@
 buildscript {
     ext {
-        es_version = System.getProperty("es.version", "7.8.0")
+        es_version = System.getProperty("es.version", "${versionMap.es_version}")
         es_group = "org.elasticsearch"
         distribution = 'oss-zip'
     }
@@ -81,13 +81,11 @@ test {
     }
 }
 
-integTest {}
-
 testClusters.integTest {
     testDistribution = "OSS"
 }
 
-integTest.runner {
+integTest {
     systemProperty 'tests.security.manager', 'false'
 
     systemProperty "odfe", System.getProperty("odfe")
@@ -132,4 +130,5 @@ testingConventions.enabled = false
 licenseHeaders.enabled = false
 dependencyLicenses.enabled = false
 thirdPartyAudit.enabled = false
+loggerUsageCheck.enabled = false
 validateNebulaPom.enabled = false

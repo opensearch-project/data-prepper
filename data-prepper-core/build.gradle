@@ -29,6 +29,7 @@ dependencies {
 }
 
 jar {
+    dependsOn configurations.runtimeClasspath
     manifest {
         attributes('Implementation-Title': project.name,
                 'Implementation-Version': project.version,
