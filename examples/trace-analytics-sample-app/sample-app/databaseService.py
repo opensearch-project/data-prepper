@@ -8,13 +8,13 @@ from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.mysql import MySQLInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.wsgi import collect_request_attributes
-from opentelemetry.exporter.otlp.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 import opentelemetry.instrumentation.requests
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import (
     ConsoleSpanExporter,
-    SimpleExportSpanProcessor,
+    SimpleSpanProcessor,
 )
 import flask, os, pkg_resources
 import socket
@@ -41,11 +41,11 @@ tracerProvider = trace.get_tracer_provider()
 tracer = tracerProvider.get_tracer(__name__)
 
 tracerProvider.add_span_processor(
-    SimpleExportSpanProcessor(ConsoleSpanExporter())
+    SimpleSpanProcessor(ConsoleSpanExporter())
 )
-otlp_exporter = OTLPSpanExporter(endpoint="{}:55680".format(OTLP))
+otlp_exporter = OTLPSpanExporter(endpoint="{}:55680".format(OTLP), insecure=True)
 tracerProvider.add_span_processor(
-    SimpleExportSpanProcessor(otlp_exporter)
+    SimpleSpanProcessor(otlp_exporter)
 )
 
 DB_NAME = 'APM'
@@ -92,7 +92,7 @@ def createOrUseDatabase(cnx):
     try:
         cnx.cursor().execute("USE {}".format(DB_NAME))
     except mysql.connector.Error as err:
-        print("Database {} does not exists.".format(DB_NAME))
+        print("Database {} does not exist.".format(DB_NAME))
         if err.errno == errorcode.ER_BAD_DB_ERROR:
             createDatabase(cnx.cursor())
             print("Database {} created successfully.".format(DB_NAME))

@@ -11,7 +11,7 @@ COPY analytics-service /home/gradle/src/
 WORKDIR /home/gradle/src
 RUN gradle bootJar --daemon
 
-RUN wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v0.10.1/opentelemetry-javaagent-all.jar
+RUN wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.0.1/opentelemetry-javaagent-all.jar
 
 FROM alpine:3.7
 
@@ -33,6 +33,7 @@ COPY . /app/
 COPY --from=build /home/gradle/src/build/libs/*.jar /app/spring-boot-application.jar
 COPY --from=build /home/gradle/src/opentelemetry-javaagent-all.jar /app/opentelemetry-javaagent-all.jar
 
+RUN pip3 install --upgrade pip
 RUN pip3 install -r /app/requirements.txt
 WORKDIR /app
 RUN chmod +x /app/script.sh
