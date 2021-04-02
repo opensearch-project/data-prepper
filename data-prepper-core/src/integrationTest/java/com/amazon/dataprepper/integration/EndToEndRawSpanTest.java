@@ -13,7 +13,6 @@ import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
-import io.opentelemetry.proto.trace.v1.Status;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -31,7 +30,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import static org.awaitility.Awaitility.await;
@@ -42,15 +40,20 @@ public class EndToEndRawSpanTest {
 
     private static final String TEST_TRACEID_1 = "ABC";
     private static final String TEST_TRACEID_2 = "CBA";
+    private static final Map<String, String> TEST_TRACEID_TO_TRACE_GROUP = new HashMap<String, String>() {{
+       put(Hex.toHexString(TEST_TRACEID_1.getBytes()), ServiceMapTestData.DATA_100.name);
+        put(Hex.toHexString(TEST_TRACEID_2.getBytes()), ServiceMapTestData.DATA_101.name);
+    }};
     private static final List<ServiceMapTestData> testDataSet11 = Arrays.asList(
-            ServiceMapTestData.DATA_100, ServiceMapTestData.DATA_200, ServiceMapTestData.DATA_500, ServiceMapTestData.DATA_600,
-            ServiceMapTestData.DATA_700, ServiceMapTestData.DATA_1000);
+            ServiceMapTestData.DATA_100, ServiceMapTestData.DATA_200, ServiceMapTestData.DATA_300,
+            ServiceMapTestData.DATA_400, ServiceMapTestData.DATA_500, ServiceMapTestData.DATA_600);
     private static final List<ServiceMapTestData> testDataSet12 = Arrays.asList(
-            ServiceMapTestData.DATA_300, ServiceMapTestData.DATA_400, ServiceMapTestData.DATA_800,
-            ServiceMapTestData.DATA_900, ServiceMapTestData.DATA_1100);
+            ServiceMapTestData.DATA_700, ServiceMapTestData.DATA_800, ServiceMapTestData.DATA_900,
+            ServiceMapTestData.DATA_1000, ServiceMapTestData.DATA_1100);
     private static final List<ServiceMapTestData> testDataSet21 = Arrays.asList(
-            ServiceMapTestData.DATA_101, ServiceMapTestData.DATA_201, ServiceMapTestData.DATA_401, ServiceMapTestData.DATA_501);
-    private static final List<ServiceMapTestData> testDataSet22 = Collections.singletonList(ServiceMapTestData.DATA_301);
+            ServiceMapTestData.DATA_101, ServiceMapTestData.DATA_201, ServiceMapTestData.DATA_301);
+    private static final List<ServiceMapTestData> testDataSet22 = Arrays.asList(
+            ServiceMapTestData.DATA_401, ServiceMapTestData.DATA_501);
     private static final String INDEX_NAME = "otel-v1-apm-span-000001";
 
     @Test
@@ -69,10 +72,10 @@ public class EndToEndRawSpanTest {
                 getResourceSpansBatch(TEST_TRACEID_2, testDataSet22)
         );
 
-        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest11);
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest11);
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest22);
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest21);
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest12);
-        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest22);
 
         //Verify data in elasticsearch sink
         final List<Map<String, Object>> expectedDocuments = getExpectedDocuments(
@@ -84,7 +87,7 @@ public class EndToEndRawSpanTest {
         builder.withPassword("admin");
         final RestHighLevelClient restHighLevelClient = builder.build().createClient();
         // Wait for otel-trace-raw-prepper by trace_flush_interval
-        Thread.sleep(3000);
+        Thread.sleep(5000);
         // Wait for data to flow through pipeline and be indexed by ES
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(
                 () -> {
@@ -116,12 +119,6 @@ public class EndToEndRawSpanTest {
     private void refreshIndices(final RestHighLevelClient restHighLevelClient) throws IOException {
         final RefreshRequest requestAll = new RefreshRequest();
         restHighLevelClient.indices().refresh(requestAll, RequestOptions.DEFAULT);
-    }
-
-    private void sendExportTraceServiceRequestToSource(ExportTraceServiceRequest request) {
-        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.newClient(
-                "gproto+http://127.0.0.1:21890/", TraceServiceGrpc.TraceServiceBlockingStub.class);
-        client.export(request);
     }
 
     private void sendExportTraceServiceRequestToSource(final int port, final ExportTraceServiceRequest request) {
@@ -208,16 +205,16 @@ public class EndToEndRawSpanTest {
 
     private Map<String, Object> getExpectedEsDocumentSource(final Span span, final String serviceName) {
         final Map<String, Object> esDocSource = new HashMap<>();
-        esDocSource.put("traceId", Hex.toHexString(span.getTraceId().toByteArray()));
+        final String traceId = Hex.toHexString(span.getTraceId().toByteArray());
+        esDocSource.put("traceId", traceId);
         esDocSource.put("spanId", Hex.toHexString(span.getSpanId().toByteArray()));
         esDocSource.put("parentSpanId", Hex.toHexString(span.getParentSpanId().toByteArray()));
         esDocSource.put("name", span.getName());
         esDocSource.put("kind", span.getKind().name());
         esDocSource.put("status.code", span.getStatus().getCodeValue());
         esDocSource.put("serviceName", serviceName);
-        if (span.getParentSpanId().isEmpty()) {
-            esDocSource.put("traceGroup", span.getName());
-        }
+        final String traceGroup = TEST_TRACEID_TO_TRACE_GROUP.get(traceId);
+        esDocSource.put("traceGroup", traceGroup);
         return esDocSource;
     }
 
