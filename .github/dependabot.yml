@@ -27,11 +27,6 @@ updates:
     interval: weekly
 
 - package-ecosystem: gradle
-  directory: "/data-prepper-plugins/lmdb-prepper-state"
-  schedule:
-    interval: weekly
-
-- package-ecosystem: gradle
   directory: "/data-prepper-plugins/mapdb-prepper-state"
   schedule:
     interval: weekly

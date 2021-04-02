@@ -50,7 +50,7 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
     private volatile static MapDbPrepperState<ServiceMapStateData> currentWindow;
     private volatile static MapDbPrepperState<String> previousTraceGroupWindow;
     private volatile static MapDbPrepperState<String> currentTraceGroupWindow;
-    //TODO: Consider keeping this state in lmdb
+    //TODO: Consider keeping this state in a db
     private volatile static HashSet<ServiceMapRelationship> relationshipState = new HashSet<>();
     private static File dbPath;
     private static Clock clock;
@@ -60,7 +60,7 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
 
     public ServiceMapStatefulPrepper(final PluginSetting pluginSetting) {
         this(pluginSetting.getIntegerOrDefault(ServiceMapPrepperConfig.WINDOW_DURATION, ServiceMapPrepperConfig.DEFAULT_WINDOW_DURATION) * TO_MILLIS,
-                new File(ServiceMapPrepperConfig.DEFAULT_LMDB_PATH),
+                new File(ServiceMapPrepperConfig.DEFAULT_DB_PATH),
                 Clock.systemUTC(), pluginSetting.getNumberOfProcessWorkers(), pluginSetting);
     }
 
