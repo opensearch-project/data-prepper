@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
+import io.micrometer.core.instrument.Counter;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
@@ -21,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -36,18 +36,23 @@ import java.util.stream.Stream;
 @DataPrepperPlugin(name = "otel_trace_group_prepper", type = PluginType.PREPPER)
 public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Record<String>> {
 
+    public static final String SPANS_MISSING_TRACE_GROUP_INFO = "spansMissingTraceGroupInfo";
+
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceGroupPrepper.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
 
     private final OTelTraceGroupPrepperConfig otelTraceGroupPrepperConfig;
     private final RestHighLevelClient restHighLevelClient;
-    // TODO: add metrics
+
+    private final Counter spanMissingTraceGroupCounter;
 
     public OTelTraceGroupPrepper(final PluginSetting pluginSetting) {
         super(pluginSetting);
         otelTraceGroupPrepperConfig = OTelTraceGroupPrepperConfig.buildConfig(pluginSetting);
         restHighLevelClient = otelTraceGroupPrepperConfig.getEsConnectionConfig().createClient();
+
+        spanMissingTraceGroupCounter = pluginMetrics.counter(SPANS_MISSING_TRACE_GROUP_INFO);
     }
 
     @Override
@@ -88,6 +93,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                 }
             } else {
                 recordsOut.add(record);
+                spanMissingTraceGroupCounter.increment();
                 final String spanId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.SPAN_ID_FIELD);
                 LOG.info("Failed to find traceGroup for spanId: {} due to traceGroup missing for traceId: {}", spanId, traceId);
             }
