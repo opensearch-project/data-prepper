@@ -92,9 +92,6 @@ def startDataPrepperDockerContainer(final DockerCreateContainer createDataPreppe
     return tasks.create("start${createDataPrepperDockerContainerTask.getName()}", DockerStartContainer) {
         dependsOn createDataPrepperDockerContainerTask
         targetContainerId createDataPrepperDockerContainerTask.getContainerId()
-        doLast {
-            sleep(10*1000)
-        }
     }
 }
 
@@ -158,6 +155,10 @@ task rawSpanEndToEndTest(type: Test) {
     dependsOn startDataPrepper2Task
     startDataPrepper1Task.mustRunAfter 'startOdfeDockerContainer'
     startDataPrepper2Task.mustRunAfter 'startOdfeDockerContainer'
+    // wait for data-preppers to be ready
+    doFirst {
+        sleep(10*1000)
+    }
 
     description = 'Runs the raw span integration tests.'
     group = 'verification'
@@ -191,6 +192,10 @@ task serviceMapEndToEndTest(type: Test) {
     dependsOn startDataPrepper2Task
     startDataPrepper1Task.mustRunAfter 'startOdfeDockerContainer'
     startDataPrepper2Task.mustRunAfter 'startOdfeDockerContainer'
+    // wait for data-preppers to be ready
+    doFirst {
+        sleep(10*1000)
+    }
 
     description = 'Runs the service-map integration tests.'
     group = 'verification'
