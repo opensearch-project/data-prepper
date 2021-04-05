@@ -36,7 +36,9 @@ import java.util.stream.Stream;
 @DataPrepperPlugin(name = "otel_trace_group_prepper", type = PluginType.PREPPER)
 public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Record<String>> {
 
-    public static final String SPANS_MISSING_TRACE_GROUP_INFO = "spansMissingTraceGroupInfo";
+    public static final String RECORDS_IN_MISSING_TRACE_GROUP = "recordsInMissingTraceGroup";
+    public static final String RECORDS_OUT_FIXED_TRACE_GROUP = "recordsOutFixedTraceGroup";
+    public static final String RECORDS_OUT_MISSING_TRACE_GROUP = "recordsOutMissingTraceGroup";
 
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceGroupPrepper.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -45,14 +47,18 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
     private final OTelTraceGroupPrepperConfig otelTraceGroupPrepperConfig;
     private final RestHighLevelClient restHighLevelClient;
 
-    private final Counter spanMissingTraceGroupCounter;
+    private final Counter recordsInMissingTraceGroupCounter;
+    private final Counter recordsOutFixedTraceGroupCounter;
+    private final Counter recordsOutMissingTraceGroupCounter;
 
     public OTelTraceGroupPrepper(final PluginSetting pluginSetting) {
         super(pluginSetting);
         otelTraceGroupPrepperConfig = OTelTraceGroupPrepperConfig.buildConfig(pluginSetting);
         restHighLevelClient = otelTraceGroupPrepperConfig.getEsConnectionConfig().createClient();
 
-        spanMissingTraceGroupCounter = pluginMetrics.counter(SPANS_MISSING_TRACE_GROUP_INFO);
+        recordsInMissingTraceGroupCounter = pluginMetrics.counter(RECORDS_IN_MISSING_TRACE_GROUP);
+        recordsOutFixedTraceGroupCounter = pluginMetrics.counter(RECORDS_OUT_FIXED_TRACE_GROUP);
+        recordsOutMissingTraceGroupCounter = pluginMetrics.counter(RECORDS_OUT_MISSING_TRACE_GROUP);
     }
 
     @Override
@@ -68,6 +74,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                 if (traceGroup == null || traceGroup.equals("")) {
                     traceIdsToLookUp.add(traceId);
                     recordMissingTraceGroupToRawSpanMap.put(record, rawSpanMap);
+                    recordsInMissingTraceGroupCounter.increment();
                 } else {
                     recordsOut.add(record);
                 }
@@ -87,13 +94,14 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                 try {
                     final String newData = OBJECT_MAPPER.writeValueAsString(rawSpanMap);
                     recordsOut.add(new Record<>(newData, record.getMetadata()));
+                    recordsOutFixedTraceGroupCounter.increment();
                 } catch (JsonProcessingException e) {
                     recordsOut.add(record);
                     LOG.error("Failed to process the raw span: [{}]", record.getData(), e);
                 }
             } else {
                 recordsOut.add(record);
-                spanMissingTraceGroupCounter.increment();
+                recordsOutMissingTraceGroupCounter.increment();
                 final String spanId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.SPAN_ID_FIELD);
                 LOG.warn("Failed to find traceGroup for spanId: {} due to traceGroup missing for traceId: {}", spanId, traceId);
             }

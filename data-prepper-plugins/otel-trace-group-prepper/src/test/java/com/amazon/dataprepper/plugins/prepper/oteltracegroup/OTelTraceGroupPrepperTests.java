@@ -142,7 +142,9 @@ public class OTelTraceGroupPrepperTests {
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(TEST_TRACE_GROUP_1, extractTraceGroupFromRecord(recordOut));
-        checkSpansMissingTraceGroupMeasure(0.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_IN_MISSING_TRACE_GROUP, 1.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_FIXED_TRACE_GROUP, 1.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_MISSING_TRACE_GROUP, 0.0);
     }
 
     @Test
@@ -160,7 +162,9 @@ public class OTelTraceGroupPrepperTests {
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
-        checkSpansMissingTraceGroupMeasure(1.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_IN_MISSING_TRACE_GROUP, 1.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_FIXED_TRACE_GROUP, 0.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_MISSING_TRACE_GROUP, 1.0);
     }
 
     @Test
@@ -179,7 +183,9 @@ public class OTelTraceGroupPrepperTests {
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
-        checkSpansMissingTraceGroupMeasure(1.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_IN_MISSING_TRACE_GROUP, 1.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_FIXED_TRACE_GROUP, 0.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_MISSING_TRACE_GROUP, 1.0);
     }
 
     @Test
@@ -195,7 +201,9 @@ public class OTelTraceGroupPrepperTests {
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
-        checkSpansMissingTraceGroupMeasure(0.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_IN_MISSING_TRACE_GROUP, 0.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_FIXED_TRACE_GROUP, 0.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_MISSING_TRACE_GROUP, 0.0);
     }
 
     @Test
@@ -248,10 +256,9 @@ public class OTelTraceGroupPrepperTests {
         return futures;
     }
 
-    private void checkSpansMissingTraceGroupMeasure(double expectedValue) {
+    private void checkMeasurementValue(final String name, final double expectedValue) {
         final List<Measurement> spansMissingTraceGroupMeasures = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add(PLUGIN_NAME)
-                        .add(OTelTraceGroupPrepper.SPANS_MISSING_TRACE_GROUP_INFO).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add(PLUGIN_NAME).add(name).toString());
         assertEquals(1, spansMissingTraceGroupMeasures.size());
         final Measurement spansMissingTraceGroupMeasure = spansMissingTraceGroupMeasures.get(0);
         assertEquals(expectedValue, spansMissingTraceGroupMeasure.getValue(), 0);
