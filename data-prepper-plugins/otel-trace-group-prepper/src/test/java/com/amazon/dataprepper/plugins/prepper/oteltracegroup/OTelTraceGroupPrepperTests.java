@@ -134,9 +134,6 @@ public class OTelTraceGroupPrepperTests {
         // Arrange
         Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
-        final List<Measurement> spansMissingTraceGroupMeasures = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add(PLUGIN_NAME)
-                        .add(OTelTraceGroupPrepper.SPANS_MISSING_TRACE_GROUP_INFO).toString());
 
         // Act
         List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
@@ -145,9 +142,7 @@ public class OTelTraceGroupPrepperTests {
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(TEST_TRACE_GROUP_1, extractTraceGroupFromRecord(recordOut));
-        assertEquals(1, spansMissingTraceGroupMeasures.size());
-        final Measurement spansMissingTraceGroupMeasure = spansMissingTraceGroupMeasures.get(0);
-        assertEquals(0.0, spansMissingTraceGroupMeasure.getValue(), 0);
+        checkSpansMissingTraceGroupMeasure(0.0);
     }
 
     @Test
@@ -157,9 +152,6 @@ public class OTelTraceGroupPrepperTests {
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
         when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class)))
                 .thenThrow(new ElasticsearchException("Failure due to search request"));
-        final List<Measurement> spansMissingTraceGroupMeasures = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add(PLUGIN_NAME)
-                        .add(OTelTraceGroupPrepper.SPANS_MISSING_TRACE_GROUP_INFO).toString());
 
         // Act
         List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
@@ -168,9 +160,7 @@ public class OTelTraceGroupPrepperTests {
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
-        assertEquals(1, spansMissingTraceGroupMeasures.size());
-        final Measurement spansMissingTraceGroupMeasure = spansMissingTraceGroupMeasures.get(0);
-        assertEquals(1.0, spansMissingTraceGroupMeasure.getValue(), 0);
+        checkSpansMissingTraceGroupMeasure(1.0);
     }
 
     @Test
@@ -181,9 +171,6 @@ public class OTelTraceGroupPrepperTests {
         when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class))).thenReturn(testSearchResponse);
         when(testSearchResponse.getHits()).thenReturn(testSearchHits);
         when(testSearchHits.getHits()).thenReturn(new SearchHit[] {});
-        final List<Measurement> spansMissingTraceGroupMeasures = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add(PLUGIN_NAME)
-                        .add(OTelTraceGroupPrepper.SPANS_MISSING_TRACE_GROUP_INFO).toString());
 
         // Act
         List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
@@ -192,9 +179,7 @@ public class OTelTraceGroupPrepperTests {
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
-        assertEquals(1, spansMissingTraceGroupMeasures.size());
-        final Measurement spansMissingTraceGroupMeasure = spansMissingTraceGroupMeasures.get(0);
-        assertEquals(1.0, spansMissingTraceGroupMeasure.getValue(), 0);
+        checkSpansMissingTraceGroupMeasure(1.0);
     }
 
     @Test
@@ -202,9 +187,6 @@ public class OTelTraceGroupPrepperTests {
         // Arrange
         Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
-        final List<Measurement> spansMissingTraceGroupMeasures = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add(PLUGIN_NAME)
-                        .add(OTelTraceGroupPrepper.SPANS_MISSING_TRACE_GROUP_INFO).toString());
 
         // Act
         List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
@@ -213,9 +195,7 @@ public class OTelTraceGroupPrepperTests {
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
-        assertEquals(1, spansMissingTraceGroupMeasures.size());
-        final Measurement spansMissingTraceGroupMeasure = spansMissingTraceGroupMeasures.get(0);
-        assertEquals(0.0, spansMissingTraceGroupMeasure.getValue(), 0);
+        checkSpansMissingTraceGroupMeasure(0.0);
     }
 
     @Test
@@ -266,5 +246,14 @@ public class OTelTraceGroupPrepperTests {
         final List<Future<Collection<Record<String>>>> futures = new ArrayList<>();
         futures.add(executorService.submit(() -> otelTraceGroupPrepper.doExecute(records)));
         return futures;
+    }
+
+    private void checkSpansMissingTraceGroupMeasure(double expectedValue) {
+        final List<Measurement> spansMissingTraceGroupMeasures = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add(OTelTraceGroupPrepper.SPANS_MISSING_TRACE_GROUP_INFO).toString());
+        assertEquals(1, spansMissingTraceGroupMeasures.size());
+        final Measurement spansMissingTraceGroupMeasure = spansMissingTraceGroupMeasures.get(0);
+        assertEquals(expectedValue, spansMissingTraceGroupMeasure.getValue(), 0);
     }
 }
