@@ -3,12 +3,13 @@ plugins {
 }
 
 docker {
-    name "data-prepper/${project.rootProject.name}:${project.version}"
+    name "${project.rootProject.name}:${project.version}"
     tag "${project.rootProject.name}", "${project.version}"
     files project(':data-prepper-core').jar.archivePath
     buildArgs(['JAR_FILE'       : project(':data-prepper-core').jar.archiveName,
-               'CONFIG_FILEPATH': '/usr/share/data-prepper/data-prepper.yml'])
-    dockerfile file('data-prepper-0.7.0-all.Dockerfile')
+               'CONFIG_FILEPATH': '/usr/share/data-prepper/data-prepper-config.yaml',
+               'PIPELINE_FILEPATH': '/usr/share/data-prepper/pipelines.yaml'])
+    dockerfile file('opendistroforelasticsearch-data-prepper-0.8.0-beta.Dockerfile')
 }
 
 dockerPrepare.dependsOn ':release:releasePrerequisites'

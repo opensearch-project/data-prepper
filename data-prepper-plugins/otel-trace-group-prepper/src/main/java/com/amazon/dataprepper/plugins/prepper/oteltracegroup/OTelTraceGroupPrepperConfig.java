@@ -4,7 +4,7 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration;
 import com.amazon.dataprepper.plugins.sink.elasticsearch.IndexConstants;
 
-public class OtelTraceGroupPrepperConfig {
+public class OTelTraceGroupPrepperConfig {
     protected static final String TRACE_ID_FIELD = "traceId";
     protected static final String SPAN_ID_FIELD = "spanId";
     protected static final String PARENT_SPAN_ID_FIELD = "parentSpanId";
@@ -20,12 +20,12 @@ public class OtelTraceGroupPrepperConfig {
         return esConnectionConfig;
     }
 
-    private OtelTraceGroupPrepperConfig(final ConnectionConfiguration esConnectionConfig) {
+    private OTelTraceGroupPrepperConfig(final ConnectionConfiguration esConnectionConfig) {
         this.esConnectionConfig = esConnectionConfig;
     }
 
-    public static OtelTraceGroupPrepperConfig buildConfig(final PluginSetting pluginSetting) {
+    public static OTelTraceGroupPrepperConfig buildConfig(final PluginSetting pluginSetting) {
         final ConnectionConfiguration esConnectionConfig = ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        return new OtelTraceGroupPrepperConfig(esConnectionConfig);
+        return new OTelTraceGroupPrepperConfig(esConnectionConfig);
     }
 }

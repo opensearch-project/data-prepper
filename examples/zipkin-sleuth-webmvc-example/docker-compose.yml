@@ -39,7 +39,8 @@ services:
     container_name: data-prepper
     image: amazon/opendistro-for-elasticsearch-data-prepper:latest
     volumes:
-      - ../trace_analytics_no_ssl.yml:/usr/share/data-prepper/data-prepper.yml
+      - ../trace_analytics_no_ssl.yml:/usr/share/data-prepper/pipelines.yaml
+      - ../data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
       - ../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
     ports:
       - "21890:21890"

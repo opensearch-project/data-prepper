@@ -3,7 +3,7 @@
 
 name: Data Prepper Java CI with Gradle
 
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   build:
@@ -32,5 +32,5 @@ jobs:
     - name: Run ODFE tests
       run: |
         ./gradlew :data-prepper-plugins:elasticsearch:test --tests "com.amazon.dataprepper.plugins.sink.elasticsearch.ODFETests.testODFEConnection" -Dodfe.host=https://localhost:9200 -Dodfe.user=admin -Dodfe.password=admin
-        ./gradlew :data-prepper-plugins:elasticsearch:integTestRunner --tests "com.amazon.dataprepper.plugins.sink.elasticsearch.ElasticsearchSinkIT" -Dodfe=true -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername=docker-cluster -Duser=admin -Dpassword=admin
+        ./gradlew :data-prepper-plugins:elasticsearch:integTest --tests "com.amazon.dataprepper.plugins.sink.elasticsearch.ElasticsearchSinkIT" -Dodfe=true -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername=docker-cluster -Duser=admin -Dpassword=admin
 

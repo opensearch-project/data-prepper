@@ -1,6 +1,6 @@
 buildscript {
     ext {
-        es_version = System.getProperty("es.version", "7.8.0")
+        es_version = System.getProperty("es.version", "${versionMap.es_version}")
         es_group = "org.elasticsearch"
         distribution = 'oss-zip'
     }
@@ -35,7 +35,7 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.2"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.2"
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
-    implementation "com.amazonaws:aws-java-sdk-core:1.11.979"
+    implementation "com.amazonaws:aws-java-sdk-core:1.11.991"
     implementation "com.github.awslabs:aws-request-signing-apache-interceptor:b3772780da"
     implementation "io.micrometer:micrometer-core:1.6.5"
     testImplementation("junit:junit:4.13.2") {
@@ -51,7 +51,7 @@ compileJava.options.warnings = false
 // Resolve dependency conflict between ES sink and main project
 configurations.all {
     resolutionStrategy {
-        force 'com.amazonaws:aws-java-sdk-core:1.11.979'
+        force 'com.amazonaws:aws-java-sdk-core:1.11.990'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.2'
         force 'com.fasterxml.jackson.core:jackson-databind:2.12.2'
         force 'com.fasterxml.jackson.core:jackson-core:2.12.2'
@@ -81,13 +81,11 @@ test {
     }
 }
 
-integTest {}
-
 testClusters.integTest {
     testDistribution = "OSS"
 }
 
-integTest.runner {
+integTest {
     systemProperty 'tests.security.manager', 'false'
 
     systemProperty "odfe", System.getProperty("odfe")
@@ -132,4 +130,5 @@ testingConventions.enabled = false
 licenseHeaders.enabled = false
 dependencyLicenses.enabled = false
 thirdPartyAudit.enabled = false
+loggerUsageCheck.enabled = false
 validateNebulaPom.enabled = false

@@ -6,13 +6,6 @@ ext {
     es_version = System.getProperty("es.version", "7.8.0")
 }
 
-group 'com.amazon'
-version '0.7.0-alpha'
-
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     compile project(':data-prepper-api')
     compile project(':data-prepper-plugins:otel-trace-raw-prepper')
@@ -21,5 +14,5 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.2"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.2"
     testImplementation "org.mockito:mockito-core:3.8.0"
-    testImplementation "junit:junit:4.13"
+    testImplementation "junit:junit:4.13.2"
 }

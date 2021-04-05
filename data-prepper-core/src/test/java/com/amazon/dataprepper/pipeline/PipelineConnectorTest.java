@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -52,13 +53,15 @@ public class PipelineConnectorTest {
         sut.output(recordList);
     }
 
-    @Test(expected = RuntimeException.class)
-    public void testOutputBufferTimesOut() throws Exception {
-        doThrow(new TimeoutException()).when(buffer).write(any(), anyInt());
+    @Test
+    public void testOutputBufferTimesOutThenSucceeds() throws Exception {
+        doThrow(new TimeoutException()).doNothing().when(buffer).write(any(), anyInt());
 
         sut.start(buffer);
 
         sut.output(recordList);
+
+        verify(buffer, times(2)).write(eq(RECORD), anyInt());
     }
 
     @Test

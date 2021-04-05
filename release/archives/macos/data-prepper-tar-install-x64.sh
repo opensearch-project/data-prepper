@@ -13,13 +13,17 @@
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
 
-if [[ $# -eq 0 ]]
+if [[ $# -ne 2 ]]
   then
-    echo "Path to the configuration file is required"
+    echo
+    echo "Error: Paths to pipeline and data-prepper configuration files are required. Example:"
+    echo "./data-prepper-tar-install.sh config/example-pipelines.yaml config/example-data-prepper-config.yaml"
+    echo
     exit 1
 fi
 
-CONFIG_FILE_LOCATION=$1
+PIPELINES_FILE_LOCATION=$1
+CONFIG_FILE_LOCATION=$2
 MIN_REQ_JAVA_VERSION=1.8
 MIN_REQ_OPENJDK_VERSION=8
 DATA_PREPPER_HOME=$(cd "$(dirname "$0")"; pwd)
@@ -61,5 +65,5 @@ then
     fi
 fi
 
-DATA_PREPPER_JAVA_OPTS="-Dlog4j.configurationFile=$DATA_PREPPER_HOME/config/log4j.properties"
-java $JAVA_OPTS $DATA_PREPPER_JAVA_OPTS -jar $EXECUTABLE_JAR $CONFIG_FILE_LOCATION
+DATA_PREPPER_JAVA_OPTS="-Dlog4j.configurationFile=$DATA_PREPPER_HOME/config/log4j2-rolling.properties"
+java $JAVA_OPTS $DATA_PREPPER_JAVA_OPTS -jar $EXECUTABLE_JAR $PIPELINES_FILE_LOCATION $CONFIG_FILE_LOCATION

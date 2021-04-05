@@ -50,7 +50,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
-public class OtelTraceGroupPrepperTests {
+public class OTelTraceGroupPrepperTests {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String TEST_TRACE_ID_1 = "6d0ff634d126b6ec2c180391e67b4237";
@@ -73,7 +73,7 @@ public class OtelTraceGroupPrepperTests {
 
     private MockedStatic<ConnectionConfiguration> connectionConfigurationMockedStatic;
 
-    private OtelTraceGroupPrepper otelTraceGroupPrepper;
+    private OTelTraceGroupPrepper otelTraceGroupPrepper;
     private ExecutorService executorService;
 
     @Mock
@@ -105,27 +105,27 @@ public class OtelTraceGroupPrepperTests {
         when(testSearchResponse.getHits()).thenReturn(testSearchHits);
         when(testSearchHits.getHits()).thenReturn(new SearchHit[] {testSearchHit1});
         when(testSearchHit1.field("traceId")).thenReturn(new DocumentField("traceId", Collections.singletonList(TEST_TRACE_ID_1)));
-        when(testSearchHit1.field(OtelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD))
-                .thenReturn(new DocumentField(OtelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getName())));
-        when(testSearchHit1.field(OtelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD))
-                .thenReturn(new DocumentField(OtelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getEndTime())));
-        when(testSearchHit1.field(OtelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD))
-                .thenReturn(new DocumentField(OtelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getDurationInNanos())));
-        when(testSearchHit1.field(OtelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD))
-                .thenReturn(new DocumentField(OtelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getStatusCode())));
+        when(testSearchHit1.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD))
+                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getName())));
+        when(testSearchHit1.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD))
+                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getEndTime())));
+        when(testSearchHit1.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD))
+                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getDurationInNanos())));
+        when(testSearchHit1.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD))
+                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getStatusCode())));
         when(testSearchHit2.field("traceId")).thenReturn(new DocumentField("traceId", Collections.singletonList(TEST_TRACE_ID_2)));
-        when(testSearchHit2.field(OtelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD))
-                .thenReturn(new DocumentField(OtelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getName())));
-        when(testSearchHit2.field(OtelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD))
-                .thenReturn(new DocumentField(OtelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getEndTime())));
-        when(testSearchHit2.field(OtelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD))
-                .thenReturn(new DocumentField(OtelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getDurationInNanos())));
-        when(testSearchHit2.field(OtelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD))
-                .thenReturn(new DocumentField(OtelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getStatusCode())));
+        when(testSearchHit2.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD))
+                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getName())));
+        when(testSearchHit2.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD))
+                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getEndTime())));
+        when(testSearchHit2.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD))
+                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getDurationInNanos())));
+        when(testSearchHit2.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD))
+                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getStatusCode())));
         final PluginSetting testPluginSetting = new PluginSetting("otel_trace_group_prepper", new HashMap<>()) {{
             setPipelineName("testPipelineName");
         }};
-        otelTraceGroupPrepper = new OtelTraceGroupPrepper(testPluginSetting);
+        otelTraceGroupPrepper = new OTelTraceGroupPrepper(testPluginSetting);
         executorService = Executors.newFixedThreadPool(TEST_NUM_WORKERS);
     }
 
@@ -138,40 +138,40 @@ public class OtelTraceGroupPrepperTests {
 
     @Test
     public void testShutDown() throws IOException {
-        // When
+        // Act
         otelTraceGroupPrepper.shutdown();
 
-        // Then
+        // Assert
         verify(restHighLevelClient, times(1)).close();
     }
 
     @Test
     public void testTraceGroupFillSuccess() throws IOException {
-        // Given
+        // Arrange
         Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
 
-        // When
+        // Act
         List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
 
-        // Then
+        // Assert
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(TEST_TRACE_GROUP_1, extractTraceGroupFromRecord(recordOut));
     }
 
     @Test
-    public void testTraceGroupFillFailDueToRequest() throws IOException {
-        // Given
+    public void testTraceGroupFillFailDueToFailedRequest() throws IOException {
+        // Arrange
         Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
         when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class)))
                 .thenThrow(new ElasticsearchException("Failure due to search request"));
 
-        // When
+        // Act
         List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
 
-        // Then
+        // Assert
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
@@ -179,49 +179,32 @@ public class OtelTraceGroupPrepperTests {
 
     @Test
     public void testTraceGroupFillFailDueToNoHits() throws IOException {
-        // Given
+        // Arrange
         Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
         when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class))).thenReturn(testSearchResponse);
         when(testSearchResponse.getHits()).thenReturn(testSearchHits);
         when(testSearchHits.getHits()).thenReturn(new SearchHit[] {});
 
-        // When
+        // Act
         List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
 
-        // Then
+        // Assert
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
     }
 
     @Test
-    public void testTraceGroupFillFailDueToException() throws IOException {
-        // Given
-        Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
-        List<Record<String>> testRecords = Collections.singletonList(testRecord);
-        when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class)))
-                .thenThrow(new ElasticsearchException("Test exception"));
-
-        // When
-        List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
-
-        // Then
-        assertEquals(1, recordsOut.size());
-        Record<String> recordOut = recordsOut.get(0);
-        assertEquals(testRecord, recordOut);
-    }
-
-    @Test
-    public void testTraceGroupNoProcess() throws IOException {
-        // Given
+    public void testTraceGroupFieldAlreadyPopulated() throws IOException {
+        // Arrange
         Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
 
-        // When
+        // Act
         List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
 
-        // Then
+        // Assert
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
@@ -233,7 +216,7 @@ public class OtelTraceGroupPrepperTests {
          * Note: we only test the threadsafety of the business logic in OtelTraceGroupPrepper. The elasticsearch REST client
          * itself is thread-safe {https://www.elastic.co/guide/en/elasticsearch/client/java-rest/current/_changing_the_client_8217_s_initialization_code.html}.
          */
-        // Given
+        // Arrange
         when(testSearchHits.getHits()).thenReturn(new SearchHit[] {testSearchHit1, testSearchHit2});
         Record<String> testCompleteRecord1 = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE_1);
         Record<String> testMissingRecord1 = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
@@ -242,14 +225,14 @@ public class OtelTraceGroupPrepperTests {
         final List<Record<String>> processedRecords = new ArrayList<>();
         List<Future<Collection<Record<String>>>> futures = new ArrayList<>();
 
-        // When
+        // Act
         futures.addAll(submitBatchRecords(Arrays.asList(testCompleteRecord1, testMissingRecord1)));
         futures.addAll(submitBatchRecords(Arrays.asList(testCompleteRecord2, testMissingRecord2)));
         for (Future<Collection<Record<String>>> future : futures) {
             processedRecords.addAll(future.get());
         }
 
-        // Then
+        // Assert
         assertEquals(4, processedRecords.size());
         for (Record<String> record: processedRecords) {
             assertNotNull(extractTraceGroupFromRecord(record));
@@ -268,10 +251,10 @@ public class OtelTraceGroupPrepperTests {
 
     private TraceGroup extractTraceGroupFromRecord(final Record<String> record) throws JsonProcessingException {
         Map<String, Object> rawSpanMap = OBJECT_MAPPER.readValue(record.getData(), new TypeReference<Map<String, Object>>() {});
-        final String traceGroupName = (String) rawSpanMap.get(OtelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD);
-        final String traceGroupEndTime = (String) rawSpanMap.get(OtelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD);
-        final Long traceGroupDurationInNanos = ((Number) rawSpanMap.get(OtelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD)).longValue();
-        final Integer traceGroupStatusCode = ((Number) rawSpanMap.get(OtelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD)).intValue();
+        final String traceGroupName = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD);
+        final String traceGroupEndTime = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD);
+        final Long traceGroupDurationInNanos = ((Number) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD)).longValue();
+        final Integer traceGroupStatusCode = ((Number) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD)).intValue();
         final TraceGroup.TraceGroupBuilder traceGroupBuilder = new TraceGroup.TraceGroupBuilder()
                 .setName(traceGroupName)
                 .setEndTime(traceGroupEndTime)
