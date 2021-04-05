@@ -86,8 +86,8 @@ public class EndToEndRawSpanTest {
         builder.withUsername("admin");
         builder.withPassword("admin");
         final RestHighLevelClient restHighLevelClient = builder.build().createClient();
-        // Wait for otel-trace-raw-prepper by trace_flush_interval
-        Thread.sleep(5000);
+        // Wait for otel-trace-raw-prepper by at least trace_flush_interval
+        Thread.sleep(6000);
         // Wait for data to flow through pipeline and be indexed by ES
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(
                 () -> {
