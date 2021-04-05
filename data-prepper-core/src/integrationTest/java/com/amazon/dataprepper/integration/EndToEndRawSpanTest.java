@@ -38,11 +38,9 @@ public class EndToEndRawSpanTest {
     private static final int DATA_PREPPER_PORT_1 = 21890;
     private static final int DATA_PREPPER_PORT_2 = 21891;
 
-    private static final String TEST_TRACEID_1 = "ABC";
-    private static final String TEST_TRACEID_2 = "CBA";
     private static final Map<String, String> TEST_TRACEID_TO_TRACE_GROUP = new HashMap<String, String>() {{
-       put(Hex.toHexString(TEST_TRACEID_1.getBytes()), EndToEndTestData.DATA_100.name);
-        put(Hex.toHexString(TEST_TRACEID_2.getBytes()), EndToEndTestData.DATA_101.name);
+       put(Hex.toHexString(EndToEndTestData.DATA_100.traceId.getBytes()), EndToEndTestData.DATA_100.name);
+       put(Hex.toHexString(EndToEndTestData.DATA_101.traceId.getBytes()), EndToEndTestData.DATA_101.name);
     }};
     private static final List<EndToEndTestData> TEST_DATA_SET_1_WITH_ROOT_SPAN = Arrays.asList(
             EndToEndTestData.DATA_100, EndToEndTestData.DATA_200, EndToEndTestData.DATA_300,
@@ -60,16 +58,16 @@ public class EndToEndRawSpanTest {
     public void testPipelineEndToEnd() throws InterruptedException {
         //Send data to otel trace source
         final ExportTraceServiceRequest exportTraceServiceRequest11 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_1, TEST_DATA_SET_1_WITH_ROOT_SPAN)
+                getResourceSpansBatch(TEST_DATA_SET_1_WITH_ROOT_SPAN)
         );
         final ExportTraceServiceRequest exportTraceServiceRequest12 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_1, TEST_DATA_SET_1_WITHOUT_ROOT_SPAN)
+                getResourceSpansBatch(TEST_DATA_SET_1_WITHOUT_ROOT_SPAN)
         );
         final ExportTraceServiceRequest exportTraceServiceRequest21 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_2, TEST_DATA_SET_2_WITH_ROOT_SPAN)
+                getResourceSpansBatch(TEST_DATA_SET_2_WITH_ROOT_SPAN)
         );
         final ExportTraceServiceRequest exportTraceServiceRequest22 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_2, TEST_DATA_SET_2_WITHOUT_ROOT_SPAN)
+                getResourceSpansBatch(TEST_DATA_SET_2_WITHOUT_ROOT_SPAN)
         );
 
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest11);
@@ -166,9 +164,10 @@ public class EndToEndRawSpanTest {
                 .build();
     }
 
-    private List<ResourceSpans> getResourceSpansBatch(final String traceId, final List<EndToEndTestData> dataList) {
+    private List<ResourceSpans> getResourceSpansBatch(final List<EndToEndTestData> dataList) {
         final ArrayList<ResourceSpans> spansList = new ArrayList<>();
         for(final EndToEndTestData data : dataList) {
+            final String traceId = data.traceId;
             final String parentId = data.parentId;
             final String spanId = data.spanId;
             final String serviceName = data.serviceName;
