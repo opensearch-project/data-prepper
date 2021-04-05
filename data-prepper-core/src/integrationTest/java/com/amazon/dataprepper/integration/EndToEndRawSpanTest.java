@@ -166,15 +166,14 @@ public class EndToEndRawSpanTest {
                 .build();
     }
 
-    private List<ResourceSpans> getResourceSpansBatch(final String traceId, final List<EndToEndTestData> data) {
+    private List<ResourceSpans> getResourceSpansBatch(final String traceId, final List<EndToEndTestData> dataList) {
         final ArrayList<ResourceSpans> spansList = new ArrayList<>();
-        for(int i=0; i < data.size(); i++) {
-            final EndToEndTestData currData = data.get(i);
-            final String parentId = currData.parentId;
-            final String spanId = currData.spanId;
-            final String serviceName = currData.serviceName;
-            final String spanName = currData.name;
-            final Span.SpanKind spanKind = currData.spanKind;
+        for(final EndToEndTestData data : dataList) {
+            final String parentId = data.parentId;
+            final String spanId = data.spanId;
+            final String serviceName = data.serviceName;
+            final String spanName = data.name;
+            final Span.SpanKind spanKind = data.spanKind;
             final ResourceSpans rs = getResourceSpans(
                     serviceName,
                     spanName,
