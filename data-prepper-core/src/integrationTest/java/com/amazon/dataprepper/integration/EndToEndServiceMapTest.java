@@ -41,32 +41,32 @@ public class EndToEndServiceMapTest {
     private static final String TEST_TRACEID_2 = "CBA";
     private static final int DATA_PREPPER_PORT_1 = 21890;
     private static final int DATA_PREPPER_PORT_2 = 21891;
-    private static final List<EndToEndTestSpan> TEST_DATA_SET_11 = Arrays.asList(
+    private static final List<EndToEndTestSpan> TEST_TRACE_1_BATCH_1 = Arrays.asList(
             EndToEndTestSpan.TRACE_1_ROOT_SPAN, EndToEndTestSpan.TRACE_1_SPAN_2, EndToEndTestSpan.TRACE_1_SPAN_5,
             EndToEndTestSpan.TRACE_1_SPAN_6, EndToEndTestSpan.TRACE_1_SPAN_7, EndToEndTestSpan.TRACE_1_SPAN_10);
-    private static final List<EndToEndTestSpan> TEST_DATA_SET_12 = Arrays.asList(
+    private static final List<EndToEndTestSpan> TEST_TRACE_1_BATCH_2 = Arrays.asList(
             EndToEndTestSpan.TRACE_1_SPAN_3, EndToEndTestSpan.TRACE_1_SPAN_4, EndToEndTestSpan.TRACE_1_SPAN_8,
             EndToEndTestSpan.TRACE_1_SPAN_9, EndToEndTestSpan.TRACE_1_SPAN_11);
-    private static final List<EndToEndTestSpan> TEST_DATA_SET_21 = Arrays.asList(EndToEndTestSpan.TRACE_2_ROOT_SPAN,
+    private static final List<EndToEndTestSpan> TEST_TRACE_2_BATCH_1 = Arrays.asList(EndToEndTestSpan.TRACE_2_ROOT_SPAN,
             EndToEndTestSpan.TRACE_2_SPAN_2, EndToEndTestSpan.TRACE_2_SPAN_4, EndToEndTestSpan.TRACE_2_SPAN_5);
-    private static final List<EndToEndTestSpan> TEST_DATA_SET_22 = Collections.singletonList(EndToEndTestSpan.TRACE_2_SPAN_3);
+    private static final List<EndToEndTestSpan> TEST_TRACE_2_BATCH_2 = Collections.singletonList(EndToEndTestSpan.TRACE_2_SPAN_3);
     private static final String SERVICE_MAP_INDEX_NAME = "otel-v1-apm-service-map";
 
     @Test
     public void testPipelineEndToEnd() throws IOException, InterruptedException {
         // Send test trace group 1
         final ExportTraceServiceRequest exportTraceServiceRequest11 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_1, TEST_DATA_SET_11)
+                getResourceSpansBatch(TEST_TRACEID_1, TEST_TRACE_1_BATCH_1)
         );
         final ExportTraceServiceRequest exportTraceServiceRequest12 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_1, TEST_DATA_SET_12)
+                getResourceSpansBatch(TEST_TRACEID_1, TEST_TRACE_1_BATCH_2)
         );
 
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest11);
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest12);
 
         //Verify data in elasticsearch sink
-        final List<EndToEndTestSpan> testDataSet1 = Stream.of(TEST_DATA_SET_11, TEST_DATA_SET_12)
+        final List<EndToEndTestSpan> testDataSet1 = Stream.of(TEST_TRACE_1_BATCH_1, TEST_TRACE_1_BATCH_2)
                 .flatMap(Collection::stream).collect(Collectors.toList());
         final List<Map<String, Object>> possibleEdges = getPossibleEdges(TEST_TRACEID_1, testDataSet1);
         final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
@@ -91,16 +91,16 @@ public class EndToEndServiceMapTest {
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest12);
         // Send test trace group 2
         final ExportTraceServiceRequest exportTraceServiceRequest21 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_2, TEST_DATA_SET_21)
+                getResourceSpansBatch(TEST_TRACEID_2, TEST_TRACE_2_BATCH_1)
         );
         final ExportTraceServiceRequest exportTraceServiceRequest22 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_2, TEST_DATA_SET_22)
+                getResourceSpansBatch(TEST_TRACEID_2, TEST_TRACE_2_BATCH_2)
         );
 
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest21);
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest22);
 
-        final List<EndToEndTestSpan> testDataSet2 = Stream.of(TEST_DATA_SET_21, TEST_DATA_SET_22)
+        final List<EndToEndTestSpan> testDataSet2 = Stream.of(TEST_TRACE_2_BATCH_1, TEST_TRACE_2_BATCH_2)
                 .flatMap(Collection::stream).collect(Collectors.toList());
         possibleEdges.addAll(getPossibleEdges(TEST_TRACEID_2, testDataSet2));
         // Wait for service map prepper by 2 * window_duration
