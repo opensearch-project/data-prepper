@@ -39,19 +39,19 @@ public class EndToEndRawSpanTest {
     private static final int DATA_PREPPER_PORT_2 = 21891;
 
     private static final Map<String, String> TEST_TRACEID_TO_TRACE_GROUP = new HashMap<String, String>() {{
-       put(Hex.toHexString(EndToEndTestData.DATA_100.traceId.getBytes()), EndToEndTestData.DATA_100.name);
-       put(Hex.toHexString(EndToEndTestData.DATA_101.traceId.getBytes()), EndToEndTestData.DATA_101.name);
+       put(Hex.toHexString(EndToEndTestSpan.DATA_100.traceId.getBytes()), EndToEndTestSpan.DATA_100.name);
+       put(Hex.toHexString(EndToEndTestSpan.DATA_101.traceId.getBytes()), EndToEndTestSpan.DATA_101.name);
     }};
-    private static final List<EndToEndTestData> TEST_DATA_SET_1_WITH_ROOT_SPAN = Arrays.asList(
-            EndToEndTestData.DATA_100, EndToEndTestData.DATA_200, EndToEndTestData.DATA_300,
-            EndToEndTestData.DATA_400, EndToEndTestData.DATA_500, EndToEndTestData.DATA_600);
-    private static final List<EndToEndTestData> TEST_DATA_SET_1_WITHOUT_ROOT_SPAN = Arrays.asList(
-            EndToEndTestData.DATA_700, EndToEndTestData.DATA_800, EndToEndTestData.DATA_900,
-            EndToEndTestData.DATA_1000, EndToEndTestData.DATA_1100);
-    private static final List<EndToEndTestData> TEST_DATA_SET_2_WITH_ROOT_SPAN = Arrays.asList(
-            EndToEndTestData.DATA_101, EndToEndTestData.DATA_201, EndToEndTestData.DATA_301);
-    private static final List<EndToEndTestData> TEST_DATA_SET_2_WITHOUT_ROOT_SPAN = Arrays.asList(
-            EndToEndTestData.DATA_401, EndToEndTestData.DATA_501);
+    private static final List<EndToEndTestSpan> TEST_DATA_SET_1_WITH_ROOT_SPAN = Arrays.asList(
+            EndToEndTestSpan.DATA_100, EndToEndTestSpan.DATA_200, EndToEndTestSpan.DATA_300,
+            EndToEndTestSpan.DATA_400, EndToEndTestSpan.DATA_500, EndToEndTestSpan.DATA_600);
+    private static final List<EndToEndTestSpan> TEST_DATA_SET_1_WITHOUT_ROOT_SPAN = Arrays.asList(
+            EndToEndTestSpan.DATA_700, EndToEndTestSpan.DATA_800, EndToEndTestSpan.DATA_900,
+            EndToEndTestSpan.DATA_1000, EndToEndTestSpan.DATA_1100);
+    private static final List<EndToEndTestSpan> TEST_DATA_SET_2_WITH_ROOT_SPAN = Arrays.asList(
+            EndToEndTestSpan.DATA_101, EndToEndTestSpan.DATA_201, EndToEndTestSpan.DATA_301);
+    private static final List<EndToEndTestSpan> TEST_DATA_SET_2_WITHOUT_ROOT_SPAN = Arrays.asList(
+            EndToEndTestSpan.DATA_401, EndToEndTestSpan.DATA_501);
     private static final String INDEX_NAME = "otel-v1-apm-span-000001";
 
     @Test
@@ -164,9 +164,9 @@ public class EndToEndRawSpanTest {
                 .build();
     }
 
-    private List<ResourceSpans> getResourceSpansBatch(final List<EndToEndTestData> dataList) {
+    private List<ResourceSpans> getResourceSpansBatch(final List<EndToEndTestSpan> dataList) {
         final ArrayList<ResourceSpans> spansList = new ArrayList<>();
-        for(final EndToEndTestData data : dataList) {
+        for(final EndToEndTestSpan data : dataList) {
             final String traceId = data.traceId;
             final String parentId = data.parentId;
             final String spanId = data.spanId;

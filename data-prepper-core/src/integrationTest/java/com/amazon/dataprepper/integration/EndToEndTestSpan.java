@@ -2,7 +2,7 @@ package com.amazon.dataprepper.integration;
 
 import io.opentelemetry.proto.trace.v1.Span;
 
-public enum EndToEndTestData {
+public enum EndToEndTestSpan {
 
     DATA_100("TRACE_1", "100", "ServiceA", null, "FRUITS", Span.SpanKind.SPAN_KIND_INTERNAL),
     DATA_200("TRACE_1", "200", "ServiceA", "100", "CALL_SERVICE_B_APPLE", Span.SpanKind.SPAN_KIND_CLIENT),
@@ -29,7 +29,7 @@ public enum EndToEndTestData {
     public final String name;
     public final Span.SpanKind spanKind;
 
-    EndToEndTestData(String traceId, String spanId, String serviceName, String parentId, String name, Span.SpanKind kind) {
+    EndToEndTestSpan(String traceId, String spanId, String serviceName, String parentId, String name, Span.SpanKind kind) {
         this.traceId = traceId;
         this.spanId = spanId;
         this.serviceName = serviceName;
