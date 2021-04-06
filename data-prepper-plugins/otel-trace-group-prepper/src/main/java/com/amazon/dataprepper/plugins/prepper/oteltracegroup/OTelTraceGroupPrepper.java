@@ -5,7 +5,6 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.prepper.oteltrace.model.TraceGroup;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -72,12 +71,12 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             }
         }
 
-        final Map<String, TraceGroup> traceIdToTraceGroup = searchTraceGroupByTraceIds(traceIdsToLookUp);
+        final Map<String, TraceGroupWrapper> traceIdToTraceGroup = searchTraceGroupByTraceIds(traceIdsToLookUp);
         for (final Map.Entry<Record<String>, Map<String, Object>> entry: recordMissingTraceGroupToRawSpanMap.entrySet()) {
             final Record<String> record = entry.getKey();
             final Map<String, Object> rawSpanMap = entry.getValue();
             final String traceId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
-            final TraceGroup traceGroup = traceIdToTraceGroup.get(traceId);
+            final TraceGroupWrapper traceGroup = traceIdToTraceGroup.get(traceId);
             if (Objects.nonNull(traceGroup)) {
                 rawSpanMap.put(OTelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD, traceGroup.getName());
                 rawSpanMap.put(OTelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD, traceGroup.getEndTime());
@@ -100,15 +99,15 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
         return recordsOut;
     }
 
-    private Map<String, TraceGroup> searchTraceGroupByTraceIds(final Collection<String> traceIds) {
-        final Map<String, TraceGroup> traceIdToTraceGroup = new HashMap<>();
+    private Map<String, TraceGroupWrapper> searchTraceGroupByTraceIds(final Collection<String> traceIds) {
+        final Map<String, TraceGroupWrapper> traceIdToTraceGroup = new HashMap<>();
         final SearchRequest searchRequest = createSearchRequest(traceIds);
 
         try {
             final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
             final SearchHit[] searchHits = searchResponse.getHits().getHits();
             Arrays.asList(searchHits).forEach(searchHit -> {
-                Map.Entry<String, TraceGroup> entry = fromSearchHitToMapEntry(searchHit);
+                Map.Entry<String, TraceGroupWrapper> entry = fromSearchHitToMapEntry(searchHit);
                 if (Objects.nonNull(entry)) {
                     traceIdToTraceGroup.put(entry.getKey(), entry.getValue());
                 }
@@ -140,7 +139,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
         return searchRequest;
     }
 
-    private Map.Entry<String, TraceGroup> fromSearchHitToMapEntry(final SearchHit searchHit) {
+    private Map.Entry<String, TraceGroupWrapper> fromSearchHitToMapEntry(final SearchHit searchHit) {
         final DocumentField traceIdDocField = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
         final DocumentField traceGroupNameDocField = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD);
         final DocumentField traceGroupEndTimeDocField = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD);
@@ -153,12 +152,8 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             final String traceGroupEndTime = traceGroupEndTimeDocField.getValue();
             final Number traceGroupDurationInNanos = traceGroupDurationInNanosDocField.getValue();
             final Number traceGroupStatusCode = traceGroupStatusCodeDocField.getValue();
-            return new AbstractMap.SimpleEntry<>(traceId, new TraceGroup.TraceGroupBuilder()
-                    .setName(traceGroupName)
-                    .setEndTime(traceGroupEndTime)
-                    .setDurationInNanos(traceGroupDurationInNanos.longValue())
-                    .setStatusCode(traceGroupStatusCode.intValue())
-                    .build());
+            return new AbstractMap.SimpleEntry<>(traceId, new TraceGroupWrapper(traceGroupName, traceGroupEndTime,
+                    traceGroupDurationInNanos.longValue(), traceGroupStatusCode.intValue()));
         }
         return null;
     }
