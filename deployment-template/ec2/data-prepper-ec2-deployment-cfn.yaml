@@ -63,7 +63,13 @@ Resources:
             - 01_config-data-prepper
         01_config-data-prepper:
           files:
-            "/etc/data-prepper/config.yaml":
+            "/etc/data-prepper/data-prepper-config.yaml":
+              content: !Sub |
+                ssl: false
+              mode: "000400"
+              owner: root
+              group: root
+            "/etc/data-prepper/pipelines.yaml":
               content: !Sub |
                 entry-pipeline:
                   delay: "100"
@@ -126,7 +132,7 @@ Resources:
           wget https://github.com/opendistro-for-elasticsearch/data-prepper/releases/download/v${DataPrepperVersion}/$RELEASE.tar.gz -O /tmp/$RELEASE.tar.gz
           tar -xzf /tmp/$RELEASE.tar.gz --directory /usr/local/bin
           /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default
-          nohup /usr/local/bin/$RELEASE/data-prepper-tar-install.sh /etc/data-prepper/config.yaml > /var/log/data-prepper.out &
+          nohup /usr/local/bin/$RELEASE/data-prepper-tar-install.sh /etc/data-prepper/pipelines.yaml /etc/data-prepper/data-prepper-config.yaml > /var/log/data-prepper.out &
           /opt/aws/bin/cfn-signal --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}
     CreationPolicy:
       ResourceSignal:
