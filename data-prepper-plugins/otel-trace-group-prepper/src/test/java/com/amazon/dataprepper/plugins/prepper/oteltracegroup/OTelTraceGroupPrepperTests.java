@@ -1,11 +1,14 @@
 package com.amazon.dataprepper.plugins.prepper.oteltracegroup;
 
+import com.amazon.dataprepper.metrics.MetricNames;
+import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Measurement;
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -35,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.StringJoiner;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -52,6 +56,8 @@ import static org.mockito.Mockito.when;
 public class OTelTraceGroupPrepperTests {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final String TEST_PIPELINE_NAME = "testPipelineName";
+    private static final String PLUGIN_NAME = "otel_trace_group_prepper";
     private static final String TEST_TRACE_ID_1 = "6d0ff634d126b6ec2c180391e67b4237";
     private static final String TEST_TRACE_GROUP_1 = "/test_trace_group_1";
     private static final String TEST_TRACE_ID_2 = "ffa576d321173ac6cef3601c8f4bde75";
@@ -87,6 +93,7 @@ public class OTelTraceGroupPrepperTests {
 
     @Before
     public void setUp() throws Exception{
+        MetricsTestUtil.initMetrics();
         connectionConfigurationMockedStatic = Mockito.mockStatic(ConnectionConfiguration.class);
         connectionConfigurationMockedStatic.when(() -> ConnectionConfiguration.readConnectionConfiguration(any(PluginSetting.class)))
                 .thenReturn(connectionConfigurationMock);
@@ -100,7 +107,7 @@ public class OTelTraceGroupPrepperTests {
         when(testSearchHit2.field("traceId")).thenReturn(new DocumentField("traceId", Collections.singletonList(TEST_TRACE_ID_2)));
         when(testSearchHit2.field("traceGroup")).thenReturn(new DocumentField("traceGroup", Collections.singletonList(TEST_TRACE_GROUP_2)));
         final PluginSetting testPluginSetting = new PluginSetting("otel_trace_group_prepper", new HashMap<>()) {{
-            setPipelineName("testPipelineName");
+            setPipelineName(TEST_PIPELINE_NAME);
         }};
         otelTraceGroupPrepper = new OTelTraceGroupPrepper(testPluginSetting);
         executorService = Executors.newFixedThreadPool(TEST_NUM_WORKERS);
@@ -135,6 +142,9 @@ public class OTelTraceGroupPrepperTests {
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(TEST_TRACE_GROUP_1, extractTraceGroupFromRecord(recordOut));
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_IN_MISSING_TRACE_GROUP, 1.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_FIXED_TRACE_GROUP, 1.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_MISSING_TRACE_GROUP, 0.0);
     }
 
     @Test
@@ -152,6 +162,9 @@ public class OTelTraceGroupPrepperTests {
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_IN_MISSING_TRACE_GROUP, 1.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_FIXED_TRACE_GROUP, 0.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_MISSING_TRACE_GROUP, 1.0);
     }
 
     @Test
@@ -170,6 +183,9 @@ public class OTelTraceGroupPrepperTests {
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_IN_MISSING_TRACE_GROUP, 1.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_FIXED_TRACE_GROUP, 0.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_MISSING_TRACE_GROUP, 1.0);
     }
 
     @Test
@@ -185,6 +201,9 @@ public class OTelTraceGroupPrepperTests {
         assertEquals(1, recordsOut.size());
         Record<String> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_IN_MISSING_TRACE_GROUP, 0.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_FIXED_TRACE_GROUP, 0.0);
+        checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_MISSING_TRACE_GROUP, 0.0);
     }
 
     @Test
@@ -235,5 +254,13 @@ public class OTelTraceGroupPrepperTests {
         final List<Future<Collection<Record<String>>>> futures = new ArrayList<>();
         futures.add(executorService.submit(() -> otelTraceGroupPrepper.doExecute(records)));
         return futures;
+    }
+
+    private void checkMeasurementValue(final String name, final double expectedValue) {
+        final List<Measurement> spansMissingTraceGroupMeasures = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add(PLUGIN_NAME).add(name).toString());
+        assertEquals(1, spansMissingTraceGroupMeasures.size());
+        final Measurement spansMissingTraceGroupMeasure = spansMissingTraceGroupMeasures.get(0);
+        assertEquals(expectedValue, spansMissingTraceGroupMeasure.getValue(), 0);
     }
 }
