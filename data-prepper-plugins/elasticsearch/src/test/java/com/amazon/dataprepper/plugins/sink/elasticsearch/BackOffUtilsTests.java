@@ -1,7 +1,7 @@
 package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
-import org.elasticsearch.action.bulk.BackoffPolicy;
-import org.elasticsearch.common.unit.TimeValue;
+import org.opensearch.action.bulk.BackoffPolicy;
+import org.opensearch.common.unit.TimeValue;
 import org.junit.Test;
 
 import java.util.Iterator;

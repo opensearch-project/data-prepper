@@ -1,13 +1,13 @@
 package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
-import org.elasticsearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
-import org.elasticsearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
-import org.elasticsearch.client.Request;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.Response;
-import org.elasticsearch.client.ResponseException;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.rest.RestStatus;
+import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
+import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
+import org.opensearch.client.Request;
+import org.opensearch.client.RequestOptions;
+import org.opensearch.client.Response;
+import org.opensearch.client.ResponseException;
+import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.rest.RestStatus;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;

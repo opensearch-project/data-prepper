@@ -2,14 +2,14 @@ package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import io.micrometer.core.instrument.Counter;
-import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.action.DocWriteRequest;
-import org.elasticsearch.action.bulk.BackoffPolicy;
-import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.common.unit.TimeValue;
-import org.elasticsearch.rest.RestStatus;
+import org.opensearch.OpenSearchException;
+import org.opensearch.action.DocWriteRequest;
+import org.opensearch.action.bulk.BackoffPolicy;
+import org.opensearch.action.bulk.BulkItemResponse;
+import org.opensearch.action.bulk.BulkRequest;
+import org.opensearch.action.bulk.BulkResponse;
+import org.opensearch.common.unit.TimeValue;
+import org.opensearch.rest.RestStatus;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -73,8 +73,8 @@ public final class BulkRetryStrategy {
 
     public boolean canRetry(final Exception e) {
         return (e instanceof IOException ||
-                (e instanceof ElasticsearchException &&
-                        !NON_RETRY_STATUS.contains(((ElasticsearchException) e).status().getStatus())));
+                (e instanceof OpenSearchException &&
+                        !NON_RETRY_STATUS.contains(((OpenSearchException) e).status().getStatus())));
     }
 
     private void handleRetry(final BulkRequest request, final BulkResponse response,

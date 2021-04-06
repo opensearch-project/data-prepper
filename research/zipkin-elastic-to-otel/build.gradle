@@ -14,6 +14,13 @@ sourceCompatibility = 1.8
 
 repositories {
     mavenCentral()
+    maven {
+        url = 's3://search-vemsarat/'
+        credentials(AwsCredentials) {
+            accessKey = System.env.AWS_ACCESS_KEY_ID ?: findProperty('aws_access_key_id')
+            secretKey = System.env.AWS_SECRET_ACCESS_KEY ?: findProperty('aws_secret_access_key')
+        }
+    }
 }
 
 application {
@@ -33,7 +40,7 @@ dependencies {
     implementation "org.apache.commons:commons-lang3:3.11"
     implementation "com.linecorp.armeria:armeria:1.0.0"
     implementation "com.linecorp.armeria:armeria-grpc:1.0.0"
-    implementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:${es_version}"
+    implementation "org.opensearch.client:opensearch-rest-high-level-client:${es_version}-SNAPSHOT"
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.1"
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
 }

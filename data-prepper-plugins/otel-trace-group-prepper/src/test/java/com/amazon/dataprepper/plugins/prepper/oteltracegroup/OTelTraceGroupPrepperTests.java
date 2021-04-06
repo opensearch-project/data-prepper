@@ -6,14 +6,14 @@ import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.action.search.SearchRequest;
-import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.common.document.DocumentField;
-import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.SearchHits;
+import org.opensearch.OpenSearchException;
+import org.opensearch.action.search.SearchRequest;
+import org.opensearch.action.search.SearchResponse;
+import org.opensearch.client.RequestOptions;
+import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.common.document.DocumentField;
+import org.opensearch.search.SearchHit;
+import org.opensearch.search.SearchHits;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -143,7 +143,7 @@ public class OTelTraceGroupPrepperTests {
         Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
         List<Record<String>> testRecords = Collections.singletonList(testRecord);
         when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class)))
-                .thenThrow(new ElasticsearchException("Failure due to search request"));
+                .thenThrow(new OpenSearchException("Failure due to search request"));
 
         // Act
         List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);

@@ -5,16 +5,16 @@ import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import io.micrometer.core.instrument.Measurement;
-import org.elasticsearch.ElasticsearchException;
-import org.elasticsearch.action.DocWriteRequest;
-import org.elasticsearch.action.bulk.BulkItemResponse;
-import org.elasticsearch.action.bulk.BulkRequest;
-import org.elasticsearch.action.bulk.BulkResponse;
-import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.index.IndexResponse;
-import org.elasticsearch.common.util.concurrent.EsRejectedExecutionException;
-import org.elasticsearch.index.Index;
-import org.elasticsearch.index.shard.ShardId;
+import org.opensearch.OpenSearchException;
+import org.opensearch.action.DocWriteRequest;
+import org.opensearch.action.bulk.BulkItemResponse;
+import org.opensearch.action.bulk.BulkRequest;
+import org.opensearch.action.bulk.BulkResponse;
+import org.opensearch.action.index.IndexRequest;
+import org.opensearch.action.index.IndexResponse;
+import org.opensearch.common.util.concurrent.OpenSearchRejectedExecutionException;
+import org.opensearch.index.Index;
+import org.opensearch.index.shard.ShardId;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -230,7 +230,7 @@ public class BulkRetryStrategyTests {
         final String docId = UUID.randomUUID().toString();
         return new BulkItemResponse(1, DocWriteRequest.OpType.INDEX,
                 new BulkItemResponse.Failure(index, "_doc", docId,
-                        new EsRejectedExecutionException()));
+                        new OpenSearchRejectedExecutionException()));
     }
 
     private static BulkItemResponse internalServerErrorItemResponse(final String index) {
@@ -276,7 +276,7 @@ public class BulkRetryStrategyTests {
                 return finalResponse;
             } else if (attempt == 1) {
                 attempt++;
-                throw new ElasticsearchException(new EsRejectedExecutionException());
+                throw new OpenSearchException(new OpenSearchRejectedExecutionException());
             } else if (attempt == 2) {
                 attempt++;
                 throw new IOException();
