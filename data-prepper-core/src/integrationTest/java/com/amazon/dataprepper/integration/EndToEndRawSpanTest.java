@@ -57,28 +57,28 @@ public class EndToEndRawSpanTest {
     @Test
     public void testPipelineEndToEnd() throws InterruptedException {
         //Send data to otel trace source
-        final ExportTraceServiceRequest exportTraceServiceRequest11 = getExportTraceServiceRequest(
+        final ExportTraceServiceRequest exportTraceServiceRequestTrace1BatchWithRoot = getExportTraceServiceRequest(
                 getResourceSpansBatch(TEST_DATA_SET_1_WITH_ROOT_SPAN)
         );
-        final ExportTraceServiceRequest exportTraceServiceRequest12 = getExportTraceServiceRequest(
+        final ExportTraceServiceRequest exportTraceServiceRequestTrace1BatchNoRoot = getExportTraceServiceRequest(
                 getResourceSpansBatch(TEST_DATA_SET_1_WITHOUT_ROOT_SPAN)
         );
-        final ExportTraceServiceRequest exportTraceServiceRequest21 = getExportTraceServiceRequest(
+        final ExportTraceServiceRequest exportTraceServiceRequestTrace2BatchWithRoot = getExportTraceServiceRequest(
                 getResourceSpansBatch(TEST_DATA_SET_2_WITH_ROOT_SPAN)
         );
-        final ExportTraceServiceRequest exportTraceServiceRequest22 = getExportTraceServiceRequest(
+        final ExportTraceServiceRequest exportTraceServiceRequestTrace2BatchNoRoot = getExportTraceServiceRequest(
                 getResourceSpansBatch(TEST_DATA_SET_2_WITHOUT_ROOT_SPAN)
         );
 
-        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest11);
-        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest22);
-        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest21);
-        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest12);
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequestTrace1BatchWithRoot);
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequestTrace2BatchNoRoot);
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequestTrace2BatchWithRoot);
+        sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequestTrace1BatchNoRoot);
 
         //Verify data in elasticsearch sink
         final List<Map<String, Object>> expectedDocuments = getExpectedDocuments(
-                exportTraceServiceRequest11, exportTraceServiceRequest12,
-                exportTraceServiceRequest21, exportTraceServiceRequest22);
+                exportTraceServiceRequestTrace1BatchWithRoot, exportTraceServiceRequestTrace1BatchNoRoot,
+                exportTraceServiceRequestTrace2BatchWithRoot, exportTraceServiceRequestTrace2BatchNoRoot);
         final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
                 Collections.singletonList("https://127.0.0.1:9200"));
         builder.withUsername("admin");
