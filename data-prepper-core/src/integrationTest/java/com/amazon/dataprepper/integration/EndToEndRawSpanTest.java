@@ -39,19 +39,19 @@ public class EndToEndRawSpanTest {
     private static final int DATA_PREPPER_PORT_2 = 21891;
 
     private static final Map<String, String> TEST_TRACEID_TO_TRACE_GROUP = new HashMap<String, String>() {{
-       put(Hex.toHexString(EndToEndTestSpan.DATA_100.traceId.getBytes()), EndToEndTestSpan.DATA_100.name);
-       put(Hex.toHexString(EndToEndTestSpan.DATA_101.traceId.getBytes()), EndToEndTestSpan.DATA_101.name);
+       put(Hex.toHexString(EndToEndTestSpan.TRACE_1_ROOT_SPAN.traceId.getBytes()), EndToEndTestSpan.TRACE_1_ROOT_SPAN.name);
+       put(Hex.toHexString(EndToEndTestSpan.TRACE_2_ROOT_SPAN.traceId.getBytes()), EndToEndTestSpan.TRACE_2_ROOT_SPAN.name);
     }};
     private static final List<EndToEndTestSpan> TEST_DATA_SET_1_WITH_ROOT_SPAN = Arrays.asList(
-            EndToEndTestSpan.DATA_100, EndToEndTestSpan.DATA_200, EndToEndTestSpan.DATA_300,
-            EndToEndTestSpan.DATA_400, EndToEndTestSpan.DATA_500, EndToEndTestSpan.DATA_600);
+            EndToEndTestSpan.TRACE_1_ROOT_SPAN, EndToEndTestSpan.TRACE_1_SPAN_2, EndToEndTestSpan.TRACE_1_SPAN_3,
+            EndToEndTestSpan.TRACE_1_SPAN_4, EndToEndTestSpan.TRACE_1_SPAN_5, EndToEndTestSpan.TRACE_1_SPAN_6);
     private static final List<EndToEndTestSpan> TEST_DATA_SET_1_WITHOUT_ROOT_SPAN = Arrays.asList(
-            EndToEndTestSpan.DATA_700, EndToEndTestSpan.DATA_800, EndToEndTestSpan.DATA_900,
-            EndToEndTestSpan.DATA_1000, EndToEndTestSpan.DATA_1100);
+            EndToEndTestSpan.TRACE_1_SPAN_7, EndToEndTestSpan.TRACE_1_SPAN_8, EndToEndTestSpan.TRACE_1_SPAN_9,
+            EndToEndTestSpan.TRACE_1_SPAN_10, EndToEndTestSpan.TRACE_1_SPAN_11);
     private static final List<EndToEndTestSpan> TEST_DATA_SET_2_WITH_ROOT_SPAN = Arrays.asList(
-            EndToEndTestSpan.DATA_101, EndToEndTestSpan.DATA_201, EndToEndTestSpan.DATA_301);
+            EndToEndTestSpan.TRACE_2_ROOT_SPAN, EndToEndTestSpan.TRACE_2_SPAN_2, EndToEndTestSpan.TRACE_2_SPAN_3);
     private static final List<EndToEndTestSpan> TEST_DATA_SET_2_WITHOUT_ROOT_SPAN = Arrays.asList(
-            EndToEndTestSpan.DATA_401, EndToEndTestSpan.DATA_501);
+            EndToEndTestSpan.TRACE_2_SPAN_4, EndToEndTestSpan.TRACE_2_SPAN_5);
     private static final String INDEX_NAME = "otel-v1-apm-span-000001";
 
     @Test
