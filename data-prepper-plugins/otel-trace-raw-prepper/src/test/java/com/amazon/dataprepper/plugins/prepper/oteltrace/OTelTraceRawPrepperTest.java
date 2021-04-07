@@ -39,6 +39,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -131,7 +132,7 @@ public class OTelTraceRawPrepperTest {
         await().atMost(2 * TEST_ROOT_SPAN_FLUSH_DELAY, TimeUnit.SECONDS).untilAsserted(() -> {
             final List<Record<String>> processedRecords = (List<Record<String>>) oTelTraceRawPrepper.doExecute(Collections.emptyList());
             Assertions.assertThat(processedRecords.size()).isEqualTo(6);
-            Assertions.assertThat(getOrphanedSpanCount(processedRecords)).isEqualTo(0);
+            Assertions.assertThat(getMissingTraceGroupFieldsSpanCount(processedRecords)).isEqualTo(0);
         });
     }
 
@@ -152,7 +153,7 @@ public class OTelTraceRawPrepperTest {
                 processedRecords.addAll(future.get());
             }
             Assertions.assertThat(processedRecords.size()).isEqualTo(6);
-            Assertions.assertThat(getOrphanedSpanCount(processedRecords)).isEqualTo(0);
+            Assertions.assertThat(getMissingTraceGroupFieldsSpanCount(processedRecords)).isEqualTo(0);
         });
     }
 
@@ -163,7 +164,7 @@ public class OTelTraceRawPrepperTest {
         await().atMost(2 * TEST_TRACE_FLUSH_INTERVAL, TimeUnit.SECONDS).untilAsserted(() -> {
             final List<Record<String>> processedRecords = (List<Record<String>>) oTelTraceRawPrepper.doExecute(Collections.emptyList());
             Assertions.assertThat(processedRecords.size()).isEqualTo(4);
-            Assertions.assertThat(getOrphanedSpanCount(processedRecords)).isEqualTo(4);
+            Assertions.assertThat(getMissingTraceGroupFieldsSpanCount(processedRecords)).isEqualTo(4);
         });
     }
 
@@ -184,7 +185,7 @@ public class OTelTraceRawPrepperTest {
                 processedRecords.addAll(future.get());
             }
             Assertions.assertThat(processedRecords.size()).isEqualTo(5);
-            Assertions.assertThat(getOrphanedSpanCount(processedRecords)).isEqualTo(2);
+            Assertions.assertThat(getMissingTraceGroupFieldsSpanCount(processedRecords)).isEqualTo(2);
         });
     }
 
@@ -208,12 +209,16 @@ public class OTelTraceRawPrepperTest {
         return futures;
     }
 
-    private int getOrphanedSpanCount(List<Record<String>> records) throws JsonProcessingException {
+    private int getMissingTraceGroupFieldsSpanCount(List<Record<String>> records) throws JsonProcessingException {
         int count = 0;
         for (Record<String> record: records) {
-            String spanJson = record.getData();
+            final String spanJson = record.getData();
             Map<String, Object> spanMap = OBJECT_MAPPER.readValue(spanJson, new TypeReference<Map<String, Object>>() {});
-            if (spanMap.get("traceGroup.name") == null) {
+            final String traceGroupName = (String) spanMap.get("traceGroup.name");
+            final String traceGroupEndTime = (String) spanMap.get("traceGroup.endTime");
+            final Number traceGroupDurationInNanos = (Number) spanMap.get("traceGroup.durationInNanos");
+            final Number traceGroupStatusCode = (Number) spanMap.get("traceGroup.statusCode");
+            if (Stream.of(traceGroupName, traceGroupEndTime, traceGroupDurationInNanos, traceGroupStatusCode).allMatch(Objects::isNull)) {
                 count += 1;
             }
         }
