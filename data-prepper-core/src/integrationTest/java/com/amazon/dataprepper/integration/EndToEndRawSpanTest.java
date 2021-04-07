@@ -1,6 +1,7 @@
 package com.amazon.dataprepper.integration;
 
 
+import com.amazon.dataprepper.plugins.prepper.oteltracegroup.TraceGroupWrapper;
 import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration;
 import com.google.protobuf.ByteString;
 import com.linecorp.armeria.client.Clients;
@@ -38,9 +39,22 @@ public class EndToEndRawSpanTest {
     private static final int DATA_PREPPER_PORT_1 = 21890;
     private static final int DATA_PREPPER_PORT_2 = 21891;
 
-    private static final Map<String, String> TEST_TRACEID_TO_TRACE_GROUP = new HashMap<String, String>() {{
-       put(Hex.toHexString(EndToEndTestSpan.TRACE_1_ROOT_SPAN.traceId.getBytes()), EndToEndTestSpan.TRACE_1_ROOT_SPAN.name);
-       put(Hex.toHexString(EndToEndTestSpan.TRACE_2_ROOT_SPAN.traceId.getBytes()), EndToEndTestSpan.TRACE_2_ROOT_SPAN.name);
+    private static final Map<String, TraceGroupWrapper> TEST_TRACEID_TO_TRACE_GROUP = new HashMap<String, TraceGroupWrapper>() {{
+       put(Hex.toHexString(EndToEndTestSpan.TRACE_1_ROOT_SPAN.traceId.getBytes()),
+               new TraceGroupWrapper(
+                       EndToEndTestSpan.TRACE_1_ROOT_SPAN.name,
+                       EndToEndTestSpan.TRACE_1_ROOT_SPAN.endTime,
+                       EndToEndTestSpan.TRACE_1_ROOT_SPAN.durationInNanos,
+                       EndToEndTestSpan.TRACE_1_ROOT_SPAN.statusCode
+               ));
+       put(Hex.toHexString(EndToEndTestSpan.TRACE_2_ROOT_SPAN.traceId.getBytes()),
+               new TraceGroupWrapper(
+                       EndToEndTestSpan.TRACE_2_ROOT_SPAN.name,
+                       EndToEndTestSpan.TRACE_2_ROOT_SPAN.endTime,
+                       EndToEndTestSpan.TRACE_2_ROOT_SPAN.durationInNanos,
+                       EndToEndTestSpan.TRACE_2_ROOT_SPAN.statusCode
+               )
+       );
     }};
     private static final List<EndToEndTestSpan> TEST_SPAN_SET_1_WITH_ROOT_SPAN = Arrays.asList(
             EndToEndTestSpan.TRACE_1_ROOT_SPAN, EndToEndTestSpan.TRACE_1_SPAN_2, EndToEndTestSpan.TRACE_1_SPAN_3,
@@ -211,8 +225,12 @@ public class EndToEndRawSpanTest {
         esDocSource.put("kind", span.getKind().name());
         esDocSource.put("status.code", span.getStatus().getCodeValue());
         esDocSource.put("serviceName", serviceName);
-        final String traceGroup = TEST_TRACEID_TO_TRACE_GROUP.get(traceId);
-        esDocSource.put("traceGroup.name", traceGroup);
+        final TraceGroupWrapper traceGroup = TEST_TRACEID_TO_TRACE_GROUP.get(traceId);
+        esDocSource.put(TraceGroupWrapper.TRACE_GROUP_NAME_FIELD, traceGroup.getName());
+        esDocSource.put(TraceGroupWrapper.TRACE_GROUP_END_TIME_FIELD, traceGroup.getEndTime());
+        esDocSource.put(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD, traceGroup.getDurationInNanos());
+        esDocSource.put(TraceGroupWrapper.TRACE_GROUP_STATUS_CODE_FIELD, traceGroup.getStatusCode());
+
         return esDocSource;
     }
 

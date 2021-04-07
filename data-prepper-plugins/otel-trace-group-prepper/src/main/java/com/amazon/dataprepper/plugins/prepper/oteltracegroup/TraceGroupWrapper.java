@@ -29,7 +29,7 @@ public class TraceGroupWrapper {
         return statusCode;
     }
 
-    TraceGroupWrapper(final String name, final String endTime, final Long durationInNanos, final Integer statusCode) {
+    public TraceGroupWrapper(final String name, final String endTime, final Long durationInNanos, final Integer statusCode) {
         this.name = name;
         this.endTime = endTime;
         this.durationInNanos = durationInNanos;
