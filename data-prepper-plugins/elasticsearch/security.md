@@ -66,7 +66,3 @@ Run `aws configure` using the AWS CLI to set your credentials to the master IAM 
  ```
 
 Note: You can create a new IAM/internal user with `all_access` and use instead of the master IAM/internal user.
-
-### Limitations
-
-* The Elasticsearch sink will not work with [custom endpoint](https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/es-customendpoint.html) domains.
