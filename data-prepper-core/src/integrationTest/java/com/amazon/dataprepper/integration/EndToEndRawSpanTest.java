@@ -212,7 +212,7 @@ public class EndToEndRawSpanTest {
         esDocSource.put("status.code", span.getStatus().getCodeValue());
         esDocSource.put("serviceName", serviceName);
         final String traceGroup = TEST_TRACEID_TO_TRACE_GROUP.get(traceId);
-        esDocSource.put("traceGroup", traceGroup);
+        esDocSource.put("traceGroup.name", traceGroup);
         return esDocSource;
     }
 
