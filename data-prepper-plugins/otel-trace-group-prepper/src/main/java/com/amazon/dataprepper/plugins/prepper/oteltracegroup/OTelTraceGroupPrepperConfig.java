@@ -8,10 +8,6 @@ public class OTelTraceGroupPrepperConfig {
     protected static final String TRACE_ID_FIELD = "traceId";
     protected static final String SPAN_ID_FIELD = "spanId";
     protected static final String PARENT_SPAN_ID_FIELD = "parentSpanId";
-    protected static final String TRACE_GROUP_NAME_FIELD = "traceGroup.name";
-    protected static final String TRACE_GROUP_END_TIME_FIELD = "traceGroup.endTime";
-    protected static final String TRACE_GROUP_STATUS_CODE_FIELD = "traceGroup.statusCode";
-    protected static final String TRACE_GROUP_DURATION_IN_NANOS_FIELD = "traceGroup.durationInNanos";
     protected static final String RAW_INDEX_ALIAS = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
 
     private final ConnectionConfiguration esConnectionConfig;

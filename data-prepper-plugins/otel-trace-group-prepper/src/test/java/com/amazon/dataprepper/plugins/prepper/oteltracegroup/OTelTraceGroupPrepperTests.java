@@ -98,23 +98,23 @@ public class OTelTraceGroupPrepperTests {
         when(testSearchResponse.getHits()).thenReturn(testSearchHits);
         when(testSearchHits.getHits()).thenReturn(new SearchHit[] {testSearchHit1});
         when(testSearchHit1.field("traceId")).thenReturn(new DocumentField("traceId", Collections.singletonList(TEST_TRACE_ID_1)));
-        when(testSearchHit1.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD))
-                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getName())));
-        when(testSearchHit1.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD))
-                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getEndTime())));
-        when(testSearchHit1.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD))
-                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getDurationInNanos())));
-        when(testSearchHit1.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD))
-                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getStatusCode())));
+        when(testSearchHit1.field(TraceGroupWrapper.TRACE_GROUP_NAME_FIELD))
+                .thenReturn(new DocumentField(TraceGroupWrapper.TRACE_GROUP_NAME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getName())));
+        when(testSearchHit1.field(TraceGroupWrapper.TRACE_GROUP_END_TIME_FIELD))
+                .thenReturn(new DocumentField(TraceGroupWrapper.TRACE_GROUP_END_TIME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getEndTime())));
+        when(testSearchHit1.field(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD))
+                .thenReturn(new DocumentField(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getDurationInNanos())));
+        when(testSearchHit1.field(TraceGroupWrapper.TRACE_GROUP_STATUS_CODE_FIELD))
+                .thenReturn(new DocumentField(TraceGroupWrapper.TRACE_GROUP_STATUS_CODE_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getStatusCode())));
         when(testSearchHit2.field("traceId")).thenReturn(new DocumentField("traceId", Collections.singletonList(TEST_TRACE_ID_2)));
-        when(testSearchHit2.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD))
-                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getName())));
-        when(testSearchHit2.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD))
-                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getEndTime())));
-        when(testSearchHit2.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD))
-                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getDurationInNanos())));
-        when(testSearchHit2.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD))
-                .thenReturn(new DocumentField(OTelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getStatusCode())));
+        when(testSearchHit2.field(TraceGroupWrapper.TRACE_GROUP_NAME_FIELD))
+                .thenReturn(new DocumentField(TraceGroupWrapper.TRACE_GROUP_NAME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getName())));
+        when(testSearchHit2.field(TraceGroupWrapper.TRACE_GROUP_END_TIME_FIELD))
+                .thenReturn(new DocumentField(TraceGroupWrapper.TRACE_GROUP_END_TIME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getEndTime())));
+        when(testSearchHit2.field(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD))
+                .thenReturn(new DocumentField(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getDurationInNanos())));
+        when(testSearchHit2.field(TraceGroupWrapper.TRACE_GROUP_STATUS_CODE_FIELD))
+                .thenReturn(new DocumentField(TraceGroupWrapper.TRACE_GROUP_STATUS_CODE_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getStatusCode())));
         final PluginSetting testPluginSetting = new PluginSetting("otel_trace_group_prepper", new HashMap<>()) {{
             setPipelineName("testPipelineName");
         }};
@@ -244,10 +244,10 @@ public class OTelTraceGroupPrepperTests {
 
     private TraceGroupWrapper extractTraceGroupFromRecord(final Record<String> record) throws JsonProcessingException {
         Map<String, Object> rawSpanMap = OBJECT_MAPPER.readValue(record.getData(), new TypeReference<Map<String, Object>>() {});
-        final String traceGroupName = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_GROUP_NAME_FIELD);
-        final String traceGroupEndTime = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_GROUP_END_TIME_FIELD);
-        final Long traceGroupDurationInNanos = ((Number) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_GROUP_DURATION_IN_NANOS_FIELD)).longValue();
-        final Integer traceGroupStatusCode = ((Number) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_GROUP_STATUS_CODE_FIELD)).intValue();
+        final String traceGroupName = (String) rawSpanMap.get(TraceGroupWrapper.TRACE_GROUP_NAME_FIELD);
+        final String traceGroupEndTime = (String) rawSpanMap.get(TraceGroupWrapper.TRACE_GROUP_END_TIME_FIELD);
+        final Long traceGroupDurationInNanos = ((Number) rawSpanMap.get(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD)).longValue();
+        final Integer traceGroupStatusCode = ((Number) rawSpanMap.get(TraceGroupWrapper.TRACE_GROUP_STATUS_CODE_FIELD)).intValue();
         return new TraceGroupWrapper(traceGroupName, traceGroupEndTime, traceGroupDurationInNanos, traceGroupStatusCode);
     }
 
