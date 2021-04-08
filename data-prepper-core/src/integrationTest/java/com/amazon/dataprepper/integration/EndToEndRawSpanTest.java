@@ -14,6 +14,7 @@ import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
+import io.opentelemetry.proto.trace.v1.Status;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -25,6 +26,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -36,6 +39,8 @@ import java.util.concurrent.TimeUnit;
 import static org.awaitility.Awaitility.await;
 
 public class EndToEndRawSpanTest {
+    private static final BigDecimal SEC_TO_NANOS = new BigDecimal(1_000_000_000);
+
     private static final int DATA_PREPPER_PORT_1 = 21890;
     private static final int DATA_PREPPER_PORT_2 = 21891;
 
@@ -140,13 +145,24 @@ public class EndToEndRawSpanTest {
 
     private List<Map<String, Object>> getSourcesFromSearchHits(final SearchHits searchHits) {
         final List<Map<String, Object>> sources = new ArrayList<>();
-        searchHits.forEach(hit -> sources.add(hit.getSourceAsMap()));
+        searchHits.forEach(hit -> {
+            Map<String, Object> source = hit.getSourceAsMap();
+            // Elasticsearch API identifies Number type by range, need to convert to Long
+            if (source.containsKey(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD)) {
+                final Long durationInNanos = ((Number) source.get(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD)).longValue();
+                source.put(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD, durationInNanos);
+            }
+            sources.add(source);
+        });
         return sources;
     }
 
     public static ResourceSpans getResourceSpans(final String serviceName, final String spanName, final byte[]
-            spanId, final byte[] parentId, final byte[] traceId, final Span.SpanKind spanKind) {
+            spanId, final byte[] parentId, final byte[] traceId, final Span.SpanKind spanKind, final String endTime,
+                                                 final Long durationInNanos, final Integer statusCode) {
         final ByteString parentSpanId = parentId != null ? ByteString.copyFrom(parentId) : ByteString.EMPTY;
+        final long endTimeInNanos = convertTimeStampToNanos(endTime);
+        final long startTimeInNanos = new BigDecimal(endTimeInNanos).subtract(new BigDecimal(durationInNanos)).longValue();
         return ResourceSpans.newBuilder()
                 .setResource(
                         Resource.newBuilder()
@@ -165,6 +181,9 @@ public class EndToEndRawSpanTest {
                                                 .setSpanId(ByteString.copyFrom(spanId))
                                                 .setParentSpanId(parentSpanId)
                                                 .setTraceId(ByteString.copyFrom(traceId))
+                                                .setStartTimeUnixNano(startTimeInNanos)
+                                                .setEndTimeUnixNano(endTimeInNanos)
+                                                .setStatus(Status.newBuilder().setCodeValue(statusCode))
                                                 .build()
                                 )
                                 .build()
@@ -178,6 +197,13 @@ public class EndToEndRawSpanTest {
                 .build();
     }
 
+    private static long convertTimeStampToNanos(String time) {
+        Instant instant = Instant.parse(time);
+        BigDecimal nanos = new BigDecimal(instant.getNano());
+        BigDecimal epochNanoSeconds = new BigDecimal(instant.getEpochSecond()).multiply(SEC_TO_NANOS).add(nanos);
+        return epochNanoSeconds.longValue();
+    }
+
     private List<ResourceSpans> getResourceSpansBatch(final List<EndToEndTestSpan> dataList) {
         final ArrayList<ResourceSpans> spansList = new ArrayList<>();
         for(final EndToEndTestSpan data : dataList) {
@@ -187,13 +213,19 @@ public class EndToEndRawSpanTest {
             final String serviceName = data.serviceName;
             final String spanName = data.name;
             final Span.SpanKind spanKind = data.spanKind;
+            final String endTime = data.endTime;
+            final Long durationInNanos = data.durationInNanos;
+            final Integer statusCode = data.statusCode;
             final ResourceSpans rs = getResourceSpans(
                     serviceName,
                     spanName,
                     spanId.getBytes(),
                     parentId != null ? parentId.getBytes() : null,
                     traceId.getBytes(),
-                    spanKind
+                    spanKind,
+                    endTime,
+                    durationInNanos,
+                    statusCode
             );
             spansList.add(rs);
         }

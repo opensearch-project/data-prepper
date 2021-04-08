@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collection;
@@ -130,7 +131,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
         );
         searchSourceBuilder.docValueField(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
         searchSourceBuilder.docValueField(TraceGroupWrapper.TRACE_GROUP_NAME_FIELD);
-        searchSourceBuilder.docValueField(TraceGroupWrapper.TRACE_GROUP_END_TIME_FIELD);
+        searchSourceBuilder.docValueField(TraceGroupWrapper.TRACE_GROUP_END_TIME_FIELD, OTelTraceGroupPrepperConfig.STRICT_DATE_TIME);
         searchSourceBuilder.docValueField(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD);
         searchSourceBuilder.docValueField(TraceGroupWrapper.TRACE_GROUP_STATUS_CODE_FIELD);
         searchSourceBuilder.fetchSource(false);
@@ -149,7 +150,8 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                 traceGroupStatusCodeDocField).allMatch(Objects::nonNull)) {
             final String traceId = traceIdDocField.getValue();
             final String traceGroupName = traceGroupNameDocField.getValue();
-            final String traceGroupEndTime = traceGroupEndTimeDocField.getValue();
+            // Restore trailing zeros for thousand, e.g. 2020-08-20T05:40:46.0895568Z -> 2020-08-20T05:40:46.089556800Z
+            final String traceGroupEndTime = Instant.parse(traceGroupEndTimeDocField.getValue()).toString();
             final Number traceGroupDurationInNanos = traceGroupDurationInNanosDocField.getValue();
             final Number traceGroupStatusCode = traceGroupStatusCodeDocField.getValue();
             return new AbstractMap.SimpleEntry<>(traceId, new TraceGroupWrapper(traceGroupName, traceGroupEndTime,
