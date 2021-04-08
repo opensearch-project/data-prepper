@@ -3,6 +3,8 @@ package com.amazon.dataprepper.integration;
 
 import com.amazon.dataprepper.plugins.prepper.oteltracegroup.TraceGroupWrapper;
 import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
 import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.internal.shaded.bouncycastle.util.encoders.Hex;
@@ -39,8 +41,9 @@ import java.util.concurrent.TimeUnit;
 import static org.awaitility.Awaitility.await;
 
 public class EndToEndRawSpanTest {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
     private static final BigDecimal SEC_TO_NANOS = new BigDecimal(1_000_000_000);
-
     private static final int DATA_PREPPER_PORT_1 = 21890;
     private static final int DATA_PREPPER_PORT_2 = 21891;
 
@@ -258,10 +261,7 @@ public class EndToEndRawSpanTest {
         esDocSource.put("status.code", span.getStatus().getCodeValue());
         esDocSource.put("serviceName", serviceName);
         final TraceGroupWrapper traceGroup = TEST_TRACEID_TO_TRACE_GROUP.get(traceId);
-        esDocSource.put(TraceGroupWrapper.TRACE_GROUP_NAME_FIELD, traceGroup.getName());
-        esDocSource.put(TraceGroupWrapper.TRACE_GROUP_END_TIME_FIELD, traceGroup.getEndTime());
-        esDocSource.put(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD, traceGroup.getDurationInNanos());
-        esDocSource.put(TraceGroupWrapper.TRACE_GROUP_STATUS_CODE_FIELD, traceGroup.getStatusCode());
+        esDocSource.putAll(OBJECT_MAPPER.convertValue(traceGroup, MAP_TYPE_REFERENCE));
 
         return esDocSource;
     }

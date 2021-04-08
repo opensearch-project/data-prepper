@@ -79,14 +79,12 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             final String traceId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
             final TraceGroupWrapper traceGroup = traceIdToTraceGroup.get(traceId);
             if (Objects.nonNull(traceGroup)) {
-                rawSpanMap.put(TraceGroupWrapper.TRACE_GROUP_NAME_FIELD, traceGroup.getName());
-                rawSpanMap.put(TraceGroupWrapper.TRACE_GROUP_END_TIME_FIELD, traceGroup.getEndTime());
-                rawSpanMap.put(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD, traceGroup.getDurationInNanos());
-                rawSpanMap.put(TraceGroupWrapper.TRACE_GROUP_STATUS_CODE_FIELD, traceGroup.getStatusCode());
                 try {
+                    Map<String, Object> traceGroupMap = OBJECT_MAPPER.convertValue(traceGroup, MAP_TYPE_REFERENCE);
+                    rawSpanMap.putAll(traceGroupMap);
                     final String newData = OBJECT_MAPPER.writeValueAsString(rawSpanMap);
                     recordsOut.add(new Record<>(newData, record.getMetadata()));
-                } catch (JsonProcessingException e) {
+                } catch (Exception e) {
                     recordsOut.add(record);
                     LOG.error("Failed to process the raw span: [{}]", record.getData(), e);
                 }

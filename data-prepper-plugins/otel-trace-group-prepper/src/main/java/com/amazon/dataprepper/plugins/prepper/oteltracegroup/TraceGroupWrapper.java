@@ -1,5 +1,7 @@
 package com.amazon.dataprepper.plugins.prepper.oteltracegroup;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Objects;
 
 public class TraceGroupWrapper {
@@ -8,9 +10,16 @@ public class TraceGroupWrapper {
     public static final String TRACE_GROUP_STATUS_CODE_FIELD = "traceGroup.statusCode";
     public static final String TRACE_GROUP_DURATION_IN_NANOS_FIELD = "traceGroup.durationInNanos";
 
+    @JsonProperty(TRACE_GROUP_NAME_FIELD)
     private final String name;
+
+    @JsonProperty(TRACE_GROUP_END_TIME_FIELD)
     private final String endTime;
+
+    @JsonProperty(TRACE_GROUP_DURATION_IN_NANOS_FIELD)
     private final Long durationInNanos;
+
+    @JsonProperty(TRACE_GROUP_STATUS_CODE_FIELD)
     private final Integer statusCode;
 
     public String getName() {
