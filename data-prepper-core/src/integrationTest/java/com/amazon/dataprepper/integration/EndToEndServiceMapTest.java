@@ -41,32 +41,32 @@ public class EndToEndServiceMapTest {
     private static final String TEST_TRACEID_2 = "CBA";
     private static final int DATA_PREPPER_PORT_1 = 21890;
     private static final int DATA_PREPPER_PORT_2 = 21891;
-    private static final List<ServiceMapTestData> testDataSet11 = Arrays.asList(
-            ServiceMapTestData.DATA_100, ServiceMapTestData.DATA_200, ServiceMapTestData.DATA_500, ServiceMapTestData.DATA_600,
-            ServiceMapTestData.DATA_700, ServiceMapTestData.DATA_1000);
-    private static final List<ServiceMapTestData> testDataSet12 = Arrays.asList(
-            ServiceMapTestData.DATA_300, ServiceMapTestData.DATA_400, ServiceMapTestData.DATA_800,
-            ServiceMapTestData.DATA_900, ServiceMapTestData.DATA_1100);
-    private static final List<ServiceMapTestData> testDataSet21 = Arrays.asList(
-            ServiceMapTestData.DATA_101, ServiceMapTestData.DATA_201, ServiceMapTestData.DATA_401, ServiceMapTestData.DATA_501);
-    private static final List<ServiceMapTestData> testDataSet22 = Collections.singletonList(ServiceMapTestData.DATA_301);
+    private static final List<EndToEndTestSpan> TEST_TRACE_1_BATCH_1 = Arrays.asList(
+            EndToEndTestSpan.TRACE_1_ROOT_SPAN, EndToEndTestSpan.TRACE_1_SPAN_2, EndToEndTestSpan.TRACE_1_SPAN_5,
+            EndToEndTestSpan.TRACE_1_SPAN_6, EndToEndTestSpan.TRACE_1_SPAN_7, EndToEndTestSpan.TRACE_1_SPAN_10);
+    private static final List<EndToEndTestSpan> TEST_TRACE_1_BATCH_2 = Arrays.asList(
+            EndToEndTestSpan.TRACE_1_SPAN_3, EndToEndTestSpan.TRACE_1_SPAN_4, EndToEndTestSpan.TRACE_1_SPAN_8,
+            EndToEndTestSpan.TRACE_1_SPAN_9, EndToEndTestSpan.TRACE_1_SPAN_11);
+    private static final List<EndToEndTestSpan> TEST_TRACE_2_BATCH_1 = Arrays.asList(EndToEndTestSpan.TRACE_2_ROOT_SPAN,
+            EndToEndTestSpan.TRACE_2_SPAN_2, EndToEndTestSpan.TRACE_2_SPAN_4, EndToEndTestSpan.TRACE_2_SPAN_5);
+    private static final List<EndToEndTestSpan> TEST_TRACE_2_BATCH_2 = Collections.singletonList(EndToEndTestSpan.TRACE_2_SPAN_3);
     private static final String SERVICE_MAP_INDEX_NAME = "otel-v1-apm-service-map";
 
     @Test
     public void testPipelineEndToEnd() throws IOException, InterruptedException {
         // Send test trace group 1
         final ExportTraceServiceRequest exportTraceServiceRequest11 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_1, testDataSet11)
+                getResourceSpansBatch(TEST_TRACEID_1, TEST_TRACE_1_BATCH_1)
         );
         final ExportTraceServiceRequest exportTraceServiceRequest12 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_1, testDataSet12)
+                getResourceSpansBatch(TEST_TRACEID_1, TEST_TRACE_1_BATCH_2)
         );
 
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest11);
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest12);
 
         //Verify data in elasticsearch sink
-        final List<ServiceMapTestData> testDataSet1 = Stream.of(testDataSet11, testDataSet12)
+        final List<EndToEndTestSpan> testDataSet1 = Stream.of(TEST_TRACE_1_BATCH_1, TEST_TRACE_1_BATCH_2)
                 .flatMap(Collection::stream).collect(Collectors.toList());
         final List<Map<String, Object>> possibleEdges = getPossibleEdges(TEST_TRACEID_1, testDataSet1);
         final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
@@ -91,16 +91,16 @@ public class EndToEndServiceMapTest {
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest12);
         // Send test trace group 2
         final ExportTraceServiceRequest exportTraceServiceRequest21 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_2, testDataSet21)
+                getResourceSpansBatch(TEST_TRACEID_2, TEST_TRACE_2_BATCH_1)
         );
         final ExportTraceServiceRequest exportTraceServiceRequest22 = getExportTraceServiceRequest(
-                getResourceSpansBatch(TEST_TRACEID_2, testDataSet22)
+                getResourceSpansBatch(TEST_TRACEID_2, TEST_TRACE_2_BATCH_2)
         );
 
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest21);
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest22);
 
-        final List<ServiceMapTestData> testDataSet2 = Stream.of(testDataSet21, testDataSet22)
+        final List<EndToEndTestSpan> testDataSet2 = Stream.of(TEST_TRACE_2_BATCH_1, TEST_TRACE_2_BATCH_2)
                 .flatMap(Collection::stream).collect(Collectors.toList());
         possibleEdges.addAll(getPossibleEdges(TEST_TRACEID_2, testDataSet2));
         // Wait for service map prepper by 2 * window_duration
@@ -176,10 +176,10 @@ public class EndToEndServiceMapTest {
                 .build();
     }
 
-    private List<ResourceSpans> getResourceSpansBatch(final String traceId, final List<ServiceMapTestData> data) {
+    private List<ResourceSpans> getResourceSpansBatch(final String traceId, final List<EndToEndTestSpan> data) {
         final ArrayList<ResourceSpans> spansList = new ArrayList<>();
         for(int i=0; i < data.size(); i++) {
-            final ServiceMapTestData currData = data.get(i);
+            final EndToEndTestSpan currData = data.get(i);
             final String parentId = currData.parentId;
             final String spanId = currData.spanId;
             final String serviceName = currData.serviceName;
@@ -198,14 +198,14 @@ public class EndToEndServiceMapTest {
         return spansList;
     }
 
-    private List<Map<String, Object>> getPossibleEdges(final String traceId, final List<ServiceMapTestData> data) {
-        final Map<String, ServiceMapTestData> spanIdToServiceMapTestData = data.stream()
-                .collect(Collectors.toMap(serviceMapTestData -> serviceMapTestData.spanId, serviceMapTestData -> serviceMapTestData));
+    private List<Map<String, Object>> getPossibleEdges(final String traceId, final List<EndToEndTestSpan> data) {
+        final Map<String, EndToEndTestSpan> spanIdToServiceMapTestData = data.stream()
+                .collect(Collectors.toMap(endToEndTestSpan -> endToEndTestSpan.spanId, endToEndTestSpan -> endToEndTestSpan));
         final List<Map<String, Object>> possibleEdges = new ArrayList<>();
-        for (final ServiceMapTestData currData : data) {
+        for (final EndToEndTestSpan currData : data) {
             final String parentId = currData.parentId;
             if (parentId != null) {
-                final ServiceMapTestData parentData = spanIdToServiceMapTestData.get(parentId);
+                final EndToEndTestSpan parentData = spanIdToServiceMapTestData.get(parentId);
                 if (parentData != null && !parentData.serviceName.equals(currData.serviceName)) {
                     String rootSpanName = getRootSpanName(parentId, spanIdToServiceMapTestData);
                     possibleEdges.addAll(getEdgeMaps(rootSpanName, currData, parentData));
@@ -216,16 +216,16 @@ public class EndToEndServiceMapTest {
         return possibleEdges;
     }
 
-    private String getRootSpanName(String spanId, final Map<String, ServiceMapTestData> spanIdToServiceMapTestData) {
-        ServiceMapTestData rootServiceMapTestData = spanIdToServiceMapTestData.get(spanId);
-        while (rootServiceMapTestData.parentId != null) {
-            rootServiceMapTestData = spanIdToServiceMapTestData.get(rootServiceMapTestData.parentId);
+    private String getRootSpanName(String spanId, final Map<String, EndToEndTestSpan> spanIdToServiceMapTestData) {
+        EndToEndTestSpan rootEndToEndTestSpan = spanIdToServiceMapTestData.get(spanId);
+        while (rootEndToEndTestSpan.parentId != null) {
+            rootEndToEndTestSpan = spanIdToServiceMapTestData.get(rootEndToEndTestSpan.parentId);
         }
-        return rootServiceMapTestData.name;
+        return rootEndToEndTestSpan.name;
     }
 
     private List<Map<String, Object>> getEdgeMaps(
-            final String rootSpanName, final ServiceMapTestData currData, final ServiceMapTestData parentData) {
+            final String rootSpanName, final EndToEndTestSpan currData, final EndToEndTestSpan parentData) {
         final List<Map<String, Object>> edges = new ArrayList<>();
 
         Map<String, Object> destination = new HashMap<>();
