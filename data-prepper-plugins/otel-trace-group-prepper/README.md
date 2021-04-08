@@ -54,7 +54,10 @@ Default is null.
 
 ## Metrics
 
-TBD
+### Counter
+- `recordsInMissingTraceGroup`: number of ingress records missing trace group fields.
+- `recordsOutFixedTraceGroup`: number of egress records with trace group fields filled successfully.
+- `recordsOutMissingTraceGroup`: number of egress records missing trace group fields.
 
 ## Developer Guide
 

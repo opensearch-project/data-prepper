@@ -207,18 +207,18 @@ public class EndToEndRawSpanTest {
         return epochNanoSeconds.longValue();
     }
 
-    private List<ResourceSpans> getResourceSpansBatch(final List<EndToEndTestSpan> dataList) {
+    private List<ResourceSpans> getResourceSpansBatch(final List<EndToEndTestSpan> testSpanList) {
         final ArrayList<ResourceSpans> spansList = new ArrayList<>();
-        for(final EndToEndTestSpan data : dataList) {
-            final String traceId = data.traceId;
-            final String parentId = data.parentId;
-            final String spanId = data.spanId;
-            final String serviceName = data.serviceName;
-            final String spanName = data.name;
-            final Span.SpanKind spanKind = data.spanKind;
-            final String endTime = data.endTime;
-            final Long durationInNanos = data.durationInNanos;
-            final Integer statusCode = data.statusCode;
+        for(final EndToEndTestSpan testSpan : testSpanList) {
+            final String traceId = testSpan.traceId;
+            final String parentId = testSpan.parentId;
+            final String spanId = testSpan.spanId;
+            final String serviceName = testSpan.serviceName;
+            final String spanName = testSpan.name;
+            final Span.SpanKind spanKind = testSpan.spanKind;
+            final String endTime = testSpan.endTime;
+            final Long durationInNanos = testSpan.durationInNanos;
+            final Integer statusCode = testSpan.statusCode;
             final ResourceSpans rs = getResourceSpans(
                     serviceName,
                     spanName,

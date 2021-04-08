@@ -88,7 +88,7 @@ public class ServiceMapStatefulPrepperTest {
         Mockito.when(clock.millis()).thenReturn(1L);
         Mockito.when(clock.instant()).thenReturn(Instant.now());
         ExecutorService threadpool = Executors.newCachedThreadPool();
-        final File path = new File(ServiceMapPrepperConfig.DEFAULT_LMDB_PATH);
+        final File path = new File(ServiceMapPrepperConfig.DEFAULT_DB_PATH);
         final ServiceMapStatefulPrepper serviceMapStateful1 = new ServiceMapStatefulPrepper(100, path, clock, 16, PLUGIN_SETTING);
         final ServiceMapStatefulPrepper serviceMapStateful2 = new ServiceMapStatefulPrepper(100, path, clock, 16, PLUGIN_SETTING);
 
