@@ -135,7 +135,7 @@ task removeDataPrepper2DockerContainer(type: DockerRemoveContainer) {
  * ODFE Docker tasks
  */
 task pullOdfeDockerImage(type: DockerPullImage) {
-    image = 'amazon/opendistro-for-elasticsearch:1.9.0'
+    image = 'amazon/opendistro-for-elasticsearch:1.13.2'
 }
 
 task createOdfeDockerContainer(type: DockerCreateContainer) {
