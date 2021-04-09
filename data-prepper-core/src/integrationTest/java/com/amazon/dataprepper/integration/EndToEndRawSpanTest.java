@@ -30,6 +30,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -202,9 +203,7 @@ public class EndToEndRawSpanTest {
 
     private static long convertTimeStampToNanos(String timestamp) {
         Instant instant = Instant.parse(timestamp);
-        BigDecimal nanos = new BigDecimal(instant.getNano());
-        BigDecimal epochNanoSeconds = new BigDecimal(instant.getEpochSecond()).multiply(SEC_TO_NANOS).add(nanos);
-        return epochNanoSeconds.longValue();
+        return ChronoUnit.NANOS.between(Instant.EPOCH, instant);
     }
 
     private List<ResourceSpans> getResourceSpansBatch(final List<EndToEndTestSpan> testSpanList) {
