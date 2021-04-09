@@ -93,7 +93,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             final Map<String, Object> rawSpanMap = entry.getValue();
             final String traceId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
             final TraceGroup traceGroup = traceIdToTraceGroup.get(traceId);
-            if (Objects.nonNull(traceGroup)) {
+            if (traceGroup != null) {
                 try {
                     Map<String, Object> traceGroupMap = OBJECT_MAPPER.convertValue(traceGroup, MAP_TYPE_REFERENCE);
                     rawSpanMap.putAll(traceGroupMap);
