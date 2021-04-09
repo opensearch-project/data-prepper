@@ -1,10 +1,10 @@
-package com.amazon.dataprepper.plugins.prepper.oteltracegroup;
+package com.amazon.dataprepper.plugins.prepper.oteltracegroup.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Objects;
 
-public class TraceGroupWrapper {
+public class TraceGroup {
     public static final String TRACE_GROUP_NAME_FIELD = "traceGroup.name";
     public static final String TRACE_GROUP_END_TIME_FIELD = "traceGroup.endTime";
     public static final String TRACE_GROUP_STATUS_CODE_FIELD = "traceGroup.statusCode";
@@ -38,7 +38,7 @@ public class TraceGroupWrapper {
         return statusCode;
     }
 
-    public TraceGroupWrapper(final String name, final String endTime, final Long durationInNanos, final Integer statusCode) {
+    public TraceGroup(final String name, final String endTime, final Long durationInNanos, final Integer statusCode) {
         this.name = name;
         this.endTime = endTime;
         this.durationInNanos = durationInNanos;
@@ -49,7 +49,7 @@ public class TraceGroupWrapper {
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        final TraceGroupWrapper that = (TraceGroupWrapper) o;
+        final TraceGroup that = (TraceGroup) o;
         return Objects.equals(name, that.name) &&
                 Objects.equals(endTime, that.endTime) &&
                 Objects.equals(durationInNanos, that.durationInNanos) &&

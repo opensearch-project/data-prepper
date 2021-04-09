@@ -5,6 +5,7 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.plugins.prepper.oteltracegroup.model.TraceGroup;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -71,7 +72,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
         for (Record<String> record: rawSpanStringRecords) {
             try {
                 final Map<String, Object> rawSpanMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
-                final String traceGroupName = (String) rawSpanMap.get(TraceGroupWrapper.TRACE_GROUP_NAME_FIELD);
+                final String traceGroupName = (String) rawSpanMap.get(TraceGroup.TRACE_GROUP_NAME_FIELD);
                 final String traceId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
                 if (Strings.isNullOrEmpty(traceGroupName)) {
                     traceIdsToLookUp.add(traceId);
@@ -85,12 +86,12 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             }
         }
 
-        final Map<String, TraceGroupWrapper> traceIdToTraceGroup = searchTraceGroupByTraceIds(traceIdsToLookUp);
+        final Map<String, TraceGroup> traceIdToTraceGroup = searchTraceGroupByTraceIds(traceIdsToLookUp);
         for (final Map.Entry<Record<String>, Map<String, Object>> entry: recordMissingTraceGroupToRawSpanMap.entrySet()) {
             final Record<String> record = entry.getKey();
             final Map<String, Object> rawSpanMap = entry.getValue();
             final String traceId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
-            final TraceGroupWrapper traceGroup = traceIdToTraceGroup.get(traceId);
+            final TraceGroup traceGroup = traceIdToTraceGroup.get(traceId);
             if (Objects.nonNull(traceGroup)) {
                 try {
                     Map<String, Object> traceGroupMap = OBJECT_MAPPER.convertValue(traceGroup, MAP_TYPE_REFERENCE);
@@ -113,15 +114,15 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
         return recordsOut;
     }
 
-    private Map<String, TraceGroupWrapper> searchTraceGroupByTraceIds(final Collection<String> traceIds) {
-        final Map<String, TraceGroupWrapper> traceIdToTraceGroup = new HashMap<>();
+    private Map<String, TraceGroup> searchTraceGroupByTraceIds(final Collection<String> traceIds) {
+        final Map<String, TraceGroup> traceIdToTraceGroup = new HashMap<>();
         final SearchRequest searchRequest = createSearchRequest(traceIds);
 
         try {
             final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
             final SearchHit[] searchHits = searchResponse.getHits().getHits();
             Arrays.asList(searchHits).forEach(searchHit -> {
-                Map.Entry<String, TraceGroupWrapper> entry = fromSearchHitToMapEntry(searchHit);
+                Map.Entry<String, TraceGroup> entry = fromSearchHitToMapEntry(searchHit);
                 if (Objects.nonNull(entry)) {
                     traceIdToTraceGroup.put(entry.getKey(), entry.getValue());
                 }
@@ -143,22 +144,22 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                         .must(QueryBuilders.termQuery(OTelTraceGroupPrepperConfig.PARENT_SPAN_ID_FIELD, ""))
         );
         searchSourceBuilder.docValueField(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
-        searchSourceBuilder.docValueField(TraceGroupWrapper.TRACE_GROUP_NAME_FIELD);
-        searchSourceBuilder.docValueField(TraceGroupWrapper.TRACE_GROUP_END_TIME_FIELD, OTelTraceGroupPrepperConfig.STRICT_DATE_TIME);
-        searchSourceBuilder.docValueField(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD);
-        searchSourceBuilder.docValueField(TraceGroupWrapper.TRACE_GROUP_STATUS_CODE_FIELD);
+        searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_NAME_FIELD);
+        searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_END_TIME_FIELD, OTelTraceGroupPrepperConfig.STRICT_DATE_TIME);
+        searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD);
+        searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD);
         searchSourceBuilder.fetchSource(false);
         searchRequest.source(searchSourceBuilder);
 
         return searchRequest;
     }
 
-    private Map.Entry<String, TraceGroupWrapper> fromSearchHitToMapEntry(final SearchHit searchHit) {
+    private Map.Entry<String, TraceGroup> fromSearchHitToMapEntry(final SearchHit searchHit) {
         final DocumentField traceIdDocField = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
-        final DocumentField traceGroupNameDocField = searchHit.field(TraceGroupWrapper.TRACE_GROUP_NAME_FIELD);
-        final DocumentField traceGroupEndTimeDocField = searchHit.field(TraceGroupWrapper.TRACE_GROUP_END_TIME_FIELD);
-        final DocumentField traceGroupDurationInNanosDocField = searchHit.field(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD);
-        final DocumentField traceGroupStatusCodeDocField = searchHit.field(TraceGroupWrapper.TRACE_GROUP_STATUS_CODE_FIELD);
+        final DocumentField traceGroupNameDocField = searchHit.field(TraceGroup.TRACE_GROUP_NAME_FIELD);
+        final DocumentField traceGroupEndTimeDocField = searchHit.field(TraceGroup.TRACE_GROUP_END_TIME_FIELD);
+        final DocumentField traceGroupDurationInNanosDocField = searchHit.field(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD);
+        final DocumentField traceGroupStatusCodeDocField = searchHit.field(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD);
         if (Stream.of(traceIdDocField, traceGroupNameDocField, traceGroupEndTimeDocField, traceGroupDurationInNanosDocField,
                 traceGroupStatusCodeDocField).allMatch(Objects::nonNull)) {
             final String traceId = traceIdDocField.getValue();
@@ -167,7 +168,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             final String traceGroupEndTime = Instant.parse(traceGroupEndTimeDocField.getValue()).toString();
             final Number traceGroupDurationInNanos = traceGroupDurationInNanosDocField.getValue();
             final Number traceGroupStatusCode = traceGroupStatusCodeDocField.getValue();
-            return new AbstractMap.SimpleEntry<>(traceId, new TraceGroupWrapper(traceGroupName, traceGroupEndTime,
+            return new AbstractMap.SimpleEntry<>(traceId, new TraceGroup(traceGroupName, traceGroupEndTime,
                     traceGroupDurationInNanos.longValue(), traceGroupStatusCode.intValue()));
         }
         return null;

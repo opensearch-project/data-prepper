@@ -1,7 +1,7 @@
 package com.amazon.dataprepper.integration;
 
 
-import com.amazon.dataprepper.plugins.prepper.oteltracegroup.TraceGroupWrapper;
+import com.amazon.dataprepper.plugins.prepper.oteltracegroup.model.TraceGroup;
 import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,16 +47,16 @@ public class EndToEndRawSpanTest {
     private static final int DATA_PREPPER_PORT_1 = 21890;
     private static final int DATA_PREPPER_PORT_2 = 21891;
 
-    private static final Map<String, TraceGroupWrapper> TEST_TRACEID_TO_TRACE_GROUP = new HashMap<String, TraceGroupWrapper>() {{
+    private static final Map<String, TraceGroup> TEST_TRACEID_TO_TRACE_GROUP = new HashMap<String, TraceGroup>() {{
        put(Hex.toHexString(EndToEndTestSpan.TRACE_1_ROOT_SPAN.traceId.getBytes()),
-               new TraceGroupWrapper(
+               new TraceGroup(
                        EndToEndTestSpan.TRACE_1_ROOT_SPAN.name,
                        EndToEndTestSpan.TRACE_1_ROOT_SPAN.endTime,
                        EndToEndTestSpan.TRACE_1_ROOT_SPAN.durationInNanos,
                        EndToEndTestSpan.TRACE_1_ROOT_SPAN.statusCode
                ));
        put(Hex.toHexString(EndToEndTestSpan.TRACE_2_ROOT_SPAN.traceId.getBytes()),
-               new TraceGroupWrapper(
+               new TraceGroup(
                        EndToEndTestSpan.TRACE_2_ROOT_SPAN.name,
                        EndToEndTestSpan.TRACE_2_ROOT_SPAN.endTime,
                        EndToEndTestSpan.TRACE_2_ROOT_SPAN.durationInNanos,
@@ -151,9 +151,9 @@ public class EndToEndRawSpanTest {
         searchHits.forEach(hit -> {
             Map<String, Object> source = hit.getSourceAsMap();
             // Elasticsearch API identifies Number type by range, need to convert to Long
-            if (source.containsKey(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD)) {
-                final Long durationInNanos = ((Number) source.get(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD)).longValue();
-                source.put(TraceGroupWrapper.TRACE_GROUP_DURATION_IN_NANOS_FIELD, durationInNanos);
+            if (source.containsKey(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)) {
+                final Long durationInNanos = ((Number) source.get(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)).longValue();
+                source.put(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD, durationInNanos);
             }
             sources.add(source);
         });
@@ -260,7 +260,7 @@ public class EndToEndRawSpanTest {
         esDocSource.put("kind", span.getKind().name());
         esDocSource.put("status.code", span.getStatus().getCodeValue());
         esDocSource.put("serviceName", serviceName);
-        final TraceGroupWrapper traceGroup = TEST_TRACEID_TO_TRACE_GROUP.get(traceId);
+        final TraceGroup traceGroup = TEST_TRACEID_TO_TRACE_GROUP.get(traceId);
         esDocSource.putAll(OBJECT_MAPPER.convertValue(traceGroup, MAP_TYPE_REFERENCE));
 
         return esDocSource;
