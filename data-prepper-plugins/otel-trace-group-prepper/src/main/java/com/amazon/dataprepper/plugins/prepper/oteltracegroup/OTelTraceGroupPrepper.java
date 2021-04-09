@@ -33,6 +33,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -122,10 +123,8 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
             final SearchHit[] searchHits = searchResponse.getHits().getHits();
             Arrays.asList(searchHits).forEach(searchHit -> {
-                Map.Entry<String, TraceGroup> entry = fromSearchHitToMapEntry(searchHit);
-                if (Objects.nonNull(entry)) {
-                    traceIdToTraceGroup.put(entry.getKey(), entry.getValue());
-                }
+                final Optional<Map.Entry<String, TraceGroup>> optionalStringTraceGroupEntry = fromSearchHitToMapEntry(searchHit);
+                optionalStringTraceGroupEntry.ifPresent(entry -> traceIdToTraceGroup.put(entry.getKey(), entry.getValue()));
             });
         } catch (Exception e) {
             // TODO: retry for status code 429 of ElasticsearchException?
@@ -154,7 +153,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
         return searchRequest;
     }
 
-    private Map.Entry<String, TraceGroup> fromSearchHitToMapEntry(final SearchHit searchHit) {
+    private Optional<Map.Entry<String, TraceGroup>> fromSearchHitToMapEntry(final SearchHit searchHit) {
         final DocumentField traceIdDocField = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
         final DocumentField traceGroupNameDocField = searchHit.field(TraceGroup.TRACE_GROUP_NAME_FIELD);
         final DocumentField traceGroupEndTimeDocField = searchHit.field(TraceGroup.TRACE_GROUP_END_TIME_FIELD);
@@ -168,10 +167,10 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             final String traceGroupEndTime = Instant.parse(traceGroupEndTimeDocField.getValue()).toString();
             final Number traceGroupDurationInNanos = traceGroupDurationInNanosDocField.getValue();
             final Number traceGroupStatusCode = traceGroupStatusCodeDocField.getValue();
-            return new AbstractMap.SimpleEntry<>(traceId, new TraceGroup(traceGroupName, traceGroupEndTime,
-                    traceGroupDurationInNanos.longValue(), traceGroupStatusCode.intValue()));
+            return Optional.of(new AbstractMap.SimpleEntry<>(traceId, new TraceGroup(traceGroupName, traceGroupEndTime,
+                    traceGroupDurationInNanos.longValue(), traceGroupStatusCode.intValue())));
         }
-        return null;
+        return Optional.empty();
     }
 
     @Override
