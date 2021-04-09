@@ -200,8 +200,8 @@ public class EndToEndRawSpanTest {
                 .build();
     }
 
-    private static long convertTimeStampToNanos(String time) {
-        Instant instant = Instant.parse(time);
+    private static long convertTimeStampToNanos(String timestamp) {
+        Instant instant = Instant.parse(timestamp);
         BigDecimal nanos = new BigDecimal(instant.getNano());
         BigDecimal epochNanoSeconds = new BigDecimal(instant.getEpochSecond()).multiply(SEC_TO_NANOS).add(nanos);
         return epochNanoSeconds.longValue();
