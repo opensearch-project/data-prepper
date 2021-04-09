@@ -166,7 +166,7 @@ public class EndToEndRawSpanTest {
                                                  final Long durationInNanos, final Integer statusCode) {
         final ByteString parentSpanId = parentId != null ? ByteString.copyFrom(parentId) : ByteString.EMPTY;
         final long endTimeInNanos = convertTimeStampToNanos(endTime);
-        final long startTimeInNanos = new BigDecimal(endTimeInNanos).subtract(new BigDecimal(durationInNanos)).longValue();
+        final long startTimeInNanos = endTimeInNanos - durationInNanos;
         return ResourceSpans.newBuilder()
                 .setResource(
                         Resource.newBuilder()
