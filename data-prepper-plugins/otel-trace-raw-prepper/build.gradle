@@ -10,7 +10,7 @@ dependencies {
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
     implementation 'com.google.protobuf:protobuf-java-util:3.15.7'
     implementation "com.linecorp.armeria:armeria:1.5.0"
-    implementation "com.linecorp.armeria:armeria-grpc:1.5.0"
+    implementation "com.linecorp.armeria:armeria-grpc:1.6.0"
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.2"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.2"
     implementation group: 'com.google.guava', name: 'guava', version: '30.1.1-jre'
