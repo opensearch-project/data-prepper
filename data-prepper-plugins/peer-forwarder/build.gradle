@@ -16,7 +16,7 @@ dependencies {
     implementation "com.linecorp.armeria:armeria:1.5.0"
     implementation "com.linecorp.armeria:armeria-grpc:1.5.0"
     testImplementation "junit:junit:4.13.2"
-    testImplementation "org.mockito:mockito-inline:3.8.0"
+    testImplementation "org.mockito:mockito-inline:3.9.0"
 }
 
 jacocoTestCoverageVerification {
