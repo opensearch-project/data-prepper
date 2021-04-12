@@ -114,7 +114,14 @@ public class OTelTraceSourceTest {
 
     @Test
     void testBufferFull() {
-        CLIENT.export(SUCCESS_REQUEST);
+        try {
+            // Debugging a recurring issue with this particular test
+            CLIENT.export(SUCCESS_REQUEST);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
+
         try {
             CLIENT.export(ExportTraceServiceRequest.newBuilder().build());
         } catch (RuntimeException ex) {
