@@ -7,7 +7,6 @@ import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.pipeline.common.PipelineThreadFactory;
 import com.amazon.dataprepper.pipeline.common.PipelineThreadPoolExecutor;
-import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,8 +30,8 @@ import static java.lang.String.format;
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class Pipeline {
     private static final Logger LOG = LoggerFactory.getLogger(Pipeline.class);
-    private static final int PREPPER_DEFAULT_TERMINATION_IN_MILLISECONDS = 5000;
-    private boolean stopRequested;
+    private static final int PREPPER_DEFAULT_TERMINATION_IN_MILLISECONDS = 10_000;
+    private volatile boolean stopRequested;
 
     private final String name;
     private final Source source;
@@ -41,7 +40,8 @@ public class Pipeline {
     private final List<Sink> sinks;
     private final int prepperThreads;
     private final int readBatchTimeoutInMillis;
-    private final ExecutorService prepperSinkExecutorService;
+    private final ExecutorService prepperExecutorService;
+    private final ExecutorService sinkExecutorService;
 
     /**
      * Constructs a {@link Pipeline} object with provided {@link Source}, {@link #name}, {@link Collection} of
@@ -76,12 +76,14 @@ public class Pipeline {
         this.sinks = sinks;
         this.prepperThreads = prepperThreads;
         this.readBatchTimeoutInMillis = readBatchTimeoutInMillis;
-        int coreThreads = sinks.size() + prepperThreads; //TODO We may have to update this after benchmark tests
-        this.prepperSinkExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(coreThreads,
+        this.prepperExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(prepperThreads,
                 new PipelineThreadFactory(format("%s-process-worker", name)), this);
+
+        this.sinkExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(sinks.size(),
+                new PipelineThreadFactory(format("%s-process-worker", name)), this);
+
         stopRequested = false;
     }
-
 
     /**
      * @return Unique name of this pipeline.
@@ -146,7 +148,7 @@ public class Pipeline {
                             }
                         }
                 ).collect(Collectors.toList());
-                prepperSinkExecutorService.submit(new ProcessWorker(buffer, preppers, sinks, this));
+                prepperExecutorService.submit(new ProcessWorker(buffer, preppers, sinks, this));
             }
         } catch (Exception ex) {
             //source failed to start - Cannot proceed further with the current pipeline, skipping further execution
@@ -162,7 +164,13 @@ public class Pipeline {
     }
 
     /**
-     * Initiates shutdown of the pipeline by notifying the components to stop processing.
+     * Initiates shutdown of the pipeline by:
+     * 1. Stopping the source to prevent new items from being consumed
+     * 2. Notifying preppers to prepare for shutdown (e.g. flushing batched items)
+     * 3. Waiting for ProcessWorkers to exit their run loop (only after buffer/preppers are empty)
+     * 4. Stopping the ProcessWorkers if they are unable to exit gracefully
+     * 5. Shutting down preppers and sinks
+     * 6. Stopping the sink ExecutorService
      *
      * @param prepperTimeout the maximum time to wait after initiating shutdown to forcefully shutdown process worker
      */
@@ -172,20 +180,27 @@ public class Pipeline {
         try {
             source.stop();
             stopRequested = true;
-            prepperSets.forEach(prepperSet -> { prepperSet.forEach(Prepper::shutdown); });
-            sinks.forEach(Sink::shutdown);
+            prepperSets.forEach(prepperSet -> prepperSet.forEach(Prepper::prepareForShutdown));
         } catch (Exception ex) {
             LOG.error("Pipeline [{}] - Encountered exception while stopping the source, " +
                     "proceeding with termination of process workers", name);
         }
-        shutdownExecutorService(prepperSinkExecutorService, prepperTimeout);
+
+        shutdownExecutorService(prepperExecutorService, prepperTimeout);
+
+        prepperSets.forEach(prepperSet -> prepperSet.forEach(Prepper::shutdown));
+        sinks.forEach(Sink::shutdown);
+
+        shutdownExecutorService(sinkExecutorService, prepperTimeout);
     }
 
     private void shutdownExecutorService(final ExecutorService executorService, int timeoutForTerminationInMillis) {
         LOG.info("Pipeline [{}] - Shutting down process workers", name);
+
         executorService.shutdown();
         try {
             if (!executorService.awaitTermination(timeoutForTerminationInMillis, TimeUnit.MILLISECONDS)) {
+                LOG.warn("Pipeline [{}] - Workers did not terminate in time, forcing termination", name);
                 executorService.shutdownNow();
             }
         } catch (InterruptedException ex) {
@@ -207,7 +222,7 @@ public class Pipeline {
         List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
         for (int i = 0; i < sinksSize; i++) {
             int finalI = i;
-            sinkFutures.add(prepperSinkExecutorService.submit(() -> sinks.get(finalI).output(records), null));
+            sinkFutures.add(sinkExecutorService.submit(() -> sinks.get(finalI).output(records), null));
         }
         return sinkFutures;
     }

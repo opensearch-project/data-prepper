@@ -73,6 +73,11 @@ public class TestBuffer implements Buffer<Record<String>> {
 
     }
 
+    @Override
+    public boolean isEmpty() {
+        return buffer.isEmpty();
+    }
+
     public int size() {
         return buffer.size();
     }

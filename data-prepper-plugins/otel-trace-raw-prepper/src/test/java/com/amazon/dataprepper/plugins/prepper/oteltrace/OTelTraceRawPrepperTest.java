@@ -18,6 +18,8 @@ import org.junit.Test;
 import org.junit.Before;
 
 import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
 import java.io.BufferedReader;
@@ -186,6 +188,26 @@ public class OTelTraceRawPrepperTest {
             Assertions.assertThat(processedRecords.size()).isEqualTo(5);
             Assertions.assertThat(getOrphanedSpanCount(processedRecords)).isEqualTo(2);
         });
+    }
+
+    @Test
+    public void testPrepareForShutdown() throws Exception {
+        // Assert no records in memory
+        assertTrue(oTelTraceRawPrepper.isReadyForShutdown());
+
+        // Add records to memory/queue
+        final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_TWO_FULL_TRACE_GROUP_JSON_FILE);
+        oTelTraceRawPrepper.doExecute(Collections.singletonList(new Record<>(exportTraceServiceRequest)));
+
+        // Assert records exist in memory
+        assertFalse(oTelTraceRawPrepper.isReadyForShutdown());
+
+        // Force records to be flushed
+        oTelTraceRawPrepper.prepareForShutdown();
+        oTelTraceRawPrepper.doExecute(Collections.emptyList());
+
+        // Assert records have been flushed
+        assertTrue(oTelTraceRawPrepper.isReadyForShutdown());
     }
 
     private ExportTraceServiceRequest buildExportTraceServiceRequestFromJsonFile(String requestJsonFileName) throws IOException {

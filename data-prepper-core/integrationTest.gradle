@@ -81,7 +81,7 @@ def createDataPrepperDockerContainer(final String taskBaseName, final String dat
         dependsOn buildDataPrepperDockerImage
         dependsOn createDataPrepperNetwork
         containerName = dataPrepperName
-        hostConfig.portBindings = ['%d:21890'.formatted(grpcPort), '%d:4900'.formatted(serverPort)]
+        hostConfig.portBindings = [String.format('%d:21890', grpcPort), String.format('%d:4900', serverPort)]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
         cmd = ["java", "-jar", "data-prepper.jar", pipelineConfigYAML, "/app/data_prepper.yml"]
         targetImageId buildDataPrepperDockerImage.getImageId()
