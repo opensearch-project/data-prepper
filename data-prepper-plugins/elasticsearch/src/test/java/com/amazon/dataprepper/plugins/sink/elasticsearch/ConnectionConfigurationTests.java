@@ -1,7 +1,7 @@
 package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import org.elasticsearch.client.RestHighLevelClient;
+import org.opensearch.client.RestHighLevelClient;
 import org.junit.Test;
 
 import java.io.IOException;

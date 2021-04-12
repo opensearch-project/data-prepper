@@ -1,25 +1,32 @@
 buildscript {
     ext {
         es_version = System.getProperty("es.version", "${versionMap.es_version}")
-        es_group = "org.elasticsearch"
+        es_group = "org.opensearch"
         distribution = 'oss-zip'
     }
 
     repositories {
         maven { url "https://plugins.gradle.org/m2/" }
+        maven {
+            url = 's3://search-vemsarat/'
+            credentials(AwsCredentials) {
+                accessKey = System.env.AWS_ACCESS_KEY_ID ?: findProperty('aws_access_key_id')
+                secretKey = System.env.AWS_SECRET_ACCESS_KEY ?: findProperty('aws_secret_access_key')
+            }
+        }
     }
 
     dependencies {
-        classpath "${es_group}.gradle:build-tools:${es_version}"
+        classpath "${es_group}.gradle:build-tools:${es_version}-SNAPSHOT"
     }
 }
 
 plugins {
     id 'java'
 }
-apply plugin: 'elasticsearch.testclusters'
-apply plugin: 'elasticsearch.build'
-apply plugin: 'elasticsearch.rest-test'
+apply plugin: 'opensearch.testclusters'
+apply plugin: 'opensearch.build'
+apply plugin: 'opensearch.rest-test'
 
 // To pass elasticsearch plugin check
 ext {
@@ -27,11 +34,21 @@ ext {
     noticeFile = rootProject.file('NOTICE')
 }
 
+repositories {
+    maven {
+        url = 's3://search-vemsarat/'
+        credentials(AwsCredentials) {
+            accessKey = System.env.AWS_ACCESS_KEY_ID ?: findProperty('aws_access_key_id')
+            secretKey = System.env.AWS_SECRET_ACCESS_KEY ?: findProperty('aws_secret_access_key')
+        }
+    }
+}
+
 dependencies {
     compile project(':data-prepper-api')
     testCompile project(':data-prepper-api').sourceSets.test.output
     compile project(':data-prepper-plugins:common')
-    implementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:${es_version}"
+    implementation "org.opensearch.client:opensearch-rest-high-level-client:${es_version}-SNAPSHOT"
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.2"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.2"
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
@@ -41,7 +58,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2") {
         exclude group:'org.hamcrest' // workaround for jarHell
     }
-    testImplementation "org.elasticsearch.test:framework:${es_version}"
+    testImplementation "org.opensearch.test:framework:${es_version}-SNAPSHOT"
     testImplementation "commons-io:commons-io:2.8.0"
 }
 

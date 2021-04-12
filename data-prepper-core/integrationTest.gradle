@@ -24,6 +24,16 @@ sourceSets {
     }
 }
 
+repositories {
+    maven {
+        url = 's3://search-vemsarat/'
+        credentials(AwsCredentials) {
+            accessKey = System.env.AWS_ACCESS_KEY_ID ?: findProperty('aws_access_key_id')
+            secretKey = System.env.AWS_SECRET_ACCESS_KEY ?: findProperty('aws_secret_access_key')
+        }
+    }
+}
+
 dependencies {
     integrationTestCompile("junit:junit:4.13")
     integrationTestCompile project(':data-prepper-plugins:elasticsearch')
@@ -32,7 +42,7 @@ dependencies {
     integrationTestImplementation 'com.google.protobuf:protobuf-java-util:3.13.0'
     integrationTestImplementation "com.linecorp.armeria:armeria:1.0.0"
     integrationTestImplementation "com.linecorp.armeria:armeria-grpc:1.0.0"
-    integrationTestImplementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:${versionMap.es_version}"
+    integrationTestImplementation "org.opensearch.client:opensearch-rest-high-level-client:${versionMap.es_version}-SNAPSHOT"
     integrationTestImplementation "com.fasterxml.jackson.core:jackson-databind:2.12.1"
 }
 
@@ -125,7 +135,7 @@ task removeDataPrepper2DockerContainer(type: DockerRemoveContainer) {
  * ODFE Docker tasks
  */
 task pullOdfeDockerImage(type: DockerPullImage) {
-    image = 'amazon/opendistro-for-elasticsearch:1.9.0'
+    image = 'amazon/opendistro-for-elasticsearch:1.13.2'
 }
 
 task createOdfeDockerContainer(type: DockerCreateContainer) {
