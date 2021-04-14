@@ -95,7 +95,7 @@ public class OTelTraceSourceTest {
         lenient().when(server.start()).thenReturn(completableFuture);
 
         final HashMap<String, Object> settingsMap = new HashMap<>();
-        settingsMap.put("request_timeout", 1);
+        settingsMap.put("request_timeout", 5);
         settingsMap.put(SSL, false);
         pluginSetting = new PluginSetting("otel_trace", settingsMap);
         pluginSetting.setPipelineName("pipeline");
