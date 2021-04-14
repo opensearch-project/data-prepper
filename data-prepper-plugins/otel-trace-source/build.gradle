@@ -20,7 +20,7 @@ dependencies {
     testImplementation('org.junit.jupiter:junit-jupiter')
     // TODO: update versionMap to use a higher version of mockito for all subprojects
     testImplementation("org.mockito:mockito-core:3.8.0")
-    testImplementation("org.mockito:mockito-junit-jupiter:3.8.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:3.9.0")
 }
 
 test {
