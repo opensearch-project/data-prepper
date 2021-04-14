@@ -50,7 +50,7 @@ services:
       - opendistro-for-elasticsearch
   otel-collector:
     container_name: otel-collector
-    image: otel/opentelemetry-collector:0.14.0
+    image: otel/opentelemetry-collector:0.24.0
     command: [ "--config=/etc/otel-collector-config.yml" ]
     working_dir: "/project"
     volumes:

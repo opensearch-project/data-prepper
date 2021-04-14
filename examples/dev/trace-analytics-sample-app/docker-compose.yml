@@ -63,6 +63,8 @@ services:
       - ../../../shared-config/log4j2.properties:/usr/share/data-prepper/log4j.properties
       - ../../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
       - ../../demo/test_keystore.p12:/usr/share/data-prepper/test_keystore.p12
+      - ../../demo/demo-data-prepper.crt:/usr/share/data-prepper/demo-data-prepper.crt
+      - ../../demo/demo-data-prepper.key:/usr/share/data-prepper/demo-data-prepper.key
     ports:
       - "4900:4900" # DataPrepperServer port
       - "21890:21890" # OTelTraceSource port
@@ -101,7 +103,7 @@ services:
   otel-collector:
     restart: unless-stopped
     dns: 10.10.1.1
-    image: otel/opentelemetry-collector:0.14.0
+    image: otel/opentelemetry-collector:0.24.0
     command: ["--config=/etc/otel-collector-config.yml"]
     volumes:
       - ./opentelemetry-collector/otel-collector-config.yml:/etc/otel-collector-config.yml
