@@ -77,10 +77,10 @@ public class Pipeline {
         this.prepperThreads = prepperThreads;
         this.readBatchTimeoutInMillis = readBatchTimeoutInMillis;
         this.prepperExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(prepperThreads,
-                new PipelineThreadFactory(format("%s-process-worker", name)), this);
+                new PipelineThreadFactory(format("%s-prepper-worker", name)), this);
 
         this.sinkExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(sinks.size(),
-                new PipelineThreadFactory(format("%s-process-worker", name)), this);
+                new PipelineThreadFactory(format("%s-sink-worker", name)), this);
 
         stopRequested = false;
     }
