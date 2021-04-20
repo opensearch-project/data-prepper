@@ -175,6 +175,16 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
     }
 
     @Override
+    public void prepareForShutdown() {
+
+    }
+
+    @Override
+    public boolean isReadyForShutdown() {
+        return true;
+    }
+
+    @Override
     public void shutdown() {
         try {
             restHighLevelClient.close();

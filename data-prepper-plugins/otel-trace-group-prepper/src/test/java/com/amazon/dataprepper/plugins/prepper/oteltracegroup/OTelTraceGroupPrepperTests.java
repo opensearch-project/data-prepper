@@ -47,6 +47,7 @@ import java.util.concurrent.Future;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
@@ -250,6 +251,13 @@ public class OTelTraceGroupPrepperTests {
         for (Record<String> record: processedRecords) {
             assertNotNull(extractTraceGroupFromRecord(record));
         }
+    }
+
+    @Test
+    public void testPrepareForShutdown() {
+        otelTraceGroupPrepper.prepareForShutdown();
+
+        assertTrue(otelTraceGroupPrepper.isReadyForShutdown());
     }
 
     private Record<String> buildRawSpanRecord(String rawSpanJsonFileName) throws IOException {

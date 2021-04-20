@@ -188,7 +188,7 @@ spec:
       containers:
       - args:
         - --config=/etc/otelconfig/otel-collector-config.yml
-        image: otel/opentelemetry-collector:0.14.0
+        image: otel/opentelemetry-collector:0.24.0
         imagePullPolicy: ""
         name: otel-collector
         ports:

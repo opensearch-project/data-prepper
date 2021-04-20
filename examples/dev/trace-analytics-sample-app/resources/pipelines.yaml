@@ -2,7 +2,9 @@ entry-pipeline:
   delay: "100"
   source:
     otel_trace_source:
-      ssl: false
+      ssl: true
+      sslKeyFile: /usr/share/data-prepper/demo-data-prepper.key
+      sslKeyCertChainFile: /usr/share/data-prepper/demo-data-prepper.crt
   prepper:
     - peer_forwarder:
         discovery_mode: "dns"
