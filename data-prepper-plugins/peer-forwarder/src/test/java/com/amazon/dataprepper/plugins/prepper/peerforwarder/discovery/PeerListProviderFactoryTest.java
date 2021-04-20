@@ -12,6 +12,7 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
@@ -26,6 +27,7 @@ import static org.mockito.Mockito.when;
 public class PeerListProviderFactoryTest {
     private static final String PLUGIN_NAME = "PLUGIN_NAME";
     private static final String ENDPOINT = "ENDPOINT";
+    private static final String INVALID_ENDPOINT = "INVALID_ENDPOINT_";
     private static final String PIPELINE_NAME = "pipelineName";
 
     @Mock
@@ -84,6 +86,14 @@ public class PeerListProviderFactoryTest {
         assertTrue(result.getPeerList().contains(ENDPOINT));
     }
 
+    @Test(expected = IllegalStateException.class)
+    public void testCreateProviderStaticInstanceWithInvalidEndpoints() {
+        pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.STATIC.toString());
+        pluginSetting.getSettings().put(PeerForwarderConfig.STATIC_ENDPOINTS, Arrays.asList(ENDPOINT, INVALID_ENDPOINT));
+
+        factory.createProvider(pluginSetting);
+    }
+
     @Test
     public void testCreateProviderDnsInstance() {
         pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.DNS.toString());
@@ -105,6 +115,14 @@ public class PeerListProviderFactoryTest {
     @Test(expected = NullPointerException.class)
     public void testCreateProviderDnsInstanceWithNoHostname() {
         pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.DNS.toString());
+
+        factory.createProvider(pluginSetting);
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testCreateProviderDnsInstanceWithInvalidDomainName() {
+        pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.DNS.toString());
+        pluginSetting.getSettings().put(PeerForwarderConfig.DOMAIN_NAME, INVALID_ENDPOINT);
 
         factory.createProvider(pluginSetting);
     }

@@ -15,6 +15,7 @@ dependencies {
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
     implementation "com.linecorp.armeria:armeria:1.6.0"
     implementation "com.linecorp.armeria:armeria-grpc:1.6.0"
+    implementation "commons-validator:commons-validator:1.7"
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.mockito:mockito-inline:3.9.0"
 }
