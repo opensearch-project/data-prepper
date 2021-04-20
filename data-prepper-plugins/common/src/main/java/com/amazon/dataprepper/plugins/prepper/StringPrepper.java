@@ -44,6 +44,17 @@ public class StringPrepper implements Prepper<Record<String>, Record<String>> {
     }
 
     @Override
+    public void prepareForShutdown() {
+
+    }
+
+    @Override
+    public boolean isReadyForShutdown() {
+        return true;
+    }
+
+
+    @Override
     public void shutdown() {
 
     }

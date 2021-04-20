@@ -122,8 +122,8 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
                 }
             }
         } catch (InterruptedException ex) {
-            LOG.warn("Pipeline [{}] - Retrieving records from buffer to batch size timed out, returning already " +
-                    "retrieved records", pipelineName, ex);
+            LOG.info("Pipeline [{}] - Interrupt received while reading from buffer", pipelineName);
+            throw new RuntimeException(ex);
         }
         final CheckpointState checkpointState = new CheckpointState(records.size());
         return new AbstractMap.SimpleEntry<>(records, checkpointState);
@@ -144,5 +144,10 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     public void doCheckpoint(final CheckpointState checkpointState) {
         final int numCheckedRecords = checkpointState.getNumRecordsToBeChecked();
         capacitySemaphore.release(numCheckedRecords);
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return blockingQueue.isEmpty() && getRecordsInFlight() == 0;
     }
 }

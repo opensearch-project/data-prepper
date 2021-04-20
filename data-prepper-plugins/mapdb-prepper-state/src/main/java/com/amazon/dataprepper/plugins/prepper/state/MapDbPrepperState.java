@@ -76,7 +76,7 @@ public class MapDbPrepperState<V> implements PrepperState<byte[], V> {
     }
 
     public <R> List<R> iterate(BiFunction<byte[], V, R> fn, final int segments, final int index) {
-        if(map.size() == 0) {
+        if (map.isEmpty()) {
             return Collections.EMPTY_LIST;
         }
         final KeyRange iterationEndpoints = getIterationEndpoints(segments, index);

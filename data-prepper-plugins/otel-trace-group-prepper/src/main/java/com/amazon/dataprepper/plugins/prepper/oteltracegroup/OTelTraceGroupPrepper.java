@@ -150,6 +150,17 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
         return searchRequest;
     }
 
+
+    @Override
+    public void prepareForShutdown() {
+
+    }
+
+    @Override
+    public boolean isReadyForShutdown() {
+        return true;
+    }
+
     @Override
     public void shutdown() {
         try {

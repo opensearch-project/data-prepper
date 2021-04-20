@@ -97,6 +97,10 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         recordsProcessedCounter.increment(numRecordsToBeChecked);
     }
 
+    protected int getRecordsInFlight() {
+        return recordsInFlight.intValue();
+    }
+
     /**
      * This method should implement the logic for writing to the  buffer
      * @param record Record to write to buffer
@@ -113,4 +117,6 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     public abstract Map.Entry<Collection<T>, CheckpointState> doRead(int timeoutInMillis);
 
     public abstract void doCheckpoint(CheckpointState checkpointState);
+
+    public abstract boolean isEmpty();
 }

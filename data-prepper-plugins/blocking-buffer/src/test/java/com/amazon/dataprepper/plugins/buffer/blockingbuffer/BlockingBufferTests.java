@@ -15,7 +15,9 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public class BlockingBufferTests {
     private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
@@ -142,6 +144,25 @@ public class BlockingBufferTests {
             assertThat(record.getData(), equalTo("TEST" + i));
             i++;
         }
+    }
+
+    @Test
+    public void testBufferIsEmpty() {
+        final PluginSetting completePluginSetting = completePluginSettingForBlockingBuffer();
+        final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(completePluginSetting);
+
+        assertTrue(blockingBuffer.isEmpty());
+    }
+
+    @Test
+    public void testBufferIsNotEmpty() throws Exception {
+        final PluginSetting completePluginSetting = completePluginSettingForBlockingBuffer();
+        final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(completePluginSetting);
+
+        Record<String> record = new Record<>("TEST");
+        blockingBuffer.write(record, TEST_WRITE_TIMEOUT);
+
+        assertFalse(blockingBuffer.isEmpty());
     }
 
     private PluginSetting completePluginSettingForBlockingBuffer() {
