@@ -86,7 +86,7 @@ public class PeerListProviderFactoryTest {
         assertTrue(result.getPeerList().contains(ENDPOINT));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = IllegalStateException.class)
     public void testCreateProviderStaticInstanceWithInvalidEndpoints() {
         pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.STATIC.toString());
         pluginSetting.getSettings().put(PeerForwarderConfig.STATIC_ENDPOINTS, Arrays.asList(ENDPOINT, INVALID_ENDPOINT));
@@ -119,7 +119,7 @@ public class PeerListProviderFactoryTest {
         factory.createProvider(pluginSetting);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = IllegalStateException.class)
     public void testCreateProviderDnsInstanceWithInvalidDomainName() {
         pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.DNS.toString());
         pluginSetting.getSettings().put(PeerForwarderConfig.DOMAIN_NAME, INVALID_ENDPOINT);

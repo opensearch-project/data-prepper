@@ -31,7 +31,7 @@ public class PeerListProviderFactory {
             case DNS:
                 final String domainName = pluginSetting.getStringOrDefault(PeerForwarderConfig.DOMAIN_NAME, null);
                 Objects.requireNonNull(domainName, String.format("Missing '%s' configuration value",PeerForwarderConfig. DOMAIN_NAME));
-                Preconditions.checkArgument(validateEndpoint(domainName), "Invalid domain name: %s", domainName);
+                Preconditions.checkState(validateEndpoint(domainName), "Invalid domain name: %s", domainName);
 
                 final DnsAddressEndpointGroup endpointGroup = DnsAddressEndpointGroup.builder(domainName)
                         .ttl(MIN_TTL, MAX_TTL)
@@ -42,7 +42,7 @@ public class PeerListProviderFactory {
                 final List<String> endpoints = (List<String>) pluginSetting.getAttributeOrDefault(PeerForwarderConfig.STATIC_ENDPOINTS, null);
                 Objects.requireNonNull(endpoints, String.format("Missing '%s' configuration value", PeerForwarderConfig.STATIC_ENDPOINTS));
                 final List<String> invalidEndpoints = endpoints.stream().filter(endpoint -> !this.validateEndpoint(endpoint)).collect(Collectors.toList());
-                Preconditions.checkArgument(invalidEndpoints.size() == 0, "Including invalid endpoints: %s", invalidEndpoints);
+                Preconditions.checkState(invalidEndpoints.isEmpty(), "Including invalid endpoints: %s", invalidEndpoints);
 
                 return new StaticPeerListProvider(endpoints, pluginMetrics);
             default:
