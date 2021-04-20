@@ -10,6 +10,7 @@ import org.apache.commons.validator.routines.InetAddressValidator;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class PeerListProviderFactory {
     // TODO: Make these configurable?
@@ -40,7 +41,8 @@ public class PeerListProviderFactory {
             case STATIC:
                 final List<String> endpoints = (List<String>) pluginSetting.getAttributeOrDefault(PeerForwarderConfig.STATIC_ENDPOINTS, null);
                 Objects.requireNonNull(endpoints, String.format("Missing '%s' configuration value", PeerForwarderConfig.STATIC_ENDPOINTS));
-                Preconditions.checkArgument(endpoints.stream().allMatch(this::validateEndpoint), "Including invalid endpoints: %s", endpoints);
+                final List<String> invalidEndpoints = endpoints.stream().filter(endpoint -> !this.validateEndpoint(endpoint)).collect(Collectors.toList());
+                Preconditions.checkArgument(invalidEndpoints.size() == 0, "Including invalid endpoints: %s", invalidEndpoints);
 
                 return new StaticPeerListProvider(endpoints, pluginMetrics);
             default:
