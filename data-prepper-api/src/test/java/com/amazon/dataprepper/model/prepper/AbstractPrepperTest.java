@@ -69,6 +69,16 @@ public class AbstractPrepperTest {
         }
 
         @Override
+        public void prepareForShutdown() {
+
+        }
+
+        @Override
+        public boolean isReadyForShutdown() {
+            return true;
+        }
+
+        @Override
         public void shutdown() {
 
         }

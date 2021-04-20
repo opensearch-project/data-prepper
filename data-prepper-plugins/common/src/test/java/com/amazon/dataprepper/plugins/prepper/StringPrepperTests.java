@@ -48,6 +48,15 @@ public class StringPrepperTests {
         assertTrue(expectedRecordData.containsAll(modifiedRecordData));
     }
 
+    @Test
+    public void testPrepareForShutdown() {
+        final StringPrepper stringPrepper = new StringPrepper(new PluginSetting(PLUGIN_NAME, new HashMap<>()));
+
+        stringPrepper.prepareForShutdown();
+
+        assertTrue(stringPrepper.isReadyForShutdown());
+    }
+
     private PluginSetting completePluginSettingForStringPrepper(final boolean upperCase) {
         final Map<String, Object> settings = new HashMap<>();
         settings.put(StringPrepper.UPPER_CASE, upperCase);
