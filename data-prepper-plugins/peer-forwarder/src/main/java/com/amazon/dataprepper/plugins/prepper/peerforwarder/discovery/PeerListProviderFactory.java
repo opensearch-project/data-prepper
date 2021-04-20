@@ -7,16 +7,11 @@ import com.google.common.base.Preconditions;
 import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
 import org.apache.commons.validator.routines.DomainValidator;
 import org.apache.commons.validator.routines.InetAddressValidator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Objects;
 
 public class PeerListProviderFactory {
-
-    private static final Logger LOG = LoggerFactory.getLogger(PeerListProviderFactory.class);
-
     // TODO: Make these configurable?
     private static final int MIN_TTL = 10;
     private static final int MAX_TTL = 20;
