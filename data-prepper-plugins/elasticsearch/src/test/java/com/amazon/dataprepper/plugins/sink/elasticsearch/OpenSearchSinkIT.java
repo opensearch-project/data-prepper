@@ -66,7 +66,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.http.HttpStatus.SC_OK;
 
-public class ElasticsearchSinkIT extends OpenSearchRestTestCase {
+public class OpenSearchSinkIT extends OpenSearchRestTestCase {
   private static final String PLUGIN_NAME = "elasticsearch";
   private static final String PIPELINE_NAME = "integTestPipeline";
   public List<String> HOSTS = Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
@@ -83,7 +83,7 @@ public class ElasticsearchSinkIT extends OpenSearchRestTestCase {
 
   public void testInstantiateSinkRawSpanDefault() throws IOException {
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
-    ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
     Request request = new Request(HttpMethod.HEAD, indexAlias);
     Response response = client().performRequest(request);
@@ -106,7 +106,7 @@ public class ElasticsearchSinkIT extends OpenSearchRestTestCase {
     assertEquals(SC_OK, response.getStatusLine().getStatusCode());
 
     // Instantiate sink again
-    sink = new ElasticsearchSink(pluginSetting);
+    sink = new OpenSearchSink(pluginSetting);
     // Make sure no new write index *-000001 is created under alias
     final String rolloverIndexName = String.format("%s-000002", indexAlias);
     request = new Request(HttpMethod.GET, rolloverIndexName + "/_alias");
@@ -129,7 +129,7 @@ public class ElasticsearchSinkIT extends OpenSearchRestTestCase {
 
     final List<Record<String>> testRecords = Arrays.asList(new Record<>(testDoc1), new Record<>(testDoc2));
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
-    final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
 
     final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
@@ -142,12 +142,12 @@ public class ElasticsearchSinkIT extends OpenSearchRestTestCase {
     // Verify metrics
     final List<Measurement> bulkRequestErrors = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
-                    .add(ElasticsearchSink.BULKREQUEST_ERRORS).toString());
+                    .add(OpenSearchSink.BULKREQUEST_ERRORS).toString());
     assertEquals(1, bulkRequestErrors.size());
     Assert.assertEquals(0.0, bulkRequestErrors.get(0).getValue(), 0);
     final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
-                    .add(ElasticsearchSink.BULKREQUEST_LATENCY).toString());
+                    .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
     assertEquals(3, bulkRequestLatencies.size());
     // COUNT
     Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
@@ -186,7 +186,7 @@ public class ElasticsearchSinkIT extends OpenSearchRestTestCase {
     final String expDLQFile = tempDirectory.getAbsolutePath() + "/test-dlq.txt";
     pluginSetting.getSettings().put(RetryConfiguration.DLQ_FILE, expDLQFile);
 
-    final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
     sink.shutdown();
 
@@ -216,7 +216,7 @@ public class ElasticsearchSinkIT extends OpenSearchRestTestCase {
 
   public void testInstantiateSinkServiceMapDefault() throws IOException {
     final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
-    final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.SERVICE_MAP);
     final Request request = new Request(HttpMethod.HEAD, indexAlias);
     final Response response = client().performRequest(request);
@@ -240,7 +240,7 @@ public class ElasticsearchSinkIT extends OpenSearchRestTestCase {
 
     final List<Record<String>> testRecords = Collections.singletonList(new Record<>(testDoc));
     final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
-    ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
     final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.SERVICE_MAP);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
@@ -252,13 +252,13 @@ public class ElasticsearchSinkIT extends OpenSearchRestTestCase {
     // verify metrics
     final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
-                    .add(ElasticsearchSink.BULKREQUEST_LATENCY).toString());
+                    .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
     assertEquals(3, bulkRequestLatencies.size());
     // COUNT
     Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
 
     // Check restart for index already exists
-    sink = new ElasticsearchSink(pluginSetting);
+    sink = new OpenSearchSink(pluginSetting);
     sink.shutdown();
   }
 
@@ -267,14 +267,14 @@ public class ElasticsearchSinkIT extends OpenSearchRestTestCase {
     final String testTemplateFile = Objects.requireNonNull(
             getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
     final PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFile);
-    ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     final Request request = new Request(HttpMethod.HEAD, testIndexAlias);
     final Response response = client().performRequest(request);
     assertEquals(SC_OK, response.getStatusLine().getStatusCode());
     sink.shutdown();
 
     // Check restart for index already exists
-    sink = new ElasticsearchSink(pluginSetting);
+    sink = new OpenSearchSink(pluginSetting);
     sink.shutdown();
   }
 
@@ -287,7 +287,7 @@ public class ElasticsearchSinkIT extends OpenSearchRestTestCase {
     final List<Record<String>> testRecords = Collections.singletonList(generateCustomRecord(testIdField, testId));
     final PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFile);
     pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
-    final ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
     assertEquals(1, retSources.size());
@@ -297,7 +297,7 @@ public class ElasticsearchSinkIT extends OpenSearchRestTestCase {
     // verify metrics
     final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
-                    .add(ElasticsearchSink.BULKREQUEST_LATENCY).toString());
+                    .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
     assertEquals(3, bulkRequestLatencies.size());
     // COUNT
     Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);

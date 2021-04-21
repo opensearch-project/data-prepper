@@ -25,7 +25,6 @@ import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.TrustAllStrategy;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.ssl.SSLContexts;
@@ -49,7 +48,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class ConnectionConfiguration {
-  private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchSink.class);
+  private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
 
   private static final String SERVICE_NAME = "es";
   private static final String DEFAULT_AWS_REGION = "us-east-1";

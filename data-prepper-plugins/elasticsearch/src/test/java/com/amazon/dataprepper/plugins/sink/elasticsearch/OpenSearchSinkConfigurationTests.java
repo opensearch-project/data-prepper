@@ -21,18 +21,18 @@ import java.util.Map;
 
 import static org.junit.Assert.assertNotNull;
 
-public class ElasticsearchSinkConfigurationTests {
+public class OpenSearchSinkConfigurationTests {
     private final List<String> TEST_HOSTS = Collections.singletonList("http://localhost:9200");
     private static final String PLUGIN_NAME = "elasticsearch";
     private static final String PIPELINE_NAME = "integTestPipeline";
 
     @Test
     public void testReadESConfig() {
-        final ElasticsearchSinkConfiguration elasticsearchSinkConfiguration = ElasticsearchSinkConfiguration.readESConfig(
+        final OpenSearchSinkConfiguration openSearchSinkConfiguration = OpenSearchSinkConfiguration.readESConfig(
                 generatePluginSetting());
-        assertNotNull(elasticsearchSinkConfiguration.getConnectionConfiguration());
-        assertNotNull(elasticsearchSinkConfiguration.getIndexConfiguration());
-        assertNotNull(elasticsearchSinkConfiguration.getRetryConfiguration());
+        assertNotNull(openSearchSinkConfiguration.getConnectionConfiguration());
+        assertNotNull(openSearchSinkConfiguration.getIndexConfiguration());
+        assertNotNull(openSearchSinkConfiguration.getRetryConfiguration());
     }
 
     private PluginSetting generatePluginSetting() {

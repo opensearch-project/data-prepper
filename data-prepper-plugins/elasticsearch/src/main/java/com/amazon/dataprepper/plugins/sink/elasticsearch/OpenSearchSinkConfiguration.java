@@ -15,7 +15,7 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class ElasticsearchSinkConfiguration {
+public class OpenSearchSinkConfiguration {
   /**
    * TODO: add retryConfiguration
    */
@@ -35,7 +35,7 @@ public class ElasticsearchSinkConfiguration {
     return retryConfiguration;
   }
 
-  private ElasticsearchSinkConfiguration(
+  private OpenSearchSinkConfiguration(
           final ConnectionConfiguration connectionConfiguration, final IndexConfiguration indexConfiguration,
           final RetryConfiguration retryConfiguration) {
     checkNotNull(connectionConfiguration, "connectionConfiguration cannot be null");
@@ -46,12 +46,12 @@ public class ElasticsearchSinkConfiguration {
     this.retryConfiguration = retryConfiguration;
   }
 
-  public static ElasticsearchSinkConfiguration readESConfig(final PluginSetting pluginSetting) {
+  public static OpenSearchSinkConfiguration readESConfig(final PluginSetting pluginSetting) {
     final ConnectionConfiguration connectionConfiguration =
             ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
     final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
     final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(pluginSetting);
 
-    return new ElasticsearchSinkConfiguration(connectionConfiguration, indexConfiguration, retryConfiguration);
+    return new OpenSearchSinkConfiguration(connectionConfiguration, indexConfiguration, retryConfiguration);
   }
 }

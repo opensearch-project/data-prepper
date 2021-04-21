@@ -49,16 +49,16 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 @DataPrepperPlugin(name = "elasticsearch", type = PluginType.SINK)
-public class ElasticsearchSink extends AbstractSink<Record<String>> {
+public class OpenSearchSink extends AbstractSink<Record<String>> {
   public static final String BULKREQUEST_LATENCY = "bulkRequestLatency";
   public static final String BULKREQUEST_ERRORS = "bulkRequestErrors";
 
-  private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchSink.class);
+  private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
   // Pulled from BulkRequest to make estimation of bytes consistent
   private static final int REQUEST_OVERHEAD = 50;
 
   private BufferedWriter dlqWriter;
-  private final ElasticsearchSinkConfiguration esSinkConfig;
+  private final OpenSearchSinkConfiguration esSinkConfig;
   private RestHighLevelClient restHighLevelClient;
   private Supplier<BulkRequest> bulkRequestSupplier;
   private BulkRetryStrategy bulkRetryStrategy;
@@ -69,12 +69,12 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
   private final Timer bulkRequestTimer;
   private final Counter bulkRequestErrorsCounter;
 
-  public ElasticsearchSink(final PluginSetting pluginSetting) {
+  public OpenSearchSink(final PluginSetting pluginSetting) {
     super(pluginSetting);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
 
-    this.esSinkConfig = ElasticsearchSinkConfiguration.readESConfig(pluginSetting);
+    this.esSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting);
     this.bulkSize = ByteSizeUnit.MB.toBytes(esSinkConfig.getIndexConfiguration().getBulkSize());
     this.indexType = esSinkConfig.getIndexConfiguration().getIndexType();
     this.documentIdField = esSinkConfig.getIndexConfiguration().getDocumentIdField();
