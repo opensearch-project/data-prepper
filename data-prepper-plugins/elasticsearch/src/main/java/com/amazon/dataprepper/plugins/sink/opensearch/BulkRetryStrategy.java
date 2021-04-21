@@ -9,7 +9,7 @@
  *  GitHub history for details.
  */
 
-package com.amazon.dataprepper.plugins.sink.elasticsearch;
+package com.amazon.dataprepper.plugins.sink.opensearch;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import io.micrometer.core.instrument.Counter;

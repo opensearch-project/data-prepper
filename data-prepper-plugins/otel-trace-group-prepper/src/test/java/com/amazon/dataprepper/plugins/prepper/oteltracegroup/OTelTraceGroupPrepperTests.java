@@ -13,7 +13,7 @@ package com.amazon.dataprepper.plugins.prepper.oteltracegroup;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration;
+import com.amazon.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

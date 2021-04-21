@@ -12,7 +12,7 @@
 package com.amazon.dataprepper.integration;
 
 
-import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration;
+import com.amazon.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import com.google.protobuf.ByteString;
 import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.internal.shaded.bouncycastle.util.encoders.Hex;

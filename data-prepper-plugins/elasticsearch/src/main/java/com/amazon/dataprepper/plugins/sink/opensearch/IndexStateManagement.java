@@ -9,7 +9,7 @@
  *  GitHub history for details.
  */
 
-package com.amazon.dataprepper.plugins.sink.elasticsearch;
+package com.amazon.dataprepper.plugins.sink.opensearch;
 
 import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
 import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;

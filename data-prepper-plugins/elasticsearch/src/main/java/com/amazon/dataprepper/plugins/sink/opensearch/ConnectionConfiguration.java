@@ -9,7 +9,7 @@
  *  GitHub history for details.
  */
 
-package com.amazon.dataprepper.plugins.sink.elasticsearch;
+package com.amazon.dataprepper.plugins.sink.opensearch;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazonaws.auth.AWS4Signer;

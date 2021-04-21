@@ -13,7 +13,7 @@ package com.amazon.dataprepper.integration;
 
 
 import com.google.protobuf.ByteString;
-import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration;
+import com.amazon.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;

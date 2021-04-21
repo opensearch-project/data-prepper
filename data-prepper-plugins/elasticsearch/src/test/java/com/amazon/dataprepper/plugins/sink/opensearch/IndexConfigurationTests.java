@@ -9,7 +9,7 @@
  *  GitHub history for details.
  */
 
-package com.amazon.dataprepper.plugins.sink.elasticsearch;
+package com.amazon.dataprepper.plugins.sink.opensearch;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import org.junit.Test;
@@ -20,12 +20,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.amazon.dataprepper.plugins.sink.elasticsearch.IndexConstants.CUSTOM;
-import static com.amazon.dataprepper.plugins.sink.elasticsearch.IndexConstants.RAW;
-import static com.amazon.dataprepper.plugins.sink.elasticsearch.IndexConstants.RAW_DEFAULT_TEMPLATE_FILE;
-import static com.amazon.dataprepper.plugins.sink.elasticsearch.IndexConstants.SERVICE_MAP;
-import static com.amazon.dataprepper.plugins.sink.elasticsearch.IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE;
-import static com.amazon.dataprepper.plugins.sink.elasticsearch.IndexConstants.TYPE_TO_DEFAULT_ALIAS;
+import static com.amazon.dataprepper.plugins.sink.opensearch.IndexConstants.CUSTOM;
+import static com.amazon.dataprepper.plugins.sink.opensearch.IndexConstants.RAW;
+import static com.amazon.dataprepper.plugins.sink.opensearch.IndexConstants.RAW_DEFAULT_TEMPLATE_FILE;
+import static com.amazon.dataprepper.plugins.sink.opensearch.IndexConstants.SERVICE_MAP;
+import static com.amazon.dataprepper.plugins.sink.opensearch.IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE;
+import static com.amazon.dataprepper.plugins.sink.opensearch.IndexConstants.TYPE_TO_DEFAULT_ALIAS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;

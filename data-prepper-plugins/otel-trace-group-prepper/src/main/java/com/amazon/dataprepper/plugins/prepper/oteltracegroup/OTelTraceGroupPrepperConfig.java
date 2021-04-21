@@ -12,8 +12,8 @@
 package com.amazon.dataprepper.plugins.prepper.oteltracegroup;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration;
-import com.amazon.dataprepper.plugins.sink.elasticsearch.IndexConstants;
+import com.amazon.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
+import com.amazon.dataprepper.plugins.sink.opensearch.IndexConstants;
 
 public class OTelTraceGroupPrepperConfig {
     protected static final String TRACE_ID_FIELD = "traceId";
