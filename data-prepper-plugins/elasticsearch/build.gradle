@@ -7,13 +7,7 @@ buildscript {
 
     repositories {
         maven { url "https://plugins.gradle.org/m2/" }
-        maven {
-            url = 's3://search-vemsarat/'
-            credentials(AwsCredentials) {
-                accessKey = System.env.AWS_ACCESS_KEY_ID ?: findProperty('aws_access_key_id')
-                secretKey = System.env.AWS_SECRET_ACCESS_KEY ?: findProperty('aws_secret_access_key')
-            }
-        }
+        mavenLocal()
     }
 
     dependencies {
@@ -46,13 +40,7 @@ ext {
 }
 
 repositories {
-    maven {
-        url = 's3://search-vemsarat/'
-        credentials(AwsCredentials) {
-            accessKey = System.env.AWS_ACCESS_KEY_ID ?: findProperty('aws_access_key_id')
-            secretKey = System.env.AWS_SECRET_ACCESS_KEY ?: findProperty('aws_secret_access_key')
-        }
-    }
+    mavenLocal()
 }
 
 dependencies {
@@ -151,6 +139,7 @@ jacocoTestCoverageVerification {
     }
 }
 
+integTest.enabled = false // TODO: enable once we have the correct tar.gz file
 checkstyleMain.ignoreFailures = true
 checkstyleTest.ignoreFailures = true
 forbiddenApis.ignoreFailures = true
