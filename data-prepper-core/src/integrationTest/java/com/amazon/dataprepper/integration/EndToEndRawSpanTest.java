@@ -1,7 +1,10 @@
 package com.amazon.dataprepper.integration;
 
 
+import com.amazon.dataprepper.plugins.prepper.oteltracegroup.model.TraceGroup;
 import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
 import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.internal.shaded.bouncycastle.util.encoders.Hex;
@@ -13,6 +16,7 @@ import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
+import io.opentelemetry.proto.trace.v1.Status;
 import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
@@ -24,6 +28,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -35,12 +41,27 @@ import java.util.concurrent.TimeUnit;
 import static org.awaitility.Awaitility.await;
 
 public class EndToEndRawSpanTest {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
     private static final int DATA_PREPPER_PORT_1 = 21890;
     private static final int DATA_PREPPER_PORT_2 = 21891;
 
-    private static final Map<String, String> TEST_TRACEID_TO_TRACE_GROUP = new HashMap<String, String>() {{
-       put(Hex.toHexString(EndToEndTestSpan.TRACE_1_ROOT_SPAN.traceId.getBytes()), EndToEndTestSpan.TRACE_1_ROOT_SPAN.name);
-       put(Hex.toHexString(EndToEndTestSpan.TRACE_2_ROOT_SPAN.traceId.getBytes()), EndToEndTestSpan.TRACE_2_ROOT_SPAN.name);
+    private static final Map<String, TraceGroup> TEST_TRACEID_TO_TRACE_GROUP = new HashMap<String, TraceGroup>() {{
+       put(Hex.toHexString(EndToEndTestSpan.TRACE_1_ROOT_SPAN.traceId.getBytes()),
+               new TraceGroup(
+                       EndToEndTestSpan.TRACE_1_ROOT_SPAN.name,
+                       EndToEndTestSpan.TRACE_1_ROOT_SPAN.endTime,
+                       EndToEndTestSpan.TRACE_1_ROOT_SPAN.durationInNanos,
+                       EndToEndTestSpan.TRACE_1_ROOT_SPAN.statusCode
+               ));
+       put(Hex.toHexString(EndToEndTestSpan.TRACE_2_ROOT_SPAN.traceId.getBytes()),
+               new TraceGroup(
+                       EndToEndTestSpan.TRACE_2_ROOT_SPAN.name,
+                       EndToEndTestSpan.TRACE_2_ROOT_SPAN.endTime,
+                       EndToEndTestSpan.TRACE_2_ROOT_SPAN.durationInNanos,
+                       EndToEndTestSpan.TRACE_2_ROOT_SPAN.statusCode
+               )
+       );
     }};
     private static final List<EndToEndTestSpan> TEST_SPAN_SET_1_WITH_ROOT_SPAN = Arrays.asList(
             EndToEndTestSpan.TRACE_1_ROOT_SPAN, EndToEndTestSpan.TRACE_1_SPAN_2, EndToEndTestSpan.TRACE_1_SPAN_3,
@@ -126,13 +147,24 @@ public class EndToEndRawSpanTest {
 
     private List<Map<String, Object>> getSourcesFromSearchHits(final SearchHits searchHits) {
         final List<Map<String, Object>> sources = new ArrayList<>();
-        searchHits.forEach(hit -> sources.add(hit.getSourceAsMap()));
+        searchHits.forEach(hit -> {
+            Map<String, Object> source = hit.getSourceAsMap();
+            // Elasticsearch API identifies Number type by range, need to convert to Long
+            if (source.containsKey(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)) {
+                final Long durationInNanos = ((Number) source.get(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)).longValue();
+                source.put(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD, durationInNanos);
+            }
+            sources.add(source);
+        });
         return sources;
     }
 
     public static ResourceSpans getResourceSpans(final String serviceName, final String spanName, final byte[]
-            spanId, final byte[] parentId, final byte[] traceId, final Span.SpanKind spanKind) {
+            spanId, final byte[] parentId, final byte[] traceId, final Span.SpanKind spanKind, final String endTime,
+                                                 final Long durationInNanos, final Integer statusCode) {
         final ByteString parentSpanId = parentId != null ? ByteString.copyFrom(parentId) : ByteString.EMPTY;
+        final long endTimeInNanos = convertTimeStampToNanos(endTime);
+        final long startTimeInNanos = endTimeInNanos - durationInNanos;
         return ResourceSpans.newBuilder()
                 .setResource(
                         Resource.newBuilder()
@@ -151,6 +183,9 @@ public class EndToEndRawSpanTest {
                                                 .setSpanId(ByteString.copyFrom(spanId))
                                                 .setParentSpanId(parentSpanId)
                                                 .setTraceId(ByteString.copyFrom(traceId))
+                                                .setStartTimeUnixNano(startTimeInNanos)
+                                                .setEndTimeUnixNano(endTimeInNanos)
+                                                .setStatus(Status.newBuilder().setCodeValue(statusCode))
                                                 .build()
                                 )
                                 .build()
@@ -164,6 +199,11 @@ public class EndToEndRawSpanTest {
                 .build();
     }
 
+    private static long convertTimeStampToNanos(String timestamp) {
+        Instant instant = Instant.parse(timestamp);
+        return ChronoUnit.NANOS.between(Instant.EPOCH, instant);
+    }
+
     private List<ResourceSpans> getResourceSpansBatch(final List<EndToEndTestSpan> testSpanList) {
         final ArrayList<ResourceSpans> spansList = new ArrayList<>();
         for(final EndToEndTestSpan testSpan : testSpanList) {
@@ -173,13 +213,19 @@ public class EndToEndRawSpanTest {
             final String serviceName = testSpan.serviceName;
             final String spanName = testSpan.name;
             final Span.SpanKind spanKind = testSpan.spanKind;
+            final String endTime = testSpan.endTime;
+            final Long durationInNanos = testSpan.durationInNanos;
+            final Integer statusCode = testSpan.statusCode;
             final ResourceSpans rs = getResourceSpans(
                     serviceName,
                     spanName,
                     spanId.getBytes(),
                     parentId != null ? parentId.getBytes() : null,
                     traceId.getBytes(),
-                    spanKind
+                    spanKind,
+                    endTime,
+                    durationInNanos,
+                    statusCode
             );
             spansList.add(rs);
         }
@@ -211,8 +257,9 @@ public class EndToEndRawSpanTest {
         esDocSource.put("kind", span.getKind().name());
         esDocSource.put("status.code", span.getStatus().getCodeValue());
         esDocSource.put("serviceName", serviceName);
-        final String traceGroup = TEST_TRACEID_TO_TRACE_GROUP.get(traceId);
-        esDocSource.put("traceGroup", traceGroup);
+        final TraceGroup traceGroup = TEST_TRACEID_TO_TRACE_GROUP.get(traceId);
+        esDocSource.putAll(OBJECT_MAPPER.convertValue(traceGroup, MAP_TYPE_REFERENCE));
+
         return esDocSource;
     }
 

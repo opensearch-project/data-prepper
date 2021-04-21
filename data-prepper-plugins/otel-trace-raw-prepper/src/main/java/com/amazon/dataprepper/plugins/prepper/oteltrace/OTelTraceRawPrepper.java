@@ -9,6 +9,7 @@ import com.amazon.dataprepper.plugins.prepper.oteltrace.model.OTelProtoHelper;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpan;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanBuilder;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpanSet;
+import com.amazon.dataprepper.plugins.prepper.oteltrace.model.TraceGroup;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
@@ -61,7 +62,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
     // TODO: introduce a gauge to monitor the size
     private final Map<String, RawSpanSet> traceIdRawSpanSetMap = new ConcurrentHashMap<>();
 
-    private final Cache<String, String> traceIdTraceGroupCache;
+    private final Cache<String, TraceGroup> traceIdTraceGroupCache;
 
     private long lastTraceFlushTime = 0L;
 
@@ -180,7 +181,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
             RawSpan parentSpan = delayedParentSpan.getRawSpan();
             recordsToFlush.add(parentSpan);
 
-            String traceGroup = parentSpan.getTraceGroup();
+            TraceGroup traceGroup = parentSpan.getTraceGroup();
             String parentSpanTraceId = parentSpan.getTraceId();
 
             RawSpanSet rawSpanSet = traceIdRawSpanSetMap.get(parentSpanTraceId);
@@ -213,7 +214,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
                     while (entryIterator.hasNext()) {
                         Map.Entry<String, RawSpanSet> entry = entryIterator.next();
                         String traceId = entry.getKey();
-                        String traceGroup = traceIdTraceGroupCache.getIfPresent(traceId);
+                        TraceGroup traceGroup = traceIdTraceGroupCache.getIfPresent(traceId);
                         RawSpanSet rawSpanSet = entry.getValue();
                         long traceTime = rawSpanSet.getTimeSeen();
                         if (now - traceTime >= traceFlushInterval) {

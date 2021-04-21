@@ -5,6 +5,7 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.plugins.prepper.oteltracegroup.model.TraceGroup;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,6 +23,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -30,6 +33,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -69,9 +73,9 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
         for (Record<String> record: rawSpanStringRecords) {
             try {
                 final Map<String, Object> rawSpanMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
-                final String traceGroup = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_GROUP_FIELD);
+                final String traceGroupName = (String) rawSpanMap.get(TraceGroup.TRACE_GROUP_NAME_FIELD);
                 final String traceId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
-                if (traceGroup == null || traceGroup.equals("")) {
+                if (Strings.isNullOrEmpty(traceGroupName)) {
                     traceIdsToLookUp.add(traceId);
                     recordMissingTraceGroupToRawSpanMap.put(record, rawSpanMap);
                     recordsInMissingTraceGroupCounter.increment();
@@ -83,20 +87,22 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             }
         }
 
-        final Map<String, String> traceIdToTraceGroup = searchTraceGroupByTraceIds(traceIdsToLookUp);
+        final Map<String, TraceGroup> traceIdToTraceGroup = searchTraceGroupByTraceIds(traceIdsToLookUp);
         for (final Map.Entry<Record<String>, Map<String, Object>> entry: recordMissingTraceGroupToRawSpanMap.entrySet()) {
             final Record<String> record = entry.getKey();
             final Map<String, Object> rawSpanMap = entry.getValue();
             final String traceId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
-            final String traceGroup = traceIdToTraceGroup.get(traceId);
-            if (!Strings.isNullOrEmpty(traceGroup)) {
-                rawSpanMap.put(OTelTraceGroupPrepperConfig.TRACE_GROUP_FIELD, traceGroup);
+            final TraceGroup traceGroup = traceIdToTraceGroup.get(traceId);
+            if (traceGroup != null) {
                 try {
+                    Map<String, Object> traceGroupMap = OBJECT_MAPPER.convertValue(traceGroup, MAP_TYPE_REFERENCE);
+                    rawSpanMap.putAll(traceGroupMap);
                     final String newData = OBJECT_MAPPER.writeValueAsString(rawSpanMap);
                     recordsOut.add(new Record<>(newData, record.getMetadata()));
                     recordsOutFixedTraceGroupCounter.increment();
-                } catch (JsonProcessingException e) {
+                } catch (Exception e) {
                     recordsOut.add(record);
+                    recordsOutMissingTraceGroupCounter.increment();
                     LOG.error("Failed to process the raw span: [{}]", record.getData(), e);
                 }
             } else {
@@ -110,21 +116,16 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
         return recordsOut;
     }
 
-    private Map<String, String> searchTraceGroupByTraceIds(final Collection<String> traceIds) {
-        final Map<String, String> traceIdToTraceGroup = new HashMap<>();
+    private Map<String, TraceGroup> searchTraceGroupByTraceIds(final Collection<String> traceIds) {
+        final Map<String, TraceGroup> traceIdToTraceGroup = new HashMap<>();
         final SearchRequest searchRequest = createSearchRequest(traceIds);
 
         try {
             final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
             final SearchHit[] searchHits = searchResponse.getHits().getHits();
             Arrays.asList(searchHits).forEach(searchHit -> {
-                final DocumentField traceIdDocField = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
-                final DocumentField traceGroupDocField = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_FIELD);
-                if (Stream.of(traceIdDocField, traceGroupDocField).allMatch(Objects::nonNull)) {
-                    final String traceId = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD).getValue();
-                    final String traceGroup = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_GROUP_FIELD).getValue();
-                    traceIdToTraceGroup.put(traceId, traceGroup);
-                }
+                final Optional<Map.Entry<String, TraceGroup>> optionalStringTraceGroupEntry = fromSearchHitToMapEntry(searchHit);
+                optionalStringTraceGroupEntry.ifPresent(entry -> traceIdToTraceGroup.put(entry.getKey(), entry.getValue()));
             });
         } catch (Exception e) {
             // TODO: retry for status code 429 of ElasticsearchException?
@@ -143,13 +144,35 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                         .must(QueryBuilders.termQuery(OTelTraceGroupPrepperConfig.PARENT_SPAN_ID_FIELD, ""))
         );
         searchSourceBuilder.docValueField(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
-        searchSourceBuilder.docValueField(OTelTraceGroupPrepperConfig.TRACE_GROUP_FIELD);
+        searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_NAME_FIELD);
+        searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_END_TIME_FIELD, OTelTraceGroupPrepperConfig.STRICT_DATE_TIME);
+        searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD);
+        searchSourceBuilder.docValueField(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD);
         searchSourceBuilder.fetchSource(false);
         searchRequest.source(searchSourceBuilder);
 
         return searchRequest;
     }
 
+    private Optional<Map.Entry<String, TraceGroup>> fromSearchHitToMapEntry(final SearchHit searchHit) {
+        final DocumentField traceIdDocField = searchHit.field(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
+        final DocumentField traceGroupNameDocField = searchHit.field(TraceGroup.TRACE_GROUP_NAME_FIELD);
+        final DocumentField traceGroupEndTimeDocField = searchHit.field(TraceGroup.TRACE_GROUP_END_TIME_FIELD);
+        final DocumentField traceGroupDurationInNanosDocField = searchHit.field(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD);
+        final DocumentField traceGroupStatusCodeDocField = searchHit.field(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD);
+        if (Stream.of(traceIdDocField, traceGroupNameDocField, traceGroupEndTimeDocField, traceGroupDurationInNanosDocField,
+                traceGroupStatusCodeDocField).allMatch(Objects::nonNull)) {
+            final String traceId = traceIdDocField.getValue();
+            final String traceGroupName = traceGroupNameDocField.getValue();
+            // Restore trailing zeros for thousand, e.g. 2020-08-20T05:40:46.0895568Z -> 2020-08-20T05:40:46.089556800Z
+            final String traceGroupEndTime = Instant.parse(traceGroupEndTimeDocField.getValue()).toString();
+            final Number traceGroupDurationInNanos = traceGroupDurationInNanosDocField.getValue();
+            final Number traceGroupStatusCode = traceGroupStatusCodeDocField.getValue();
+            return Optional.of(new AbstractMap.SimpleEntry<>(traceId, new TraceGroup(traceGroupName, traceGroupEndTime,
+                    traceGroupDurationInNanos.longValue(), traceGroupStatusCode.intValue())));
+        }
+        return Optional.empty();
+    }
 
     @Override
     public void prepareForShutdown() {
