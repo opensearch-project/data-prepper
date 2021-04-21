@@ -29,14 +29,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class ElasticsearchReader {
+public class OpenSearchReader {
     private String scrollId = null;
     private final String indexPattern;
     private final SearchSourceBuilder searchSourceBuilder;
     private final TimeValue keepAlive = TimeValue.timeValueMinutes(1);
     private long total;
 
-    public ElasticsearchReader(final String indexPattern, final String field, final String value) {
+    public OpenSearchReader(final String indexPattern, final String field, final String value) {
         this.indexPattern = indexPattern;
         if (field != null && value != null) {
             searchSourceBuilder = new SearchSourceBuilder();

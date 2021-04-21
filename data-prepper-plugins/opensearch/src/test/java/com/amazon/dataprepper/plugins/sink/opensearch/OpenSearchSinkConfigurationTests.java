@@ -23,7 +23,7 @@ import static org.junit.Assert.assertNotNull;
 
 public class OpenSearchSinkConfigurationTests {
     private final List<String> TEST_HOSTS = Collections.singletonList("http://localhost:9200");
-    private static final String PLUGIN_NAME = "elasticsearch";
+    private static final String PLUGIN_NAME = "opensearch";
     private static final String PIPELINE_NAME = "integTestPipeline";
 
     @Test

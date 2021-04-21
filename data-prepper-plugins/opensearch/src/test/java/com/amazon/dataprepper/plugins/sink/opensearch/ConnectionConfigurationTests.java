@@ -166,6 +166,6 @@ public class ConnectionConfigurationTests {
         metadata.put("cert", certPath);
         metadata.put("insecure", insecure);
 
-        return new PluginSetting("elasticsearch", metadata);
+        return new PluginSetting("opensearch", metadata);
     }
 }

@@ -40,7 +40,7 @@ run {
 }
 
 dependencies {
-    compile project(':data-prepper-plugins:elasticsearch')
+    compile project(':data-prepper-plugins:opensearch')
     compile project(':data-prepper-plugins:otel-trace-source')
     compile project(':data-prepper-plugins:otel-trace-raw-prepper')
     implementation "org.apache.commons:commons-lang3:3.11"

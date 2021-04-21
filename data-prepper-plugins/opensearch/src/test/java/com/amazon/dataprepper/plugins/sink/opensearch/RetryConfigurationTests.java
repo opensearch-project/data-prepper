@@ -46,6 +46,6 @@ public class RetryConfigurationTests {
             metadata.put(RetryConfiguration.DLQ_FILE, dlqFilePath);
         }
 
-        return new PluginSetting("elasticsearch", metadata);
+        return new PluginSetting("opensearch", metadata);
     }
 }

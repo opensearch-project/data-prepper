@@ -52,7 +52,7 @@ public class ZipkinElasticToOtel {
                 .withPassword("admin")
                 .build();
         final RestHighLevelClient restHighLevelClient = connectionConfiguration.createClient();
-        final ElasticsearchReader reader = new ElasticsearchReader(indexPattern, field, value);
+        final OpenSearchReader reader = new OpenSearchReader(indexPattern, field, value);
         final TraceServiceGrpc.TraceServiceBlockingStub client = createGRPCClient();
         System.out.println("Reading batch 0");
         List<Map<String, Object>> sources = reader.nextBatch(restHighLevelClient);

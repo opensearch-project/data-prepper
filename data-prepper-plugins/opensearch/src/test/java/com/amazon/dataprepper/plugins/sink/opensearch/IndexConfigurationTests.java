@@ -238,6 +238,6 @@ public class IndexConfigurationTests {
       metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, documentIdField);
     }
 
-    return new PluginSetting("elasticsearch", metadata);
+    return new PluginSetting("opensearch", metadata);
   }
 }

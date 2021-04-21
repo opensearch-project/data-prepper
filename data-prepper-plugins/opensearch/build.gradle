@@ -116,9 +116,9 @@ jacocoTestReport {
     afterEvaluate {
         classDirectories.from = files(classDirectories.files.collect {
             fileTree(dir: it, exclude: [
-                    // TODO: find a way to include the classes covered by ES test framework
-                    'com/amazon/dataprepper/plugins/sink/elasticsearch/ElasticsearchSink.class',
-                    'com/amazon/dataprepper/plugins/sink/elasticsearch/IndexStateManagement.class'
+                    // TODO: find a way to include the classes covered by OpenSearch test framework
+                    'com/amazon/dataprepper/plugins/sink/opensearch/OpenSearchSink.class',
+                    'com/amazon/dataprepper/plugins/sink/opensearch/IndexStateManagement.class'
             ])
         })
     }
@@ -130,9 +130,9 @@ jacocoTestCoverageVerification {
         rule {
             element = 'CLASS'
             excludes = [
-                    // TODO: find a way to include the classes covered by ES test framework
-                    'com.amazon.dataprepper.plugins.sink.elasticsearch.ElasticsearchSink',
-                    'com.amazon.dataprepper.plugins.sink.elasticsearch.IndexStateManagement'
+                    // TODO: find a way to include the classes covered by OpenSearch test framework
+                    'com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchSink',
+                    'com.amazon.dataprepper.plugins.sink.opensearch.IndexStateManagement'
             ]
             limit {
                 minimum = 0.90

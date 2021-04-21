@@ -48,7 +48,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.function.Supplier;
 
-@DataPrepperPlugin(name = "elasticsearch", type = PluginType.SINK)
+@DataPrepperPlugin(name = "opensearch", type = PluginType.SINK)
 public class OpenSearchSink extends AbstractSink<Record<String>> {
   public static final String BULKREQUEST_LATENCY = "bulkRequestLatency";
   public static final String BULKREQUEST_ERRORS = "bulkRequestErrors";

@@ -32,7 +32,7 @@ data:
       prepper:
         - otel_trace_raw_prepper:
       sink:
-        - elasticsearch:
+        - opensearch:
             hosts: [ "https://opendistro-for-elasticsearch:9200" ]
             insecure: true
             username: "admin"
@@ -46,7 +46,7 @@ data:
       prepper:
         - service_map_stateful:
       sink:
-        - elasticsearch:
+        - opensearch:
             hosts: ["https://opendistro-for-elasticsearch:9200"]
             insecure: true
             username: "admin"

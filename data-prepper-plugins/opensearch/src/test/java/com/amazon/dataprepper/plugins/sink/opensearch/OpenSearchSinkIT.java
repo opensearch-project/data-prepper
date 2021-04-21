@@ -67,7 +67,7 @@ import java.util.stream.Collectors;
 import static org.apache.http.HttpStatus.SC_OK;
 
 public class OpenSearchSinkIT extends OpenSearchRestTestCase {
-  private static final String PLUGIN_NAME = "elasticsearch";
+  private static final String PLUGIN_NAME = "opensearch";
   private static final String PIPELINE_NAME = "integTestPipeline";
   public List<String> HOSTS = Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
       .map(ip -> String.format("%s://%s", getProtocol(), ip)).collect(Collectors.toList());

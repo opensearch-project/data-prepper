@@ -40,7 +40,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class BulkRetryStrategyTests {
-    private static final String PLUGIN_NAME = "elasticsearch";
+    private static final String PLUGIN_NAME = "opensearch";
     private static final String PIPELINE_NAME = "pipelineName";
     private static final PluginSetting PLUGIN_SETTING = new PluginSetting(PLUGIN_NAME, Collections.emptyMap()) {{
         setPipelineName(PIPELINE_NAME);

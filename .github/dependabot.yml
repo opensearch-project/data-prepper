@@ -22,7 +22,7 @@ updates:
     interval: weekly
 
 - package-ecosystem: gradle
-  directory: "/data-prepper-plugins/elasticsearch"
+  directory: "/data-prepper-plugins/opensearch"
   schedule:
     interval: weekly
 

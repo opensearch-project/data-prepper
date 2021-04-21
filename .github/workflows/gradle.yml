@@ -41,6 +41,6 @@ jobs:
         sleep 90
     - name: Run ODFE tests
       run: |
-        ./gradlew :data-prepper-plugins:elasticsearch:test --tests "com.amazon.dataprepper.plugins.sink.elasticsearch.ODFETests.testODFEConnection" -Dodfe.host=https://localhost:9200 -Dodfe.user=admin -Dodfe.password=admin
-        ./gradlew :data-prepper-plugins:elasticsearch:integTest --tests "com.amazon.dataprepper.plugins.sink.elasticsearch.ElasticsearchSinkIT" -Dodfe=true -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername=docker-cluster -Duser=admin -Dpassword=admin
+        ./gradlew :data-prepper-plugins:opensearch:test --tests "com.amazon.dataprepper.plugins.sink.opensearch.ODFETests.testODFEConnection" -Dodfe.host=https://localhost:9200 -Dodfe.user=admin -Dodfe.password=admin
+        ./gradlew :data-prepper-plugins:opensearch:integTest --tests "com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchSinkIT" -Dodfe=true -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername=docker-cluster -Duser=admin -Dpassword=admin
 
