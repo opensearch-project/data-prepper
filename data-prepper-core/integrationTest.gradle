@@ -36,6 +36,7 @@ sourceSets {
 }
 
 repositories {
+    // TODO: replace local built OpenSearch artifact with the public artifact
     mavenLocal()
 }
 

@@ -24,6 +24,14 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: ${{ matrix.java }}
+    # TODO: replace local built OpenSearch artifact with the public artifact
+    - name: Checkout OpenSearch
+      with:
+        repository: 'opensearch-project/OpenSearch'
+        path: OpenSearch
+    - name: Build OpenSearch
+      working-directory: ./OpenSearch
+      run: ./gradlew publishToMavenLocal
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Run raw-span end-to-end tests with Gradle
