@@ -25,6 +25,7 @@ jobs:
         java-version: ${{ matrix.java }}
     # TODO: replace local built OpenSearch artifact with the public artifact
     - name: Checkout OpenSearch
+      uses: actions/checkout@v2
       with:
         repository: 'opensearch-project/OpenSearch'
         path: OpenSearch
