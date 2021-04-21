@@ -19,11 +19,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
     - name: Set up JDK ${{ matrix.java }}
       uses: actions/setup-java@v1
       with:
         java-version: ${{ matrix.java }}
+    # TODO: replace local built OpenSearch artifact with the public artifact
+    - name: Checkout OpenSearch
+      uses: actions/checkout@v2
+      with:
+        repository: 'opensearch-project/OpenSearch'
+        path: OpenSearch
+    - name: Build OpenSearch
+      working-directory: ./OpenSearch
+      run: ./gradlew publishToMavenLocal
+    - name: Checkout Data-Prepper
+      uses: actions/checkout@v2
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Run raw-span end-to-end tests with Gradle
