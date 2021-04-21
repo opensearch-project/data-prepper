@@ -9,7 +9,7 @@
  *  GitHub history for details.
  */
 
-rootProject.name = 'opendistroforelasticsearch-data-prepper'
+rootProject.name = 'opensearch-data-prepper'
 
 if(startParameter.getProjectProperties().containsKey("release")){
     include 'release'
