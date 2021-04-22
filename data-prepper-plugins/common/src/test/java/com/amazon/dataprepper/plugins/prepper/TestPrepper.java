@@ -28,7 +28,17 @@ public class TestPrepper implements Prepper<Record<String>, Record<String>> {
 
     @Override
     public Collection<Record<String>> execute(Collection<Record<String>> records) {
-        return null;
+        return records;
+    }
+
+    @Override
+    public void prepareForShutdown() {
+
+    }
+
+    @Override
+    public boolean isReadyForShutdown() {
+        return true;
     }
 
     @Override

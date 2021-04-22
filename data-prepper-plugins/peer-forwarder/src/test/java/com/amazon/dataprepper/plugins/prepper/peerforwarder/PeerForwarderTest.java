@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -114,7 +115,7 @@ public class PeerForwarderTest {
         final PeerForwarder testPeerForwarder = generatePeerForwarder(Collections.singletonList(LOCAL_IP), 2);
         final List<Record<ExportTraceServiceRequest>> exportedRecords =
                 testPeerForwarder.doExecute(Arrays.asList(new Record<>(REQUEST_1), new Record<>(REQUEST_2)));
-        Assert.assertTrue(exportedRecords.size() >= 3);
+        assertTrue(exportedRecords.size() >= 3);
         final List<ResourceSpans> exportedResourceSpans = new ArrayList<>();
         for (final Record<ExportTraceServiceRequest> record: exportedRecords) {
             exportedResourceSpans.addAll(record.getData().getResourceSpansList());
@@ -125,8 +126,8 @@ public class PeerForwarderTest {
                 generateResourceSpans(SPAN_4),
                 generateResourceSpans(SPAN_5, SPAN_6)
         );
-        Assert.assertTrue(exportedResourceSpans.containsAll(expectedResourceSpans));
-        Assert.assertTrue(expectedResourceSpans.containsAll(exportedResourceSpans));
+        assertTrue(exportedResourceSpans.containsAll(expectedResourceSpans));
+        assertTrue(expectedResourceSpans.containsAll(exportedResourceSpans));
     }
 
     @Test
@@ -162,13 +163,13 @@ public class PeerForwarderTest {
         Assert.assertEquals(1, exportedRecords.size());
         final ExportTraceServiceRequest localRequest = exportedRecords.get(0).getData();
         final List<ResourceSpans> localResourceSpans = localRequest.getResourceSpansList();
-        Assert.assertTrue(localResourceSpans.containsAll(expectedLocalResourceSpans));
-        Assert.assertTrue(expectedLocalResourceSpans.containsAll(localResourceSpans));
+        assertTrue(localResourceSpans.containsAll(expectedLocalResourceSpans));
+        assertTrue(expectedLocalResourceSpans.containsAll(localResourceSpans));
         Assert.assertEquals(1, requestsByIp.get(peerIp).size());
         final ExportTraceServiceRequest forwardedRequest = requestsByIp.get(peerIp).get(0);
         final List<ResourceSpans> forwardedResourceSpans = forwardedRequest.getResourceSpansList();
-        Assert.assertTrue(forwardedResourceSpans.containsAll(expectedForwardedResourceSpans));
-        Assert.assertTrue(expectedForwardedResourceSpans.containsAll(forwardedResourceSpans));
+        assertTrue(forwardedResourceSpans.containsAll(expectedForwardedResourceSpans));
+        assertTrue(expectedForwardedResourceSpans.containsAll(forwardedResourceSpans));
     }
 
     @Test
@@ -184,8 +185,8 @@ public class PeerForwarderTest {
         Assert.assertEquals(1, exportedRecords.size());
         final ExportTraceServiceRequest localRequest = exportedRecords.get(0).getData();
         final List<ResourceSpans> localResourceSpans = localRequest.getResourceSpansList();
-        Assert.assertTrue(localResourceSpans.containsAll(expectedLocalResourceSpans));
-        Assert.assertTrue(expectedLocalResourceSpans.containsAll(localResourceSpans));
+        assertTrue(localResourceSpans.containsAll(expectedLocalResourceSpans));
+        assertTrue(expectedLocalResourceSpans.containsAll(localResourceSpans));
     }
 
     @Test
@@ -216,8 +217,8 @@ public class PeerForwarderTest {
         Assert.assertEquals(1, requestsByIp.get(peerIp).size());
         final ExportTraceServiceRequest forwardedRequest = requestsByIp.get(peerIp).get(0);
         final List<ResourceSpans> forwardedResourceSpans = forwardedRequest.getResourceSpansList();
-        Assert.assertTrue(forwardedResourceSpans.containsAll(expectedForwardedResourceSpans));
-        Assert.assertTrue(expectedForwardedResourceSpans.containsAll(forwardedResourceSpans));
+        assertTrue(forwardedResourceSpans.containsAll(expectedForwardedResourceSpans));
+        assertTrue(expectedForwardedResourceSpans.containsAll(forwardedResourceSpans));
         Assert.assertEquals(0, exportedRecords.size());
 
         // Verify metrics
@@ -238,9 +239,9 @@ public class PeerForwarderTest {
         // COUNT
         Assert.assertEquals(1.0, forwardRequestLatencyMeasurements.get(0).getValue(), 0);
         // TOTAL_TIME
-        Assert.assertTrue(forwardRequestLatencyMeasurements.get(1).getValue() > 0.0);
+        assertTrue(forwardRequestLatencyMeasurements.get(1).getValue() > 0.0);
         // MAX
-        Assert.assertTrue(forwardRequestLatencyMeasurements.get(2).getValue() > 0.0);
+        assertTrue(forwardRequestLatencyMeasurements.get(2).getValue() > 0.0);
     }
 
     @Test
@@ -265,8 +266,8 @@ public class PeerForwarderTest {
         Assert.assertEquals(1, exportedRecords.size());
         final ExportTraceServiceRequest exportedRequest = exportedRecords.get(0).getData();
         final List<ResourceSpans> forwardedResourceSpans = exportedRequest.getResourceSpansList();
-        Assert.assertTrue(forwardedResourceSpans.containsAll(expectedLocalResourceSpans));
-        Assert.assertTrue(expectedLocalResourceSpans.containsAll(forwardedResourceSpans));
+        assertTrue(forwardedResourceSpans.containsAll(expectedLocalResourceSpans));
+        assertTrue(expectedLocalResourceSpans.containsAll(forwardedResourceSpans));
 
         // Verify metrics
         final List<Measurement> forwardRequestErrorMeasurements = MetricsTestUtil.getMeasurementList(
@@ -286,9 +287,18 @@ public class PeerForwarderTest {
         // COUNT
         Assert.assertEquals(1.0, forwardRequestLatencyMeasurements.get(0).getValue(), 0);
         // TOTAL_TIME
-        Assert.assertTrue(forwardRequestLatencyMeasurements.get(1).getValue() > 0.0);
+        assertTrue(forwardRequestLatencyMeasurements.get(1).getValue() > 0.0);
         // MAX
-        Assert.assertTrue(forwardRequestLatencyMeasurements.get(2).getValue() > 0.0);
+        assertTrue(forwardRequestLatencyMeasurements.get(2).getValue() > 0.0);
+    }
+
+    @Test
+    public void testPrepareForShutdown() {
+        final PeerForwarder peerForwarder = generatePeerForwarder(Collections.singletonList(LOCAL_IP), 2);
+
+        peerForwarder.prepareForShutdown();
+
+        assertTrue(peerForwarder.isReadyForShutdown());
     }
 
     /**

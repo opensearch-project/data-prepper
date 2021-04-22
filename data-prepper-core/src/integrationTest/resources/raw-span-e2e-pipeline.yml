@@ -1,0 +1,25 @@
+entry-pipeline:
+  source:
+    otel_trace_source:
+      ssl: false
+  sink:
+    - pipeline:
+        name: "raw-pipeline"
+raw-pipeline:
+  source:
+    pipeline:
+      name: "entry-pipeline"
+  prepper:
+    - otel_trace_raw_prepper:
+        root_span_flush_delay: 1
+        trace_flush_interval: 5
+    - otel_trace_group_prepper:
+        hosts: [ "https://node-0.example.com:9200" ]
+        username: "admin"
+        password: "admin"
+  sink:
+    - elasticsearch:
+        hosts: [ "https://node-0.example.com:9200" ]
+        username: "admin"
+        password: "admin"
+        trace_analytics_raw: true

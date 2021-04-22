@@ -174,6 +174,17 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
         }
     }
 
+
+    @Override
+    public void prepareForShutdown() {
+
+    }
+
+    @Override
+    public boolean isReadyForShutdown() {
+        return true;
+    }
+
     @Override
     public void shutdown() {
         //TODO: cleanup resources

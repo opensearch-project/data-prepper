@@ -12,6 +12,8 @@
 package com.amazon.dataprepper.plugins.prepper.oteltrace.model;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -102,7 +104,7 @@ public final class RawSpan {
      * traceGroup = this.name;
      * }
      */
-    private String traceGroup;
+    private TraceGroup traceGroup;
 
 
     public String getTraceId() {
@@ -165,7 +167,7 @@ public final class RawSpan {
         return droppedLinksCount;
     }
 
-    public void setTraceGroup(String traceGroup) {
+    public void setTraceGroup(TraceGroup traceGroup) {
         this.traceGroup = traceGroup;
     }
 
@@ -194,7 +196,8 @@ public final class RawSpan {
         return attributes;
     }
 
-    public String getTraceGroup() {
+    @JsonUnwrapped
+    public TraceGroup getTraceGroup() {
         return traceGroup;
     }
 

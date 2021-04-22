@@ -71,6 +71,7 @@ public class AbstractBufferTest {
         Assert.assertEquals(1, recordsReadMeasurements.size());
         Assert.assertEquals(5.0, recordsReadMeasurements.get(0).getValue(), 0);
         Assert.assertEquals(1, recordsInFlightMeasurements.size());
+        Assert.assertEquals(5, abstractBuffer.getRecordsInFlight());
         final Measurement recordsInFlightMeasurement = recordsInFlightMeasurements.get(0);
         Assert.assertEquals(5.0, recordsInFlightMeasurement.getValue(), 0);
         Assert.assertEquals(1, recordsProcessedMeasurements.size());
@@ -94,6 +95,7 @@ public class AbstractBufferTest {
         abstractBuffer.checkpoint(readResult.getValue());
 
         // Then
+        Assert.assertEquals(0, abstractBuffer.getRecordsInFlight());
         Assert.assertEquals(0.0, recordsInFlightMeasurement.getValue(), 0);
         Assert.assertEquals(5.0, recordsProcessedMeasurement.getValue(), 0);
         Assert.assertEquals(1.0, MetricsTestUtil.getMeasurementFromList(checkpointTimeMeasurements, Statistic.COUNT).getValue(), 0);
@@ -170,6 +172,11 @@ public class AbstractBufferTest {
         @Override
         public void doCheckpoint(final CheckpointState checkpointState) {
 
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return true;
         }
     }
 
