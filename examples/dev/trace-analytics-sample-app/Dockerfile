@@ -1,5 +1,8 @@
 FROM gradle:jdk14 AS builder
 COPY . /home/gradle/src
+WORKDIR /home/gradle/src
+# TODO: replace local built OpenSearch artifact with the public artifact
+RUN git clone https://github.com/opensearch-project/OpenSearch.git && cd OpenSearch && ./gradlew publishToMavenLocal
 WORKDIR /home/gradle/src/data-prepper-core
 RUN gradle clean jar --daemon
 
