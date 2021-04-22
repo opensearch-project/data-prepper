@@ -42,7 +42,7 @@ repositories {
 
 dependencies {
     integrationTestCompile("junit:junit:4.13")
-    integrationTestCompile project(':data-prepper-plugins:elasticsearch')
+    integrationTestCompile project(':data-prepper-plugins:opensearch')
     integrationTestCompile project(':data-prepper-plugins:otel-trace-group-prepper')
     integrationTestImplementation "org.awaitility:awaitility:4.0.3"
     integrationTestImplementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"

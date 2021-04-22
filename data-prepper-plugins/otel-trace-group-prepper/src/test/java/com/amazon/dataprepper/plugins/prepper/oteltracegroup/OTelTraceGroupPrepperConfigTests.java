@@ -12,7 +12,7 @@
 package com.amazon.dataprepper.plugins.prepper.oteltracegroup;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration;
+import com.amazon.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;

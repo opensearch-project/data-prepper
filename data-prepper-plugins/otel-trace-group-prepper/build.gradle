@@ -24,7 +24,7 @@ repositories {
 
 dependencies {
     compile project(':data-prepper-api')
-    compile project(':data-prepper-plugins:elasticsearch')
+    compile project(':data-prepper-plugins:opensearch')
     testCompile project(':data-prepper-api').sourceSets.test.output
     implementation "org.opensearch.client:opensearch-rest-high-level-client:${es_version}-SNAPSHOT"
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.3"

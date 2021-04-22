@@ -22,7 +22,7 @@ raw-pipeline:
   prepper:
     - otel_trace_raw_prepper:
   sink:
-    - elasticsearch:
+    - opensearch:
         hosts: [ "https://node-0.example.com:9200" ]
         cert: "/usr/share/data-prepper/root-ca.pem"
         username: "admin"
@@ -36,7 +36,7 @@ service-map-pipeline:
   prepper:
     - service_map_stateful:
   sink:
-    - elasticsearch:
+    - opensearch:
         hosts: ["https://node-0.example.com:9200"]
         cert: "/usr/share/data-prepper/root-ca.pem"
         username: "admin"

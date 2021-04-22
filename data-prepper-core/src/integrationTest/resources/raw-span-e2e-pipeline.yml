@@ -18,7 +18,7 @@ raw-pipeline:
         username: "admin"
         password: "admin"
   sink:
-    - elasticsearch:
+    - opensearch:
         hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
         password: "admin"

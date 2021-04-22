@@ -89,7 +89,7 @@ Resources:
                   prepper:
                     - otel_trace_raw_prepper:
                   sink:
-                    - elasticsearch:
+                    - opensearch:
                         hosts: [ "${AWSElasticsearchEndpoint}" ]
                         aws_sigv4: true
                         aws_region: "${AWSElasticsearchRegion}"
@@ -102,7 +102,7 @@ Resources:
                   prepper:
                     - service_map_stateful:
                   sink:
-                    - elasticsearch:
+                    - opensearch:
                         hosts: [ "${AWSElasticsearchEndpoint}" ]
                         aws_sigv4: true
                         aws_region: "${AWSElasticsearchRegion}"

@@ -1,0 +1,154 @@
+buildscript {
+    ext {
+        es_version = System.getProperty("es.version", "${versionMap.es_version}")
+        es_group = "org.opensearch"
+        distribution = 'oss-zip'
+    }
+
+    repositories {
+        maven { url "https://plugins.gradle.org/m2/" }
+        // TODO: replace local built OpenSearch artifact with the public artifact
+        mavenLocal()
+    }
+
+    dependencies {
+        classpath "${es_group}.gradle:build-tools:${es_version}-SNAPSHOT"
+    }
+}
+
+plugins {
+    id 'java'
+}
+apply plugin: 'opensearch.testclusters'
+apply plugin: 'opensearch.build'
+apply plugin: 'opensearch.rest-test'
+
+/*
+ *  SPDX-License-Identifier: Apache-2.0
+ *
+ *  The OpenSearch Contributors require contributions made to
+ *  this file be licensed under the Apache-2.0 license or a
+ *  compatible open source license.
+ *
+ *  Modifications Copyright OpenSearch Contributors. See
+ *  GitHub history for details.
+ */
+
+// To pass elasticsearch plugin check
+ext {
+    licenseFile = rootProject.file('LICENSE')
+    noticeFile = rootProject.file('NOTICE')
+}
+
+repositories {
+    // TODO: replace local built OpenSearch artifact with the public artifact
+    mavenLocal()
+}
+
+dependencies {
+    compile project(':data-prepper-api')
+    testCompile project(':data-prepper-api').sourceSets.test.output
+    compile project(':data-prepper-plugins:common')
+    implementation "org.opensearch.client:opensearch-rest-high-level-client:${es_version}-SNAPSHOT"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.12.3"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.3"
+    implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
+    implementation "com.amazonaws:aws-java-sdk-core:1.11.1001"
+    implementation "com.github.awslabs:aws-request-signing-apache-interceptor:b3772780da"
+    implementation "io.micrometer:micrometer-core:1.6.5"
+    testImplementation("junit:junit:4.13.2") {
+        exclude group:'org.hamcrest' // workaround for jarHell
+    }
+    testImplementation "org.opensearch.test:framework:${es_version}-SNAPSHOT"
+    testImplementation "commons-io:commons-io:2.8.0"
+}
+
+// Workaround for Werror
+compileJava.options.warnings = false
+
+// Resolve dependency conflict between ES sink and main project
+configurations.all {
+    resolutionStrategy {
+        force 'com.amazonaws:aws-java-sdk-core:1.11.1000'
+        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.3'
+        force 'com.fasterxml.jackson.core:jackson-annotations:2.12.3'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.12.3'
+        force 'com.fasterxml.jackson.core:jackson-core:2.12.3'
+        force 'com.fasterxml.jackson:jackson-bom:2.12.3'
+        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.12.3'
+        force 'commons-logging:commons-logging:1.2'
+        force 'org.apache.httpcomponents:httpclient:4.5.10'
+        force "org.hdrhistogram:HdrHistogram:2.1.12"
+        force 'joda-time:joda-time:2.10.10'
+        force 'org.yaml:snakeyaml:1.28'
+        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-smile:2.12.3'
+        force 'junit:junit:4.13'
+        force "org.slf4j:slf4j-api:1.7.30"
+        force "org.apache.logging.log4j:log4j-api:2.14.1"
+        force "org.apache.logging.log4j:log4j-core:2.14.1"
+    }
+}
+
+test {
+    if (System.getProperty("odfe.host") == null) {
+        exclude '**/ODFETests.class'
+    }
+    systemProperty "odfe.host", System.getProperty("odfe.host")
+    if (System.getProperty("odfe.user") != null) {
+        systemProperty "odfe.user", System.getProperty("odfe.user")
+        systemProperty "odfe.password", System.getProperty("odfe.password")
+    }
+}
+
+testClusters.integTest {
+    testDistribution = "OSS"
+}
+
+integTest {
+    systemProperty 'tests.security.manager', 'false'
+
+    systemProperty "odfe", System.getProperty("odfe")
+    systemProperty "user", System.getProperty("user")
+    systemProperty "password", System.getProperty("password")
+}
+
+jacocoTestReport {
+    dependsOn test
+    afterEvaluate {
+        classDirectories.from = files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                    // TODO: find a way to include the classes covered by OpenSearch test framework
+                    'com/amazon/dataprepper/plugins/sink/opensearch/OpenSearchSink.class',
+                    'com/amazon/dataprepper/plugins/sink/opensearch/IndexStateManagement.class'
+            ])
+        })
+    }
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            element = 'CLASS'
+            excludes = [
+                    // TODO: find a way to include the classes covered by OpenSearch test framework
+                    'com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchSink',
+                    'com.amazon.dataprepper.plugins.sink.opensearch.IndexStateManagement'
+            ]
+            limit {
+                minimum = 0.90
+            }
+        }
+    }
+}
+
+integTest.enabled = false // TODO: enable once we have the correct tar.gz file
+checkstyleMain.ignoreFailures = true
+checkstyleTest.ignoreFailures = true
+forbiddenApis.ignoreFailures = true
+testingConventions.enabled = false
+licenseHeaders.enabled = false
+dependencyLicenses.enabled = false
+thirdPartyAudit.enabled = false
+loggerUsageCheck.enabled = false
+validateNebulaPom.enabled = false

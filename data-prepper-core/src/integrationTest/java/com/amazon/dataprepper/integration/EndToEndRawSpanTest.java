@@ -13,7 +13,7 @@ package com.amazon.dataprepper.integration;
 
 
 import com.amazon.dataprepper.plugins.prepper.oteltracegroup.model.TraceGroup;
-import com.amazon.dataprepper.plugins.sink.elasticsearch.ConnectionConfiguration;
+import com.amazon.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;

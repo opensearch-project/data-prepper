@@ -15,7 +15,7 @@ raw-pipeline:
   prepper:
     - otel_trace_raw_prepper:
   sink:
-    - elasticsearch:
+    - opensearch:
         hosts: [ "https://<your-domain>.<region>.es.amazonaws.com" ]
         aws_sigv4: true
         aws_region: "us-east-1"
@@ -28,7 +28,7 @@ service-map-pipeline:
   prepper:
     - service_map_stateful:
   sink:
-    - elasticsearch:
+    - opensearch:
         hosts: [ "https://<your-domain>.<region>.es.amazonaws.com" ]
         aws_sigv4: true
         aws_region: "us-east-1"
