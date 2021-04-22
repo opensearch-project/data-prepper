@@ -33,6 +33,7 @@ jobs:
       run: chmod +x gradlew
     - name: Build with Gradle
       run: ./gradlew build
+    # TODO: replace with OpenSearch cluster
     - name: Run ODFE docker
       run: |
         export version=1.12.0
