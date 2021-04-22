@@ -36,7 +36,7 @@ jobs:
     # TODO: replace with OpenSearch cluster
     - name: Run ODFE docker
       run: |
-        export version=1.12.0
+        export version=1.13.2
         docker pull amazon/opendistro-for-elasticsearch:$version
         docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -d amazon/opendistro-for-elasticsearch:$version
         sleep 90
