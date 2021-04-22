@@ -117,11 +117,12 @@ public final class OTelProtoHelper {
      * <p>
      * Note: The reason this method is part of the helper class is because the trace group definition will be expanded in the future when we support Links in Kibana Trace Analytics.
      */
-    public static String getTraceGroup(final Span span) {
+    public static TraceGroup getTraceGroup(final Span span) {
+        final TraceGroup.TraceGroupBuilder traceGroupBuilder = new TraceGroup.TraceGroupBuilder();
         if (span.getParentSpanId().isEmpty()) {
-            return span.getName();
+            traceGroupBuilder.setFromSpan(span);
         }
-        return null;
+        return traceGroupBuilder.build();
     }
 
 

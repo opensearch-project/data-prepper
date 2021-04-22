@@ -32,8 +32,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -65,7 +65,9 @@ public class PipelineParser {
                     new TypeReference<Map<String, PipelineConfiguration>>() {
                     });
             final List<String> allPipelineNames = PipelineConfigurationValidator.validateAndGetPipelineNames(pipelineConfigurationMap);
-            final Map<String, Pipeline> pipelineMap = new HashMap<>();
+
+            // LinkedHashMap to preserve insertion order
+            final Map<String, Pipeline> pipelineMap = new LinkedHashMap<>();
             pipelineConfigurationMap.forEach((pipelineName, configuration) ->
                     configuration.updateCommonPipelineConfiguration(pipelineName));
             for (String pipelineName : allPipelineNames) {

@@ -46,4 +46,6 @@ public interface Buffer<T extends Record<?>> {
      * @param checkpointState the summary object of checkpoint variables
      */
     void checkpoint(CheckpointState checkpointState);
+
+    boolean isEmpty();
 }

@@ -31,7 +31,20 @@ public interface Prepper<InputRecord extends Record<?>, OutputRecord extends Rec
     Collection<OutputRecord> execute(Collection<InputRecord> records);
 
     /**
-     * Prepare prepper for shutdown, by cleaning up resources and threads.
+     * Indicates to the Prepper that shutdown is imminent and any data currently held by the Prepper
+     * should be flushed downstream.
+     */
+    void prepareForShutdown();
+
+    /**
+     * Returns true if the Prepper's internal state is safe to be shutdown.
+     *
+     * @return shutdown readiness status
+     */
+    boolean isReadyForShutdown();
+
+    /**
+     * Final shutdown call to clean up any resources that need to be closed.
      */
     void shutdown();
 }

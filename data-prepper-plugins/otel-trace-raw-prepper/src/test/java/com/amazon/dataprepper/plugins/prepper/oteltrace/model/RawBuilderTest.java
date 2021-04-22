@@ -21,6 +21,8 @@ import org.apache.commons.codec.binary.Hex;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -70,7 +72,7 @@ public class RawBuilderTest {
         assertThat(rawSpan.getEvents().size()).isEqualTo(2);
         assertThat(rawSpan.getLinks().size()).isEqualTo(1);
         assertThat(rawSpan.getServiceName()).isEqualTo("some-service");
-        assertThat(rawSpan.getTraceGroup()).isNull();
+        assertThat(rawSpan.getTraceGroup()).isEqualTo(new TraceGroup.TraceGroupBuilder().build());
     }
 
     @Test
@@ -83,7 +85,7 @@ public class RawBuilderTest {
         final RawSpan rawSpan = new RawSpanBuilder().setFromSpan(span, InstrumentationLibrary.newBuilder().build(), "some-service", Collections.EMPTY_MAP).build();
         assertThat(ByteString.copyFrom(Hex.decodeHex(rawSpan.getTraceId())).equals(span.getTraceId())).isTrue();
         assertThat(ByteString.copyFrom(Hex.decodeHex(rawSpan.getSpanId())).equals(span.getSpanId())).isTrue();
-        assertThat(rawSpan.getTraceGroup()).isEqualTo(rawSpan.getName());
+        assertThat(rawSpan.getTraceGroup()).isEqualTo(new TraceGroup.TraceGroupBuilder().setFromSpan(span).build());
     }
 
     /**

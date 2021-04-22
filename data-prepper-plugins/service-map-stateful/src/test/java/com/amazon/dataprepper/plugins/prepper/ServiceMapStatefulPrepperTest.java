@@ -40,6 +40,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 
@@ -60,6 +62,7 @@ public class ServiceMapStatefulPrepperTest {
 
     @Before
     public void setup() {
+        ServiceMapStatefulPrepper.resetStaticCounters();
         MetricsTestUtil.initMetrics();
     }
 
@@ -161,7 +164,7 @@ public class ServiceMapStatefulPrepperTest {
 
         //Should find the frontend->checkout relationship indicated in the first batch
         Assert.assertEquals(2, relationshipsFound.size());
-        Assert.assertTrue(relationshipsFound.containsAll(Arrays.asList(
+        assertTrue(relationshipsFound.containsAll(Arrays.asList(
                 frontendCheckout,
                 checkoutTarget
         )));
@@ -175,7 +178,7 @@ public class ServiceMapStatefulPrepperTest {
 
         //Should find the rest of the relationships
         Assert.assertEquals(10, relationshipsFound.size());
-        Assert.assertTrue(relationshipsFound.containsAll(Arrays.asList(
+        assertTrue(relationshipsFound.containsAll(Arrays.asList(
                 frontendAuth,
                 authTarget,
                 authPassword,
@@ -195,7 +198,7 @@ public class ServiceMapStatefulPrepperTest {
                 new ServiceMapSourceDest(CHECKOUT_SERVICE, PAYMENT_SERVICE)
         );
 
-        Assert.assertTrue(evaluateEdges(relationshipsFound).containsAll(expectedSourceDests));
+        assertTrue(evaluateEdges(relationshipsFound).containsAll(expectedSourceDests));
 
         // Verify gauges
         final List<Measurement> spansDbSizeMeasurement = MetricsTestUtil.getMeasurementList(
@@ -222,15 +225,39 @@ public class ServiceMapStatefulPrepperTest {
                 Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(frontendSpans3))));
         Future<Set<ServiceMapRelationship>> r8 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2,
                 Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(authenticationSpansServer2))));
-        Assert.assertTrue(r7.get().isEmpty());
-        Assert.assertTrue(r8.get().isEmpty());
+        assertTrue(r7.get().isEmpty());
+        assertTrue(r8.get().isEmpty());
 
         when(clock.millis()).thenReturn(560L);
         Future<Set<ServiceMapRelationship>> r9 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1, Arrays.asList());
         Future<Set<ServiceMapRelationship>> r10 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2, Arrays.asList());
-        Assert.assertTrue(r9.get().isEmpty());
-        Assert.assertTrue(r10.get().isEmpty());
+        assertTrue(r9.get().isEmpty());
+        assertTrue(r10.get().isEmpty());
         serviceMapStateful1.shutdown();
+    }
+
+    @Test
+    public void testPrepareForShutdown() throws Exception {
+        final File path = new File(ServiceMapPrepperConfig.DEFAULT_DB_PATH);
+        final ServiceMapStatefulPrepper serviceMapStateful = new ServiceMapStatefulPrepper(100, path, Clock.systemUTC(), 1, PLUGIN_SETTING);
+
+        final byte[] rootSpanId1 = ServiceMapTestUtils.getRandomBytes(8);
+        final byte[] traceId1 = ServiceMapTestUtils.getRandomBytes(16);
+        final String traceGroup1 = "reset_password";
+
+        final ResourceSpans frontendSpans1 = ServiceMapTestUtils.getResourceSpans(FRONTEND_SERVICE, traceGroup1, rootSpanId1, null, traceId1, Span.SpanKind.SPAN_KIND_CLIENT);
+        final ResourceSpans authenticationSpansServer = ServiceMapTestUtils.getResourceSpans(AUTHENTICATION_SERVICE, "reset", ServiceMapTestUtils.getRandomBytes(8), ServiceMapTestUtils.getSpanId(frontendSpans1), traceId1, Span.SpanKind.SPAN_KIND_SERVER);
+
+        serviceMapStateful.execute(Collections.singletonList(new Record<>(ServiceMapTestUtils.getExportTraceServiceRequest(frontendSpans1, authenticationSpansServer))));
+
+        assertFalse(serviceMapStateful.isReadyForShutdown());
+
+        serviceMapStateful.prepareForShutdown();
+        serviceMapStateful.execute(Collections.emptyList());
+
+        assertTrue(serviceMapStateful.isReadyForShutdown());
+
+        serviceMapStateful.shutdown();
     }
 
     private static class ServiceMapSourceDest {

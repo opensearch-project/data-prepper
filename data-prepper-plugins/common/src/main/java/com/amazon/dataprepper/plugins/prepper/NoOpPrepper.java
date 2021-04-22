@@ -44,6 +44,17 @@ public class NoOpPrepper<InputT extends Record<?>> implements Prepper<InputT, In
     }
 
     @Override
+    public void prepareForShutdown() {
+
+    }
+
+    @Override
+    public boolean isReadyForShutdown() {
+        return true;
+    }
+
+
+    @Override
     public void shutdown() {
 
     }

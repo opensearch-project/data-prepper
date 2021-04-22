@@ -11,13 +11,13 @@
 
 package com.amazon.dataprepper.pipeline;
 
+import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.pipeline.common.FutureHelper;
 import com.amazon.dataprepper.pipeline.common.FutureHelperResult;
-import com.amazon.dataprepper.model.CheckpointState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,8 +73,8 @@ public class ProcessWorker implements Runnable {
                 // Checkpoint the current batch read from the buffer after being processed by prepper and sinks.
                 readBuffer.checkpoint(checkpointState);
             } while (!shouldStop());
-        } catch (final Exception ex) {
-            LOG.error("Encountered exception during pipeline processing", ex); //do not halt the execution
+        } catch (final Exception e) {
+            LOG.error("Encountered exception during pipeline {} processing", pipeline.getName(), e);
         }
     }
 
@@ -84,16 +84,13 @@ public class ProcessWorker implements Runnable {
      * @return
      */
     private boolean shouldStop() {
-        return pipeline.isStopRequested() && isBufferEmpty();
+        return pipeline.isStopRequested() && areComponentsReadyForShutdown();
     }
 
-    /**
-     * TODO Implement this from Buffer [Probably AtomicBoolean], for now we will return true
-     *
-     * @return
-     */
-    private boolean isBufferEmpty() {
-        return true;
+    private boolean areComponentsReadyForShutdown() {
+        return readBuffer.isEmpty() && preppers.stream()
+                .map(Prepper::isReadyForShutdown)
+                .allMatch(result -> result == true);
     }
 
     /**
