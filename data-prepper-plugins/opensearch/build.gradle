@@ -101,7 +101,7 @@ test {
 }
 
 testClusters.integTest {
-    testDistribution = "OSS"
+    testDistribution = "INTEG_TEST"
 }
 
 integTest {
@@ -142,7 +142,6 @@ jacocoTestCoverageVerification {
     }
 }
 
-integTest.enabled = false // TODO: enable once we have the correct tar.gz file
 checkstyleMain.ignoreFailures = true
 checkstyleTest.ignoreFailures = true
 forbiddenApis.ignoreFailures = true
