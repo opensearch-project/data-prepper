@@ -4,6 +4,8 @@ import java.util.Map;
 
 public class PluginSetting {
 
+    private static final String UNEXPECTED_ATTRIBUTE_TYPE_MSG = "Unexpected type [%s] for attribute [%s]";
+
     private final String name;
     private final Map<String, Object> settings;
     private int processWorkers;
@@ -88,28 +90,44 @@ public class PluginSetting {
      * @param attribute    name of the attribute
      * @param defaultValue default value for the setting
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
-     * the attribute
+     * the attribute. If the value is null, null will be returned.
      */
     public Integer getIntegerOrDefault(final String attribute, final int defaultValue) {
-        return ((Number) getAttributeOrDefault(attribute, defaultValue)).intValue();
+        Object object = getAttributeOrDefault(attribute, defaultValue);
+        if (object == null) {
+            return null;
+        } else if (object instanceof Number) {
+            return ((Number) object).intValue();
+        } else if (object instanceof String) {
+            return Integer.valueOf(String.valueOf(object));
+        }
+
+        throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
     }
 
     /**
      * Returns the value of the specified attribute as String, or {@code defaultValue} if this settings contains no
-     * value for the attribute.
+     * value for the attribute. If the value is null, null will be returned.
      *
      * @param attribute    name of the attribute
      * @param defaultValue default value for the setting
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
-     * the attribute
+     * the attribute. If the value is null, null will be returned.
      */
     public String getStringOrDefault(final String attribute, final String defaultValue) {
-        return (String) getAttributeOrDefault(attribute, defaultValue);
+        Object object = getAttributeOrDefault(attribute, defaultValue);
+        if (object == null) {
+            return null;
+        } else if (object instanceof String) {
+            return String.valueOf(object);
+        }
+
+        throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
     }
 
     /**
      * Returns the value of the specified attribute as boolean, or {@code defaultValue} if this settings contains no
-     * value for the attribute.
+     * value for the attribute. If the value is null, null will be returned.
      *
      * @param attribute    name of the attribute
      * @param defaultValue default value for the setting
@@ -117,12 +135,21 @@ public class PluginSetting {
      * the attribute
      */
     public Boolean getBooleanOrDefault(final String attribute, final boolean defaultValue) {
-        return (Boolean) getAttributeOrDefault(attribute, defaultValue);
+        Object object = getAttributeOrDefault(attribute, defaultValue);
+        if (object == null) {
+            return null;
+        } else if (object instanceof Boolean) {
+            return (Boolean) object;
+        } else if (object instanceof String) {
+            return Boolean.valueOf(String.valueOf(object));
+        }
+
+        throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
     }
 
     /**
      * Returns the value of the specified attribute as long, or {@code defaultValue} if this settings contains no
-     * value for the attribute.
+     * value for the attribute. If the value is null, null will be returned.
      *
      * @param attribute    name of the attribute
      * @param defaultValue default value for the setting
@@ -130,7 +157,16 @@ public class PluginSetting {
      * the attribute
      */
     public Long getLongOrDefault(final String attribute, final long defaultValue) {
-        return ((Number) getAttributeOrDefault(attribute, defaultValue)).longValue();
+        Object object = getAttributeOrDefault(attribute, defaultValue);
+        if (object == null) {
+            return null;
+        } else if (object instanceof Number) {
+            return ((Number) object).longValue();
+        } else if (object instanceof String) {
+            return Long.valueOf(String.valueOf(object));
+        }
+
+        throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
     }
 
 }
