@@ -52,6 +52,8 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Collection<Record<String>> EMPTY_COLLECTION = Collections.emptySet();
     private static final Integer TO_MILLIS = 1_000;
+
+    // TODO: This should not be tracked in this class, move it up to the creator
     private static final AtomicInteger preppersCreated = new AtomicInteger(0);
     private static long previousTimestamp;
     private static long windowDurationMillis;
@@ -72,7 +74,9 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
     public ServiceMapStatefulPrepper(final PluginSetting pluginSetting) {
         this(pluginSetting.getIntegerOrDefault(ServiceMapPrepperConfig.WINDOW_DURATION, ServiceMapPrepperConfig.DEFAULT_WINDOW_DURATION) * TO_MILLIS,
                 new File(ServiceMapPrepperConfig.DEFAULT_DB_PATH),
-                Clock.systemUTC(), pluginSetting.getNumberOfProcessWorkers(), pluginSetting);
+                Clock.systemUTC(),
+                pluginSetting.getNumberOfProcessWorkers(),
+                pluginSetting);
     }
 
     public ServiceMapStatefulPrepper(final long windowDurationMillis,
@@ -272,12 +276,29 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
         }
     }
 
+
+    @Override
+    public void prepareForShutdown() {
+        previousTimestamp = 0L;
+    }
+
+    @Override
+    public boolean isReadyForShutdown() {
+        return currentWindow.size() == 0;
+    }
+
     @Override
     public void shutdown() {
         previousWindow.delete();
         currentWindow.delete();
         previousTraceGroupWindow.delete();
         currentTraceGroupWindow.delete();
+    }
+
+    // TODO: Temp code, complex instance creation logic should be moved to a separate class
+    static void resetStaticCounters() {
+        preppersCreated.set(0);
+        edgeEvaluationLatch = null;
     }
 
     /**

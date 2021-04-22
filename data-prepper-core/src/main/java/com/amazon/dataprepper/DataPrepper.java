@@ -117,9 +117,10 @@ public class DataPrepper {
      * Triggers the shutdown of all configured valid pipelines.
      */
     public void shutdown() {
-        transformationPipelines.forEach((name, pipeline) -> {
+        for (final Pipeline pipeline : transformationPipelines.values()) {
+            LOG.info("Shutting down pipeline: {}", pipeline.getName());
             pipeline.shutdown();
-        });
+        }
     }
 
     /**

@@ -42,7 +42,7 @@ services:
       - my_network
   otel-collector:
     restart: unless-stopped
-    image: otel/opentelemetry-collector:0.14.0
+    image: otel/opentelemetry-collector:0.24.0
     command: ["--config=/etc/otel-collector-config.yml"]
     volumes:
       - ./opentelemetry-collector/otel-collector-config.yml:/etc/otel-collector-config.yml

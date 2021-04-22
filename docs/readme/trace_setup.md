@@ -14,7 +14,7 @@ receivers:
       grpc:
   zipkin:
 
-preppers:
+processors:
   batch/traces:
     timeout: 1s
     send_batch_size: 50
