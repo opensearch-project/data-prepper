@@ -116,7 +116,7 @@ Default value is false. Set it to true for [Service map trace analytics](#servic
 
 - <a name="template_file"></a>`template_file`(optional): A json file path to be read as index template for custom data ingestion. The json file content should be the json value of
 `"template"` key in the json content of elasticsearch [Index templates API](https://www.elastic.co/guide/en/elasticsearch/reference/7.8/index-templates.html), 
-e.g. [otel-v1-apm-span-index-template.json](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/elasticsearch/src/main/resources/otel-v1-apm-span-index-template.json)
+e.g. [otel-v1-apm-span-index-template.json](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/opensearch/src/main/resources/otel-v1-apm-span-index-template.json)
 
 - `dlq_file`(optional): A String of absolute file path for DLQ failed output records. Defaults to null.
 If not provided, failed records will be written into the default data-prepper log file (`logs/Data-Prepper.log`).
