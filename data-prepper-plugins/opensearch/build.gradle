@@ -12,7 +12,7 @@ buildscript {
     }
 
     dependencies {
-        classpath "${es_group}.gradle:build-tools:${es_version}-SNAPSHOT"
+        classpath "${es_group}.gradle:build-tools:${es_version}"
     }
 }
 
@@ -49,7 +49,7 @@ dependencies {
     compile project(':data-prepper-api')
     testCompile project(':data-prepper-api').sourceSets.test.output
     compile project(':data-prepper-plugins:common')
-    implementation "org.opensearch.client:opensearch-rest-high-level-client:${es_version}-SNAPSHOT"
+    implementation "org.opensearch.client:opensearch-rest-high-level-client:${es_version}"
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.3"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.3"
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
@@ -59,7 +59,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2") {
         exclude group:'org.hamcrest' // workaround for jarHell
     }
-    testImplementation "org.opensearch.test:framework:${es_version}-SNAPSHOT"
+    testImplementation "org.opensearch.test:framework:${es_version}"
     testImplementation "commons-io:commons-io:2.8.0"
 }
 
@@ -101,7 +101,7 @@ test {
 }
 
 testClusters.integTest {
-    testDistribution = "OSS"
+    testDistribution = "INTEG_TEST"
 }
 
 integTest {
@@ -142,7 +142,6 @@ jacocoTestCoverageVerification {
     }
 }
 
-integTest.enabled = false // TODO: enable once we have the correct tar.gz file
 checkstyleMain.ignoreFailures = true
 checkstyleTest.ignoreFailures = true
 forbiddenApis.ignoreFailures = true

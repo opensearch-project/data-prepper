@@ -24,18 +24,21 @@ jobs:
       with:
         repository: 'opensearch-project/OpenSearch'
         path: OpenSearch
+        ref: '1.0.0-alpha1'
     - name: Build OpenSearch
       working-directory: ./OpenSearch
-      run: ./gradlew publishToMavenLocal
+      run: ./gradlew publishToMavenLocal -Dbuild.version_qualifier=alpha1 -Dbuild.snapshot=false
     - name: Checkout Data-Prepper
       uses: actions/checkout@v2
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Build with Gradle
       run: ./gradlew build
+    # TODO: replace with OpenSearch cluster
+    # TODO: need to bump into 1.13.2 after dealing with the breaking change in ISM: https://github.com/opendistro-for-elasticsearch/index-management/blob/main/release-notes/opendistro-for-elasticsearch-index-management.release-notes-1.13.0.0.md#breaking-changes
     - name: Run ODFE docker
       run: |
-        export version=1.9.0
+        export version=1.12.0
         docker pull amazon/opendistro-for-elasticsearch:$version
         docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -d amazon/opendistro-for-elasticsearch:$version
         sleep 90
