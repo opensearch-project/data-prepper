@@ -121,7 +121,7 @@ service-map-pipeline:
 
 ### Sink Setup
 
-In the above trace analytics configuration yaml file, we use elasticsearch as the sink. This sink could be Amazon Elasticsearch domain or Opendistro for Elasticsearch. You can configure this according to your setup. Please check the [Data Prepper OpenSearch Sink](../../data-prepper-plugins/opensearch/README.md#Configuration) for more details. 
+In the above trace analytics configuration yaml file, we use opensearch as the sink. This sink could be Amazon Elasticsearch domain or Opendistro for Elasticsearch. You can configure this according to your setup. Please check the [Data Prepper OpenSearch Sink](../../data-prepper-plugins/opensearch/README.md#Configuration) for more details. 
 
 
 ## Getting Started
