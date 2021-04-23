@@ -32,9 +32,9 @@ We have two preppers for the Trace Analytics feature,
 * *service_map_stateful* -  This prepper performs the required preprocessing on the trace data and build metadata to display the service-map kibana dashboards.
 
 
-### Elasticsearch sink
+### OpenSearch sink
 
-We have a generic sink that writes the data to Elasticsearch as the destination. The [elasticsearch sink](../../data-prepper-plugins/elasticsearch/README.md) has configuration options related to elasticsearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc. 
+We have a generic sink that writes the data to Elasticsearch as the destination. The [opensearch sink](../../data-prepper-plugins/opensearch/README.md) has configuration options related to elasticsearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc. 
 For the trace analytics feature, the sink has specific configurations which enables the sink to use indices and index templates specific to this feature. Trace analytics specific Elasticsearch indices are,
                                                                                                                                                                  
 * *otel-v1-apm-span* -  This index stores the output from [otel-trace-raw-prepper](../../data-prepper-plugins/otel-trace-raw-prepper/README.md). 

@@ -107,7 +107,7 @@ public class EndToEndRawSpanTest {
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequestTrace2BatchWithRoot);
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequestTrace1BatchNoRoot);
 
-        //Verify data in elasticsearch sink
+        //Verify data in elasticsearch backend
         final List<Map<String, Object>> expectedDocuments = getExpectedDocuments(
                 exportTraceServiceRequestTrace1BatchWithRoot, exportTraceServiceRequestTrace1BatchNoRoot,
                 exportTraceServiceRequestTrace2BatchWithRoot, exportTraceServiceRequestTrace2BatchNoRoot);
