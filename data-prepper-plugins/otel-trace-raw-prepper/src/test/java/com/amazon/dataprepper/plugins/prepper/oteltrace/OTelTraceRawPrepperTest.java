@@ -236,10 +236,10 @@ public class OTelTraceRawPrepperTest {
         for (Record<String> record: records) {
             final String spanJson = record.getData();
             Map<String, Object> spanMap = OBJECT_MAPPER.readValue(spanJson, new TypeReference<Map<String, Object>>() {});
-            final String traceGroupName = (String) spanMap.get("traceGroup");
-            final String traceGroupEndTime = (String) spanMap.get("traceGroupFields.endTime");
-            final Number traceGroupDurationInNanos = (Number) spanMap.get("traceGroupFields.durationInNanos");
-            final Number traceGroupStatusCode = (Number) spanMap.get("traceGroupFields.statusCode");
+            final String traceGroupName = (String) spanMap.get("traceGroup.name");
+            final String traceGroupEndTime = (String) spanMap.get("traceGroup.endTime");
+            final Number traceGroupDurationInNanos = (Number) spanMap.get("traceGroup.durationInNanos");
+            final Number traceGroupStatusCode = (Number) spanMap.get("traceGroup.statusCode");
             if (Stream.of(traceGroupName, traceGroupEndTime, traceGroupDurationInNanos, traceGroupStatusCode).allMatch(Objects::isNull)) {
                 count += 1;
             }
