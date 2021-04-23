@@ -1,10 +1,10 @@
-# Elasticsearch sink
+# OpenSearch sink
 
-This is the Data Prepper Elasticsearch sink plugin that sends records to Elasticsearch cluster via REST client. You can use the sink to send data to Amazon Elasticsearch Service or Opendistro for Elasticsearch.
+This is the Data Prepper OpenSearch sink plugin that sends records to Elasticsearch cluster via REST client. You can use the sink to send data to Amazon Elasticsearch Service or Opendistro for Elasticsearch.
 
 ## Usages
 
-The Elasticsearch sink should be configured as part of Data Prepper pipeline yaml file.
+The OpenSearch sink should be configured as part of Data Prepper pipeline yaml file.
 
 ### Raw span trace analytics
 
@@ -12,7 +12,7 @@ The Elasticsearch sink should be configured as part of Data Prepper pipeline yam
 pipeline:
   ...
   sink:
-    elasticsearch:
+    opensearch:
       hosts: ["https://localhost:9200"]
       cert: path/to/cert
       username: YOUR_USERNAME_HERE
@@ -22,7 +22,7 @@ pipeline:
       bulk_size: 4
 ```
 
-The elasticsearch sink will reserve `otel-v1-apm-span-*` as index pattern and `otel-v1-apm-span` as index alias for record ingestion.
+The OpenSearch sink will reserve `otel-v1-apm-span-*` as index pattern and `otel-v1-apm-span` as index alias for record ingestion.
 
 ### </a>Service map trace analytics
 
@@ -30,7 +30,7 @@ The elasticsearch sink will reserve `otel-v1-apm-span-*` as index pattern and `o
 pipeline:
   ...
   sink:
-    elasticsearch:
+    opensearch:
       hosts: ["https://localhost:9200"]
       cert: path/to/cert
       username: YOUR_USERNAME_HERE
@@ -40,17 +40,17 @@ pipeline:
       bulk_size: 4
 ```
 
-The elasticsearch sink will reserve `otel-v1-apm-service-map` as index for record ingestion.
+The OpenSearch sink will reserve `otel-v1-apm-service-map` as index for record ingestion.
 
 ### Amazon Elasticsearch Service
 
-The elasticsearch sink can also be configured for Amazon Elasticsearch Service domain. See [security](security.md) for details.
+The OpenSearch sink can also be configured for Amazon Elasticsearch Service domain. See [security](security.md) for details.
 
 ```
 pipeline:
   ...
   sink:
-    elasticsearch:
+    opensearch:
       hosts: ["https://your-amazon-elasticssearch-service-endpoint"]
       aws_sigv4: true 
       cert: path/to/cert
@@ -116,7 +116,7 @@ Default value is false. Set it to true for [Service map trace analytics](#servic
 
 - <a name="template_file"></a>`template_file`(optional): A json file path to be read as index template for custom data ingestion. The json file content should be the json value of
 `"template"` key in the json content of elasticsearch [Index templates API](https://www.elastic.co/guide/en/elasticsearch/reference/7.8/index-templates.html), 
-e.g. [otel-v1-apm-span-index-template.json](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/data-prepper-plugins/elasticsearch/src/main/resources/otel-v1-apm-span-index-template.json)
+e.g. [otel-v1-apm-span-index-template.json](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/opensearch/src/main/resources/otel-v1-apm-span-index-template.json)
 
 - `dlq_file`(optional): A String of absolute file path for DLQ failed output records. Defaults to null.
 If not provided, failed records will be written into the default data-prepper log file (`logs/Data-Prepper.log`).
@@ -127,7 +127,7 @@ If a single record turns out to be larger than the set bulk size, it will be sen
 
 ## Metrics
 
-Besides common metrics in [AbstractSink](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/sink/AbstractSink.java), elasticsearch sink introduces the following custom metrics.
+Besides common metrics in [AbstractSink](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/sink/AbstractSink.java), OpenSearch sink introduces the following custom metrics.
 
 ### Timer
 
@@ -144,5 +144,5 @@ Besides common metrics in [AbstractSink](https://github.com/opendistro-for-elast
 
 This plugin is compatible with Java 8. See 
 
-- [CONTRIBUTING](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/CONTRIBUTING.md) 
-- [monitoring](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/docs/readme/monitoring.md)
+- [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md) 
+- [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/readme/monitoring.md)

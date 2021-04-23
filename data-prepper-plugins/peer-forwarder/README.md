@@ -37,7 +37,7 @@ DNS discovery is recommended when scaling out a Data Prepper cluster. The core c
 See the /examples/dev/k8s directory for a working example using minikube.
 
 #### With a custom DNS server
-A DNS server (like [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html)) can be configured to maintain a list of Data Prepper hosts via config files. Data Prepper hosts must be configured to use the custom DNS server as their DNS provider. The list of hosts must be manually updated whenever a new Data Prepper host is created. See the [/examples/dev/dns directory](https://github.com/opendistro-for-elasticsearch/data-prepper/tree/master/examples/dev/dns) for a set of sample dnsmasq configuration files.
+A DNS server (like [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html)) can be configured to maintain a list of Data Prepper hosts via config files. Data Prepper hosts must be configured to use the custom DNS server as their DNS provider. The list of hosts must be manually updated whenever a new Data Prepper host is created. See the [/examples/dev/dns directory](https://github.com/opensearch-project/data-prepper/tree/master/examples/dev/dns) for a set of sample dnsmasq configuration files.
 
 #### With Amazon Route 53 Private Hosted Zones
 [Private hosted zones](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/hosted-zones-private.html) enable Amazon Route 53 to "respond to DNS queries for a domain and its subdomains within one or more VPCs that you create with the Amazon VPC service." Similar to the custom DNS server approach, except that Route 53 maintains the list of Data Prepper hosts. Suffers from the same drawback in that the list must be manually kept up-to-date.
@@ -54,7 +54,7 @@ A DNS server (like [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html)) can
 
 ## Metrics
 
-Besides common metrics in [AbstractPrepper](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/prepper/AbstractPrepper.java), peer-forwarder introduces the following custom metrics.
+Besides common metrics in [AbstractPrepper](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/prepper/AbstractPrepper.java), peer-forwarder introduces the following custom metrics.
 
 ### Timer
 
@@ -73,5 +73,5 @@ Besides common metrics in [AbstractPrepper](https://github.com/opendistro-for-el
 
 This plugin is compatible with Java 14. See 
 
-- [CONTRIBUTING](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/CONTRIBUTING.md) 
-- [monitoring](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/docs/readme/monitoring.md)
+- [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md) 
+- [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/readme/monitoring.md)

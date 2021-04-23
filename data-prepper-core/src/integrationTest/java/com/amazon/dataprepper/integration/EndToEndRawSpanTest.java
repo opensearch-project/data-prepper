@@ -107,7 +107,7 @@ public class EndToEndRawSpanTest {
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequestTrace2BatchWithRoot);
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequestTrace1BatchNoRoot);
 
-        //Verify data in elasticsearch sink
+        //Verify data in elasticsearch backend
         final List<Map<String, Object>> expectedDocuments = getExpectedDocuments(
                 exportTraceServiceRequestTrace1BatchWithRoot, exportTraceServiceRequestTrace1BatchNoRoot,
                 exportTraceServiceRequestTrace2BatchWithRoot, exportTraceServiceRequestTrace2BatchNoRoot);
@@ -160,7 +160,7 @@ public class EndToEndRawSpanTest {
         final List<Map<String, Object>> sources = new ArrayList<>();
         searchHits.forEach(hit -> {
             Map<String, Object> source = hit.getSourceAsMap();
-            // Elasticsearch API identifies Number type by range, need to convert to Long
+            // OpenSearch API identifies Number type by range, need to convert to Long
             if (source.containsKey(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)) {
                 final Long durationInNanos = ((Number) source.get(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)).longValue();
                 source.put(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD, durationInNanos);

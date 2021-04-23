@@ -78,14 +78,14 @@ raw-pipeline:
          # Make sure you configure sufficient heap
          # default value is 512
          buffer_size: 512
-         # The raw prepper does bulk request to your elasticsearch sink, so configure the batch_size higher.
-         # If you use the recommended otel-collector setup each ExportTraceRequest could contain max 50 spans. https://github.com/opendistro-for-elasticsearch/data-prepper/tree/v0.7.x/deployment/aws
+         # The raw prepper does bulk request to your OpenSearch sink, so configure the batch_size higher.
+         # If you use the recommended otel-collector setup each ExportTraceRequest could contain max 50 spans. https://github.com/opensearch-project/data-prepper/tree/v0.7.x/deployment/aws
          # With 64 as batch size each worker thread could process upto 3200 spans (64 * 50)
          batch_size: 64
   prepper:
     - otel_trace_raw_prepper:
   sink:
-    - elasticsearch:
+    - opensearch:
         hosts: [ "your-es-endpoint" ]
         trace_analytics_raw: true
 service-map-pipeline:
@@ -112,7 +112,7 @@ service-map-pipeline:
          # Make sure buffer_size >= workers * batch_size
          batch_size: 8
   sink:
-    - elasticsearch:
+    - opensearch:
         hosts: [ "your-es-endpoint" ]
         trace_analytics_service_map: true
         # Add aws_sigv4 configuration for Amazon Elasticsearch
@@ -121,7 +121,7 @@ service-map-pipeline:
 
 ### Sink Setup
 
-In the above trace analytics configuration yaml file, we use elasticsearch as the sink. This sink could be Amazon Elasticsearch domain or Opendistro for Elasticsearch. You can configure this according to your setup. Please check the [Data Prepper Elasticsearch Sink](../../data-prepper-plugins/elasticsearch/README.md#Configuration) for more details. 
+In the above trace analytics configuration yaml file, we use opensearch as the sink. This sink could be Amazon Elasticsearch domain or Opendistro for Elasticsearch. You can configure this according to your setup. Please check the [Data Prepper OpenSearch Sink](../../data-prepper-plugins/opensearch/README.md#Configuration) for more details. 
 
 
 ## Getting Started

@@ -40,4 +40,4 @@ APIs are available:
   * returns JVM metrics in Prometheus text format
 
 ### Running the example app
-To run the example app against your local changes, use the docker found [here](https://github.com/opendistro-for-elasticsearch/data-prepper/tree/master/examples/dev/trace-analytics-sample-app)
+To run the example app against your local changes, use the docker found [here](https://github.com/opensearch-project/data-prepper/tree/master/examples/dev/trace-analytics-sample-app)
