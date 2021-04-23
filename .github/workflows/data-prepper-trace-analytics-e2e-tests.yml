@@ -29,9 +29,10 @@ jobs:
       with:
         repository: 'opensearch-project/OpenSearch'
         path: OpenSearch
+        ref: '1.0.0-alpha1'
     - name: Build OpenSearch
       working-directory: ./OpenSearch
-      run: ./gradlew publishToMavenLocal
+      run: ./gradlew publishToMavenLocal -Dbuild.version_qualifier=alpha1 -Dbuild.snapshot=false
     - name: Checkout Data-Prepper
       uses: actions/checkout@v2
     - name: Grant execute permission for gradlew
