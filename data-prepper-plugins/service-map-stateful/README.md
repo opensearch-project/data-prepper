@@ -14,7 +14,7 @@ prepper:
 * window_duration(Optional) => An `int` represents the fixed time window in seconds to evaluate service-map relationships. Default is ```180```. 
 
 ## Metrics
-Besides common metrics in [AbstractPrepper](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/prepper/AbstractPrepper.java), service-map-stateful prepper introduces the following custom metrics.
+Besides common metrics in [AbstractPrepper](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/prepper/AbstractPrepper.java), service-map-stateful prepper introduces the following custom metrics.
 
 ### Gauge
 - `spansDbSize`: measures total spans byte sizes in MapDB across the current and previous window durations.
@@ -22,5 +22,5 @@ Besides common metrics in [AbstractPrepper](https://github.com/opendistro-for-el
 
 ## Developer Guide
 This plugin is compatible with Java 8. See 
-- [CONTRIBUTING](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/CONTRIBUTING.md) 
-- [monitoring](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/docs/readme/monitoring.md)
+- [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md) 
+- [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/readme/monitoring.md)

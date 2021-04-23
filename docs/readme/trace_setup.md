@@ -79,7 +79,7 @@ raw-pipeline:
          # default value is 512
          buffer_size: 512
          # The raw prepper does bulk request to your elasticsearch sink, so configure the batch_size higher.
-         # If you use the recommended otel-collector setup each ExportTraceRequest could contain max 50 spans. https://github.com/opendistro-for-elasticsearch/data-prepper/tree/v0.7.x/deployment/aws
+         # If you use the recommended otel-collector setup each ExportTraceRequest could contain max 50 spans. https://github.com/opensearch-project/data-prepper/tree/v0.7.x/deployment/aws
          # With 64 as batch size each worker thread could process upto 3200 spans (64 * 50)
          batch_size: 64
   prepper:

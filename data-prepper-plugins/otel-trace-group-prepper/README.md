@@ -18,7 +18,7 @@ pipeline:
         password: YOUR_PASSWORD_HERE
 ``` 
 
-See [odfe_security.md](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/data-prepper-plugins/elasticsearch/odfe_security.md) for detailed explanation.
+See [odfe_security.md](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/elasticsearch/odfe_security.md) for detailed explanation.
 
 ### Amazon Elasticsearch Service
 
@@ -33,7 +33,7 @@ pipeline:
         insecure: false
 ```
 
-See [security.md](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/data-prepper-plugins/elasticsearch/security.md) for detailed explanation.
+See [security.md](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/opensearch/security.md) for detailed explanation.
 
 ## Configuration
 
@@ -63,5 +63,5 @@ Default is null.
 
 This plugin is compatible with Java 8. See 
 
-- [CONTRIBUTING](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/CONTRIBUTING.md) 
-- [monitoring](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/docs/readme/monitoring.md)
+- [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md) 
+- [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/readme/monitoring.md)
