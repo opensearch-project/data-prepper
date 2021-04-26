@@ -62,9 +62,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.apache.http.HttpStatus.SC_OK;
+import static org.awaitility.Awaitility.await;
 
 public class OpenSearchSinkIT extends OpenSearchRestTestCase {
   private static final String PLUGIN_NAME = "opensearch";
@@ -96,7 +98,9 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
 
     if (isODFE()) {
       // Check managed index
-      assertEquals(IndexConstants.RAW_ISM_POLICY, getIndexPolicyId(index));
+      await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
+        assertEquals(IndexConstants.RAW_ISM_POLICY, getIndexPolicyId(index)); }
+      );
     }
 
     // roll over initial index

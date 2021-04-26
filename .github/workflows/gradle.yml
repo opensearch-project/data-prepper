@@ -34,16 +34,3 @@ jobs:
       run: chmod +x gradlew
     - name: Build with Gradle
       run: ./gradlew build
-    # TODO: replace with OpenSearch cluster
-    # TODO: need to bump into 1.13.2 after dealing with the breaking change in ISM: https://github.com/opendistro-for-elasticsearch/index-management/blob/main/release-notes/opendistro-for-elasticsearch-index-management.release-notes-1.13.0.0.md#breaking-changes
-    - name: Run ODFE docker
-      run: |
-        export version=1.12.0
-        docker pull amazon/opendistro-for-elasticsearch:$version
-        docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -d amazon/opendistro-for-elasticsearch:$version
-        sleep 90
-    - name: Run ODFE tests
-      run: |
-        ./gradlew :data-prepper-plugins:opensearch:test --tests "com.amazon.dataprepper.plugins.sink.opensearch.ODFETests.testODFEConnection" -Dodfe.host=https://localhost:9200 -Dodfe.user=admin -Dodfe.password=admin
-        ./gradlew :data-prepper-plugins:opensearch:integTest --tests "com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchSinkIT" -Dodfe=true -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername=docker-cluster -Duser=admin -Dpassword=admin
-

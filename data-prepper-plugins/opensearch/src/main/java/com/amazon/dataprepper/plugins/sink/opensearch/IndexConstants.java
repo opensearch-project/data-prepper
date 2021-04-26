@@ -25,7 +25,8 @@ public class IndexConstants {
   // TODO: extract out version number into version enum
   public static final String RAW_DEFAULT_TEMPLATE_FILE = "otel-v1-apm-span-index-template.json";
   public static final String RAW_ISM_POLICY = "raw-span-policy";
-  public static final String RAW_ISM_FILE = "raw-span-policy.json";
+  public static final String RAW_ISM_FILE_NO_ISM_TEMPLATE = "raw-span-policy-no-ism-template.json";
+  public static final String RAW_ISM_FILE_WITH_ISM_TEMPLATE = "raw-span-policy-with-ism-template.json";
   public static final String ISM_ENABLED_SETTING = "opendistro.index_state_management.enabled";
   public static final String ISM_POLICY_ID_SETTING = "opendistro.index_state_management.policy_id";
   public static final String ISM_ROLLOVER_ALIAS_SETTING = "opendistro.index_state_management.rollover_alias";
