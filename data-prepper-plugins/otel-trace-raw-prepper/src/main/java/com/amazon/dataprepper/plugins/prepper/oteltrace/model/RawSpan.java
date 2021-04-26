@@ -196,7 +196,7 @@ public final class RawSpan {
         return attributes;
     }
 
-    @JsonUnwrapped
+    @JsonUnwrapped(prefix="traceGroup.")
     public TraceGroup getTraceGroup() {
         return traceGroup;
     }

@@ -76,7 +76,7 @@ public class EndToEndServiceMapTest {
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_1, exportTraceServiceRequest11);
         sendExportTraceServiceRequestToSource(DATA_PREPPER_PORT_2, exportTraceServiceRequest12);
 
-        //Verify data in elasticsearch sink
+        //Verify data in elasticsearch backend
         final List<EndToEndTestSpan> testDataSet1 = Stream.of(TEST_TRACE_1_BATCH_1, TEST_TRACE_1_BATCH_2)
                 .flatMap(Collection::stream).collect(Collectors.toList());
         final List<Map<String, Object>> possibleEdges = getPossibleEdges(TEST_TRACEID_1, testDataSet1);

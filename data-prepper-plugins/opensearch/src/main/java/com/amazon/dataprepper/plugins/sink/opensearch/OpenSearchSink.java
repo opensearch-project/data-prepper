@@ -87,7 +87,7 @@ public class OpenSearchSink extends AbstractSink<Record<String>> {
   }
 
   public void start() throws IOException {
-    LOG.info("Starting Elasticsearch sink");
+    LOG.info("Starting OpenSearch sink");
     restHighLevelClient = esSinkConfig.getConnectionConfiguration().createClient();
     final boolean isISMEnabled = IndexStateManagement.checkISMEnabled(restHighLevelClient);
     final String policyId = isISMEnabled? IndexStateManagement.checkAndCreatePolicy(restHighLevelClient, indexType) : null;
@@ -105,7 +105,7 @@ public class OpenSearchSink extends AbstractSink<Record<String>> {
             this::logFailure,
             pluginMetrics,
             bulkRequestSupplier);
-    LOG.info("Started Elasticsearch sink");
+    LOG.info("Started OpenSearch sink");
   }
 
   @Override

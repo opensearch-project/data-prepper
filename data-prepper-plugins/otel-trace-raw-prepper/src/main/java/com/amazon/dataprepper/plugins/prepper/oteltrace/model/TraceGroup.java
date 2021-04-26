@@ -6,13 +6,9 @@ import io.opentelemetry.proto.trace.v1.Span;
 import java.util.Objects;
 
 public class TraceGroup {
-    @JsonProperty("traceGroup")
     private final String name;
-    @JsonProperty("traceGroupFields.endTime")
     private final String endTime;
-    @JsonProperty("traceGroupFields.statusCode")
     private final Integer statusCode;
-    @JsonProperty("traceGroupFields.durationInNanos")
     private final Long durationInNanos;
 
     public String getName() {

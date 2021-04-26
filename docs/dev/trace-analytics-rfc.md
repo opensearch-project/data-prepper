@@ -64,9 +64,9 @@ We are building two preppers for the Trace Analytics feature,
 * *service-map-prepper* -  This prepper will perform the required preprocessing on the trace data and build metadata to display the service-map kibana dashboards.
 
 
-##### Elasticsearch sink
+##### OpenSearch sink
 
-We will build a generic sink that will write the data to Elasticsearch as the destination. The Elasticsearch sink will have configuration options related to elasticsearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc. 
+We will build a generic sink that will write the data to Elasticsearch as the destination. The OpenSearch sink will have configuration options related to elasticsearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc. 
 For the trace analytics feature, the sink will have specific configurations which will make the sink to use indices and index templates specific to the feature. Trace analytics specific Elasticsearch indices are,
                                                                                                                                                                  
 * *apm-trace-raw-v1* -  This index will store the output from otel-trace-raw-prepper. 
@@ -87,4 +87,4 @@ NOTE: The above Kibana dashboards are mockup UIs, they are subject to changes.
 
 
 ## Providing Feedback
-If you have comments or feedback on our plans for Trace Analytics, please comment on this [github issue](https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/39)
+If you have comments or feedback on our plans for Trace Analytics, please comment on this [github issue](https://github.com/opensearch-project/simple-ingest-transformation-utility-pipeline/issues/39)
