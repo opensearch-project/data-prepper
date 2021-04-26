@@ -3,12 +3,7 @@
 
 name: Data Prepper Trace Analytics End-to-end test with Gradle
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  workflow_dispatch:
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   build:
