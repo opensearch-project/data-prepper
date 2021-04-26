@@ -27,6 +27,7 @@ import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 public class IndexStateManagement {
     public static boolean checkISMEnabled(final RestHighLevelClient restHighLevelClient) throws IOException {
@@ -38,9 +39,9 @@ public class IndexStateManagement {
     }
 
     /**
-     * @return ISM policy_id that needs to be attached to index settings , otherwise returns null.
+     * @return ISM policy_id optional that needs to be attached to index settings.
      */
-    public static String checkAndCreatePolicy(
+    public static Optional<String> checkAndCreatePolicy(
             final RestHighLevelClient restHighLevelClient, final String indexType) throws IOException {
         if (indexType.equals(IndexConstants.RAW)) {
             final String endPoint = "/_opendistro/_ism/policies/" + IndexConstants.RAW_ISM_POLICY;
@@ -64,7 +65,7 @@ public class IndexStateManagement {
                             throw e2;
                         }
                     }
-                    return IndexConstants.RAW_ISM_POLICY;
+                    return Optional.of(IndexConstants.RAW_ISM_POLICY);
                 } else if (e1.getMessage().contains("version_conflict_engine_exception")
                         || e1.getMessage().contains("resource_already_exists_exception")) {
                     // Do nothing - likely caused by
@@ -76,7 +77,7 @@ public class IndexStateManagement {
                 }
             }
         }
-        return null;
+        return Optional.empty();
     }
 
     @SuppressWarnings("unchecked")

@@ -43,10 +43,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 @DataPrepperPlugin(name = "opensearch", type = PluginType.SINK)
@@ -90,9 +90,9 @@ public class OpenSearchSink extends AbstractSink<Record<String>> {
     LOG.info("Starting OpenSearch sink");
     restHighLevelClient = esSinkConfig.getConnectionConfiguration().createClient();
     final boolean isISMEnabled = IndexStateManagement.checkISMEnabled(restHighLevelClient);
-    final String policyId = isISMEnabled? IndexStateManagement.checkAndCreatePolicy(restHighLevelClient, indexType) : null;
+    final Optional<String> policyIdOptional = isISMEnabled? IndexStateManagement.checkAndCreatePolicy(restHighLevelClient, indexType) : Optional.empty();
     if (!esSinkConfig.getIndexConfiguration().getIndexTemplate().isEmpty()) {
-      createIndexTemplate(isISMEnabled, policyId);
+      createIndexTemplate(isISMEnabled, policyIdOptional.orElse(null));
     }
     final String dlqFile = esSinkConfig.getRetryConfiguration().getDlqFile();
     if ( dlqFile != null) {
