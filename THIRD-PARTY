@@ -2,10 +2,9 @@
 ** Amazon ION Java; version 1.0.2 -- https://github.com/amzn/ion-java
 ** android annotations; version 4.1.1.4 --
 https://github.com/androidannotations/androidannotations
-** Apache Lucene; version 8.5.1 -- http://lucene.apache.org/
-** armeria; version 1.5.0 -- https://github.com/line/armeria
-** armeria-grpc; version 1.5.0 -- https://github.com/line/armeria
-** aws-java-sdk-core; version 1.11.965 -- https://aws.amazon.com/sdk-for-java/
+** Apache Lucene; version 8.7.0 -- http://lucene.apache.org/
+** armeria-grpc; version 1.6.0 -- https://github.com/line/armeria
+** aws-java-sdk-core; version 1.11.1001 -- https://aws.amazon.com/sdk-for-java/
 ** aws-request-signing-apache-interceptor; version b3772780da --
 https://github.com/awslabs/aws-request-signing-apache-interceptor
 ** bval; version 2.0.4 -- https://github.com/apache/bval
@@ -13,46 +12,45 @@ https://github.com/awslabs/aws-request-signing-apache-interceptor
 ** commons-codec; version 1.15 -- https://github.com/apache/commons-codec
 ** commons-logging; version 1.2 --
 https://github.com/apache/commons-logging/tree/LOGGING_1_1_3
-** Elasticsearch; version 7.8.0 -- https://github.com/elastic/elasticsearch
-** Elasticsearch Java High Level Rest Client; version 7.8.1 --
+** Elasticsearch; version 7.10.2 -- https://github.com/elastic/elasticsearch
+** Elasticsearch Java High Level Rest Client; version 7.10.2 --
 https://www.elastic.co/guide/en/elasticsearch/client/java-rest/master/java-rest-high.html
 ** Error Prone; version 2.3.4 -- https://github.com/google/error-prone
 ** Findbugs Jsr305; version 3.0.2 --
 https://search.maven.org/artifact/com.google.code.findbugs/jsr305/3.0.2/jar
 ** Google Gson; version 2.8.6 -- https://github.com/google/gson
-** gRPC; version 1.35.0 -- https://github.com/grpc/grpc
-** guava; version 29.0 -- https://github.com/google/guava
+** gRPC; version 1.36.1 -- https://github.com/grpc/grpc
+** guava; version 30.1.1-jre -- https://github.com/google/guava
 ** Hppc; version 0.8.1 --
 https://github.com/carrotsearch/hppc/blob/master/LICENSE.txt
 ** httpcomponents-core; version 4.4.12 --
 https://github.com/apache/httpcomponents-core/blob/rel/v4.4.1
 ** J2ObjC; version 1.3 -- https://developers.google.com/j2objc/
-** Jackson; version 2.12.1 -- http://github.com/FasterXML/jackson
+** Jackson; version 2.12.3 -- http://github.com/FasterXML/jackson
 ** JavaAssist; version 3.26.0-GA --
 https://github.com/jboss-javassist/javassist
 ** JavaxValidationApi; version 2.0.1.Final -- http://beanvalidation.org
 ** jetbrains-annotations; version 13.0 --
 https://github.com/JetBrains/java-annotations/blob/master/LICENSE.txt
 ** jffi; version 1.2.23 -- https://github.com/jnr/jffi/blob/jffi-1.2.23
-** jna; version 4.5.1 -- https://github.com/java-native-access/jna
+** jna; version 5.5.0 -- https://github.com/java-native-access/jna
 ** jnr a64asm; version 1.0.0 --
 https://github.com/jnr/jnr-a64asm/tree/jnr-a64asm-1.0.0
 ** jnr constants; version 0.9.15 --
 https://github.com/jnr/jnr-constants/tree/jnr-constants-0.9.15
 ** joda-time; version 2.10.4 -- http://www.joda.org/joda-time/
-** Kotlin; version 1.2.71 -- https://github.com/JetBrains/kotlin
-** lmdbjava; version 0.8.1 -- https://github.com/lmdbjava/lmdbjava
+** Kotlin; version 1.4.32 -- https://github.com/JetBrains/kotlin
 ** log4j-slf4j-impl; version 2.14.0 -- https://logging.apache.org/log4j/2.x/
 ** lz4-java; version 1.3.0 -- https://github.com/lz4/lz4-java/tree/1.3.0
 ** MapDB; version 3.0.8 -- http://www.mapdb.org/
-** micrometer; version 1.5.5 --
+** micrometer; version 1.6.6 --
 https://github.com/micrometer-metrics/micrometer
-** micrometer-registry-prometheus; version 1.5.5 --
+** micrometer-registry-prometheus; version 1.6.5 --
 https://github.com/micrometer-metrics/micrometer
 ** MustacheJava; version 0.9.6 -- https://github.com/spullara/mustache.java
-** netty 4.1.51; version 4.1.58.Final --
+** netty 4.1.51; version 4.1.63.Final --
 https://github.com/netty/netty/tree/netty-4.1.50.Final
-** OpenTelemetry 0.10.0; version 0.10.0 --
+** OpenTelemetry 0.10.0; version 1.0.1-alpha --
 https://github.com/open-telemetry/opentelemetry-java
 ** perfmark-api; version 0.23.0 -- https://github.com/perfmark/perfmark
 ** SnakeYAML; version 1.28 -- http://www.snakeyaml.org
@@ -306,13 +304,6 @@ limitations under the License.
     ICU4J, (under contrib/collation) is licensed under an MIT styles license
     (contrib/collation/lib/ICU-LICENSE.txt) and Copyright (c) 1995-2008
     International Business Machines Corporation and others
-* For armeria see also this required NOTICE:
-    Armeria
-    =======
-
-    Please visit the official web site for more information:
-
-      * https://armeria.dev/
 * For armeria-grpc see also this required NOTICE:
     Armeria
     =======
@@ -540,26 +531,6 @@ limitations under the License.
        limitations under the License.
 * For Kotlin see also this required NOTICE:
     Copyright 2010-2020 JetBrains s.r.o and respective authors and developers
-* For lmdbjava see also this required NOTICE:
-    /*-
-     * #%L
-     * LmdbJava
-     * %%
-     * Copyright (C) 2016 - 2020 The LmdbJava Open Source Project
-     * %%
-     * Licensed under the Apache License, Version 2.0 (the "License");
-     * you may not use this file except in compliance with the License.
-     * You may obtain a copy of the License at
-     *
-     *      http://www.apache.org/licenses/LICENSE-2.0
-     *
-     * Unless required by applicable law or agreed to in writing, software
-     * distributed under the License is distributed on an "AS IS" BASIS,
-     * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-     * See the License for the specific language governing permissions and
-     * limitations under the License.
-     * #L%
-     */
 * For log4j-slf4j-impl see also this required NOTICE:
     Apache Log4j SLF4J Binding
     Copyright 1999-2020 The Apache Software Foundation
@@ -830,7 +801,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 ------
 
-** google-protobuf; version 3.15.3 --
+** google-protobuf; version 3.15.8 --
 https://github.com/protocolbuffers/protobuf
 Copyright 2008 Google Inc.  All rights reserved.
 
@@ -882,7 +853,7 @@ work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
 
 ------
 
-** eclipse-collections; version 11.0.0.M1 --
+** eclipse-collections; version 11.0.0.M2 --
 https://github.com/eclipse/eclipse-collections
 Copyright (c) 2016 Shotaro Sano.
 
@@ -892,6 +863,7 @@ Copyright (c) 2017 Goldman Sachs and others.
 Copyright (c) 2018 Goldman Sachs and others.
 Copyright (c) 2019 Goldman Sachs and others.
 Copyright (c) 2020 Goldman Sachs and others.
+Copyright (c) 2021 Goldman Sachs and others.
 
 Eclipse Public License - v 1.0
 
