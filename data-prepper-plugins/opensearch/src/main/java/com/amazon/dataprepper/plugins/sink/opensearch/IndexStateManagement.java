@@ -15,10 +15,8 @@ import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
 import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
 import org.opensearch.client.Request;
 import org.opensearch.client.RequestOptions;
-import org.opensearch.client.Response;
 import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.rest.RestStatus;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
@@ -37,46 +35,68 @@ public class IndexStateManagement {
         return enabled != null && enabled.equals("true");
     }
 
+    /**
+     * @return ISM policy_id that needs to be attached to index settings , otherwise returns null.
+     */
     public static String checkAndCreatePolicy(
             final RestHighLevelClient restHighLevelClient, final String indexType) throws IOException {
-        if (checkISMEnabled(restHighLevelClient) && indexType.equals(IndexConstants.RAW)) {
+        if (indexType.equals(IndexConstants.RAW)) {
             final String endPoint = "/_opendistro/_ism/policies/" + IndexConstants.RAW_ISM_POLICY;
-            Request request = new Request(HttpMethod.HEAD, endPoint);
-            final Response response = restHighLevelClient.getLowLevelClient().performRequest(request);
-            if (response.getStatusLine().getStatusCode() != RestStatus.OK.getStatus()) {
-                final InputStream is = IndexStateManagement.class.getClassLoader().getResourceAsStream(IndexConstants.RAW_ISM_FILE);
-                assert is != null;
-                final StringBuilder policyJsonBuffer = new StringBuilder();
-                try (final BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
-                    reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
-                }
-                is.close();
-                request = new Request(HttpMethod.PUT, endPoint);
-                request.setJsonEntity(policyJsonBuffer.toString());
-                try {
-                    restHighLevelClient.getLowLevelClient().performRequest(request);
-                } catch (ResponseException e) {
-                    if (e.getMessage().contains("version_conflict_engine_exception")
-                            || e.getMessage().contains("resource_already_exists_exception")) {
-                        // Do nothing - likely caused by a race condition where the resource was created
-                        // by another host before this host's restClient made its request
-                    } else {
-                        throw e;
+            Request request = createPolicyRequestFromFile(endPoint, IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE);
+            try {
+                restHighLevelClient.getLowLevelClient().performRequest(request);
+            } catch (ResponseException e1) {
+                final String msg = e1.getMessage();
+                if (msg.contains("Invalid field: [ism_template]")) {
+                    request = createPolicyRequestFromFile(endPoint, IndexConstants.RAW_ISM_FILE_NO_ISM_TEMPLATE);
+                    try {
+                        restHighLevelClient.getLowLevelClient().performRequest(request);
+                    } catch (ResponseException e2) {
+                        if (e2.getMessage().contains("version_conflict_engine_exception")
+                                || e2.getMessage().contains("resource_already_exists_exception")) {
+                            // Do nothing - likely caused by
+                            // (1) a race condition where the resource was created by another host before this host's
+                            // restClient made its request;
+                            // (2) policy already exists in the cluster
+                        } else {
+                            throw e2;
+                        }
                     }
+                    return IndexConstants.RAW_ISM_POLICY;
+                } else if (e1.getMessage().contains("version_conflict_engine_exception")
+                        || e1.getMessage().contains("resource_already_exists_exception")) {
+                    // Do nothing - likely caused by
+                    // (1) a race condition where the resource was created by another host before this host's
+                    // restClient made its request;
+                    // (2) policy already exists in the cluster
+                } else {
+                    throw e1;
                 }
             }
-            return IndexConstants.RAW_ISM_POLICY;
-        } else {
-            return null;
         }
+        return null;
     }
 
     @SuppressWarnings("unchecked")
     public static void attachPolicy(
             final IndexConfiguration configuration, final String ismPolicyId, final String rolloverAlias) {
         configuration.getIndexTemplate().putIfAbsent("settings", new HashMap<>());
-        // Attach policy_id and rollover_alias
-        ((Map<String, Object>) configuration.getIndexTemplate().get("settings")).put(IndexConstants.ISM_POLICY_ID_SETTING, ismPolicyId);
+        if (ismPolicyId != null) {
+            ((Map<String, Object>) configuration.getIndexTemplate().get("settings")).put(IndexConstants.ISM_POLICY_ID_SETTING, ismPolicyId);
+        }
         ((Map<String, Object>) configuration.getIndexTemplate().get("settings")).put(IndexConstants.ISM_ROLLOVER_ALIAS_SETTING, rolloverAlias);
+    }
+
+    private static Request createPolicyRequestFromFile(final String endPoint, final String fileName) throws IOException {
+        final InputStream is = IndexStateManagement.class.getClassLoader().getResourceAsStream(fileName);
+        assert is != null;
+        final StringBuilder policyJsonBuffer = new StringBuilder();
+        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
+            reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
+        }
+        is.close();
+        final Request request = new Request(HttpMethod.PUT, endPoint);
+        request.setJsonEntity(policyJsonBuffer.toString());
+        return request;
     }
 }

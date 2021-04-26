@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
@@ -88,9 +89,10 @@ public class OpenSearchSink extends AbstractSink<Record<String>> {
   public void start() throws IOException {
     LOG.info("Starting Elasticsearch sink");
     restHighLevelClient = esSinkConfig.getConnectionConfiguration().createClient();
-    final String ismPolicyId = IndexStateManagement.checkAndCreatePolicy(restHighLevelClient, indexType);
+    final boolean isISMEnabled = IndexStateManagement.checkISMEnabled(restHighLevelClient);
+    final String policyId = isISMEnabled? IndexStateManagement.checkAndCreatePolicy(restHighLevelClient, indexType) : null;
     if (!esSinkConfig.getIndexConfiguration().getIndexTemplate().isEmpty()) {
-      createIndexTemplate(ismPolicyId);
+      createIndexTemplate(isISMEnabled, policyId);
     }
     final String dlqFile = esSinkConfig.getRetryConfiguration().getDlqFile();
     if ( dlqFile != null) {
@@ -155,7 +157,7 @@ public class OpenSearchSink extends AbstractSink<Record<String>> {
     });
   }
 
-  private void createIndexTemplate(final String ismPolicyId) throws IOException {
+  private void createIndexTemplate(final boolean isISMEnabled, final String ismPolicyId) throws IOException {
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
     final PutIndexTemplateRequest putIndexTemplateRequest = new PutIndexTemplateRequest(indexAlias + "-index-template");
     final boolean isRaw = indexType.equals(IndexConstants.RAW);
@@ -164,7 +166,7 @@ public class OpenSearchSink extends AbstractSink<Record<String>> {
     } else {
       putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias));
     }
-    if (ismPolicyId != null) {
+    if (isISMEnabled) {
       IndexStateManagement.attachPolicy(esSinkConfig.getIndexConfiguration(), ismPolicyId, indexAlias);
     }
     putIndexTemplateRequest.source(esSinkConfig.getIndexConfiguration().getIndexTemplate());
