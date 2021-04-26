@@ -11,6 +11,7 @@
 
 package com.amazon.dataprepper.plugins.sink.opensearch;
 
+import com.google.common.base.Preconditions;
 import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
 import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
 import org.opensearch.client.Request;
@@ -25,6 +26,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class IndexStateManagement {
     public static boolean checkISMEnabled(final RestHighLevelClient restHighLevelClient) throws IOException {
@@ -88,13 +90,11 @@ public class IndexStateManagement {
     }
 
     private static Request createPolicyRequestFromFile(final String endPoint, final String fileName) throws IOException {
-        final InputStream is = IndexStateManagement.class.getClassLoader().getResourceAsStream(fileName);
-        assert is != null;
         final StringBuilder policyJsonBuffer = new StringBuilder();
-        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
+        try (final InputStream inputStream = IndexStateManagement.class.getClassLoader().getResourceAsStream(fileName);
+             final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
             reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
         }
-        is.close();
         final Request request = new Request(HttpMethod.PUT, endPoint);
         request.setJsonEntity(policyJsonBuffer.toString());
         return request;
