@@ -12,7 +12,7 @@
 apply from: file("${rootDir}/build-resources.gradle")
 allprojects {
     group = 'com.amazon'
-    version = '1.0.0.0-alpha2'
+    version = '1.0.0.0-beta1'
     repositories {
         mavenCentral()
         maven { url "https://jitpack.io" }
