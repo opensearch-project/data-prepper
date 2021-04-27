@@ -23,14 +23,3 @@ jobs:
       run: chmod +x gradlew
     - name: Build with Gradle
       run: ./gradlew build
-    - name: Run ODFE docker
-      run: |
-        export version=1.9.0
-        docker pull amazon/opendistro-for-elasticsearch:$version
-        docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -d amazon/opendistro-for-elasticsearch:$version
-        sleep 90
-    - name: Run ODFE tests
-      run: |
-        ./gradlew :data-prepper-plugins:elasticsearch:test --tests "com.amazon.dataprepper.plugins.sink.elasticsearch.ODFETests.testODFEConnection" -Dodfe.host=https://localhost:9200 -Dodfe.user=admin -Dodfe.password=admin
-        ./gradlew :data-prepper-plugins:elasticsearch:integTest --tests "com.amazon.dataprepper.plugins.sink.elasticsearch.ElasticsearchSinkIT" -Dodfe=true -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername=docker-cluster -Duser=admin -Dpassword=admin
-

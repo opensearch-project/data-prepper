@@ -35,6 +35,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 @DataPrepperPlugin(name = "elasticsearch", type = PluginType.SINK)
@@ -77,9 +78,10 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
   public void start() throws IOException {
     LOG.info("Starting Elasticsearch sink");
     restHighLevelClient = esSinkConfig.getConnectionConfiguration().createClient();
-    final String ismPolicyId = IndexStateManagement.checkAndCreatePolicy(restHighLevelClient, indexType);
+    final boolean isISMEnabled = IndexStateManagement.checkISMEnabled(restHighLevelClient);
+    final Optional<String> policyIdOptional = isISMEnabled? IndexStateManagement.checkAndCreatePolicy(restHighLevelClient, indexType) : Optional.empty();
     if (!esSinkConfig.getIndexConfiguration().getIndexTemplate().isEmpty()) {
-      createIndexTemplate(ismPolicyId);
+      createIndexTemplate(isISMEnabled, policyIdOptional.orElse(null));
     }
     final String dlqFile = esSinkConfig.getRetryConfiguration().getDlqFile();
     if ( dlqFile != null) {
@@ -144,7 +146,7 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
     });
   }
 
-  private void createIndexTemplate(final String ismPolicyId) throws IOException {
+  private void createIndexTemplate(final boolean isISMEnabled, final String ismPolicyId) throws IOException {
     final String indexAlias = esSinkConfig.getIndexConfiguration().getIndexAlias();
     final PutIndexTemplateRequest putIndexTemplateRequest = new PutIndexTemplateRequest(indexAlias + "-index-template");
     final boolean isRaw = indexType.equals(IndexConstants.RAW);
@@ -153,7 +155,7 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
     } else {
       putIndexTemplateRequest.patterns(Collections.singletonList(indexAlias));
     }
-    if (ismPolicyId != null) {
+    if (isISMEnabled) {
       IndexStateManagement.attachPolicy(esSinkConfig.getIndexConfiguration(), ismPolicyId, indexAlias);
     }
     putIndexTemplateRequest.source(esSinkConfig.getIndexConfiguration().getIndexTemplate());
