@@ -17,11 +17,11 @@ Parameters:
     Description: The subnet ID of the AWS Elasticsearch Service domain (Leave blank if the domain is not in a VPC)
     Type: String
   Username:
-    Description: The username of the AWS Elasticsearch Service domain (Leave blank if none)
+    Description: The username of the AWS Elasticsearch Service domain (Leave blank if the domain is configured with IAM role)
     Type: String
     Default: ""
   Password:
-    Description: The password of the AWS Elasticsearch Service domain (Leave blank if none)
+    Description: The password of the AWS Elasticsearch Service domain (Leave blank if the domain is configured with IAM role)
     Type: String
     Default: ""
   DataPrepperVersion:
@@ -32,8 +32,9 @@ Parameters:
     ConstraintDescription: must be a valid release number
   IAMRole:
     Description: Pre-existing IAM Role to associate with the EC2 instance, to be used for authentication when calling Elasticsearch
+      (Leave blank if the domain is configured with HTTP basic authentication in Fine-grained access control)
     Type: String
-    AllowedPattern: "[a-zA-Z0-9+=,\\.@\\-_]+"
+    AllowedPattern: "^$|[a-zA-Z0-9+=,\\.@\\-_]+"
     Default: DataPrepperRole
     ConstraintDescription: must be a valid IAM role name
   InstanceType:
@@ -58,6 +59,29 @@ Parameters:
     Default: 0.0.0.0/0
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Common
+        Parameters:
+          - IAMRole
+      - Label:
+          default: Amazon Elasticsearch Service Domain
+        Parameters:
+          - AWSElasticsearchEndpoint
+          - AWSElasticsearchRegion
+          - AWSElasticsearchSubnetId
+          - Username
+          - Password
+      - Label:
+          default: Data-Prepper Configuration
+        Parameters:
+          - DataPrepperVersion
+          - InstanceType
+          - KeyName
+          - LatestAmi
+          - SSHLocation
 Conditions:
   DomainIsPublic: !Equals [!Ref AWSElasticsearchSubnetId, ""]
   DomainIsInVPC: !Not [Condition: DomainIsPublic]
