@@ -16,6 +16,14 @@ Parameters:
   AWSElasticsearchSubnetId:
     Description: The subnet ID of the AWS Elasticsearch Service domain (Leave blank if the domain is not in a VPC)
     Type: String
+  Username:
+    Description: The username of the AWS Elasticsearch Service domain (Leave blank if the domain is configured with IAM role)
+    Type: String
+    Default: ""
+  Password:
+    Description: The password of the AWS Elasticsearch Service domain (Leave blank if the domain is configured with IAM role)
+    Type: String
+    Default: ""
   DataPrepperVersion:
     Description: Version of Data Prepper to download and run
     Type: String
@@ -24,8 +32,9 @@ Parameters:
     ConstraintDescription: must be a valid release number
   IAMRole:
     Description: Pre-existing IAM Role to associate with the EC2 instance, to be used for authentication when calling Elasticsearch
+      (Leave blank if the domain is configured with HTTP basic authentication in Fine-grained access control)
     Type: String
-    AllowedPattern: "[a-zA-Z0-9+=,\\.@\\-_]+"
+    AllowedPattern: "^$|[a-zA-Z0-9+=,\\.@\\-_]+"
     Default: DataPrepperRole
     ConstraintDescription: must be a valid IAM role name
   InstanceType:
@@ -50,9 +59,39 @@ Parameters:
     Default: 0.0.0.0/0
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Common
+        Parameters:
+          - IAMRole
+      - Label:
+          default: Amazon Elasticsearch Service Domain
+        Parameters:
+          - AWSElasticsearchEndpoint
+          - AWSElasticsearchRegion
+          - AWSElasticsearchSubnetId
+          - Username
+          - Password
+      - Label:
+          default: Data-Prepper Configuration
+        Parameters:
+          - DataPrepperVersion
+          - InstanceType
+          - KeyName
+          - LatestAmi
+          - SSHLocation
 Conditions:
   DomainIsPublic: !Equals [!Ref AWSElasticsearchSubnetId, ""]
   DomainIsInVPC: !Not [Condition: DomainIsPublic]
+  NoMasterUser: !And
+    - !Equals
+      - !Ref Username
+      - ""
+    - !Equals
+      - !Ref Password
+      - ""
 Resources:
   EC2Instance:
     Type: AWS::EC2::Instance
@@ -70,43 +109,49 @@ Resources:
               owner: root
               group: root
             "/etc/data-prepper/pipelines.yaml":
-              content: !Sub |
-                entry-pipeline:
-                  delay: "100"
-                  source:
-                    otel_trace_source:
-                      ssl: false
-                      health_check_service: true
-                  sink:
-                    - pipeline:
-                        name: "raw-pipeline"
-                    - pipeline:
-                        name: "service-map-pipeline"
-                raw-pipeline:
-                  source:
-                    pipeline:
-                      name: "entry-pipeline"
-                  prepper:
-                    - otel_trace_raw_prepper:
-                  sink:
-                    - elasticsearch:
-                        hosts: [ "${AWSElasticsearchEndpoint}" ]
-                        aws_sigv4: true
-                        aws_region: "${AWSElasticsearchRegion}"
-                        trace_analytics_raw: true
-                service-map-pipeline:
-                  delay: "100"
-                  source:
-                    pipeline:
-                      name: "entry-pipeline"
-                  prepper:
-                    - service_map_stateful:
-                  sink:
-                    - elasticsearch:
-                        hosts: [ "${AWSElasticsearchEndpoint}" ]
-                        aws_sigv4: true
-                        aws_region: "${AWSElasticsearchRegion}"
-                        trace_analytics_service_map: true
+              content: !Sub
+                - |
+                  entry-pipeline:
+                    delay: "100"
+                    source:
+                      otel_trace_source:
+                        ssl: false
+                        health_check_service: true
+                    sink:
+                      - pipeline:
+                          name: "raw-pipeline"
+                      - pipeline:
+                          name: "service-map-pipeline"
+                  raw-pipeline:
+                    source:
+                      pipeline:
+                        name: "entry-pipeline"
+                    prepper:
+                      - otel_trace_raw_prepper:
+                    sink:
+                      - elasticsearch: ${elasticsearchConfig}
+                  service-map-pipeline:
+                    delay: "100"
+                    source:
+                      pipeline:
+                        name: "entry-pipeline"
+                    prepper:
+                      - service_map_stateful:
+                    sink:
+                      - elasticsearch: ${elasticsearchConfig}
+                - elasticsearchConfig: !If
+                    - NoMasterUser
+                    - !Sub "\n
+                    \        hosts: [ \"${AWSElasticsearchEndpoint}\" ]\n
+                    \        aws_sigv4: true\n
+                    \        aws_region: \"${AWSElasticsearchRegion}\"\n
+                    \        trace_analytics_service_map: true"
+                    - !Sub "\n
+                    \        hosts: [ \"${AWSElasticsearchEndpoint}\" ]\n
+                    \        aws_sigv4: false\n
+                    \        username: \"${Username}\"\n
+                    \        password: \"${Password}\"\n
+                    \        trace_analytics_service_map: true"
               mode: "000400"
               owner: root
               group: root
