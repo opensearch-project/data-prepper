@@ -27,7 +27,6 @@ Parameters:
   DataPrepperVersion:
     Description: Version of Data Prepper to download and run
     Type: String
-    AllowedPattern: "[0-9]+\\.[0-9]+\\.[0-9]+[a-z-]*"
     Default: "1.0.0.0-beta1"
     ConstraintDescription: must be a valid release number
   IAMRole:
@@ -129,7 +128,7 @@ Resources:
                     prepper:
                       - otel_trace_raw_prepper:
                     sink:
-                      - opensearch: ${elasticsearchConfig}
+                      - opensearch: ${rawSpanConfig}
                   service-map-pipeline:
                     delay: "100"
                     source:
@@ -138,8 +137,21 @@ Resources:
                     prepper:
                       - service_map_stateful:
                     sink:
-                      - opensearch: ${elasticsearchConfig}
-                - elasticsearchConfig: !If
+                      - opensearch: ${serviceMapConfig}
+                - rawSpanConfig: !If
+                    - NoMasterUser
+                    - !Sub "\n
+                    \        hosts: [ \"${AWSElasticsearchEndpoint}\" ]\n
+                    \        aws_sigv4: true\n
+                    \        aws_region: \"${AWSElasticsearchRegion}\"\n
+                    \        trace_analytics_raw: true"
+                    - !Sub "\n
+                    \        hosts: [ \"${AWSElasticsearchEndpoint}\" ]\n
+                    \        aws_sigv4: false\n
+                    \        username: \"${Username}\"\n
+                    \        password: \"${Password}\"\n
+                    \        trace_analytics_raw: true"
+                  serviceMapConfig: !If
                     - NoMasterUser
                     - !Sub "\n
                     \        hosts: [ \"${AWSElasticsearchEndpoint}\" ]\n
@@ -174,7 +186,7 @@ Resources:
           #!/bin/bash
           export RELEASE=opensearch-data-prepper-${DataPrepperVersion}-linux-x64
           yum install java-11-amazon-corretto-headless -y
-          wget https://github.com/opensearch-project/data-prepper/releases/download/v${DataPrepperVersion}/$RELEASE.tar.gz -O /tmp/$RELEASE.tar.gz
+          wget https://github.com/chenqi0805/data-prepper/releases/download/v1.0.0/$RELEASE.tar.gz -O /tmp/$RELEASE.tar.gz
           tar -xzf /tmp/$RELEASE.tar.gz --directory /usr/local/bin
           /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default
           nohup /usr/local/bin/$RELEASE/data-prepper-tar-install.sh /etc/data-prepper/pipelines.yaml /etc/data-prepper/data-prepper-config.yaml > /var/log/data-prepper.out &
