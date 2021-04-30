@@ -28,7 +28,7 @@ Parameters:
     Description: Version of Data Prepper to download and run
     Type: String
     AllowedPattern: "[0-9]+\\.[0-9]+\\.[0-9]+[a-z-]*"
-    Default: "0.8.0-beta"
+    Default: "1.0.0.0-beta1"
     ConstraintDescription: must be a valid release number
   IAMRole:
     Description: Pre-existing IAM Role to associate with the EC2 instance, to be used for authentication when calling Elasticsearch
@@ -109,9 +109,8 @@ Resources:
               owner: root
               group: root
             "/etc/data-prepper/pipelines.yaml":
-              content: !If
-                - NoMasterUser
-                - !Sub |
+              content: !Sub
+                - |
                   entry-pipeline:
                     delay: "100"
                     source:
@@ -130,11 +129,7 @@ Resources:
                     prepper:
                       - otel_trace_raw_prepper:
                     sink:
-                      - opensearch:
-                          hosts: [ "${AWSElasticsearchEndpoint}" ]
-                          aws_sigv4: true
-                          aws_region: "${AWSElasticsearchRegion}"
-                          trace_analytics_raw: true
+                      - opensearch: ${elasticsearchConfig}
                   service-map-pipeline:
                     delay: "100"
                     source:
@@ -143,50 +138,20 @@ Resources:
                     prepper:
                       - service_map_stateful:
                     sink:
-                      - opensearch:
-                          hosts: [ "${AWSElasticsearchEndpoint}" ]
-                          aws_sigv4: true
-                          aws_region: "${AWSElasticsearchRegion}"
-                          trace_analytics_service_map: true
-                - !Sub |
-                  entry-pipeline:
-                    delay: "100"
-                    source:
-                      otel_trace_source:
-                        ssl: false
-                        health_check_service: true
-                    sink:
-                      - pipeline:
-                          name: "raw-pipeline"
-                      - pipeline:
-                          name: "service-map-pipeline"
-                  raw-pipeline:
-                    source:
-                      pipeline:
-                        name: "entry-pipeline"
-                    prepper:
-                      - otel_trace_raw_prepper:
-                    sink:
-                      - opensearch:
-                          hosts: [ "${AWSElasticsearchEndpoint}" ]
-                          aws_sigv4: false
-                          username: "${Username}"
-                          password: "${Password}"
-                          trace_analytics_raw: true
-                  service-map-pipeline:
-                    delay: "100"
-                    source:
-                      pipeline:
-                        name: "entry-pipeline"
-                    prepper:
-                      - service_map_stateful:
-                    sink:
-                      - opensearch:
-                          hosts: [ "${AWSElasticsearchEndpoint}" ]
-                          aws_sigv4: false
-                          username: "${Username}"
-                          password: "${Password}"
-                          trace_analytics_service_map: true
+                      - opensearch: ${elasticsearchConfig}
+                - elasticsearchConfig: !If
+                    - NoMasterUser
+                    - !Sub "\n
+                    \        hosts: [ \"${AWSElasticsearchEndpoint}\" ]\n
+                    \        aws_sigv4: true\n
+                    \        aws_region: \"${AWSElasticsearchRegion}\"\n
+                    \        trace_analytics_service_map: true"
+                    - !Sub "\n
+                    \        hosts: [ \"${AWSElasticsearchEndpoint}\" ]\n
+                    \        aws_sigv4: false\n
+                    \        username: \"${Username}\"\n
+                    \        password: \"${Password}\"\n
+                    \        trace_analytics_service_map: true"
               mode: "000400"
               owner: root
               group: root
@@ -207,9 +172,9 @@ Resources:
         # Script to download and run Data Prepper
         Fn::Base64: !Sub |
           #!/bin/bash
-          export RELEASE=opendistroforelasticsearch-data-prepper-${DataPrepperVersion}-linux-x64
+          export RELEASE=opensearch-data-prepper-${DataPrepperVersion}-linux-x64
           yum install java-11-amazon-corretto-headless -y
-          wget https://github.com/opendistro-for-elasticsearch/data-prepper/releases/download/v${DataPrepperVersion}/$RELEASE.tar.gz -O /tmp/$RELEASE.tar.gz
+          wget https://github.com/opensearch/data-prepper/releases/download/v${DataPrepperVersion}/$RELEASE.tar.gz -O /tmp/$RELEASE.tar.gz
           tar -xzf /tmp/$RELEASE.tar.gz --directory /usr/local/bin
           /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default
           nohup /usr/local/bin/$RELEASE/data-prepper-tar-install.sh /etc/data-prepper/pipelines.yaml /etc/data-prepper/data-prepper-config.yaml > /var/log/data-prepper.out &
