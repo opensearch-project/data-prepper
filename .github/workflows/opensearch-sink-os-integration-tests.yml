@@ -27,7 +27,7 @@ jobs:
           ref: '1.0.0-alpha2'
       - name: Build OpenSearch
         working-directory: ./OpenSearch
-        run: ./gradlew publishToMavenLocal -Dbuild.version_qualifier=beta1 -Dbuild.snapshot=false
+        run: ./gradlew publishToMavenLocal -Dbuild.version_qualifier=alpha2 -Dbuild.snapshot=false
       - name: Checkout Data-Prepper
         uses: actions/checkout@v2
       - name: Grant execute permission for gradlew
