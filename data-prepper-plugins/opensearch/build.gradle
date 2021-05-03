@@ -91,13 +91,13 @@ configurations.all {
 }
 
 test {
-    if (System.getProperty("odfe.host") == null) {
-        exclude '**/ODFETests.class'
+    if (System.getProperty("os.host") == null) {
+        exclude '**/OpenSearchTests.class'
     }
-    systemProperty "odfe.host", System.getProperty("odfe.host")
-    if (System.getProperty("odfe.user") != null) {
-        systemProperty "odfe.user", System.getProperty("odfe.user")
-        systemProperty "odfe.password", System.getProperty("odfe.password")
+    systemProperty "os.host", System.getProperty("os.host")
+    if (System.getProperty("os.user") != null) {
+        systemProperty "os.user", System.getProperty("os.user")
+        systemProperty "os.password", System.getProperty("os.password")
     }
 }
 
@@ -108,7 +108,7 @@ testClusters.integTest {
 integTest {
     systemProperty 'tests.security.manager', 'false'
 
-    systemProperty "odfe", System.getProperty("odfe")
+    systemProperty "os", System.getProperty("os")
     systemProperty "user", System.getProperty("user")
     systemProperty "password", System.getProperty("password")
 }
