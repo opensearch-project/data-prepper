@@ -23,14 +23,14 @@ import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 
-public class ODFETests {
+public class OpenSearchTests {
     @Test
-    public void testODFEConnection() throws IOException {
-        final String host = System.getProperty("odfe.host");
+    public void testOpenSearchConnection() throws IOException {
+        final String host = System.getProperty("os.host");
         final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
                 Collections.singletonList(host));
-        final String user = System.getProperty("odfe.user");
-        final String password = System.getProperty("odfe.password");
+        final String user = System.getProperty("os.user");
+        final String password = System.getProperty("os.password");
         if (user != null) {
             builder.withUsername(user);
             builder.withPassword(password);
