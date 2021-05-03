@@ -400,6 +400,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
   }
 
   private String getIndexPolicyId(final String index) throws IOException {
+    // TODO: replace with new _opensearch API
     final Request request = new Request(HttpMethod.GET, "/_opendistro/_ism/explain/" + index);
     final Response response = client().performRequest(request);
     final String responseBody = EntityUtils.toString(response.getEntity());
