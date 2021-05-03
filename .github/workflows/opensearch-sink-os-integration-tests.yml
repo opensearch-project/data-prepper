@@ -1,0 +1,44 @@
+# This workflow will build a Java project with Gradle
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-gradle
+
+name: Data Prepper OpenSearchSink integration tests with OpenSearch
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  integration_tests:
+    strategy:
+      matrix:
+        java: [14]
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.java }}
+      # TODO: replace local built OpenSearch artifact with the public artifact
+      - name: Checkout OpenSearch
+        uses: actions/checkout@v2
+        with:
+          repository: 'opensearch-project/OpenSearch'
+          path: OpenSearch
+          ref: '1.0.0-beta1'
+      - name: Build OpenSearch
+        working-directory: ./OpenSearch
+        run: ./gradlew publishToMavenLocal -Dbuild.version_qualifier=beta1 -Dbuild.snapshot=false
+      - name: Checkout Data-Prepper
+        uses: actions/checkout@v2
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+      - name: Run ODFE docker
+        run: |
+          export version=1.0.0-beta1
+          docker pull opensearchstaging/opensearch:$version
+          docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -d opensearchstaging/opensearch:$version
+          sleep 90
+      - name: Run ODFE tests
+        run: |
+          ./gradlew :data-prepper-plugins:opensearch:test --tests "com.amazon.dataprepper.plugins.sink.opensearch.ODFETests.testODFEConnection" -Dodfe.host=https://localhost:9200 -Dodfe.user=admin -Dodfe.password=admin
+          ./gradlew :data-prepper-plugins:opensearch:integTest --tests "com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchSinkIT" -Dodfe=true -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername=docker-cluster -Duser=admin -Dpassword=admin
