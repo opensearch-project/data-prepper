@@ -128,7 +128,7 @@ def removeDataPrepperDockerContainer(final DockerStopContainer stopDataPrepperDo
  * OpenSearch Docker tasks
  */
 task pullOpenSearchDockerImage(type: DockerPullImage) {
-    image = 'amazon/opendistro-for-elasticsearch:1.13.2'
+    image = 'opensearchstaging/opensearch:1.0.0-beta1'
 }
 
 task createOpenSearchDockerContainer(type: DockerCreateContainer) {
