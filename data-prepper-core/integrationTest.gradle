@@ -125,16 +125,17 @@ def removeDataPrepperDockerContainer(final DockerStopContainer stopDataPrepperDo
 }
 
 /**
- * ODFE Docker tasks
+ * OpenSearch Docker tasks
  */
-task pullOdfeDockerImage(type: DockerPullImage) {
-    image = 'amazon/opendistro-for-elasticsearch:1.13.2'
+task pullOpenSearchDockerImage(type: DockerPullImage) {
+    // TODO: replace with production image
+    image = 'opensearchstaging/opensearch:1.0.0-beta1'
 }
 
-task createOdfeDockerContainer(type: DockerCreateContainer) {
+task createOpenSearchDockerContainer(type: DockerCreateContainer) {
     dependsOn createDataPrepperNetwork
-    dependsOn pullOdfeDockerImage
-    targetImageId pullOdfeDockerImage.image
+    dependsOn pullOpenSearchDockerImage
+    targetImageId pullOpenSearchDockerImage.image
     containerName = "node-0.example.com"
     hostConfig.portBindings = ['9200:9200', '9600:9600']
     hostConfig.autoRemove = true
@@ -142,26 +143,26 @@ task createOdfeDockerContainer(type: DockerCreateContainer) {
     envVars = ['discovery.type':'single-node']
 }
 
-task startOdfeDockerContainer(type: DockerStartContainer) {
-    dependsOn createOdfeDockerContainer
-    targetContainerId createOdfeDockerContainer.getContainerId()
+task startOpenSearchDockerContainer(type: DockerStartContainer) {
+    dependsOn createOpenSearchDockerContainer
+    targetContainerId createOpenSearchDockerContainer.getContainerId()
 
     doLast {
         sleep(90*1000)
     }
 }
 
-task stopOdfeDockerContainer(type: DockerStopContainer) {
-    targetContainerId createOdfeDockerContainer.getContainerId()
+task stopOpenSearchDockerContainer(type: DockerStopContainer) {
+    targetContainerId createOpenSearchDockerContainer.getContainerId()
 }
 
 /**
- * End to end test. Spins up ODFE and DataPrepper docker containers, then runs the integ test
+ * End to end test. Spins up OpenSearch and DataPrepper docker containers, then runs the integ test
  * Stops the docker containers when finished
  */
 task rawSpanEndToEndTest(type: Test) {
     dependsOn build
-    dependsOn startOdfeDockerContainer
+    dependsOn startOpenSearchDockerContainer
     def createDataPrepper1Task = createDataPrepperDockerContainer(
             "rawSpanDataPrepper1", "data-prepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_YAML}")
     def createDataPrepper2Task = createDataPrepperDockerContainer(
@@ -170,8 +171,8 @@ task rawSpanEndToEndTest(type: Test) {
     def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
     dependsOn startDataPrepper1Task
     dependsOn startDataPrepper2Task
-    startDataPrepper1Task.mustRunAfter 'startOdfeDockerContainer'
-    startDataPrepper2Task.mustRunAfter 'startOdfeDockerContainer'
+    startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
+    startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
     // wait for data-preppers to be ready
     doFirst {
         sleep(10*1000)
@@ -186,7 +187,7 @@ task rawSpanEndToEndTest(type: Test) {
         includeTestsMatching "com.amazon.dataprepper.integration.EndToEndRawSpanTest*"
     }
 
-    finalizedBy stopOdfeDockerContainer
+    finalizedBy stopOpenSearchDockerContainer
     def stopDataPrepper1Task = stopDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
     def stopDataPrepper2Task = stopDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
     finalizedBy stopDataPrepper1Task
@@ -198,7 +199,7 @@ task rawSpanEndToEndTest(type: Test) {
 
 task serviceMapEndToEndTest(type: Test) {
     dependsOn build
-    dependsOn startOdfeDockerContainer
+    dependsOn startOpenSearchDockerContainer
     def createDataPrepper1Task = createDataPrepperDockerContainer(
             "serviceMapDataPrepper1", "data-prepper1", 21890, 4900, "/app/${SERVICE_MAP_PIPELINE_YAML}")
     def createDataPrepper2Task = createDataPrepperDockerContainer(
@@ -207,8 +208,8 @@ task serviceMapEndToEndTest(type: Test) {
     def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
     dependsOn startDataPrepper1Task
     dependsOn startDataPrepper2Task
-    startDataPrepper1Task.mustRunAfter 'startOdfeDockerContainer'
-    startDataPrepper2Task.mustRunAfter 'startOdfeDockerContainer'
+    startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
+    startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
     // wait for data-preppers to be ready
     doFirst {
         sleep(10*1000)
@@ -223,7 +224,7 @@ task serviceMapEndToEndTest(type: Test) {
         includeTestsMatching "com.amazon.dataprepper.integration.EndToEndServiceMapTest*"
     }
 
-    finalizedBy stopOdfeDockerContainer
+    finalizedBy stopOpenSearchDockerContainer
     def stopDataPrepper1Task = stopDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
     def stopDataPrepper2Task = stopDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
     finalizedBy stopDataPrepper1Task
