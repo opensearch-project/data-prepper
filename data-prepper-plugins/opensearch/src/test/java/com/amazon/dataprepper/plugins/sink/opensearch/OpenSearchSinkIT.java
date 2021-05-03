@@ -96,7 +96,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     assertFalse((boolean)mappings.get("date_detection"));
     sink.shutdown();
 
-    if (isODFE()) {
+    if (isOSBundle()) {
       // Check managed index
       await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
         assertEquals(IndexConstants.RAW_ISM_POLICY, getIndexPolicyId(index)); }
@@ -118,7 +118,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     assertEquals(true, checkIsWriteIndex(EntityUtils.toString(response.getEntity()), indexAlias, rolloverIndexName));
     sink.shutdown();
 
-    if (isODFE()) {
+    if (isOSBundle()) {
       // Check managed index
       assertEquals(IndexConstants.RAW_ISM_POLICY, getIndexPolicyId(rolloverIndexName));
     }
@@ -230,7 +230,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     assertFalse((boolean)mappings.get("date_detection"));
     sink.shutdown();
 
-    if (isODFE()) {
+    if (isOSBundle()) {
       // Check managed index
       assertNull(getIndexPolicyId(indexAlias));
     }
@@ -410,28 +410,28 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     return policyId;
   }
 
-  public static boolean isODFE() {
-    final boolean odfeFlag = Optional.ofNullable(System.getProperty("odfe"))
+  public static boolean isOSBundle() {
+    final boolean osFlag = Optional.ofNullable(System.getProperty("os"))
             .map("true"::equalsIgnoreCase).orElse(false);
-    if (odfeFlag) {
+    if (osFlag) {
       // currently only external cluster is supported for security enabled testing
       if (!Optional.ofNullable(System.getProperty("tests.rest.cluster")).isPresent()) {
-        throw new RuntimeException("cluster url should be provided for security enabled ODFE testing");
+        throw new RuntimeException("cluster url should be provided for security enabled OpenSearch testing");
       }
     }
 
-    return odfeFlag;
+    return osFlag;
   }
 
   @Override
   protected String getProtocol() {
-    return isODFE() ? "https" : "http";
+    return isOSBundle() ? "https" : "http";
   }
 
   @Override
   protected RestClient buildClient(final Settings settings, final HttpHost[] hosts) throws IOException {
     final RestClientBuilder builder = RestClient.builder(hosts);
-    if (isODFE()) {
+    if (isOSBundle()) {
       configureHttpsClient(builder, settings);
     } else {
       configureClient(builder, settings);
@@ -443,7 +443,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
 
   @SuppressWarnings("unchecked")
   @After
-  protected void wipeAllODFEIndices() throws IOException {
+  protected void wipeAllOpenSearchIndices() throws IOException {
     final Response response = client().performRequest(new Request("GET", "/_cat/indices?format=json&expand_wildcards=all"));
     final XContentType xContentType = XContentType.fromMediaTypeOrFormat(response.getEntity().getContentType().getValue());
     try (
@@ -510,7 +510,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
   }
 
   /**
-   * wipeAllIndices won't work since it cannot delete security index. Use wipeAllODFEIndices instead.
+   * wipeAllIndices won't work since it cannot delete security index. Use wipeAllOpenSearchIndices instead.
    */
   @Override
   protected boolean preserveIndicesUponCompletion() {
