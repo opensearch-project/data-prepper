@@ -55,9 +55,9 @@ services:
       context: ../../..
       dockerfile: examples/dev/trace-analytics-sample-app/Dockerfile
     working_dir: /usr/share/data-prepper/
-    command: sh data-prepper-wait-for-odfe-and-start.sh
+    command: sh data-prepper-wait-for-os-and-start.sh
     volumes:
-      - ./resources/data-prepper-wait-for-odfe-and-start.sh:/usr/share/data-prepper/data-prepper-wait-for-odfe-and-start.sh
+      - ./resources/data-prepper-wait-for-os-and-start.sh:/usr/share/data-prepper/data-prepper-wait-for-os-and-start.sh
       - ./resources/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml
       - ./resources/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
       - ../../../shared-config/log4j2.properties:/usr/share/data-prepper/log4j.properties

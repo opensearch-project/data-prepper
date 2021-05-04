@@ -1,10 +1,10 @@
 apiVersion: v1
 data:
-  data-prepper-wait-for-odfe-and-start.sh: |-
+  data-prepper-wait-for-os-and-start.sh: |-
     #!/bin/bash
 
-    until [[ $(curl --write-out %{http_code} --output /dev/null --silent --head --fail https://opendistro-for-elasticsearch:9200 -u admin:admin --insecure) == 200 ]]; do
-      echo "Waiting for ODFE to be ready"
+    until [[ $(curl --write-out %{http_code} --output /dev/null --silent --head --fail https://opensearch:9200 -u admin:admin --insecure) == 200 ]]; do
+      echo "Waiting for OpenSearch to be ready"
       sleep 1
     done
 
@@ -33,7 +33,7 @@ data:
         - otel_trace_raw_prepper:
       sink:
         - opensearch:
-            hosts: [ "https://opendistro-for-elasticsearch:9200" ]
+            hosts: [ "https://opensearch:9200" ]
             insecure: true
             username: "admin"
             password: "admin"
@@ -47,7 +47,7 @@ data:
         - service_map_stateful:
       sink:
         - opensearch:
-            hosts: ["https://opendistro-for-elasticsearch:9200"]
+            hosts: ["https://opensearch:9200"]
             insecure: true
             username: "admin"
             password: "admin"
@@ -69,7 +69,7 @@ metadata:
     fieldsType: FieldsV1
     fieldsV1:
       f:data:
-        f:data-prepper-wait-for-odfe-and-start.sh: {}
+        f:data-prepper-wait-for-os-and-start.sh: {}
         f:trace_analytics_no_ssl.yml: {}
     manager: dashboard
     operation: Update
@@ -102,7 +102,7 @@ spec:
       containers:
       - args:
         - sh
-        - /appconfig/data-prepper-wait-for-odfe-and-start.sh
+        - /appconfig/data-prepper-wait-for-os-and-start.sh
         image: example-k8s/data-prepper
         imagePullPolicy: "Never"
         name: data-prepper
