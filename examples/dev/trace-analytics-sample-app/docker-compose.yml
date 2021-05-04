@@ -72,11 +72,11 @@ services:
       my_network:
         ipv4_address: 10.10.1.2
     depends_on:
-      - opendistro-for-elasticsearch
+      - opensearch
 
-  opendistro-for-elasticsearch:
+  opensearch:
     container_name: node-0.example.com
-    image: amazon/opendistro-for-elasticsearch:1.12.0
+    image: opensearchstaging/opensearch:1.0.0-beta1
     ports:
       - "9200:9200"
       - "9600:9600"
@@ -85,18 +85,16 @@ services:
     networks:
       - my_network
 
-  kibana:
-    build:
-      context: ../../..
-      dockerfile: examples/kibana-trace-analytics/Dockerfile
-    container_name: odfe-kibana
+  opensearch-dashboard:
+    container_name: opensearch-dashboard
+    image: opensearchstaging/opensearch-dashboards:1.0.0-beta1
     ports:
       - 5601:5601
     expose:
       - "5601"
     environment:
-      ELASTICSEARCH_URL: https://node-0.example.com:9200
-      ELASTICSEARCH_HOSTS: https://node-0.example.com:9200
+      OPENSEARCH_URL: https://node-0.example.com:9200
+      OPENSEARCH_HOSTS: https://node-0.example.com:9200
     networks:
       - my_network
 

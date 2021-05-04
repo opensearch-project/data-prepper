@@ -33,12 +33,12 @@ spec:
     spec:
       containers:
       - env:
-        - name: ELASTICSEARCH_HOSTS
+        - name: OPENSEARCH_HOSTS
           value: https://odfe:9200
-        - name: ELASTICSEARCH_URL
+        - name: OPENSEARCH_URL
           value: https://odfe:9200
-        image: example-k8s/kibana
-        imagePullPolicy: "Never"
+        image: opensearchstaging/opensearch-dashboards:1.0.0-beta1
+        imagePullPolicy: ""
         name: odfe-kibana
         ports:
         - containerPort: 5601
@@ -117,25 +117,25 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: opendistro-for-elasticsearch
-  name: opendistro-for-elasticsearch
+    app: opensearch
+  name: opensearch
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: opendistro-for-elasticsearch
+      app: opensearch
   strategy: {}
   template:
     metadata:
       labels:
         app.network/my-network: "true"
-        app: opendistro-for-elasticsearch
+        app: opensearch
     spec:
       containers:
       - env:
         - name: discovery.type
           value: single-node
-        image: amazon/opendistro-for-elasticsearch:1.10.1
+        image: opensearchstaging/opensearch:1.0.0-beta1
         imagePullPolicy: ""
         name: odfe
         ports:
@@ -151,8 +151,8 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: opendistro-for-elasticsearch
-  name: opendistro-for-elasticsearch
+    app: opensearch
+  name: opensearch
 spec:
   ports:
   - name: "9200"
@@ -162,7 +162,7 @@ spec:
     port: 9600
     targetPort: 9600
   selector:
-    app: opendistro-for-elasticsearch
+    app: opensearch
 status:
   loadBalancer: {}
 ---
