@@ -38,12 +38,12 @@ app.layout = html.Div(id="main", children=[
     html.H1("Trace Analytics Sample App", style={'textAlign': 'left'}),
     html.Div(style={'padding': 25}),
     html.Div([
-            html.A("Trace Analytics Dashboard", href="http://localhost:5601/app/opendistro-trace-analytics#/",
+            html.A("Trace Analytics Dashboard", href="http://localhost:5601/app/trace-analytics-dashboards#/",
                    style={'justify': 'center'})
         ], style={'horizontalAlign': 'middle','verticalAlign': 'middle'}),
     html.Div(style={'padding': 10}),
     html.Div([
-            html.A("Trace Analytics Services View", href="http://localhost:5601/app/opendistro-trace-analytics#/services",
+            html.A("Trace Analytics Services View", href="http://localhost:5601/app/trace-analytics-dashboards#/services",
                    style={'justify': 'center'})
         ], style={'horizontalAlign': 'middle','verticalAlign': 'middle'}),
     html.Div(style={'padding': 25}),
@@ -251,7 +251,7 @@ def load_main_screen():
 
 def get_ref_link(operation, status, trace_id):
     return [html.Div([html.A("{} {}. {}".format(operation, status, trace_id),
-                  href="http://localhost:5601/app/opendistro-trace-analytics#/traces/{}".format(trace_id))])]
+                  href="http://localhost:5601/app/trace-analytics-dashboards#/traces/{}".format(trace_id))])]
 
 def get_hexadecimal_trace_id(trace_id: int) -> str:
     return bytes(bytearray.fromhex("{:032x}".format(trace_id))).hex()
