@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "parent-join-client",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "parent-join-client-1.0.0-alpha1.jar",
+          "url": "parent-join-client-1.0.0-alpha1.jar",
+          "size": 87353,
+          "sha512": "a5fa7f2ce1a138e51385f5f471792505b1567c1efd0cef69eb36295e35ffeb13ea29c90fd42c596759f295f7ae6b698a7b4730c6b75cda055a8eee9e09ce36ba",
+          "sha256": "ca839dfde3e17199c0ce969915fd8ad18124dd272696e265d52b47ff21c489ec",
+          "sha1": "b51f8f305f25bc55651c6cbec166223fa63ad863",
+          "md5": "f58be046f20518ab34d0c3ff49fd9464"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "parent-join-client-1.0.0-alpha1.jar",
+          "url": "parent-join-client-1.0.0-alpha1.jar",
+          "size": 87353,
+          "sha512": "a5fa7f2ce1a138e51385f5f471792505b1567c1efd0cef69eb36295e35ffeb13ea29c90fd42c596759f295f7ae6b698a7b4730c6b75cda055a8eee9e09ce36ba",
+          "sha256": "ca839dfde3e17199c0ce969915fd8ad18124dd272696e265d52b47ff21c489ec",
+          "sha1": "b51f8f305f25bc55651c6cbec166223fa63ad863",
+          "md5": "f58be046f20518ab34d0c3ff49fd9464"
+        }
+      ]
+    }
+  ]
+}

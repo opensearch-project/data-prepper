@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "percolator-client",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "5khnq5icy5dr5l756fhku3yqpm"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "percolator-client-1.0.0-alpha2.jar",
+          "url": "percolator-client-1.0.0-alpha2.jar",
+          "size": 77577,
+          "sha512": "3709ffd30e5c81c59f5b5b87471cac36072aa44393a4c238dd13ecdebd824ab5ae1b10b8f5493d4ddc3e69e67839167ba563058227adf34680837390096aa8e1",
+          "sha256": "2d4e7873813a54fc765a75c4ddd30af3106382d54b6f9c3fdae88b93c00a9cac",
+          "sha1": "0a8fcdd2281078c29671dbe9b4fb0dce8016b0fa",
+          "md5": "90d5f6c366c1418b807abe354c9950e8"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "percolator-client-1.0.0-alpha2.jar",
+          "url": "percolator-client-1.0.0-alpha2.jar",
+          "size": 77577,
+          "sha512": "3709ffd30e5c81c59f5b5b87471cac36072aa44393a4c238dd13ecdebd824ab5ae1b10b8f5493d4ddc3e69e67839167ba563058227adf34680837390096aa8e1",
+          "sha256": "2d4e7873813a54fc765a75c4ddd30af3106382d54b6f9c3fdae88b93c00a9cac",
+          "sha1": "0a8fcdd2281078c29671dbe9b4fb0dce8016b0fa",
+          "md5": "90d5f6c366c1418b807abe354c9950e8"
+        }
+      ]
+    }
+  ]
+}

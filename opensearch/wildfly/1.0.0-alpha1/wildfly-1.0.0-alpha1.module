@@ -1,0 +1,36 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "wildfly",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "master",
+      "attributes": {
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "wildfly-1.0.0-alpha1.war",
+          "url": "wildfly-1.0.0-alpha1.war",
+          "size": 28965485,
+          "sha512": "f7c91018368c9d56fe3c3947ca4efc35b8fca2d579109aa9dd287f61235dbd68075c24f89df1169cd113df4ee0632562ee9f314d829384ee82f6cfb08cef2c19",
+          "sha256": "36d7e56426c8933e90d6e0ab8f2c2c59569f1fe57e18d3c36d50ea9fe896ddff",
+          "sha1": "30741ce1789e7c22141c92f210d8431370b98877",
+          "md5": "b2be0ed78f09389986c923e6377da05d"
+        }
+      ]
+    }
+  ]
+}

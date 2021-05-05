@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "mapper-extras-client",
+    "version": "1.0.0-beta1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "63e7upzp3nclfogys7cwpkr4wy"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "mapper-extras-client-1.0.0-beta1.jar",
+          "url": "mapper-extras-client-1.0.0-beta1.jar",
+          "size": 84244,
+          "sha512": "68e0a40cf822bfa753c948fbd8e6cedc28ff2064481b4510d3dfc6f0a6b6cde902158949df7d14ef4686b008edcb8808621a678eef3179ff46443d57092ed99d",
+          "sha256": "66f4416f72b224aad4bb975ae4bdeb384230eec82a350185b550d2faafcddc68",
+          "sha1": "6241f65921cd419862ca7033e5c312aae3b2a3d5",
+          "md5": "7bbc6361d175972d5d2d4122fe83a50b"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "mapper-extras-client-1.0.0-beta1.jar",
+          "url": "mapper-extras-client-1.0.0-beta1.jar",
+          "size": 84244,
+          "sha512": "68e0a40cf822bfa753c948fbd8e6cedc28ff2064481b4510d3dfc6f0a6b6cde902158949df7d14ef4686b008edcb8808621a678eef3179ff46443d57092ed99d",
+          "sha256": "66f4416f72b224aad4bb975ae4bdeb384230eec82a350185b550d2faafcddc68",
+          "sha1": "6241f65921cd419862ca7033e5c312aae3b2a3d5",
+          "md5": "7bbc6361d175972d5d2d4122fe83a50b"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,261 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "transport-nio-client",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-nio",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        },
+        {
+          "group": "io.netty",
+          "module": "netty-buffer",
+          "version": {
+            "requires": "4.1.49.Final"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "io.netty",
+          "module": "netty-codec",
+          "version": {
+            "requires": "4.1.49.Final"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "io.netty",
+          "module": "netty-codec-http",
+          "version": {
+            "requires": "4.1.49.Final"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "io.netty",
+          "module": "netty-common",
+          "version": {
+            "requires": "4.1.49.Final"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "io.netty",
+          "module": "netty-handler",
+          "version": {
+            "requires": "4.1.49.Final"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "io.netty",
+          "module": "netty-resolver",
+          "version": {
+            "requires": "4.1.49.Final"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "io.netty",
+          "module": "netty-transport",
+          "version": {
+            "requires": "4.1.49.Final"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "transport-nio-client-1.0.0-alpha1.jar",
+          "url": "transport-nio-client-1.0.0-alpha1.jar",
+          "size": 62220,
+          "sha512": "c57a673c7c855df0f59244a5d216ead502eb516f061578749655d606d7c08bdef30597ce7d9d923d06f3c4fad01e51a9bff926babee5e057e53841f0471a5468",
+          "sha256": "29e938f02064ece167bffba1201918fe96eb2d6dff67fcb2b021793837c45d2a",
+          "sha1": "894e39e869f0df153a0294cdc87d9ec4fc4b2e2b",
+          "md5": "36bc264bc1e5a1dc9107d32f0df04923"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-nio",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        },
+        {
+          "group": "io.netty",
+          "module": "netty-buffer",
+          "version": {
+            "requires": "4.1.49.Final"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "io.netty",
+          "module": "netty-codec",
+          "version": {
+            "requires": "4.1.49.Final"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "io.netty",
+          "module": "netty-codec-http",
+          "version": {
+            "requires": "4.1.49.Final"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "io.netty",
+          "module": "netty-common",
+          "version": {
+            "requires": "4.1.49.Final"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "io.netty",
+          "module": "netty-handler",
+          "version": {
+            "requires": "4.1.49.Final"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "io.netty",
+          "module": "netty-resolver",
+          "version": {
+            "requires": "4.1.49.Final"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "io.netty",
+          "module": "netty-transport",
+          "version": {
+            "requires": "4.1.49.Final"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "transport-nio-client-1.0.0-alpha1.jar",
+          "url": "transport-nio-client-1.0.0-alpha1.jar",
+          "size": 62220,
+          "sha512": "c57a673c7c855df0f59244a5d216ead502eb516f061578749655d606d7c08bdef30597ce7d9d923d06f3c4fad01e51a9bff926babee5e057e53841f0471a5468",
+          "sha256": "29e938f02064ece167bffba1201918fe96eb2d6dff67fcb2b021793837c45d2a",
+          "sha1": "894e39e869f0df153a0294cdc87d9ec4fc4b2e2b",
+          "md5": "36bc264bc1e5a1dc9107d32f0df04923"
+        }
+      ]
+    }
+  ]
+}

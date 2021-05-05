@@ -1,0 +1,91 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "analysis-kuromoji",
+    "version": "1.0.0-beta1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "63e7upzp3nclfogys7cwpkr4wy"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-analyzers-kuromoji",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "analysis-kuromoji-1.0.0-beta1.jar",
+          "url": "analysis-kuromoji-1.0.0-beta1.jar",
+          "size": 17871,
+          "sha512": "e4692d052af7d875ac660a9626575d1551dd33cbde50609160ce1ec4603c8497f4033f37d1c11e50045e38e64baad61d0be6abc2931513c86a21b1e98650414b",
+          "sha256": "ec8bd7b04e4c333da5e21c171f0fac0e7636e755d5318713221cfeb4b38da636",
+          "sha1": "86027b827504be72a491792bb3553e8816d66bae",
+          "md5": "3d5368ba8dfb9b127852c320e6eaafd1"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-analyzers-kuromoji",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "analysis-kuromoji-1.0.0-beta1.jar",
+          "url": "analysis-kuromoji-1.0.0-beta1.jar",
+          "size": 17871,
+          "sha512": "e4692d052af7d875ac660a9626575d1551dd33cbde50609160ce1ec4603c8497f4033f37d1c11e50045e38e64baad61d0be6abc2931513c86a21b1e98650414b",
+          "sha256": "ec8bd7b04e4c333da5e21c171f0fac0e7636e755d5318713221cfeb4b38da636",
+          "sha1": "86027b827504be72a491792bb3553e8816d66bae",
+          "md5": "3d5368ba8dfb9b127852c320e6eaafd1"
+        }
+      ]
+    }
+  ]
+}

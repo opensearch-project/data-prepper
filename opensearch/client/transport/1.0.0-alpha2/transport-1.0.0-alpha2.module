@@ -1,0 +1,163 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.client",
+    "module": "transport",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "5khnq5icy5dr5l756fhku3yqpm"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "transport-netty4-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "reindex-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "lang-mustache-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "percolator-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "parent-join-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "rank-eval-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "transport-1.0.0-alpha2.jar",
+          "url": "transport-1.0.0-alpha2.jar",
+          "size": 7602,
+          "sha512": "54e24621805fd6d52b8983d7bd463344884edacff5f0c472dd6cfe0d4303c8d6e619a7585991428ff67f1b245b34b1872ed6966c90ef9a7d2bda1cc726b2a902",
+          "sha256": "492d03d0c1e78d8e3a5c4bf38850f9560dd81d90f10d8394068349958bbbcbd7",
+          "sha1": "db33eec0081ece5c42c5b0f45051478f06ea0b2a",
+          "md5": "e803bfd84d1cca35bd0d9ee05ae9c8f2"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "transport-netty4-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "reindex-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "lang-mustache-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "percolator-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "parent-join-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "rank-eval-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "transport-1.0.0-alpha2.jar",
+          "url": "transport-1.0.0-alpha2.jar",
+          "size": 7602,
+          "sha512": "54e24621805fd6d52b8983d7bd463344884edacff5f0c472dd6cfe0d4303c8d6e619a7585991428ff67f1b245b34b1872ed6966c90ef9a7d2bda1cc726b2a902",
+          "sha256": "492d03d0c1e78d8e3a5c4bf38850f9560dd81d90f10d8394068349958bbbcbd7",
+          "sha1": "db33eec0081ece5c42c5b0f45051478f06ea0b2a",
+          "md5": "e803bfd84d1cca35bd0d9ee05ae9c8f2"
+        }
+      ]
+    }
+  ]
+}

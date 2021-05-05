@@ -1,0 +1,733 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "opensearch",
+    "version": "1.0.0-beta1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "63e7upzp3nclfogys7cwpkr4wy"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-core",
+          "version": {
+            "requires": "1.0.0-beta1"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-secure-sm",
+          "version": {
+            "requires": "1.0.0-beta1"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-x-content",
+          "version": {
+            "requires": "1.0.0-beta1"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-geo",
+          "version": {
+            "requires": "1.0.0-beta1"
+          }
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-core",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-analyzers-common",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-backward-codecs",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-grouping",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-highlighter",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-join",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-memory",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-misc",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-queries",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-queryparser",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-sandbox",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-spatial-extras",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-spatial3d",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-suggest",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-cli",
+          "version": {
+            "requires": "1.0.0-beta1"
+          }
+        },
+        {
+          "group": "com.carrotsearch",
+          "module": "hppc",
+          "version": {
+            "requires": "0.8.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "joda-time",
+          "module": "joda-time",
+          "version": {
+            "requires": "2.10.4"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.tdunning",
+          "module": "t-digest",
+          "version": {
+            "requires": "3.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.hdrhistogram",
+          "module": "HdrHistogram",
+          "version": {
+            "requires": "2.1.9"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.locationtech.spatial4j",
+          "module": "spatial4j",
+          "version": {
+            "requires": "0.7"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.locationtech.jts",
+          "module": "jts-core",
+          "version": {
+            "requires": "1.15.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.logging.log4j",
+          "module": "log4j-api",
+          "version": {
+            "requires": "2.11.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.logging.log4j",
+          "module": "log4j-core",
+          "version": {
+            "requires": "2.11.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.elasticsearch",
+          "module": "jna",
+          "version": {
+            "requires": "5.5.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-1.0.0-beta1.jar",
+          "url": "opensearch-1.0.0-beta1.jar",
+          "size": 13041475,
+          "sha512": "da3f733a4a3ebac7ea32e2303ffb76575d6d9eddeca3af48d84ccf1f527dfe571190c40f5fff92595daa4ed75a57f50e6c89244ad0decf7acd8c0b015a5dd76e",
+          "sha256": "d46894ce8dedf2027d4c850a59ed1ab5103947e310cc10e86322c4f5909b9a28",
+          "sha1": "8781d6c3277a9afac2dad3f0bc83433ae105a42d",
+          "md5": "74cdabc4c2e2404f9a61667db1f3a3d9"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-core",
+          "version": {
+            "requires": "1.0.0-beta1"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-secure-sm",
+          "version": {
+            "requires": "1.0.0-beta1"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-x-content",
+          "version": {
+            "requires": "1.0.0-beta1"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-geo",
+          "version": {
+            "requires": "1.0.0-beta1"
+          }
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-core",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-analyzers-common",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-backward-codecs",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-grouping",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-highlighter",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-join",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-memory",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-misc",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-queries",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-queryparser",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-sandbox",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-spatial-extras",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-spatial3d",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-suggest",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-cli",
+          "version": {
+            "requires": "1.0.0-beta1"
+          }
+        },
+        {
+          "group": "com.carrotsearch",
+          "module": "hppc",
+          "version": {
+            "requires": "0.8.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "joda-time",
+          "module": "joda-time",
+          "version": {
+            "requires": "2.10.4"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.tdunning",
+          "module": "t-digest",
+          "version": {
+            "requires": "3.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.hdrhistogram",
+          "module": "HdrHistogram",
+          "version": {
+            "requires": "2.1.9"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.locationtech.spatial4j",
+          "module": "spatial4j",
+          "version": {
+            "requires": "0.7"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.locationtech.jts",
+          "module": "jts-core",
+          "version": {
+            "requires": "1.15.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.logging.log4j",
+          "module": "log4j-api",
+          "version": {
+            "requires": "2.11.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.logging.log4j",
+          "module": "log4j-core",
+          "version": {
+            "requires": "2.11.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.elasticsearch",
+          "module": "jna",
+          "version": {
+            "requires": "5.5.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-1.0.0-beta1.jar",
+          "url": "opensearch-1.0.0-beta1.jar",
+          "size": 13041475,
+          "sha512": "da3f733a4a3ebac7ea32e2303ffb76575d6d9eddeca3af48d84ccf1f527dfe571190c40f5fff92595daa4ed75a57f50e6c89244ad0decf7acd8c0b015a5dd76e",
+          "sha256": "d46894ce8dedf2027d4c850a59ed1ab5103947e310cc10e86322c4f5909b9a28",
+          "sha1": "8781d6c3277a9afac2dad3f0bc83433ae105a42d",
+          "md5": "74cdabc4c2e2404f9a61667db1f3a3d9"
+        }
+      ]
+    }
+  ]
+}

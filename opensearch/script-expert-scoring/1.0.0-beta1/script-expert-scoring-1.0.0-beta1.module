@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "script-expert-scoring",
+    "version": "1.0.0-beta1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "63e7upzp3nclfogys7cwpkr4wy"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "script-expert-scoring-1.0.0-beta1.jar",
+          "url": "script-expert-scoring-1.0.0-beta1.jar",
+          "size": 12658,
+          "sha512": "ffc130264ef9ed9315de598bcff01da32c37b98e4f47f87d806f4099260ca6f4823b0862537064c064cc9a6e59af89dbea2bd8d6b77fcb1efc022695e07fdd4f",
+          "sha256": "f561a153ad49f02ccf451f3e9dca581dec4460593090d91f6d402646f7fd294e",
+          "sha1": "f6e1efcdaa72489af3c1cc5f99d0c04d34861e75",
+          "md5": "77034826d56b3a80671f1e5a4f78c131"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "script-expert-scoring-1.0.0-beta1.jar",
+          "url": "script-expert-scoring-1.0.0-beta1.jar",
+          "size": 12658,
+          "sha512": "ffc130264ef9ed9315de598bcff01da32c37b98e4f47f87d806f4099260ca6f4823b0862537064c064cc9a6e59af89dbea2bd8d6b77fcb1efc022695e07fdd4f",
+          "sha256": "f561a153ad49f02ccf451f3e9dca581dec4460593090d91f6d402646f7fd294e",
+          "sha1": "f6e1efcdaa72489af3c1cc5f99d0c04d34861e75",
+          "md5": "77034826d56b3a80671f1e5a4f78c131"
+        }
+      ]
+    }
+  ]
+}

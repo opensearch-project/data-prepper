@@ -1,0 +1,91 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "analysis-stempel",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-analyzers-stempel",
+          "version": {
+            "requires": "8.7.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "analysis-stempel-1.0.0-alpha1.jar",
+          "url": "analysis-stempel-1.0.0-alpha1.jar",
+          "size": 10132,
+          "sha512": "dba73c989ffcd2e29ed244c934c9e8b03c648102ac7be6028b77b8849ae6308beb0bc8794b931dc5783f1aa5a4be5ae4dc11cbc26308b0e7ce86205540060d83",
+          "sha256": "c565cc9fdd87e762c64631fa7f4b93c5daf9f1c770e9af7c4d6aafbfca652caf",
+          "sha1": "605bf6bed7c64e0d9ab557dbd8c7ce8fc79332ab",
+          "md5": "90ed5aa344e17bd0579b0f87704e9224"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-analyzers-stempel",
+          "version": {
+            "requires": "8.7.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "analysis-stempel-1.0.0-alpha1.jar",
+          "url": "analysis-stempel-1.0.0-alpha1.jar",
+          "size": 10132,
+          "sha512": "dba73c989ffcd2e29ed244c934c9e8b03c648102ac7be6028b77b8849ae6308beb0bc8794b931dc5783f1aa5a4be5ae4dc11cbc26308b0e7ce86205540060d83",
+          "sha256": "c565cc9fdd87e762c64631fa7f4b93c5daf9f1c770e9af7c4d6aafbfca652caf",
+          "sha1": "605bf6bed7c64e0d9ab557dbd8c7ce8fc79332ab",
+          "md5": "90ed5aa344e17bd0579b0f87704e9224"
+        }
+      ]
+    }
+  ]
+}

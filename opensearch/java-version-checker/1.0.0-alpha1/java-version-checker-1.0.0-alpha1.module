@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "java-version-checker",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 7,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "java-version-checker-1.0.0-alpha1.jar",
+          "url": "java-version-checker-1.0.0-alpha1.jar",
+          "size": 8786,
+          "sha512": "822d0a10533f16dc56af1b7a38c102d75431f613fe8df4aac15ae1f7c93358acc798e58d16b570301525ad6c030b280235f17bc396118fc9c6ca49ba67bf82ce",
+          "sha256": "591761562db1ee05cb1bd7349b665c722c617267570cc2c3d1675b189db80d80",
+          "sha1": "1ee7041a3256ff726bb89b9799b9d78652098ab0",
+          "md5": "a6375b09140f5ef49a6370b8a6a7430e"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 7,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "java-version-checker-1.0.0-alpha1.jar",
+          "url": "java-version-checker-1.0.0-alpha1.jar",
+          "size": 8786,
+          "sha512": "822d0a10533f16dc56af1b7a38c102d75431f613fe8df4aac15ae1f7c93358acc798e58d16b570301525ad6c030b280235f17bc396118fc9c6ca49ba67bf82ce",
+          "sha256": "591761562db1ee05cb1bd7349b665c722c617267570cc2c3d1675b189db80d80",
+          "sha1": "1ee7041a3256ff726bb89b9799b9d78652098ab0",
+          "md5": "a6375b09140f5ef49a6370b8a6a7430e"
+        }
+      ]
+    }
+  ]
+}

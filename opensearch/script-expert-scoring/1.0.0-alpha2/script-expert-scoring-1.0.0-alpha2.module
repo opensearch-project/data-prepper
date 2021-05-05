@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "script-expert-scoring",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "5khnq5icy5dr5l756fhku3yqpm"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "script-expert-scoring-1.0.0-alpha2.jar",
+          "url": "script-expert-scoring-1.0.0-alpha2.jar",
+          "size": 12657,
+          "sha512": "e2b7a19147d37cf16de7d0746368004046b5bfc59a7255560579a8cc835efa0d44ceb13c87dff316f445e96e884a268901f85f62562d270acf3664c726b3283c",
+          "sha256": "ae298eaa71d6b554cd22ba5ba40ec998ea30ca5802c8b2f91b2f9e96f52f56a9",
+          "sha1": "44dca631210431a48fb48126c2990fab7bd5014b",
+          "md5": "d4e5a5876faa29a6df3d8a85072eafbe"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "script-expert-scoring-1.0.0-alpha2.jar",
+          "url": "script-expert-scoring-1.0.0-alpha2.jar",
+          "size": 12657,
+          "sha512": "e2b7a19147d37cf16de7d0746368004046b5bfc59a7255560579a8cc835efa0d44ceb13c87dff316f445e96e884a268901f85f62562d270acf3664c726b3283c",
+          "sha256": "ae298eaa71d6b554cd22ba5ba40ec998ea30ca5802c8b2f91b2f9e96f52f56a9",
+          "sha1": "44dca631210431a48fb48126c2990fab7bd5014b",
+          "md5": "d4e5a5876faa29a6df3d8a85072eafbe"
+        }
+      ]
+    }
+  ]
+}

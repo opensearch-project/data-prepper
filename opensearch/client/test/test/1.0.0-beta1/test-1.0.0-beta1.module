@@ -1,0 +1,169 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.client.test",
+    "module": "test",
+    "version": "1.0.0-beta1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "63e7upzp3nclfogys7cwpkr4wy"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.apache.httpcomponents",
+          "module": "httpcore",
+          "version": {
+            "requires": "4.4.12"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.carrotsearch.randomizedtesting",
+          "module": "randomizedtesting-runner",
+          "version": {
+            "requires": "2.7.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "junit",
+          "module": "junit",
+          "version": {
+            "requires": "4.12"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.hamcrest",
+          "module": "hamcrest",
+          "version": {
+            "requires": "2.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "test-1.0.0-beta1.jar",
+          "url": "test-1.0.0-beta1.jar",
+          "size": 9534,
+          "sha512": "677fb44bb871ed1b1f565d12660e7e5ead121aac1cc905907ab7d73e8aee607b7a3cd3c85da4a88a708ca606d2a4f24294f5afaa2cc9923e9ed7518a4ca528ae",
+          "sha256": "d66a09c26fad480593c9257b50b120b2595136dfdfc9edfdd4c678bcd9b6014a",
+          "sha1": "fd7deb7ba0540f008ae028745d6b7fa098cf5693",
+          "md5": "6c7d992eb874ae57bc59a57b74bec258"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.apache.httpcomponents",
+          "module": "httpcore",
+          "version": {
+            "requires": "4.4.12"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.carrotsearch.randomizedtesting",
+          "module": "randomizedtesting-runner",
+          "version": {
+            "requires": "2.7.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "junit",
+          "module": "junit",
+          "version": {
+            "requires": "4.12"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.hamcrest",
+          "module": "hamcrest",
+          "version": {
+            "requires": "2.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "test-1.0.0-beta1.jar",
+          "url": "test-1.0.0-beta1.jar",
+          "size": 9534,
+          "sha512": "677fb44bb871ed1b1f565d12660e7e5ead121aac1cc905907ab7d73e8aee607b7a3cd3c85da4a88a708ca606d2a4f24294f5afaa2cc9923e9ed7518a4ca528ae",
+          "sha256": "d66a09c26fad480593c9257b50b120b2595136dfdfc9edfdd4c678bcd9b6014a",
+          "sha1": "fd7deb7ba0540f008ae028745d6b7fa098cf5693",
+          "md5": "6c7d992eb874ae57bc59a57b74bec258"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "painless-whitelist",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "painless-whitelist-1.0.0-alpha1.jar",
+          "url": "painless-whitelist-1.0.0-alpha1.jar",
+          "size": 12481,
+          "sha512": "5bb1ec31cdff330b5cb231706c8444624c6468f4916099307b44cdd23a0381598c82b618b5de5b35dcaa7ab4ee2702da5176f85f6b792f13f60351e34a3dc869",
+          "sha256": "a95f5e9ebee1716499efb8c75f8778d33f36aa4be4180bdff43fe070598806da",
+          "sha1": "f30392b95589978fcf4c76b99f6285dd9ad4607c",
+          "md5": "b0b7b3ae99a0f29fdf356a76f456d30e"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "painless-whitelist-1.0.0-alpha1.jar",
+          "url": "painless-whitelist-1.0.0-alpha1.jar",
+          "size": 12481,
+          "sha512": "5bb1ec31cdff330b5cb231706c8444624c6468f4916099307b44cdd23a0381598c82b618b5de5b35dcaa7ab4ee2702da5176f85f6b792f13f60351e34a3dc869",
+          "sha256": "a95f5e9ebee1716499efb8c75f8778d33f36aa4be4180bdff43fe070598806da",
+          "sha1": "f30392b95589978fcf4c76b99f6285dd9ad4607c",
+          "md5": "b0b7b3ae99a0f29fdf356a76f456d30e"
+        }
+      ]
+    }
+  ]
+}

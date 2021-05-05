@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "opensearch-launchers",
+    "version": "1.0.0-beta1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "63e7upzp3nclfogys7cwpkr4wy"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "opensearch-launchers-1.0.0-beta1.jar",
+          "url": "opensearch-launchers-1.0.0-beta1.jar",
+          "size": 21112,
+          "sha512": "8b8a41f92d33efed0b202478fe3d0ae40ba2c74a9a233296c11f692db7debe25df4bf320e64dc3bbdd7fce421e4339c4f189ca8728ecdbc6d1a3e95312359d61",
+          "sha256": "6c776d7afca4287fa746cbc965d16fdeb2f21145e60fa1e508ad54bd706f6035",
+          "sha1": "ed5285cbf06f1c7070c25ccebe91fc6d93519a7b",
+          "md5": "1652489a40167688e9b8f597c497d451"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "opensearch-launchers-1.0.0-beta1.jar",
+          "url": "opensearch-launchers-1.0.0-beta1.jar",
+          "size": 21112,
+          "sha512": "8b8a41f92d33efed0b202478fe3d0ae40ba2c74a9a233296c11f692db7debe25df4bf320e64dc3bbdd7fce421e4339c4f189ca8728ecdbc6d1a3e95312359d61",
+          "sha256": "6c776d7afca4287fa746cbc965d16fdeb2f21145e60fa1e508ad54bd706f6035",
+          "sha1": "ed5285cbf06f1c7070c25ccebe91fc6d93519a7b",
+          "md5": "1652489a40167688e9b8f597c497d451"
+        }
+      ]
+    }
+  ]
+}

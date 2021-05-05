@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.test",
+    "module": "test-delayed-aggs",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "5khnq5icy5dr5l756fhku3yqpm"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "test-delayed-aggs-1.0.0-alpha2.jar",
+          "url": "test-delayed-aggs-1.0.0-alpha2.jar",
+          "size": 10691,
+          "sha512": "b6b366175a3f585769d69580a46fe7de759a56674d1d5b208fbfb62351820b382d33da5da54dcf1c35e514e3183a5c0588b6e56a73e67b39645b34ef8179b4b7",
+          "sha256": "31011448855b5513bb3a0aba56396528c96c376855ffb2d82a94b10e06b4382c",
+          "sha1": "c65f3e0eca3ecea786ed886f86b515f25d8df948",
+          "md5": "8e6192cd31f1248c849f14e5c336b28d"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "test-delayed-aggs-1.0.0-alpha2.jar",
+          "url": "test-delayed-aggs-1.0.0-alpha2.jar",
+          "size": 10691,
+          "sha512": "b6b366175a3f585769d69580a46fe7de759a56674d1d5b208fbfb62351820b382d33da5da54dcf1c35e514e3183a5c0588b6e56a73e67b39645b34ef8179b4b7",
+          "sha256": "31011448855b5513bb3a0aba56396528c96c376855ffb2d82a94b10e06b4382c",
+          "sha1": "c65f3e0eca3ecea786ed886f86b515f25d8df948",
+          "md5": "8e6192cd31f1248c849f14e5c336b28d"
+        }
+      ]
+    }
+  ]
+}

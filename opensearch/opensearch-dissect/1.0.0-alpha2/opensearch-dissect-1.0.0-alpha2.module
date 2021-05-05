@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "opensearch-dissect",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "5khnq5icy5dr5l756fhku3yqpm"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "opensearch-dissect-1.0.0-alpha2.jar",
+          "url": "opensearch-dissect-1.0.0-alpha2.jar",
+          "size": 24583,
+          "sha512": "0208a41be7b1af312bd9093cc5f4be2a43a2eb0e79469f577328c35f4e31e71a154227ca7277c8bbca1be76af96932fedfef1bd71c8702f27ac8c7686e42f14e",
+          "sha256": "ed64141b1d4d692960e2ab285c053f71d887e805f2e272ddf37027d0efa39b22",
+          "sha1": "43437849623b1bebfa6482683984b2bd37da2503",
+          "md5": "62f53ecb064606e556b2ebd2f56137bc"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "opensearch-dissect-1.0.0-alpha2.jar",
+          "url": "opensearch-dissect-1.0.0-alpha2.jar",
+          "size": 24583,
+          "sha512": "0208a41be7b1af312bd9093cc5f4be2a43a2eb0e79469f577328c35f4e31e71a154227ca7277c8bbca1be76af96932fedfef1bd71c8702f27ac8c7686e42f14e",
+          "sha256": "ed64141b1d4d692960e2ab285c053f71d887e805f2e272ddf37027d0efa39b22",
+          "sha1": "43437849623b1bebfa6482683984b2bd37da2503",
+          "md5": "62f53ecb064606e556b2ebd2f56137bc"
+        }
+      ]
+    }
+  ]
+}

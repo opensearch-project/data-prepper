@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "java-version-checker",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "5khnq5icy5dr5l756fhku3yqpm"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 7,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "java-version-checker-1.0.0-alpha2.jar",
+          "url": "java-version-checker-1.0.0-alpha2.jar",
+          "size": 8784,
+          "sha512": "8c223868a9840fb94a35b927e50e02ddccc9e4303788d7250622b36b3191fdcbd83c4508454723746bd932141736f63f9ea55cc33c96ef1e114d262046d38e82",
+          "sha256": "1a3ddff4dde88280f301826b7354786dae25e1225f67681dc58fba9d767d47ff",
+          "sha1": "28745e76c75174319be417fc3faa2b8f4d65d584",
+          "md5": "efa0e6784f48440c7254ada1f68a6ec4"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 7,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "java-version-checker-1.0.0-alpha2.jar",
+          "url": "java-version-checker-1.0.0-alpha2.jar",
+          "size": 8784,
+          "sha512": "8c223868a9840fb94a35b927e50e02ddccc9e4303788d7250622b36b3191fdcbd83c4508454723746bd932141736f63f9ea55cc33c96ef1e114d262046d38e82",
+          "sha256": "1a3ddff4dde88280f301826b7354786dae25e1225f67681dc58fba9d767d47ff",
+          "sha1": "28745e76c75174319be417fc3faa2b8f4d65d584",
+          "md5": "efa0e6784f48440c7254ada1f68a6ec4"
+        }
+      ]
+    }
+  ]
+}

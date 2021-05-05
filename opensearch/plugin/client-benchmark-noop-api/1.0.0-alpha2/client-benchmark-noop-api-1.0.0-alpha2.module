@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "client-benchmark-noop-api",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "5khnq5icy5dr5l756fhku3yqpm"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "client-benchmark-noop-api-1.0.0-alpha2.jar",
+          "url": "client-benchmark-noop-api-1.0.0-alpha2.jar",
+          "size": 18221,
+          "sha512": "86400e50cbf097188ac21683d35fbe28a288053a2e479af41475f6db3e8c720b3b01d8ab62b1e2605d39a7d3de5f6c5e804b5b1b1e5bdd4f9139ad65ac0a7ecd",
+          "sha256": "f6613179025a673b744d717a490d1fee37df282b5a0a90ce13ebfd23c62fc8cf",
+          "sha1": "f9e44b1cb315d848419d71c796b9dc9b53b9ccf3",
+          "md5": "b66a473144738c742c164c9d74962583"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "client-benchmark-noop-api-1.0.0-alpha2.jar",
+          "url": "client-benchmark-noop-api-1.0.0-alpha2.jar",
+          "size": 18221,
+          "sha512": "86400e50cbf097188ac21683d35fbe28a288053a2e479af41475f6db3e8c720b3b01d8ab62b1e2605d39a7d3de5f6c5e804b5b1b1e5bdd4f9139ad65ac0a7ecd",
+          "sha256": "f6613179025a673b744d717a490d1fee37df282b5a0a90ce13ebfd23c62fc8cf",
+          "sha1": "f9e44b1cb315d848419d71c796b9dc9b53b9ccf3",
+          "md5": "b66a473144738c742c164c9d74962583"
+        }
+      ]
+    }
+  ]
+}

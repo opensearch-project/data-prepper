@@ -1,0 +1,79 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "opensearch-scripting-painless-spi",
+    "version": "1.0.0-beta1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "63e7upzp3nclfogys7cwpkr4wy"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch",
+          "version": {
+            "requires": "1.0.0-beta1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-scripting-painless-spi-1.0.0-beta1.jar",
+          "url": "opensearch-scripting-painless-spi-1.0.0-beta1.jar",
+          "size": 29659,
+          "sha512": "24fe9cab02e6966d1e55bbf9fce2200999d7a7a7a7c6b642ab88d4ceab8c31b3a5f01d0ad796007d607bcf906abc0b8521cea2cb640463f0f7a8322a7d056c40",
+          "sha256": "35975f53084269139f50454a2853e4e3378f0335cb6b2d565e1833494c503851",
+          "sha1": "6c700d0041927f35e8eb7962ac5c749965318d8a",
+          "md5": "f17c0fd62e85ec1df2dfbe905b966dba"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch",
+          "version": {
+            "requires": "1.0.0-beta1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-scripting-painless-spi-1.0.0-beta1.jar",
+          "url": "opensearch-scripting-painless-spi-1.0.0-beta1.jar",
+          "size": 29659,
+          "sha512": "24fe9cab02e6966d1e55bbf9fce2200999d7a7a7a7c6b642ab88d4ceab8c31b3a5f01d0ad796007d607bcf906abc0b8521cea2cb640463f0f7a8322a7d056c40",
+          "sha256": "35975f53084269139f50454a2853e4e3378f0335cb6b2d565e1833494c503851",
+          "sha1": "6c700d0041927f35e8eb7962ac5c749965318d8a",
+          "md5": "f17c0fd62e85ec1df2dfbe905b966dba"
+        }
+      ]
+    }
+  ]
+}

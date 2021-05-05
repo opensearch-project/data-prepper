@@ -1,0 +1,209 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.client",
+    "module": "opensearch-rest-client-sniffer",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch.client",
+          "module": "opensearch-rest-client",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        },
+        {
+          "group": "org.apache.httpcomponents",
+          "module": "httpclient",
+          "version": {
+            "requires": "4.5.10"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.httpcomponents",
+          "module": "httpcore",
+          "version": {
+            "requires": "4.4.12"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "commons-codec",
+          "module": "commons-codec",
+          "version": {
+            "requires": "1.11"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "commons-logging",
+          "module": "commons-logging",
+          "version": {
+            "requires": "1.1.3"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.fasterxml.jackson.core",
+          "module": "jackson-core",
+          "version": {
+            "requires": "2.10.4"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-rest-client-sniffer-1.0.0-alpha1.jar",
+          "url": "opensearch-rest-client-sniffer-1.0.0-alpha1.jar",
+          "size": 25315,
+          "sha512": "9c8c3c8d86f27a4911f41d739dbc160d94112190dbe14185f289aeb29d52665966010a304aee3218182b4725be597c1396e31d518b015d056287090cafc597e1",
+          "sha256": "f6edc1cd00f7d3d83452a6e792446cab785db60ff7e7a0620edc28dc3750e981",
+          "sha1": "acf686e181fa666e616ef6893bc6c5773605e558",
+          "md5": "9341590c2aad4a255281cf6e19f98ef7"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch.client",
+          "module": "opensearch-rest-client",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        },
+        {
+          "group": "org.apache.httpcomponents",
+          "module": "httpclient",
+          "version": {
+            "requires": "4.5.10"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.httpcomponents",
+          "module": "httpcore",
+          "version": {
+            "requires": "4.4.12"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "commons-codec",
+          "module": "commons-codec",
+          "version": {
+            "requires": "1.11"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "commons-logging",
+          "module": "commons-logging",
+          "version": {
+            "requires": "1.1.3"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.fasterxml.jackson.core",
+          "module": "jackson-core",
+          "version": {
+            "requires": "2.10.4"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-rest-client-sniffer-1.0.0-alpha1.jar",
+          "url": "opensearch-rest-client-sniffer-1.0.0-alpha1.jar",
+          "size": 25315,
+          "sha512": "9c8c3c8d86f27a4911f41d739dbc160d94112190dbe14185f289aeb29d52665966010a304aee3218182b4725be597c1396e31d518b015d056287090cafc597e1",
+          "sha256": "f6edc1cd00f7d3d83452a6e792446cab785db60ff7e7a0620edc28dc3750e981",
+          "sha1": "acf686e181fa666e616ef6893bc6c5773605e558",
+          "md5": "9341590c2aad4a255281cf6e19f98ef7"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "java-version-checker",
+    "version": "1.0.0-beta1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "63e7upzp3nclfogys7cwpkr4wy"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 7,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "java-version-checker-1.0.0-beta1.jar",
+          "url": "java-version-checker-1.0.0-beta1.jar",
+          "size": 8782,
+          "sha512": "d81bcf3b75e815506f1339f5277f3625263c87eaf46581eb5ed3c8e3d5cb7134680e4de098ded20ac2b67b5a47d859d4474b5835b57a81d13fe0182ab26772bc",
+          "sha256": "a864bb3b10c3e52e5dcd167192d13697d8d2aa2632f52c84260fbd8f27e9ede1",
+          "sha1": "0746657da16a8b356c966a24bc81bcb35c87e3c5",
+          "md5": "f01ce314b9932412c761b518a270b063"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 7,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "java-version-checker-1.0.0-beta1.jar",
+          "url": "java-version-checker-1.0.0-beta1.jar",
+          "size": 8782,
+          "sha512": "d81bcf3b75e815506f1339f5277f3625263c87eaf46581eb5ed3c8e3d5cb7134680e4de098ded20ac2b67b5a47d859d4474b5835b57a81d13fe0182ab26772bc",
+          "sha256": "a864bb3b10c3e52e5dcd167192d13697d8d2aa2632f52c84260fbd8f27e9ede1",
+          "sha1": "0746657da16a8b356c966a24bc81bcb35c87e3c5",
+          "md5": "f01ce314b9932412c761b518a270b063"
+        }
+      ]
+    }
+  ]
+}

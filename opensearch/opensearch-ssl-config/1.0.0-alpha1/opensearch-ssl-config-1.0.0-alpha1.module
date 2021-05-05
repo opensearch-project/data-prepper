@@ -1,0 +1,79 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "opensearch-ssl-config",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-core",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-ssl-config-1.0.0-alpha1.jar",
+          "url": "opensearch-ssl-config-1.0.0-alpha1.jar",
+          "size": 67011,
+          "sha512": "08f0c9565e189283347f9febcdf7ff782033c7dcc64d8b6370496790488fe4c224c7ed62b10ff6eb6400e4e7103ef2a8d6b52f3316ef54a5dfed4fe045b518b4",
+          "sha256": "37d42aca5dd38c67daebaeaaa224b706a8f6b427caf842fe70187265bef4b731",
+          "sha1": "4dc16a71f6ed4e67366250ca1c907af098b3633b",
+          "md5": "398d44af7cf6edd74ea638f78a07d6bf"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-core",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-ssl-config-1.0.0-alpha1.jar",
+          "url": "opensearch-ssl-config-1.0.0-alpha1.jar",
+          "size": 67011,
+          "sha512": "08f0c9565e189283347f9febcdf7ff782033c7dcc64d8b6370496790488fe4c224c7ed62b10ff6eb6400e4e7103ef2a8d6b52f3316ef54a5dfed4fe045b518b4",
+          "sha256": "37d42aca5dd38c67daebaeaaa224b706a8f6b427caf842fe70187265bef4b731",
+          "sha1": "4dc16a71f6ed4e67366250ca1c907af098b3633b",
+          "md5": "398d44af7cf6edd74ea638f78a07d6bf"
+        }
+      ]
+    }
+  ]
+}

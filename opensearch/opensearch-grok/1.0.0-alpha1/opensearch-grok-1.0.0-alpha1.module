@@ -1,0 +1,117 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "opensearch-grok",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.jruby.joni",
+          "module": "joni",
+          "version": {
+            "requires": "2.1.29"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.jruby.jcodings",
+          "module": "jcodings",
+          "version": {
+            "requires": "1.0.44"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-grok-1.0.0-alpha1.jar",
+          "url": "opensearch-grok-1.0.0-alpha1.jar",
+          "size": 48254,
+          "sha512": "36c85b5d68cdb679bef02c7d40b701dccf270c2791f256e87435f6a34e0fa053add6e0439b0c01cd5e8965ae19f8cfb1d8964059f58fe03e12c4aed04bafef5b",
+          "sha256": "712aa303c9c37101d04abb202a3d7504c8a530a6139160b263eb7c8a11979c83",
+          "sha1": "6647a1a655e254628edab4d4c6060c770b178c84",
+          "md5": "17de933738f7e1f054e14fe35dc47385"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.jruby.joni",
+          "module": "joni",
+          "version": {
+            "requires": "2.1.29"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.jruby.jcodings",
+          "module": "jcodings",
+          "version": {
+            "requires": "1.0.44"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-grok-1.0.0-alpha1.jar",
+          "url": "opensearch-grok-1.0.0-alpha1.jar",
+          "size": 48254,
+          "sha512": "36c85b5d68cdb679bef02c7d40b701dccf270c2791f256e87435f6a34e0fa053add6e0439b0c01cd5e8965ae19f8cfb1d8964059f58fe03e12c4aed04bafef5b",
+          "sha256": "712aa303c9c37101d04abb202a3d7504c8a530a6139160b263eb7c8a11979c83",
+          "sha1": "6647a1a655e254628edab4d4c6060c770b178c84",
+          "md5": "17de933738f7e1f054e14fe35dc47385"
+        }
+      ]
+    }
+  ]
+}

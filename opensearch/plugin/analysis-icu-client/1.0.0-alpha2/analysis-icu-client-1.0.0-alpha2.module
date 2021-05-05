@@ -1,0 +1,117 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "analysis-icu-client",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "5khnq5icy5dr5l756fhku3yqpm"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-analyzers-icu",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.ibm.icu",
+          "module": "icu4j",
+          "version": {
+            "requires": "62.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "analysis-icu-client-1.0.0-alpha2.jar",
+          "url": "analysis-icu-client-1.0.0-alpha2.jar",
+          "size": 42462,
+          "sha512": "31fe7a12e71019d09cd6d46cde386e7469a3aba1f04a78b9f6fbc900a0be23f014c35d10fb4c1559b9eaf6baba2b0aee51d8e2654617af80a215ead8eec80971",
+          "sha256": "363766507416c6d704ce7a30c5d4ea4b0d9c0ca147d076124445761e53d6508f",
+          "sha1": "25e2812a22d6d1c9b88b83f01d6c5e1acededccd",
+          "md5": "3405b2eaf80c39965ca15ac7124ddefa"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-analyzers-icu",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.ibm.icu",
+          "module": "icu4j",
+          "version": {
+            "requires": "62.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "analysis-icu-client-1.0.0-alpha2.jar",
+          "url": "analysis-icu-client-1.0.0-alpha2.jar",
+          "size": 42462,
+          "sha512": "31fe7a12e71019d09cd6d46cde386e7469a3aba1f04a78b9f6fbc900a0be23f014c35d10fb4c1559b9eaf6baba2b0aee51d8e2654617af80a215ead8eec80971",
+          "sha256": "363766507416c6d704ce7a30c5d4ea4b0d9c0ca147d076124445761e53d6508f",
+          "sha1": "25e2812a22d6d1c9b88b83f01d6c5e1acededccd",
+          "md5": "3405b2eaf80c39965ca15ac7124ddefa"
+        }
+      ]
+    }
+  ]
+}

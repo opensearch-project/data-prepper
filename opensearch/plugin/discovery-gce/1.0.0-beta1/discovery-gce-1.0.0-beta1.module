@@ -1,0 +1,351 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "discovery-gce",
+    "version": "1.0.0-beta1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "63e7upzp3nclfogys7cwpkr4wy"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "com.google.apis",
+          "module": "google-api-services-compute",
+          "version": {
+            "requires": "v1-rev160-1.23.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.google.api-client",
+          "module": "google-api-client",
+          "version": {
+            "requires": "1.23.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.google.oauth-client",
+          "module": "google-oauth-client",
+          "version": {
+            "requires": "1.23.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.google.http-client",
+          "module": "google-http-client",
+          "version": {
+            "requires": "1.23.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.google.http-client",
+          "module": "google-http-client-jackson2",
+          "version": {
+            "requires": "1.23.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.google.code.findbugs",
+          "module": "jsr305",
+          "version": {
+            "requires": "1.3.9"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.httpcomponents",
+          "module": "httpclient",
+          "version": {
+            "requires": "4.5.10"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.httpcomponents",
+          "module": "httpcore",
+          "version": {
+            "requires": "4.4.12"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "commons-logging",
+          "module": "commons-logging",
+          "version": {
+            "requires": "1.1.3"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.logging.log4j",
+          "module": "log4j-1.2-api",
+          "version": {
+            "requires": "2.11.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "commons-codec",
+          "module": "commons-codec",
+          "version": {
+            "requires": "1.11"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "discovery-gce-1.0.0-beta1.jar",
+          "url": "discovery-gce-1.0.0-beta1.jar",
+          "size": 32527,
+          "sha512": "9854f929729735817ecd8c414af1068d9a7a8e0037e8a360dfe86d1977415fe5efac2179f733efb0b7f96eccf4573cd84c2ed164b880d53625f8428dab6490b4",
+          "sha256": "7c2586a7b3ec5a806aba12608d500e5e85f096ec327dc096a2f28ac6cca10f83",
+          "sha1": "5d4ed9e5498f9504005537ba8b8c4b9a99276167",
+          "md5": "4e9d333ab14d5ec2f5f5a7f2557337af"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "com.google.apis",
+          "module": "google-api-services-compute",
+          "version": {
+            "requires": "v1-rev160-1.23.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.google.api-client",
+          "module": "google-api-client",
+          "version": {
+            "requires": "1.23.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.google.oauth-client",
+          "module": "google-oauth-client",
+          "version": {
+            "requires": "1.23.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.google.http-client",
+          "module": "google-http-client",
+          "version": {
+            "requires": "1.23.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.google.http-client",
+          "module": "google-http-client-jackson2",
+          "version": {
+            "requires": "1.23.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.google.code.findbugs",
+          "module": "jsr305",
+          "version": {
+            "requires": "1.3.9"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.httpcomponents",
+          "module": "httpclient",
+          "version": {
+            "requires": "4.5.10"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.httpcomponents",
+          "module": "httpcore",
+          "version": {
+            "requires": "4.4.12"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "commons-logging",
+          "module": "commons-logging",
+          "version": {
+            "requires": "1.1.3"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.logging.log4j",
+          "module": "log4j-1.2-api",
+          "version": {
+            "requires": "2.11.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "commons-codec",
+          "module": "commons-codec",
+          "version": {
+            "requires": "1.11"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "discovery-gce-1.0.0-beta1.jar",
+          "url": "discovery-gce-1.0.0-beta1.jar",
+          "size": 32527,
+          "sha512": "9854f929729735817ecd8c414af1068d9a7a8e0037e8a360dfe86d1977415fe5efac2179f733efb0b7f96eccf4573cd84c2ed164b880d53625f8428dab6490b4",
+          "sha256": "7c2586a7b3ec5a806aba12608d500e5e85f096ec327dc096a2f28ac6cca10f83",
+          "sha1": "5d4ed9e5498f9504005537ba8b8c4b9a99276167",
+          "md5": "4e9d333ab14d5ec2f5f5a7f2557337af"
+        }
+      ]
+    }
+  ]
+}

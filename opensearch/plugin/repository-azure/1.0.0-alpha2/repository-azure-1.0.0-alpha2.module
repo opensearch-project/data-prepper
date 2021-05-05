@@ -1,0 +1,156 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "repository-azure",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "5khnq5icy5dr5l756fhku3yqpm"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "com.microsoft.azure",
+          "module": "azure-storage",
+          "version": {
+            "requires": "8.6.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.microsoft.azure",
+          "module": "azure-keyvault-core",
+          "version": {
+            "requires": "1.0.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.commons",
+          "module": "commons-lang3",
+          "version": {
+            "requires": "3.4"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "repository-azure-1.0.0-alpha2.jar",
+          "url": "repository-azure-1.0.0-alpha2.jar",
+          "size": 43516,
+          "sha512": "6b1deb2e75ece729ec8b447a00af928e36455c4462276a6ef61b38a1a865cd74920dd8541d37a06f6d29b5d7195041f4822ce14c5ab5871d6b2c65dc853e0af5",
+          "sha256": "59a5b6d3dbedcae166971184bf2502ba012850c00d4a7a7793f19700a6d7900d",
+          "sha1": "457588ceaea3564a08d33863ec0241a8b6cd2601",
+          "md5": "b85e09379c6e31a886e067c3698f4e2b"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "com.microsoft.azure",
+          "module": "azure-storage",
+          "version": {
+            "requires": "8.6.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.microsoft.azure",
+          "module": "azure-keyvault-core",
+          "version": {
+            "requires": "1.0.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.commons",
+          "module": "commons-lang3",
+          "version": {
+            "requires": "3.4"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "com.google.guava",
+          "module": "guava",
+          "version": {
+            "requires": "20.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "repository-azure-1.0.0-alpha2.jar",
+          "url": "repository-azure-1.0.0-alpha2.jar",
+          "size": 43516,
+          "sha512": "6b1deb2e75ece729ec8b447a00af928e36455c4462276a6ef61b38a1a865cd74920dd8541d37a06f6d29b5d7195041f4822ce14c5ab5871d6b2c65dc853e0af5",
+          "sha256": "59a5b6d3dbedcae166971184bf2502ba012850c00d4a7a7793f19700a6d7900d",
+          "sha1": "457588ceaea3564a08d33863ec0241a8b6cd2601",
+          "md5": "b85e09379c6e31a886e067c3698f4e2b"
+        }
+      ]
+    }
+  ]
+}

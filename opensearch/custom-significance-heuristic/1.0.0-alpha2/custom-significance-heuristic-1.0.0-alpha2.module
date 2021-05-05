@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "custom-significance-heuristic",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "5khnq5icy5dr5l756fhku3yqpm"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "custom-significance-heuristic-1.0.0-alpha2.jar",
+          "url": "custom-significance-heuristic-1.0.0-alpha2.jar",
+          "size": 7934,
+          "sha512": "2536b97a832d04cbf8c140043ab1bf1f2d5a09ac053e3c32815dab22f10f7448ba027c0d55e6265d36c7346f292eab68a086ddff9be31aae592d64d37bf66512",
+          "sha256": "ed24dea8c077d597b8a97abaaba567e372d8d05baaba2fbbc52e9878f9607735",
+          "sha1": "c4028866c66077d61c0afa9944f9ad6bdca8a187",
+          "md5": "14ec3245b397a105d37b6b51061c0b0e"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "custom-significance-heuristic-1.0.0-alpha2.jar",
+          "url": "custom-significance-heuristic-1.0.0-alpha2.jar",
+          "size": 7934,
+          "sha512": "2536b97a832d04cbf8c140043ab1bf1f2d5a09ac053e3c32815dab22f10f7448ba027c0d55e6265d36c7346f292eab68a086ddff9be31aae592d64d37bf66512",
+          "sha256": "ed24dea8c077d597b8a97abaaba567e372d8d05baaba2fbbc52e9878f9607735",
+          "sha1": "c4028866c66077d61c0afa9944f9ad6bdca8a187",
+          "md5": "14ec3245b397a105d37b6b51061c0b0e"
+        }
+      ]
+    }
+  ]
+}

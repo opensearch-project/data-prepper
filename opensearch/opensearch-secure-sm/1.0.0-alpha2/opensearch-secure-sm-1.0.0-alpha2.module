@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "opensearch-secure-sm",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "5khnq5icy5dr5l756fhku3yqpm"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "opensearch-secure-sm-1.0.0-alpha2.jar",
+          "url": "opensearch-secure-sm-1.0.0-alpha2.jar",
+          "size": 10942,
+          "sha512": "370df7f6643c4b07652c2b8b9fa49840ba9d329cb9ec8a115aef56e2d0e52f24bccbb579f9e856be965c96bc488efae04b8d19dd8aa254b16c601c0ddd22586f",
+          "sha256": "e11f5eb67444c6d3bbcf2d63361c4443f7f693a19b94b6ee08959d969c7d4efd",
+          "sha1": "969f0446ad112e4c8fee68442f6dc47e0bfdc1c3",
+          "md5": "7f30b0596ee9acecbf7e9ad1b34bab5d"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "opensearch-secure-sm-1.0.0-alpha2.jar",
+          "url": "opensearch-secure-sm-1.0.0-alpha2.jar",
+          "size": 10942,
+          "sha512": "370df7f6643c4b07652c2b8b9fa49840ba9d329cb9ec8a115aef56e2d0e52f24bccbb579f9e856be965c96bc488efae04b8d19dd8aa254b16c601c0ddd22586f",
+          "sha256": "e11f5eb67444c6d3bbcf2d63361c4443f7f693a19b94b6ee08959d969c7d4efd",
+          "sha1": "969f0446ad112e4c8fee68442f6dc47e0bfdc1c3",
+          "md5": "7f30b0596ee9acecbf7e9ad1b34bab5d"
+        }
+      ]
+    }
+  ]
+}

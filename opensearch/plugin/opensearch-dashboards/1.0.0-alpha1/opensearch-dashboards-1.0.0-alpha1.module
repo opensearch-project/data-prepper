@@ -1,0 +1,79 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "opensearch-dashboards",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch.plugin",
+          "module": "reindex-client",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-dashboards-1.0.0-alpha1.jar",
+          "url": "opensearch-dashboards-1.0.0-alpha1.jar",
+          "size": 9179,
+          "sha512": "0ddbe51b5c37e926266dac5f4cba9438e4f6419864936d0ac8c21c50a55dae49b9bc52f99e18988ad030053a13a5ed775972d372130a9fc6e8fa9477cafb9dec",
+          "sha256": "6478c102a873122a54427bf8372d497028c2c5fbb0b7e8d517797f034b272f3d",
+          "sha1": "80dfc71a1672082755faadf9993084e1708e8ccc",
+          "md5": "6ad74a0bd0a12fdbfec79432ac960ed7"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch.plugin",
+          "module": "reindex-client",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-dashboards-1.0.0-alpha1.jar",
+          "url": "opensearch-dashboards-1.0.0-alpha1.jar",
+          "size": 9179,
+          "sha512": "0ddbe51b5c37e926266dac5f4cba9438e4f6419864936d0ac8c21c50a55dae49b9bc52f99e18988ad030053a13a5ed775972d372130a9fc6e8fa9477cafb9dec",
+          "sha256": "6478c102a873122a54427bf8372d497028c2c5fbb0b7e8d517797f034b272f3d",
+          "sha1": "80dfc71a1672082755faadf9993084e1708e8ccc",
+          "md5": "6ad74a0bd0a12fdbfec79432ac960ed7"
+        }
+      ]
+    }
+  ]
+}

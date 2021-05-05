@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "systemd",
+    "version": "1.0.0-beta1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "63e7upzp3nclfogys7cwpkr4wy"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "systemd-1.0.0-beta1.jar",
+          "url": "systemd-1.0.0-beta1.jar",
+          "size": 9264,
+          "sha512": "44e8b31fdb83d0ea3bcaeaaeb0445840074faceb6a07a00916757eb10c734ccfa9ca0d5d754a7999ac93ad82acff548cc8e2cbd2958542b1a977c5e51c625a86",
+          "sha256": "2e61aa2897381c4d682861be6eb40d3b9490e1bf6ba2b0eccba1550ff9ea3c64",
+          "sha1": "2797123b2a26b2e38eba02d0ff5771d0794a61cc",
+          "md5": "e6f0aaf8bce088bbc1a8999915846286"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "systemd-1.0.0-beta1.jar",
+          "url": "systemd-1.0.0-beta1.jar",
+          "size": 9264,
+          "sha512": "44e8b31fdb83d0ea3bcaeaaeb0445840074faceb6a07a00916757eb10c734ccfa9ca0d5d754a7999ac93ad82acff548cc8e2cbd2958542b1a977c5e51c625a86",
+          "sha256": "2e61aa2897381c4d682861be6eb40d3b9490e1bf6ba2b0eccba1550ff9ea3c64",
+          "sha1": "2797123b2a26b2e38eba02d0ff5771d0794a61cc",
+          "md5": "e6f0aaf8bce088bbc1a8999915846286"
+        }
+      ]
+    }
+  ]
+}

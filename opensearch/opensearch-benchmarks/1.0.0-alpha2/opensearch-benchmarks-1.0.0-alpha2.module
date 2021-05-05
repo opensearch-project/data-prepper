@@ -1,0 +1,143 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "opensearch-benchmarks",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "5khnq5icy5dr5l756fhku3yqpm"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          },
+          "excludes": [
+            {
+              "group": "net.sf.jopt-simple",
+              "module": "jopt-simple"
+            }
+          ]
+        },
+        {
+          "group": "org.openjdk.jmh",
+          "module": "jmh-core",
+          "version": {
+            "requires": "1.19"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-benchmarks-1.0.0-alpha2.jar",
+          "url": "opensearch-benchmarks-1.0.0-alpha2.jar",
+          "size": 328302,
+          "sha512": "05b795f07cdf211cc31fd7ad9788e89f6f6c3c3b9507b47bf2069c420786afe4dd7ec643252442bd016093593460f72a446df5b01304177dfae379f68638f3d0",
+          "sha256": "92bb9c42d17e3011435379a93112ad00bceb6e2d2f805b73cf8506aee19b63bd",
+          "sha1": "43649f1dde1565c8cd12749ee21ff8f47dde5785",
+          "md5": "c24fce39cf638e058be450da3962e662"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          },
+          "excludes": [
+            {
+              "group": "net.sf.jopt-simple",
+              "module": "jopt-simple"
+            }
+          ]
+        },
+        {
+          "group": "org.openjdk.jmh",
+          "module": "jmh-core",
+          "version": {
+            "requires": "1.19"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "net.sf.jopt-simple",
+          "module": "jopt-simple",
+          "version": {
+            "requires": "4.6"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.commons",
+          "module": "commons-math3",
+          "version": {
+            "requires": "3.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-benchmarks-1.0.0-alpha2.jar",
+          "url": "opensearch-benchmarks-1.0.0-alpha2.jar",
+          "size": 328302,
+          "sha512": "05b795f07cdf211cc31fd7ad9788e89f6f6c3c3b9507b47bf2069c420786afe4dd7ec643252442bd016093593460f72a446df5b01304177dfae379f68638f3d0",
+          "sha256": "92bb9c42d17e3011435379a93112ad00bceb6e2d2f805b73cf8506aee19b63bd",
+          "sha1": "43649f1dde1565c8cd12749ee21ff8f47dde5785",
+          "md5": "c24fce39cf638e058be450da3962e662"
+        }
+      ]
+    }
+  ]
+}

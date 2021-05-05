@@ -1,0 +1,369 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.test",
+    "module": "framework",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch.client",
+          "module": "opensearch-rest-client",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        },
+        {
+          "group": "org.opensearch.client",
+          "module": "opensearch-rest-client-sniffer",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-nio",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-cli",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        },
+        {
+          "group": "com.carrotsearch.randomizedtesting",
+          "module": "randomizedtesting-runner",
+          "version": {
+            "requires": "2.7.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "junit",
+          "module": "junit",
+          "version": {
+            "requires": "4.12"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.hamcrest",
+          "module": "hamcrest",
+          "version": {
+            "requires": "2.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-test-framework",
+          "version": {
+            "requires": "8.7.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-codecs",
+          "version": {
+            "requires": "8.7.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "commons-logging",
+          "module": "commons-logging",
+          "version": {
+            "requires": "1.1.3"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "commons-codec",
+          "module": "commons-codec",
+          "version": {
+            "requires": "1.11"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.elasticsearch",
+          "module": "securemock",
+          "version": {
+            "requires": "1.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.elasticsearch",
+          "module": "mocksocket",
+          "version": {
+            "requires": "1.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "framework-1.0.0-alpha1.jar",
+          "url": "framework-1.0.0-alpha1.jar",
+          "size": 1350763,
+          "sha512": "159f810a18e758423104ec7816561c16c493c8924e2fd1f229bd2b62edc14f87d66d16a1bc22c0fc556e9efb0addd11a855d7b3b6888d90c3c34ced9c2e73788",
+          "sha256": "fb8253cb91b8f5eaef34df9705cd1ad53ebb7ae5bf372e5ef3ba890e08608e1e",
+          "sha1": "c2572e50b5968874fb770ae2eb013104fa015f8f",
+          "md5": "475737265287eccd617031a435fa4822"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch.client",
+          "module": "opensearch-rest-client",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        },
+        {
+          "group": "org.opensearch.client",
+          "module": "opensearch-rest-client-sniffer",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-nio",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-cli",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        },
+        {
+          "group": "com.carrotsearch.randomizedtesting",
+          "module": "randomizedtesting-runner",
+          "version": {
+            "requires": "2.7.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "junit",
+          "module": "junit",
+          "version": {
+            "requires": "4.12"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.hamcrest",
+          "module": "hamcrest",
+          "version": {
+            "requires": "2.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-test-framework",
+          "version": {
+            "requires": "8.7.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-codecs",
+          "version": {
+            "requires": "8.7.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "commons-logging",
+          "module": "commons-logging",
+          "version": {
+            "requires": "1.1.3"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "commons-codec",
+          "module": "commons-codec",
+          "version": {
+            "requires": "1.11"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.elasticsearch",
+          "module": "securemock",
+          "version": {
+            "requires": "1.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.elasticsearch",
+          "module": "mocksocket",
+          "version": {
+            "requires": "1.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "framework-1.0.0-alpha1.jar",
+          "url": "framework-1.0.0-alpha1.jar",
+          "size": 1350763,
+          "sha512": "159f810a18e758423104ec7816561c16c493c8924e2fd1f229bd2b62edc14f87d66d16a1bc22c0fc556e9efb0addd11a855d7b3b6888d90c3c34ced9c2e73788",
+          "sha256": "fb8253cb91b8f5eaef34df9705cd1ad53ebb7ae5bf372e5ef3ba890e08608e1e",
+          "sha1": "c2572e50b5968874fb770ae2eb013104fa015f8f",
+          "md5": "475737265287eccd617031a435fa4822"
+        }
+      ]
+    }
+  ]
+}

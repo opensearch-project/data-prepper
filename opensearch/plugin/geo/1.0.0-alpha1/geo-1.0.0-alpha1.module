@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "geo",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "geo-1.0.0-alpha1.jar",
+          "url": "geo-1.0.0-alpha1.jar",
+          "size": 5859,
+          "sha512": "298eded3b94812f5525ef7af3fb1f0d1baebf5d2f5c5d8d6a184df5551221394224cee1273a70297f9ea5cb2a8e47f61f3136b8edf69e26201f771995e66ec37",
+          "sha256": "c5200917b0aa4b714fba0425c7b885a2c1a97b7b73b6a68e74ef220b11699111",
+          "sha1": "3fe3714b587b736549eca44be6087a94670eebd2",
+          "md5": "b1ef80a9ab005b3289dcd9ec8d807372"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "geo-1.0.0-alpha1.jar",
+          "url": "geo-1.0.0-alpha1.jar",
+          "size": 5859,
+          "sha512": "298eded3b94812f5525ef7af3fb1f0d1baebf5d2f5c5d8d6a184df5551221394224cee1273a70297f9ea5cb2a8e47f61f3136b8edf69e26201f771995e66ec37",
+          "sha256": "c5200917b0aa4b714fba0425c7b885a2c1a97b7b73b6a68e74ef220b11699111",
+          "sha1": "3fe3714b587b736549eca44be6087a94670eebd2",
+          "md5": "b1ef80a9ab005b3289dcd9ec8d807372"
+        }
+      ]
+    }
+  ]
+}

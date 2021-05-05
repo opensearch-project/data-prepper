@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "opensearch-launchers",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "opensearch-launchers-1.0.0-alpha1.jar",
+          "url": "opensearch-launchers-1.0.0-alpha1.jar",
+          "size": 21117,
+          "sha512": "7b880b5a4324739a6b807978648b959cabe4a93d1f119fcf6afb38c1d2fc820d6616c57c20faace4a86b275a9ad6f1c9b4ad72d0a918f414c3771fb3a6355b56",
+          "sha256": "c3440f025cf5d22927a14fad7f1f90908e03db885b83e23abb047d6b38b9833f",
+          "sha1": "504729c1a4b23f197290b601cbcb362584bd29b5",
+          "md5": "3f3d6063a843b724c949e88abe397f3d"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "opensearch-launchers-1.0.0-alpha1.jar",
+          "url": "opensearch-launchers-1.0.0-alpha1.jar",
+          "size": 21117,
+          "sha512": "7b880b5a4324739a6b807978648b959cabe4a93d1f119fcf6afb38c1d2fc820d6616c57c20faace4a86b275a9ad6f1c9b4ad72d0a918f414c3771fb3a6355b56",
+          "sha256": "c3440f025cf5d22927a14fad7f1f90908e03db885b83e23abb047d6b38b9833f",
+          "sha1": "504729c1a4b23f197290b601cbcb362584bd29b5",
+          "md5": "3f3d6063a843b724c949e88abe397f3d"
+        }
+      ]
+    }
+  ]
+}

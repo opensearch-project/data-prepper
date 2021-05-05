@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "mapper-annotated-text",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "mapper-annotated-text-1.0.0-alpha1.jar",
+          "url": "mapper-annotated-text-1.0.0-alpha1.jar",
+          "size": 32815,
+          "sha512": "69752534808c26f893dc19c2b442829877e8c3b2b45897cf7e2dcd9b8d53cb872c56d6535a399df3bca10ec5688a23c9b1ff7baddd7a12a2981d1a6ffb997bf5",
+          "sha256": "2330ff5cd523eab30a5597e20fd704935be8251a0264fd68cc839d3d1de2f5e1",
+          "sha1": "9747550d2a2f44592d89a21b780073a4b3d9b36a",
+          "md5": "d14e3c917427481dbee83a2ca30750b2"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "mapper-annotated-text-1.0.0-alpha1.jar",
+          "url": "mapper-annotated-text-1.0.0-alpha1.jar",
+          "size": 32815,
+          "sha512": "69752534808c26f893dc19c2b442829877e8c3b2b45897cf7e2dcd9b8d53cb872c56d6535a399df3bca10ec5688a23c9b1ff7baddd7a12a2981d1a6ffb997bf5",
+          "sha256": "2330ff5cd523eab30a5597e20fd704935be8251a0264fd68cc839d3d1de2f5e1",
+          "sha1": "9747550d2a2f44592d89a21b780073a4b3d9b36a",
+          "md5": "d14e3c917427481dbee83a2ca30750b2"
+        }
+      ]
+    }
+  ]
+}

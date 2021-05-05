@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "script-expert-scoring",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "script-expert-scoring-1.0.0-alpha1.jar",
+          "url": "script-expert-scoring-1.0.0-alpha1.jar",
+          "size": 12661,
+          "sha512": "b148dc0ef8c775a981c9cc9bb4b41cad6bceb54cd8cddf72f80fb5bc450553f0d7b50e7a9ab1c438273bd8db43491e8c71f83d17697e219efef37c2a0383bbea",
+          "sha256": "a583482c946b71388bf5649a79b2cb437512b137dfc63050acea820d9f0a3d9b",
+          "sha1": "c5bf525b6a4d2d39e1ddba56ddfec3668de10826",
+          "md5": "ecfd0cde2ba6d6ceb90be2d70f8c7609"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "script-expert-scoring-1.0.0-alpha1.jar",
+          "url": "script-expert-scoring-1.0.0-alpha1.jar",
+          "size": 12661,
+          "sha512": "b148dc0ef8c775a981c9cc9bb4b41cad6bceb54cd8cddf72f80fb5bc450553f0d7b50e7a9ab1c438273bd8db43491e8c71f83d17697e219efef37c2a0383bbea",
+          "sha256": "a583482c946b71388bf5649a79b2cb437512b137dfc63050acea820d9f0a3d9b",
+          "sha1": "c5bf525b6a4d2d39e1ddba56ddfec3668de10826",
+          "md5": "ecfd0cde2ba6d6ceb90be2d70f8c7609"
+        }
+      ]
+    }
+  ]
+}

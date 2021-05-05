@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "ingest-user-agent",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "5khnq5icy5dr5l756fhku3yqpm"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "ingest-user-agent-1.0.0-alpha2.jar",
+          "url": "ingest-user-agent-1.0.0-alpha2.jar",
+          "size": 65800,
+          "sha512": "e722e1581cd671df28f4914fdd91edc9a6720c870a232055dc1771ad673b84e0881d221c6025d581805625037766f7f33b1f7e2141416715bff0c63aff26b6bf",
+          "sha256": "ce7f715e909a18ffe7eb7a94e32be02fb0436d93cd67e38b8ef1f76c3296647a",
+          "sha1": "70eabab4c61a1ac08c008d9a3908fe35ad5c3265",
+          "md5": "37d54429d55dbf362b6a652731f8939d"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "ingest-user-agent-1.0.0-alpha2.jar",
+          "url": "ingest-user-agent-1.0.0-alpha2.jar",
+          "size": 65800,
+          "sha512": "e722e1581cd671df28f4914fdd91edc9a6720c870a232055dc1771ad673b84e0881d221c6025d581805625037766f7f33b1f7e2141416715bff0c63aff26b6bf",
+          "sha256": "ce7f715e909a18ffe7eb7a94e32be02fb0436d93cd67e38b8ef1f76c3296647a",
+          "sha1": "70eabab4c61a1ac08c008d9a3908fe35ad5c3265",
+          "md5": "37d54429d55dbf362b6a652731f8939d"
+        }
+      ]
+    }
+  ]
+}

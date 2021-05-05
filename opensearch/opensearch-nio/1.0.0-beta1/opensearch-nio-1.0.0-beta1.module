@@ -1,0 +1,79 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "opensearch-nio",
+    "version": "1.0.0-beta1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "63e7upzp3nclfogys7cwpkr4wy"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-core",
+          "version": {
+            "requires": "1.0.0-beta1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-nio-1.0.0-beta1.jar",
+          "url": "opensearch-nio-1.0.0-beta1.jar",
+          "size": 60058,
+          "sha512": "dc65658326011265094fe076c710c553a1b479512a99229e9fac0931f1dc95df5257cefc82a99b7a4306bd28aaaa16f14bc05f7286302fa4b8cc5b8e73979e11",
+          "sha256": "a0c576935541c1d0167e5bed721224143dd643773ead23dc55f092042a326146",
+          "sha1": "5d108f85c51ed54564738f170caf5eeffbb5289c",
+          "md5": "8985ed71928ecec018565dfd77d78524"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-core",
+          "version": {
+            "requires": "1.0.0-beta1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-nio-1.0.0-beta1.jar",
+          "url": "opensearch-nio-1.0.0-beta1.jar",
+          "size": 60058,
+          "sha512": "dc65658326011265094fe076c710c553a1b479512a99229e9fac0931f1dc95df5257cefc82a99b7a4306bd28aaaa16f14bc05f7286302fa4b8cc5b8e73979e11",
+          "sha256": "a0c576935541c1d0167e5bed721224143dd643773ead23dc55f092042a326146",
+          "sha1": "5d108f85c51ed54564738f170caf5eeffbb5289c",
+          "md5": "8985ed71928ecec018565dfd77d78524"
+        }
+      ]
+    }
+  ]
+}

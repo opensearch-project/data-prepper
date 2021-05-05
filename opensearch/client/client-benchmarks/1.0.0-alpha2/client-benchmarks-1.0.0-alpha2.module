@@ -1,0 +1,203 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.client",
+    "module": "client-benchmarks",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "5khnq5icy5dr5l756fhku3yqpm"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.apache.commons",
+          "module": "commons-math3",
+          "version": {
+            "requires": "3.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.opensearch.client",
+          "module": "opensearch-rest-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "client-benchmark-noop-api",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.client",
+          "module": "transport",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "transport-netty4-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "reindex-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "lang-mustache-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "percolator-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "client-benchmarks-1.0.0-alpha2.jar",
+          "url": "client-benchmarks-1.0.0-alpha2.jar",
+          "size": 37267,
+          "sha512": "70608513d83775aca23716d12dc1421637a0840113fc794cc768c1b3203d661b8a72dc2a14031e4548b789692870716dfd1cf8e8f13a35f97ea4a3a3740e1d8e",
+          "sha256": "49c3e3aac7ec1c1a26654e4e220b18789a94425efbd4ec1ffdb4db3a601b475a",
+          "sha1": "2168c1f1eb4d0c6bacfc13afe86994217d70ceb1",
+          "md5": "8bb8707ff6818cdcee8b9a923724e8b6"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.apache.commons",
+          "module": "commons-math3",
+          "version": {
+            "requires": "3.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.opensearch.client",
+          "module": "opensearch-rest-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "client-benchmark-noop-api",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.client",
+          "module": "transport",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "transport-netty4-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "reindex-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "lang-mustache-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "percolator-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "client-benchmarks-1.0.0-alpha2.jar",
+          "url": "client-benchmarks-1.0.0-alpha2.jar",
+          "size": 37267,
+          "sha512": "70608513d83775aca23716d12dc1421637a0840113fc794cc768c1b3203d661b8a72dc2a14031e4548b789692870716dfd1cf8e8f13a35f97ea4a3a3740e1d8e",
+          "sha256": "49c3e3aac7ec1c1a26654e4e220b18789a94425efbd4ec1ffdb4db3a601b475a",
+          "sha1": "2168c1f1eb4d0c6bacfc13afe86994217d70ceb1",
+          "md5": "8bb8707ff6818cdcee8b9a923724e8b6"
+        }
+      ]
+    }
+  ]
+}

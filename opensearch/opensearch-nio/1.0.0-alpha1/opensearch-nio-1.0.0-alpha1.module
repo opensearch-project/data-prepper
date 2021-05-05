@@ -1,0 +1,79 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "opensearch-nio",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-core",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-nio-1.0.0-alpha1.jar",
+          "url": "opensearch-nio-1.0.0-alpha1.jar",
+          "size": 60060,
+          "sha512": "888956480b0b53770b9a2c0f3f31bca864f49a78908390bc726164ad8b1795def88455643942bc0a929cbcbc0c30e4e5ec0d6dae0fcaebb606432163765bdd04",
+          "sha256": "7b56e6c80ad8cee93dd77afa923e5c867bc0768a015848a0b869bf862ca61efd",
+          "sha1": "5c5329f695a7d09ca9fbf6f5af1414fb9ed3bb4a",
+          "md5": "725f00c9c7deca849d85f0b1da04ee56"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-core",
+          "version": {
+            "requires": "1.0.0-alpha1"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-nio-1.0.0-alpha1.jar",
+          "url": "opensearch-nio-1.0.0-alpha1.jar",
+          "size": 60060,
+          "sha512": "888956480b0b53770b9a2c0f3f31bca864f49a78908390bc726164ad8b1795def88455643942bc0a929cbcbc0c30e4e5ec0d6dae0fcaebb606432163765bdd04",
+          "sha256": "7b56e6c80ad8cee93dd77afa923e5c867bc0768a015848a0b869bf862ca61efd",
+          "sha1": "5c5329f695a7d09ca9fbf6f5af1414fb9ed3bb4a",
+          "md5": "725f00c9c7deca849d85f0b1da04ee56"
+        }
+      ]
+    }
+  ]
+}

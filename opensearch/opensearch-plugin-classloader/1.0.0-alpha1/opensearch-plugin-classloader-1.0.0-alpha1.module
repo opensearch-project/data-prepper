@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "opensearch-plugin-classloader",
+    "version": "1.0.0-alpha1",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "lqsgjlfglvgibowtuxgrjfbk5a"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "opensearch-plugin-classloader-1.0.0-alpha1.jar",
+          "url": "opensearch-plugin-classloader-1.0.0-alpha1.jar",
+          "size": 6541,
+          "sha512": "adfe4bb12c6d717dab6c637c792b281e45776273c535f12b7ba5e25e88dfc0da1f2392bbaea5941b3b1da5d84665ee6a13615f8f36458a07305363262b2ed07e",
+          "sha256": "1a95608d3a2618b2a36a7427a88b3c972c2c93c13dc6ccb09de0ab4daab3fdbd",
+          "sha1": "f3dbf52cfb78897429fdeae8e9d6db4bb484a71f",
+          "md5": "6d17d56d6415ce1071362feb311ce819"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "opensearch-plugin-classloader-1.0.0-alpha1.jar",
+          "url": "opensearch-plugin-classloader-1.0.0-alpha1.jar",
+          "size": 6541,
+          "sha512": "adfe4bb12c6d717dab6c637c792b281e45776273c535f12b7ba5e25e88dfc0da1f2392bbaea5941b3b1da5d84665ee6a13615f8f36458a07305363262b2ed07e",
+          "sha256": "1a95608d3a2618b2a36a7427a88b3c972c2c93c13dc6ccb09de0ab4daab3fdbd",
+          "sha1": "f3dbf52cfb78897429fdeae8e9d6db4bb484a71f",
+          "md5": "6d17d56d6415ce1071362feb311ce819"
+        }
+      ]
+    }
+  ]
+}

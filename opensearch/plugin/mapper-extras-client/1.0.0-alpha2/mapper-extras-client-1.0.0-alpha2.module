@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "mapper-extras-client",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "5khnq5icy5dr5l756fhku3yqpm"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "mapper-extras-client-1.0.0-alpha2.jar",
+          "url": "mapper-extras-client-1.0.0-alpha2.jar",
+          "size": 84242,
+          "sha512": "7716efca698e388ac6b1b4e33fa9000343bbf202724111936763bd51ca69f92fdf695baef565a29aa987621d606f184e86dd2042c414dfb07c6c3e9afe1ffe72",
+          "sha256": "5b5665f92aa458b1bd3ac1920772498675ee5a0dd305d92c233c2ff004b80b70",
+          "sha1": "4648ca6b0af01fef9ec2736ee6fb8efe55831a30",
+          "md5": "8e05cb9df3553f706a5bbb9ed2839932"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "mapper-extras-client-1.0.0-alpha2.jar",
+          "url": "mapper-extras-client-1.0.0-alpha2.jar",
+          "size": 84242,
+          "sha512": "7716efca698e388ac6b1b4e33fa9000343bbf202724111936763bd51ca69f92fdf695baef565a29aa987621d606f184e86dd2042c414dfb07c6c3e9afe1ffe72",
+          "sha256": "5b5665f92aa458b1bd3ac1920772498675ee5a0dd305d92c233c2ff004b80b70",
+          "sha1": "4648ca6b0af01fef9ec2736ee6fb8efe55831a30",
+          "md5": "8e05cb9df3553f706a5bbb9ed2839932"
+        }
+      ]
+    }
+  ]
+}
