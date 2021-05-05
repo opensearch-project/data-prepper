@@ -3,7 +3,7 @@ COPY . /home/gradle/src
 WORKDIR /home/gradle/src
 # TODO: replace local built OpenSearch artifact with the public artifact
 RUN mkdir -p ~/.m2/repository/org
-RUN mv opensearch ~/.m2/repository/org/opensearch
+RUN mv opensearch-build ~/.m2/repository/org/opensearch
 WORKDIR /home/gradle/src/data-prepper-core
 RUN gradle clean jar --daemon
 
