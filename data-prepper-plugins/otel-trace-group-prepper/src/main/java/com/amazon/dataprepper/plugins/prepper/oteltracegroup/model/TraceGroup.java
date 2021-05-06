@@ -5,10 +5,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 
 public class TraceGroup {
-    public static final String TRACE_GROUP_NAME_FIELD = "traceGroup.name";
-    public static final String TRACE_GROUP_END_TIME_FIELD = "traceGroup.endTime";
-    public static final String TRACE_GROUP_STATUS_CODE_FIELD = "traceGroup.statusCode";
-    public static final String TRACE_GROUP_DURATION_IN_NANOS_FIELD = "traceGroup.durationInNanos";
+    public static final String TRACE_GROUP_NAME_FIELD = "traceGroup";
+    public static final String TRACE_GROUP_END_TIME_FIELD = "traceGroupFields.endTime";
+    public static final String TRACE_GROUP_STATUS_CODE_FIELD = "traceGroupFields.statusCode";
+    public static final String TRACE_GROUP_DURATION_IN_NANOS_FIELD = "traceGroupFields.durationInNanos";
 
     @JsonProperty(TRACE_GROUP_NAME_FIELD)
     private final String name;
