@@ -1,0 +1,169 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "analysis-ukrainian",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "zu7ad2fiujgafhgplvfl47asva"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-analyzers-morfologik",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.carrot2",
+          "module": "morfologik-stemming",
+          "version": {
+            "requires": "2.1.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.carrot2",
+          "module": "morfologik-fsa",
+          "version": {
+            "requires": "2.1.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "ua.net.nlp",
+          "module": "morfologik-ukrainian-search",
+          "version": {
+            "requires": "3.7.5"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "analysis-ukrainian-1.0.0-alpha2.jar",
+          "url": "analysis-ukrainian-1.0.0-alpha2.jar",
+          "size": 7752,
+          "sha512": "f096291b489ad08e22f0b7e61a31704921fd59b9a7c2c536c2fe42d17d797f1d31ab000fa2ef44e7d4886751b6c47b34b3b796e9078866aeee3a1c099a464bb5",
+          "sha256": "accae57cbfec3922cc0fe35f8fb65a836c36be0ade2d5f636760a185f995e506",
+          "sha1": "471145bd7e18613ad2bd20eb43f3aebb68209fb8",
+          "md5": "caf25936349cd242645ad6fd8c7748fc"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-analyzers-morfologik",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.carrot2",
+          "module": "morfologik-stemming",
+          "version": {
+            "requires": "2.1.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.carrot2",
+          "module": "morfologik-fsa",
+          "version": {
+            "requires": "2.1.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "ua.net.nlp",
+          "module": "morfologik-ukrainian-search",
+          "version": {
+            "requires": "3.7.5"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "analysis-ukrainian-1.0.0-alpha2.jar",
+          "url": "analysis-ukrainian-1.0.0-alpha2.jar",
+          "size": 7752,
+          "sha512": "f096291b489ad08e22f0b7e61a31704921fd59b9a7c2c536c2fe42d17d797f1d31ab000fa2ef44e7d4886751b6c47b34b3b796e9078866aeee3a1c099a464bb5",
+          "sha256": "accae57cbfec3922cc0fe35f8fb65a836c36be0ade2d5f636760a185f995e506",
+          "sha1": "471145bd7e18613ad2bd20eb43f3aebb68209fb8",
+          "md5": "caf25936349cd242645ad6fd8c7748fc"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "opensearch-dissect",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "zu7ad2fiujgafhgplvfl47asva"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "opensearch-dissect-1.0.0-alpha2.jar",
+          "url": "opensearch-dissect-1.0.0-alpha2.jar",
+          "size": 24584,
+          "sha512": "9b3e3fa891fb762ae6f39fd8a968187ce49d8cd1d1c2149b0ffb0cd76cfc75d52f3f67da214211163bed0e35b3359db5e636716aff2e754b40d67fabb80cd868",
+          "sha256": "e7fd12aa887bb26c3cff913649cdeba655ca95e09ca17d95dbc8b99e6f0a5ca6",
+          "sha1": "030d6fca2ddc5372153f6af8b325451df6603ddc",
+          "md5": "f35cf4255537ac6da663d8efab388f36"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "opensearch-dissect-1.0.0-alpha2.jar",
+          "url": "opensearch-dissect-1.0.0-alpha2.jar",
+          "size": 24584,
+          "sha512": "9b3e3fa891fb762ae6f39fd8a968187ce49d8cd1d1c2149b0ffb0cd76cfc75d52f3f67da214211163bed0e35b3359db5e636716aff2e754b40d67fabb80cd868",
+          "sha256": "e7fd12aa887bb26c3cff913649cdeba655ca95e09ca17d95dbc8b99e6f0a5ca6",
+          "sha1": "030d6fca2ddc5372153f6af8b325451df6603ddc",
+          "md5": "f35cf4255537ac6da663d8efab388f36"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "analysis-phonetic",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "zu7ad2fiujgafhgplvfl47asva"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-analyzers-phonetic",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "commons-codec",
+          "module": "commons-codec",
+          "version": {
+            "requires": "1.11"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "analysis-phonetic-1.0.0-alpha2.jar",
+          "url": "analysis-phonetic-1.0.0-alpha2.jar",
+          "size": 18414,
+          "sha512": "aadcaaa3671fc451597b549c435e09e8cdccde8e046f3921075a30c3fe955a75de8f2f71f26c8814408a68464ae697687d1ec6113be4441bb2fe930c93679513",
+          "sha256": "b08370da4f3d32c8c3d112dfcf7cb82baf877df6b2f3e11ea127c79a653c5d1f",
+          "sha1": "961e4a82a6e95175251c3e5e3086c843461bb782",
+          "md5": "bef0c9d4db5fe739c57d557db594277a"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.apache.lucene",
+          "module": "lucene-analyzers-phonetic",
+          "version": {
+            "requires": "8.8.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "commons-codec",
+          "module": "commons-codec",
+          "version": {
+            "requires": "1.11"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "analysis-phonetic-1.0.0-alpha2.jar",
+          "url": "analysis-phonetic-1.0.0-alpha2.jar",
+          "size": 18414,
+          "sha512": "aadcaaa3671fc451597b549c435e09e8cdccde8e046f3921075a30c3fe955a75de8f2f71f26c8814408a68464ae697687d1ec6113be4441bb2fe930c93679513",
+          "sha256": "b08370da4f3d32c8c3d112dfcf7cb82baf877df6b2f3e11ea127c79a653c5d1f",
+          "sha1": "961e4a82a6e95175251c3e5e3086c843461bb782",
+          "md5": "bef0c9d4db5fe739c57d557db594277a"
+        }
+      ]
+    }
+  ]
+}

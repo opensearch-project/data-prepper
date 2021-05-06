@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "ingest-user-agent",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "zu7ad2fiujgafhgplvfl47asva"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "ingest-user-agent-1.0.0-alpha2.jar",
+          "url": "ingest-user-agent-1.0.0-alpha2.jar",
+          "size": 65804,
+          "sha512": "0c4edbcf13bf064640cd920741603881cf3f3f11b73f9d9cafcd1a00aba7267ca10c39ca015f73b11ea662d7a429d53171326b663e7ea3201d79a9b7755045ed",
+          "sha256": "5f34f6c948d1bf152664f44f7560806a65f00346f89613c62d11e6856d4abf16",
+          "sha1": "7af1bef1b3d89cf6eae924cd308aae1124fc6fc2",
+          "md5": "05dc28c8e053eb338003fbdbd1fac6ad"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "ingest-user-agent-1.0.0-alpha2.jar",
+          "url": "ingest-user-agent-1.0.0-alpha2.jar",
+          "size": 65804,
+          "sha512": "0c4edbcf13bf064640cd920741603881cf3f3f11b73f9d9cafcd1a00aba7267ca10c39ca015f73b11ea662d7a429d53171326b663e7ea3201d79a9b7755045ed",
+          "sha256": "5f34f6c948d1bf152664f44f7560806a65f00346f89613c62d11e6856d4abf16",
+          "sha1": "7af1bef1b3d89cf6eae924cd308aae1124fc6fc2",
+          "md5": "05dc28c8e053eb338003fbdbd1fac6ad"
+        }
+      ]
+    }
+  ]
+}

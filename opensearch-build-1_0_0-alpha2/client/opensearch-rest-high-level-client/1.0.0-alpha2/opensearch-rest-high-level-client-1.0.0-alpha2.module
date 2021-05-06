@@ -1,0 +1,163 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.client",
+    "module": "opensearch-rest-high-level-client",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "zu7ad2fiujgafhgplvfl47asva"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.client",
+          "module": "opensearch-rest-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "mapper-extras-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "parent-join-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "aggs-matrix-stats-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "rank-eval-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "lang-mustache-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-rest-high-level-client-1.0.0-alpha2.jar",
+          "url": "opensearch-rest-high-level-client-1.0.0-alpha2.jar",
+          "size": 319064,
+          "sha512": "ab866a44b0e97815ec7ed7fd40b7b5f9abfae21cdb85ea7ab70cafc2de8bc7185d72539afcf814507272737c2860afcc34ba4201202187135be7b52abc71dc86",
+          "sha256": "04c0c7b4ec8ef831ec3f22793cdf1e1c2f1ae2d4b7de68f17338eba83a1c359c",
+          "sha1": "4e8ff0a38f4b8e886c08e7a567bb3e61a7e2bcbd",
+          "md5": "08cc373da592936ab2930354c440b19c"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch",
+          "module": "opensearch",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.client",
+          "module": "opensearch-rest-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "mapper-extras-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "parent-join-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "aggs-matrix-stats-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "rank-eval-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch.plugin",
+          "module": "lang-mustache-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-rest-high-level-client-1.0.0-alpha2.jar",
+          "url": "opensearch-rest-high-level-client-1.0.0-alpha2.jar",
+          "size": 319064,
+          "sha512": "ab866a44b0e97815ec7ed7fd40b7b5f9abfae21cdb85ea7ab70cafc2de8bc7185d72539afcf814507272737c2860afcc34ba4201202187135be7b52abc71dc86",
+          "sha256": "04c0c7b4ec8ef831ec3f22793cdf1e1c2f1ae2d4b7de68f17338eba83a1c359c",
+          "sha1": "4e8ff0a38f4b8e886c08e7a567bb3e61a7e2bcbd",
+          "md5": "08cc373da592936ab2930354c440b19c"
+        }
+      ]
+    }
+  ]
+}

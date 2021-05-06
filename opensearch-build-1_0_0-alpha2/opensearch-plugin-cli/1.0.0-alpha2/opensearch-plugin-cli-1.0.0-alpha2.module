@@ -1,0 +1,117 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "opensearch-plugin-cli",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "zu7ad2fiujgafhgplvfl47asva"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.bouncycastle",
+          "module": "bcpg-fips",
+          "version": {
+            "requires": "1.0.4"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.bouncycastle",
+          "module": "bc-fips",
+          "version": {
+            "requires": "1.0.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-plugin-cli-1.0.0-alpha2.jar",
+          "url": "opensearch-plugin-cli-1.0.0-alpha2.jar",
+          "size": 34681,
+          "sha512": "5ee5295147e45be830665c9eb9ee049e713ec74483338c9399f8c2f842840ce944e32e61daf9a02c0d50f91c3a225d6aab006be28a6bc3d614ac7fe02b1742ec",
+          "sha256": "ad0154c1535a779152913174d26afe0b580221e1f67a5b249e8dd0841a60d8f0",
+          "sha1": "fd7d3c98b74f845b1096158d573d8ba9d6968c47",
+          "md5": "d9c3d51b7a5ce0e102d795817f364b50"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.bouncycastle",
+          "module": "bcpg-fips",
+          "version": {
+            "requires": "1.0.4"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "org.bouncycastle",
+          "module": "bc-fips",
+          "version": {
+            "requires": "1.0.2"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "opensearch-plugin-cli-1.0.0-alpha2.jar",
+          "url": "opensearch-plugin-cli-1.0.0-alpha2.jar",
+          "size": 34681,
+          "sha512": "5ee5295147e45be830665c9eb9ee049e713ec74483338c9399f8c2f842840ce944e32e61daf9a02c0d50f91c3a225d6aab006be28a6bc3d614ac7fe02b1742ec",
+          "sha256": "ad0154c1535a779152913174d26afe0b580221e1f67a5b249e8dd0841a60d8f0",
+          "sha1": "fd7d3c98b74f845b1096158d573d8ba9d6968c47",
+          "md5": "d9c3d51b7a5ce0e102d795817f364b50"
+        }
+      ]
+    }
+  ]
+}

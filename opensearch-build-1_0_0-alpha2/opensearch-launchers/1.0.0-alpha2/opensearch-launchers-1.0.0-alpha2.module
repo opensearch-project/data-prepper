@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "opensearch-launchers",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "zu7ad2fiujgafhgplvfl47asva"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "opensearch-launchers-1.0.0-alpha2.jar",
+          "url": "opensearch-launchers-1.0.0-alpha2.jar",
+          "size": 21111,
+          "sha512": "234f86bea6bdefa674e18cfb10bf8dd8c4cb7bb0f07c94eb4b21950e11a593e650ee70f3e2e6cfde9c8acdda646839c2de1d98e038edfb3e2b90c30338db3db2",
+          "sha256": "fe16ccb1f8e195ca545dd91e91181855ccbb43beb151e41b2e93262a011caa79",
+          "sha1": "7ef0a204c55c0991a2cdaa15393f367f7c876301",
+          "md5": "018da1b9aceacbf70266f8d0d273dca1"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "opensearch-launchers-1.0.0-alpha2.jar",
+          "url": "opensearch-launchers-1.0.0-alpha2.jar",
+          "size": 21111,
+          "sha512": "234f86bea6bdefa674e18cfb10bf8dd8c4cb7bb0f07c94eb4b21950e11a593e650ee70f3e2e6cfde9c8acdda646839c2de1d98e038edfb3e2b90c30338db3db2",
+          "sha256": "fe16ccb1f8e195ca545dd91e91181855ccbb43beb151e41b2e93262a011caa79",
+          "sha1": "7ef0a204c55c0991a2cdaa15393f367f7c876301",
+          "md5": "018da1b9aceacbf70266f8d0d273dca1"
+        }
+      ]
+    }
+  ]
+}

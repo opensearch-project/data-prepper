@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "opensearch-secure-sm",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "zu7ad2fiujgafhgplvfl47asva"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "opensearch-secure-sm-1.0.0-alpha2.jar",
+          "url": "opensearch-secure-sm-1.0.0-alpha2.jar",
+          "size": 10942,
+          "sha512": "ce1b133b278aef32ae0999b12ec80bc10505f6605f0d66fac730bd50522f429f97eaba9e3e1437550d800d5760c3f10c608dc01839e14bcaa37486b42af29c4b",
+          "sha256": "268c6dc5779b103aff676be78d842c6d0672494e0bd073189ebb514a29957cd3",
+          "sha1": "89ec68118acd6910056e0492daa98c411180c919",
+          "md5": "9c2473ca00e216740f6a38488978d813"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "opensearch-secure-sm-1.0.0-alpha2.jar",
+          "url": "opensearch-secure-sm-1.0.0-alpha2.jar",
+          "size": 10942,
+          "sha512": "ce1b133b278aef32ae0999b12ec80bc10505f6605f0d66fac730bd50522f429f97eaba9e3e1437550d800d5760c3f10c608dc01839e14bcaa37486b42af29c4b",
+          "sha256": "268c6dc5779b103aff676be78d842c6d0672494e0bd073189ebb514a29957cd3",
+          "sha1": "89ec68118acd6910056e0492daa98c411180c919",
+          "md5": "9c2473ca00e216740f6a38488978d813"
+        }
+      ]
+    }
+  ]
+}

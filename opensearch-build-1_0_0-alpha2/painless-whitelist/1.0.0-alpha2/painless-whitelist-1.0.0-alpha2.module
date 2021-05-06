@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "painless-whitelist",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "zu7ad2fiujgafhgplvfl47asva"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "painless-whitelist-1.0.0-alpha2.jar",
+          "url": "painless-whitelist-1.0.0-alpha2.jar",
+          "size": 12479,
+          "sha512": "59635d901cf8ffeeab68f9d68b920b52c37c5dbad34ad823d661c8a8165d1c0e04b384d3ce372af24e20cdba2581e4deaca6b12e904039f5a7c92d81c99a951f",
+          "sha256": "ebcaad133437a2aaa4b4bda7b79d5b81f562effc4101c506fd081704e41aeb13",
+          "sha1": "d1dd025eee95ad774858531371dafed317090bed",
+          "md5": "2393b13d626c9f5628bb7ff96b7f3e44"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "painless-whitelist-1.0.0-alpha2.jar",
+          "url": "painless-whitelist-1.0.0-alpha2.jar",
+          "size": 12479,
+          "sha512": "59635d901cf8ffeeab68f9d68b920b52c37c5dbad34ad823d661c8a8165d1c0e04b384d3ce372af24e20cdba2581e4deaca6b12e904039f5a7c92d81c99a951f",
+          "sha256": "ebcaad133437a2aaa4b4bda7b79d5b81f562effc4101c506fd081704e41aeb13",
+          "sha1": "d1dd025eee95ad774858531371dafed317090bed",
+          "md5": "2393b13d626c9f5628bb7ff96b7f3e44"
+        }
+      ]
+    }
+  ]
+}

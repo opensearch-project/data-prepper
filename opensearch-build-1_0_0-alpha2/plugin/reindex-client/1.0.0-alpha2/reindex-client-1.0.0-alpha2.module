@@ -1,0 +1,93 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "reindex-client",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "zu7ad2fiujgafhgplvfl47asva"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch.client",
+          "module": "opensearch-rest-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-ssl-config",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "reindex-client-1.0.0-alpha2.jar",
+          "url": "reindex-client-1.0.0-alpha2.jar",
+          "size": 116074,
+          "sha512": "f76dce2122c543f487a89b2d19aeedefa260d625a5b2e3c2f4d1cce43503fc5a39c06f347d44976953195563acd1722ba47574f0d4bd12b63c5f647ac94550e6",
+          "sha256": "be98c8fee7a6d8f7f5c77cdb1b1c88e7b0ac92fedf670e06f793e7839100c7ce",
+          "sha1": "7896079d756963df8158dcd7c038272c726203be",
+          "md5": "c6befd1e6f74ea69a96dd884f7bd2948"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.opensearch.client",
+          "module": "opensearch-rest-client",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        },
+        {
+          "group": "org.opensearch",
+          "module": "opensearch-ssl-config",
+          "version": {
+            "requires": "1.0.0-alpha2"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "reindex-client-1.0.0-alpha2.jar",
+          "url": "reindex-client-1.0.0-alpha2.jar",
+          "size": 116074,
+          "sha512": "f76dce2122c543f487a89b2d19aeedefa260d625a5b2e3c2f4d1cce43503fc5a39c06f347d44976953195563acd1722ba47574f0d4bd12b63c5f647ac94550e6",
+          "sha256": "be98c8fee7a6d8f7f5c77cdb1b1c88e7b0ac92fedf670e06f793e7839100c7ce",
+          "sha1": "7896079d756963df8158dcd7c038272c726203be",
+          "md5": "c6befd1e6f74ea69a96dd884f7bd2948"
+        }
+      ]
+    }
+  ]
+}

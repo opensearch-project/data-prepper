@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch",
+    "module": "java-version-checker",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "zu7ad2fiujgafhgplvfl47asva"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 7,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "java-version-checker-1.0.0-alpha2.jar",
+          "url": "java-version-checker-1.0.0-alpha2.jar",
+          "size": 8784,
+          "sha512": "a16f890e89b6c18c17971c079e0a715f8460896e60fc9c68c3027a441d0b87adec609c85ead34913534d87b16db6fe7f5351aff73a69a32134923b232ac12a1e",
+          "sha256": "d4e9709560b627c7e98d8f9d5b9ccb8668dc18e70ce689a2b9969a8a13b7b861",
+          "sha1": "1363ee6eeb8b771ab23599754e2436a4fcb37981",
+          "md5": "351918c74464b5dff996f2445d4cba7d"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 7,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "java-version-checker-1.0.0-alpha2.jar",
+          "url": "java-version-checker-1.0.0-alpha2.jar",
+          "size": 8784,
+          "sha512": "a16f890e89b6c18c17971c079e0a715f8460896e60fc9c68c3027a441d0b87adec609c85ead34913534d87b16db6fe7f5351aff73a69a32134923b232ac12a1e",
+          "sha256": "d4e9709560b627c7e98d8f9d5b9ccb8668dc18e70ce689a2b9969a8a13b7b861",
+          "sha1": "1363ee6eeb8b771ab23599754e2436a4fcb37981",
+          "md5": "351918c74464b5dff996f2445d4cba7d"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "percolator-client",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "zu7ad2fiujgafhgplvfl47asva"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "percolator-client-1.0.0-alpha2.jar",
+          "url": "percolator-client-1.0.0-alpha2.jar",
+          "size": 77577,
+          "sha512": "5cf93c50eadc560619723be6ed3d415c18806048554dcdb610234bde859292020df67840b863ebbde0c67d62c1ba5c8761ed794a179bb48f7f43cd4b78f1b558",
+          "sha256": "d8744d5398610430ed64851f18e418a9c1979934380ef4340d844417f330ecf4",
+          "sha1": "4966893a7b0ec88e3c9a7bc4495d764407deb1d9",
+          "md5": "50dc2e15d284663b17da71cd2339c395"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "percolator-client-1.0.0-alpha2.jar",
+          "url": "percolator-client-1.0.0-alpha2.jar",
+          "size": 77577,
+          "sha512": "5cf93c50eadc560619723be6ed3d415c18806048554dcdb610234bde859292020df67840b863ebbde0c67d62c1ba5c8761ed794a179bb48f7f43cd4b78f1b558",
+          "sha256": "d8744d5398610430ed64851f18e418a9c1979934380ef4340d844417f330ecf4",
+          "sha1": "4966893a7b0ec88e3c9a7bc4495d764407deb1d9",
+          "md5": "50dc2e15d284663b17da71cd2339c395"
+        }
+      ]
+    }
+  ]
+}

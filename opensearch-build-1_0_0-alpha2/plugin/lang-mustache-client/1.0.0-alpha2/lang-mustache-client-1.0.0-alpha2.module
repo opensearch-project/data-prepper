@@ -1,0 +1,91 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "org.opensearch.plugin",
+    "module": "lang-mustache-client",
+    "version": "1.0.0-alpha2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "6.6.1",
+      "buildId": "zu7ad2fiujgafhgplvfl47asva"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "com.github.spullara.mustache.java",
+          "module": "compiler",
+          "version": {
+            "requires": "0.9.6"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "lang-mustache-client-1.0.0-alpha2.jar",
+          "url": "lang-mustache-client-1.0.0-alpha2.jar",
+          "size": 63408,
+          "sha512": "f590d12500d7564c4462c09f380b4a89991b49183ee1e10ca5773ed9d03c6de6bdf6a3fd9959ccb186111497e6143c09691793613b67533b8634cbceea451e1c",
+          "sha256": "8232701b2d85c85a27ea2bc9a1a075a8ad10d2d1542c67820d3f95c14a025d04",
+          "sha1": "c6f4fdd65dfe51996fd336e2b2321e6564e8f111",
+          "md5": "952a609dd20b0e57ebec606e3a087cea"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 8,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "com.github.spullara.mustache.java",
+          "module": "compiler",
+          "version": {
+            "requires": "0.9.6"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "*"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "lang-mustache-client-1.0.0-alpha2.jar",
+          "url": "lang-mustache-client-1.0.0-alpha2.jar",
+          "size": 63408,
+          "sha512": "f590d12500d7564c4462c09f380b4a89991b49183ee1e10ca5773ed9d03c6de6bdf6a3fd9959ccb186111497e6143c09691793613b67533b8634cbceea451e1c",
+          "sha256": "8232701b2d85c85a27ea2bc9a1a075a8ad10d2d1542c67820d3f95c14a025d04",
+          "sha1": "c6f4fdd65dfe51996fd336e2b2321e6564e8f111",
+          "md5": "952a609dd20b0e57ebec606e3a087cea"
+        }
+      ]
+    }
+  ]
+}
