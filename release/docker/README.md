@@ -31,5 +31,5 @@ docker run \
  --expose 21890 \
  -v /workplace/github/simple-ingest-transformation-utility-pipeline/examples/config/example-pipelines.yaml:/usr/share/data-prepper/pipelines.yaml \
  -v /workplace/github/simple-ingest-transformation-utility-pipeline/examples/config/example-data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml \
- data-prepper/data-prepper:0.8.0-beta
+ data-prepper/data-prepper:1.0.0
 ```
