@@ -41,7 +41,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2") {
         exclude group:'org.hamcrest' // workaround for jarHell
     }
-    testImplementation "org.awaitility:awaitility:4.0.3"
+    testImplementation "org.awaitility:awaitility:4.1.0"
     testImplementation "org.elasticsearch.test:framework:${es_version}"
     testImplementation "commons-io:commons-io:2.8.0"
 }
