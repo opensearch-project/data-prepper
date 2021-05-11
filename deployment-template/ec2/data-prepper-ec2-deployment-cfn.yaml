@@ -28,7 +28,7 @@ Parameters:
     Description: Version of Data Prepper to download and run
     Type: String
     AllowedPattern: "[0-9]+\\.[0-9]+\\.[0-9]+[a-z-]*"
-    Default: "0.8.0-beta"
+    Default: "1.0.0"
     ConstraintDescription: must be a valid release number
   IAMRole:
     Description: Pre-existing IAM Role to associate with the EC2 instance, to be used for authentication when calling Elasticsearch
