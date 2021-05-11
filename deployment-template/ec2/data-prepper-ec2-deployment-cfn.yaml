@@ -2,18 +2,18 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: "Template to install Data Prepper on a single EC2 instance"
 Parameters:
-  AWSElasticsearchEndpoint:
+  AmazonEsEndpoint:
     Description: Endpoint of the AWS Elasticsearch Service domain (including https://)
     Type: String
     AllowedPattern: https:\/\/[a-z0-9-\.]+(es.amazonaws.com)
     ConstraintDescription: must be a valid Amazon Elasticsearch Service domain endpoint starting with https://
-  AWSElasticsearchRegion:
+  AmazonEsRegion:
     Description: Region of the AWS Elasticsearch Service domain
     Type: String
     AllowedPattern: "[a-z]+-[a-z]+-[0-9]+"
     Default: us-east-1
     ConstraintDescription: must be a valid AWS region (e.g. us-west-2)
-  AWSElasticsearchSubnetId:
+  AmazonEsSubnetId:
     Description: The subnet ID of the AWS Elasticsearch Service domain (Leave blank if the domain is not in a VPC)
     Type: String
   Username:
@@ -69,9 +69,9 @@ Metadata:
       - Label:
           default: Amazon Elasticsearch Service Domain
         Parameters:
-          - AWSElasticsearchEndpoint
-          - AWSElasticsearchRegion
-          - AWSElasticsearchSubnetId
+          - AmazonEsEndpoint
+          - AmazonEsRegion
+          - AmazonEsSubnetId
           - Username
           - Password
       - Label:
@@ -83,7 +83,7 @@ Metadata:
           - LatestAmi
           - SSHLocation
 Conditions:
-  DomainIsPublic: !Equals [!Ref AWSElasticsearchSubnetId, ""]
+  DomainIsPublic: !Equals [!Ref AmazonEsSubnetId, ""]
   DomainIsInVPC: !Not [Condition: DomainIsPublic]
   NoMasterUser: !And
     - !Equals
@@ -129,7 +129,7 @@ Resources:
                     prepper:
                       - otel_trace_raw_prepper:
                     sink:
-                      - elasticsearch: ${elasticsearchConfig}
+                      - elasticsearch: ${rawSpanConfig}
                   service-map-pipeline:
                     delay: "100"
                     source:
@@ -138,16 +138,29 @@ Resources:
                     prepper:
                       - service_map_stateful:
                     sink:
-                      - elasticsearch: ${elasticsearchConfig}
-                - elasticsearchConfig: !If
+                      - elasticsearch: ${serviceMapConfig}
+                - rawSpanConfig: !If
                     - NoMasterUser
                     - !Sub "\n
-                    \        hosts: [ \"${AWSElasticsearchEndpoint}\" ]\n
+                    \        hosts: [ \"${AmazonEsEndpoint}\" ]\n
                     \        aws_sigv4: true\n
-                    \        aws_region: \"${AWSElasticsearchRegion}\"\n
+                    \        aws_region: \"${AmazonEsRegion}\"\n
+                    \        trace_analytics_raw: true"
+                    - !Sub "\n
+                    \        hosts: [ \"${AmazonEsEndpoint}\" ]\n
+                    \        aws_sigv4: false\n
+                    \        username: \"${Username}\"\n
+                    \        password: \"${Password}\"\n
+                    \        trace_analytics_raw: true"
+                  serviceMapConfig: !If
+                    - NoMasterUser
+                    - !Sub "\n
+                    \        hosts: [ \"${AmazonEsEndpoint}\" ]\n
+                    \        aws_sigv4: true\n
+                    \        aws_region: \"${AmazonEsRegion}\"\n
                     \        trace_analytics_service_map: true"
                     - !Sub "\n
-                    \        hosts: [ \"${AWSElasticsearchEndpoint}\" ]\n
+                    \        hosts: [ \"${AmazonEsEndpoint}\" ]\n
                     \        aws_sigv4: false\n
                     \        username: \"${Username}\"\n
                     \        password: \"${Password}\"\n
@@ -157,7 +170,7 @@ Resources:
               group: root
     Properties:
       SubnetId:
-        !If [DomainIsInVPC, !Ref AWSElasticsearchSubnetId, !Ref "AWS::NoValue"]
+        !If [DomainIsInVPC, !Ref AmazonEsSubnetId, !Ref "AWS::NoValue"]
       InstanceType:
         Ref: InstanceType
       IamInstanceProfile:
