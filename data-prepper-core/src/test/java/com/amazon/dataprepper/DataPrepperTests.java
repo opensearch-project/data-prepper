@@ -43,21 +43,21 @@ public class DataPrepperTests {
     }
 
     @Test
-    public void testDataPrepperSysMetrics() {
+    public void testDataPrepperSystemMetrics() {
         // Test retrieve gauge in ClassLoaderMetrics
-        final List<Measurement> classesLoaded = getSysMeasurementList("jvm.classes.loaded");
+        final List<Measurement> classesLoaded = getSystemMeasurementList("jvm.classes.loaded");
         Assert.assertEquals(1, classesLoaded.size());
         // Test retrieve gauge in JvmMemoryMetrics
-        final List<Measurement> jvmBufferCount = getSysMeasurementList("jvm.buffer.count");
+        final List<Measurement> jvmBufferCount = getSystemMeasurementList("jvm.buffer.count");
         Assert.assertEquals(1, jvmBufferCount.size());
         // Test retrieve gauge in JvmGcMetrics
-        final List<Measurement> jvmGcMaxDataSize = getSysMeasurementList("jvm.gc.max.data.size");
+        final List<Measurement> jvmGcMaxDataSize = getSystemMeasurementList("jvm.gc.max.data.size");
         Assert.assertEquals(1, jvmGcMaxDataSize.size());
         // Test retrieve gauge in ProcessorMetrics
-        final List<Measurement> sysCPUCount = getSysMeasurementList("system.cpu.count");
+        final List<Measurement> sysCPUCount = getSystemMeasurementList("system.cpu.count");
         Assert.assertEquals(1, sysCPUCount.size());
         // Test retrieve gauge in JvmThreadMetrics
-        final List<Measurement> jvmThreadsPeak = getSysMeasurementList("jvm.threads.peak");
+        final List<Measurement> jvmThreadsPeak = getSystemMeasurementList("jvm.threads.peak");
         Assert.assertEquals(1, jvmThreadsPeak.size());
     }
 
@@ -122,8 +122,8 @@ public class DataPrepperTests {
         }
     }
 
-    private static List<Measurement> getSysMeasurementList(final String meterName) {
-        return StreamSupport.stream(DataPrepper.getSysJVMMeterRegistry().find(meterName).meter().measure().spliterator(), false)
+    private static List<Measurement> getSystemMeasurementList(final String meterName) {
+        return StreamSupport.stream(DataPrepper.getSystemMeterRegistry().find(meterName).meter().measure().spliterator(), false)
                 .collect(Collectors.toList());
     }
 }

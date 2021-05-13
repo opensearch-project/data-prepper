@@ -1,13 +1,13 @@
 package com.amazon.dataprepper.pipeline.server;
 
-import java.io.IOException;
-import java.net.HttpURLConnection;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
-import io.micrometer.core.instrument.Metrics;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.HttpURLConnection;
 
 /**
  * HttpHandler to handle requests for Prometheus metrics
@@ -16,10 +16,6 @@ public class PrometheusMetricsHandler implements HttpHandler {
 
     private PrometheusMeterRegistry prometheusMeterRegistry;
     private final Logger LOG = LoggerFactory.getLogger(PrometheusMetricsHandler.class);
-
-    public PrometheusMetricsHandler() {
-        prometheusMeterRegistry = (PrometheusMeterRegistry) Metrics.globalRegistry.getRegistries().iterator().next();
-    }
 
     public PrometheusMetricsHandler(final PrometheusMeterRegistry prometheusMeterRegistry) {
         this.prometheusMeterRegistry = prometheusMeterRegistry;

@@ -59,6 +59,7 @@ Data Prepper allows the following properties to be configured:
 * `keyStorePassword` string password for keystore. Optional, defaults to empty string
 * `privateKeyPassword` string password for private key within keystore. Optional, defaults to empty string
 * `serverPort`: integer port number to use for server APIs. Defaults to `4900`
+* `metricRegistries`: list of metrics registries for publishing the generated metrics. Defaults to Prometheus; Prometheus and CloudWatch are currently supported.
 
 Example Data Prepper configuration file (data-prepper-config.yaml):
 ```yaml
@@ -67,4 +68,5 @@ keyStoreFilePath: "/usr/share/data-prepper/keystore.jks"
 keyStorePassword: "password"
 privateKeyPassword: "other_password"
 serverPort: 1234
+metricRegistries: [Prometheus]
 ```

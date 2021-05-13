@@ -35,9 +35,13 @@ APIs are available:
 * /shutdown
   * starts a graceful shutdown of the Data Prepper
 * /metrics/prometheus
-  * returns a scrape of the Data Prepper metrics in Prometheus text format
+  * returns a scrape of the Data Prepper metrics in Prometheus text format. This API is available provided 
+    `metricsRegistries` parameter in data prepper configuration file `data-prepper-config.yaml` has `Prometheus` as one 
+    of the registry
 * /metrics/sys
-  * returns JVM metrics in Prometheus text format
+  * returns JVM metrics in Prometheus text format. This API is available provided `metricsRegistries` parameter in data 
+    prepper configuration file `data-prepper-config.yaml` has `Prometheus` as one of the registry
+
 
 ### Running the example app
 To run the example app against your local changes, use the docker found [here](https://github.com/opendistro-for-elasticsearch/data-prepper/tree/master/examples/dev/trace-analytics-sample-app)

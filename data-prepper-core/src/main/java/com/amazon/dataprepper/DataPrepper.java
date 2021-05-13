@@ -2,6 +2,7 @@ package com.amazon.dataprepper;
 
 import com.amazon.dataprepper.parser.PipelineParser;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
+import com.amazon.dataprepper.parser.model.MetricRegistryType;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
 import io.micrometer.core.instrument.Metrics;
@@ -10,12 +11,12 @@ import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
-import io.micrometer.prometheus.PrometheusConfig;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -27,32 +28,31 @@ import java.util.Map;
 public class DataPrepper {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepper.class);
 
-    private static final PrometheusMeterRegistry sysJVMMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+    private static final CompositeMeterRegistry systemMeterRegistry = new CompositeMeterRegistry();
 
     private Map<String, Pipeline> transformationPipelines;
 
     private static volatile DataPrepper dataPrepper;
 
     private static DataPrepperServer dataPrepperServer;
-    private static DataPrepperConfiguration configuration = DataPrepperConfiguration.DEFAULT_CONFIG;
-
-    static {
-        new ClassLoaderMetrics().bindTo(sysJVMMeterRegistry);
-        new JvmMemoryMetrics().bindTo(sysJVMMeterRegistry);
-        new JvmGcMetrics().bindTo(sysJVMMeterRegistry);
-        new ProcessorMetrics().bindTo(sysJVMMeterRegistry);
-        new JvmThreadMetrics().bindTo(sysJVMMeterRegistry);
-    }
+    private static DataPrepperConfiguration configuration;
 
     /**
-     * Set the DataPrepperConfiguration from a file
+     * Set the DataPrepperConfiguration from file
+     *
      * @param configurationFile File containing DataPrepperConfiguration yaml
      */
     public static void configure(final String configurationFile) {
-        final DataPrepperConfiguration dataPrepperConfiguration =
-                DataPrepperConfiguration.fromFile(new File(configurationFile));
+        configuration = DataPrepperConfiguration.fromFile(new File(configurationFile));
+        configureMeterRegistry();
+    }
 
-        configuration = dataPrepperConfiguration;
+    /**
+     * Set the DataPrepperConfiguration with defaults
+     */
+    public static void configureWithDefaults() {
+        configuration = DataPrepperConfiguration.DEFAULT_CONFIG;
+        configureMeterRegistry();
     }
 
     public static DataPrepper getInstance() {
@@ -69,20 +69,32 @@ public class DataPrepper {
         if (dataPrepper != null) {
             throw new RuntimeException("Please use getInstance() for an instance of this Data Prepper");
         }
-        startPrometheusBackend();
+        startMeterRegistryForDataPrepper();
         dataPrepperServer = new DataPrepperServer(this);
     }
 
-    public static PrometheusMeterRegistry getSysJVMMeterRegistry() {
-        return sysJVMMeterRegistry;
+    /**
+     * Creates instances of configured MeterRegistry and registers to {@link Metrics} globalRegistry to be used by
+     * Meters.
+     */
+    private static void startMeterRegistryForDataPrepper() {
+        final List<MetricRegistryType> configuredMetricRegistryTypes = configuration.getMetricRegistryTypes();
+        configuredMetricRegistryTypes.forEach(metricRegistryType -> Metrics.addRegistry(MetricRegistryType
+                .getDefaultMeterRegistryForType(metricRegistryType)));
     }
 
-    /**
-     * Create a PrometheusMeterRegistry for this DataPrepper and register it with the global registry
-     */
-    private static void startPrometheusBackend() {
-        final PrometheusMeterRegistry prometheusMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
-        Metrics.addRegistry(prometheusMeterRegistry);
+    private static void configureMeterRegistry() {
+        configuration.getMetricRegistryTypes().forEach(metricRegistryType ->
+                systemMeterRegistry.add(MetricRegistryType.getDefaultMeterRegistryForType(metricRegistryType)));
+        new ClassLoaderMetrics().bindTo(systemMeterRegistry);
+        new JvmMemoryMetrics().bindTo(systemMeterRegistry);
+        new JvmGcMetrics().bindTo(systemMeterRegistry);
+        new ProcessorMetrics().bindTo(systemMeterRegistry);
+        new JvmThreadMetrics().bindTo(systemMeterRegistry);
+    }
+
+    public static CompositeMeterRegistry getSystemMeterRegistry() {
+        return systemMeterRegistry;
     }
 
     /**
@@ -95,7 +107,7 @@ public class DataPrepper {
         LOG.info("Using {} configuration file", configurationFileLocation);
         final PipelineParser pipelineParser = new PipelineParser(configurationFileLocation);
         transformationPipelines = pipelineParser.parseConfiguration();
-        if (transformationPipelines.size() == 0){
+        if (transformationPipelines.size() == 0) {
             LOG.error("No valid pipeline is available for execution, exiting");
             System.exit(1);
         }
@@ -115,22 +127,23 @@ public class DataPrepper {
     /**
      * Triggers shutdown of the Data Prepper server.
      */
-    public void shutdownDataPrepperServer(){
+    public void shutdownDataPrepperServer() {
         dataPrepperServer.stop();
     }
 
     /**
      * Triggers shutdown of the provided pipeline, no-op if the pipeline does not exist.
+     *
      * @param pipeline name of the pipeline
      */
     public void shutdown(final String pipeline) {
-        if(transformationPipelines.containsKey(pipeline)) {
+        if (transformationPipelines.containsKey(pipeline)) {
             transformationPipelines.get(pipeline).shutdown();
         }
     }
 
     public Map<String, Pipeline> getTransformationPipelines() {
-        return  transformationPipelines;
+        return transformationPipelines;
     }
 
     public static DataPrepperConfiguration getConfiguration() {
