@@ -1,6 +1,6 @@
 # OTel Trace Raw Prepper
 
-This is a prepper that serializes collection of `ExportTraceServiceRequest` sent from [otel-trace-source](../dataPrepper-plugins/otel-trace-source) into collection of string records. 
+This is a prepper that serializes collection of `ExportTraceServiceRequest` sent from [otel-trace-source](../dataPrepper-plugins/otel-trace-source) into collection of string records.
 
 ## Usages
 Example `.yaml` configuration
@@ -23,6 +23,6 @@ Apart from common metrics in [AbstractPrepper](https://github.com/opendistro-for
 - `totalProcessingErrors`: records the total number of processing errors for spans and resource spans.
 
 ## Developer Guide
-This plugin is compatible with Java 8. See 
-- [CONTRIBUTING](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/CONTRIBUTING.md) 
+This plugin is compatible with Java 8. See
+- [CONTRIBUTING](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/CONTRIBUTING.md)
 - [monitoring](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/docs/readme/monitoring.md)

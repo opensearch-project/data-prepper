@@ -11,7 +11,7 @@ sink:
       password: "admin"
 ```
 
-or by using user credential assigned with a role that has the below required permissions. 
+or by using user credential assigned with a role that has the below required permissions.
 
 ### Cluster permissions
 
@@ -31,4 +31,4 @@ Note that `indices:admin/template/*` need to be in cluster permissions.
 
 ---------------
 
-With administrative privilege, one can create an internal user, a role and map the user to the role by following the ODFE [instructions](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles/). 
+With administrative privilege, one can create an internal user, a role and map the user to the role by following the ODFE [instructions](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles/).

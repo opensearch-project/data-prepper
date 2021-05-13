@@ -1,6 +1,5 @@
 package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
-import com.google.common.base.Preconditions;
 import org.elasticsearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
 import org.elasticsearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
 import org.elasticsearch.client.Request;

@@ -1,5 +1,5 @@
 # Peer Forwarder
-This prepper forwards `ExportTraceServiceRequests` via gRPC to other Data Prepper instances. 
+This prepper forwards `ExportTraceServiceRequests` via gRPC to other Data Prepper instances.
 
 ## Usage
 The primary usecase of this prepper is to ensure that groups of traces are aggregated by trace ID and processed by the same Prepper instance.
@@ -67,11 +67,11 @@ Besides common metrics in [AbstractPrepper](https://github.com/opendistro-for-el
 
 ### Gauge
 
-- `peerEndpoints`: measures number of dynamically discovered peer data-prepper endpoints. For `static` mode, the size is fixed.  
+- `peerEndpoints`: measures number of dynamically discovered peer data-prepper endpoints. For `static` mode, the size is fixed.
 
 ## Developer Guide
 
-This plugin is compatible with Java 14. See 
+This plugin is compatible with Java 14. See
 
-- [CONTRIBUTING](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/CONTRIBUTING.md) 
+- [CONTRIBUTING](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/CONTRIBUTING.md)
 - [monitoring](https://github.com/opendistro-for-elasticsearch/data-prepper/blob/main/docs/readme/monitoring.md)

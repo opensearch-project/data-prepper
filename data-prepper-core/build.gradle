@@ -1,7 +1,3 @@
-plugins {
-    id 'com.bmuschko.docker-remote-api' version '7.0.0'
-}
-
 sourceSets {
     main {
         resources {
