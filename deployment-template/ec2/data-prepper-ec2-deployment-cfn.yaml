@@ -188,10 +188,19 @@ Resources:
           export RELEASE=opendistroforelasticsearch-data-prepper-${DataPrepperVersion}-linux-x64
           yum install java-11-amazon-corretto-headless -y
           wget https://github.com/opendistro-for-elasticsearch/data-prepper/releases/download/v${DataPrepperVersion}/$RELEASE.tar.gz -O /tmp/$RELEASE.tar.gz
-          tar -xzf /tmp/$RELEASE.tar.gz --directory /usr/local/bin
-          /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default
-          nohup /usr/local/bin/$RELEASE/data-prepper-tar-install.sh /etc/data-prepper/pipelines.yaml /etc/data-prepper/data-prepper-config.yaml > /var/log/data-prepper.out &
-          /opt/aws/bin/cfn-signal --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}
+          wget_exit_code = $?
+          if [ $wget_exit_code -ne 0 ]
+          then
+            /opt/aws/bin/cfn-signal -e $wget_exit_code --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}
+          else
+            tar -xzf /tmp/$RELEASE.tar.gz --directory /usr/local/bin
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region} --configsets default
+            nohup /usr/local/bin/$RELEASE/data-prepper-tar-install.sh /etc/data-prepper/pipelines.yaml /etc/data-prepper/data-prepper-config.yaml > /var/log/data-prepper.out &
+            data_prepper_pid=$!
+            sleep 5s
+            ps -p $data_prepper_pid
+            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource EC2Instance --region ${AWS::Region}
+          fi
     CreationPolicy:
       ResourceSignal:
         Count: 1
