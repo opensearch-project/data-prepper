@@ -13,7 +13,7 @@ plugins {
 
 }
 dependencies {
-    implementation "io.micrometer:micrometer-core:1.6.6"
+    implementation "io.micrometer:micrometer-core:1.7.0"
 
     testImplementation "org.hamcrest:hamcrest:2.2"
 }
