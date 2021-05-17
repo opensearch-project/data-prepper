@@ -35,7 +35,7 @@ public class DataPrepperConfiguration {
         try {
             return OBJECT_MAPPER.readValue(file, DataPrepperConfiguration.class);
         } catch (IOException e) {
-            throw new IllegalArgumentException("Invalid DataPrepper configuration file.");
+            throw new IllegalArgumentException("Invalid DataPrepper configuration file.", e);
         }
     }
 
