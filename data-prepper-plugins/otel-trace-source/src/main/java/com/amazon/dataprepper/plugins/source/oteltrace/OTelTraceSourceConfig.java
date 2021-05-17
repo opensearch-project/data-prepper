@@ -12,6 +12,7 @@ public class OTelTraceSourceConfig {
     static final String SSL_KEY_FILE = "sslKeyFile";
     static final String THREAD_COUNT = "thread_count";
     static final String MAX_CONNECTION_COUNT = "max_connection_count";
+    static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final int DEFAULT_PORT = 21890;
     static final int DEFAULT_THREAD_COUNT = 200;
@@ -21,6 +22,7 @@ public class OTelTraceSourceConfig {
     private final int port;
     private final boolean healthCheck;
     private final boolean protoReflectionService;
+    private final boolean enableUnframedRequests;
     private final boolean ssl;
     private final String sslKeyCertChainFile;
     private final String sslKeyFile;
@@ -31,6 +33,7 @@ public class OTelTraceSourceConfig {
                                   final int port,
                                   final boolean healthCheck,
                                   final boolean protoReflectionService,
+                                  final boolean enableUnframedRequests,
                                   final boolean isSSL,
                                   final String sslKeyCertChainFile,
                                   final String sslKeyFile,
@@ -40,6 +43,7 @@ public class OTelTraceSourceConfig {
         this.port = port;
         this.healthCheck = healthCheck;
         this.protoReflectionService = protoReflectionService;
+        this.enableUnframedRequests = enableUnframedRequests;
         this.ssl = isSSL;
         this.sslKeyCertChainFile = sslKeyCertChainFile;
         this.sslKeyFile = sslKeyFile;
@@ -58,6 +62,7 @@ public class OTelTraceSourceConfig {
                 pluginSetting.getIntegerOrDefault(PORT, DEFAULT_PORT),
                 pluginSetting.getBooleanOrDefault(HEALTH_CHECK_SERVICE, false),
                 pluginSetting.getBooleanOrDefault(PROTO_REFLECTION_SERVICE, false),
+                pluginSetting.getBooleanOrDefault(ENABLE_UNFRAMED_REQUESTS, false),
                 pluginSetting.getBooleanOrDefault(SSL, DEFAULT_SSL),
                 pluginSetting.getStringOrDefault(SSL_KEY_CERT_FILE, null),
                 pluginSetting.getStringOrDefault(SSL_KEY_FILE, null),
@@ -79,6 +84,10 @@ public class OTelTraceSourceConfig {
 
     public boolean hasProtoReflectionService() {
         return protoReflectionService;
+    }
+
+    public boolean enableUnframedRequests() {
+        return enableUnframedRequests;
     }
 
     public boolean isSsl() {

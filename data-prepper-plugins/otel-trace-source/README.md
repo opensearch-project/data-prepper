@@ -16,6 +16,7 @@ source:
 * request_timeout(Optional) => An `int` represents request timeout in millis. Default is ```10_000```.
 * health_check_service(Optional) => A boolean enables a gRPC health check service under ```grpc.health.v1 / Health / Check```. Default is ```false```.
 * proto_reflection_service(Optional) => A boolean enables a reflection service for Protobuf services (see [ProtoReflectionService](https://grpc.github.io/grpc-java/javadoc/io/grpc/protobuf/services/ProtoReflectionService.html) and [gRPC reflection](https://github.com/grpc/grpc-java/blob/master/documentation/server-reflection-tutorial.md) docs). Default is ```false```.
+* unframed_requests(Optional) => A boolean to enable requests not framed using the gRPC wire protocol. 
 * ssl(Optional) => A boolean enables TLS/SSL. Default is ```true```.
 * sslKeyCertChainFile(Optional) => A `String` represents the SSL certificate chain file path. Required if ```ssl``` is set to ```true```
 * sslKeyFile(Optional) => A `String` represents the SSL key file path. Required if ```ssl``` is set to ```true```
