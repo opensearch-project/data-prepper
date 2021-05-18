@@ -115,6 +115,15 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     }
   }
 
+  public void testInstantiateSinkRawSpanReservedAliasAlreadyUsedAsIndex() throws IOException {
+    final String reservedIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
+    final Request request = new Request(HttpMethod.PUT, reservedIndexAlias);
+    client().performRequest(request);
+    final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
+    assertThrows(String.format(ElasticsearchSink.INDEX_ALIAS_USED_AS_INDEX_ERROR, reservedIndexAlias),
+            RuntimeException.class, () -> new ElasticsearchSink(pluginSetting));
+  }
+
   public void testOutputRawSpanDefault() throws IOException, InterruptedException {
     final String testDoc1 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
     final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_2);

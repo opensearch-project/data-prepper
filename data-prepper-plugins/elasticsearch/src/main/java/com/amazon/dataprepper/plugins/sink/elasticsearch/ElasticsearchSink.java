@@ -50,6 +50,7 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
   private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchSink.class);
   // Pulled from BulkRequest to make estimation of bytes consistent
   private static final int REQUEST_OVERHEAD = 50;
+  protected static final String INDEX_ALIAS_USED_AS_INDEX_ERROR = "Invalid alias name [%s], an index exists with the same name as the alias";
 
   private BufferedWriter dlqWriter;
   private final ElasticsearchSinkConfiguration esSinkConfig;
@@ -73,14 +74,15 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
     this.indexType = esSinkConfig.getIndexConfiguration().getIndexType();
     this.documentIdField = esSinkConfig.getIndexConfiguration().getDocumentIdField();
     try {
-      start();
+      initialize();
     } catch (final IOException e) {
+      this.shutdown();
       throw new RuntimeException(e.getMessage(), e);
     }
   }
 
-  public void start() throws IOException {
-    LOG.info("Starting Elasticsearch sink");
+  public void initialize() throws IOException {
+    LOG.info("Initializing Elasticsearch sink");
     restHighLevelClient = esSinkConfig.getConnectionConfiguration().createClient();
     final boolean isISMEnabled = IndexStateManagement.checkISMEnabled(restHighLevelClient);
     final Optional<String> policyIdOptional = isISMEnabled ? IndexStateManagement.checkAndCreatePolicy(restHighLevelClient, indexType) :
@@ -99,7 +101,7 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
             this::logFailure,
             pluginMetrics,
             bulkRequestSupplier);
-    LOG.info("Started Elasticsearch sink");
+    LOG.info("Initialized Elasticsearch sink");
   }
 
   @Override
@@ -248,8 +250,13 @@ public class ElasticsearchSink extends AbstractSink<Record<String>> {
         if (e.getMessage().contains("resource_already_exists_exception")) {
           // Do nothing - likely caused by a race condition where the resource was created
           // by another host before this host's restClient made its request
+        } else if (e.getMessage().contains(String.format(INDEX_ALIAS_USED_AS_INDEX_ERROR, indexAlias))) {
+          // TODO: replace IOException with custom data-prepper exception
+          throw new IOException(
+                  String.format("An index exists with the same name as the reserved index alias name [%s], please delete or migrate the existing index",
+                          indexAlias));
         } else {
-          throw e;
+          throw new IOException(e);
         }
       }
     }
