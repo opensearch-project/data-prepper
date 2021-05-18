@@ -61,8 +61,9 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
   private static final String PLUGIN_NAME = "elasticsearch";
   private static final String PIPELINE_NAME = "integTestPipeline";
   public List<String> HOSTS = Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
-      .map(ip -> String.format("%s://%s", getProtocol(), ip)).collect(Collectors.toList());
-  private static final String DEFAULT_TEMPLATE_FILE = "test-index-template.json";
+          .map(ip -> String.format("%s://%s", getProtocol(), ip)).collect(Collectors.toList());
+  private static final String TEST_TEMPLATE_V1_FILE = "test-index-template.json";
+  private static final String TEST_TEMPLATE_V2_FILE = "test-index-template-v2.json";
   private static final String DEFAULT_RAW_SPAN_FILE_1 = "raw-span-1.json";
   private static final String DEFAULT_RAW_SPAN_FILE_2 = "raw-span-2.json";
   private static final String DEFAULT_SERVICE_MAP_FILE = "service-map-1.json";
@@ -82,13 +83,14 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final String index = String.format("%s-000001", indexAlias);
     final Map<String, Object> mappings = getIndexMappings(index);
     assertNotNull(mappings);
-    assertFalse((boolean)mappings.get("date_detection"));
+    assertFalse((boolean) mappings.get("date_detection"));
     sink.shutdown();
 
     if (isODFE()) {
       // Check managed index
       await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
-        assertEquals(IndexConstants.RAW_ISM_POLICY, getIndexPolicyId(index)); }
+                assertEquals(IndexConstants.RAW_ISM_POLICY, getIndexPolicyId(index));
+              }
       );
     }
 
@@ -129,7 +131,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
     assertEquals(2, retSources.size());
     assertTrue(retSources.containsAll(Arrays.asList(expData1, expData2)));
-    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", (String)expData1.get("spanId")));
+    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", (String) expData1.get("spanId")));
     sink.shutdown();
 
     // Verify metrics
@@ -216,7 +218,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     assertEquals(SC_OK, response.getStatusLine().getStatusCode());
     final Map<String, Object> mappings = getIndexMappings(indexAlias);
     assertNotNull(mappings);
-    assertFalse((boolean)mappings.get("date_detection"));
+    assertFalse((boolean) mappings.get("date_detection"));
     sink.shutdown();
 
     if (isODFE()) {
@@ -228,8 +230,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
   public void testOutputServiceMapDefault() throws IOException, InterruptedException {
     final String testDoc = readDocFromFile(DEFAULT_SERVICE_MAP_FILE);
     final ObjectMapper mapper = new ObjectMapper();
-    @SuppressWarnings("unchecked")
-    final Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
+    @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
 
     final List<Record<String>> testRecords = Collections.singletonList(new Record<>(testDoc));
     final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
@@ -239,7 +240,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
     assertEquals(1, retSources.size());
     assertEquals(expData, retSources.get(0));
-    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", (String)expData.get("hashId")));
+    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", (String) expData.get("hashId")));
     sink.shutdown();
 
     // verify metrics
@@ -258,7 +259,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
   public void testInstantiateSinkCustomIndex() throws IOException {
     final String testIndexAlias = "test-alias";
     final String testTemplateFile = Objects.requireNonNull(
-            getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
+            getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
     final PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFile);
     ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
     final Request request = new Request(HttpMethod.HEAD, testIndexAlias);
@@ -271,10 +272,67 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     sink.shutdown();
   }
 
+  public void testInstantiateSinkDoesNotOverwriteNewerIndexTemplates() throws IOException {
+    final String testIndexAlias = "test-alias";
+    final String expectedIndexTemplateName = testIndexAlias + "-index-template";
+    final String testTemplateFileV1 = getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE).getFile();
+    final String testTemplateFileV2 = getClass().getClassLoader().getResource(TEST_TEMPLATE_V2_FILE).getFile();
+
+    // Create sink with template version 1
+    PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFileV1);
+    ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
+
+    Request getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
+    Response getTemplateResponse = client().performRequest(getTemplateRequest);
+    assertEquals(SC_OK, getTemplateResponse.getStatusLine().getStatusCode());
+
+    String responseBody = EntityUtils.toString(getTemplateResponse.getEntity());
+    @SuppressWarnings("unchecked") final Integer firstResponseVersion =
+            (Integer) ((Map<String, Object>) createParser(XContentType.JSON.xContent(),
+            responseBody).map().get(expectedIndexTemplateName)).get("version");
+
+    assertEquals(Integer.valueOf(1), firstResponseVersion);
+    sink.shutdown();
+
+    // Create sink with template version 2
+    pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFileV2);
+    sink = new ElasticsearchSink(pluginSetting);
+
+    getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
+    getTemplateResponse = client().performRequest(getTemplateRequest);
+    assertEquals(SC_OK, getTemplateResponse.getStatusLine().getStatusCode());
+
+    responseBody = EntityUtils.toString(getTemplateResponse.getEntity());
+    @SuppressWarnings("unchecked") final Integer secondResponseVersion =
+            (Integer) ((Map<String, Object>) createParser(XContentType.JSON.xContent(),
+            responseBody).map().get(expectedIndexTemplateName)).get("version");
+
+    assertEquals(Integer.valueOf(2), secondResponseVersion);
+    sink.shutdown();
+
+    // Create sink with template version 1 again
+    pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFileV1);
+    sink = new ElasticsearchSink(pluginSetting);
+
+    getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
+    getTemplateResponse = client().performRequest(getTemplateRequest);
+    assertEquals(SC_OK, getTemplateResponse.getStatusLine().getStatusCode());
+
+    responseBody = EntityUtils.toString(getTemplateResponse.getEntity());
+    @SuppressWarnings("unchecked") final Integer thirdResponseVersion =
+            (Integer) ((Map<String, Object>) createParser(XContentType.JSON.xContent(),
+            responseBody).map().get(expectedIndexTemplateName)).get("version");
+
+    // Assert version 2 was not overwritten by version 1
+    assertEquals(Integer.valueOf(2), thirdResponseVersion);
+    sink.shutdown();
+
+  }
+
   public void testOutputCustomIndex() throws IOException, InterruptedException {
     final String testIndexAlias = "test-alias";
     final String testTemplateFile = Objects.requireNonNull(
-            getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
+            getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
     final String testIdField = "someId";
     final String testId = "foo";
     final List<Record<String>> testRecords = Collections.singletonList(generateCustomRecord(testIdField, testId));
@@ -296,7 +354,8 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
   }
 
-  private PluginSetting generatePluginSetting(final boolean isRaw, final boolean isServiceMap, final String indexAlias, final String templateFilePath) {
+  private PluginSetting generatePluginSetting(final boolean isRaw, final boolean isServiceMap, final String indexAlias,
+                                              final String templateFilePath) {
     final Map<String, Object> metadata = new HashMap<>();
     metadata.put(IndexConfiguration.TRACE_ANALYTICS_RAW_FLAG, isRaw);
     metadata.put(IndexConfiguration.TRACE_ANALYTICS_SERVICE_MAP_FLAG, isServiceMap);
@@ -317,19 +376,19 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
 
   private Record<String> generateCustomRecord(final String idField, final String documentId) throws IOException {
     return new Record<>(
-        Strings.toString(
-            XContentFactory.jsonBuilder()
-                .startObject()
-                .field(idField, documentId)
-                .endObject()
-        )
+            Strings.toString(
+                    XContentFactory.jsonBuilder()
+                            .startObject()
+                            .field(idField, documentId)
+                            .endObject()
+            )
     );
   }
 
   private String readDocFromFile(final String filename) throws IOException {
     final StringBuilder jsonBuilder = new StringBuilder();
     try (final InputStream inputStream = Objects.requireNonNull(
-            getClass().getClassLoader().getResourceAsStream(filename))){
+            getClass().getClassLoader().getResourceAsStream(filename))) {
       final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
       bufferedReader.lines().forEach(jsonBuilder::append);
     }
@@ -337,9 +396,10 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
   }
 
   private Boolean checkIsWriteIndex(final String responseBody, final String aliasName, final String indexName) throws IOException {
-    @SuppressWarnings("unchecked") final Map<String, Object> indexBlob = (Map<String, Object>)createParser(XContentType.JSON.xContent(), responseBody).map().get(indexName);
-    @SuppressWarnings("unchecked") final Map<String, Object> aliasesBlob = (Map<String, Object>)indexBlob.get("aliases");
-    @SuppressWarnings("unchecked") final Map<String, Object> aliasBlob = (Map<String, Object>)aliasesBlob.get(aliasName);
+    @SuppressWarnings("unchecked") final Map<String, Object> indexBlob = (Map<String, Object>) createParser(XContentType.JSON.xContent(),
+            responseBody).map().get(indexName);
+    @SuppressWarnings("unchecked") final Map<String, Object> aliasesBlob = (Map<String, Object>) indexBlob.get("aliases");
+    @SuppressWarnings("unchecked") final Map<String, Object> aliasBlob = (Map<String, Object>) aliasesBlob.get(aliasName);
     return (Boolean) aliasBlob.get("is_write_index");
   }
 
@@ -347,19 +407,19 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final Request request = new Request(HttpMethod.GET, index + "/_count");
     if (field != null && value != null) {
       final String jsonEntity = Strings.toString(
-          XContentFactory.jsonBuilder().startObject()
-              .startObject("query")
-              .startObject("match")
-              .field(field, value)
-              .endObject()
-              .endObject()
-              .endObject()
+              XContentFactory.jsonBuilder().startObject()
+                      .startObject("query")
+                      .startObject("match")
+                      .field(field, value)
+                      .endObject()
+                      .endObject()
+                      .endObject()
       );
       request.setJsonEntity(jsonEntity);
     }
     final Response response = client().performRequest(request);
     final String responseBody = EntityUtils.toString(response.getEntity());
-    return (Integer)createParser(XContentType.JSON.xContent(), responseBody).map().get("count");
+    return (Integer) createParser(XContentType.JSON.xContent(), responseBody).map().get("count");
   }
 
   private List<Map<String, Object>> getSearchResponseDocSources(final String index) throws IOException {
@@ -369,10 +429,11 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final Response response = client().performRequest(request);
     final String responseBody = EntityUtils.toString(response.getEntity());
 
-    @SuppressWarnings("unchecked") final List<Object> hits = (List<Object>) ((Map<String, Object>)createParser(XContentType.JSON.xContent(),
-            responseBody).map().get("hits")).get("hits");
+    @SuppressWarnings("unchecked") final List<Object> hits =
+            (List<Object>) ((Map<String, Object>) createParser(XContentType.JSON.xContent(),
+                    responseBody).map().get("hits")).get("hits");
     @SuppressWarnings("unchecked") final List<Map<String, Object>> sources = hits.stream()
-            .map(hit -> (Map<String, Object>)((Map<String, Object>) hit).get("_source"))
+            .map(hit -> (Map<String, Object>) ((Map<String, Object>) hit).get("_source"))
             .collect(Collectors.toList());
     return sources;
   }
@@ -382,9 +443,9 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final Response response = client().performRequest(request);
     final String responseBody = EntityUtils.toString(response.getEntity());
 
-    @SuppressWarnings("unchecked")
-    final Map<String, Object> mappings = (Map<String, Object>) ((Map<String, Object>)createParser(XContentType.JSON.xContent(),
-            responseBody).map().get(index)).get("mappings");
+    @SuppressWarnings("unchecked") final Map<String, Object> mappings =
+            (Map<String, Object>) ((Map<String, Object>) createParser(XContentType.JSON.xContent(),
+                    responseBody).map().get(index)).get("mappings");
     return mappings;
   }
 
@@ -393,8 +454,7 @@ public class ElasticsearchSinkIT extends ESRestTestCase {
     final Response response = client().performRequest(request);
     final String responseBody = EntityUtils.toString(response.getEntity());
 
-    @SuppressWarnings("unchecked")
-    final String policyId = (String) ((Map<String, Object>)createParser(XContentType.JSON.xContent(),
+    @SuppressWarnings("unchecked") final String policyId = (String) ((Map<String, Object>) createParser(XContentType.JSON.xContent(),
             responseBody).map().get(index)).get("index.opendistro.index_state_management.policy_id");
     return policyId;
   }
