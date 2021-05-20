@@ -4,7 +4,7 @@ The purpose of this document is to outline the structure and versioning formats 
 
 ## Tenets
 
-1. Schemas shall follow [semantic versioning](https://semver.org/), excluding patch version numbers.
+1. Schemas shall follow the [Semantic Versioning 2.0.0 spec](https://semver.org/), excluding patch version numbers.
 2. Schema versions shall be detached from Data Prepper and Trace Analytics plugin versions.
 3. Index and index template names shall only include the major version (e.g. "otel-v1-apm-span"). The minor version shall be included within the actual schema as a field.
 4. Forward and backward-compatibility promises shall only apply to schemas of the same major version.
@@ -43,8 +43,8 @@ Minor version changes include adding a new field or adding a new nested field.
 
 The following compatibility promises are made *only for schemas of the same major version*.
 
-* ***Backwards compatibility*** - features built on version 1.x of the schema **will not break, but may degrade** if data from a **prior** 1.x schema version is used.
-* ***Forwards compatibility*** - features built on version 1.x of the schema **will not break** if data from a **later** 1.x schema version is used.
+* ***Backwards compatibility*** - Trace Analytics UI features built on version 1.x of the schema **will not break, but may degrade** if data from a **prior** 1.x schema version is used.
+* ***Forwards compatibility*** - Trace Analytics UI features built on version 1.x of the schema **will not break** if data from a **later** 1.x schema version is used.
 
 ### Read-compatibility examples
 
@@ -74,18 +74,30 @@ Minor version updates will occur as new fields are needed to support new Trace A
 4. Update DP to start emitting documents following the new schema version
 5. Add new features to the TA plugin utilizing the new data
 
-### Handling Major version updates
+### Handling major version updates
 
-As schema owners, we will do our best to avoid introducing major version changes. However as our schemas are heavily tied to the OpenTelemetry spec, there is always the risk of an upstream backwards-incompatible change requiring a major version increase.
+As schema owners, we will do our best to avoid introducing major version changes. However, as our schemas are heavily tied to the OpenTelemetry spec, there is always the risk of an upstream backwards-incompatible change requiring a major version increase.
 
-Due to the potentially disjointed release schedules of both OpenSearch and the managed offering, we need to ensure that rolling out a major version change is carefully planned.
+The following procedures may be considered while performing a major upgrade across both Data Prepper and the Trace Analytics plugin.
 
-A typical migration plan will first make Data Prepper artifacts available so that users can start ingesting their data to the new index. To prevent data loss during the migration period, users can be encouraged to simultaneously write to both the old and new indexes. This can be done by either running both old and new versions of Data Prepper side-by-side, or perhaps Data Prepper itself can be updated to write to dual indexes (TODO). Once users have the ability to write to the new index, Trace Analytics plugin updates will be made available which make use of the new major version index.
+#### Approach #1: Upgrade both Data Prepper and the Trace Analytics plugin as simultaneously as possible
+The simplest approach to perform a major version upgrade is to simultaneously upgrade both Data Prepper and the Trace Analytics plugin. This approach will result in a usability drop while both components are on differing major versions.
 
-The steps to handle a schema major version update are to:
+As an example, assume both DP and TA are being upgraded from v1 to v2:
+* If DP is upgraded to v2 before TA, then the old TA v1 dashboard will not visualize the new data ingested by DP v2.
+* IF TA is upgraded to v2 before DP, then the new TA v2 dashboard will not visualize the old data ingested by DP v1.
 
-1. Update Data Prepper to use the new schema. Increment the Data Prepper major version and make new artifacts available to users.
-    * This must *always be done first*. Plugin changes cannot go out before Data Prepper artifacts are made available.
-    * Encourage users to start using the new Data Prepper version ahead of the plugin release. These will allow the user to upgrade their Trace Analytics plugin and immediately have new major version data to work with.
-2. Update the Trace Analytics plugin to read from the new indexes. Increment the plugin version and release to OpenSearch and/or the managed offering.
-    * Communicate to users the need to use the new version of Data Prepper after upgrading their TA plugin
+Both component upgrades should happen as close as possible to each other to minimize this window.
+
+#### Approach #2: Run both old and new Data Prepper versions side-by-side until the Trace Analytics plugin is upgraded
+To avoid usability downtime of the Trace Analytics plugin, run two versions of Data Prepper simultaneously before upgrading the plugin.
+
+* DP v1 writes to the v1 index
+* DP v2 writes to the v2 index
+* TA v1 reads from the v1 index
+* TA v2 reads from the v2 index
+
+Upgrading the Trace Analytics plugin from v1 to v2 will result in no usability downtime, as both plugin versions will have populated indexes to read from. This approach is more complex in that it requires additional Data Prepper instances and results in duplicate data being written (until the old DP instances are shut down).
+
+#### Mitigating data loss
+Upgrading Data Prepper and the Trace Analytics plugin to a new major version schema will result in data written to old indexes being unusable. If users wish to avoid this data loss, the [reindexing APIs](https://opendistro.github.io/for-elasticsearch-docs/docs/elasticsearch/reindex-data/) must be used. Additionally, transforms might required depending on the differences between the two major schema versions.

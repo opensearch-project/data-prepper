@@ -106,7 +106,7 @@ Documents in this index correspond to spans following the [OpenTelemetry tracing
 ```
 
 ## Fields
-Many fields are either copied or derived from the [trace specification protobuff](https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/trace/v1/trace.proto) format.
+Many fields are either copied or derived from the [trace specification protobuf](https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/trace/v1/trace.proto) format.
 
 * traceId - A unique identifier for a trace. All spans from the same trace share the same traceId.
 * spanId - A unique identifier for a span within a trace, assigned when the span is created.
