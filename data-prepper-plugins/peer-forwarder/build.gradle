@@ -13,7 +13,7 @@ dependencies {
     compile project(':data-prepper-api')
     testCompile project(':data-prepper-api').sourceSets.test.output
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
-    implementation "com.linecorp.armeria:armeria:1.7.2"
+    implementation "com.linecorp.armeria:armeria:1.8.0"
     implementation "com.linecorp.armeria:armeria-grpc:1.7.2"
     implementation "commons-validator:commons-validator:1.7"
     testImplementation "junit:junit:4.13.2"
