@@ -28,9 +28,9 @@ ext {
 }
 
 dependencies {
-    compile project(':data-prepper-api')
-    testCompile project(':data-prepper-api').sourceSets.test.output
-    compile project(':data-prepper-plugins:common')
+    api project(':data-prepper-api')
+    testImplementation project(':data-prepper-api').sourceSets.test.output
+    api project(':data-prepper-plugins:common')
     implementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:${es_version}"
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.3"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.3"

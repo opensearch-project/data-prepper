@@ -1,8 +1,8 @@
 plugins {
-    id 'java'
+    id 'java-library'
 }
 dependencies {
-    compile project(':data-prepper-api')
+    api project(':data-prepper-api')
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.3"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.3"
     implementation "org.reflections:reflections:0.9.12"

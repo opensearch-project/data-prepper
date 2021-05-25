@@ -86,7 +86,7 @@ subprojects {
     tasks.withType(Tar) {
         dependsOn ':release:releasePrerequisites'
         compression = Compression.GZIP
-        extension = 'tar.gz'
+        archiveExtension = 'tar.gz'
     }
 
     tasks.withType(Zip) {

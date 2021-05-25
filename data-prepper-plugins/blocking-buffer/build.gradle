@@ -2,7 +2,7 @@ plugins {
     id 'java'
 }
 dependencies {
-    compile project(':data-prepper-api')
+    implementation project(':data-prepper-api')
     testImplementation "junit:junit:4.13.2"
 }
 
