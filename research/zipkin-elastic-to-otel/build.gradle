@@ -27,9 +27,10 @@ run {
 }
 
 dependencies {
-    compile project(':data-prepper-plugins:elasticsearch')
-    compile project(':data-prepper-plugins:otel-trace-source')
-    compile project(':data-prepper-plugins:otel-trace-raw-prepper')
+    implementation project(':data-prepper-plugins:blocking-buffer')
+    implementation project(':data-prepper-plugins:elasticsearch')
+    implementation project(':data-prepper-plugins:otel-trace-source')
+    implementation project(':data-prepper-plugins:otel-trace-raw-prepper')
     implementation "org.apache.commons:commons-lang3:3.11"
     implementation "com.linecorp.armeria:armeria:1.0.0"
     implementation "com.linecorp.armeria:armeria-grpc:1.0.0"
