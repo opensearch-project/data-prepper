@@ -61,7 +61,7 @@ dependencies {
     }
     testImplementation "org.awaitility:awaitility:4.0.3"
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
-    testImplementation "commons-io:commons-io:2.8.0"
+    testImplementation "commons-io:commons-io:2.9.0"
 }
 
 // Workaround for Werror
