@@ -24,17 +24,17 @@ jobs:
         with:
           repository: 'opensearch-project/OpenSearch'
           path: OpenSearch
-          ref: '1.0.0-alpha2'
+          ref: '1.0'
       - name: Build OpenSearch
         working-directory: ./OpenSearch
-        run: ./gradlew publishToMavenLocal -Dbuild.version_qualifier=alpha2 -Dbuild.snapshot=false
+        run: ./gradlew publishToMavenLocal -Dbuild.version_qualifier=rc1 -Dbuild.snapshot=false
       - name: Checkout Data-Prepper
         uses: actions/checkout@v2
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Run OpenSearch docker
         run: |
-          export version=1.0.0-beta1
+          export version=1.0.0-rc1
           docker pull opensearchstaging/opensearch:$version
           docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -d opensearchstaging/opensearch:$version
           sleep 90
