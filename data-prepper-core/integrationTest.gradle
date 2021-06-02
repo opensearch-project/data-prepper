@@ -128,7 +128,7 @@ def removeDataPrepperDockerContainer(final DockerStopContainer stopDataPrepperDo
  * OpenSearch Docker tasks
  */
 task pullOpenSearchDockerImage(type: DockerPullImage) {
-    image = 'opensearchstaging/opensearch:1.0.0-beta1'
+    image = 'opensearchstaging/opensearch:1.0.0-rc1'
 }
 
 task createOpenSearchDockerContainer(type: DockerCreateContainer) {
