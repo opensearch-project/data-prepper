@@ -45,7 +45,7 @@ public class IndexStateManagement {
             final RestHighLevelClient restHighLevelClient, final String indexType) throws IOException {
         if (indexType.equals(IndexConstants.RAW)) {
             // TODO: replace with new _opensearch API
-            final String endPoint = "/_plugins/_ism/policies/" + IndexConstants.RAW_ISM_POLICY;
+            final String endPoint = "/_opendistro/_ism/policies/" + IndexConstants.RAW_ISM_POLICY;
             Request request = createPolicyRequestFromFile(endPoint, IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE);
             try {
                 restHighLevelClient.getLowLevelClient().performRequest(request);

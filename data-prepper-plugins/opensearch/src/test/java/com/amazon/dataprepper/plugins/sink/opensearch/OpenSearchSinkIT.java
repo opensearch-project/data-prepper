@@ -399,15 +399,20 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     return mappings;
   }
 
+  @SuppressWarnings("unchecked")
   private String getIndexPolicyId(final String index) throws IOException {
     // TODO: replace with new _opensearch API
-    final Request request = new Request(HttpMethod.GET, "/_plugins/_ism/explain/" + index);
+    final Request request = new Request(HttpMethod.GET, "/_opendistro/_ism/explain/" + index);
     final Response response = client().performRequest(request);
     final String responseBody = EntityUtils.toString(response.getEntity());
 
-    @SuppressWarnings("unchecked")
-    final String policyId = (String) ((Map<String, Object>)createParser(XContentType.JSON.xContent(),
+    String policyId = (String) ((Map<String, Object>)createParser(XContentType.JSON.xContent(),
             responseBody).map().get(index)).get("index.plugins.index_state_management.policy_id");
+    // If backend is ODFE
+    if (policyId == null) {
+      policyId = (String) ((Map<String, Object>)createParser(XContentType.JSON.xContent(),
+              responseBody).map().get(index)).get("index.opendistro.index_state_management.policy_id");
+    }
     return policyId;
   }
 
