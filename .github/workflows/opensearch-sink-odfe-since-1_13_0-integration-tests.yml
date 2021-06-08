@@ -24,10 +24,10 @@ jobs:
         with:
           repository: 'opensearch-project/OpenSearch'
           path: OpenSearch
-          ref: '1.0.0-beta1'
+          ref: '1.0'
       - name: Build OpenSearch
         working-directory: ./OpenSearch
-        run: ./gradlew publishToMavenLocal -Dbuild.version_qualifier=beta1 -Dbuild.snapshot=false
+        run: ./gradlew publishToMavenLocal -Dbuild.version_qualifier=rc1 -Dbuild.snapshot=false
       - name: Checkout Data-Prepper
         uses: actions/checkout@v2
       - name: Grant execute permission for gradlew
@@ -40,5 +40,5 @@ jobs:
           sleep 90
       - name: Run ODFE tests
         run: |
-          ./gradlew :data-prepper-plugins:opensearch:test --tests "com.amazon.dataprepper.plugins.sink.opensearch.ODFETests.testODFEConnection" -Dodfe.host=https://localhost:9200 -Dodfe.user=admin -Dodfe.password=admin
-          ./gradlew :data-prepper-plugins:opensearch:integTest --tests "com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchSinkIT" -Dodfe=true -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername=docker-cluster -Duser=admin -Dpassword=admin
+          ./gradlew :data-prepper-plugins:opensearch:test --tests "com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchTests.testOpenSearchConnection" -Dos.host=https://localhost:9200 -Dos.user=admin -Dos.password=admin
+          ./gradlew :data-prepper-plugins:opensearch:integTest --tests "com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchSinkIT" -Dos=true -Dtests.rest.cluster=localhost:9200 -Dtests.cluster=localhost:9200 -Dtests.clustername=docker-cluster -Duser=admin -Dpassword=admin
