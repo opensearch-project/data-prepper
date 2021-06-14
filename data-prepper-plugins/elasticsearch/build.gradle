@@ -63,7 +63,7 @@ configurations.all {
         force 'org.apache.httpcomponents:httpclient:4.5.10'
         force "org.hdrhistogram:HdrHistogram:2.1.12"
         force 'joda-time:joda-time:2.10.10'
-        force 'org.yaml:snakeyaml:1.28'
+        force 'org.yaml:snakeyaml:1.29'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-smile:2.12.3'
         force 'junit:junit:4.13'
         force "org.slf4j:slf4j-api:1.7.30"
