@@ -7,7 +7,7 @@ dependencies {
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.3"
     implementation "org.reflections:reflections:0.9.12"
     testImplementation "junit:junit:4.13.2"
-    testImplementation "commons-io:commons-io:2.8.0"
+    testImplementation "commons-io:commons-io:2.10.0"
 }
 
 jacocoTestCoverageVerification {
