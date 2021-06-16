@@ -44,7 +44,7 @@ dependencies {
     }
     testImplementation "org.awaitility:awaitility:4.1.0"
     testImplementation "org.elasticsearch.test:framework:${es_version}"
-    testImplementation "commons-io:commons-io:2.8.0"
+    testImplementation "commons-io:commons-io:2.10.0"
 }
 
 // Workaround for Werror
