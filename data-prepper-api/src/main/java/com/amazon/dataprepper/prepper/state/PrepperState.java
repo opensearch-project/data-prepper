@@ -57,7 +57,13 @@ public interface PrepperState<K, V> {
     /**
      * @return Size of the prepper state data stored in file, in bytes.
      */
+    // TODO: Potentially remove, this is file-specific
     public long sizeInBytes();
+
+    /**
+     * Clear internal state
+     */
+    void clear();
 
     /**
      * Any cleanup code goes here
