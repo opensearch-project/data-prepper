@@ -2,6 +2,13 @@ package com.amazon.dataprepper.metrics;
 
 public class MetricNames {
     private MetricNames() {}
+
+    /**
+     * Metric dimension representing service name.
+     * Applicable to all components
+     */
+    public static final String SERVICE_NAME = "serviceName";
+
     /**
      * Metric representing the ingress of records to a pipeline component.
      * Applicable to preppers and sinks
