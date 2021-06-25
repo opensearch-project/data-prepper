@@ -11,7 +11,6 @@ prepper:
 
 ## Configuration
 
-* `root_span_flush_delay`: An `int` represents the time interval in seconds to flush all the root spans in the prepper together with their descendants. Default to 30.
 * `trace_flush_interval`: An `int` represents the time interval in seconds to flush all the descendant spans without any root span. Default to 180.
 
 ## Metrics

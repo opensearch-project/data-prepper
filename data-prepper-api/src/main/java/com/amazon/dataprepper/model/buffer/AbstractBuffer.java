@@ -1,17 +1,18 @@
 package com.amazon.dataprepper.model.buffer;
 
-import com.amazon.dataprepper.model.CheckpointState;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.PluginMetrics;
+import com.amazon.dataprepper.model.CheckpointState;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
-import java.util.Collection;
-import java.util.Map;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicLong;
-
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
+
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Abstract implementation of the Buffer interface to record boilerplate metrics
@@ -50,41 +51,37 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     /**
      * Records metrics for ingress, time elapsed, and timeouts, while calling the doWrite method
      * to perform the actual write
-     * @param record the Record to add
+     *
+     * @param record          the Record to add
      * @param timeoutInMillis how long to wait before giving up
      * @throws TimeoutException
      */
     @Override
     public void write(T record, int timeoutInMillis) throws TimeoutException {
+        long startTime = System.nanoTime();
+
         try {
-            writeTimer.record(() -> {
-                try {
-                    doWrite(record, timeoutInMillis);
-                } catch (TimeoutException e) {
-                    writeTimeoutCounter.increment();
-                    throw new RuntimeException(e);
-                }
-            });
+            doWrite(record, timeoutInMillis);
             recordsWrittenCounter.increment();
-        } catch (RuntimeException e) {
-            if(e.getCause() instanceof TimeoutException) {
-                throw (TimeoutException) e.getCause();
-            } else  {
-                throw e;
-            }
+        } catch (TimeoutException e) {
+            writeTimeoutCounter.increment();
+            throw e;
+        } finally {
+            writeTimer.record(System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
         }
     }
 
     /**
      * Records egress and time elapsed metrics, while calling the doRead function to
      * do the actual read
+     *
      * @param timeoutInMillis how long to wait before giving up
      * @return Records collection and checkpoint state read from the buffer
      */
     @Override
     public Map.Entry<Collection<T>, CheckpointState> read(int timeoutInMillis) {
         final Map.Entry<Collection<T>, CheckpointState> readResult = readTimer.record(() -> doRead(timeoutInMillis));
-        recordsReadCounter.increment(readResult.getKey().size()*1.0);
+        recordsReadCounter.increment(readResult.getKey().size() * 1.0);
         recordsInFlight.addAndGet(readResult.getValue().getNumRecordsToBeChecked());
         return readResult;
     }
@@ -103,7 +100,8 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
 
     /**
      * This method should implement the logic for writing to the  buffer
-     * @param record Record to write to buffer
+     *
+     * @param record          Record to write to buffer
      * @param timeoutInMillis Timeout for write operation in millis
      * @throws TimeoutException
      */
@@ -111,6 +109,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
 
     /**
      * This method should implement the logic for reading from the buffer
+     *
      * @param timeoutInMillis Timeout in millis
      * @return Records collection and checkpoint state read from the buffer
      */

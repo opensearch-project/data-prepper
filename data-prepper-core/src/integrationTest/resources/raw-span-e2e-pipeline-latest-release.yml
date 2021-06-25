@@ -16,7 +16,6 @@ raw-pipeline:
       name: "entry-pipeline"
   prepper:
     - otel_trace_raw_prepper:
-        root_span_flush_delay: 3
         trace_flush_interval: 5
   sink:
     - elasticsearch:
