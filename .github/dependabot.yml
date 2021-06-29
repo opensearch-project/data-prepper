@@ -4,54 +4,54 @@ updates:
 - package-ecosystem: gradle
   directory: "/data-prepper-api"
   schedule:
-    interval: weekly
+    interval: monthly
 
 - package-ecosystem: gradle
   directory: "/data-prepper-core"
   schedule:
-    interval: weekly
+    interval: monthly
 
 - package-ecosystem: gradle
   directory: "/data-prepper-plugins/blocking-buffer"
   schedule:
-    interval: weekly
+    interval: monthly
 
 - package-ecosystem: gradle
   directory: "/data-prepper-plugins/common"
   schedule:
-    interval: weekly
+    interval: monthly
 
 - package-ecosystem: gradle
   directory: "/data-prepper-plugins/elasticsearch"
   schedule:
-    interval: weekly
+    interval: monthly
 
 - package-ecosystem: gradle
   directory: "/data-prepper-plugins/mapdb-prepper-state"
   schedule:
-    interval: weekly
+    interval: monthly
 
 - package-ecosystem: gradle
   directory: "/data-prepper-plugins/otel-trace-raw-prepper"
   schedule:
-    interval: weekly
+    interval: monthly
 
 - package-ecosystem: gradle
   directory: "/data-prepper-plugins/otel-trace-group-prepper"
   schedule:
-    interval: weekly
+    interval: monthly
 
 - package-ecosystem: gradle
   directory: "/data-prepper-plugins/otel-trace-source"
   schedule:
-    interval: weekly
+    interval: monthly
 
 - package-ecosystem: gradle
   directory: "/data-prepper-plugins/peer-forwarder"
   schedule:
-    interval: weekly
+    interval: monthly
 
 - package-ecosystem: gradle
   directory: "/data-prepper-plugins/service-map-stateful"
   schedule:
-    interval: weekly
+    interval: monthly
