@@ -92,8 +92,8 @@ public class ServiceMapStatefulPrepperTest {
         Mockito.when(clock.instant()).thenReturn(Instant.now());
         ExecutorService threadpool = Executors.newCachedThreadPool();
         final File path = new File(ServiceMapPrepperConfig.DEFAULT_DB_PATH);
-        final ServiceMapStatefulPrepper serviceMapStateful1 = new ServiceMapStatefulPrepper(100, path, clock, 16, PLUGIN_SETTING);
-        final ServiceMapStatefulPrepper serviceMapStateful2 = new ServiceMapStatefulPrepper(100, path, clock, 16, PLUGIN_SETTING);
+        final ServiceMapStatefulPrepper serviceMapStateful1 = new ServiceMapStatefulPrepper(100, path, clock, 2, PLUGIN_SETTING);
+        final ServiceMapStatefulPrepper serviceMapStateful2 = new ServiceMapStatefulPrepper(100, path, clock, 2, PLUGIN_SETTING);
 
         final byte[] rootSpanId1 = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] rootSpanId2 = ServiceMapTestUtils.getRandomBytes(8);
@@ -194,13 +194,11 @@ public class ServiceMapStatefulPrepperTest {
                 new StringJoiner(MetricNames.DELIMITER).add("testPipelineName").add("testServiceMapPrepper")
                         .add(ServiceMapStatefulPrepper.SPANS_DB_SIZE).toString());
         Assert.assertEquals(1, spansDbSizeMeasurement.size());
-        Assert.assertEquals(2097152, spansDbSizeMeasurement.get(0).getValue(), 0);
 
         final List<Measurement> traceGroupDbSizeMeasurement = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add("testPipelineName").add("testServiceMapPrepper")
                         .add(ServiceMapStatefulPrepper.TRACE_GROUP_DB_SIZE).toString());
         Assert.assertEquals(1, traceGroupDbSizeMeasurement.size());
-        Assert.assertEquals(2097152, traceGroupDbSizeMeasurement.get(0).getValue(), 0);
 
 
         //Make sure that future relationships that are equivalent are caught by cache
