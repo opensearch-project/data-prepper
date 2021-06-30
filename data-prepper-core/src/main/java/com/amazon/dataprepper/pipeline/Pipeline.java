@@ -79,7 +79,8 @@ public class Pipeline {
         this.prepperExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(prepperThreads,
                 new PipelineThreadFactory(format("%s-prepper-worker", name)), this);
 
-        this.sinkExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(sinks.size(),
+        // TODO: allow this to be configurable as well?
+        this.sinkExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(prepperThreads,
                 new PipelineThreadFactory(format("%s-sink-worker", name)), this);
 
         stopRequested = false;
