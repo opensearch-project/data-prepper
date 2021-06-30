@@ -3,7 +3,8 @@ package com.amazon.dataprepper.plugins.source.oteltrace;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
-import com.amazon.dataprepper.plugins.certificate.acm.ACMCertificateProvider;
+import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
+import com.amazon.dataprepper.plugins.certificate.CertificateProviderFactory;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
@@ -18,7 +19,6 @@ import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
-import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
@@ -34,7 +34,6 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -54,7 +53,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -69,7 +67,10 @@ public class OTelTraceSourceTest {
     private Server server;
 
     @Mock
-    private ACMCertificateProvider acmCertificateProvider;
+    private CertificateProviderFactory certificateProviderFactory;
+
+    @Mock
+    private CertificateProvider certificateProvider;
 
     @Mock
     private Certificate certificate;
@@ -90,8 +91,6 @@ public class OTelTraceSourceTest {
             .addResourceSpans(ResourceSpans.newBuilder()
                     .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
                             .addSpans(Span.newBuilder().setTraceState("FAILURE").build())).build()).build();
-    private static TraceServiceGrpc.TraceServiceBlockingStub CLIENT;
-
     private BlockingBuffer<Record<ExportTraceServiceRequest>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 1);
@@ -217,10 +216,16 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    public void testServerStartCertFileSuccess() {
+    public void testServerStartCertFileSuccess() throws IOException {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             when(server.stop()).thenReturn(completableFuture);
+
+            final Path certFilePath = Path.of("data/certificate/test_cert.crt");
+            final Path keyFilePath = Path.of("data/certificate/test_decrypted_key.key");
+            final String certAsString = Files.readString(certFilePath);
+            final String keyAsString = Files.readString(keyFilePath);
+
             final Map<String, Object> settingsMap = new HashMap<>();
             settingsMap.put(SSL, true);
             settingsMap.put("useAcmCertForSSL", false);
@@ -233,11 +238,13 @@ public class OTelTraceSourceTest {
             source.start(buffer);
             source.stop();
 
-            final ArgumentCaptor<File> sslKeyCertChainFile = ArgumentCaptor.forClass(File.class);
-            final ArgumentCaptor<File> sslKeyFile = ArgumentCaptor.forClass(File.class);
-            verify(serverBuilder).tls(sslKeyCertChainFile.capture(), sslKeyFile.capture());
-            assertThat(sslKeyCertChainFile.getValue().getPath()).isEqualTo("data/certificate/test_cert.crt");
-            assertThat(sslKeyFile.getValue().getPath()).isEqualTo("data/certificate/test_decrypted_key.key");
+            final ArgumentCaptor<InputStream> certificateIs = ArgumentCaptor.forClass(InputStream.class);
+            final ArgumentCaptor<InputStream> privateKeyIs = ArgumentCaptor.forClass(InputStream.class);
+            verify(serverBuilder).tls(certificateIs.capture(), privateKeyIs.capture());
+            final String actualCertificate = IOUtils.toString(certificateIs.getValue(), StandardCharsets.UTF_8.name());
+            final String actualPrivateKey = IOUtils.toString(privateKeyIs.getValue(), StandardCharsets.UTF_8.name());
+            assertThat(actualCertificate).isEqualTo(certAsString);
+            assertThat(actualPrivateKey).isEqualTo(keyAsString);
         }
     }
 
@@ -252,17 +259,19 @@ public class OTelTraceSourceTest {
             final String keyAsString = Files.readString(keyFilePath);
             when(certificate.getCertificate()).thenReturn(certAsString);
             when(certificate.getPrivateKey()).thenReturn(keyAsString);
-            when(acmCertificateProvider.getACMCertificate(anyString(), anyString())).thenReturn(certificate);
+            when(certificateProvider.getCertificate()).thenReturn(certificate);
+            when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
             final Map<String, Object> settingsMap = new HashMap<>();
             settingsMap.put(SSL, true);
             settingsMap.put("useAcmCertForSSL", true);
+            settingsMap.put("awsRegion", "us-east-1");
             settingsMap.put("acmCertificateArn", "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
             settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
             settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
 
             testPluginSetting = new PluginSetting(null, settingsMap);
             testPluginSetting.setPipelineName("pipeline");
-            final OTelTraceSource source = new OTelTraceSource(testPluginSetting, acmCertificateProvider);
+            final OTelTraceSource source = new OTelTraceSource(testPluginSetting, certificateProviderFactory);
             source.start(buffer);
             source.stop();
 

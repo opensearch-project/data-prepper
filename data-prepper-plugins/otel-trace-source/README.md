@@ -17,11 +17,17 @@ source:
 * health_check_service(Optional) => A boolean enables a gRPC health check service under ```grpc.health.v1 / Health / Check```. Default is ```false```.
 * proto_reflection_service(Optional) => A boolean enables a reflection service for Protobuf services (see [ProtoReflectionService](https://grpc.github.io/grpc-java/javadoc/io/grpc/protobuf/services/ProtoReflectionService.html) and [gRPC reflection](https://github.com/grpc/grpc-java/blob/master/documentation/server-reflection-tutorial.md) docs). Default is ```false```.
 * unframed_requests(Optional) => A boolean to enable requests not framed using the gRPC wire protocol. 
+* thread_count(Optional) => the number of threads to keep in the ScheduledThreadPool. Default is `200`.
+* max_connection_count(Optional) => the maximum allowed number of open connections. Default is `500`.
+
+### SSL
+
 * ssl(Optional) => A boolean enables TLS/SSL. Default is ```true```.
-* sslKeyCertChainFile(Optional) => A `String` represents the SSL certificate chain file path. Required if ```ssl``` is set to ```true```
-* sslKeyFile(Optional) => A `String` represents the SSL key file path. Required if ```ssl``` is set to ```true```
-* thread_count(Optional) => the number of threads to keep in the ScheduledThreadPool. Default is `200`
-* max_connection_count(Optional) => the maximum allowed number of open connections. Default is `500`
+* sslKeyCertChainFile(Optional) => A `String` represents the SSL certificate chain file path or AWS S3 path. S3 path example ```s3://<bucketName>/<path>```. Required if ```ssl``` is set to ```true```.
+* sslKeyFile(Optional) => A `String` represents the SSL key file path or AWS S3 path. S3 path example ```s3://<bucketName>/<path>```. Required if ```ssl``` is set to ```true```.
+* useAcmCertForSSL(Optional) => A boolean enables TLS/SSL using certificate and private key from AWS Certificate Manager (ACM). Default is ```false```.
+* acmCertificateArn(Optional) => A `String` represents the ACM certificate ARN. ACM certificate take preference over S3 or local file system certificate. Required if ```useAcmCertForSSL``` is set to ```true```.
+* awsRegion(Optional) => A `String` represents the AWS region to use ACM or S3. Required if ```useAcmCertForSSL``` is set to ```true``` or ```sslKeyCertChainFile``` and ```sslKeyFile``` is ```AWS S3 path```.
 
 ## Metrics
 

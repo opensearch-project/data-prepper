@@ -1,11 +1,8 @@
 package com.amazon.dataprepper.plugins.certificate.acm;
 
+import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
-import com.amazonaws.ClientConfiguration;
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.certificatemanager.AWSCertificateManager;
-import com.amazonaws.services.certificatemanager.AWSCertificateManagerClientBuilder;
 import com.amazonaws.services.certificatemanager.model.*;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -28,42 +25,43 @@ import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.security.PrivateKey;
 import java.security.Security;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 
-public class ACMCertificateProvider {
+public class ACMCertificateProvider implements CertificateProvider {
     private static final Logger LOG = LoggerFactory.getLogger(ACMCertificateProvider.class);
     private static final long SLEEP_INTERVAL = 10000L;
     private static final String BOUNCY_CASTLE_PROVIDER = "BC";
     private final AWSCertificateManager awsCertificateManager;
+    private final String acmArn;
     private final long totalTimeout;
-
-    public ACMCertificateProvider(final String awsRegion, final long totalTimeout) {
-        final AWSCredentialsProvider credentialsProvider = new DefaultAWSCredentialsProviderChain();
-        final ClientConfiguration clientConfig = new ClientConfiguration()
-                .withThrottledRetries(true);
-        this.awsCertificateManager = AWSCertificateManagerClientBuilder.standard()
-            .withRegion(awsRegion)
-            .withCredentials(credentialsProvider)
-            .withClientConfiguration(clientConfig)
-            .build();
-        this.totalTimeout = totalTimeout;
+    private final String passphrase;
+    public ACMCertificateProvider(final AWSCertificateManager awsCertificateManager,
+                                  final String acmArn,
+                                  final long totalTimeout,
+                                  final String passphrase) {
+        this.awsCertificateManager = Objects.requireNonNull(awsCertificateManager);
+        this.acmArn = Objects.requireNonNull(acmArn);
+        this.totalTimeout = Objects.requireNonNull(totalTimeout);
+        // Passphrase can be null. If null a random passphrase will be generated.
+        this.passphrase = passphrase;
         Security.addProvider(new BouncyCastleProvider());
     }
 
-    // accessible only in the same package for unit test
-    ACMCertificateProvider(final AWSCertificateManager awsCertificateManager, final long totalTimeout) {
-        this.awsCertificateManager = awsCertificateManager;
-        this.totalTimeout = totalTimeout;
-        Security.addProvider(new BouncyCastleProvider());
-    }
-
-    public Certificate getACMCertificate(final String acmArn, final String passphrase) {
+    public Certificate getCertificate() {
         ExportCertificateResult exportCertificateResult = null;
         long timeSlept = 0L;
+
+        // The private key from ACM is encrypted. Passphrase is the privateKey password that will be used to decrypt the
+        // private key. If it's not provided, UUID is used generate a temporary password. The configured passphrase can
+        // be used to decrypt the private key manually using openssl commands for any inspection or debugging.
+        final String pkPassphrase = Optional.ofNullable(passphrase).orElse(UUID.randomUUID().toString());
         while (exportCertificateResult == null && timeSlept < totalTimeout) {
             try {
                 final ExportCertificateRequest exportCertificateRequest = new ExportCertificateRequest()
                         .withCertificateArn(acmArn)
-                        .withPassphrase(ByteBuffer.wrap(passphrase.getBytes()));
+                        .withPassphrase(ByteBuffer.wrap(pkPassphrase.getBytes()));
                 exportCertificateResult = awsCertificateManager.exportCertificate(exportCertificateRequest);
 
             } catch (final RequestInProgressException ex) {
@@ -79,7 +77,7 @@ public class ACMCertificateProvider {
             timeSlept += SLEEP_INTERVAL;
         }
         if(exportCertificateResult != null) {
-            final String decryptedPrivateKey = getDecryptedPrivateKey(exportCertificateResult.getPrivateKey(), passphrase);
+            final String decryptedPrivateKey = getDecryptedPrivateKey(exportCertificateResult.getPrivateKey(), pkPassphrase);
             return new Certificate(exportCertificateResult.getCertificate(), decryptedPrivateKey);
         } else {
             throw new IllegalStateException(String.format("Exception retrieving certificate results. Time spent retrieving certificate is %d ms and total time out set is %d ms.", timeSlept, totalTimeout));

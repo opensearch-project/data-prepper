@@ -21,7 +21,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class CertificateProviderTest {
+public class ACMCertificateProviderTest {
+    private static final String acmCertificateArn = "arn:aws:acm:us-east-1:account:certificate/1234-567-856456";
+    private static final long acmCertIssueTimeOutMillis = 2000L;
+    private static final String acmPrivateKeyPassword = "password";
     @Mock
     private AWSCertificateManager  awsCertificateManager;
 
@@ -32,73 +35,61 @@ public class CertificateProviderTest {
 
     @BeforeEach
     public void beforeEach() {
-        acmCertificateProvider = new ACMCertificateProvider(awsCertificateManager, 2000L);
+        acmCertificateProvider = new ACMCertificateProvider(awsCertificateManager, acmCertificateArn, acmCertIssueTimeOutMillis, acmPrivateKeyPassword);
     }
 
     @Test
     public void getACMCertificateWithEncryptedPrivateKeySuccess() throws IOException {
-        final String acmArn = UUID.randomUUID().toString();
         final Path certFilePath = Path.of("data/certificate/test_cert.crt");
         final Path encryptedKeyFilePath = Path.of("data/certificate/test_encrypted_key.key");
         final Path decryptedKeyFilePath = Path.of("data/certificate/test_decrypted_key.key");
-        final String passphrase = "password";
         final String certAsString = Files.readString(certFilePath);
         final String encryptedKeyAsString = Files.readString(encryptedKeyFilePath);
         final String decryptedKeyAsString = Files.readString(decryptedKeyFilePath);
         when(exportCertificateResult.getCertificate()).thenReturn(certAsString);
         when(exportCertificateResult.getPrivateKey()).thenReturn(encryptedKeyAsString);
         when(awsCertificateManager.exportCertificate(any(ExportCertificateRequest.class))).thenReturn(exportCertificateResult);
-        final Certificate certificate = acmCertificateProvider.getACMCertificate(acmArn, passphrase);
+        final Certificate certificate = acmCertificateProvider.getCertificate();
         assertThat(certificate.getCertificate(), is(certAsString));
         assertThat(certificate.getPrivateKey(), is(decryptedKeyAsString));
     }
 
     @Test
     public void getACMCertificateWithUnencryptedPrivateKeySuccess() throws IOException {
-        final String acmArn = UUID.randomUUID().toString();
         final Path certFilePath = Path.of("data/certificate/test_cert.crt");
         final Path decryptedKeyFilePath = Path.of("data/certificate/test_decrypted_key.key");
-        final String passphrase = "password";
         final String certAsString = Files.readString(certFilePath);
         final String decryptedKeyAsString = Files.readString(decryptedKeyFilePath);
         when(exportCertificateResult.getCertificate()).thenReturn(certAsString);
         when(exportCertificateResult.getPrivateKey()).thenReturn(decryptedKeyAsString);
         when(awsCertificateManager.exportCertificate(any(ExportCertificateRequest.class))).thenReturn(exportCertificateResult);
-        final Certificate certificate = acmCertificateProvider.getACMCertificate(acmArn, passphrase);
+        final Certificate certificate = acmCertificateProvider.getCertificate();
         assertThat(certificate.getCertificate(), is(certAsString));
         assertThat(certificate.getPrivateKey(), is(decryptedKeyAsString));
     }
 
     @Test
     public void getACMCertificateWithInvalidPrivateKeyException() {
-        final String acmArn = UUID.randomUUID().toString();
-        final String passphrase = "password";
         when(exportCertificateResult.getPrivateKey()).thenReturn(UUID.randomUUID().toString());
         when(awsCertificateManager.exportCertificate(any(ExportCertificateRequest.class))).thenReturn(exportCertificateResult);
-        assertThrows(RuntimeException.class, () -> acmCertificateProvider.getACMCertificate(acmArn, passphrase));
+        assertThrows(RuntimeException.class, () -> acmCertificateProvider.getCertificate());
     }
 
     @Test
     public void getACMCertificateRequestInProgressException() {
-        final String acmArn = UUID.randomUUID().toString();
-        final String passphrase = "password";
         when(awsCertificateManager.exportCertificate(any(ExportCertificateRequest.class))).thenThrow(new RequestInProgressException("Request in progress."));
-        assertThrows(IllegalStateException.class, () -> acmCertificateProvider.getACMCertificate(acmArn, passphrase));
+        assertThrows(IllegalStateException.class, () -> acmCertificateProvider.getCertificate());
     }
 
     @Test
     public void getACMCertificateResourceNotFoundException() {
-        final String acmArn = UUID.randomUUID().toString();
-        final String passphrase = "password";
         when(awsCertificateManager.exportCertificate(any(ExportCertificateRequest.class))).thenThrow(new ResourceNotFoundException("Resource not found."));
-        assertThrows(ResourceNotFoundException.class, () -> acmCertificateProvider.getACMCertificate(acmArn, passphrase));
+        assertThrows(ResourceNotFoundException.class, () -> acmCertificateProvider.getCertificate());
     }
 
     @Test
     public void getACMCertificateInvalidArnException() {
-        final String acmArn = UUID.randomUUID().toString();
-        final String passphrase = "password";
         when(awsCertificateManager.exportCertificate(any(ExportCertificateRequest.class))).thenThrow(new InvalidArnException("Invalid certificate arn."));
-        assertThrows(InvalidArnException.class, () -> acmCertificateProvider.getACMCertificate(acmArn, passphrase));
+        assertThrows(InvalidArnException.class, () -> acmCertificateProvider.getCertificate());
     }
 }
