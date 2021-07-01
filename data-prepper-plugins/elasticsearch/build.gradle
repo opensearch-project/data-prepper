@@ -35,7 +35,7 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.3"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.3"
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
-    implementation "com.amazonaws:aws-java-sdk-core:1.12.14"
+    implementation "com.amazonaws:aws-java-sdk-core:1.12.15"
     implementation "com.amazonaws:aws-java-sdk-sts:1.12.14"
     implementation "com.github.awslabs:aws-request-signing-apache-interceptor:b3772780da"
     implementation "io.micrometer:micrometer-core:1.7.1"
@@ -53,7 +53,7 @@ compileJava.options.warnings = false
 // Resolve dependency conflict between ES sink and main project
 configurations.all {
     resolutionStrategy {
-        force 'com.amazonaws:aws-java-sdk-core:1.12.7'
+        force 'com.amazonaws:aws-java-sdk-core:1.12.15'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.3'
         force 'com.fasterxml.jackson.core:jackson-annotations:2.12.3'
         force 'com.fasterxml.jackson.core:jackson-databind:2.12.3'
