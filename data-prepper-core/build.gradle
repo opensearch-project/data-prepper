@@ -10,7 +10,7 @@
  */
 
 plugins {
-    id 'com.bmuschko.docker-remote-api' version '6.6.1'
+    id 'com.bmuschko.docker-remote-api' version '7.1.0'
 }
 
 sourceSets {
