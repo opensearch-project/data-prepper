@@ -1,6 +1,5 @@
 package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
-import com.amazon.dataprepper.plugins.sink.elasticsearch.aws.interceptor.http.AwsRequestSigningApacheInterceptor;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequestInterceptor;

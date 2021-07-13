@@ -10,7 +10,7 @@
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions
  * and limitations under the License.
  */
-package com.amazon.dataprepper.plugins.sink.elasticsearch.aws.interceptor.http;
+package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
 
 import org.apache.http.HttpEntityEnclosingRequest;

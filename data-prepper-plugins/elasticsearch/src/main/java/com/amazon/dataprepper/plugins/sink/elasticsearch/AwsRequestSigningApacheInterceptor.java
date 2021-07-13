@@ -10,7 +10,7 @@
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions
  * and limitations under the License.
  */
-package com.amazon.dataprepper.plugins.sink.elasticsearch.aws.interceptor.http;
+package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntityEnclosingRequest;
@@ -49,7 +49,7 @@ import static org.apache.http.protocol.HttpCoreContext.HTTP_TARGET_HOST;
  * An {@link HttpRequestInterceptor} that signs requests using any AWS {@link Signer}
  * and {@link AwsCredentialsProvider}.
  */
-public class AwsRequestSigningApacheInterceptor implements HttpRequestInterceptor {
+final class AwsRequestSigningApacheInterceptor implements HttpRequestInterceptor {
     /**
      * The service that we're connecting to.
      */
