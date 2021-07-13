@@ -50,6 +50,20 @@ import static org.apache.http.protocol.HttpCoreContext.HTTP_TARGET_HOST;
  * and {@link AwsCredentialsProvider}.
  */
 final class AwsRequestSigningApacheInterceptor implements HttpRequestInterceptor {
+
+    /**
+     * Constant to check content-length
+     */
+    private static final String CONTENT_LENGTH = "content-length";
+    /**
+     * Constant to check Zero content length
+     */
+    private static final String ZERO_CONTENT_LENGTH = "0";
+    /**
+     * Constant to check if host is the endpoint
+     */
+    private static final String HOST = "host";
+
     /**
      * The service that we're connecting to.
      */
@@ -81,9 +95,9 @@ final class AwsRequestSigningApacheInterceptor implements HttpRequestInterceptor
                                               final Signer signer,
                                               final AwsCredentialsProvider awsCredentialsProvider,
                                               final Region region) {
-        this.service = service;
-        this.signer = signer;
-        this.awsCredentialsProvider = awsCredentialsProvider;
+        this.service = Objects.requireNonNull(service);
+        this.signer =  Objects.requireNonNull(signer);
+        this.awsCredentialsProvider =  Objects.requireNonNull(awsCredentialsProvider);
         this.region = Objects.requireNonNull(region);
     }
 
@@ -205,9 +219,9 @@ final class AwsRequestSigningApacheInterceptor implements HttpRequestInterceptor
      * @return true if the given header should be excluded when signing
      */
     private static boolean skipHeader(final Header header) {
-        return ("content-length".equalsIgnoreCase(header.getName())
-                && "0".equals(header.getValue())) // Strip Content-Length: 0
-                || "host".equalsIgnoreCase(header.getName()); // Host comes from endpoint
+        return (CONTENT_LENGTH.equalsIgnoreCase(header.getName())
+                && ZERO_CONTENT_LENGTH.equals(header.getValue())) // Strip Content-Length: 0
+                || HOST.equalsIgnoreCase(header.getName()); // Host comes from endpoint
     }
 
     /**
