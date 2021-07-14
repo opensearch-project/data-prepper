@@ -1,10 +1,6 @@
 package com.amazon.dataprepper.plugins.sink.elasticsearch;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazonaws.auth.AWS4Signer;
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
-import com.amazonaws.http.AWSRequestSigningApacheInterceptor;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.auth.AuthScope;
@@ -22,6 +18,9 @@ import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.auth.signer.Aws4Signer;
 
 import javax.net.ssl.SSLContext;
 import java.io.InputStream;
@@ -175,12 +174,10 @@ public class ConnectionConfiguration {
     //if aws signing is enabled we will add AWSRequestSigningApacheInterceptor interceptor,
     //if not follow regular credentials process
     LOG.info("{} is set, will sign requests using AWSRequestSigningApacheInterceptor", AWS_SIGV4);
-    final AWS4Signer aws4Signer = new AWS4Signer();
-    aws4Signer.setServiceName(SERVICE_NAME);
-    aws4Signer.setRegionName(awsRegion);
-    final AWSCredentialsProvider credentialsProvider = new DefaultAWSCredentialsProviderChain();
-    final HttpRequestInterceptor httpRequestInterceptor = new AWSRequestSigningApacheInterceptor(SERVICE_NAME, aws4Signer,
-            credentialsProvider);
+    final Aws4Signer aws4Signer = Aws4Signer.create();
+    final AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.create();
+    final HttpRequestInterceptor httpRequestInterceptor = new AwsRequestSigningApacheInterceptor(SERVICE_NAME, aws4Signer,
+            credentialsProvider, awsRegion);
     restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
       httpClientBuilder.addInterceptorLast(httpRequestInterceptor);
       attachSSLContext(httpClientBuilder);
