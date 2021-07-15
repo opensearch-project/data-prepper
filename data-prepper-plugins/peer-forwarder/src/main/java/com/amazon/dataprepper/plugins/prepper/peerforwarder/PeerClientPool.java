@@ -1,11 +1,13 @@
 package com.amazon.dataprepper.plugins.prepper.peerforwarder;
 
+import com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate.model.Certificate;
 import com.linecorp.armeria.client.ClientBuilder;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.Clients;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 
-import java.io.File;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,7 +20,7 @@ public class PeerClientPool {
 
     private int clientTimeoutSeconds = 3;
     private boolean ssl;
-    private File sslKeyCertChainFile;
+    private Certificate certificate;
 
     private PeerClientPool() {
         peerClients = new ConcurrentHashMap<>();
@@ -34,8 +36,8 @@ public class PeerClientPool {
     public void setSsl(boolean ssl) {
         this.ssl = ssl;
     }
-    public void setSslKeyCertChainFile(File sslKeyCertChainFile) {
-        this.sslKeyCertChainFile = sslKeyCertChainFile;
+    public void setCertificate(final Certificate certificate) {
+        this.certificate = certificate;
     }
 
     public TraceServiceGrpc.TraceServiceBlockingStub getClient(final String address) {
@@ -50,7 +52,10 @@ public class PeerClientPool {
             clientBuilder = Clients.builder(String.format("%s://%s:21890/", GRPC_HTTPS, ipAddress))
                     .writeTimeout(Duration.ofSeconds(clientTimeoutSeconds))
                     .factory(ClientFactory.builder()
-                            .tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(sslKeyCertChainFile)).build());
+                            .tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(
+                                    new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8))
+                            )).build()
+                    );
         } else {
             clientBuilder = Clients.builder(String.format("%s://%s:21890/", GRPC_HTTP, ipAddress))
                     .writeTimeout(Duration.ofSeconds(clientTimeoutSeconds));

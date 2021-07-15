@@ -49,8 +49,16 @@ A DNS server (like [dnsmasq](http://www.thekelleys.org.uk/dnsmasq/doc.html)) can
 * `discovery_mode`: peer discovery mode to be used. Allowable values are `static` and `dns`. Defaults to `static`
 * `static_endpoints`: list containing endpoints of all Data Prepper instances.
 * `domain_name`: single domain name to query DNS against. Typically used by creating multiple [DNS A Records](https://www.cloudflare.com/learning/dns/dns-records/dns-a-record/) for the same domain.
-* `ssl` => Default is ```true```.
-* `sslKeyCertChainFile` => Should be provided if ```ssl``` is set to ```true```
+
+### SSL
+The SSL configuration for setting up trust manager for peer forwarding client to connect to other Data Prepper instances. The SSL configuration should be same as the one used for OTel Trace Source.
+
+* `ssl(Optional)` => A boolean enables TLS/SSL. Default is ```true```.
+* `sslKeyCertChainFile(Optional)` => A `String` represents the SSL certificate chain file path or AWS S3 path. S3 path example ```s3://<bucketName>/<path>```. Required if ```ssl``` is set to ```true```.
+* `useAcmCertForSSL(Optional)` => A boolean enables TLS/SSL using certificate and private key from AWS Certificate Manager (ACM). Default is ```false```.
+* `acmCertificateArn(Optional)` => A `String` represents the ACM certificate ARN. ACM certificate take preference over S3 or local file system certificate. Required if ```useAcmCertForSSL``` is set to ```true```.
+* `awsRegion(Optional)` => A `String` represents the AWS region to use ACM or S3. Required if ```useAcmCertForSSL``` is set to ```true``` or ```sslKeyCertChainFile``` and ```sslKeyFile``` is ```AWS S3 path```.
+
 
 ## Metrics
 

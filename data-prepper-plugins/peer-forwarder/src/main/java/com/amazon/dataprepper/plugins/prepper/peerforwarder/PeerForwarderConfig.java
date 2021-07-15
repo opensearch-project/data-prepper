@@ -1,12 +1,11 @@
 package com.amazon.dataprepper.plugins.prepper.peerforwarder;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate.CertificateProviderConfig;
+import com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate.CertificateProviderFactory;
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery.PeerListProvider;
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery.PeerListProviderFactory;
-
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import org.apache.commons.lang3.StringUtils;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -20,6 +19,12 @@ public class PeerForwarderConfig {
     public static final String SSL = "ssl";
     public static final String SSL_KEY_CERT_FILE = "sslKeyCertChainFile";
     private static final boolean DEFAULT_SSL = true;
+    private static final String USE_ACM_CERT_FOR_SSL = "useAcmCertForSSL";
+    private static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
+    private static final String ACM_CERT_ISSUE_TIME_OUT_MILLIS = "acmCertIssueTimeOutMillis";
+    private static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
+    private static final String ACM_CERT_ARN = "acmCertificateArn";
+    private static final String AWS_REGION = "awsRegion";
 
     private final HashRing hashRing;
     private final PeerClientPool peerClientPool;
@@ -46,20 +51,27 @@ public class PeerForwarderConfig {
         peerClientPool.setClientTimeoutSeconds(3);
         final boolean ssl = pluginSetting.getBooleanOrDefault(SSL, DEFAULT_SSL);
         final String sslKeyCertChainFilePath = pluginSetting.getStringOrDefault(SSL_KEY_CERT_FILE, null);
-        final File sslKeyCertChainFile;
-        if (ssl) {
-            if (sslKeyCertChainFilePath == null || sslKeyCertChainFilePath.isEmpty()) {
+        final boolean useAcmCertForSsl = pluginSetting.getBooleanOrDefault(USE_ACM_CERT_FOR_SSL, DEFAULT_USE_ACM_CERT_FOR_SSL);
+
+        if (ssl || useAcmCertForSsl) {
+            if (ssl && StringUtils.isEmpty(sslKeyCertChainFilePath)) {
                 throw new IllegalArgumentException(String.format("%s is enabled, %s can not be empty or null", SSL, SSL_KEY_CERT_FILE));
-            } else if (!Files.exists(Paths.get(sslKeyCertChainFilePath))) {
-                throw new IllegalArgumentException(String.format("%s is enabled, %s does not exist", SSL, SSL_KEY_CERT_FILE));
-            } else {
-                sslKeyCertChainFile = new File(sslKeyCertChainFilePath);
             }
-        } else {
-            sslKeyCertChainFile = null;
+            peerClientPool.setSsl(true);
+            final String acmCertificateArn = pluginSetting.getStringOrDefault(ACM_CERT_ARN, null);
+            final long acmCertIssueTimeOutMillis = pluginSetting.getLongOrDefault(ACM_CERT_ISSUE_TIME_OUT_MILLIS, DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS);
+            final String awsRegion = pluginSetting.getStringOrDefault(AWS_REGION, null);
+            final CertificateProviderConfig certificateProviderConfig = new CertificateProviderConfig(
+                    useAcmCertForSsl,
+                    acmCertificateArn,
+                    awsRegion,
+                    acmCertIssueTimeOutMillis,
+                    sslKeyCertChainFilePath
+            );
+            final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(certificateProviderConfig);
+            peerClientPool.setCertificate(certificateProviderFactory.getCertificateProvider().getCertificate());
+
         }
-        peerClientPool.setSsl(ssl);
-        peerClientPool.setSslKeyCertChainFile(sslKeyCertChainFile);
 
         return new PeerForwarderConfig(
                 peerClientPool,
