@@ -27,7 +27,7 @@ dependencies {
     compile project(':data-prepper-api')
     compile project(':data-prepper-plugins:common')
     implementation group: 'org.mapdb', name: 'mapdb', version: '3.0.8'
-    implementation group: 'org.jetbrains.kotlin', name: 'kotlin-stdlib', version: '1.4.32'
+    implementation group: 'org.jetbrains.kotlin', name: 'kotlin-stdlib', version: '1.5.21'
     implementation group: 'org.jetbrains.kotlin', name: 'kotlin-stdlib-common', version: '1.4.32'
     testCompile project(':data-prepper-plugins:common').sourceSets.test.output
     testImplementation "org.hamcrest:hamcrest:2.2"
