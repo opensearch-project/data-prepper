@@ -60,7 +60,6 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
                             buffer,
                             pluginMetrics
                     ))
-                    .addService(new HealthGrpcService())
                     .useClientTimeoutHeader(false);
 
             if (oTelTraceSourceConfig.hasHealthCheck()) {

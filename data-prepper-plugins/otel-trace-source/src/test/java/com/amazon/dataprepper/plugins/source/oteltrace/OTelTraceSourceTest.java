@@ -6,6 +6,7 @@ import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.CertificateProviderFactory;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
+import com.amazon.dataprepper.plugins.health.HealthGrpcService;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.linecorp.armeria.client.ClientFactory;
@@ -18,6 +19,8 @@ import com.linecorp.armeria.common.SessionProtocol;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
+import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
+import io.grpc.BindableService;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
@@ -52,8 +55,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -65,6 +71,12 @@ public class OTelTraceSourceTest {
 
     @Mock
     private Server server;
+
+    @Mock
+    private GrpcServiceBuilder grpcServiceBuilder;
+
+    @Mock
+    private GrpcService grpcService;
 
     @Mock
     private CertificateProviderFactory certificateProviderFactory;
@@ -105,6 +117,10 @@ public class OTelTraceSourceTest {
         lenient().when(serverBuilder.https(anyInt())).thenReturn(serverBuilder);
         lenient().when(serverBuilder.build()).thenReturn(server);
         lenient().when(server.start()).thenReturn(completableFuture);
+
+        lenient().when(grpcServiceBuilder.addService(any(BindableService.class))).thenReturn(grpcServiceBuilder);
+        lenient().when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
+        lenient().when(grpcServiceBuilder.build()).thenReturn(grpcService);
 
         final Map<String, Object> settingsMap = new HashMap<>();
         settingsMap.put("request_timeout", 5);
@@ -283,6 +299,76 @@ public class OTelTraceSourceTest {
             assertThat(actualCertificate).isEqualTo(certAsString);
             assertThat(actualPrivateKey).isEqualTo(keyAsString);
         }
+    }
+
+    @Test
+    void start_with_Health_configured_includes_HealthCheck_service() throws IOException {
+        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class);
+            MockedStatic<GrpcService> grpcServerMock = Mockito.mockStatic(GrpcService.class)) {
+            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
+            grpcServerMock.when(GrpcService::builder).thenReturn(grpcServiceBuilder);
+
+            when(server.stop()).thenReturn(completableFuture);
+            final Path certFilePath = Path.of("data/certificate/test_cert.crt");
+            final Path keyFilePath = Path.of("data/certificate/test_decrypted_key.key");
+            final String certAsString = Files.readString(certFilePath);
+            final String keyAsString = Files.readString(keyFilePath);
+            when(certificate.getCertificate()).thenReturn(certAsString);
+            when(certificate.getPrivateKey()).thenReturn(keyAsString);
+            when(certificateProvider.getCertificate()).thenReturn(certificate);
+            when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
+            final Map<String, Object> settingsMap = new HashMap<>();
+            settingsMap.put(SSL, true);
+            settingsMap.put("useAcmCertForSSL", true);
+            settingsMap.put("awsRegion", "us-east-1");
+            settingsMap.put("acmCertificateArn", "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
+            settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
+            settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
+            settingsMap.put("health_check_service", "true");
+
+            testPluginSetting = new PluginSetting(null, settingsMap);
+            testPluginSetting.setPipelineName("pipeline");
+            final OTelTraceSource source = new OTelTraceSource(testPluginSetting, certificateProviderFactory);
+            source.start(buffer);
+            source.stop();
+        }
+
+        verify(grpcServiceBuilder).addService(isA(HealthGrpcService.class));
+    }
+
+    @Test
+    void start_without_Health_configured_does_not_include_HealthCheck_service() throws IOException {
+        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class);
+            MockedStatic<GrpcService> grpcServerMock = Mockito.mockStatic(GrpcService.class)) {
+            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
+            grpcServerMock.when(GrpcService::builder).thenReturn(grpcServiceBuilder);
+
+            when(server.stop()).thenReturn(completableFuture);
+            final Path certFilePath = Path.of("data/certificate/test_cert.crt");
+            final Path keyFilePath = Path.of("data/certificate/test_decrypted_key.key");
+            final String certAsString = Files.readString(certFilePath);
+            final String keyAsString = Files.readString(keyFilePath);
+            when(certificate.getCertificate()).thenReturn(certAsString);
+            when(certificate.getPrivateKey()).thenReturn(keyAsString);
+            when(certificateProvider.getCertificate()).thenReturn(certificate);
+            when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
+            final Map<String, Object> settingsMap = new HashMap<>();
+            settingsMap.put(SSL, true);
+            settingsMap.put("useAcmCertForSSL", true);
+            settingsMap.put("awsRegion", "us-east-1");
+            settingsMap.put("acmCertificateArn", "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
+            settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
+            settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
+            settingsMap.put("health_check_service", "false");
+
+            testPluginSetting = new PluginSetting(null, settingsMap);
+            testPluginSetting.setPipelineName("pipeline");
+            final OTelTraceSource source = new OTelTraceSource(testPluginSetting, certificateProviderFactory);
+            source.start(buffer);
+            source.stop();
+        }
+
+        verify(grpcServiceBuilder, never()).addService(isA(HealthGrpcService.class));
     }
 
     @Test
