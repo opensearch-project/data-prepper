@@ -21,6 +21,9 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
+import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
+import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import javax.net.ssl.SSLContext;
 import java.io.InputStream;
@@ -31,6 +34,7 @@ import java.security.KeyStore;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.util.List;
+import java.util.UUID;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -50,6 +54,7 @@ public class ConnectionConfiguration {
   public static final String INSECURE = "insecure";
   public static final String AWS_SIGV4 = "aws_sigv4";
   public static final String AWS_REGION = "aws_region";
+  public static final String AWS_STS_ROLE = "aws_sts_role";
 
   private final List<String> hosts;
   private final String username;
@@ -60,6 +65,8 @@ public class ConnectionConfiguration {
   private final boolean insecure;
   private final boolean awsSigv4;
   private final String awsRegion;
+  private final String awsStsRole;
+  private final String pipelineName;
 
   public List<String> getHosts() {
     return hosts;
@@ -81,6 +88,14 @@ public class ConnectionConfiguration {
     return awsRegion;
   }
 
+  public String getAwsStsRole() {
+    return awsStsRole;
+  }
+
+  public Path getCertPath() {
+    return certPath;
+  }
+
   public Integer getSocketTimeout() {
     return socketTimeout;
   }
@@ -99,6 +114,8 @@ public class ConnectionConfiguration {
     this.insecure = builder.insecure;
     this.awsSigv4 = builder.awsSigv4;
     this.awsRegion = builder.awsRegion;
+    this.awsStsRole = builder.awsStsRole;
+    this.pipelineName = builder.pipelineName;
   }
 
   public static ConnectionConfiguration readConnectionConfiguration(final PluginSetting pluginSetting){
@@ -106,6 +123,7 @@ public class ConnectionConfiguration {
     final List<String> hosts = (List<String>) pluginSetting.getAttributeFromSettings(HOSTS);
     ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(hosts);
     final String username = (String) pluginSetting.getAttributeFromSettings(USERNAME);
+    builder.withPipelineName(pluginSetting.getPipelineName());
     if (username != null) {
       builder = builder.withUsername(username);
     }
@@ -123,7 +141,10 @@ public class ConnectionConfiguration {
     }
 
     builder.withAwsSigv4(pluginSetting.getBooleanOrDefault(AWS_SIGV4, false));
-    builder.withAwsRegion(pluginSetting.getStringOrDefault(AWS_REGION, DEFAULT_AWS_REGION));
+    if (builder.awsSigv4) {
+      builder.withAwsRegion(pluginSetting.getStringOrDefault(AWS_REGION, DEFAULT_AWS_REGION));
+      builder.withAWSStsRole(pluginSetting.getStringOrDefault(AWS_STS_ROLE, null));
+    }
 
     final String certPath = pluginSetting.getStringOrDefault(CERT_PATH, null);
     final boolean insecure = pluginSetting.getBooleanOrDefault(INSECURE, false);
@@ -136,8 +157,8 @@ public class ConnectionConfiguration {
     return builder.build();
   }
 
-  public Path getCertPath() {
-    return certPath;
+  public String getPipelineName() {
+    return pipelineName;
   }
 
   public RestHighLevelClient createClient() {
@@ -175,7 +196,19 @@ public class ConnectionConfiguration {
     //if not follow regular credentials process
     LOG.info("{} is set, will sign requests using AWSRequestSigningApacheInterceptor", AWS_SIGV4);
     final Aws4Signer aws4Signer = Aws4Signer.create();
-    final AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.create();
+    AwsCredentialsProvider credentialsProvider;
+    if (awsStsRole != null && !awsStsRole.isEmpty()) {
+      credentialsProvider = StsAssumeRoleCredentialsProvider.builder()
+              .stsClient(StsClient.create())
+              .refreshRequest(AssumeRoleRequest.builder()
+                      .roleSessionName(pipelineName + " Elasticsearch-Sink " + UUID.randomUUID()
+                              .toString())
+                      .roleArn(awsStsRole)
+                      .build())
+              .build();
+    } else {
+      credentialsProvider = DefaultCredentialsProvider.create();
+    }
     final HttpRequestInterceptor httpRequestInterceptor = new AwsRequestSigningApacheInterceptor(SERVICE_NAME, aws4Signer,
             credentialsProvider, awsRegion);
     restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
@@ -248,6 +281,8 @@ public class ConnectionConfiguration {
     private boolean insecure;
     private boolean awsSigv4;
     private String awsRegion;
+    private String awsStsRole;
+    private String pipelineName;
 
 
     public Builder(final List<String> hosts) {
@@ -299,6 +334,16 @@ public class ConnectionConfiguration {
     public Builder withAwsRegion(final String awsRegion) {
       checkNotNull(awsRegion, "awsRegion cannot be null");
       this.awsRegion = awsRegion;
+      return this;
+    }
+
+    public Builder withAWSStsRole(final String awsStsRole) {
+      this.awsStsRole = awsStsRole;
+      return this;
+    }
+
+    public Builder withPipelineName(final String pipelineName) {
+      this.pipelineName = pipelineName;
       return this;
     }
 
