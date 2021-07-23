@@ -15,16 +15,26 @@ dependencies {
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
     implementation "com.linecorp.armeria:armeria:1.9.1"
     implementation "com.linecorp.armeria:armeria-grpc:1.9.1"
+    implementation(platform('software.amazon.awssdk:bom:2.16.104'))
     implementation "com.amazonaws:aws-java-sdk-s3:1.12.15"
-    implementation "com.amazonaws:aws-java-sdk-acm:1.12.12"
+    implementation "com.amazonaws:aws-java-sdk-acm:1.12.15"
+    implementation 'software.amazon.awssdk:servicediscovery'
     implementation "commons-io:commons-io:2.10.0"
     implementation "org.apache.commons:commons-lang3:3.12.0"
     implementation "commons-validator:commons-validator:1.7"
-    testImplementation "junit:junit:4.13.2"
+    testImplementation(platform('org.junit:junit-bom:5.7.2'))
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
     testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation "org.mockito:mockito-inline:3.11.2"
     testImplementation "org.mockito:mockito-core:3.11.2"
+    testImplementation 'org.mockito:mockito-junit-jupiter:3.11.2'
     testImplementation "commons-io:commons-io:2.10.0"
+    testImplementation 'org.awaitility:awaitility:4.0.3'
+}
+
+test {
+    useJUnitPlatform()
 }
 
 jacocoTestCoverageVerification {

@@ -24,7 +24,9 @@ public class PeerForwarderConfig {
     private static final String ACM_CERT_ISSUE_TIME_OUT_MILLIS = "acmCertIssueTimeOutMillis";
     private static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
     private static final String ACM_CERT_ARN = "acmCertificateArn";
-    private static final String AWS_REGION = "awsRegion";
+    public static final String AWS_REGION = "awsRegion";
+    public static final String AWS_CLOUD_MAP_NAMESPACE_NAME = "awsCloudMapNamespaceName";
+    public static final String AWS_CLOUD_MAP_SERVICE_NAME = "awsCloudMapServiceName";
 
     private final HashRing hashRing;
     private final PeerClientPool peerClientPool;
