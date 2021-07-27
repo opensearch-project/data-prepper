@@ -33,9 +33,11 @@ public class PeerClientPool {
     public void setClientTimeoutSeconds(int clientTimeoutSeconds) {
         this.clientTimeoutSeconds = clientTimeoutSeconds;
     }
+
     public void setSsl(boolean ssl) {
         this.ssl = ssl;
     }
+
     public void setCertificate(final Certificate certificate) {
         this.certificate = certificate;
     }
@@ -54,12 +56,15 @@ public class PeerClientPool {
                     .factory(ClientFactory.builder()
                             .tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(
                                     new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8))
-                            )).build()
+                                    )
+                            ).tlsNoVerifyHosts(ipAddress)
+                            .build()
                     );
         } else {
             clientBuilder = Clients.builder(String.format("%s://%s:21890/", GRPC_HTTP, ipAddress))
                     .writeTimeout(Duration.ofSeconds(clientTimeoutSeconds));
         }
+
         return clientBuilder.build(TraceServiceGrpc.TraceServiceBlockingStub.class);
     }
 }

@@ -136,7 +136,7 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
                 forwardRequestTimer.record(() -> client.export(request));
                 forwardedRequestCounter.increment();
             } catch (Exception e) {
-                LOG.error(String.format("Failed to forward the request:\n%s\n", request.toString()));
+                LOG.error(String.format("Failed to forward the request:\n%s\n", request.toString()), e);
                 forwardRequestErrorCounter.increment();
                 localBuffer.add(new Record<>(request));
             }
