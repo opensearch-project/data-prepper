@@ -3,7 +3,12 @@ package com.amazon.dataprepper.plugins.certificate.acm;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.amazonaws.services.certificatemanager.AWSCertificateManager;
-import com.amazonaws.services.certificatemanager.model.*;
+import com.amazonaws.services.certificatemanager.model.ExportCertificateRequest;
+import com.amazonaws.services.certificatemanager.model.ExportCertificateResult;
+import com.amazonaws.services.certificatemanager.model.InvalidArnException;
+import com.amazonaws.services.certificatemanager.model.RequestInProgressException;
+import com.amazonaws.services.certificatemanager.model.ResourceNotFoundException;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMEncryptedKeyPair;
@@ -24,19 +29,24 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.ByteBuffer;
 import java.security.PrivateKey;
+import java.security.SecureRandom;
 import java.security.Security;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
+import java.util.Random;
 
 public class ACMCertificateProvider implements CertificateProvider {
     private static final Logger LOG = LoggerFactory.getLogger(ACMCertificateProvider.class);
     private static final long SLEEP_INTERVAL = 10000L;
+    private static final int PASSPHRASE_CHAR_COUNT = 36;
     private static final String BOUNCY_CASTLE_PROVIDER = "BC";
+    private static final Random SECURE_RANDOM = new SecureRandom();
+
     private final AWSCertificateManager awsCertificateManager;
     private final String acmArn;
     private final long totalTimeout;
     private final String passphrase;
+
     public ACMCertificateProvider(final AWSCertificateManager awsCertificateManager,
                                   final String acmArn,
                                   final long totalTimeout,
@@ -54,9 +64,9 @@ public class ACMCertificateProvider implements CertificateProvider {
         long timeSlept = 0L;
 
         // The private key from ACM is encrypted. Passphrase is the privateKey password that will be used to decrypt the
-        // private key. If it's not provided, UUID is used generate a temporary password. The configured passphrase can
+        // private key. If it's not provided, generate a random password. The configured passphrase can
         // be used to decrypt the private key manually using openssl commands for any inspection or debugging.
-        final String pkPassphrase = Optional.ofNullable(passphrase).orElse(UUID.randomUUID().toString());
+        final String pkPassphrase = Optional.ofNullable(passphrase).orElse(generatePassphrase(PASSPHRASE_CHAR_COUNT));
         while (exportCertificateResult == null && timeSlept < totalTimeout) {
             try {
                 final ExportCertificateRequest exportCertificateRequest = new ExportCertificateRequest()
@@ -76,12 +86,26 @@ public class ACMCertificateProvider implements CertificateProvider {
             }
             timeSlept += SLEEP_INTERVAL;
         }
-        if(exportCertificateResult != null) {
+        if (exportCertificateResult != null) {
             final String decryptedPrivateKey = getDecryptedPrivateKey(exportCertificateResult.getPrivateKey(), pkPassphrase);
             return new Certificate(exportCertificateResult.getCertificate(), decryptedPrivateKey);
         } else {
-            throw new IllegalStateException(String.format("Exception retrieving certificate results. Time spent retrieving certificate is %d ms and total time out set is %d ms.", timeSlept, totalTimeout));
+            throw new IllegalStateException(String.format("Exception retrieving certificate results. Time spent retrieving certificate is" +
+                    " %d ms and total time out set is %d ms.", timeSlept, totalTimeout));
         }
+    }
+
+    private String generatePassphrase(final int characterCount) {
+        String passphrase = RandomStringUtils.random(
+                characterCount,
+                0,
+                0,
+                true,
+                true,
+                null,
+                SECURE_RANDOM);
+
+        return passphrase;
     }
 
     private String getDecryptedPrivateKey(final String encryptedPrivateKey, final String keyPassword) {
@@ -95,8 +119,7 @@ public class ACMCertificateProvider implements CertificateProvider {
 
     private String privateKeyAsString(final PrivateKey key) throws IOException {
         final StringWriter sw = new StringWriter();
-        try (JcaPEMWriter pw = new JcaPEMWriter(sw))
-        {
+        try (JcaPEMWriter pw = new JcaPEMWriter(sw)) {
             pw.writeObject(key);
         }
         return sw.toString();
