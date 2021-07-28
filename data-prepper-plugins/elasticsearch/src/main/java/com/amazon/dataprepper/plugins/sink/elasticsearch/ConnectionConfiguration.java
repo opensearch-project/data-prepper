@@ -54,7 +54,7 @@ public class ConnectionConfiguration {
   public static final String INSECURE = "insecure";
   public static final String AWS_SIGV4 = "aws_sigv4";
   public static final String AWS_REGION = "aws_region";
-  public static final String AWS_STS_ROLE = "aws_sts_role";
+  public static final String AWS_STS_ROLE_ARN = "aws_sts_role_arn";
 
   private final List<String> hosts;
   private final String username;
@@ -65,7 +65,7 @@ public class ConnectionConfiguration {
   private final boolean insecure;
   private final boolean awsSigv4;
   private final String awsRegion;
-  private final String awsStsRole;
+  private final String awsStsRoleArn;
   private final String pipelineName;
 
   public List<String> getHosts() {
@@ -88,8 +88,8 @@ public class ConnectionConfiguration {
     return awsRegion;
   }
 
-  public String getAwsStsRole() {
-    return awsStsRole;
+  public String getAwsStsRoleArn() {
+    return awsStsRoleArn;
   }
 
   public Path getCertPath() {
@@ -114,7 +114,7 @@ public class ConnectionConfiguration {
     this.insecure = builder.insecure;
     this.awsSigv4 = builder.awsSigv4;
     this.awsRegion = builder.awsRegion;
-    this.awsStsRole = builder.awsStsRole;
+    this.awsStsRoleArn = builder.awsStsRoleArn;
     this.pipelineName = builder.pipelineName;
   }
 
@@ -143,7 +143,7 @@ public class ConnectionConfiguration {
     builder.withAwsSigv4(pluginSetting.getBooleanOrDefault(AWS_SIGV4, false));
     if (builder.awsSigv4) {
       builder.withAwsRegion(pluginSetting.getStringOrDefault(AWS_REGION, DEFAULT_AWS_REGION));
-      builder.withAWSStsRole(pluginSetting.getStringOrDefault(AWS_STS_ROLE, null));
+      builder.withAWSStsRoleArn(pluginSetting.getStringOrDefault(AWS_STS_ROLE_ARN, null));
     }
 
     final String certPath = pluginSetting.getStringOrDefault(CERT_PATH, null);
@@ -169,7 +169,7 @@ public class ConnectionConfiguration {
       i++;
     }
     final RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
-    /**
+    /*
      * Given that this is a patch release, we will support only the IAM based access policy AES domains.
      * We will not support FGAC and Custom endpoint domains. This will be followed in the next version.
      */
@@ -197,13 +197,13 @@ public class ConnectionConfiguration {
     LOG.info("{} is set, will sign requests using AWSRequestSigningApacheInterceptor", AWS_SIGV4);
     final Aws4Signer aws4Signer = Aws4Signer.create();
     AwsCredentialsProvider credentialsProvider;
-    if (awsStsRole != null && !awsStsRole.isEmpty()) {
+    if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
       credentialsProvider = StsAssumeRoleCredentialsProvider.builder()
               .stsClient(StsClient.create())
               .refreshRequest(AssumeRoleRequest.builder()
-                      .roleSessionName(pipelineName + " Elasticsearch-Sink " + UUID.randomUUID()
+                      .roleSessionName("Elasticsearch-Sink-" + UUID.randomUUID()
                               .toString())
-                      .roleArn(awsStsRole)
+                      .roleArn(awsStsRoleArn)
                       .build())
               .build();
     } else {
@@ -281,7 +281,7 @@ public class ConnectionConfiguration {
     private boolean insecure;
     private boolean awsSigv4;
     private String awsRegion;
-    private String awsStsRole;
+    private String awsStsRoleArn;
     private String pipelineName;
 
 
@@ -337,8 +337,8 @@ public class ConnectionConfiguration {
       return this;
     }
 
-    public Builder withAWSStsRole(final String awsStsRole) {
-      this.awsStsRole = awsStsRole;
+    public Builder withAWSStsRoleArn(final String awsStsRoleArn) {
+      this.awsStsRoleArn = awsStsRoleArn;
       return this;
     }
 

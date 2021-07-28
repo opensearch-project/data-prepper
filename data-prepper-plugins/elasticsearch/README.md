@@ -70,7 +70,7 @@ Default is null.
 
 - `aws_region`: A String represents the region of Amazon Elasticsearch Service domain, e.g. us-west-2. Only applies to Amazon Elasticsearch Service. Defaults to `us-east-1`.
 
-- `aws_sts_role`: A IAM role which the sink plugin will assume to sign request to Amazon Elasticsearch. If not provided the plugin will use the default credentials.
+- `aws_sts_role_arn`: A IAM role arn which the sink plugin will assume to sign request to Amazon Elasticsearch. If not provided the plugin will use the default credentials.
 
 - `insecure`: A boolean flag to turn off SSL certificate verification. If set to true, CA certificate verification will be turned off and insecure HTTP requests will be sent. Default to `false`.
 

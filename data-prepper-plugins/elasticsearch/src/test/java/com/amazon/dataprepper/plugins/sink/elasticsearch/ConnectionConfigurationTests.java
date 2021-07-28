@@ -152,14 +152,14 @@ public class ConnectionConfigurationTests {
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         assertEquals("us-east-1", connectionConfiguration.getAwsRegion());
         assertTrue(connectionConfiguration.isAwsSigv4());
-        assertEquals("some-iam-role", connectionConfiguration.getAwsStsRole());
+        assertEquals("some-iam-role", connectionConfiguration.getAwsStsRoleArn());
         assertEquals(TEST_PIPELINE_NAME, connectionConfiguration.getPipelineName());
     }
 
     private PluginSetting generatePluginSetting(
             final List<String> hosts, final String username, final String password,
             final Integer connectTimeout, final Integer socketTimeout, final boolean awsSigv4, final String awsRegion,
-            final String awsStsRole, final String certPath, final boolean insecure) {
+            final String awsStsRoleArn, final String certPath, final boolean insecure) {
         final Map<String, Object> metadata = new HashMap<>();
         metadata.put("hosts", hosts);
         metadata.put("username", username);
@@ -170,7 +170,7 @@ public class ConnectionConfigurationTests {
         if (awsRegion != null) {
             metadata.put("aws_region", awsRegion);
         }
-        metadata.put("aws_sts_role", awsStsRole);
+        metadata.put("aws_sts_role_arn", awsStsRoleArn);
         metadata.put("cert", certPath);
         metadata.put("insecure", insecure);
         final PluginSetting pluginSetting = new PluginSetting("elasticsearch", metadata);
