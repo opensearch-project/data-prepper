@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @DataPrepperPlugin(name = "peer_forwarder", type = PluginType.PREPPER)
 public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<ExportTraceServiceRequest>> {
@@ -48,9 +49,9 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
         this.peerClientPool = peerClientPool;
         this.hashRing = hashRing;
         this.maxNumSpansPerRequest = maxNumSpansPerRequest;
-        forwardedRequestCounters = new HashMap<>();
-        forwardRequestErrorCounters = new HashMap<>();
-        forwardRequestTimers = new HashMap<>();
+        forwardedRequestCounters = new ConcurrentHashMap<>();
+        forwardRequestErrorCounters = new ConcurrentHashMap<>();
+        forwardRequestTimers = new ConcurrentHashMap<>();
     }
 
     public PeerForwarder(final PluginSetting pluginSetting) {
@@ -136,7 +137,7 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
                 forwardRequestTimer.record(() -> client.export(request));
                 forwardedRequestCounter.increment();
             } catch (Exception e) {
-                LOG.error(String.format("Failed to forward the request:\n%s\n", request.toString()));
+                LOG.error(String.format("Failed to forward the request:\n%s\n", request.toString()), e);
                 forwardRequestErrorCounter.increment();
                 localBuffer.add(new Record<>(request));
             }
