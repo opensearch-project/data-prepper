@@ -18,6 +18,7 @@ public class PeerClientPool {
     private static final PeerClientPool INSTANCE = new PeerClientPool();
     private final Map<String, TraceServiceGrpc.TraceServiceBlockingStub> peerClients;
 
+    private int port;
     private int clientTimeoutSeconds = 3;
     private boolean ssl;
     private Certificate certificate;
@@ -27,6 +28,7 @@ public class PeerClientPool {
     }
 
     public static PeerClientPool getInstance() {
+        // TODO: remove singleton now that port is configurable
         return INSTANCE;
     }
 
@@ -36,6 +38,10 @@ public class PeerClientPool {
 
     public void setSsl(boolean ssl) {
         this.ssl = ssl;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
     }
 
     public void setCertificate(final Certificate certificate) {
@@ -51,7 +57,7 @@ public class PeerClientPool {
         // TODO: replace hardcoded port with customization
         final ClientBuilder clientBuilder;
         if (ssl) {
-            clientBuilder = Clients.builder(String.format("%s://%s:21890/", GRPC_HTTPS, ipAddress))
+            clientBuilder = Clients.builder(String.format("%s://%s:%s/", GRPC_HTTPS, ipAddress, port))
                     .writeTimeout(Duration.ofSeconds(clientTimeoutSeconds))
                     .factory(ClientFactory.builder()
                             .tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(

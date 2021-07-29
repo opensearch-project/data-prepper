@@ -91,6 +91,7 @@ IAM policy shows the necessary permissions.
 
 * `time_out`: timeout in seconds for sending `ExportTraceServiceRequest`. Defaults to 3 seconds.
 * `span_agg_count`: batch size for number of spans per `ExportTraceServiceRequest`. Defaults to 48.
+* `target_port`: the destination port to forward requests to. Defaults to `21890`
 * `discovery_mode`: peer discovery mode to be used. Allowable values are `static`, `dns`, and `aws_cloud_map`. Defaults to `static`
 * `static_endpoints`: list containing endpoints of all Data Prepper instances.
 * `domain_name`: single domain name to query DNS against. Typically used by creating multiple [DNS A Records](https://www.cloudflare.com/learning/dns/dns-records/dns-a-record/) for the same domain.

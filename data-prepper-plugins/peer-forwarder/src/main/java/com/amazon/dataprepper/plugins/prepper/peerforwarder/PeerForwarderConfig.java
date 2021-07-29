@@ -13,6 +13,7 @@ public class PeerForwarderConfig {
     public static final String TIME_OUT = "time_out";
     public static final String MAX_NUM_SPANS_PER_REQUEST = "span_agg_count";
     public static final int NUM_VIRTUAL_NODES = 10;
+    public static final String TARGET_PORT = "target_port";
     public static final String DISCOVERY_MODE = "discovery_mode";
     public static final String DOMAIN_NAME = "domain_name";
     public static final String STATIC_ENDPOINTS = "static_endpoints";
@@ -21,6 +22,7 @@ public class PeerForwarderConfig {
     private static final boolean DEFAULT_SSL = true;
     private static final String USE_ACM_CERT_FOR_SSL = "useAcmCertForSSL";
     private static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
+    private static final int DEFAULT_TARGET_PORT = 21890;
     private static final String ACM_CERT_ISSUE_TIME_OUT_MILLIS = "acmCertIssueTimeOutMillis";
     private static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
     private static final String ACM_CERT_ARN = "acmCertificateArn";
@@ -51,6 +53,10 @@ public class PeerForwarderConfig {
         final HashRing hashRing = new HashRing(peerListProvider, NUM_VIRTUAL_NODES);
         final PeerClientPool peerClientPool = PeerClientPool.getInstance();
         peerClientPool.setClientTimeoutSeconds(3);
+
+        final int targetPort = pluginSetting.getIntegerOrDefault(TARGET_PORT, DEFAULT_TARGET_PORT);
+        peerClientPool.setPort(targetPort);
+
         final boolean ssl = pluginSetting.getBooleanOrDefault(SSL, DEFAULT_SSL);
         final String sslKeyCertChainFilePath = pluginSetting.getStringOrDefault(SSL_KEY_CERT_FILE, null);
         final boolean useAcmCertForSsl = pluginSetting.getBooleanOrDefault(USE_ACM_CERT_FOR_SSL, DEFAULT_USE_ACM_CERT_FOR_SSL);
