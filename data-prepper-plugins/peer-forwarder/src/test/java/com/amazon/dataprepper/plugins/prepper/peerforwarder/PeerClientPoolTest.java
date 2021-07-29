@@ -29,6 +29,7 @@ public class PeerClientPoolTest {
     @Test
     public void testGetClientValidAddress() {
         PeerClientPool pool = PeerClientPool.getInstance();
+        pool.setPort(PORT);
 
         TraceServiceGrpc.TraceServiceBlockingStub client = pool.getClient(VALID_ADDRESS);
 
