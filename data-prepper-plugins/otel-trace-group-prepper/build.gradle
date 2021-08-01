@@ -11,7 +11,7 @@ dependencies {
     implementation project(':data-prepper-plugins:elasticsearch')
     testImplementation project(':data-prepper-api').sourceSets.test.output
     implementation "org.elasticsearch.client:elasticsearch-rest-high-level-client:${es_version}"
-    implementation "com.fasterxml.jackson.core:jackson-databind:2.12.3"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.12.4"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.3"
     implementation "io.micrometer:micrometer-core:1.7.1"
     testImplementation "org.mockito:mockito-core:3.11.2"
