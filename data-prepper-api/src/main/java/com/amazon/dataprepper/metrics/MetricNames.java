@@ -43,6 +43,11 @@ public class MetricNames {
     public static final String RECORDS_INFLIGHT = "recordsInFlight";
 
     /**
+     * Metric representing the number of records currently in the buffer.
+     */
+    public static final String RECORDS_IN_BUFFER = "recordsInBuffer";
+
+    /**
      * Metric representing the number of records read from a buffer and processed by the pipeline.
      */
     public static final String RECORDS_PROCESSED = "recordsProcessed";

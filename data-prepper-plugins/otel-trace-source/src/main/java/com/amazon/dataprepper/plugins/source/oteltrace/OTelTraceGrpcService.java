@@ -10,10 +10,13 @@ import io.micrometer.core.instrument.Counter;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeoutException;
 
 public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase {
+    private static final Logger LOG = LoggerFactory.getLogger(OTelTraceGrpcService.class);
 
     public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String REQUESTS_RECEIVED = "requestsReceived";
@@ -51,6 +54,7 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
             responseObserver.onNext(ExportTraceServiceResponse.newBuilder().build());
             responseObserver.onCompleted();
         } catch (TimeoutException e) {
+            LOG.error("Buffer is full, unable to write");
             requestTimeoutCounter.increment();
             responseObserver
                     .onError(Status.RESOURCE_EXHAUSTED.withDescription("Buffer is full, request timed out.")

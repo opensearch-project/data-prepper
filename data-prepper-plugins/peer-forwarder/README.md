@@ -114,12 +114,12 @@ Besides common metrics in [AbstractPrepper](https://github.com/opendistro-for-el
 
 ### Timer
 
-- `forwardRequestLatency`: measures latency in forwarding each request.
+- `latency`: measures latency of forwarded requests.
 
 ### Counter
 
-- `forwardRequestSuccess`: measures number of successfully sent requests.
-- `forwardRequestErrors`: measures number of failed requests.
+- `requests`: measures total number of forwarded requests.
+- `errors`: measures number of failed requests.
 
 ### Gauge
 

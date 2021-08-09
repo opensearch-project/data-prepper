@@ -28,7 +28,7 @@ import static org.mockito.Mockito.when;
 class DnsPeerListProvider_CreateTest {
 
     private static final String PLUGIN_NAME = "PLUGIN_NAME";
-    private static final String ENDPOINT = "ENDPOINT";
+    private static final String VALID_ENDPOINT = "VALID.ENDPOINT";
     private static final String INVALID_ENDPOINT = "INVALID_ENDPOINT_";
     private static final String PIPELINE_NAME = "pipelineName";
 
@@ -55,7 +55,7 @@ class DnsPeerListProvider_CreateTest {
 
     @Test
     void testCreateProviderDnsInstance() {
-        pluginSetting.getSettings().put(PeerForwarderConfig.DOMAIN_NAME, ENDPOINT);
+        pluginSetting.getSettings().put(PeerForwarderConfig.DOMAIN_NAME, VALID_ENDPOINT);
 
         when(dnsAddressEndpointGroupBuilder.build()).thenReturn(dnsAddressEndpointGroup);
         when(dnsAddressEndpointGroupBuilder.ttl(anyInt(), anyInt())).thenReturn(dnsAddressEndpointGroupBuilder);

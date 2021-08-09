@@ -22,6 +22,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     private final Counter recordsWrittenCounter;
     private final Counter recordsReadCounter;
     private final AtomicLong recordsInFlight;
+    private final AtomicLong recordsInBuffer;
     private final Counter recordsProcessedCounter;
     private final Counter writeTimeoutCounter;
     private final Timer writeTimer;
@@ -41,6 +42,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         this.recordsWrittenCounter = pluginMetrics.counter(MetricNames.RECORDS_WRITTEN);
         this.recordsReadCounter = pluginMetrics.counter(MetricNames.RECORDS_READ);
         this.recordsInFlight = pluginMetrics.gauge(MetricNames.RECORDS_INFLIGHT, new AtomicLong());
+        this.recordsInBuffer = pluginMetrics.gauge(MetricNames.RECORDS_IN_BUFFER, new AtomicLong());
         this.recordsProcessedCounter = pluginMetrics.counter(MetricNames.RECORDS_PROCESSED, pipelineName);
         this.writeTimeoutCounter = pluginMetrics.counter(MetricNames.WRITE_TIMEOUTS);
         this.writeTimer = pluginMetrics.timer(MetricNames.WRITE_TIME_ELAPSED);
@@ -63,6 +65,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         try {
             doWrite(record, timeoutInMillis);
             recordsWrittenCounter.increment();
+            recordsInBuffer.incrementAndGet();
         } catch (TimeoutException e) {
             writeTimeoutCounter.increment();
             throw e;
@@ -83,6 +86,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         final Map.Entry<Collection<T>, CheckpointState> readResult = readTimer.record(() -> doRead(timeoutInMillis));
         recordsReadCounter.increment(readResult.getKey().size() * 1.0);
         recordsInFlight.addAndGet(readResult.getValue().getNumRecordsToBeChecked());
+        recordsInBuffer.addAndGet(-1 * readResult.getValue().getNumRecordsToBeChecked());
         return readResult;
     }
 

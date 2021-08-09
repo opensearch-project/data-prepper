@@ -23,13 +23,20 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @DataPrepperPlugin(name = "peer_forwarder", type = PluginType.PREPPER)
 public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<ExportTraceServiceRequest>> {
-    public static final String FORWARD_REQUEST_LATENCY_PREFIX = "forwardRequestLatency";
-    public static final String FORWARD_REQUEST_SUCCESS_PREFIX = "forwardRequestSuccess";
-    public static final String FORWARD_REQUEST_ERRORS_PREFIX = "forwardRequestErrors";
+    public static final String REQUESTS = "requests";
+    public static final String LATENCY = "latency";
+    public static final String ERRORS = "errors";
+    public static final String DESTINATION = "destination";
+
+    public static final int ASYNC_REQUEST_THREAD_COUNT = 200;
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarder.class);
 
@@ -40,6 +47,8 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
     private final Map<String, Timer> forwardRequestTimers;
     private final Map<String, Counter> forwardedRequestCounters;
     private final Map<String, Counter> forwardRequestErrorCounters;
+
+    private final ExecutorService executorService;
 
     public PeerForwarder(final PluginSetting pluginSetting,
                          final PeerClientPool peerClientPool,
@@ -52,6 +61,8 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
         forwardedRequestCounters = new ConcurrentHashMap<>();
         forwardRequestErrorCounters = new ConcurrentHashMap<>();
         forwardRequestTimers = new ConcurrentHashMap<>();
+
+        executorService = Executors.newFixedThreadPool(ASYNC_REQUEST_THREAD_COUNT);
     }
 
     public PeerForwarder(final PluginSetting pluginSetting) {
@@ -84,8 +95,8 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
             }
         }
 
-        // Buffer of requests to be exported to the downstream of the local data-prepper
-        final List<Record<ExportTraceServiceRequest>> results = new ArrayList<>();
+        final List<Record<ExportTraceServiceRequest>> recordsToProcessLocally = new ArrayList<>();
+        final List<CompletableFuture<Record>> forwardedRequestFutures = new ArrayList<>();
 
         for (final Map.Entry<String, List<ResourceSpans>> entry : groupedRS.entrySet()) {
             final TraceServiceGrpc.TraceServiceBlockingStub client;
@@ -102,8 +113,11 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
                 final int rsSize = PeerForwarderUtils.getResourceSpansSize(rs);
                 if (currSpansCount >= maxNumSpansPerRequest) {
                     final ExportTraceServiceRequest currRequest = currRequestBuilder.build();
-                    // Send the batch request to designated remote peer or ingest into localhost
-                    processRequest(client, currRequest, results);
+                    if (client == null) {
+                        recordsToProcessLocally.add(new Record<>(currRequest));
+                    } else {
+                        forwardedRequestFutures.add(processRequest(client, currRequest));
+                    }
                     currRequestBuilder = ExportTraceServiceRequest.newBuilder();
                     currSpansCount = 0;
                 }
@@ -113,37 +127,57 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
             // Dealing with the last batch request
             if (currSpansCount > 0) {
                 final ExportTraceServiceRequest currRequest = currRequestBuilder.build();
-                processRequest(client, currRequest, results);
+                if (client == null) {
+                    recordsToProcessLocally.add(new Record<>(currRequest));
+                } else {
+                    forwardedRequestFutures.add(processRequest(client, currRequest));
+                }
             }
         }
-        return results;
+
+        for (final CompletableFuture<Record> future : forwardedRequestFutures) {
+            try {
+                final Record record = future.get();
+                if (record != null) {
+                    recordsToProcessLocally.add(record);
+                }
+            } catch (InterruptedException | ExecutionException e) {
+                LOG.error("Problem with asynchronous peer forwarding", e);
+            }
+        }
+
+        return recordsToProcessLocally;
     }
 
     /**
-     * Forward request to the peer address if client is given, otherwise push the request to local buffer.
+     * Asynchronously forwards a request to the peer address. Returns a record with an empty payload if
+     * the request succeeds, otherwise the payload will contain the failed ExportTraceServiceRequest to
+     * be processed locally.
      */
-    private void processRequest(final TraceServiceGrpc.TraceServiceBlockingStub client,
-                                final ExportTraceServiceRequest request,
-                                final List<Record<ExportTraceServiceRequest>> localBuffer) {
-        if (client != null) {
-            final String peerIp = client.getChannel().authority();
-            final Timer forwardRequestTimer = forwardRequestTimers.computeIfAbsent(
-                    peerIp, ip -> pluginMetrics.timer(String.format("%s:%s", FORWARD_REQUEST_LATENCY_PREFIX, ip)));
-            final Counter forwardedRequestCounter = forwardedRequestCounters.computeIfAbsent(
-                    peerIp, ip -> pluginMetrics.counter(String.format("%s:%s", FORWARD_REQUEST_SUCCESS_PREFIX, ip)));
-            final Counter forwardRequestErrorCounter = forwardRequestErrorCounters.computeIfAbsent(
-                    peerIp, ip -> pluginMetrics.counter(String.format("%s:%s", FORWARD_REQUEST_ERRORS_PREFIX, ip)));
+    private CompletableFuture<Record> processRequest(final TraceServiceGrpc.TraceServiceBlockingStub client,
+                                                     final ExportTraceServiceRequest request) {
+        final String peerIp = client.getChannel().authority();
+        final Timer forwardRequestTimer = forwardRequestTimers.computeIfAbsent(
+                peerIp, ip -> pluginMetrics.timerWithTags(LATENCY, DESTINATION, ip));
+        final Counter forwardedRequestCounter = forwardedRequestCounters.computeIfAbsent(
+                peerIp, ip -> pluginMetrics.counterWithTags(REQUESTS, DESTINATION, ip));
+        final Counter forwardRequestErrorCounter = forwardRequestErrorCounters.computeIfAbsent(
+                peerIp, ip -> pluginMetrics.counterWithTags(ERRORS, DESTINATION, ip));
+
+        final CompletableFuture<Record> callFuture = CompletableFuture.supplyAsync(() ->
+        {
+            forwardedRequestCounter.increment();
             try {
                 forwardRequestTimer.record(() -> client.export(request));
-                forwardedRequestCounter.increment();
+                return null;
             } catch (Exception e) {
-                LOG.error(String.format("Failed to forward the request:\n%s\n", request.toString()), e);
+                LOG.error("Failed to forward request to address: {}", peerIp, e);
                 forwardRequestErrorCounter.increment();
-                localBuffer.add(new Record<>(request));
+                return new Record<>(request);
             }
-        } else {
-            localBuffer.add(new Record<>(request));
-        }
+        }, executorService);
+
+        return callFuture;
     }
 
     private boolean isAddressDefinedLocally(final String address) {

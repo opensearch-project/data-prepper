@@ -213,17 +213,17 @@ public class PeerForwarderTest {
         // Verify metrics
         final List<Measurement> forwardRequestErrorMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
-                        .add(String.format("%s:%s", PeerForwarder.FORWARD_REQUEST_ERRORS_PREFIX, fullPeerIp)).toString());
+                        .add(PeerForwarder.ERRORS).toString());
         Assert.assertEquals(1, forwardRequestErrorMeasurements.size());
         Assert.assertEquals(0.0, forwardRequestErrorMeasurements.get(0).getValue(), 0);
         final List<Measurement> forwardRequestSuccessMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
-                        .add(String.format("%s:%s", PeerForwarder.FORWARD_REQUEST_SUCCESS_PREFIX, fullPeerIp)).toString());
+                        .add(PeerForwarder.REQUESTS).toString());
         Assert.assertEquals(1, forwardRequestSuccessMeasurements.size());
         Assert.assertEquals(1.0, forwardRequestSuccessMeasurements.get(0).getValue(), 0);
         final List<Measurement> forwardRequestLatencyMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
-                        .add(String.format("%s:%s", PeerForwarder.FORWARD_REQUEST_LATENCY_PREFIX, fullPeerIp)).toString());
+                        .add(PeerForwarder.LATENCY).toString());
         Assert.assertEquals(3, forwardRequestLatencyMeasurements.size());
         // COUNT
         Assert.assertEquals(1.0, forwardRequestLatencyMeasurements.get(0).getValue(), 0);
@@ -261,17 +261,17 @@ public class PeerForwarderTest {
         // Verify metrics
         final List<Measurement> forwardRequestErrorMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
-                        .add(String.format("%s:%s", PeerForwarder.FORWARD_REQUEST_ERRORS_PREFIX, fullPeerIp)).toString());
+                        .add(PeerForwarder.ERRORS).toString());
         Assert.assertEquals(1, forwardRequestErrorMeasurements.size());
         Assert.assertEquals(1.0, forwardRequestErrorMeasurements.get(0).getValue(), 0);
         final List<Measurement> forwardRequestSuccessMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
-                        .add(String.format("%s:%s", PeerForwarder.FORWARD_REQUEST_SUCCESS_PREFIX, fullPeerIp)).toString());
+                        .add(PeerForwarder.REQUESTS).toString());
         Assert.assertEquals(1, forwardRequestSuccessMeasurements.size());
-        Assert.assertEquals(0.0, forwardRequestSuccessMeasurements.get(0).getValue(), 0);
+        Assert.assertEquals(1.0, forwardRequestSuccessMeasurements.get(0).getValue(), 0);
         final List<Measurement> forwardRequestLatencyMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
-                        .add(String.format("%s:%s", PeerForwarder.FORWARD_REQUEST_LATENCY_PREFIX, fullPeerIp)).toString());
+                        .add(PeerForwarder.LATENCY).toString());
         Assert.assertEquals(3, forwardRequestLatencyMeasurements.size());
         // COUNT
         Assert.assertEquals(1.0, forwardRequestLatencyMeasurements.get(0).getValue(), 0);
