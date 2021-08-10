@@ -17,7 +17,7 @@ dependencies {
     implementation "com.linecorp.armeria:armeria-grpc:1.9.2"
     implementation(platform('software.amazon.awssdk:bom:2.16.104'))
     implementation "com.amazonaws:aws-java-sdk-s3:1.12.15"
-    implementation "com.amazonaws:aws-java-sdk-acm:1.12.15"
+    implementation "com.amazonaws:aws-java-sdk-acm:1.12.37"
     implementation 'software.amazon.awssdk:servicediscovery'
     implementation "commons-io:commons-io:2.10.0"
     implementation "org.apache.commons:commons-lang3:3.12.0"
