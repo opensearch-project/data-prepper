@@ -30,7 +30,7 @@ dependencies {
     testImplementation "org.mockito:mockito-core:3.11.2"
     testImplementation 'org.mockito:mockito-junit-jupiter:3.11.2'
     testImplementation "commons-io:commons-io:2.10.0"
-    testImplementation 'org.awaitility:awaitility:4.0.3'
+    testImplementation 'org.awaitility:awaitility:4.1.0'
 }
 
 test {
