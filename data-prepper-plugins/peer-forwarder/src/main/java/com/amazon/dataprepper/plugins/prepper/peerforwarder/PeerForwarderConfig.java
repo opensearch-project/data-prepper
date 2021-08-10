@@ -12,7 +12,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class PeerForwarderConfig {
     public static final String TIME_OUT = "time_out";
     public static final String MAX_NUM_SPANS_PER_REQUEST = "span_agg_count";
-    public static final int NUM_VIRTUAL_NODES = 10;
+    public static final int NUM_VIRTUAL_NODES = 128;
     public static final String TARGET_PORT = "target_port";
     public static final String DISCOVERY_MODE = "discovery_mode";
     public static final String DOMAIN_NAME = "domain_name";
@@ -23,6 +23,7 @@ public class PeerForwarderConfig {
     private static final String USE_ACM_CERT_FOR_SSL = "useAcmCertForSSL";
     private static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
     private static final int DEFAULT_TARGET_PORT = 21890;
+    private static final int DEFAULT_TIMEOUT_SECONDS = 2;
     private static final String ACM_CERT_ISSUE_TIME_OUT_MILLIS = "acmCertIssueTimeOutMillis";
     private static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
     private static final String ACM_CERT_ARN = "acmCertificateArn";
@@ -84,7 +85,7 @@ public class PeerForwarderConfig {
         return new PeerForwarderConfig(
                 peerClientPool,
                 hashRing,
-                pluginSetting.getIntegerOrDefault(TIME_OUT, 3),
+                pluginSetting.getIntegerOrDefault(TIME_OUT, DEFAULT_TIMEOUT_SECONDS),
                 pluginSetting.getIntegerOrDefault(MAX_NUM_SPANS_PER_REQUEST, 48));
     }
 
