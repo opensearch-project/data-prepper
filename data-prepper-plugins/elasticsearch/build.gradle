@@ -42,7 +42,7 @@ dependencies {
     implementation 'software.amazon.awssdk:regions:2.16.95'
     implementation 'software.amazon.awssdk:utils:2.16.95'
     implementation 'software.amazon.awssdk:sts:2.16.95'
-    implementation 'software.amazon.awssdk:url-connection-client:2.16.95'
+    implementation 'software.amazon.awssdk:url-connection-client:2.17.15'
     implementation "io.micrometer:micrometer-core:1.7.1"
     testImplementation("junit:junit:4.13.2") {
         exclude group:'org.hamcrest' // workaround for jarHell
