@@ -35,7 +35,7 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.4"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.3"
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
-    implementation 'software.amazon.awssdk:auth:2.16.95'
+    implementation 'software.amazon.awssdk:auth:2.17.15'
     implementation 'software.amazon.awssdk:http-client-spi:2.16.95'
     implementation 'software.amazon.awssdk:sdk-core:2.17.15'
     implementation 'software.amazon.awssdk:aws-core:2.16.95'
