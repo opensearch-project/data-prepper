@@ -8,7 +8,7 @@ dependencies {
     implementation 'commons-codec:commons-codec:1.15'
     testImplementation project(':data-prepper-api').sourceSets.test.output
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
-    implementation "commons-io:commons-io:2.10.0"
+    implementation "commons-io:commons-io:2.11.0"
     implementation "com.amazonaws:aws-java-sdk-s3:1.12.43"
     implementation "com.amazonaws:aws-java-sdk-acm:1.12.12"
     implementation 'com.google.protobuf:protobuf-java-util:3.17.3'
