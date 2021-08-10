@@ -62,7 +62,7 @@ configurations.all {
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.3'
         force 'com.fasterxml.jackson.core:jackson-annotations:2.12.3'
         force 'com.fasterxml.jackson.core:jackson-databind:2.12.3'
-        force 'com.fasterxml.jackson.core:jackson-core:2.12.3'
+        force 'com.fasterxml.jackson.core:jackson-core:2.12.4'
         force 'com.fasterxml.jackson:jackson-bom:2.12.3'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.12.3'
         force 'commons-logging:commons-logging:1.2'
