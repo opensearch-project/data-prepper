@@ -129,7 +129,7 @@ def removeDataPrepperDockerContainer(final DockerStopContainer stopDataPrepperDo
 }
 
 task pullDataPrepperDockerImage(type: DockerPullImage) {
-    image = 'amazon/opendistro-for-elasticsearch-data-prepper:latest'
+    image = 'opensearchproject/data-prepper:latest'
 }
 
 def createDataPrepperDockerContainerFromPullImage(final String taskBaseName, final String dataPrepperName, final int grpcPort,
@@ -209,7 +209,7 @@ task rawSpanEndToEndTest(type: Test) {
         includeTestsMatching "com.amazon.dataprepper.integration.EndToEndRawSpanTest.testPipelineEndToEnd*"
     }
 
-    finalizedBy stopOdfeDockerContainer
+    finalizedBy stopOpenSearchDockerContainer
     def stopDataPrepper1Task = stopDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
     def stopDataPrepper2Task = stopDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
     finalizedBy stopDataPrepper1Task
@@ -221,7 +221,7 @@ task rawSpanEndToEndTest(type: Test) {
 
 task rawSpanCompatibilityEndToEndTest(type: Test) {
     dependsOn build
-    dependsOn startOdfeDockerContainer
+    dependsOn startOpenSearchDockerContainer
     def createDataPrepper1Task = createDataPrepperDockerContainer(
             "rawSpanDataPrepperFromBuild", "dataprepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
     def createDataPrepper2Task = createDataPrepperDockerContainerFromPullImage(
@@ -230,8 +230,8 @@ task rawSpanCompatibilityEndToEndTest(type: Test) {
     def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
     dependsOn startDataPrepper1Task
     dependsOn startDataPrepper2Task
-    startDataPrepper1Task.mustRunAfter 'startOdfeDockerContainer'
-    startDataPrepper2Task.mustRunAfter 'startOdfeDockerContainer'
+    startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
+    startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
     // wait for data-preppers to be ready
     doFirst {
         sleep(10*1000)
