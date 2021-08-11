@@ -21,14 +21,31 @@ repositories {
 }
 
 dependencies {
-    compile project(':data-prepper-api')
-    testCompile project(':data-prepper-api').sourceSets.test.output
+    implementation project(':data-prepper-api')
+    testImplementation project(':data-prepper-api').sourceSets.test.output
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
-    implementation "com.linecorp.armeria:armeria:1.6.0"
-    implementation "com.linecorp.armeria:armeria-grpc:1.6.0"
+    implementation "com.linecorp.armeria:armeria:1.9.2"
+    implementation "com.linecorp.armeria:armeria-grpc:1.9.2"
+    implementation(platform('software.amazon.awssdk:bom:2.17.15'))
+    implementation "com.amazonaws:aws-java-sdk-s3:1.12.43"
+    implementation "com.amazonaws:aws-java-sdk-acm:1.12.43"
+    implementation 'software.amazon.awssdk:servicediscovery'
+    implementation "commons-io:commons-io:2.11.0"
+    implementation "org.apache.commons:commons-lang3:3.12.0"
     implementation "commons-validator:commons-validator:1.7"
-    testImplementation "junit:junit:4.13.2"
-    testImplementation "org.mockito:mockito-inline:3.9.0"
+    testImplementation(platform('org.junit:junit-bom:5.7.2'))
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.junit.vintage:junit-vintage-engine'
+    testImplementation "org.hamcrest:hamcrest:2.2"
+    testImplementation "org.mockito:mockito-inline:3.11.2"
+    testImplementation "org.mockito:mockito-core:3.11.2"
+    testImplementation 'org.mockito:mockito-junit-jupiter:3.11.2'
+    testImplementation "commons-io:commons-io:2.10.0"
+    testImplementation 'org.awaitility:awaitility:4.1.0'
+}
+
+test {
+    useJUnitPlatform()
 }
 
 jacocoTestCoverageVerification {

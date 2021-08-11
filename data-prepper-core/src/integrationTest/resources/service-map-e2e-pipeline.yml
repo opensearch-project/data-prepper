@@ -5,7 +5,7 @@ entry-pipeline:
   prepper:
     - peer_forwarder:
         discovery_mode: "static"
-        static_endpoints: ["data-prepper1", "data-prepper2"]
+        static_endpoints: ["dataprepper1", "dataprepper2"]
         ssl: false
   sink:
     - pipeline:

@@ -1,4 +1,5 @@
 {
+  "version": 1,
   "mappings": {
     "date_detection": false,
     "dynamic_templates": [
@@ -11,11 +12,11 @@
         }
       },
       {
-        "attributes_map": {
+        "span_attributes_map": {
           "mapping": {
             "type":"keyword"
           },
-          "path_match":"attributes.*"
+          "path_match":"span.attributes.*"
         }
       }
     ],

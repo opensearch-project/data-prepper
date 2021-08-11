@@ -11,22 +11,27 @@
 
 package com.amazon.dataprepper.parser.model;
 
-import java.io.File;
-import java.io.IOException;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * Class to hold configuration for DataPrepper, including server port and Log4j settings
  */
 public class DataPrepperConfiguration {
+    private static final List<MetricRegistryType> DEFAULT_METRIC_REGISTRY_TYPE = Collections.singletonList(MetricRegistryType.Prometheus);
     private int serverPort = 4900;
     private boolean ssl = true;
     private String keyStoreFilePath = "";
     private String keyStorePassword = "";
     private String privateKeyPassword = "";
+    private List<MetricRegistryType> metricRegistries = DEFAULT_METRIC_REGISTRY_TYPE;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
 
@@ -41,7 +46,7 @@ public class DataPrepperConfiguration {
         try {
             return OBJECT_MAPPER.readValue(file, DataPrepperConfiguration.class);
         } catch (IOException e) {
-            throw new IllegalArgumentException("Invalid DataPrepper configuration file.");
+            throw new IllegalArgumentException("Invalid DataPrepper configuration file.", e);
         }
     }
 
@@ -53,12 +58,14 @@ public class DataPrepperConfiguration {
             @JsonProperty("keyStoreFilePath") final String keyStoreFilePath,
             @JsonProperty("keyStorePassword") final String keyStorePassword,
             @JsonProperty("privateKeyPassword") final String privateKeyPassword,
-            @JsonProperty("serverPort") final String serverPort
+            @JsonProperty("serverPort") final String serverPort,
+            @JsonProperty("metricRegistries") final List<MetricRegistryType> metricRegistries
     ) {
         setSsl(ssl);
         this.keyStoreFilePath = keyStoreFilePath != null ? keyStoreFilePath : "";
         this.keyStorePassword = keyStorePassword != null ? keyStorePassword : "";
         this.privateKeyPassword = privateKeyPassword != null ? privateKeyPassword : "";
+        this.metricRegistries = metricRegistries != null && !metricRegistries.isEmpty() ? metricRegistries : DEFAULT_METRIC_REGISTRY_TYPE;
         setServerPort(serverPort);
     }
 
@@ -80,6 +87,10 @@ public class DataPrepperConfiguration {
 
     public String getPrivateKeyPassword() {
         return privateKeyPassword;
+    }
+
+    public List<MetricRegistryType> getMetricRegistryTypes() {
+        return metricRegistries;
     }
 
     private void setSsl(final Boolean ssl) {

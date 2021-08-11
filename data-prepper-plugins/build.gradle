@@ -8,7 +8,10 @@
  *  Modifications Copyright OpenSearch Contributors. See
  *  GitHub history for details.
  */
+plugins {
+    id 'java-library'
+}
 
 dependencies {
-    subprojects.forEach { compile project(':data-prepper-plugins:' + it.name) }
+    subprojects.forEach { api project(':data-prepper-plugins:' + it.name) }
 }

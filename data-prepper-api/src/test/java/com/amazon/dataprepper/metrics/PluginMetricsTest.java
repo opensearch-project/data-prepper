@@ -12,9 +12,6 @@
 package com.amazon.dataprepper.metrics;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import java.util.Collections;
-import java.util.StringJoiner;
-import java.util.concurrent.atomic.AtomicInteger;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Metrics;
@@ -22,9 +19,15 @@ import io.micrometer.core.instrument.Timer;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.Collections;
+import java.util.StringJoiner;
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class PluginMetricsTest {
     private static final String PLUGIN_NAME = "testPlugin";
     private static final String PIPELINE_NAME = "pipelineName";
+    private static final String TAG_KEY = "tagKey";
+    private static final String TAG_VALUE = "tagValue";
     private static final PluginSetting PLUGIN_SETTING = new PluginSetting(PLUGIN_NAME, Collections.emptyMap()) {{
         setPipelineName(PIPELINE_NAME);
     }};
@@ -41,6 +44,18 @@ public class PluginMetricsTest {
     }
 
     @Test
+    public void testCounterWithTags() {
+        final Counter counter = PLUGIN_METRICS.counterWithTags("counter", TAG_KEY, TAG_VALUE);
+        Assert.assertEquals(
+                new StringJoiner(MetricNames.DELIMITER)
+                        .add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add("counter").toString(),
+                counter.getId().getName());
+
+        Assert.assertEquals(TAG_VALUE, counter.getId().getTag(TAG_KEY));
+    }
+
+    @Test
     public void testCustomMetricsPrefixCounter() {
         final Counter counter = PLUGIN_METRICS.counter("counter", PIPELINE_NAME);
         Assert.assertEquals(
@@ -51,12 +66,24 @@ public class PluginMetricsTest {
 
     @Test
     public void testTimer() {
-        final Timer counter = PLUGIN_METRICS.timer("timer");
+        final Timer timer = PLUGIN_METRICS.timer("timer");
         Assert.assertEquals(
                 new StringJoiner(MetricNames.DELIMITER)
                         .add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add("timer").toString(),
-                counter.getId().getName());
+                timer.getId().getName());
+    }
+
+    @Test
+    public void testTimerWithTags() {
+        final Timer timer = PLUGIN_METRICS.timerWithTags("timer", TAG_KEY, TAG_VALUE);
+        Assert.assertEquals(
+                new StringJoiner(MetricNames.DELIMITER)
+                        .add(PIPELINE_NAME).add(PLUGIN_NAME)
+                        .add("timer").toString(),
+                timer.getId().getName());
+
+        Assert.assertEquals(TAG_VALUE, timer.getId().getTag(TAG_KEY));
     }
 
     @Test

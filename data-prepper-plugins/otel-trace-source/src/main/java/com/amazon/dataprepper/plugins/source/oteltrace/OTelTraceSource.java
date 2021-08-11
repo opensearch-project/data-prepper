@@ -18,6 +18,9 @@ import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
+import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
+import com.amazon.dataprepper.plugins.certificate.CertificateProviderFactory;
+import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.amazon.dataprepper.plugins.health.HealthGrpcService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
@@ -28,7 +31,8 @@ import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
@@ -38,10 +42,19 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
     private Server server;
     private final PluginMetrics pluginMetrics;
+    private final CertificateProviderFactory certificateProviderFactory;
 
     public OTelTraceSource(final PluginSetting pluginSetting) {
         oTelTraceSourceConfig = OTelTraceSourceConfig.buildConfig(pluginSetting);
         pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
+        certificateProviderFactory = new CertificateProviderFactory(oTelTraceSourceConfig);
+    }
+
+    // accessible only in the same package for unit test
+    OTelTraceSource(final PluginSetting pluginSetting, final CertificateProviderFactory certificateProviderFactory) {
+        oTelTraceSourceConfig = OTelTraceSourceConfig.buildConfig(pluginSetting);
+        pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
+        this.certificateProviderFactory = certificateProviderFactory;
     }
 
     @Override
@@ -58,7 +71,6 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
                             buffer,
                             pluginMetrics
                     ))
-                    .addService(new HealthGrpcService())
                     .useClientTimeoutHeader(false);
 
             if (oTelTraceSourceConfig.hasHealthCheck()) {
@@ -71,14 +83,22 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
                 grpcServiceBuilder.addService(ProtoReflectionService.newInstance());
             }
 
+            grpcServiceBuilder.enableUnframedRequests(oTelTraceSourceConfig.enableUnframedRequests());
+
             final ServerBuilder sb = Server.builder();
             sb.service(grpcServiceBuilder.build());
             sb.requestTimeoutMillis(oTelTraceSourceConfig.getRequestTimeoutInMillis());
 
-            if (oTelTraceSourceConfig.isSsl()) {
-                LOG.info("SSL/TLS is enabled");
-                sb.https(oTelTraceSourceConfig.getPort()).tls(new File(oTelTraceSourceConfig.getSslKeyCertChainFile()),
-                        new File(oTelTraceSourceConfig.getSslKeyFile()));
+            // ACM Cert for SSL takes preference
+            if (oTelTraceSourceConfig.isSsl() || oTelTraceSourceConfig.useAcmCertForSSL()) {
+                LOG.info("SSL/TLS is enabled.");
+                final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
+                final Certificate certificate = certificateProvider.getCertificate();
+                sb.https(oTelTraceSourceConfig.getPort()).tls(
+                    new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
+                    new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
+                    )
+                );
             } else {
                 sb.http(oTelTraceSourceConfig.getPort());
             }
