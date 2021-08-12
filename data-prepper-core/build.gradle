@@ -9,10 +9,6 @@
  *  GitHub history for details.
  */
 
-plugins {
-    id 'com.bmuschko.docker-remote-api' version '6.6.1'
-}
-
 sourceSets {
     main {
         resources {
