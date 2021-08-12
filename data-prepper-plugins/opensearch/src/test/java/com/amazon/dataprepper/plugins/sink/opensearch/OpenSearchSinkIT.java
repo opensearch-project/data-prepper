@@ -130,8 +130,8 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final Request request = new Request(HttpMethod.PUT, reservedIndexAlias);
     client().performRequest(request);
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
-    assertThrows(String.format(ElasticsearchSink.INDEX_ALIAS_USED_AS_INDEX_ERROR, reservedIndexAlias),
-            RuntimeException.class, () -> new ElasticsearchSink(pluginSetting));
+    assertThrows(String.format(OpenSearchSink.INDEX_ALIAS_USED_AS_INDEX_ERROR, reservedIndexAlias),
+            RuntimeException.class, () -> new OpenSearchSink(pluginSetting));
   }
 
   public void testOutputRawSpanDefault() throws IOException, InterruptedException {
@@ -299,7 +299,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
 
     // Create sink with template version 1
     PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFileV1);
-    ElasticsearchSink sink = new ElasticsearchSink(pluginSetting);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting);
 
     Request getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
     Response getTemplateResponse = client().performRequest(getTemplateRequest);
@@ -315,7 +315,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
 
     // Create sink with template version 2
     pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFileV2);
-    sink = new ElasticsearchSink(pluginSetting);
+    sink = new OpenSearchSink(pluginSetting);
 
     getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
     getTemplateResponse = client().performRequest(getTemplateRequest);
@@ -331,7 +331,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
 
     // Create sink with template version 1 again
     pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFileV1);
-    sink = new ElasticsearchSink(pluginSetting);
+    sink = new OpenSearchSink(pluginSetting);
 
     getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
     getTemplateResponse = client().performRequest(getTemplateRequest);
