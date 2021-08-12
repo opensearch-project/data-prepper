@@ -151,7 +151,7 @@ def createDataPrepperDockerContainerFromPullImage(final String taskBaseName, fin
  * OpenSearch Docker tasks
  */
 task pullOpenSearchDockerImage(type: DockerPullImage) {
-    image = 'opensearchstaging/opensearch:1.0.0-beta1'
+    image = 'opensearchproject/opensearch:1.0.0'
 }
 
 task createOpenSearchDockerContainer(type: DockerCreateContainer) {
@@ -176,6 +176,10 @@ task startOpenSearchDockerContainer(type: DockerStartContainer) {
 
 task stopOpenSearchDockerContainer(type: DockerStopContainer) {
     targetContainerId createOpenSearchDockerContainer.getContainerId()
+
+    doLast {
+        sleep(5*1000)
+    }
 }
 
 /**
