@@ -76,7 +76,7 @@ services:
 
   opensearch:
     container_name: node-0.example.com
-    image: opensearchstaging/opensearch:1.0.0-beta1
+    image: opensearchstaging/opensearch:1.0.0
     ports:
       - "9200:9200"
       - "9600:9600"
@@ -87,7 +87,7 @@ services:
 
   opensearch-dashboard:
     container_name: opensearch-dashboard
-    image: opensearchstaging/opensearch-dashboards:1.0.0-beta1
+    image: opensearchstaging/opensearch-dashboards:1.0.0
     ports:
       - 5601:5601
     expose:

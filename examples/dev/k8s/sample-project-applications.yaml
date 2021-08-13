@@ -37,7 +37,7 @@ spec:
           value: https://odfe:9200
         - name: OPENSEARCH_URL
           value: https://odfe:9200
-        image: opensearchstaging/opensearch-dashboards:1.0.0-beta1
+        image: opensearchstaging/opensearch-dashboards:1.0.0
         imagePullPolicy: ""
         name: opensearch-dashboard
         ports:
@@ -135,7 +135,7 @@ spec:
       - env:
         - name: discovery.type
           value: single-node
-        image: opensearchstaging/opensearch:1.0.0-beta1
+        image: opensearchstaging/opensearch:1.0.0
         imagePullPolicy: ""
         name: odfe
         ports:
