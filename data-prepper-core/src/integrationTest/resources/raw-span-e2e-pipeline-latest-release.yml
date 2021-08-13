@@ -19,7 +19,7 @@ raw-pipeline:
         root_span_flush_delay: 3 # TODO: remove after 1.1 release
         trace_flush_interval: 5
   sink:
-    - elasticsearch:
+    - opensearch:
         hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
         password: "admin"
