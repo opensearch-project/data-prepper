@@ -12,13 +12,18 @@
 package com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.plugins.prepper.peerforwarder.PeerForwarderConfig;
+import com.google.common.base.Preconditions;
 import com.linecorp.armeria.client.Endpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class StaticPeerListProvider implements PeerListProvider {
 
@@ -38,6 +43,15 @@ public class StaticPeerListProvider implements PeerListProvider {
         LOG.info("Found endpoints: {}", endpoints);
 
         pluginMetrics.gauge(PEER_ENDPOINTS, endpoints, List::size);
+    }
+
+    static StaticPeerListProvider createPeerListProvider(PluginSetting pluginSetting, PluginMetrics pluginMetrics) {
+        final List<String> endpoints = (List<String>) pluginSetting.getAttributeOrDefault(PeerForwarderConfig.STATIC_ENDPOINTS, null);
+        Objects.requireNonNull(endpoints, String.format("Missing '%s' configuration value", PeerForwarderConfig.STATIC_ENDPOINTS));
+        final List<String> invalidEndpoints = endpoints.stream().filter(endpoint -> !DiscoveryUtils.validateEndpoint(endpoint)).collect(Collectors.toList());
+        Preconditions.checkState(invalidEndpoints.isEmpty(), "Including invalid endpoints: %s", invalidEndpoints);
+
+        return new StaticPeerListProvider(endpoints, pluginMetrics);
     }
 
     @Override

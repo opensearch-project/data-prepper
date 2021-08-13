@@ -11,6 +11,7 @@
 
 package com.amazon.dataprepper.plugins.prepper.peerforwarder;
 
+import com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate.model.Certificate;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
@@ -21,6 +22,9 @@ import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import org.junit.Test;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.Assert.assertNotNull;
 
@@ -36,6 +40,7 @@ public class PeerClientPoolTest {
     @Test
     public void testGetClientValidAddress() {
         PeerClientPool pool = PeerClientPool.getInstance();
+        pool.setPort(PORT);
 
         TraceServiceGrpc.TraceServiceBlockingStub client = pool.getClient(VALID_ADDRESS);
 
@@ -43,7 +48,7 @@ public class PeerClientPoolTest {
     }
 
     @Test
-    public void testGetClientWithSSL() {
+    public void testGetClientWithSSL() throws IOException {
         // Set up test server with SSL
         ServerBuilder sb = Server.builder();
         sb.service(GrpcService.builder()
@@ -57,7 +62,11 @@ public class PeerClientPoolTest {
             // Configure client pool
             PeerClientPool pool = PeerClientPool.getInstance();
             pool.setSsl(true);
-            pool.setSslKeyCertChainFile(SSL_CRT_FILE);
+
+            final Path certFilePath = Path.of(PeerClientPoolTest.class.getClassLoader().getResource("test-crt.crt").getPath());
+            final String certAsString = Files.readString(certFilePath);
+            final Certificate certificate = new Certificate(certAsString);
+            pool.setCertificate(certificate);
             TraceServiceGrpc.TraceServiceBlockingStub client = pool.getClient(LOCALHOST);
             assertNotNull(client);
 

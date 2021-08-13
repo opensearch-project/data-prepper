@@ -1,13 +1,42 @@
 # Project Setup
 
+## Installation Prerequisites
+
+### JDK Versions
+
+Running Data Prepper requires JDK 8 and above.
+
+Running the integration tests requires JDK 14 or 15.
+
+
 ## Building from source
-To build the project from source, run 
+
+The assemble task will build the Jar files without running the integration
+tests. You can use these jar files for running DataPrepper. If you are just
+looking to use DataPrepper and modify it, this build
+is faster than running the integration test suite and only requires JDK 8+.
+
+To build the project from source, run
+
+```
+./gradlew assemble
+```
+
+from the project root. 
+
+### Full Project Build
+
+Running the build command will assemble the Jar files needed
+for running DataPrepper. It will also run the integration test
+suite.
+
+To build, run
 
 ```
 ./gradlew build
 ```
 
-from the project root. 
+from the project root.
 
 ## Running the project
 
@@ -35,9 +64,13 @@ APIs are available:
 * /shutdown
   * starts a graceful shutdown of the Data Prepper
 * /metrics/prometheus
-  * returns a scrape of the Data Prepper metrics in Prometheus text format
+  * returns a scrape of the Data Prepper metrics in Prometheus text format. This API is available provided 
+    `metricsRegistries` parameter in data prepper configuration file `data-prepper-config.yaml` has `Prometheus` as one 
+    of the registry
 * /metrics/sys
-  * returns JVM metrics in Prometheus text format
+  * returns JVM metrics in Prometheus text format. This API is available provided `metricsRegistries` parameter in data 
+    prepper configuration file `data-prepper-config.yaml` has `Prometheus` as one of the registry
+
 
 ### Running the example app
 To run the example app against your local changes, use the docker found [here](https://github.com/opensearch-project/data-prepper/tree/master/examples/dev/trace-analytics-sample-app)

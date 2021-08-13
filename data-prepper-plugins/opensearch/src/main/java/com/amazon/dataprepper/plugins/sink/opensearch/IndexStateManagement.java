@@ -11,7 +11,6 @@
 
 package com.amazon.dataprepper.plugins.sink.opensearch;
 
-import com.google.common.base.Preconditions;
 import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
 import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
 import org.opensearch.client.Request;

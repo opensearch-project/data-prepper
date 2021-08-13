@@ -11,19 +11,21 @@
 
 package com.amazon.dataprepper.plugins.prepper.state;
 
-import com.google.common.primitives.SignedBytes;
 import com.amazon.dataprepper.prepper.state.PrepperState;
-import java.io.File;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.function.BiFunction;
+import com.google.common.primitives.SignedBytes;
 import org.mapdb.BTreeMap;
 import org.mapdb.DBMaker;
 import org.mapdb.Serializer;
 import org.mapdb.serializer.SerializerByteArray;
+
+import java.io.File;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiFunction;
 
 public class MapDbPrepperState<V> implements PrepperState<byte[], V> {
 
@@ -41,14 +43,11 @@ public class MapDbPrepperState<V> implements PrepperState<byte[], V> {
     private final File dbFile;
 
     public MapDbPrepperState(final File dbPath, final String dbName, final int concurrencyScale) {
+        // TODO: Cleanup references to file-based map
         this.dbFile = new File(String.join("/", dbPath.getPath(), dbName));
         map =
-                (BTreeMap<byte[], V>) DBMaker.fileDB(dbFile)
-                        .fileDeleteAfterClose()
-                        .fileMmapEnable() //MapDB uses the (slower) Random Access Files by default
-                        .fileMmapPreclearDisable()
+                (BTreeMap<byte[], V>) DBMaker.heapDB()
                         .executorEnable()
-                        .transactionEnable()
                         .closeOnJvmShutdown()
                         .concurrencyScale(concurrencyScale)
                         .make()
@@ -98,12 +97,18 @@ public class MapDbPrepperState<V> implements PrepperState<byte[], V> {
         return returnList;
     }
 
+    public Iterator<Map.Entry<byte[], V>> getIterator(final int segments, final int index) {
+        final KeyRange iterationEndpoints = getIterationEndpoints(segments, index);
+        return map.entryIterator(iterationEndpoints.low, true, iterationEndpoints.high, false);
+    }
+
     /**
      * Gets iteration endpoints by taking the lowest and highest key and splitting the keyrange into segments.
      * These endpoints are an approximation of segments, and segments are guaranteed to cover the entire key range,
      * but there is no guarantee that all segments contain an equal number of elements.
+     *
      * @param segments Number of segments
-     * @param index Index to find segment endpoints for
+     * @param index    Index to find segment endpoints for
      * @return KeyRange containing the two endpoints
      */
     private KeyRange getIterationEndpoints(final int segments, final int index) {
@@ -114,7 +119,7 @@ public class MapDbPrepperState<V> implements PrepperState<byte[], V> {
         final byte[] highIndex =
                 index == segments - 1 ?
                         highEnd.add(new BigInteger("1")).toByteArray() :
-                        lowEnd.add(step.multiply(new BigInteger(String.valueOf(index+1)))).toByteArray();
+                        lowEnd.add(step.multiply(new BigInteger(String.valueOf(index + 1)))).toByteArray();
         return new KeyRange(lowIndex, highIndex);
     }
 
@@ -127,6 +132,11 @@ public class MapDbPrepperState<V> implements PrepperState<byte[], V> {
     @Override
     public long sizeInBytes() {
         return dbFile.length();
+    }
+
+    @Override
+    public void clear() {
+        map.clear();
     }
 
     @Override

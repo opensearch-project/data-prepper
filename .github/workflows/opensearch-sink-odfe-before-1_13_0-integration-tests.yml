@@ -3,7 +3,11 @@
 
 name: Data Prepper OpenSearchSink integration tests with ODFE < 1.13.0
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   integration_tests:

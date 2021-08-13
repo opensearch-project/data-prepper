@@ -12,10 +12,14 @@
 package com.amazon.dataprepper.pipeline.server;
 
 import com.amazon.dataprepper.DataPrepper;
+import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +27,8 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Class to handle any serving that the data prepper instance needs to do.
@@ -33,11 +39,12 @@ public class DataPrepperServer {
     private HttpServer server;
 
     public DataPrepperServer(final DataPrepper dataPrepper) {
-        final int port = DataPrepper.getConfiguration().getServerPort();
-        final boolean ssl = DataPrepper.getConfiguration().ssl();
-        final String keyStoreFilePath = DataPrepper.getConfiguration().getKeyStoreFilePath();
-        final String keyStorePassword = DataPrepper.getConfiguration().getKeyStorePassword();
-        final String privateKeyPassword = DataPrepper.getConfiguration().getPrivateKeyPassword();
+        final DataPrepperConfiguration dataPrepperConfiguration = DataPrepper.getConfiguration();
+        final int port = dataPrepperConfiguration.getServerPort();
+        final boolean ssl = dataPrepperConfiguration.ssl();
+        final String keyStoreFilePath = dataPrepperConfiguration.getKeyStoreFilePath();
+        final String keyStorePassword = dataPrepperConfiguration.getKeyStorePassword();
+        final String privateKeyPassword = dataPrepperConfiguration.getPrivateKeyPassword();
 
         try {
             if (ssl) {
@@ -51,10 +58,23 @@ public class DataPrepperServer {
             throw new RuntimeException("Failed to create server", e);
         }
 
-        server.createContext("/metrics/prometheus", new PrometheusMetricsHandler());
-        server.createContext("/metrics/sys", new PrometheusMetricsHandler(DataPrepper.getSysJVMMeterRegistry()));
+        getPrometheusMeterRegistryFromRegistries(Metrics.globalRegistry.getRegistries()).ifPresent(meterRegistry -> {
+            final PrometheusMeterRegistry prometheusMeterRegistryForDataPrepper = (PrometheusMeterRegistry) meterRegistry;
+            server.createContext("/metrics/prometheus", new PrometheusMetricsHandler(prometheusMeterRegistryForDataPrepper));
+        });
+
+        getPrometheusMeterRegistryFromRegistries(DataPrepper.getSystemMeterRegistry().getRegistries()).ifPresent(
+                meterRegistry -> {
+                    final PrometheusMeterRegistry prometheusMeterRegistryForSystem = (PrometheusMeterRegistry) meterRegistry;
+                    server.createContext("/metrics/sys", new PrometheusMetricsHandler(prometheusMeterRegistryForSystem));
+                });
         server.createContext("/list", new ListPipelinesHandler(dataPrepper));
         server.createContext("/shutdown", new ShutdownHandler(dataPrepper));
+    }
+
+    private Optional<MeterRegistry> getPrometheusMeterRegistryFromRegistries(final Set<MeterRegistry> meterRegistries) {
+        return meterRegistries.stream().filter(meterRegistry ->
+                meterRegistry instanceof PrometheusMeterRegistry).findFirst();
     }
 
     /**
