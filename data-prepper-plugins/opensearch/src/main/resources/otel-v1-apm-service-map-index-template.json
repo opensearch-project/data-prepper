@@ -1,4 +1,5 @@
 {
+  "version": 0,
   "mappings": {
     "date_detection": false,
     "dynamic_templates": [

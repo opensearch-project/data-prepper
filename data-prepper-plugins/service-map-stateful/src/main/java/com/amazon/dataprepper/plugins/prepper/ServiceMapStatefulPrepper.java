@@ -18,8 +18,8 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.prepper.state.MapDbPrepperState;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Sets;
 import com.google.common.primitives.SignedBytes;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import org.slf4j.Logger;
@@ -32,13 +32,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiFunction;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @SingleThread
 @DataPrepperPlugin(name = "service_map_stateful", type = PluginType.PREPPER)
@@ -57,17 +55,16 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
     private static final AtomicInteger preppersCreated = new AtomicInteger(0);
     private static long previousTimestamp;
     private static long windowDurationMillis;
-    private static CountDownLatch edgeEvaluationLatch;
-    private static CountDownLatch windowRotationLatch = new CountDownLatch(1);
+    private static CyclicBarrier allThreadsCyclicBarrier;
+
     private volatile static MapDbPrepperState<ServiceMapStateData> previousWindow;
     private volatile static MapDbPrepperState<ServiceMapStateData> currentWindow;
     private volatile static MapDbPrepperState<String> previousTraceGroupWindow;
     private volatile static MapDbPrepperState<String> currentTraceGroupWindow;
     //TODO: Consider keeping this state in a db
-    private volatile static HashSet<ServiceMapRelationship> relationshipState = new HashSet<>();
+    private static final Set<ServiceMapRelationship> RELATIONSHIP_STATE = Sets.newConcurrentHashSet();
     private static File dbPath;
     private static Clock clock;
-    private static int processWorkers;
 
     private final int thisPrepperId;
 
@@ -88,15 +85,18 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
 
         ServiceMapStatefulPrepper.clock = clock;
         this.thisPrepperId = preppersCreated.getAndIncrement();
+
         if (isMasterInstance()) {
             previousTimestamp = ServiceMapStatefulPrepper.clock.millis();
             ServiceMapStatefulPrepper.windowDurationMillis = windowDurationMillis;
             ServiceMapStatefulPrepper.dbPath = createPath(databasePath);
-            ServiceMapStatefulPrepper.processWorkers = processWorkers;
+
             currentWindow = new MapDbPrepperState<>(dbPath, getNewDbName(), processWorkers);
             previousWindow = new MapDbPrepperState<>(dbPath, getNewDbName() + EMPTY_SUFFIX, processWorkers);
             currentTraceGroupWindow = new MapDbPrepperState<>(dbPath, getNewTraceDbName(), processWorkers);
             previousTraceGroupWindow = new MapDbPrepperState<>(dbPath, getNewTraceDbName() + EMPTY_SUFFIX, processWorkers);
+
+            allThreadsCyclicBarrier = new CyclicBarrier(processWorkers);
         }
 
         pluginMetrics.gauge(SPANS_DB_SIZE, this, serviceMapStateful -> serviceMapStateful.getSpansDbSize());
@@ -176,88 +176,81 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
      * @return Set of Record<String> containing json representation of ServiceMapRelationships found
      */
     private Collection<Record<String>> evaluateEdges() {
+        LOG.info("Evaluating service map edges");
         try {
-            final Stream<ServiceMapRelationship> previousStream = previousWindow.iterate(relationshipIterationFunction, preppersCreated.get(), thisPrepperId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
-            final Stream<ServiceMapRelationship> currentStream = currentWindow.iterate(relationshipIterationFunction, preppersCreated.get(), thisPrepperId).stream().flatMap(serviceMapEdgeStream -> serviceMapEdgeStream);
+            final Collection<Record<String>> serviceDependencyRecords = new HashSet<>();
 
-            final Collection<Record<String>> serviceDependencyRecords =
-                    Stream.concat(previousStream, currentStream).filter(Objects::nonNull)
-                            .filter(serviceMapRelationship -> !relationshipState.contains(serviceMapRelationship))
-                            .map(serviceMapRelationship -> {
-                                try {
-                                    relationshipState.add(serviceMapRelationship);
-                                    return new Record<>(OBJECT_MAPPER.writeValueAsString(serviceMapRelationship));
-                                } catch (JsonProcessingException e) {
-                                    throw new RuntimeException(e);
-                                }
-                            })
-                            .collect(Collectors.toSet());
+            serviceDependencyRecords.addAll(iteratePrepperState(previousWindow));
+            serviceDependencyRecords.addAll(iteratePrepperState(currentWindow));
+            LOG.info("Done evaluating service map edges");
 
-            if (edgeEvaluationLatch == null) {
-                initEdgeEvaluationLatch();
-            }
-            doneEvaluatingEdges();
-            waitForEvaluationFinish();
+            // Wait for all workers before rotating windows
+            allThreadsCyclicBarrier.await();
 
             if (isMasterInstance()) {
                 rotateWindows();
-                resetWorkState();
-            } else {
-                waitForRotationFinish();
             }
 
+            // Wait for all workers before exiting this method
+            allThreadsCyclicBarrier.await();
+
             return serviceDependencyRecords;
-        } catch (InterruptedException e) {
+        } catch (InterruptedException | BrokenBarrierException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static synchronized void initEdgeEvaluationLatch() {
-        if (edgeEvaluationLatch == null) {
-            edgeEvaluationLatch = new CountDownLatch(preppersCreated.get());
-        }
-    }
+    private Collection<Record<String>> iteratePrepperState(final MapDbPrepperState<ServiceMapStateData> prepperState) {
+        final Collection<Record<String>> serviceDependencyRecords = new HashSet<>();
 
-    /**
-     * This function is used to iterate over the current window and find parent/child relationships in the current and
-     * previous windows.
-     */
-    private final BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>> relationshipIterationFunction = new BiFunction<byte[], ServiceMapStateData, Stream<ServiceMapRelationship>>() {
-        @Override
-        public Stream<ServiceMapRelationship> apply(byte[] s, ServiceMapStateData serviceMapStateData) {
-            return lookupParentSpan(serviceMapStateData, true);
-        }
-    };
+        if (prepperState.getAll() != null && !prepperState.getAll().isEmpty()) {
+            prepperState.getIterator(preppersCreated.get(), thisPrepperId).forEachRemaining(entry -> {
+                final ServiceMapStateData child = entry.getValue();
 
-    private Stream<ServiceMapRelationship> lookupParentSpan(final ServiceMapStateData serviceMapStateData, final boolean checkPrev) {
-        if (serviceMapStateData.parentSpanId != null) {
-            final ServiceMapStateData parentStateData = getParentStateData(serviceMapStateData.parentSpanId, checkPrev);
-            final String traceGroupName = getTraceGroupName(serviceMapStateData.traceId);
-            if (traceGroupName != null && parentStateData != null && !parentStateData.serviceName.equals(serviceMapStateData.serviceName)) {
-                return Stream.of(
-                        ServiceMapRelationship.newDestinationRelationship(parentStateData.serviceName, parentStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName),
-                        //This extra edge is added for compatibility of the index for both stateless and stateful preppers
-                        ServiceMapRelationship.newTargetRelationship(serviceMapStateData.serviceName, serviceMapStateData.spanKind, serviceMapStateData.serviceName, serviceMapStateData.name, traceGroupName)
-                );
-            }
-        }
-        return Stream.empty();
-    }
+                if (child.parentSpanId == null) {
+                    return;
+                }
 
-    /**
-     * Checks both current and previous windows for the given parent span id
-     *
-     * @param spanId
-     * @return ServiceMapStateData for the parent span, if exists. Otherwise null
-     */
-    private ServiceMapStateData getParentStateData(final byte[] spanId, final boolean checkPrev) {
-        try {
-            final ServiceMapStateData serviceMapStateData = currentWindow.get(spanId);
-            return serviceMapStateData != null ? serviceMapStateData : checkPrev ? previousWindow.get(spanId) : null;
-        } catch (RuntimeException e) {
-            LOG.error("Caught exception trying to get parent state data", e);
-            return null;
+                ServiceMapStateData parent = currentWindow.get(child.parentSpanId);
+                if (parent == null) {
+                    parent = previousWindow.get(child.parentSpanId);
+                }
+
+
+                final String traceGroupName = getTraceGroupName(child.traceId);
+                if (traceGroupName == null || parent == null || parent.serviceName.equals(child.serviceName)) {
+                    return;
+                }
+
+                final ServiceMapRelationship destinationRelationship =
+                        ServiceMapRelationship.newDestinationRelationship(parent.serviceName,
+                                parent.spanKind, child.serviceName, child.name, traceGroupName);
+                final ServiceMapRelationship targetRelationship = ServiceMapRelationship.newTargetRelationship(child.serviceName,
+                        child.spanKind, child.serviceName, child.name, traceGroupName);
+
+
+                // check if relationshipState has it
+                if (!RELATIONSHIP_STATE.contains(destinationRelationship)) {
+                    try {
+                        serviceDependencyRecords.add(new Record<>(OBJECT_MAPPER.writeValueAsString(destinationRelationship)));
+                        RELATIONSHIP_STATE.add(destinationRelationship);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+
+                if (!RELATIONSHIP_STATE.contains(targetRelationship)) {
+                    try {
+                        serviceDependencyRecords.add(new Record<>(OBJECT_MAPPER.writeValueAsString(targetRelationship)));
+                        RELATIONSHIP_STATE.add(targetRelationship);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
         }
+
+        return serviceDependencyRecords;
     }
 
     /**
@@ -298,63 +291,29 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
     // TODO: Temp code, complex instance creation logic should be moved to a separate class
     static void resetStaticCounters() {
         preppersCreated.set(0);
-        edgeEvaluationLatch = null;
     }
 
-    /**
-     * Indicate/notify that this instance has finished evaluating edges
-     */
-    private void doneEvaluatingEdges() {
-        edgeEvaluationLatch.countDown();
-    }
-
-    /**
-     * Wait on all instances to finish evaluating edges
-     *
-     * @throws InterruptedException
-     */
-    private void waitForEvaluationFinish() throws InterruptedException {
-        edgeEvaluationLatch.await();
-    }
-
-    /**
-     * Indicate that window rotation is complete
-     */
-    private void doneRotatingWindows() {
-        windowRotationLatch.countDown();
-    }
-
-    /**
-     * Wait on window rotation to complete
-     *
-     * @throws InterruptedException
-     */
-    private void waitForRotationFinish() throws InterruptedException {
-        windowRotationLatch.await();
-    }
-
-    /**
-     * Reset state that indicates whether edge evaluation and window rotation is complete
-     */
-    private void resetWorkState() {
-        windowRotationLatch = new CountDownLatch(1);
-        edgeEvaluationLatch = new CountDownLatch(preppersCreated.get());
-    }
 
     /**
      * Rotate windows for prepper state
      */
-    private void rotateWindows() {
-        LOG.debug("Rotating windows at " + clock.instant().toString());
-        previousWindow.delete();
-        previousTraceGroupWindow.delete();
+    private void rotateWindows() throws InterruptedException {
+        LOG.info("Rotating service map windows at " + clock.instant().toString());
+
+        MapDbPrepperState tempWindow = previousWindow;
         previousWindow = currentWindow;
-        currentWindow = new MapDbPrepperState<>(dbPath, getNewDbName(), processWorkers);
+        currentWindow = tempWindow;
+        currentWindow.clear();
+
+        tempWindow = previousTraceGroupWindow;
         previousTraceGroupWindow = currentTraceGroupWindow;
-        currentTraceGroupWindow = new MapDbPrepperState<>(dbPath, getNewTraceDbName(), processWorkers);
+        currentTraceGroupWindow = tempWindow;
+        currentTraceGroupWindow.clear();
+
         previousTimestamp = clock.millis();
-        doneRotatingWindows();
+        LOG.info("Done rotating service map windows");
     }
+
 
     /**
      * @return Spans database size in bytes

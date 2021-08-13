@@ -12,22 +12,25 @@
 package com.amazon.dataprepper.plugins.prepper.peerforwarder;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate.model.Certificate;
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery.DiscoveryMode;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mockStatic;
@@ -53,7 +56,6 @@ public class PeerForwarderConfigTest {
         mockedPeerClientPoolClass = mockStatic(PeerClientPool.class);
         mockedPeerClientPoolClass.when(PeerClientPool::getInstance).thenReturn(peerClientPool);
         doNothing().when(peerClientPool).setSsl(anyBoolean());
-        doNothing().when(peerClientPool).setSslKeyCertChainFile(any(File.class));
     }
 
     @After
@@ -98,13 +100,13 @@ public class PeerForwarderConfigTest {
         });
 
         settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, INVALID_SSL_KEY_CERT_FILE);
-        Assert.assertThrows(IllegalArgumentException.class, () -> {
+        Assert.assertThrows(RuntimeException.class, () -> {
             PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings){{ setPipelineName(PIPELINE_NAME); }});
         });
     }
 
     @Test
-    public void testBuildConfigValidSSL() {
+    public void testBuildConfigValidSSL() throws IOException {
         final HashMap<String, Object> settings = new HashMap<>();
         settings.put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.STATIC.toString());
         settings.put(PeerForwarderConfig.STATIC_ENDPOINTS, TEST_ENDPOINTS);
@@ -113,6 +115,12 @@ public class PeerForwarderConfigTest {
 
         PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings){{ setPipelineName(PIPELINE_NAME); }});
         verify(peerClientPool, times(1)).setSsl(true);
-        verify(peerClientPool, times(1)).setSslKeyCertChainFile(new File(VALID_SSL_KEY_CERT_FILE));
+        final ArgumentCaptor<Certificate> certificateArgumentCaptor = ArgumentCaptor.forClass(Certificate.class);
+        verify(peerClientPool, times(1)).setCertificate(certificateArgumentCaptor.capture());
+        final Certificate certificate = certificateArgumentCaptor.getValue();
+
+        final Path certFilePath = Path.of(VALID_SSL_KEY_CERT_FILE);
+        final String certAsString = Files.readString(certFilePath);
+        Assert.assertEquals(certificate.getCertificate(), certAsString);
     }
 }

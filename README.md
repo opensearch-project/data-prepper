@@ -19,7 +19,7 @@ We envision Data Prepper as an open source data collector for observability data
   - [Code of Conduct](#Code-of-Conduct)
   - [Security Issue Notifications](#Security-Issue-Notifications)
   - [License](#License)
-  
+
 
 
 ## Contribute

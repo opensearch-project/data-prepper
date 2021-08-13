@@ -11,15 +11,16 @@
 
 package com.amazon.dataprepper.plugins.prepper.state;
 
+import org.junit.Assert;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.BiFunction;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 
 public class MapDbPrepperStateTest extends PrepperStateTest {
 
@@ -33,9 +34,9 @@ public class MapDbPrepperStateTest extends PrepperStateTest {
 
     @Test
     public void testIterateSegment() throws IOException {
-        final byte[] key1  = new byte[]{-64, 0, -64, 0};
+        final byte[] key1 = new byte[]{-64, 0, -64, 0};
         final byte[] key2 = new byte[]{0};
-        final byte[] key3 = new byte[]{64, 64, 64 , 64};
+        final byte[] key3 = new byte[]{64, 64, 64, 64};
         final byte[] key4 = new byte[]{126, 126, 126, 126};
 
         final DataClass data1 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
@@ -72,8 +73,6 @@ public class MapDbPrepperStateTest extends PrepperStateTest {
                 data3.stringVal,
                 data4.stringVal
         )));
-
-        Assert.assertEquals( 1048576, prepperState.sizeInBytes());
     }
 
 }

@@ -11,130 +11,78 @@
 
 package com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.PeerForwarderConfig;
-import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
-import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroupBuilder;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.concurrent.CompletableFuture;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.hamcrest.CoreMatchers.sameInstance;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
-public class PeerListProviderFactoryTest {
+@ExtendWith(MockitoExtension.class)
+class PeerListProviderFactoryTest {
     private static final String PLUGIN_NAME = "PLUGIN_NAME";
-    private static final String ENDPOINT = "ENDPOINT";
-    private static final String INVALID_ENDPOINT = "INVALID_ENDPOINT_";
     private static final String PIPELINE_NAME = "pipelineName";
-
-    @Mock
-    private DnsAddressEndpointGroupBuilder dnsAddressEndpointGroupBuilder;
-    @Mock
-    private DnsAddressEndpointGroup dnsAddressEndpointGroup;
-
-    private CompletableFuture completableFuture;
 
     private PluginSetting pluginSetting;
 
     private PeerListProviderFactory factory;
 
-    @Before
-    public void setup() {
+    @BeforeEach
+    void setup() {
         factory = new PeerListProviderFactory();
-        pluginSetting = new PluginSetting(PLUGIN_NAME, new HashMap<>()){{ setPipelineName(PIPELINE_NAME); }};
-        completableFuture = CompletableFuture.completedFuture(null);
+        pluginSetting = new PluginSetting(PLUGIN_NAME, new HashMap<>()) {{
+            setPipelineName(PIPELINE_NAME);
+        }};
     }
 
-    @Test(expected = NullPointerException.class)
-    public void testUnsupportedNoDiscoveryMode() {
-        factory.createProvider(pluginSetting);
+    @Test
+    void createProvider_throws_when_no_DiscoveryMode_is_provided() {
+        assertThrows(NullPointerException.class,
+                () -> factory.createProvider(pluginSetting));
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testUndefinedDiscoveryModeEnum() {
+    @Test
+    void createProvider_throws_for_undefined_DiscoveryMode() {
         pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, "GARBAGE");
 
-        factory.createProvider(pluginSetting);
+        assertThrows(IllegalArgumentException.class,
+                () -> factory.createProvider(pluginSetting));
     }
 
-    @Test(expected = UnsupportedOperationException.class)
-    public void testUnsupportedDiscoveryModeEnum() {
-        pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.UNSUPPORTED.toString());
+    @ParameterizedTest
+    @EnumSource(DiscoveryMode.class)
+    void createProvider_returns_correct_provider_for_all_DiscoveryModes(final DiscoveryMode discoveryMode) {
+        final String discoveryModeString = discoveryMode.toString();
+        pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, discoveryModeString.toLowerCase());
 
-        factory.createProvider(pluginSetting);
-    }
+        final PeerListProvider expectedProvider = mock(PeerListProvider.class);
+        final PeerListProvider actualProvider;
 
-    @Test(expected = NullPointerException.class)
-    public void testCreateProviderStaticInstanceNoEndpoints() {
-        pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.STATIC.toString());
+        try (final MockedStatic<DiscoveryMode> enumMock = Mockito.mockStatic(DiscoveryMode.class)) {
+            final DiscoveryMode mockedModeEnum = mock(DiscoveryMode.class);
+            enumMock.when(() -> DiscoveryMode.valueOf(discoveryModeString)).thenReturn(mockedModeEnum);
 
-        factory.createProvider(pluginSetting);
-    }
+            when(mockedModeEnum.create(eq(pluginSetting), any(PluginMetrics.class))).thenReturn(expectedProvider);
 
-    @Test
-    public void testCreateProviderStaticInstanceWithEndpoints() {
-        pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.STATIC.toString());
-        pluginSetting.getSettings().put(PeerForwarderConfig.STATIC_ENDPOINTS, Collections.singletonList(ENDPOINT));
-
-        PeerListProvider result = factory.createProvider(pluginSetting);
-
-        assertTrue(result instanceof StaticPeerListProvider);
-        assertEquals(1, result.getPeerList().size());
-        assertTrue(result.getPeerList().contains(ENDPOINT));
-    }
-
-    @Test(expected = IllegalStateException.class)
-    public void testCreateProviderStaticInstanceWithInvalidEndpoints() {
-        pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.STATIC.toString());
-        pluginSetting.getSettings().put(PeerForwarderConfig.STATIC_ENDPOINTS, Arrays.asList(ENDPOINT, INVALID_ENDPOINT));
-
-        factory.createProvider(pluginSetting);
-    }
-
-    @Test
-    public void testCreateProviderDnsInstance() {
-        pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.DNS.toString());
-        pluginSetting.getSettings().put(PeerForwarderConfig.DOMAIN_NAME, ENDPOINT);
-
-        when(dnsAddressEndpointGroupBuilder.build()).thenReturn(dnsAddressEndpointGroup);
-        when(dnsAddressEndpointGroupBuilder.ttl(anyInt(), anyInt())).thenReturn(dnsAddressEndpointGroupBuilder);
-        when(dnsAddressEndpointGroup.whenReady()).thenReturn(completableFuture);
-
-        try (MockedStatic<DnsAddressEndpointGroup> armeriaMock = Mockito.mockStatic(DnsAddressEndpointGroup.class)) {
-            armeriaMock.when(() -> DnsAddressEndpointGroup.builder(anyString())).thenReturn(dnsAddressEndpointGroupBuilder);
-
-            PeerListProvider result = factory.createProvider(pluginSetting);
-
-            assertTrue(result instanceof DnsPeerListProvider);
+            actualProvider = factory.createProvider(pluginSetting);
         }
+
+        assertThat(actualProvider, sameInstance(expectedProvider));
     }
 
-    @Test(expected = NullPointerException.class)
-    public void testCreateProviderDnsInstanceWithNoHostname() {
-        pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.DNS.toString());
-
-        factory.createProvider(pluginSetting);
-    }
-
-    @Test(expected = IllegalStateException.class)
-    public void testCreateProviderDnsInstanceWithInvalidDomainName() {
-        pluginSetting.getSettings().put(PeerForwarderConfig.DISCOVERY_MODE, DiscoveryMode.DNS.toString());
-        pluginSetting.getSettings().put(PeerForwarderConfig.DOMAIN_NAME, INVALID_ENDPOINT);
-
-        factory.createProvider(pluginSetting);
-    }
 }

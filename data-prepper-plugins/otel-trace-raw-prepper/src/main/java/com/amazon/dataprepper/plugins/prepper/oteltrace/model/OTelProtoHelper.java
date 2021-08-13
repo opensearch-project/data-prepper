@@ -19,8 +19,6 @@ import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.Span;
 import io.opentelemetry.proto.trace.v1.Status;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,9 +28,7 @@ import java.util.stream.Collectors;
 
 public final class OTelProtoHelper {
 
-    private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final BigDecimal MILLIS_TO_NANOS = new BigDecimal(1_000_000);
-    private static final BigDecimal SEC_TO_MILLIS = new BigDecimal(1_000);
+    private final static ObjectMapper OBJECT_MAPPER =  new ObjectMapper();
     private static final String SERVICE_NAME = "service.name";
     private static final String SPAN_ATTRIBUTES = "span.attributes";
     static final String RESOURCE_ATTRIBUTES = "resource.attributes";
@@ -147,10 +143,7 @@ public final class OTelProtoHelper {
     }
 
     private static String convertUnixNanosToISO8601(final long unixNano) {
-        final BigDecimal nanos = new BigDecimal(unixNano);
-        final long epochSeconds = nanos.divide(MILLIS_TO_NANOS.multiply(SEC_TO_MILLIS), RoundingMode.DOWN).longValue();
-        final int nanoAdj = nanos.remainder(MILLIS_TO_NANOS.multiply(SEC_TO_MILLIS)).intValue();
-        return Instant.ofEpochSecond(epochSeconds, nanoAdj).toString();
+        return Instant.ofEpochSecond(0L, unixNano).toString();
     }
 
     public static String getStartTimeISO8601(final Span span) {

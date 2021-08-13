@@ -14,21 +14,21 @@ plugins {
 }
 
 dependencies {
-    compile project(':data-prepper-api')
-    compile project(':data-prepper-plugins:common')
-    compile 'commons-codec:commons-codec:1.15'
-    testCompile project(':data-prepper-api').sourceSets.test.output
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:common')
+    implementation 'commons-codec:commons-codec:1.15'
+    testImplementation project(':data-prepper-api').sourceSets.test.output
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
-    implementation 'com.google.protobuf:protobuf-java-util:3.15.8'
-    implementation "com.linecorp.armeria:armeria:1.6.0"
-    implementation "com.linecorp.armeria:armeria-grpc:1.6.0"
-    implementation "com.fasterxml.jackson.core:jackson-databind:2.12.3"
-    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.3"
+    implementation 'com.google.protobuf:protobuf-java-util:3.17.3'
+    implementation "com.linecorp.armeria:armeria:1.9.2"
+    implementation "com.linecorp.armeria:armeria-grpc:1.9.2"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.12.4"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.4"
     implementation group: 'com.google.guava', name: 'guava', version: '30.1.1-jre'
-    testImplementation 'org.assertj:assertj-core:3.19.0'
-    testImplementation "org.mockito:mockito-inline:3.9.0"
+    testImplementation 'org.assertj:assertj-core:3.20.2'
+    testImplementation "org.mockito:mockito-inline:3.11.2"
     testImplementation "org.hamcrest:hamcrest:2.2"
-    testImplementation "org.awaitility:awaitility:4.0.3"
+    testImplementation "org.awaitility:awaitility:4.1.0"
 }
 
 jacocoTestCoverageVerification {

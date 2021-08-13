@@ -16,7 +16,7 @@ pipeline:
         cert: path/to/cert
         username: YOUR_USERNAME_HERE
         password: YOUR_PASSWORD_HERE
-``` 
+```
 
 See [odfe_security.md](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/elasticsearch/odfe_security.md) for detailed explanation.
 
@@ -28,7 +28,7 @@ pipeline:
   prepper:
     - otel-trace-group-prepper:
         hosts: ["https://your-amazon-elasticssearch-service-endpoint"]
-        aws_sigv4: true 
+        aws_sigv4: true
         cert: path/to/cert
         insecure: false
 ```
@@ -40,9 +40,9 @@ See [security.md](https://github.com/opensearch-project/data-prepper/blob/main/d
 - `hosts`: A list of IP addresses of elasticsearch nodes.
 
 - `cert`(optional): CA certificate that is pem encoded. Accepts both .pem or .crt. This enables the client to trust the CA that has signed the certificate that ODFE is using.
-Default is null. 
+Default is null.
 
-- `aws_sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Only applies to Amazon Elasticsearch Service. See [security](security.md) for details. Default to `false`. 
+- `aws_sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Only applies to Amazon Elasticsearch Service. See [security](security.md) for details. Default to `false`.
 
 - `aws_region`: A String represents the region of Amazon Elasticsearch Service domain, e.g. us-west-2. Only applies to Amazon Elasticsearch Service. Defaults to `us-east-1`.
 
@@ -61,7 +61,7 @@ Default is null.
 
 ## Developer Guide
 
-This plugin is compatible with Java 8. See 
+This plugin is compatible with Java 8. See
 
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md) 
 - [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/readme/monitoring.md)

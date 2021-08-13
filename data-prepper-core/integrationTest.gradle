@@ -1,13 +1,15 @@
 buildscript {
     repositories {
-        jcenter()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
     }
     dependencies {
-        classpath 'com.bmuschko:gradle-docker-plugin:6.6.1'
+        classpath 'com.bmuschko:gradle-docker-plugin:7.0.0'
     }
 }
 
-apply plugin: 'com.bmuschko.docker-remote-api'
+apply plugin: com.bmuschko.gradle.docker.DockerRemoteApiPlugin
 
 /*
  *  SPDX-License-Identifier: Apache-2.0
@@ -66,6 +68,7 @@ task removeDataPrepperNetwork(type: DockerRemoveNetwork) {
 }
 
 def RAW_SPAN_PIPELINE_YAML = "raw-span-e2e-pipeline.yml"
+def RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML = "raw-span-e2e-pipeline-latest-release.yml"
 def SERVICE_MAP_PIPELINE_YAML = "service-map-e2e-pipeline.yml"
 
 /**
@@ -80,6 +83,7 @@ task createDataPrepperDockerFile(type: Dockerfile) {
     workingDir("/app")
     copyFile("build/libs/${jar.archiveName}", "/app/data-prepper.jar")
     copyFile("src/integrationTest/resources/${RAW_SPAN_PIPELINE_YAML}", "/app/${RAW_SPAN_PIPELINE_YAML}")
+    copyFile("src/integrationTest/resources/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}", "/app/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
     copyFile("src/integrationTest/resources/${SERVICE_MAP_PIPELINE_YAML}", "/app/${SERVICE_MAP_PIPELINE_YAML}")
     copyFile("src/integrationTest/resources/data_prepper.yml", "/app/data_prepper.yml")
     defaultCommand("java", "-jar", "data-prepper.jar", "/app/${RAW_SPAN_PIPELINE_YAML}", "/app/data_prepper.yml")
@@ -124,11 +128,30 @@ def removeDataPrepperDockerContainer(final DockerStopContainer stopDataPrepperDo
     }
 }
 
+task pullDataPrepperDockerImage(type: DockerPullImage) {
+    image = 'opensearchproject/data-prepper:latest'
+}
+
+def createDataPrepperDockerContainerFromPullImage(final String taskBaseName, final String dataPrepperName, final int grpcPort,
+                                                  final int serverPort, final String pipelineConfigYAML) {
+    return tasks.create("create${taskBaseName}", DockerCreateContainer) {
+        dependsOn createDataPrepperNetwork
+        dependsOn pullDataPrepperDockerImage
+        containerName = dataPrepperName
+        hostConfig.portBindings = [String.format('%d:21890', grpcPort), String.format('%d:4900', serverPort)]
+        exposePorts('tcp', [21890, 4900])
+        hostConfig.network = createDataPrepperNetwork.getNetworkName()
+        hostConfig.binds = [(project.file(pipelineConfigYAML).toString()):"/usr/share/data-prepper/pipelines.yaml",
+                            (project.file("src/integrationTest/resources/data_prepper.yml").toString()):"/usr/share/data-prepper/data-prepper-config.yaml"]
+        targetImageId pullDataPrepperDockerImage.image
+    }
+}
+
 /**
  * OpenSearch Docker tasks
  */
 task pullOpenSearchDockerImage(type: DockerPullImage) {
-    image = 'opensearchstaging/opensearch:1.0.0-beta1'
+    image = 'opensearchproject/opensearch:1.0.0'
 }
 
 task createOpenSearchDockerContainer(type: DockerCreateContainer) {
@@ -153,6 +176,10 @@ task startOpenSearchDockerContainer(type: DockerStartContainer) {
 
 task stopOpenSearchDockerContainer(type: DockerStopContainer) {
     targetContainerId createOpenSearchDockerContainer.getContainerId()
+
+    doLast {
+        sleep(5*1000)
+    }
 }
 
 /**
@@ -163,9 +190,9 @@ task rawSpanEndToEndTest(type: Test) {
     dependsOn build
     dependsOn startOpenSearchDockerContainer
     def createDataPrepper1Task = createDataPrepperDockerContainer(
-            "rawSpanDataPrepper1", "data-prepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_YAML}")
+            "rawSpanDataPrepper1", "dataprepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_YAML}")
     def createDataPrepper2Task = createDataPrepperDockerContainer(
-            "rawSpanDataPrepper2", "data-prepper2", 21891, 4901, "/app/${RAW_SPAN_PIPELINE_YAML}")
+            "rawSpanDataPrepper2", "dataprepper2", 21891, 4901, "/app/${RAW_SPAN_PIPELINE_YAML}")
     def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
     def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
     dependsOn startDataPrepper1Task
@@ -183,7 +210,44 @@ task rawSpanEndToEndTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
 
     filter {
-        includeTestsMatching "com.amazon.dataprepper.integration.EndToEndRawSpanTest*"
+        includeTestsMatching "com.amazon.dataprepper.integration.EndToEndRawSpanTest.testPipelineEndToEnd*"
+    }
+
+    finalizedBy stopOpenSearchDockerContainer
+    def stopDataPrepper1Task = stopDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
+    def stopDataPrepper2Task = stopDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
+    finalizedBy stopDataPrepper1Task
+    finalizedBy stopDataPrepper2Task
+    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper1Task as DockerStopContainer)
+    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper2Task as DockerStopContainer)
+    finalizedBy removeDataPrepperNetwork
+}
+
+task rawSpanCompatibilityEndToEndTest(type: Test) {
+    dependsOn build
+    dependsOn startOpenSearchDockerContainer
+    def createDataPrepper1Task = createDataPrepperDockerContainer(
+            "rawSpanDataPrepperFromBuild", "dataprepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
+    def createDataPrepper2Task = createDataPrepperDockerContainerFromPullImage(
+            "rawSpanDataPrepperFromPull", "dataprepper2", 21891, 4901, "src/integrationTest/resources/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
+    def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
+    def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
+    dependsOn startDataPrepper1Task
+    dependsOn startDataPrepper2Task
+    startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
+    startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
+    // wait for data-preppers to be ready
+    doFirst {
+        sleep(10*1000)
+    }
+
+    description = 'Runs the raw span compatibility integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    filter {
+        includeTestsMatching "com.amazon.dataprepper.integration.EndToEndRawSpanTest.testPipelineEndToEnd*"
     }
 
     finalizedBy stopOpenSearchDockerContainer
@@ -200,9 +264,9 @@ task serviceMapEndToEndTest(type: Test) {
     dependsOn build
     dependsOn startOpenSearchDockerContainer
     def createDataPrepper1Task = createDataPrepperDockerContainer(
-            "serviceMapDataPrepper1", "data-prepper1", 21890, 4900, "/app/${SERVICE_MAP_PIPELINE_YAML}")
+            "serviceMapDataPrepper1", "dataprepper1", 21890, 4900, "/app/${SERVICE_MAP_PIPELINE_YAML}")
     def createDataPrepper2Task = createDataPrepperDockerContainer(
-            "serviceMapDataPrepper2", "data-prepper2", 21891, 4901, "/app/${SERVICE_MAP_PIPELINE_YAML}")
+            "serviceMapDataPrepper2", "dataprepper2", 21891, 4901, "/app/${SERVICE_MAP_PIPELINE_YAML}")
     def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
     def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
     dependsOn startDataPrepper1Task

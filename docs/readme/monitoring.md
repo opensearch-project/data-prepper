@@ -1,6 +1,6 @@
 # Monitoring
 Metrics in Data Prepper are instrumented using [Micrometer.io](https://micrometer.io/). There are two types of metrics: 
-(1) JVM and system metrics; (2) Plugin metrics. Prometheus is used as the metrics backend.
+(1) JVM and system metrics; (2) Plugin metrics. Prometheus is used as the default metrics backend.
 
 ## JVM and system metrics
 
@@ -13,9 +13,10 @@ JVM and system metrics in Data Prepper follows pre-defined names in Micrometer.i
 
 ### Serving
 
-Metrics are served from the **/metrics/sys** endpoint on the Data Prepper server. The format
+By default, metrics are served from the **/metrics/sys** endpoint on the Data Prepper server. The format
 is a text Prometheus scrape. This port can be used for any frontend which accepts Prometheus metrics, e.g. 
-[Grafana](https://prometheus.io/docs/visualization/grafana/).
+[Grafana](https://prometheus.io/docs/visualization/grafana/). The configuration can be updated to serve metrics to other 
+registries like CloudWatch which does not require/host the endpoint but publishes the metrics directly to cloudwatch.
 
 ## Plugin metrics
 
@@ -51,5 +52,7 @@ Metrics follow a naming convention of **PIPELINE_NAME_PLUGIN_NAME_METRIC_NAME** 
 would have a qualified name of **output-pipeline_elasticsearch_sink_recordsIn**.
 
 ### Serving
-Metrics are served from the **metrics/prometheus** endpoint on the Data Prepper server. The format
-is a text Prometheus scrape. This port can be used for any frontend which accepts Prometheus metrics.
+By default, metrics are served from the **metrics/prometheus** endpoint on the Data Prepper server. The format
+is a text Prometheus scrape. This port can be used for any frontend which accepts Prometheus metrics. The configuration 
+can be updated to serve metrics to other registries like CloudWatch which does not require/host the endpoint but 
+publishes the metrics directly to cloudwatch.

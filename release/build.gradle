@@ -13,7 +13,7 @@ apply from: file("build-resources.gradle")
 
 allprojects {
     dependencies {
-        compile project(':data-prepper-core')
+        implementation project(':data-prepper-core')
     }
 }
 

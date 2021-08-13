@@ -64,6 +64,7 @@ public class OtelTraceSourceConfigTests {
                 TEST_PORT,
                 true,
                 true,
+                false,
                 true,
                 TEST_KEY_CERT,
                 TEST_KEY,
@@ -92,6 +93,7 @@ public class OtelTraceSourceConfigTests {
                 DEFAULT_REQUEST_TIMEOUT_MS,
                 DEFAULT_PORT, false,
                 false,
+                false,
                 true, null,
                 TEST_KEY,
                 DEFAULT_THREAD_COUNT,
@@ -103,6 +105,7 @@ public class OtelTraceSourceConfigTests {
         final PluginSetting sslEmptyKeyCertPluginSetting = completePluginSettingForOtelTraceSource(
                 DEFAULT_REQUEST_TIMEOUT_MS,
                 DEFAULT_PORT,
+                false,
                 false,
                 false,
                 true,
@@ -119,6 +122,7 @@ public class OtelTraceSourceConfigTests {
                 DEFAULT_PORT,
                 false,
                 false,
+                false,
                 true,
                 TEST_KEY_CERT,
                 null,
@@ -131,6 +135,7 @@ public class OtelTraceSourceConfigTests {
         final PluginSetting sslEmptyKeyFilePluginSetting = completePluginSettingForOtelTraceSource(
                 DEFAULT_REQUEST_TIMEOUT_MS,
                 DEFAULT_PORT,
+                false,
                 false,
                 false,
                 true,
@@ -146,6 +151,7 @@ public class OtelTraceSourceConfigTests {
                                                                   final int port,
                                                                   final boolean healthCheck,
                                                                   final boolean protoReflectionService,
+                                                                  final boolean enableUnframedRequests,
                                                                   final boolean isSSL,
                                                                   final String sslKeyCertChainFile,
                                                                   final String sslKeyFile,
@@ -156,6 +162,7 @@ public class OtelTraceSourceConfigTests {
         settings.put(OTelTraceSourceConfig.PORT, port);
         settings.put(OTelTraceSourceConfig.HEALTH_CHECK_SERVICE, healthCheck);
         settings.put(OTelTraceSourceConfig.PROTO_REFLECTION_SERVICE, protoReflectionService);
+        settings.put(OTelTraceSourceConfig.ENABLE_UNFRAMED_REQUESTS, enableUnframedRequests);
         settings.put(OTelTraceSourceConfig.SSL, isSSL);
         settings.put(OTelTraceSourceConfig.SSL_KEY_CERT_FILE, sslKeyCertChainFile);
         settings.put(OTelTraceSourceConfig.SSL_KEY_FILE, sslKeyFile);

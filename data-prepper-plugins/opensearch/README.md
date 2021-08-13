@@ -52,7 +52,7 @@ pipeline:
   sink:
     opensearch:
       hosts: ["https://your-amazon-elasticssearch-service-endpoint"]
-      aws_sigv4: true 
+      aws_sigv4: true
       cert: path/to/cert
       insecure: false
       trace_analytics_service_map: true
@@ -64,11 +64,13 @@ pipeline:
 - `hosts`: A list of IP addresses of elasticsearch nodes.
 
 - `cert`(optional): CA certificate that is pem encoded. Accepts both .pem or .crt. This enables the client to trust the CA that has signed the certificate that ODFE is using.
-Default is null. 
+Default is null.
 
-- `aws_sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Only applies to Amazon Elasticsearch Service. See [security](security.md) for details. Default to `false`. 
+- `aws_sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Only applies to Amazon Elasticsearch Service. See [security](security.md) for details. Default to `false`.
 
 - `aws_region`: A String represents the region of Amazon Elasticsearch Service domain, e.g. us-west-2. Only applies to Amazon Elasticsearch Service. Defaults to `us-east-1`.
+
+- `aws_sts_role_arn`: A IAM role arn which the sink plugin will assume to sign request to Amazon Elasticsearch. If not provided the plugin will use the default credentials.
 
 - `insecure`: A boolean flag to turn off SSL certificate verification. If set to true, CA certificate verification will be turned off and insecure HTTP requests will be sent. Default to `false`.
 
@@ -121,8 +123,8 @@ e.g. [otel-v1-apm-span-index-template.json](https://github.com/opensearch-projec
 - `dlq_file`(optional): A String of absolute file path for DLQ failed output records. Defaults to null.
 If not provided, failed records will be written into the default data-prepper log file (`logs/Data-Prepper.log`).
 
-- `bulk_size` (optional): A long of bulk size in bulk requests in MB. Default to 5 MB. If set to be less than 0, 
-all the records received from the upstream prepper at a time will be sent as a single bulk request. 
+- `bulk_size` (optional): A long of bulk size in bulk requests in MB. Default to 5 MB. If set to be less than 0,
+all the records received from the upstream prepper at a time will be sent as a single bulk request.
 If a single record turns out to be larger than the set bulk size, it will be sent as a bulk request of a single document.
 
 ## Metrics
@@ -138,11 +140,11 @@ Besides common metrics in [AbstractSink](https://github.com/opensearch-project/d
 - `bulkRequestErrors`: measures number of errors encountered in sending bulk requests.
 - `documentsSuccess`: measures number of documents successfully sent to ES by bulk requests including retries.
 - `documentsSuccessFirstAttempt`: measures number of documents successfully sent to ES by bulk requests on first attempt.
-- `documentErrors`: measures number of documents failed to be sent by bulk requests. 
+- `documentErrors`: measures number of documents failed to be sent by bulk requests.
 
 ## Developer Guide
 
-This plugin is compatible with Java 8. See 
+This plugin is compatible with Java 8. See
 
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md) 
 - [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/readme/monitoring.md)

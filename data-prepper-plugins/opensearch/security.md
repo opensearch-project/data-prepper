@@ -36,7 +36,7 @@ You should ensure that the credentials you configure have the required permissio
     }
   ]
 }
-``` 
+```
 
 Please check this [doc](https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/es-ac.html) to know how to set IAM to your Elasticsearch domain,
 
@@ -45,24 +45,24 @@ Please check this [doc](https://docs.aws.amazon.com/elasticsearch-service/latest
 The OpenSearch sink creates an [Index State Management (ISM)](https://opendistro.github.io/for-elasticsearch-docs/docs/ism/) policy for Trace Analytics indices but Amazon Elasticsearch Service allows only the `master user` to create an ISM policy. So,
  
  * If you use IAM for your master user in FGAC domain, configure the sink as below,
-  
+
   ```
   sink:
       opensearch:
         hosts: ["https://your-fgac-amazon-elasticssearch-service-endpoint"]
-        aws_sigv4: true 
+        aws_sigv4: true
   ```
-Run `aws configure` using the AWS CLI to set your credentials to the master IAM user. 
- 
+Run `aws configure` using the AWS CLI to set your credentials to the master IAM user.
+
  * If you use internal database for your master user in FGAC domain, configure the sink as below,
- 
+
  ```
  sink:
      opensearch:
        hosts: ["https://your-fgac-amazon-elasticssearch-service-endpoint"]
        aws_sigv4: false
        username: "master-username"
-       password: "master-password" 
+       password: "master-password"
  ```
 
 Note: You can create a new IAM/internal user with `all_access` and use instead of the master IAM/internal user.

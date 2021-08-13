@@ -12,25 +12,35 @@
 package com.amazon.dataprepper.plugins.prepper.peerforwarder;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate.CertificateProviderConfig;
+import com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate.CertificateProviderFactory;
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery.PeerListProvider;
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery.PeerListProviderFactory;
-
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import org.apache.commons.lang3.StringUtils;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class PeerForwarderConfig {
     public static final String TIME_OUT = "time_out";
     public static final String MAX_NUM_SPANS_PER_REQUEST = "span_agg_count";
-    public static final int NUM_VIRTUAL_NODES = 10;
+    public static final int NUM_VIRTUAL_NODES = 128;
+    public static final String TARGET_PORT = "target_port";
     public static final String DISCOVERY_MODE = "discovery_mode";
     public static final String DOMAIN_NAME = "domain_name";
     public static final String STATIC_ENDPOINTS = "static_endpoints";
     public static final String SSL = "ssl";
     public static final String SSL_KEY_CERT_FILE = "sslKeyCertChainFile";
     private static final boolean DEFAULT_SSL = true;
+    private static final String USE_ACM_CERT_FOR_SSL = "useAcmCertForSSL";
+    private static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
+    private static final int DEFAULT_TARGET_PORT = 21890;
+    private static final int DEFAULT_TIMEOUT_SECONDS = 2;
+    private static final String ACM_CERT_ISSUE_TIME_OUT_MILLIS = "acmCertIssueTimeOutMillis";
+    private static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
+    private static final String ACM_CERT_ARN = "acmCertificateArn";
+    public static final String AWS_REGION = "awsRegion";
+    public static final String AWS_CLOUD_MAP_NAMESPACE_NAME = "awsCloudMapNamespaceName";
+    public static final String AWS_CLOUD_MAP_SERVICE_NAME = "awsCloudMapServiceName";
 
     private final HashRing hashRing;
     private final PeerClientPool peerClientPool;
@@ -55,27 +65,38 @@ public class PeerForwarderConfig {
         final HashRing hashRing = new HashRing(peerListProvider, NUM_VIRTUAL_NODES);
         final PeerClientPool peerClientPool = PeerClientPool.getInstance();
         peerClientPool.setClientTimeoutSeconds(3);
+
+        final int targetPort = pluginSetting.getIntegerOrDefault(TARGET_PORT, DEFAULT_TARGET_PORT);
+        peerClientPool.setPort(targetPort);
+
         final boolean ssl = pluginSetting.getBooleanOrDefault(SSL, DEFAULT_SSL);
         final String sslKeyCertChainFilePath = pluginSetting.getStringOrDefault(SSL_KEY_CERT_FILE, null);
-        final File sslKeyCertChainFile;
-        if (ssl) {
-            if (sslKeyCertChainFilePath == null || sslKeyCertChainFilePath.isEmpty()) {
+        final boolean useAcmCertForSsl = pluginSetting.getBooleanOrDefault(USE_ACM_CERT_FOR_SSL, DEFAULT_USE_ACM_CERT_FOR_SSL);
+
+        if (ssl || useAcmCertForSsl) {
+            if (ssl && StringUtils.isEmpty(sslKeyCertChainFilePath)) {
                 throw new IllegalArgumentException(String.format("%s is enabled, %s can not be empty or null", SSL, SSL_KEY_CERT_FILE));
-            } else if (!Files.exists(Paths.get(sslKeyCertChainFilePath))) {
-                throw new IllegalArgumentException(String.format("%s is enabled, %s does not exist", SSL, SSL_KEY_CERT_FILE));
-            } else {
-                sslKeyCertChainFile = new File(sslKeyCertChainFilePath);
             }
-        } else {
-            sslKeyCertChainFile = null;
+            peerClientPool.setSsl(true);
+            final String acmCertificateArn = pluginSetting.getStringOrDefault(ACM_CERT_ARN, null);
+            final long acmCertIssueTimeOutMillis = pluginSetting.getLongOrDefault(ACM_CERT_ISSUE_TIME_OUT_MILLIS, DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS);
+            final String awsRegion = pluginSetting.getStringOrDefault(AWS_REGION, null);
+            final CertificateProviderConfig certificateProviderConfig = new CertificateProviderConfig(
+                    useAcmCertForSsl,
+                    acmCertificateArn,
+                    awsRegion,
+                    acmCertIssueTimeOutMillis,
+                    sslKeyCertChainFilePath
+            );
+            final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(certificateProviderConfig);
+            peerClientPool.setCertificate(certificateProviderFactory.getCertificateProvider().getCertificate());
+
         }
-        peerClientPool.setSsl(ssl);
-        peerClientPool.setSslKeyCertChainFile(sslKeyCertChainFile);
 
         return new PeerForwarderConfig(
                 peerClientPool,
                 hashRing,
-                pluginSetting.getIntegerOrDefault(TIME_OUT, 3),
+                pluginSetting.getIntegerOrDefault(TIME_OUT, DEFAULT_TIMEOUT_SECONDS),
                 pluginSetting.getIntegerOrDefault(MAX_NUM_SPANS_PER_REQUEST, 48));
     }
 

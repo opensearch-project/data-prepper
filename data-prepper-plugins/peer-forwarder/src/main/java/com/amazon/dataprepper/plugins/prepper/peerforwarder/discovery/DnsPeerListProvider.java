@@ -12,6 +12,9 @@
 package com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.plugins.prepper.peerforwarder.PeerForwarderConfig;
+import com.google.common.base.Preconditions;
 import com.linecorp.armeria.client.Endpoint;
 import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
 import org.slf4j.Logger;
@@ -23,9 +26,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import static com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery.DiscoveryUtils.validateEndpoint;
+
 public class DnsPeerListProvider implements PeerListProvider {
 
     private static final Logger LOG = LoggerFactory.getLogger(DnsPeerListProvider.class);
+    private static final int MIN_TTL = 10;
+    private static final int MAX_TTL = 20;
 
     private final DnsAddressEndpointGroup endpointGroup;
 
@@ -42,6 +49,18 @@ public class DnsPeerListProvider implements PeerListProvider {
         }
 
         pluginMetrics.gauge(PEER_ENDPOINTS, endpointGroup, group -> group.endpoints().size());
+    }
+
+    static DnsPeerListProvider createPeerListProvider(PluginSetting pluginSetting, PluginMetrics pluginMetrics) {
+        final String domainName = pluginSetting.getStringOrDefault(PeerForwarderConfig.DOMAIN_NAME, null);
+        Objects.requireNonNull(domainName, String.format("Missing '%s' configuration value",PeerForwarderConfig. DOMAIN_NAME));
+        Preconditions.checkState(validateEndpoint(domainName), "Invalid domain name: %s", domainName);
+
+        final DnsAddressEndpointGroup endpointGroup = DnsAddressEndpointGroup.builder(domainName)
+                .ttl(MIN_TTL, MAX_TTL)
+                .build();
+
+        return new DnsPeerListProvider(endpointGroup, pluginMetrics);
     }
 
     @Override

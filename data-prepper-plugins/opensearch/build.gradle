@@ -46,22 +46,28 @@ repositories {
 }
 
 dependencies {
-    compile project(':data-prepper-api')
-    testCompile project(':data-prepper-api').sourceSets.test.output
-    compile project(':data-prepper-plugins:common')
+    api project(':data-prepper-api')
+    testImplementation project(':data-prepper-api').sourceSets.test.output
+    api project(':data-prepper-plugins:common')
     implementation "org.opensearch.client:opensearch-rest-high-level-client:${opensearch_version}"
-    implementation "com.fasterxml.jackson.core:jackson-databind:2.12.3"
-    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.3"
+    implementation "com.fasterxml.jackson.core:jackson-databind:2.12.4"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.4"
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
-    implementation "com.amazonaws:aws-java-sdk-core:1.11.1001"
-    implementation "com.github.awslabs:aws-request-signing-apache-interceptor:b3772780da"
-    implementation "io.micrometer:micrometer-core:1.6.6"
+    implementation 'software.amazon.awssdk:auth:2.17.15'
+    implementation 'software.amazon.awssdk:http-client-spi:2.17.15'
+    implementation 'software.amazon.awssdk:sdk-core:2.17.15'
+    implementation 'software.amazon.awssdk:aws-core:2.17.15'
+    implementation 'software.amazon.awssdk:regions:2.17.15'
+    implementation 'software.amazon.awssdk:utils:2.17.15'
+    implementation 'software.amazon.awssdk:sts:2.17.15'
+    implementation 'software.amazon.awssdk:url-connection-client:2.17.15'
+    implementation "io.micrometer:micrometer-core:1.7.2"
     testImplementation("junit:junit:4.13.2") {
         exclude group:'org.hamcrest' // workaround for jarHell
     }
-    testImplementation "org.awaitility:awaitility:4.0.3"
+    testImplementation "org.awaitility:awaitility:4.1.0"
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
-    testImplementation "commons-io:commons-io:2.8.0"
+    testImplementation "commons-io:commons-io:2.11.0"
 }
 
 // Workaround for Werror
@@ -70,21 +76,21 @@ compileJava.options.warnings = false
 // Resolve dependency conflict between ES sink and main project
 configurations.all {
     resolutionStrategy {
-        force 'com.amazonaws:aws-java-sdk-core:1.11.1000'
+        force 'com.amazonaws:aws-java-sdk-core:1.12.43'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.3'
-        force 'com.fasterxml.jackson.core:jackson-annotations:2.12.3'
+        force 'com.fasterxml.jackson.core:jackson-annotations:2.12.4'
         force 'com.fasterxml.jackson.core:jackson-databind:2.12.3'
-        force 'com.fasterxml.jackson.core:jackson-core:2.12.3'
-        force 'com.fasterxml.jackson:jackson-bom:2.12.3'
-        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.12.3'
+        force 'com.fasterxml.jackson.core:jackson-core:2.12.4'
+        force 'com.fasterxml.jackson:jackson-bom:2.12.4'
+        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.12.4'
         force 'commons-logging:commons-logging:1.2'
         force 'org.apache.httpcomponents:httpclient:4.5.10'
         force "org.hdrhistogram:HdrHistogram:2.1.12"
         force 'joda-time:joda-time:2.10.10'
-        force 'org.yaml:snakeyaml:1.28'
-        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-smile:2.12.3'
+        force 'org.yaml:snakeyaml:1.29'
+        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-smile:2.12.4'
         force 'junit:junit:4.13'
-        force "org.slf4j:slf4j-api:1.7.30"
+        force "org.slf4j:slf4j-api:1.7.32"
         force "org.apache.logging.log4j:log4j-api:2.14.1"
         force "org.apache.logging.log4j:log4j-core:2.14.1"
     }

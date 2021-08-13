@@ -1,0 +1,26 @@
+entry-pipeline:
+  source:
+    otel_trace_source:
+      ssl: false
+  prepper:
+    - peer_forwarder:
+        discovery_mode: "static"
+        static_endpoints: ["dataprepper1", "dataprepper2"]
+        ssl: false
+  sink:
+    - pipeline:
+        name: "raw-pipeline"
+raw-pipeline:
+  source:
+    pipeline:
+      name: "entry-pipeline"
+  prepper:
+    - otel_trace_raw_prepper:
+        root_span_flush_delay: 3 # TODO: remove after 1.1 release
+        trace_flush_interval: 5
+  sink:
+    - opensearch:
+        hosts: [ "https://node-0.example.com:9200" ]
+        username: "admin"
+        password: "admin"
+        trace_analytics_raw: true
