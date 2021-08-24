@@ -37,3 +37,7 @@ If you discover a potential security issue in this project, please refer to the 
 ## License
 
 This library is licensed under the Apache 2.0 License. [Refer](LICENSE)
+
+## Copyright
+
+Copyright OpenSearch Contributors. See [NOTICE](NOTICE.txt) for details.
