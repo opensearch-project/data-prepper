@@ -17,7 +17,6 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.4"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.4"
     implementation "org.reflections:reflections:0.9.12"
-    testImplementation "junit:junit:4.13.2"
     testImplementation "commons-io:commons-io:2.11.0"
 }
 

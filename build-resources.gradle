@@ -11,8 +11,10 @@
 
 //preferably try to main the alphabetical order
 ext.versionMap = [
-        opentelemetry_proto    : '1.0.1-alpha',
-        opensearch_version: '1.0.0-alpha2'
+        junitJupiter : '5.7.2',
+        mockito : '3.11.2',
+        opentelemetryProto : '1.0.1-alpha',
+        opensearchVersion : '1.0.0-alpha2'
 ]
 
 ext.coreProjects = [project(':data-prepper-api'), project(':data-prepper-core'), project('data-prepper-plugins:common')]

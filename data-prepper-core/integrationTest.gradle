@@ -37,21 +37,25 @@ sourceSets {
     }
 }
 
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
 repositories {
     // TODO: replace local built OpenSearch artifact with the public artifact
     mavenLocal()
 }
 
 dependencies {
-    integrationTestCompile("junit:junit:4.13")
     integrationTestCompile project(':data-prepper-plugins:opensearch')
     integrationTestCompile project(':data-prepper-plugins:otel-trace-group-prepper')
     integrationTestImplementation "org.awaitility:awaitility:4.0.3"
-    integrationTestImplementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetry_proto}"
+    integrationTestImplementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetryProto}"
     integrationTestImplementation 'com.google.protobuf:protobuf-java-util:3.13.0'
     integrationTestImplementation "com.linecorp.armeria:armeria:1.0.0"
     integrationTestImplementation "com.linecorp.armeria:armeria-grpc:1.0.0"
-    integrationTestImplementation "org.opensearch.client:opensearch-rest-high-level-client:${versionMap.opensearch_version}"
+    integrationTestImplementation "org.opensearch.client:opensearch-rest-high-level-client:${versionMap.opensearchVersion}"
     integrationTestImplementation "com.fasterxml.jackson.core:jackson-databind:2.12.1"
 }
 
