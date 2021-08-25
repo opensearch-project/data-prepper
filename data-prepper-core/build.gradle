@@ -35,7 +35,6 @@ dependencies {
     implementation "io.micrometer:micrometer-registry-cloudwatch2:1.7.2"
     implementation "software.amazon.awssdk:cloudwatch:2.17.15"
     testImplementation "org.hamcrest:hamcrest:2.2"
-    testImplementation "org.mockito:mockito-core:3.11.2"
 }
 
 jar {
