@@ -1,6 +1,6 @@
 buildscript {
     ext {
-        opensearch_version = System.getProperty("opensearch.version", "${versionMap.opensearch_version}")
+        opensearch_version = System.getProperty("opensearch.version", "${versionMap.opensearchVersion}")
         opensearch_group = "org.opensearch"
         distribution = 'oss-zip'
     }
@@ -59,10 +59,14 @@ dependencies {
     implementation 'software.amazon.awssdk:aws-core:2.17.15'
     implementation 'software.amazon.awssdk:regions:2.17.15'
     implementation 'software.amazon.awssdk:utils:2.17.15'
-    implementation 'software.amazon.awssdk:sts:2.17.15'
+    implementation 'software.amazon.awssdk:sts:2.17.26'
     implementation 'software.amazon.awssdk:url-connection-client:2.17.15'
     implementation "io.micrometer:micrometer-core:1.7.2"
-    testImplementation("junit:junit:4.13.2") {
+    // The OpenSearch build-tools plugin appears to be preventing Gradle's platform
+    // support from working correctly, so we have to specify the JUnit versions here.
+    testImplementation "org.junit.jupiter:junit-jupiter:${versionMap.junitJupiter}"
+    testImplementation "org.junit.vintage:junit-vintage-engine:${versionMap.junitJupiter}"
+    testImplementation('junit:junit:4.13.2') {
         exclude group:'org.hamcrest' // workaround for jarHell
     }
     testImplementation "org.awaitility:awaitility:4.1.0"
@@ -89,11 +93,14 @@ configurations.all {
         force 'joda-time:joda-time:2.10.10'
         force 'org.yaml:snakeyaml:1.29'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-smile:2.12.4'
-        force 'junit:junit:4.13'
+        force 'junit:junit:4.13.2'
         force "org.slf4j:slf4j-api:1.7.32"
         force "org.apache.logging.log4j:log4j-api:2.14.1"
         force "org.apache.logging.log4j:log4j-core:2.14.1"
     }
+    // The OpenSearch plugins appear to provide their own version of Mockito
+    // which is causing problems, so we exclude it.
+    exclude group: 'org.mockito'
 }
 
 test {
