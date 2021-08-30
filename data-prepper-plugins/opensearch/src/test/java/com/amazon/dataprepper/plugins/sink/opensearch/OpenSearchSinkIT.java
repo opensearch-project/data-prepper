@@ -474,8 +474,9 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final Response response = client().performRequest(request);
     final String responseBody = EntityUtils.toString(response.getEntity());
 
+    // TODO: This is a difference between OpenSearch and ODFE
     @SuppressWarnings("unchecked") final String policyId = (String) ((Map<String, Object>) createParser(XContentType.JSON.xContent(),
-            responseBody).map().get(index)).get("index.opendistro.index_state_management.policy_id");
+            responseBody).map().get(index)).get("index.plugins.index_state_management.policy_id");
     return policyId;
   }
 

@@ -1,12 +1,7 @@
 FROM gradle:jdk14 AS builder
 COPY . /home/gradle/src
 WORKDIR /home/gradle/src
-# TODO: replace local built OpenSearch artifact with the public artifact
-RUN tar -xzf opensearch-build-1_0_0-alpha2.tar.gz
-RUN mkdir -p ~/.m2/repository/org
-RUN mv opensearch-build-1_0_0-alpha2 ~/.m2/repository/org/opensearch
-WORKDIR /home/gradle/src/data-prepper-core
-RUN gradle clean jar --daemon
+RUN gradle -p data-prepper-core clean jar --no-daemon
 
 FROM amazoncorretto:15-al2-full
 EXPOSE 21890

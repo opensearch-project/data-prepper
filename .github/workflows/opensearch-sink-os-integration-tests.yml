@@ -18,25 +18,15 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: ${{ matrix.java }}
-      # TODO: replace local built OpenSearch artifact with the public artifact
-      - name: Checkout OpenSearch
-        uses: actions/checkout@v2
-        with:
-          repository: 'opensearch-project/OpenSearch'
-          path: OpenSearch
-          ref: '1.0.0-alpha2'
-      - name: Build OpenSearch
-        working-directory: ./OpenSearch
-        run: ./gradlew publishToMavenLocal -Dbuild.version_qualifier=alpha2 -Dbuild.snapshot=false
       - name: Checkout Data-Prepper
         uses: actions/checkout@v2
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Run OpenSearch docker
         run: |
-          export version=1.0.0-beta1
-          docker pull opensearchstaging/opensearch:$version
-          docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -d opensearchstaging/opensearch:$version
+          export version=1.0.0
+          docker pull opensearchproject/opensearch:$version
+          docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -d opensearchproject/opensearch:$version
           sleep 90
       - name: Run OpenSearch tests
         run: |
