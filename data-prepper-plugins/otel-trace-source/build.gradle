@@ -21,7 +21,7 @@ dependencies {
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetryProto}"
     implementation "commons-io:commons-io:2.11.0"
     implementation "com.amazonaws:aws-java-sdk-s3:1.12.43"
-    implementation "com.amazonaws:aws-java-sdk-acm:1.12.43"
+    implementation "com.amazonaws:aws-java-sdk-acm:1.12.59"
     implementation 'com.google.protobuf:protobuf-java-util:3.17.3'
     implementation "com.linecorp.armeria:armeria:1.9.2"
     implementation "com.linecorp.armeria:armeria-grpc:1.9.2"
