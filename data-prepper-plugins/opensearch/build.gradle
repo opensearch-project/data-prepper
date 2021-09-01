@@ -6,9 +6,8 @@ buildscript {
     }
 
     repositories {
-        maven { url "https://plugins.gradle.org/m2/" }
-        // TODO: replace local built OpenSearch artifact with the public artifact
-        mavenLocal()
+        maven { url 'https://plugins.gradle.org/m2/' }
+        mavenCentral()
     }
 
     dependencies {
@@ -38,11 +37,6 @@ apply plugin: 'opensearch.rest-test'
 ext {
     licenseFile = rootProject.file('LICENSE')
     noticeFile = rootProject.file('NOTICE')
-}
-
-repositories {
-    // TODO: replace local built OpenSearch artifact with the public artifact
-    mavenLocal()
 }
 
 dependencies {
@@ -80,7 +74,7 @@ compileJava.options.warnings = false
 // Resolve dependency conflict between ES sink and main project
 configurations.all {
     resolutionStrategy {
-        force 'com.amazonaws:aws-java-sdk-core:1.12.43'
+        force 'com.amazonaws:aws-java-sdk-core:1.12.60'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.3'
         force 'com.fasterxml.jackson.core:jackson-annotations:2.12.4'
         force 'com.fasterxml.jackson.core:jackson-databind:2.12.3'
