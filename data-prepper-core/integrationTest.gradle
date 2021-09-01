@@ -42,16 +42,6 @@ configurations {
     integrationTestRuntime.extendsFrom testRuntime
 }
 
-repositories {
-    // TODO: Replace with Maven Central once it has synced
-    maven {
-        url 'https://aws.oss.sonatype.org/content/repositories/releases/'
-        content {
-            includeGroupByRegex 'org\\.opensearch.*'
-        }
-    }
-}
-
 dependencies {
     integrationTestCompile project(':data-prepper-plugins:opensearch')
     integrationTestCompile project(':data-prepper-plugins:otel-trace-group-prepper')

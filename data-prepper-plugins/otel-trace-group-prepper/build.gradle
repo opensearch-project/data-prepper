@@ -17,16 +17,6 @@ ext {
     opensearch_version = System.getProperty("opensearch.version", "${versionMap.opensearchVersion}")
 }
 
-repositories {
-    // TODO: Replace with Maven Central once it has synced
-    maven {
-        url 'https://aws.oss.sonatype.org/content/repositories/releases/'
-        content {
-            includeGroupByRegex 'org\\.opensearch.*'
-        }
-    }
-}
-
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:opensearch')
