@@ -25,13 +25,6 @@ sourceCompatibility = 1.8
 
 repositories {
     mavenCentral()
-    // TODO: Replace with Maven Central once it has synced
-    maven {
-        url 'https://aws.oss.sonatype.org/content/repositories/releases/'
-        content {
-            includeGroupByRegex 'org\\.opensearch.*'
-        }
-    }
 }
 
 application {
