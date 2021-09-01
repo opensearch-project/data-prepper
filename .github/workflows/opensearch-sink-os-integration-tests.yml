@@ -24,7 +24,7 @@ jobs:
         run: chmod +x gradlew
       - name: Run OpenSearch docker
         run: |
-          export version=1.0.0
+          export version=1.0.1
           docker pull opensearchproject/opensearch:$version
           docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -d opensearchproject/opensearch:$version
           sleep 90

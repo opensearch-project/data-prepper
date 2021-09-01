@@ -11,12 +11,11 @@
 
 package com.amazon.dataprepper.plugins.sink.opensearch;
 
-import org.opensearch.action.admin.cluster.health.ClusterHealthRequest;
-import org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
-import org.opensearch.client.RequestOptions;
+import org.junit.Test;
+import org.opensearch.client.Request;
+import org.opensearch.client.Response;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.rest.RestStatus;
-import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -36,8 +35,16 @@ public class OpenSearchTests {
             builder.withPassword(password);
         }
         final RestHighLevelClient client = builder.build().createClient();
-        final ClusterHealthRequest request = new ClusterHealthRequest().waitForYellowStatus();
-        final ClusterHealthResponse response = client.cluster().health(request, RequestOptions.DEFAULT);
-        assertEquals(RestStatus.OK, response.status());
+
+        // TODO: Use the REST High Level client in OpenSearch 1.0.1 or 1.1, where this will work.
+        // https://github.com/opensearch-project/OpenSearch/issues/922
+        final Request request = new Request("GET", "_cluster/health");
+        request.addParameter("master_timeout", "30s");
+        request.addParameter("level", "cluster");
+        request.addParameter("timeout", "30s");
+        request.addParameter("wait_for_status", "yellow");
+
+        final Response response = client.getLowLevelClient().performRequest(request);
+        assertEquals(RestStatus.OK.getStatus(), response.getStatusLine().getStatusCode());
     }
 }
