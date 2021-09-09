@@ -35,6 +35,7 @@ import software.amazon.awssdk.auth.signer.Aws4Signer;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
+import software.amazon.awssdk.arns.Arn;
 
 import javax.net.ssl.SSLContext;
 import java.io.InputStream;
@@ -349,6 +350,14 @@ public class ConnectionConfiguration {
     }
 
     public Builder withAWSStsRoleArn(final String awsStsRoleArn) {
+      checkArgument(awsStsRoleArn == null || awsStsRoleArn.length() <= 2048, "awsStsRoleArn length cannot exceed 2048");
+      if(awsStsRoleArn != null) {
+        try {
+          Arn.fromString(awsStsRoleArn);
+        } catch (Exception e) {
+          throw new IllegalArgumentException("Invalid ARN format for awsStsRoleArn");
+        }
+      }
       this.awsStsRoleArn = awsStsRoleArn;
       return this;
     }

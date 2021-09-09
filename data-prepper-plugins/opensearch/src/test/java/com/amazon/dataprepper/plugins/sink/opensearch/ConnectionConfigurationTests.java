@@ -158,12 +158,12 @@ public class ConnectionConfigurationTests {
     @Test
     public void testCreateClientWithAWSSigV4AndSTSRole() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, null, null, null, null, true, null, "some-iam-role", TEST_CERT_PATH, false);
+                TEST_HOSTS, null, null, null, null, true, null, "arn:aws:iam::123456789012:iam-role", TEST_CERT_PATH, false);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         assertEquals("us-east-1", connectionConfiguration.getAwsRegion());
         assertTrue(connectionConfiguration.isAwsSigv4());
-        assertEquals("some-iam-role", connectionConfiguration.getAwsStsRoleArn());
+        assertEquals("arn:aws:iam::123456789012:iam-role", connectionConfiguration.getAwsStsRoleArn());
         assertEquals(TEST_PIPELINE_NAME, connectionConfiguration.getPipelineName());
     }
 
