@@ -30,7 +30,7 @@ dependencies {
     implementation "org.apache.bval:bval-extras:2.0.5"
     implementation "org.apache.bval:bval-jsr:2.0.5"
     implementation "org.reflections:reflections:0.9.12"
-    implementation "io.micrometer:micrometer-core:1.6.5"
+    implementation "io.micrometer:micrometer-core:1.7.3"
     implementation "io.micrometer:micrometer-registry-prometheus:1.6.5"
     implementation "io.micrometer:micrometer-registry-cloudwatch2:1.7.2"
     implementation "software.amazon.awssdk:cloudwatch:2.17.15"
