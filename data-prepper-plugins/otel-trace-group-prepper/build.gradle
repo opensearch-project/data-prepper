@@ -24,5 +24,5 @@ dependencies {
     implementation "org.opensearch.client:opensearch-rest-high-level-client:${opensearch_version}"
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.5"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.5"
-    implementation "io.micrometer:micrometer-core:1.7.2"
+    implementation "io.micrometer:micrometer-core:1.7.3"
 }
