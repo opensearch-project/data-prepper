@@ -25,7 +25,7 @@ dependencies {
     implementation project(':data-prepper-plugins:common')
     testImplementation project(':data-prepper-plugins:common').sourceSets.test.output
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.4"
-    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.4"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.5"
     implementation "javax.validation:validation-api:2.0.1.Final"
     implementation "org.apache.bval:bval-extras:2.0.5"
     implementation "org.apache.bval:bval-jsr:2.0.5"
