@@ -33,7 +33,7 @@ dependencies {
     implementation "io.micrometer:micrometer-core:1.7.3"
     implementation "io.micrometer:micrometer-registry-prometheus:1.7.3"
     implementation "io.micrometer:micrometer-registry-cloudwatch2:1.7.3"
-    implementation "software.amazon.awssdk:cloudwatch:2.17.15"
+    implementation "software.amazon.awssdk:cloudwatch:2.17.39"
     testImplementation "org.hamcrest:hamcrest:2.2"
 }
 
