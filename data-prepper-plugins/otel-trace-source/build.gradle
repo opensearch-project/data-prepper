@@ -26,7 +26,7 @@ dependencies {
     implementation "com.linecorp.armeria:armeria:1.9.2"
     implementation "com.linecorp.armeria:armeria-grpc:1.9.2"
     implementation "com.fasterxml.jackson.core:jackson-databind:2.12.4"
-    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.4"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.5"
     implementation "org.apache.commons:commons-lang3:3.12.0"
     implementation "org.bouncycastle:bcprov-jdk15on:1.69"
     implementation "org.bouncycastle:bcpkix-jdk15on:1.69"
