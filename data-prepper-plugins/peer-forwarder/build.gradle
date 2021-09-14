@@ -26,7 +26,7 @@ dependencies {
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetryProto}"
     implementation "com.linecorp.armeria:armeria:1.9.2"
     implementation "com.linecorp.armeria:armeria-grpc:1.9.2"
-    implementation(platform('software.amazon.awssdk:bom:2.17.15'))
+    implementation(platform('software.amazon.awssdk:bom:2.17.39'))
     implementation "com.amazonaws:aws-java-sdk-s3:1.12.43"
     implementation "com.amazonaws:aws-java-sdk-acm:1.12.59"
     implementation 'software.amazon.awssdk:servicediscovery'
