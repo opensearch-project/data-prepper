@@ -51,7 +51,7 @@ dependencies {
     integrationTestImplementation "com.linecorp.armeria:armeria:1.0.0"
     integrationTestImplementation "com.linecorp.armeria:armeria-grpc:1.0.0"
     integrationTestImplementation "org.opensearch.client:opensearch-rest-high-level-client:${versionMap.opensearchVersion}"
-    integrationTestImplementation "com.fasterxml.jackson.core:jackson-databind:2.12.1"
+    integrationTestImplementation 'com.fasterxml.jackson.core:jackson-databind'
 }
 
 /**

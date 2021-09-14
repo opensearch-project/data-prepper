@@ -46,6 +46,6 @@ dependencies {
     implementation "com.linecorp.armeria:armeria:1.0.0"
     implementation "com.linecorp.armeria:armeria-grpc:1.0.0"
     implementation "org.opensearch.client:opensearch-rest-high-level-client:${opensearch_version}"
-    implementation "com.fasterxml.jackson.core:jackson-databind:2.12.1"
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetryProto}"
 }
