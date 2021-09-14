@@ -2,6 +2,11 @@
 version: 2
 updates:
 - package-ecosystem: gradle
+  directory: "/"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
   directory: "/data-prepper-api"
   schedule:
     interval: monthly
