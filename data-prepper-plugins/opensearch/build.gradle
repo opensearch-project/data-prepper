@@ -52,7 +52,7 @@ dependencies {
     implementation 'software.amazon.awssdk:sdk-core:2.17.15'
     implementation 'software.amazon.awssdk:aws-core:2.17.15'
     implementation 'software.amazon.awssdk:regions:2.17.15'
-    implementation 'software.amazon.awssdk:utils:2.17.15'
+    implementation 'software.amazon.awssdk:utils:2.17.39'
     implementation 'software.amazon.awssdk:sts:2.17.15'
     implementation 'software.amazon.awssdk:url-connection-client:2.17.15'
     implementation "io.micrometer:micrometer-core:1.7.2"
@@ -82,7 +82,7 @@ configurations.all {
         force 'com.fasterxml.jackson:jackson-bom:2.12.4'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.12.4'
         force 'commons-logging:commons-logging:1.2'
-        force 'org.apache.httpcomponents:httpclient:4.5.10'
+        force 'org.apache.httpcomponents:httpclient:4.5.13'
         force "org.hdrhistogram:HdrHistogram:2.1.12"
         force 'joda-time:joda-time:2.10.10'
         force 'org.yaml:snakeyaml:1.29'
