@@ -30,8 +30,16 @@ public class LogThrottlingStrategy extends ThrottlingStrategy<HttpRequest> {
 
     @Override
     public CompletionStage<Boolean> accept(ServiceRequestContext ctx, HttpRequest request) {
-        // For ScheduledThreadPoolExecutor as blockingQueueExecutor, the DelayedWorkQueue is unbounded. Thus queue.size()
-        // is used instead of queue.remainingCapacity().
+        /*
+         * FIXME:
+         * The current implementation based on the condition queue.size() < maxPendingRequests is loose, i.e.
+         * in case of high concurrency, multiple thread could pass this check concurrently and push their tasks into
+         * the queue. Thus the actual queue size could still exceed maxPendingRequests in high concurrency.
+         * There is no way to strictly deal with this issue at the ThrottlingStrategy level. Instead,
+         * we need to deal with it at the blockingExecutor level. Currently, the blockingExecutor of armeria server only accepts
+         * {@link java.util.concurrent.ScheduledExecutorService} which uses unbounded {@link java.util.concurrent.ScheduledThreadPoolExecutor.DelayedWorkQueue}.
+         * The potential workaround is in the discussion of https://github.com/line/armeria/issues/2694.
+         */
         if (queue.size() < maxPendingRequests) {
             return UnmodifiableFuture.completedFuture(true);
         }
