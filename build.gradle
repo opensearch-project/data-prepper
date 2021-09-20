@@ -67,6 +67,10 @@ subprojects {
 }
 
 configure(subprojects.findAll {it.name != 'data-prepper-api'}) {
+    test {
+        useJUnitPlatform()
+    }
+
     dependencies {
         implementation platform('com.fasterxml.jackson:jackson-bom:2.12.5')
         implementation platform('software.amazon.awssdk:bom:2.17.15')
@@ -84,7 +88,6 @@ configure(coreProjects) {
         }
     }
     test {
-        useJUnitPlatform()
         finalizedBy jacocoTestReport // report is always generated after tests run
     }
     jacocoTestCoverageVerification {
