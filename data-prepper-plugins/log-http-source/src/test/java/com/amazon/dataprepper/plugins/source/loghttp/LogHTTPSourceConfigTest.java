@@ -11,8 +11,28 @@
 
 package com.amazon.dataprepper.plugins.source.loghttp;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
+import org.junit.jupiter.api.Test;
+
+import java.util.HashMap;
+import java.util.Map;
 
 class LogHTTPSourceConfigTest {
-    // TODO: write test cases
+    private static final String PLUGIN_NAME = "log_http_source";
+
+    @Test
+    public void testDefault() {
+        // TODO: write test logic
+    }
+
+    @Test
+    public void testValidConfig() {
+        // TODO: write test logic
+    }
+
+    private PluginSetting completePluginSettingForLogHTTPSource() {
+        final Map<String, Object> settings = new HashMap<>();
+        // TODO: add parameters
+        return new PluginSetting(PLUGIN_NAME, settings);
+    }
 }

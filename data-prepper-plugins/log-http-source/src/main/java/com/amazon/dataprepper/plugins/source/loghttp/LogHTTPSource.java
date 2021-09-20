@@ -45,6 +45,7 @@ public class LogHTTPSource implements Source<Record<String>> {
         // TODO: build server; add service; start server
         if (server == null) {
             final ServerBuilder sb = Server.builder();
+            sb.maxNumConnections(logHTTPSourceConfig.getMaxConnectionCount());
             final int threads = logHTTPSourceConfig.getThreadCount();
             final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
             sb.blockingTaskExecutor(blockingTaskExecutor, true);
