@@ -98,6 +98,9 @@ configurations.all {
 }
 
 test {
+    // Workaround: opensearch plugin is not compatible with JUnitPlatform
+    useJUnit()
+
     if (System.getProperty("os.host") == null) {
         exclude '**/OpenSearchTests.class'
     }
