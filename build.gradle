@@ -58,6 +58,9 @@ subprojects {
         testImplementation "org.mockito:mockito-core:${versionMap.mockito}"
         testImplementation "org.mockito:mockito-junit-jupiter:${versionMap.mockito}"
     }
+    test {
+        useJUnitPlatform()
+    }
     build.dependsOn test
     jacocoTestReport {
         dependsOn test // tests are required to run before generating the report
@@ -67,10 +70,6 @@ subprojects {
 }
 
 configure(subprojects.findAll {it.name != 'data-prepper-api'}) {
-    test {
-        useJUnitPlatform()
-    }
-
     dependencies {
         implementation platform('com.fasterxml.jackson:jackson-bom:2.12.5')
         implementation platform('software.amazon.awssdk:bom:2.17.15')
