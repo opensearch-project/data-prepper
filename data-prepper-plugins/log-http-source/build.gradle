@@ -2,11 +2,8 @@ plugins {
     id 'java'
 }
 
-group 'com.amazon'
-version '1.0.0'
-
-repositories {
-    mavenCentral()
+test {
+    useJUnitPlatform()
 }
 
 dependencies {
@@ -15,4 +12,15 @@ dependencies {
     implementation "com.linecorp.armeria:armeria:1.9.2"
     testImplementation 'org.assertj:assertj-core:3.20.2'
     testImplementation "org.hamcrest:hamcrest:2.2"
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule { //in addition to core projects rule
+            limit {
+                minimum = 0.90
+            }
+        }
+    }
 }

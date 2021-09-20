@@ -42,9 +42,10 @@ public class LogHTTPSource implements Source<Record<String>> {
         if (buffer == null) {
             throw new IllegalStateException("Buffer provided is null");
         }
-        // TODO: build server; add service; start server
         if (server == null) {
             final ServerBuilder sb = Server.builder();
+            // TODO: allow tls/ssl
+            sb.http(logHTTPSourceConfig.getPort());
             sb.maxNumConnections(logHTTPSourceConfig.getMaxConnectionCount());
             final int threads = logHTTPSourceConfig.getThreadCount();
             final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
