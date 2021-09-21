@@ -11,6 +11,7 @@
 
 package com.amazon.dataprepper.model.configuration;
 
+import java.util.List;
 import java.util.Map;
 
 public class PluginSetting {
@@ -133,6 +134,87 @@ public class PluginSetting {
             return String.valueOf(object);
         }
 
+        throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+    }
+
+    /**
+     * Returns the value of the specified List<String>, or {@code defaultValue} if this settings contains no value for
+     * the attribute.
+     *
+     * @param attribute    name of the attribute
+     * @param defaultValue default value for the setting
+     * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
+     * the attribute
+     */
+    @SuppressWarnings("unchecked")
+    public List<String> getStringListOrDefault(final String attribute, final List<String> defaultValue) {
+        Object object = getAttributeOrDefault(attribute, defaultValue);
+        if (object == null) {
+            return null;
+        } else if (object instanceof List) {
+            ((List<?>) object).stream().filter(o -> !(o instanceof String)).forEach(o -> {
+                throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+            });
+            return (List<String>) object;
+        }
+        throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+    }
+
+    /**
+     * Returns the value of the specified Map<String, String> object, or {@code defaultValue} if this settings contains no value for
+     * the attribute.
+     *
+     * @param attribute    name of the attribute
+     * @param defaultValue default value for the setting
+     * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
+     * the attribute
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, String> getStringMapOrDefault(final String attribute, final Map<String, String> defaultValue) {
+        Object object = getAttributeOrDefault(attribute, defaultValue);
+        if (object == null) {
+            return null;
+        } else if (object instanceof Map) {
+            ((Map<?, ?>) object).forEach((key, value) -> {
+                if (!(key instanceof String) || !(value instanceof String)) {
+                    throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+                }
+            });
+            return (Map<String, String>) object;
+        }
+        throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+    }
+
+    /**
+     * Returns the value of the specified Map<String, List<String>>, or {@code defaultValue} if this settings contains no value for
+     * the attribute.
+     *
+     * @param attribute    name of the attribute
+     * @param defaultValue default value for the setting
+     * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
+     * the attribute
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, List<String>> getStringListMapOrDefault(final String attribute, final Map<String, List<String>> defaultValue) {
+        Object object = getAttributeOrDefault(attribute, defaultValue);
+        if (object == null) {
+            return null;
+        } else if (object instanceof Map) {
+            ((Map<?, ?>) object).forEach((key, value) -> {
+                if (key instanceof String) {
+                    if (value instanceof List){
+                        ((List<?>) value).stream().filter(o -> !(o instanceof String)).forEach(o -> {
+                            throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+                        });
+                    } else {
+                        throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+                    }
+                } else {
+                    throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+                }
+            });
+            return (Map<String, List<String>>) object;
+        }
         throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
     }
 
