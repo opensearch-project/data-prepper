@@ -25,11 +25,7 @@ class LogHTTPSourceTest {
     // TODO: write test cases
     public static void main(String[] args) {
         LogHTTPSource logHTTPSource = new LogHTTPSource(new PluginSetting("log_http_source", new HashMap<>()));
-        try {
-            Buffer<Record<String>> blockingBuffer = new BlockingBuffer<Record<String>>(512, 8, "test-pipeline");
-            logHTTPSource.start(blockingBuffer);
-        } finally {
-            logHTTPSource.stop();
-        }
+        Buffer<Record<String>> blockingBuffer = new BlockingBuffer<Record<String>>(2, 8, "test-pipeline");
+        logHTTPSource.start(blockingBuffer);
     }
 }

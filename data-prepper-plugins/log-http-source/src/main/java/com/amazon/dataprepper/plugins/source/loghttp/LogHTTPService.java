@@ -42,12 +42,12 @@ public class LogHTTPService {
     }
 
     @Get("/log/ingest")
-    protected HttpResponse doGet(AggregatedHttpRequest aggregatedHttpRequest) {
+    public HttpResponse doGet(AggregatedHttpRequest aggregatedHttpRequest) {
         return processRequest(aggregatedHttpRequest);
     }
 
     @Post("/log/ingest")
-    protected HttpResponse doPost(AggregatedHttpRequest aggregatedHttpRequest) {
+    public HttpResponse doPost(AggregatedHttpRequest aggregatedHttpRequest) {
         return processRequest(aggregatedHttpRequest);
     }
 
@@ -61,7 +61,8 @@ public class LogHTTPService {
                 jsonList.add(mapper.writeValueAsString(log));
             }
         } catch (IOException e) {
-            return HttpResponse.of(HttpStatus.BAD_REQUEST, MediaType.ANY_TYPE, e.getMessage());
+            // TODO: support both json and json array as request body
+            return HttpResponse.of(HttpStatus.BAD_REQUEST, MediaType.ANY_TYPE, "Bad request data format. Needs to be json array.");
         }
         for (String json: jsonList) {
             try {
