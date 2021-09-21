@@ -43,7 +43,22 @@ public class LogHTTPSourceConfigTest {
 
     @Test
     public void testValidConfig() {
-        // TODO: write test logic
+        // Prepare
+        final PluginSetting pluginSetting = completePluginSettingForLogHTTPSource(
+                TEST_PORT,
+                TEST_REQUEST_TIMEOUT_MS,
+                TEST_THREAD_COUNT,
+                TEST_MAX_CONNECTION_COUNT,
+                TEST_MAX_PENDING_REQUESTS
+        );
+        final LogHTTPSourceConfig logHTTPSourceConfig = LogHTTPSourceConfig.buildConfig(pluginSetting);
+
+        // When/Then
+        assertEquals(TEST_PORT, logHTTPSourceConfig.getPort());
+        assertEquals(TEST_REQUEST_TIMEOUT_MS, logHTTPSourceConfig.getRequestTimeoutInMillis());
+        assertEquals(TEST_THREAD_COUNT, logHTTPSourceConfig.getThreadCount());
+        assertEquals(TEST_MAX_CONNECTION_COUNT, logHTTPSourceConfig.getMaxConnectionCount());
+        assertEquals(TEST_MAX_PENDING_REQUESTS, logHTTPSourceConfig.getMaxPendingRequests());
     }
 
     private PluginSetting completePluginSettingForLogHTTPSource(final int port,
