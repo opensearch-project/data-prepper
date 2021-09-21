@@ -11,8 +11,25 @@
 
 package com.amazon.dataprepper.plugins.source.loghttp;
 
+import com.amazon.dataprepper.model.buffer.Buffer;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.junit.jupiter.api.Test;
+
+import java.util.HashMap;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class LogHTTPSourceTest {
     // TODO: write test cases
+    public static void main(String[] args) {
+        LogHTTPSource logHTTPSource = new LogHTTPSource(new PluginSetting("log_http_source", new HashMap<>()));
+        try {
+            Buffer<Record<String>> blockingBuffer = new BlockingBuffer<Record<String>>(512, 8, "test-pipeline");
+            logHTTPSource.start(blockingBuffer);
+        } finally {
+            logHTTPSource.stop();
+        }
+    }
 }

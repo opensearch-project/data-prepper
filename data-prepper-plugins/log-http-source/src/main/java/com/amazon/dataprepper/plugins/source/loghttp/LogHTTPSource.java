@@ -56,8 +56,8 @@ public class LogHTTPSource implements Source<Record<String>> {
 //                    maxPendingRequests, blockingTaskExecutor.getQueue());
 //            final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests);
 //            sb.decorator(ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
-//            final LogHTTPService logHTTPService = new LogHTTPService(logHTTPSourceConfig.getRequestTimeoutInMillis(), buffer);
-//            sb.annotatedService(logHTTPService);
+            final LogHTTPService logHTTPService = new LogHTTPService(logHTTPSourceConfig.getRequestTimeoutInMillis(), buffer);
+            sb.annotatedService(logHTTPService);
 
             server = sb.build();
         }
