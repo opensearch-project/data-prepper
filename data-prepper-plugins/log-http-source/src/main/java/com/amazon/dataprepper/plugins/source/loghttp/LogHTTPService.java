@@ -23,12 +23,16 @@ import com.linecorp.armeria.server.annotation.Get;
 import com.linecorp.armeria.server.annotation.Post;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeoutException;
 
 public class LogHTTPService {
 
+    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final TypeReference<List<Map<String, Object>>> LIST_OF_MAP_TYPE_REFERENCE =
+            new TypeReference<List<Map<String, Object>>>() {};
     private final Buffer<Record<String>> buffer;
     private final int bufferWriteTimeoutInMillis;
 
@@ -48,16 +52,25 @@ public class LogHTTPService {
     }
 
     private HttpResponse processRequest(AggregatedHttpRequest aggregatedHttpRequest) {
-        List<Map<String, Object>> jsonList = Collections.emptyList();
+        List<String> jsonList = new ArrayList<>();
         try {
-            jsonList = new ObjectMapper().readValue(aggregatedHttpRequest.content().toInputStream(),
-                    new TypeReference<List<Map<String, Object>>>() {});
+            // TODO: 1. move the logic to a separate codec class; 2. replace string with data model for json
+            final List<Map<String, Object>> logList = mapper.readValue(aggregatedHttpRequest.content().toInputStream(),
+                    LIST_OF_MAP_TYPE_REFERENCE);
+            for (final Map<String, Object> log: logList) {
+                jsonList.add(mapper.writeValueAsString(log));
+            }
         } catch (IOException e) {
-            return HttpResponse.of(HttpStatus.BAD_REQUEST, MediaType.JSON, e.getMessage());
+            return HttpResponse.of(HttpStatus.BAD_REQUEST, MediaType.ANY_TYPE, e.getMessage());
         }
-        // TODO:
-        //  1. wrap maps into Record<RecordMap>
-        //  2. write into Buffer
+        for (String json: jsonList) {
+            try {
+                // TODO: switch to new API writeAll once ready
+                buffer.write(new Record<>(json), bufferWriteTimeoutInMillis);
+            } catch (TimeoutException e) {
+                return HttpResponse.of(HttpStatus.REQUEST_TIMEOUT, MediaType.ANY_TYPE, e.getMessage());
+            }
+        }
         return HttpResponse.of(HttpStatus.OK);
     }
 }

@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
-@DataPrepperPlugin(name = "otel_trace_source", type = PluginType.SOURCE)
+@DataPrepperPlugin(name = "log_http_source", type = PluginType.SOURCE)
 public class LogHTTPSource implements Source<Record<String>> {
     private static final Logger LOG = LoggerFactory.getLogger(LogHTTPSource.class);
 
