@@ -50,13 +50,14 @@ public class LogHTTPSource implements Source<Record<String>> {
             final int threads = logHTTPSourceConfig.getThreadCount();
             final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
             sb.blockingTaskExecutor(blockingTaskExecutor, true);
-            final int maxPendingRequests = logHTTPSourceConfig.getMaxPendingRequests();
-            final LogThrottlingStrategy logThrottlingStrategy = new LogThrottlingStrategy(
-                    maxPendingRequests, blockingTaskExecutor.getQueue());
-            final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests);
-            sb.decorator(ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
-            final LogHTTPService logHTTPService = new LogHTTPService(logHTTPSourceConfig.getRequestTimeoutInMillis(), buffer);
-            sb.annotatedService(logHTTPService);
+            // TODO: add throttling
+//            final int maxPendingRequests = logHTTPSourceConfig.getMaxPendingRequests();
+//            final LogThrottlingStrategy logThrottlingStrategy = new LogThrottlingStrategy(
+//                    maxPendingRequests, blockingTaskExecutor.getQueue());
+//            final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests);
+//            sb.decorator(ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
+//            final LogHTTPService logHTTPService = new LogHTTPService(logHTTPSourceConfig.getRequestTimeoutInMillis(), buffer);
+//            sb.annotatedService(logHTTPService);
 
             server = sb.build();
         }
