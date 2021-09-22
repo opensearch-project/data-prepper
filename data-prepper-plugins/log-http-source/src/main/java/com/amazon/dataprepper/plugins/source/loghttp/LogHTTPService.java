@@ -54,11 +54,13 @@ public class LogHTTPService {
     private HttpResponse processRequest(AggregatedHttpRequest aggregatedHttpRequest) {
         List<String> jsonList = new ArrayList<>();
         try {
-            // TODO: 1. move the logic to a separate codec class; 2. replace string with data model for json
+            // TODO: move the logic to a separate codec class
             final List<Map<String, Object>> logList = mapper.readValue(aggregatedHttpRequest.content().toInputStream(),
                     LIST_OF_MAP_TYPE_REFERENCE);
             for (final Map<String, Object> log: logList) {
-                jsonList.add(mapper.writeValueAsString(log));
+                // TODO: replace recordString with data model for json
+                final String recordString = mapper.writeValueAsString(log);
+                jsonList.add(recordString);
             }
         } catch (IOException e) {
             // TODO: support both json and json array as request body
