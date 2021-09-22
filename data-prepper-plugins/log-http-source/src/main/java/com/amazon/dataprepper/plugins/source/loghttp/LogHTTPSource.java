@@ -52,6 +52,7 @@ public class LogHTTPSource implements Source<Record<String>> {
             // TODO: attach ThrottlingService
             final LogHTTPService logHTTPService = new LogHTTPService(logHTTPSourceConfig.getRequestTimeoutInMillis(), buffer);
             sb.annotatedService(logHTTPService);
+            // TODO: attach HealthCheckService
 
             server = sb.build();
         }

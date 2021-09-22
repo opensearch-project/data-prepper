@@ -54,7 +54,7 @@ public class LogHTTPService {
     private HttpResponse processRequest(AggregatedHttpRequest aggregatedHttpRequest) {
         List<String> jsonList = new ArrayList<>();
         try {
-            // TODO: move the logic to a separate codec class
+            // TODO: refactor the logic to a separate codec class
             final List<Map<String, Object>> logList = mapper.readValue(aggregatedHttpRequest.content().toInputStream(),
                     LIST_OF_MAP_TYPE_REFERENCE);
             for (final Map<String, Object> log: logList) {
