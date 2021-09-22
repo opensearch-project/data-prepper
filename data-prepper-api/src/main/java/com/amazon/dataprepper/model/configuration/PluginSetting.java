@@ -146,14 +146,15 @@ public class PluginSetting {
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
      * the attribute
      */
-    @SuppressWarnings("unchecked")
     public List<String> getStringListOrDefault(final String attribute, final List<String> defaultValue) {
         Object object = getAttributeOrDefault(attribute, defaultValue);
         if (object == null) {
             return null;
         } else if (object instanceof List) {
-            ((List<?>) object).stream().filter(o -> !(o instanceof String)).forEach(o -> {
-                throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+            ((List<?>) object).forEach(o -> {
+                if (!(o instanceof String)) {
+                    throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+                }
             });
             return (List<String>) object;
         }
@@ -169,7 +170,6 @@ public class PluginSetting {
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
      * the attribute
      */
-    @SuppressWarnings("unchecked")
     public Map<String, String> getStringMapOrDefault(final String attribute, final Map<String, String> defaultValue) {
         Object object = getAttributeOrDefault(attribute, defaultValue);
         if (object == null) {
@@ -194,7 +194,6 @@ public class PluginSetting {
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
      * the attribute
      */
-    @SuppressWarnings("unchecked")
     public Map<String, List<String>> getStringListMapOrDefault(final String attribute, final Map<String, List<String>> defaultValue) {
         Object object = getAttributeOrDefault(attribute, defaultValue);
         if (object == null) {
@@ -203,8 +202,10 @@ public class PluginSetting {
             ((Map<?, ?>) object).forEach((key, value) -> {
                 if (key instanceof String) {
                     if (value instanceof List){
-                        ((List<?>) value).stream().filter(o -> !(o instanceof String)).forEach(o -> {
-                            throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+                        ((List<?>) value).forEach(val -> {
+                            if (!(val instanceof String)) {
+                                throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+                            }
                         });
                     } else {
                         throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
