@@ -19,11 +19,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
-import com.linecorp.armeria.common.HttpHeaders;
 import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpRequest;
-import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
+import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,10 +38,8 @@ import static org.junit.Assert.assertEquals;
 
 class LogHTTPServiceTest {
     private static final ObjectMapper mapper = new ObjectMapper();
-    private static String CONTENT_TYPE = "Content-Type";
-    private static String APPLICATION_JSON = "application/json";
-    private static int TEST_BUFFER_CAPACITY = 3;
-    private static int TEST_TIMEOUT_IN_MILLIS = 500;
+    private static final int TEST_BUFFER_CAPACITY = 3;
+    private static final int TEST_TIMEOUT_IN_MILLIS = 500;
 
     private LogHTTPService logHTTPService;
 
@@ -107,7 +104,11 @@ class LogHTTPServiceTest {
 
     private AggregatedHttpRequest generateRandomValidHTTPRequest(HttpMethod httpMethod, int numJson) throws JsonProcessingException,
             ExecutionException, InterruptedException {
-        RequestHeaders requestHeaders = RequestHeaders.of(httpMethod, "/log/ingest", CONTENT_TYPE, APPLICATION_JSON);
+        RequestHeaders requestHeaders = RequestHeaders.builder()
+                .contentType(MediaType.JSON)
+                .method(httpMethod)
+                .path("/log/ingest")
+                .build();
         List<Map<String, Object>> jsonList = new ArrayList<>();
         for (int i = 0; i < numJson; i++) {
             jsonList.add(new HashMap<String, Object>() {{ put("log", UUID.randomUUID().toString()); }});
@@ -118,7 +119,11 @@ class LogHTTPServiceTest {
     }
 
     private AggregatedHttpRequest generateBadHTTPRequest(HttpMethod httpMethod) throws ExecutionException, InterruptedException {
-        RequestHeaders requestHeaders = RequestHeaders.of(httpMethod, "/log/ingest", CONTENT_TYPE, APPLICATION_JSON);
+        RequestHeaders requestHeaders = RequestHeaders.builder()
+                .contentType(MediaType.JSON)
+                .method(httpMethod)
+                .path("/log/ingest")
+                .build();
         HttpData httpData = HttpData.ofUtf8("{");
         return HttpRequest.of(requestHeaders, httpData).aggregate().get();
     }
