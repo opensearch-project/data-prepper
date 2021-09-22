@@ -32,7 +32,7 @@ public class LogThrottlingStrategy extends ThrottlingStrategy<HttpRequest> {
     public CompletionStage<Boolean> accept(ServiceRequestContext ctx, HttpRequest request) {
         // For ScheduledThreadPoolExecutor as blockingQueueExecutor, the DelayedWorkQueue is unbounded. Thus queue.size()
         // is used instead of queue.remainingCapacity().
-        if (queue.size() <= maxPendingRequests) {
+        if (queue.size() < maxPendingRequests) {
             return UnmodifiableFuture.completedFuture(true);
         }
         return UnmodifiableFuture.completedFuture(false);
