@@ -25,6 +25,7 @@ import com.linecorp.armeria.common.HttpRequest;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.RequestHeaders;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -43,11 +44,17 @@ class LogHTTPServiceTest {
     private static int TEST_BUFFER_CAPACITY = 3;
     private static int TEST_TIMEOUT_IN_MILLIS = 500;
 
+    private LogHTTPService logHTTPService;
+
+    @BeforeEach
+    public void setUp() {
+        Buffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_CAPACITY, 8, "test-pipeline");
+        logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer);
+    }
+
     @Test
     public void testHTTPRequestSuccess() throws InterruptedException, ExecutionException, JsonProcessingException {
         // Prepare
-        Buffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_CAPACITY, 8, "test-pipeline");
-        LogHTTPService logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer);
         AggregatedHttpRequest testGetRequest = generateRandomValidHTTPRequest(HttpMethod.GET, 1);
         AggregatedHttpRequest testPostRequest = generateRandomValidHTTPRequest(HttpMethod.POST, 2);
 
@@ -67,8 +74,6 @@ class LogHTTPServiceTest {
     @Test
     public void testHTTPRequestBadRequest() throws ExecutionException, InterruptedException {
         // Prepare
-        Buffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_CAPACITY, 8, "test-pipeline");
-        LogHTTPService logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer);
         AggregatedHttpRequest testBadGetRequest = generateBadHTTPRequest(HttpMethod.GET);
         AggregatedHttpRequest testBadPostRequest = generateBadHTTPRequest(HttpMethod.POST);
 
@@ -88,8 +93,6 @@ class LogHTTPServiceTest {
     @Test
     public void testHTTPRequestTimeout() throws InterruptedException, ExecutionException, JsonProcessingException {
         // Prepare
-        Buffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_CAPACITY, 8, "test-pipeline");
-        LogHTTPService logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer);
         AggregatedHttpRequest populateDataRequest = generateRandomValidHTTPRequest(HttpMethod.GET, 2);
         AggregatedHttpResponse getResponse = logHTTPService.doGet(populateDataRequest).aggregate().get();
         assertEquals(HttpStatus.OK, getResponse.status());
