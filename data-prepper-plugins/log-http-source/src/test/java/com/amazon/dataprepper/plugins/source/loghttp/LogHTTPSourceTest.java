@@ -11,7 +11,6 @@
 
 package com.amazon.dataprepper.plugins.source.loghttp;
 
-import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
