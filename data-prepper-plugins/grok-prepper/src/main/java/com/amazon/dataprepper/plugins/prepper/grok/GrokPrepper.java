@@ -19,17 +19,17 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 
 
-@DataPrepperPlugin(name = "grok_prepper", type = PluginType.PREPPER)
+@DataPrepperPlugin(name = "grok", type = PluginType.PREPPER)
 public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(GrokPrepper.class);
-
     private final GrokPrepperConfig grokPrepperConfig;
 
     public GrokPrepper(final PluginSetting pluginSetting) {
@@ -43,7 +43,7 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
      *
      * @param records Input records that will be modified/processed
      * @return Record  modified output records
-     */
+    */
     @Override
     public Collection<Record<String>> doExecute(Collection<Record<String>> records) {
         return records;

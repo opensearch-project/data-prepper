@@ -13,18 +13,14 @@ package com.amazon.dataprepper.plugins.prepper.grok;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_BREAK_ON_MATCH;
-import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_MATCH;
 import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_KEEP_EMPTY_CAPTURES;
 import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_NAMED_CAPTURES_ONLY;
-import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_PATTERN_DEFINITIONS;
-import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_PATTERNS_DIR;
 import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_PATTERNS_FILES_GLOB;
 import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_TIMEOUT_MILLIS;
 import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_TARGET;
-import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_OVERWRITE;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,7 +33,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 
 public class GrokPrepperConfigTests {
-    private static final String PLUGIN_NAME = "grok_prepper";
+    private static final String PLUGIN_NAME = "grok";
 
     private static final Map<String, List<String>> TEST_MATCH = new HashMap<>();
     private static final List<String> TEST_OVERWRITE = new ArrayList<>();
@@ -49,8 +45,8 @@ public class GrokPrepperConfigTests {
 
     private static final Map<String, String> TEST_INVALID_MATCH = new HashMap<>();
 
-    @Before
-    public void setUp() {
+    @BeforeAll
+    public static void setUp() {
         final List<String> log_patterns = new ArrayList<>();
         log_patterns.add("%{SYNTAX:SEMANTIC}");
         log_patterns.add("%{SYNTAX_2:SEMANTIC_2}");
@@ -76,10 +72,10 @@ public class GrokPrepperConfigTests {
 
         assertThat(grokPrepperConfig.isBreakOnMatch(), equalTo(DEFAULT_BREAK_ON_MATCH));
         assertThat(grokPrepperConfig.isKeepEmptyCaptures(), equalTo(DEFAULT_KEEP_EMPTY_CAPTURES));
-        assertThat(grokPrepperConfig.getMatch(), equalTo(DEFAULT_MATCH));
-        assertThat(grokPrepperConfig.getOverwrite(), equalTo(DEFAULT_OVERWRITE));
-        assertThat(grokPrepperConfig.getPatternDefinitions(), equalTo(DEFAULT_PATTERN_DEFINITIONS));
-        assertThat(grokPrepperConfig.getPatternsDir(), equalTo(DEFAULT_PATTERNS_DIR));
+        assertThat(grokPrepperConfig.getMatch(), equalTo(Collections.emptyMap()));
+        assertThat(grokPrepperConfig.getOverwrite(), equalTo(Collections.emptyList()));
+        assertThat(grokPrepperConfig.getPatternDefinitions(), equalTo(Collections.emptyMap()));
+        assertThat(grokPrepperConfig.getPatternsDir(), equalTo(Collections.emptyList()));
         assertThat(grokPrepperConfig.getPatternsFilesGlob(), equalTo(DEFAULT_PATTERNS_FILES_GLOB));
         assertThat(grokPrepperConfig.getTarget(), equalTo(DEFAULT_TARGET));
         assertThat(grokPrepperConfig.isNamedCapturesOnly(), equalTo(DEFAULT_NAMED_CAPTURES_ONLY));

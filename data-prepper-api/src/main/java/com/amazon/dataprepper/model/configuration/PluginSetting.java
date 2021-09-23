@@ -11,6 +11,7 @@
 
 package com.amazon.dataprepper.model.configuration;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -142,23 +143,19 @@ public class PluginSetting {
      * the attribute.
      *
      * @param attribute    name of the attribute
-     * @param defaultValue default value for the setting
+     * @param type the type stored in the List
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
      * the attribute
      */
-    public List<String> getStringListOrDefault(final String attribute, final List<String> defaultValue) {
-        Object object = getAttributeOrDefault(attribute, defaultValue);
+    public <T> List<T> getTypedList(final String attribute, final Class<T> type) {
+        Object object = getAttributeOrDefault(attribute, Collections.emptyList());
         if (object == null) {
             return null;
-        } else if (object instanceof List) {
-            ((List<?>) object).forEach(o -> {
-                if (!(o instanceof String)) {
-                    throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
-                }
-            });
-            return (List<String>) object;
         }
-        throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+
+        checkObjectForListType(attribute, object, type);
+
+        return (List<T>) object;
     }
 
     /**
@@ -166,23 +163,25 @@ public class PluginSetting {
      * the attribute.
      *
      * @param attribute    name of the attribute
-     * @param defaultValue default value for the setting
+     * @param keyType      key type of the Map
+     * @param valueType    value type stored in the Map
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
      * the attribute
      */
-    public Map<String, String> getStringMapOrDefault(final String attribute, final Map<String, String> defaultValue) {
-        Object object = getAttributeOrDefault(attribute, defaultValue);
+    public <K, V> Map<K, V> getTypedMap(final String attribute, final Class<K> keyType, final Class<V> valueType) {
+        Object object = getAttributeOrDefault(attribute, Collections.emptyMap());
         if (object == null) {
             return null;
-        } else if (object instanceof Map) {
-            ((Map<?, ?>) object).forEach((key, value) -> {
-                if (!(key instanceof String) || !(value instanceof String)) {
-                    throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
-                }
-            });
-            return (Map<String, String>) object;
         }
-        throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+
+        checkObjectType(attribute, object, Map.class);
+
+        ((Map<?, ?>) object).forEach((key, value) -> {
+            checkObjectType(attribute, key, keyType);
+            checkObjectType(attribute, value, valueType);
+        });
+
+        return (Map<K, V>) object;
     }
 
     /**
@@ -190,33 +189,25 @@ public class PluginSetting {
      * the attribute.
      *
      * @param attribute    name of the attribute
-     * @param defaultValue default value for the setting
+     * @param keyType      key type of the Map
+     * @param valueType    value type stored in the List value of the Map
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
      * the attribute
      */
-    public Map<String, List<String>> getStringListMapOrDefault(final String attribute, final Map<String, List<String>> defaultValue) {
-        Object object = getAttributeOrDefault(attribute, defaultValue);
+    public <K, V> Map<K, List<V>> getTypedListMap(final String attribute, final Class<K> keyType, final Class<V> valueType) {
+        Object object = getAttributeOrDefault(attribute, Collections.emptyMap());
         if (object == null) {
             return null;
-        } else if (object instanceof Map) {
-            ((Map<?, ?>) object).forEach((key, value) -> {
-                if (key instanceof String) {
-                    if (value instanceof List){
-                        ((List<?>) value).forEach(val -> {
-                            if (!(val instanceof String)) {
-                                throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
-                            }
-                        });
-                    } else {
-                        throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
-                    }
-                } else {
-                    throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
-                }
-            });
-            return (Map<String, List<String>>) object;
         }
-        throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+
+        checkObjectType(attribute, object, Map.class);
+
+        ((Map<?, ?>) object).forEach((key, value) -> {
+            checkObjectType(attribute, key, keyType);
+            checkObjectForListType(attribute, value, valueType);
+        });
+
+        return (Map<K, List<V>>) object;
     }
 
     /**
@@ -263,4 +254,17 @@ public class PluginSetting {
         throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
     }
 
+    private <T> void checkObjectType(String attribute, Object object, Class<T> type) {
+        if (!(type.isAssignableFrom(object.getClass()))){
+            throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
+        }
+    }
+
+    private <T> void checkObjectForListType(String attribute, Object object, Class<T> type) {
+        checkObjectType(attribute, object, List.class);
+
+        ((List<?>) object).forEach(o -> {
+            checkObjectType(attribute, o, type);
+        });
+    }
 }

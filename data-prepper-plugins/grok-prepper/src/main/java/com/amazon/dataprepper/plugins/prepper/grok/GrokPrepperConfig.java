@@ -13,8 +13,6 @@ package com.amazon.dataprepper.plugins.prepper.grok;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -32,12 +30,8 @@ public class GrokPrepperConfig {
 
     static final boolean DEFAULT_BREAK_ON_MATCH = true;
     static final boolean DEFAULT_KEEP_EMPTY_CAPTURES = false;
-    static final Map<String, List<String>> DEFAULT_MATCH = new HashMap<>();
     static final boolean DEFAULT_NAMED_CAPTURES_ONLY = true;
-    static final List<String> DEFAULT_OVERWRITE = new ArrayList<>();
-    static final List<String> DEFAULT_PATTERNS_DIR = new ArrayList<>();
     static final String DEFAULT_PATTERNS_FILES_GLOB = ".*";
-    static final Map<String, String> DEFAULT_PATTERN_DEFINITIONS = new HashMap<>();
     static final int DEFAULT_TIMEOUT_MILLIS = 30000;
     static final String DEFAULT_TARGET = null;
 
@@ -78,12 +72,12 @@ public class GrokPrepperConfig {
     public static GrokPrepperConfig buildConfig(final PluginSetting pluginSetting) {
         return new GrokPrepperConfig(pluginSetting.getBooleanOrDefault(BREAK_ON_MATCH, DEFAULT_BREAK_ON_MATCH),
                 pluginSetting.getBooleanOrDefault(KEEP_EMPTY_CAPTURES, DEFAULT_KEEP_EMPTY_CAPTURES),
-                pluginSetting.getStringListMapOrDefault(MATCH, DEFAULT_MATCH),
+                pluginSetting.getTypedListMap(MATCH, String.class, String.class),
                 pluginSetting.getBooleanOrDefault(NAMED_CAPTURES_ONLY, DEFAULT_NAMED_CAPTURES_ONLY),
-                pluginSetting.getStringListOrDefault(OVERWRITE, DEFAULT_OVERWRITE),
-                pluginSetting.getStringListOrDefault(PATTERNS_DIR, DEFAULT_PATTERNS_DIR),
+                pluginSetting.getTypedList(OVERWRITE, String.class),
+                pluginSetting.getTypedList(PATTERNS_DIR, String.class),
                 pluginSetting.getStringOrDefault(PATTERNS_FILES_GLOB, DEFAULT_PATTERNS_FILES_GLOB),
-                pluginSetting.getStringMapOrDefault(PATTERN_DEFINITIONS, DEFAULT_PATTERN_DEFINITIONS),
+                pluginSetting.getTypedMap(PATTERN_DEFINITIONS, String.class, String.class),
                 pluginSetting.getIntegerOrDefault(TIMEOUT_MILLIS, DEFAULT_TIMEOUT_MILLIS),
                 pluginSetting.getStringOrDefault(TARGET, DEFAULT_TARGET));
     }

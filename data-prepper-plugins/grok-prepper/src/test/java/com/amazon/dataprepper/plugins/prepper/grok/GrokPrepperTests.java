@@ -11,34 +11,38 @@
 
 package com.amazon.dataprepper.plugins.prepper.grok;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.equalTo;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.List;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+
+@ExtendWith(MockitoExtension.class)
 public class GrokPrepperTests {
 
     PluginSetting pluginSetting;
-    public GrokPrepper grokPrepper;
+    private GrokPrepper grokPrepper;
 
-    @Before
+    @BeforeEach
     public void setup() {
         pluginSetting = new PluginSetting(
-                "grok_prepper",
+                "grok",
                 null
                 );
         pluginSetting.setPipelineName("grokPipeline");
         grokPrepper = new GrokPrepper(pluginSetting);
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
       grokPrepper.shutdown();
     }
