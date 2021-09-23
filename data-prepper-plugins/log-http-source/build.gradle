@@ -2,10 +2,6 @@ plugins {
     id 'java'
 }
 
-test {
-    useJUnitPlatform()
-}
-
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:blocking-buffer')
