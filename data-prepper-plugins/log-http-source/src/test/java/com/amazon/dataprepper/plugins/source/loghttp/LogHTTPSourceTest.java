@@ -218,11 +218,4 @@ class LogHTTPSourceTest {
         //Expect RuntimeException because when port is already in use, BindException is thrown which is not RuntimeException
         Assertions.assertThrows(RuntimeException.class, () -> secondSource.start(testBuffer));
     }
-
-    // TODO: write test cases
-    public static void main(String[] args) {
-        LogHTTPSource logHTTPSource = new LogHTTPSource(new PluginSetting("log_http_source", new HashMap<>()));
-        Buffer<Record<String>> blockingBuffer = new BlockingBuffer<Record<String>>(10, 8, "test-pipeline");
-        logHTTPSource.start(blockingBuffer);
-    }
 }
