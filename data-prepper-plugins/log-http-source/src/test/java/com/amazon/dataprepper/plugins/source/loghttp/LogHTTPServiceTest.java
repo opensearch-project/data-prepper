@@ -34,7 +34,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class LogHTTPServiceTest {
     private static final ObjectMapper mapper = new ObjectMapper();
@@ -62,7 +62,7 @@ class LogHTTPServiceTest {
         assertEquals(HttpStatus.OK, getResponse.status());
 
         // When
-        AggregatedHttpResponse postResponse = logHTTPService.doGet(testPostRequest).aggregate().get();
+        AggregatedHttpResponse postResponse = logHTTPService.doPost(testPostRequest).aggregate().get();
 
         // Then
         assertEquals(HttpStatus.OK, postResponse.status());
@@ -81,7 +81,7 @@ class LogHTTPServiceTest {
         assertEquals(HttpStatus.BAD_REQUEST, getResponse.status());
 
         // When
-        AggregatedHttpResponse postResponse = logHTTPService.doGet(testBadPostRequest).aggregate().get();
+        AggregatedHttpResponse postResponse = logHTTPService.doPost(testBadPostRequest).aggregate().get();
 
         // Then
         assertEquals(HttpStatus.BAD_REQUEST, postResponse.status());

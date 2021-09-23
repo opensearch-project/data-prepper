@@ -13,8 +13,7 @@ package com.amazon.dataprepper.plugins.source.loghttp;
 
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.record.Record;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.amazon.dataprepper.plugins.source.loghttp.codec.JsonCodec;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
@@ -23,16 +22,13 @@ import com.linecorp.armeria.server.annotation.Get;
 import com.linecorp.armeria.server.annotation.Post;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeoutException;
 
 public class LogHTTPService {
 
-    private static final ObjectMapper mapper = new ObjectMapper();
-    private static final TypeReference<List<Map<String, Object>>> LIST_OF_MAP_TYPE_REFERENCE =
-            new TypeReference<List<Map<String, Object>>>() {};
+    // TODO: support other data-types as request body, e.g. json_lines, msgpack
+    private final JsonCodec jsonCodec = new JsonCodec();
     private final Buffer<Record<String>> buffer;
     private final int bufferWriteTimeoutInMillis;
 
@@ -52,18 +48,10 @@ public class LogHTTPService {
     }
 
     private HttpResponse processRequest(AggregatedHttpRequest aggregatedHttpRequest) {
-        List<String> jsonList = new ArrayList<>();
+        List<String> jsonList;
         try {
-            // TODO: refactor the logic to a separate codec class
-            final List<Map<String, Object>> logList = mapper.readValue(aggregatedHttpRequest.content().toInputStream(),
-                    LIST_OF_MAP_TYPE_REFERENCE);
-            for (final Map<String, Object> log: logList) {
-                // TODO: replace recordString with data model for json
-                final String recordString = mapper.writeValueAsString(log);
-                jsonList.add(recordString);
-            }
+            jsonList = jsonCodec.parse(aggregatedHttpRequest.content());
         } catch (IOException e) {
-            // TODO: support both json and json array as request body
             return HttpResponse.of(HttpStatus.BAD_REQUEST, MediaType.ANY_TYPE, "Bad request data format. Needs to be json array.");
         }
         for (String json: jsonList) {
