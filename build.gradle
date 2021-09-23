@@ -58,6 +58,9 @@ subprojects {
         testImplementation "org.mockito:mockito-core:${versionMap.mockito}"
         testImplementation "org.mockito:mockito-junit-jupiter:${versionMap.mockito}"
     }
+    test {
+        useJUnitPlatform()
+    }
     build.dependsOn test
     jacocoTestReport {
         dependsOn test // tests are required to run before generating the report
@@ -84,7 +87,6 @@ configure(coreProjects) {
         }
     }
     test {
-        useJUnitPlatform()
         finalizedBy jacocoTestReport // report is always generated after tests run
     }
     jacocoTestCoverageVerification {
