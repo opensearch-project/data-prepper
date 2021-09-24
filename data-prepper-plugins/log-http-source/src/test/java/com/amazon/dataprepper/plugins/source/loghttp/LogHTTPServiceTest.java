@@ -93,13 +93,20 @@ class LogHTTPServiceTest {
         AggregatedHttpRequest populateDataRequest = generateRandomValidHTTPRequest(HttpMethod.GET, 2);
         AggregatedHttpResponse getResponse = logHTTPService.doGet(populateDataRequest).aggregate().get();
         assertEquals(HttpStatus.OK, getResponse.status());
-        AggregatedHttpRequest timeoutRequest = generateRandomValidHTTPRequest(HttpMethod.GET, 2);
+        AggregatedHttpRequest timeoutGetRequest = generateRandomValidHTTPRequest(HttpMethod.GET, 2);
+        AggregatedHttpRequest timeoutPostRequest = generateRandomValidHTTPRequest(HttpMethod.POST, 2);
 
         // When
-        AggregatedHttpResponse timeoutResponse = logHTTPService.doGet(timeoutRequest).aggregate().get();
+        AggregatedHttpResponse timeoutGetResponse = logHTTPService.doGet(timeoutGetRequest).aggregate().get();
 
         // Then
-        assertEquals(HttpStatus.REQUEST_TIMEOUT, timeoutResponse.status());
+        assertEquals(HttpStatus.REQUEST_TIMEOUT, timeoutGetResponse.status());
+
+        // When
+        AggregatedHttpResponse timeoutPostResponse = logHTTPService.doGet(timeoutPostRequest).aggregate().get();
+
+        // Then
+        assertEquals(HttpStatus.REQUEST_TIMEOUT, timeoutPostResponse.status());
     }
 
     private AggregatedHttpRequest generateRandomValidHTTPRequest(HttpMethod httpMethod, int numJson) throws JsonProcessingException,
