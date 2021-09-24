@@ -32,22 +32,22 @@ public class LogHTTPService {
     private final Buffer<Record<String>> buffer;
     private final int bufferWriteTimeoutInMillis;
 
-    public LogHTTPService(int bufferWriteTimeoutInMillis, Buffer<Record<String>> buffer) {
+    public LogHTTPService(final int bufferWriteTimeoutInMillis, final Buffer<Record<String>> buffer) {
         this.buffer = buffer;
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
     }
 
     @Get("/log/ingest")
-    public HttpResponse doGet(AggregatedHttpRequest aggregatedHttpRequest) {
+    public HttpResponse doGet(final AggregatedHttpRequest aggregatedHttpRequest) {
         return processRequest(aggregatedHttpRequest);
     }
 
     @Post("/log/ingest")
-    public HttpResponse doPost(AggregatedHttpRequest aggregatedHttpRequest) {
+    public HttpResponse doPost(final AggregatedHttpRequest aggregatedHttpRequest) {
         return processRequest(aggregatedHttpRequest);
     }
 
-    private HttpResponse processRequest(AggregatedHttpRequest aggregatedHttpRequest) {
+    private HttpResponse processRequest(final AggregatedHttpRequest aggregatedHttpRequest) {
         List<String> jsonList;
         try {
             jsonList = jsonCodec.parse(aggregatedHttpRequest.content());

@@ -23,7 +23,7 @@ public class LogThrottlingStrategy extends ThrottlingStrategy<HttpRequest> {
     private final int maxPendingRequests;
     private final BlockingQueue<Runnable> queue;
 
-    public LogThrottlingStrategy(int maxPendingRequests, BlockingQueue<Runnable> queue) {
+    public LogThrottlingStrategy(final int maxPendingRequests, final BlockingQueue<Runnable> queue) {
         this.maxPendingRequests = maxPendingRequests;
         this.queue = queue;
     }

@@ -12,6 +12,7 @@
 package com.amazon.dataprepper.plugins.source.loghttp;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.google.common.base.Preconditions;
 
 public class LogHTTPSourceConfig {
     static final String PORT = "port";
@@ -36,6 +37,11 @@ public class LogHTTPSourceConfig {
                                 final int threadCount,
                                 final int maxConnectionCount,
                                 final int maxPendingRequests) {
+        Preconditions.checkArgument(port >= 0 && port < 65535, "port must be between 0 and 65535.");
+        Preconditions.checkArgument(requestTimeoutInMillis > 0, "request_timeout must be greater than 0.");
+        Preconditions.checkArgument(threadCount > 0, "thread_count must be greater than 0.");
+        Preconditions.checkArgument(maxConnectionCount > 0, "max_connection_count must be greater than 0.");
+        Preconditions.checkArgument(maxPendingRequests > 0, "max_pending_requests must be greater than 0.");
         this.port = port;
         this.requestTimeoutInMillis = requestTimeoutInMillis;
         this.threadCount = threadCount;

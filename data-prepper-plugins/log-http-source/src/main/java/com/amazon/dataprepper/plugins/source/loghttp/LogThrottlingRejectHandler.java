@@ -24,13 +24,13 @@ import javax.annotation.Nullable;
 public class LogThrottlingRejectHandler implements ThrottlingRejectHandler<HttpRequest, HttpResponse> {
     private final int maxPendingRequests;
 
-    public LogThrottlingRejectHandler(int maxPendingRequests) {
+    public LogThrottlingRejectHandler(final int maxPendingRequests) {
         this.maxPendingRequests = maxPendingRequests;
     }
 
     @Override
-    public HttpResponse handleRejected(Service<HttpRequest, HttpResponse> delegate, ServiceRequestContext ctx,
-                                       HttpRequest req, @Nullable Throwable cause) throws Exception {
+    public HttpResponse handleRejected(final Service<HttpRequest, HttpResponse> delegate, final ServiceRequestContext ctx,
+                                       final HttpRequest req, final @Nullable Throwable cause) throws Exception {
         return HttpResponse.of(HttpStatus.TOO_MANY_REQUESTS, MediaType.ANY_TYPE,
                 "The number of pending requests in the work queue reaches max_pending_requests:%d. Please retry later",
                 maxPendingRequests

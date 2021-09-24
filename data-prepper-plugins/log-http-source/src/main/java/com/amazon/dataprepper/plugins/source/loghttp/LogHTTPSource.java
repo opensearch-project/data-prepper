@@ -32,7 +32,7 @@ public class LogHTTPSource implements Source<Record<String>> {
     private final LogHTTPSourceConfig logHTTPSourceConfig;
     private Server server;
 
-    public LogHTTPSource(PluginSetting pluginSetting) {
+    public LogHTTPSource(final PluginSetting pluginSetting) {
         logHTTPSourceConfig = LogHTTPSourceConfig.buildConfig(pluginSetting);
     }
 
