@@ -18,12 +18,17 @@ import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
+import com.linecorp.armeria.server.annotation.Blocking;
 import com.linecorp.armeria.server.annotation.Post;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
+/*
+* A HTTP service for log ingestion to be executed by BlockingTaskExecutor.
+*/
+@Blocking
 public class LogHTTPService {
 
     // TODO: support other data-types as request body, e.g. json_lines, msgpack
