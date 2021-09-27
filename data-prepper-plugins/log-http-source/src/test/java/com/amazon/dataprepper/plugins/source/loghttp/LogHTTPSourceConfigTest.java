@@ -63,55 +63,63 @@ public class LogHTTPSourceConfigTest {
     }
 
     @Test
-    public void testInvalidConfig() {
-        final PluginSetting invalidPluginSetting1 = completePluginSettingForLogHTTPSource(
+    public void testInvalidPort() {
+        final PluginSetting invalidPluginSetting = completePluginSettingForLogHTTPSource(
                 65536,
                 TEST_REQUEST_TIMEOUT_MS,
                 TEST_THREAD_COUNT,
                 TEST_MAX_CONNECTION_COUNT,
                 TEST_MAX_PENDING_REQUESTS
         );
-        assertThrows(IllegalArgumentException.class, () -> LogHTTPSourceConfig.buildConfig(invalidPluginSetting1));
+        assertThrows(IllegalArgumentException.class, () -> LogHTTPSourceConfig.buildConfig(invalidPluginSetting));
+    }
 
-        // Invalid request_timeout
-        final PluginSetting invalidPluginSetting2 = completePluginSettingForLogHTTPSource(
+    @Test
+    public void testInvalidRequestTimeout() {
+        final PluginSetting invalidPluginSetting = completePluginSettingForLogHTTPSource(
                 TEST_PORT,
                 -1,
                 TEST_THREAD_COUNT,
                 TEST_MAX_CONNECTION_COUNT,
                 TEST_MAX_PENDING_REQUESTS
         );
-        assertThrows(IllegalArgumentException.class, () -> LogHTTPSourceConfig.buildConfig(invalidPluginSetting2));
+        assertThrows(IllegalArgumentException.class, () -> LogHTTPSourceConfig.buildConfig(invalidPluginSetting));
+    }
 
-        // Invalid thread_count
-        final PluginSetting invalidPluginSetting3 = completePluginSettingForLogHTTPSource(
+    @Test
+    public void testInvalidThreadCount() {
+        final PluginSetting invalidPluginSetting = completePluginSettingForLogHTTPSource(
                 TEST_PORT,
                 TEST_REQUEST_TIMEOUT_MS,
                 0,
                 TEST_MAX_CONNECTION_COUNT,
                 TEST_MAX_PENDING_REQUESTS
         );
-        assertThrows(IllegalArgumentException.class, () -> LogHTTPSourceConfig.buildConfig(invalidPluginSetting3));
+        assertThrows(IllegalArgumentException.class, () -> LogHTTPSourceConfig.buildConfig(invalidPluginSetting));
+    }
 
-        // Invalid max_connection_count
-        final PluginSetting invalidPluginSetting4 = completePluginSettingForLogHTTPSource(
+    @Test
+    public void testInvalidMaxConnectionCount() {
+        final PluginSetting invalidPluginSetting = completePluginSettingForLogHTTPSource(
                 TEST_PORT,
                 TEST_REQUEST_TIMEOUT_MS,
                 TEST_THREAD_COUNT,
                 0,
                 TEST_MAX_PENDING_REQUESTS
         );
-        assertThrows(IllegalArgumentException.class, () -> LogHTTPSourceConfig.buildConfig(invalidPluginSetting4));
+        assertThrows(IllegalArgumentException.class, () -> LogHTTPSourceConfig.buildConfig(invalidPluginSetting));
+    }
 
-        // Invalid max_pending_requests
-        final PluginSetting invalidPluginSetting5 = completePluginSettingForLogHTTPSource(
+    @Test
+    public void testInvalidMaxPendingRequests() {
+        final PluginSetting invalidPluginSetting = completePluginSettingForLogHTTPSource(
                 TEST_PORT,
                 TEST_REQUEST_TIMEOUT_MS,
                 TEST_THREAD_COUNT,
                 TEST_MAX_CONNECTION_COUNT,
                 0
         );
-        assertThrows(IllegalArgumentException.class, () -> LogHTTPSourceConfig.buildConfig(invalidPluginSetting5));
+        assertThrows(IllegalArgumentException.class, () -> LogHTTPSourceConfig.buildConfig(invalidPluginSetting));
     }
 
     private PluginSetting completePluginSettingForLogHTTPSource(final int port,
