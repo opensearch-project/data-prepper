@@ -33,7 +33,7 @@ public class LogThrottlingStrategy extends ThrottlingStrategy<HttpRequest> {
     @Override
     public CompletionStage<Boolean> accept(ServiceRequestContext ctx, HttpRequest request) {
         /*
-         * FIXME:
+         * TODO:
          * The current implementation based on the condition queue.size() < maxPendingRequests is loose, i.e.
          * in case of high concurrency, multiple thread could pass this check concurrently and push their tasks into
          * the queue. Thus the actual queue size could still exceed maxPendingRequests in high concurrency.
