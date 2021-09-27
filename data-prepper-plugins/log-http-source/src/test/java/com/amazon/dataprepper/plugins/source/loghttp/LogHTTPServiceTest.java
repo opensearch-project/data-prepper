@@ -52,17 +52,10 @@ class LogHTTPServiceTest {
     @Test
     public void testHTTPRequestSuccess() throws InterruptedException, ExecutionException, JsonProcessingException {
         // Prepare
-        AggregatedHttpRequest testGetRequest = generateRandomValidHTTPRequest(HttpMethod.GET, 1);
-        AggregatedHttpRequest testPostRequest = generateRandomValidHTTPRequest(HttpMethod.POST, 2);
+        AggregatedHttpRequest testRequest = generateRandomValidHTTPRequest(2);
 
         // When
-        AggregatedHttpResponse getResponse = logHTTPService.doGet(testGetRequest).aggregate().get();
-
-        // Then
-        assertEquals(HttpStatus.OK, getResponse.status());
-
-        // When
-        AggregatedHttpResponse postResponse = logHTTPService.doPost(testPostRequest).aggregate().get();
+        AggregatedHttpResponse postResponse = logHTTPService.doPost(testRequest).aggregate().get();
 
         // Then
         assertEquals(HttpStatus.OK, postResponse.status());
@@ -71,17 +64,10 @@ class LogHTTPServiceTest {
     @Test
     public void testHTTPRequestBadRequest() throws ExecutionException, InterruptedException {
         // Prepare
-        AggregatedHttpRequest testBadGetRequest = generateBadHTTPRequest(HttpMethod.GET);
-        AggregatedHttpRequest testBadPostRequest = generateBadHTTPRequest(HttpMethod.POST);
+        AggregatedHttpRequest testBadRequest = generateBadHTTPRequest();
 
         // When
-        AggregatedHttpResponse getResponse = logHTTPService.doGet(testBadGetRequest).aggregate().get();
-
-        // Then
-        assertEquals(HttpStatus.BAD_REQUEST, getResponse.status());
-
-        // When
-        AggregatedHttpResponse postResponse = logHTTPService.doPost(testBadPostRequest).aggregate().get();
+        AggregatedHttpResponse postResponse = logHTTPService.doPost(testBadRequest).aggregate().get();
 
         // Then
         assertEquals(HttpStatus.BAD_REQUEST, postResponse.status());
@@ -90,30 +76,23 @@ class LogHTTPServiceTest {
     @Test
     public void testHTTPRequestTimeout() throws InterruptedException, ExecutionException, JsonProcessingException {
         // Prepare
-        AggregatedHttpRequest populateDataRequest = generateRandomValidHTTPRequest(HttpMethod.GET, 2);
-        AggregatedHttpResponse getResponse = logHTTPService.doGet(populateDataRequest).aggregate().get();
-        assertEquals(HttpStatus.OK, getResponse.status());
-        AggregatedHttpRequest timeoutGetRequest = generateRandomValidHTTPRequest(HttpMethod.GET, 2);
-        AggregatedHttpRequest timeoutPostRequest = generateRandomValidHTTPRequest(HttpMethod.POST, 2);
+        AggregatedHttpRequest populateDataRequest = generateRandomValidHTTPRequest(3);
+        AggregatedHttpResponse goodResponse = logHTTPService.doPost(populateDataRequest).aggregate().get();
+        assertEquals(HttpStatus.OK, goodResponse.status());
+        AggregatedHttpRequest timeoutRequest = generateRandomValidHTTPRequest(2);
 
         // When
-        AggregatedHttpResponse timeoutGetResponse = logHTTPService.doGet(timeoutGetRequest).aggregate().get();
-
-        // Then
-        assertEquals(HttpStatus.REQUEST_TIMEOUT, timeoutGetResponse.status());
-
-        // When
-        AggregatedHttpResponse timeoutPostResponse = logHTTPService.doGet(timeoutPostRequest).aggregate().get();
+        AggregatedHttpResponse timeoutPostResponse = logHTTPService.doPost(timeoutRequest).aggregate().get();
 
         // Then
         assertEquals(HttpStatus.REQUEST_TIMEOUT, timeoutPostResponse.status());
     }
 
-    private AggregatedHttpRequest generateRandomValidHTTPRequest(HttpMethod httpMethod, int numJson) throws JsonProcessingException,
+    private AggregatedHttpRequest generateRandomValidHTTPRequest(int numJson) throws JsonProcessingException,
             ExecutionException, InterruptedException {
         RequestHeaders requestHeaders = RequestHeaders.builder()
                 .contentType(MediaType.JSON)
-                .method(httpMethod)
+                .method(HttpMethod.POST)
                 .path("/log/ingest")
                 .build();
         List<Map<String, Object>> jsonList = new ArrayList<>();
@@ -125,10 +104,10 @@ class LogHTTPServiceTest {
         return HttpRequest.of(requestHeaders, httpData).aggregate().get();
     }
 
-    private AggregatedHttpRequest generateBadHTTPRequest(HttpMethod httpMethod) throws ExecutionException, InterruptedException {
+    private AggregatedHttpRequest generateBadHTTPRequest() throws ExecutionException, InterruptedException {
         RequestHeaders requestHeaders = RequestHeaders.builder()
                 .contentType(MediaType.JSON)
-                .method(httpMethod)
+                .method(HttpMethod.POST)
                 .path("/log/ingest")
                 .build();
         HttpData httpData = HttpData.ofUtf8("{");

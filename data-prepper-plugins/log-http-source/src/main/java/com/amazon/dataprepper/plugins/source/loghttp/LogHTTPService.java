@@ -37,11 +37,6 @@ public class LogHTTPService {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
     }
 
-    @Get("/log/ingest")
-    public HttpResponse doGet(final AggregatedHttpRequest aggregatedHttpRequest) {
-        return processRequest(aggregatedHttpRequest);
-    }
-
     @Post("/log/ingest")
     public HttpResponse doPost(final AggregatedHttpRequest aggregatedHttpRequest) {
         return processRequest(aggregatedHttpRequest);
