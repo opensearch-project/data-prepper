@@ -36,6 +36,7 @@ public class LogHTTPService {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
     }
 
+    // TODO: allow customize URI path
     @Post("/log/ingest")
     public HttpResponse doPost(final AggregatedHttpRequest aggregatedHttpRequest) {
         return processRequest(aggregatedHttpRequest);

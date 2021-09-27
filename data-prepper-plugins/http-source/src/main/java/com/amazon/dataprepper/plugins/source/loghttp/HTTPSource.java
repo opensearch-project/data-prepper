@@ -25,15 +25,15 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
-@DataPrepperPlugin(name = "log_http", type = PluginType.SOURCE)
-public class LogHTTPSource implements Source<Record<String>> {
-    private static final Logger LOG = LoggerFactory.getLogger(LogHTTPSource.class);
+@DataPrepperPlugin(name = "http", type = PluginType.SOURCE)
+public class HTTPSource implements Source<Record<String>> {
+    private static final Logger LOG = LoggerFactory.getLogger(HTTPSource.class);
 
-    private final LogHTTPSourceConfig logHTTPSourceConfig;
+    private final HTTPSourceConfig sourceConfig;
     private Server server;
 
-    public LogHTTPSource(final PluginSetting pluginSetting) {
-        logHTTPSourceConfig = LogHTTPSourceConfig.buildConfig(pluginSetting);
+    public HTTPSource(final PluginSetting pluginSetting) {
+        sourceConfig = HTTPSourceConfig.buildConfig(pluginSetting);
     }
 
     @Override
@@ -44,13 +44,13 @@ public class LogHTTPSource implements Source<Record<String>> {
         if (server == null) {
             final ServerBuilder sb = Server.builder();
             // TODO: allow tls/ssl
-            sb.http(logHTTPSourceConfig.getPort());
-            sb.maxNumConnections(logHTTPSourceConfig.getMaxConnectionCount());
-            final int threads = logHTTPSourceConfig.getThreadCount();
+            sb.http(sourceConfig.getPort());
+            sb.maxNumConnections(sourceConfig.getMaxConnectionCount());
+            final int threads = sourceConfig.getThreadCount();
             final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
             sb.blockingTaskExecutor(blockingTaskExecutor, true);
             // TODO: attach ThrottlingService
-            final LogHTTPService logHTTPService = new LogHTTPService(logHTTPSourceConfig.getRequestTimeoutInMillis(), buffer);
+            final LogHTTPService logHTTPService = new LogHTTPService(sourceConfig.getRequestTimeoutInMillis(), buffer);
             sb.annotatedService(logHTTPService);
             // TODO: attach HealthCheckService
 
@@ -69,7 +69,7 @@ public class LogHTTPSource implements Source<Record<String>> {
             Thread.currentThread().interrupt();
             throw new RuntimeException(ex);
         }
-        LOG.info("Started log_http source...");
+        LOG.info("Started http source...");
     }
 
     @Override
@@ -88,6 +88,6 @@ public class LogHTTPSource implements Source<Record<String>> {
                 throw new RuntimeException(ex);
             }
         }
-        LOG.info("Stopped log_http source.");
+        LOG.info("Stopped http source.");
     }
 }

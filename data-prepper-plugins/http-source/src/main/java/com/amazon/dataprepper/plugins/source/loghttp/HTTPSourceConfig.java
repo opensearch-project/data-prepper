@@ -14,7 +14,7 @@ package com.amazon.dataprepper.plugins.source.loghttp;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.google.common.base.Preconditions;
 
-public class LogHTTPSourceConfig {
+public class HTTPSourceConfig {
     static final String PORT = "port";
     static final String REQUEST_TIMEOUT = "request_timeout";
     static final String THREAD_COUNT = "thread_count";
@@ -32,11 +32,11 @@ public class LogHTTPSourceConfig {
     private final int maxConnectionCount;
     private final int maxPendingRequests;
 
-    private LogHTTPSourceConfig(final int port,
-                                final int requestTimeoutInMillis,
-                                final int threadCount,
-                                final int maxConnectionCount,
-                                final int maxPendingRequests) {
+    private HTTPSourceConfig(final int port,
+                             final int requestTimeoutInMillis,
+                             final int threadCount,
+                             final int maxConnectionCount,
+                             final int maxPendingRequests) {
         Preconditions.checkArgument(port >= 0 && port < 65535, "port must be between 0 and 65535.");
         Preconditions.checkArgument(requestTimeoutInMillis > 0, "request_timeout must be greater than 0.");
         Preconditions.checkArgument(threadCount > 0, "thread_count must be greater than 0.");
@@ -49,8 +49,8 @@ public class LogHTTPSourceConfig {
         this.maxPendingRequests = maxPendingRequests;
     }
 
-    public static LogHTTPSourceConfig buildConfig(final PluginSetting pluginSetting) {
-        return new LogHTTPSourceConfig(
+    public static HTTPSourceConfig buildConfig(final PluginSetting pluginSetting) {
+        return new HTTPSourceConfig(
                 pluginSetting.getIntegerOrDefault(PORT, DEFAULT_PORT),
                 pluginSetting.getIntegerOrDefault(REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT_MS),
                 pluginSetting.getIntegerOrDefault(THREAD_COUNT, DEFAULT_THREAD_COUNT),

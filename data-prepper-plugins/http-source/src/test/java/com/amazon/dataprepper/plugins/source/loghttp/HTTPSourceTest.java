@@ -44,7 +44,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class LogHTTPSourceTest {
+class HTTPSourceTest {
 
     @Mock
     private ServerBuilder serverBuilder;
@@ -57,7 +57,7 @@ class LogHTTPSourceTest {
 
     private PluginSetting testPluginSetting;
     private BlockingBuffer<Record<String>> testBuffer;
-    private LogHTTPSource logHTTPSourceUnderTest;
+    private HTTPSource HTTPSourceUnderTest;
 
     private BlockingBuffer<Record<String>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
@@ -73,20 +73,20 @@ class LogHTTPSourceTest {
         lenient().when(serverBuilder.build()).thenReturn(server);
         lenient().when(server.start()).thenReturn(completableFuture);
 
-        testPluginSetting = new PluginSetting("log_http", new HashMap<>());
+        testPluginSetting = new PluginSetting("http", new HashMap<>());
         testPluginSetting.setPipelineName("pipeline");
         testBuffer = getBuffer();
-        logHTTPSourceUnderTest = new LogHTTPSource(testPluginSetting);
+        HTTPSourceUnderTest = new HTTPSource(testPluginSetting);
     }
 
     @AfterEach
     public void cleanUp() {
-        logHTTPSourceUnderTest.stop();
+        HTTPSourceUnderTest.stop();
     }
 
     @Test
     public void testHTTPJsonResponse() {
-        logHTTPSourceUnderTest.start(testBuffer);
+        HTTPSourceUnderTest.start(testBuffer);
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
                         .authority("127.0.0.1:2021")
@@ -103,23 +103,23 @@ class LogHTTPSourceTest {
     @Test
     public void testDoubleStart() {
         // starting server
-        logHTTPSourceUnderTest.start(testBuffer);
+        HTTPSourceUnderTest.start(testBuffer);
         // double start server
-        Assertions.assertThrows(IllegalStateException.class, () -> logHTTPSourceUnderTest.start(testBuffer));
+        Assertions.assertThrows(IllegalStateException.class, () -> HTTPSourceUnderTest.start(testBuffer));
     }
 
     @Test
     public void testStartWithEmptyBuffer() {
         testPluginSetting = new PluginSetting(null, Collections.emptyMap());
         testPluginSetting.setPipelineName("pipeline");
-        final LogHTTPSource source = new LogHTTPSource(testPluginSetting);
+        final HTTPSource source = new HTTPSource(testPluginSetting);
         Assertions.assertThrows(IllegalStateException.class, () -> source.start(null));
     }
 
     @Test
     public void testStartWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
         // Prepare
-        final LogHTTPSource source = new LogHTTPSource(testPluginSetting);
+        final HTTPSource source = new HTTPSource(testPluginSetting);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             when(completableFuture.get()).thenThrow(new ExecutionException("", null));
@@ -132,7 +132,7 @@ class LogHTTPSourceTest {
     @Test
     public void testStartWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
         // Prepare
-        final LogHTTPSource source = new LogHTTPSource(testPluginSetting);
+        final HTTPSource source = new HTTPSource(testPluginSetting);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             final NullPointerException expCause = new NullPointerException();
@@ -147,7 +147,7 @@ class LogHTTPSourceTest {
     @Test
     public void testStartWithInterruptedException() throws ExecutionException, InterruptedException {
         // Prepare
-        final LogHTTPSource source = new LogHTTPSource(testPluginSetting);
+        final HTTPSource source = new HTTPSource(testPluginSetting);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             when(completableFuture.get()).thenThrow(new InterruptedException());
@@ -161,7 +161,7 @@ class LogHTTPSourceTest {
     @Test
     public void testStopWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
         // Prepare
-        final LogHTTPSource source = new LogHTTPSource(testPluginSetting);
+        final HTTPSource source = new HTTPSource(testPluginSetting);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             source.start(testBuffer);
@@ -176,7 +176,7 @@ class LogHTTPSourceTest {
     @Test
     public void testStopWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
         // Prepare
-        final LogHTTPSource source = new LogHTTPSource(testPluginSetting);
+        final HTTPSource source = new HTTPSource(testPluginSetting);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             source.start(testBuffer);
@@ -193,7 +193,7 @@ class LogHTTPSourceTest {
     @Test
     public void testStopWithInterruptedException() throws ExecutionException, InterruptedException {
         // Prepare
-        final LogHTTPSource source = new LogHTTPSource(testPluginSetting);
+        final HTTPSource source = new HTTPSource(testPluginSetting);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             source.start(testBuffer);
@@ -209,9 +209,9 @@ class LogHTTPSourceTest {
     @Test
     public void testRunAnotherSourceWithSamePort() {
         // starting server
-        logHTTPSourceUnderTest.start(testBuffer);
+        HTTPSourceUnderTest.start(testBuffer);
 
-        final LogHTTPSource secondSource = new LogHTTPSource(testPluginSetting);
+        final HTTPSource secondSource = new HTTPSource(testPluginSetting);
         //Expect RuntimeException because when port is already in use, BindException is thrown which is not RuntimeException
         Assertions.assertThrows(RuntimeException.class, () -> secondSource.start(testBuffer));
     }

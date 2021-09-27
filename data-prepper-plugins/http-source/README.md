@@ -8,7 +8,7 @@ This is a source plugin that supports HTTP protocol. Currently ONLY support Json
 Example `.yaml` configuration:
 ```
 source:
-    - log_http:
+    - http:
 ```
 
 ## Configurations

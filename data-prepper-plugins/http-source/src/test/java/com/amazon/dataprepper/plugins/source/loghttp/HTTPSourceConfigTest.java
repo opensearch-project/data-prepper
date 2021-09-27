@@ -20,8 +20,8 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
-public class LogHTTPSourceConfigTest {
-    private static final String PLUGIN_NAME = "log_http";
+public class HTTPSourceConfigTest {
+    private static final String PLUGIN_NAME = "http";
     private static final int TEST_PORT = 45600;
     private static final int TEST_REQUEST_TIMEOUT_MS = 777;
     private static final int TEST_THREAD_COUNT = 888;
@@ -31,15 +31,15 @@ public class LogHTTPSourceConfigTest {
     @Test
     public void testDefault() {
         // Prepare
-        final LogHTTPSourceConfig logHTTPSourceConfig = LogHTTPSourceConfig.buildConfig(
+        final HTTPSourceConfig sourceConfig = HTTPSourceConfig.buildConfig(
                 new PluginSetting(PLUGIN_NAME, new HashMap<>()));
 
         // When/Then
-        assertEquals(LogHTTPSourceConfig.DEFAULT_PORT, logHTTPSourceConfig.getPort());
-        assertEquals(LogHTTPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS, logHTTPSourceConfig.getRequestTimeoutInMillis());
-        assertEquals(LogHTTPSourceConfig.DEFAULT_THREAD_COUNT, logHTTPSourceConfig.getThreadCount());
-        assertEquals(LogHTTPSourceConfig.DEFAULT_MAX_CONNECTION_COUNT, logHTTPSourceConfig.getMaxConnectionCount());
-        assertEquals(LogHTTPSourceConfig.DEFAULT_MAX_PENDING_REQUESTS, logHTTPSourceConfig.getMaxPendingRequests());
+        assertEquals(HTTPSourceConfig.DEFAULT_PORT, sourceConfig.getPort());
+        assertEquals(HTTPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS, sourceConfig.getRequestTimeoutInMillis());
+        assertEquals(HTTPSourceConfig.DEFAULT_THREAD_COUNT, sourceConfig.getThreadCount());
+        assertEquals(HTTPSourceConfig.DEFAULT_MAX_CONNECTION_COUNT, sourceConfig.getMaxConnectionCount());
+        assertEquals(HTTPSourceConfig.DEFAULT_MAX_PENDING_REQUESTS, sourceConfig.getMaxPendingRequests());
     }
 
     @Test
@@ -52,14 +52,14 @@ public class LogHTTPSourceConfigTest {
                 TEST_MAX_CONNECTION_COUNT,
                 TEST_MAX_PENDING_REQUESTS
         );
-        final LogHTTPSourceConfig logHTTPSourceConfig = LogHTTPSourceConfig.buildConfig(pluginSetting);
+        final HTTPSourceConfig sourceConfig = HTTPSourceConfig.buildConfig(pluginSetting);
 
         // When/Then
-        assertEquals(TEST_PORT, logHTTPSourceConfig.getPort());
-        assertEquals(TEST_REQUEST_TIMEOUT_MS, logHTTPSourceConfig.getRequestTimeoutInMillis());
-        assertEquals(TEST_THREAD_COUNT, logHTTPSourceConfig.getThreadCount());
-        assertEquals(TEST_MAX_CONNECTION_COUNT, logHTTPSourceConfig.getMaxConnectionCount());
-        assertEquals(TEST_MAX_PENDING_REQUESTS, logHTTPSourceConfig.getMaxPendingRequests());
+        assertEquals(TEST_PORT, sourceConfig.getPort());
+        assertEquals(TEST_REQUEST_TIMEOUT_MS, sourceConfig.getRequestTimeoutInMillis());
+        assertEquals(TEST_THREAD_COUNT, sourceConfig.getThreadCount());
+        assertEquals(TEST_MAX_CONNECTION_COUNT, sourceConfig.getMaxConnectionCount());
+        assertEquals(TEST_MAX_PENDING_REQUESTS, sourceConfig.getMaxPendingRequests());
     }
 
     @Test
@@ -71,7 +71,7 @@ public class LogHTTPSourceConfigTest {
                 TEST_MAX_CONNECTION_COUNT,
                 TEST_MAX_PENDING_REQUESTS
         );
-        assertThrows(IllegalArgumentException.class, () -> LogHTTPSourceConfig.buildConfig(invalidPluginSetting));
+        assertThrows(IllegalArgumentException.class, () -> HTTPSourceConfig.buildConfig(invalidPluginSetting));
     }
 
     @Test
@@ -83,7 +83,7 @@ public class LogHTTPSourceConfigTest {
                 TEST_MAX_CONNECTION_COUNT,
                 TEST_MAX_PENDING_REQUESTS
         );
-        assertThrows(IllegalArgumentException.class, () -> LogHTTPSourceConfig.buildConfig(invalidPluginSetting));
+        assertThrows(IllegalArgumentException.class, () -> HTTPSourceConfig.buildConfig(invalidPluginSetting));
     }
 
     @Test
@@ -95,7 +95,7 @@ public class LogHTTPSourceConfigTest {
                 TEST_MAX_CONNECTION_COUNT,
                 TEST_MAX_PENDING_REQUESTS
         );
-        assertThrows(IllegalArgumentException.class, () -> LogHTTPSourceConfig.buildConfig(invalidPluginSetting));
+        assertThrows(IllegalArgumentException.class, () -> HTTPSourceConfig.buildConfig(invalidPluginSetting));
     }
 
     @Test
@@ -107,7 +107,7 @@ public class LogHTTPSourceConfigTest {
                 0,
                 TEST_MAX_PENDING_REQUESTS
         );
-        assertThrows(IllegalArgumentException.class, () -> LogHTTPSourceConfig.buildConfig(invalidPluginSetting));
+        assertThrows(IllegalArgumentException.class, () -> HTTPSourceConfig.buildConfig(invalidPluginSetting));
     }
 
     @Test
@@ -119,7 +119,7 @@ public class LogHTTPSourceConfigTest {
                 TEST_MAX_CONNECTION_COUNT,
                 0
         );
-        assertThrows(IllegalArgumentException.class, () -> LogHTTPSourceConfig.buildConfig(invalidPluginSetting));
+        assertThrows(IllegalArgumentException.class, () -> HTTPSourceConfig.buildConfig(invalidPluginSetting));
     }
 
     private PluginSetting completePluginSettingForLogHTTPSource(final int port,
@@ -129,11 +129,11 @@ public class LogHTTPSourceConfigTest {
                                                                 final int maxPendingRequests) {
         final Map<String, Object> settings = new HashMap<>();
         // TODO: add parameters on tls/ssl
-        settings.put(LogHTTPSourceConfig.PORT, port);
-        settings.put(LogHTTPSourceConfig.REQUEST_TIMEOUT, requestTimeoutInMillis);
-        settings.put(LogHTTPSourceConfig.THREAD_COUNT, threadCount);
-        settings.put(LogHTTPSourceConfig.MAX_CONNECTION_COUNT, maxConnectionCount);
-        settings.put(LogHTTPSourceConfig.MAX_PENDING_REQUESTS, maxPendingRequests);
+        settings.put(HTTPSourceConfig.PORT, port);
+        settings.put(HTTPSourceConfig.REQUEST_TIMEOUT, requestTimeoutInMillis);
+        settings.put(HTTPSourceConfig.THREAD_COUNT, threadCount);
+        settings.put(HTTPSourceConfig.MAX_CONNECTION_COUNT, maxConnectionCount);
+        settings.put(HTTPSourceConfig.MAX_PENDING_REQUESTS, maxPendingRequests);
         return new PluginSetting(PLUGIN_NAME, settings);
     }
 }
