@@ -36,4 +36,5 @@ include 'data-prepper-plugins:otel-trace-source'
 include 'data-prepper-plugins:peer-forwarder'
 include 'data-prepper-plugins:blocking-buffer'
 include 'data-prepper-plugins:log-http-source'
+include 'data-prepper-plugins:grok-prepper'
 
