@@ -38,8 +38,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertThrows;
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.lenient;
@@ -92,14 +90,14 @@ class LogHTTPSourceTest {
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
                         .authority("127.0.0.1:2021")
-                        .method(HttpMethod.GET)
+                        .method(HttpMethod.POST)
                         .path("/log/ingest")
                         .contentType(MediaType.JSON_UTF_8)
                         .build(),
                 HttpData.ofUtf8("[{\"log\": \"somelog\"}]"))
                 .aggregate()
                 .whenComplete((i, ex) -> assertThat(i.status().code()).isEqualTo(200)).join();
-        assertFalse(testBuffer.isEmpty());
+        Assertions.assertFalse(testBuffer.isEmpty());
     }
 
     @Test
@@ -127,7 +125,7 @@ class LogHTTPSourceTest {
             when(completableFuture.get()).thenThrow(new ExecutionException("", null));
 
             // When/Then
-            assertThrows(RuntimeException.class, () -> source.start(testBuffer));
+            Assertions.assertThrows(RuntimeException.class, () -> source.start(testBuffer));
         }
     }
 
@@ -141,8 +139,8 @@ class LogHTTPSourceTest {
             when(completableFuture.get()).thenThrow(new ExecutionException("", expCause));
 
             // When/Then
-            final RuntimeException ex = assertThrows(RuntimeException.class, () -> source.start(testBuffer));
-            assertEquals(expCause, ex);
+            final RuntimeException ex = Assertions.assertThrows(RuntimeException.class, () -> source.start(testBuffer));
+            Assertions.assertEquals(expCause, ex);
         }
     }
 
@@ -155,8 +153,8 @@ class LogHTTPSourceTest {
             when(completableFuture.get()).thenThrow(new InterruptedException());
 
             // When/Then
-            assertThrows(RuntimeException.class, () -> source.start(testBuffer));
-            assertTrue(Thread.interrupted());
+            Assertions.assertThrows(RuntimeException.class, () -> source.start(testBuffer));
+            Assertions.assertTrue(Thread.interrupted());
         }
     }
 
@@ -171,7 +169,7 @@ class LogHTTPSourceTest {
 
             // When/Then
             when(completableFuture.get()).thenThrow(new ExecutionException("", null));
-            assertThrows(RuntimeException.class, source::stop);
+            Assertions.assertThrows(RuntimeException.class, source::stop);
         }
     }
 
@@ -187,8 +185,8 @@ class LogHTTPSourceTest {
             when(completableFuture.get()).thenThrow(new ExecutionException("", expCause));
 
             // When/Then
-            final RuntimeException ex = assertThrows(RuntimeException.class, source::stop);
-            assertEquals(expCause, ex);
+            final RuntimeException ex = Assertions.assertThrows(RuntimeException.class, source::stop);
+            Assertions.assertEquals(expCause, ex);
         }
     }
 
@@ -203,8 +201,8 @@ class LogHTTPSourceTest {
             when(completableFuture.get()).thenThrow(new InterruptedException());
 
             // When/Then
-            assertThrows(RuntimeException.class, source::stop);
-            assertTrue(Thread.interrupted());
+            Assertions.assertThrows(RuntimeException.class, source::stop);
+            Assertions.assertTrue(Thread.interrupted());
         }
     }
 
