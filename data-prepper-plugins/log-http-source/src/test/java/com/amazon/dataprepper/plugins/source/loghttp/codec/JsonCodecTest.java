@@ -21,8 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class JsonCodecTest {
-    private final HttpData goodTestData = HttpData.ofUtf8("[{\"a\":\"b\"}]");
-    private final HttpData badTestData = HttpData.ofUtf8("{");
+    private final HttpData goodTestData = HttpData.ofUtf8("[{\"a\":\"b\"}, {\"c\":\"d\"}]");
+    private final HttpData badTestDataJsonLine = HttpData.ofUtf8("{\"a\":\"b\"}");
+    private final HttpData badTestDataMultiJsonLines = HttpData.ofUtf8("{\"a\":\"b\"}{\"c\":\"d\"}");
+    private final HttpData badTestDataNonJson = HttpData.ofUtf8("non json content");
     private final JsonCodec objectUnderTest = new JsonCodec();
 
     @Test
@@ -31,12 +33,22 @@ class JsonCodecTest {
         List<String> res = objectUnderTest.parse(goodTestData);
 
         // Then
-        assertEquals(1, res.size());
+        assertEquals(2, res.size());
         assertEquals("{\"a\":\"b\"}", res.get(0));
     }
 
     @Test
-    public void testParseFailure() {
-        assertThrows(IOException.class, () -> objectUnderTest.parse(badTestData));
+    public void testParseJsonLineFailure() {
+        assertThrows(IOException.class, () -> objectUnderTest.parse(badTestDataJsonLine));
+    }
+
+    @Test
+    public void testParseMultiJsonLinesFailure() {
+        assertThrows(IOException.class, () -> objectUnderTest.parse(badTestDataMultiJsonLines));
+    }
+
+    @Test
+    public void testParseNonJsonFailure() {
+        assertThrows(IOException.class, () -> objectUnderTest.parse(badTestDataNonJson));
     }
 }
