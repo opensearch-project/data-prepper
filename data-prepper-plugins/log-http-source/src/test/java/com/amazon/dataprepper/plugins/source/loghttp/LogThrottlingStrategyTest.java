@@ -25,6 +25,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @ExtendWith(MockitoExtension.class)
 class LogThrottlingStrategyTest {
@@ -43,6 +44,11 @@ class LogThrottlingStrategyTest {
     public void setUp() {
         testQueue = new LinkedBlockingQueue<>();
         objUnderTest = new LogThrottlingStrategy(TEST_MAX_PENDING_REQUEST, testQueue);
+    }
+
+    @Test
+    public void testNullWorkQueue() {
+        assertThrows(NullPointerException.class, () -> new LogThrottlingStrategy(TEST_MAX_PENDING_REQUEST, null));
     }
 
     @Test

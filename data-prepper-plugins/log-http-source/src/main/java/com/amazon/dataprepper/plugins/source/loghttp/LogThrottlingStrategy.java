@@ -16,6 +16,8 @@ import com.linecorp.armeria.common.util.UnmodifiableFuture;
 import com.linecorp.armeria.server.ServiceRequestContext;
 import com.linecorp.armeria.server.throttling.ThrottlingStrategy;
 
+import javax.annotation.Nonnull;
+import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletionStage;
 
@@ -24,6 +26,7 @@ public class LogThrottlingStrategy extends ThrottlingStrategy<HttpRequest> {
     private final BlockingQueue<Runnable> queue;
 
     public LogThrottlingStrategy(final int maxPendingRequests, final BlockingQueue<Runnable> queue) {
+        Objects.requireNonNull(queue);
         this.maxPendingRequests = maxPendingRequests;
         this.queue = queue;
     }
