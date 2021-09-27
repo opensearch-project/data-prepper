@@ -38,12 +38,12 @@ class LogThrottlingStrategyTest {
     @Mock
     private HttpRequest httpRequest;
 
-    private LogThrottlingStrategy objUnderTest;
+    private LogThrottlingStrategy objectUnderTest;
 
     @BeforeEach
     public void setUp() {
         testQueue = new LinkedBlockingQueue<>();
-        objUnderTest = new LogThrottlingStrategy(TEST_MAX_PENDING_REQUEST, testQueue);
+        objectUnderTest = new LogThrottlingStrategy(TEST_MAX_PENDING_REQUEST, testQueue);
     }
 
     @Test
@@ -54,7 +54,7 @@ class LogThrottlingStrategyTest {
     @Test
     public void testAcceptSuccess() {
         // When
-        CompletionStage<Boolean> completionStage = objUnderTest.accept(serviceRequestContext, httpRequest);
+        CompletionStage<Boolean> completionStage = objectUnderTest.accept(serviceRequestContext, httpRequest);
 
         // Then
         assertEquals(UnmodifiableFuture.completedFuture(true), completionStage);
@@ -66,7 +66,7 @@ class LogThrottlingStrategyTest {
         testQueue.add(() -> { });
 
         // When
-        CompletionStage<Boolean> completionStage = objUnderTest.accept(serviceRequestContext, httpRequest);
+        CompletionStage<Boolean> completionStage = objectUnderTest.accept(serviceRequestContext, httpRequest);
 
         // Then
         assertEquals(UnmodifiableFuture.completedFuture(false), completionStage);

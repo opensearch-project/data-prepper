@@ -23,12 +23,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class JsonCodecTest {
     private final HttpData goodTestData = HttpData.ofUtf8("[{\"a\":\"b\"}]");
     private final HttpData badTestData = HttpData.ofUtf8("{");
-    private final JsonCodec objUnderTest = new JsonCodec();
+    private final JsonCodec objectUnderTest = new JsonCodec();
 
     @Test
     public void testParseSuccess() throws IOException {
         // When
-        List<String> res = objUnderTest.parse(goodTestData);
+        List<String> res = objectUnderTest.parse(goodTestData);
 
         // Then
         assertEquals(1, res.size());
@@ -37,6 +37,6 @@ class JsonCodecTest {
 
     @Test
     public void testParseFailure() {
-        assertThrows(IOException.class, () -> objUnderTest.parse(badTestData));
+        assertThrows(IOException.class, () -> objectUnderTest.parse(badTestData));
     }
 }

@@ -38,15 +38,15 @@ class LogThrottlingRejectHandlerTest {
     @Mock
     private HttpRequest httpRequest;
 
-    private LogThrottlingRejectHandler objUnderTest;
+    private LogThrottlingRejectHandler objectUnderTest;
 
     @Test
     public void testHandleRejected() throws Exception {
         // Prepare
-        objUnderTest = new LogThrottlingRejectHandler(TEST_MAX_PENDING_REQUEST);
+        objectUnderTest = new LogThrottlingRejectHandler(TEST_MAX_PENDING_REQUEST);
 
         // When
-        HttpResponse httpResponse = objUnderTest.handleRejected(service, serviceRequestContext, httpRequest, new Throwable());
+        HttpResponse httpResponse = objectUnderTest.handleRejected(service, serviceRequestContext, httpRequest, new Throwable());
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
 
         // Then
