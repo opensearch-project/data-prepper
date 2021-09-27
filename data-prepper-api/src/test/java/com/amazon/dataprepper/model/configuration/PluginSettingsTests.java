@@ -13,9 +13,12 @@ package com.amazon.dataprepper.model.configuration;
 
 import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
+import org.junit.Before;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -40,12 +43,43 @@ public class PluginSettingsTests {
     private static final long TEST_LONG_DEFAULT_VALUE = 1000L;
     private static final long TEST_LONG_VALUE = TEST_LONG_DEFAULT_VALUE + 1;
 
+    private static final List<String> TEST_STRINGLIST_VALUE = new ArrayList<>();
+
+    private static final Map<String, String> TEST_STRINGMAP_VALUE = new HashMap<>();
+
+    private static final Map<String, List<String>> TEST_STRINGLISTMAP_VALUE = new HashMap<>();
+
     private static final String TEST_INT_ATTRIBUTE = "int-attribute";
     private static final String TEST_STRING_ATTRIBUTE = "string-attribute";
+    private static final String TEST_STRINGLIST_ATTRIBUTE = "list-attribute";
+    private static final String TEST_STRINGMAP_ATTRIBUTE = "map-attribute";
+    private static final String TEST_STRINGLISTMAP_ATTRIBUTE = "list-map-attribute";
     private static final String TEST_BOOL_ATTRIBUTE = "bool-attribute";
     private static final String TEST_LONG_ATTRIBUTE = "long-attribute";
     private static final String NOT_PRESENT_ATTRIBUTE = "not-present";
 
+    @Before
+    public void setup() {
+        TEST_STRINGLIST_VALUE.add("value1");
+        TEST_STRINGLIST_VALUE.add("value2");
+        TEST_STRINGLIST_VALUE.add("value3");
+
+        TEST_STRINGMAP_VALUE.put("key1", "value1");
+        TEST_STRINGMAP_VALUE.put("key2", "value2");
+        TEST_STRINGMAP_VALUE.put("key3", "value3");
+
+        final int NUM_LISTS = 3;
+
+        for (int i = 0; i < NUM_LISTS; i++) {
+            final List<String> TEST_STRINGLISTMAP_VALUE_LIST = new ArrayList<>();
+            TEST_STRINGLISTMAP_VALUE_LIST.add("value_1" + String.valueOf(i));
+            TEST_STRINGLISTMAP_VALUE_LIST.add("value_2" + String.valueOf(i));
+            TEST_STRINGLISTMAP_VALUE_LIST.add("value_3" + String.valueOf(i));
+
+            TEST_STRINGLISTMAP_VALUE.put("key_" + String.valueOf(i), TEST_STRINGLISTMAP_VALUE_LIST);
+        }
+
+    }
 
     @Test
     public void testPluginSetting() {
@@ -102,6 +136,30 @@ public class PluginSettingsTests {
 
         assertThat(pluginSetting.getStringOrDefault(TEST_STRING_ATTRIBUTE, TEST_STRING_DEFAULT_VALUE),
                 is(equalTo(TEST_STRING_VALUE)));
+    }
+
+    @Test
+    public void testGetTypedList() {
+        final Map<String, Object> TEST_SETTINGS = ImmutableMap.of(TEST_STRINGLIST_ATTRIBUTE, TEST_STRINGLIST_VALUE);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS);
+
+        assertThat(pluginSetting.getTypedList(TEST_STRINGLIST_ATTRIBUTE, String.class), is(equalTo(TEST_STRINGLIST_VALUE)));
+    }
+
+    @Test
+    public void testGetTypedMap() {
+        final Map<String, Object> TEST_SETTINGS = ImmutableMap.of(TEST_STRINGMAP_ATTRIBUTE, TEST_STRINGMAP_VALUE);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS);
+
+        assertThat(pluginSetting.getTypedMap(TEST_STRINGMAP_ATTRIBUTE, String.class, String.class), is(equalTo(TEST_STRINGMAP_VALUE)));
+    }
+
+    @Test
+    public void testGetTypedListMap() {
+        final Map<String, Object> TEST_SETTINGS = ImmutableMap.of(TEST_STRINGLISTMAP_ATTRIBUTE, TEST_STRINGLISTMAP_VALUE);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS);
+
+        assertThat(pluginSetting.getTypedListMap(TEST_STRINGLISTMAP_ATTRIBUTE, String.class, String.class), is(equalTo(TEST_STRINGLISTMAP_VALUE)));
     }
 
     @Test
@@ -177,6 +235,45 @@ public class PluginSettingsTests {
 
         // test attributes that exist when passing in a different default value
         assertThat(pluginSetting.getStringOrDefault(TEST_STRING_NULL_ATTRIBUTE, TEST_STRING_DEFAULT_VALUE), nullValue());
+    }
+
+    /**
+     * Request attributes are present with null values, expect nulls to be returned
+     */
+    @Test
+    public void testGetTypedList_AsNull() {
+        final String TEST_STRINGLIST_NULL_ATTRIBUTE = "typedlist-null-attribute";
+        final Map<String, Object> TEST_SETTINGS_AS_NULL = new HashMap<>();
+        TEST_SETTINGS_AS_NULL.put(TEST_STRINGLIST_NULL_ATTRIBUTE, null);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS_AS_NULL);
+
+        assertThat(pluginSetting.getTypedList(TEST_STRINGLIST_NULL_ATTRIBUTE, String.class), nullValue());
+    }
+
+    /**
+     * Request attributes are present with null values, expect nulls to be returned
+     */
+    @Test
+    public void testGetTypedMap_AsNull() {
+        final String TEST_STRINGMAP_NULL_ATTRIBUTE = "typedgmap-null-attribute";
+        final Map<String, Object> TEST_SETTINGS_AS_NULL = new HashMap<>();
+        TEST_SETTINGS_AS_NULL.put(TEST_STRINGMAP_NULL_ATTRIBUTE, null);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS_AS_NULL);
+
+        assertThat(pluginSetting.getTypedMap(TEST_STRINGMAP_NULL_ATTRIBUTE, String.class, String.class), nullValue());
+    }
+
+    /**
+     * Request attributes are present with null values, expect nulls to be returned
+     */
+    @Test
+    public void testGetTypedListMap_AsNull() {
+        final String TEST_STRINGLISTMAP_NULL_ATTRIBUTE = "typedlistmap-null-attribute";
+        final Map<String, Object> TEST_SETTINGS_AS_NULL = new HashMap<>();
+        TEST_SETTINGS_AS_NULL.put(TEST_STRINGLISTMAP_NULL_ATTRIBUTE, null);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS_AS_NULL);
+
+        assertThat(pluginSetting.getTypedListMap(TEST_STRINGLISTMAP_NULL_ATTRIBUTE, String.class, String.class), nullValue());
     }
 
     /**
@@ -262,6 +359,39 @@ public class PluginSettingsTests {
      * Requested attributes are not present, expect default values to be returned
      */
     @Test
+    public void testGetTypedList_NotPresent() {
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, null);
+
+        assertThat(pluginSetting.getTypedList(NOT_PRESENT_ATTRIBUTE, String.class),
+                is(equalTo(Collections.emptyList())));
+    }
+
+    /**
+     * Requested attributes are not present, expect default values to be returned
+     */
+    @Test
+    public void testGetStringMapOrDefault_NotPresent() {
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, null);
+
+        assertThat(pluginSetting.getTypedMap(NOT_PRESENT_ATTRIBUTE, String.class, String.class),
+                is(equalTo(Collections.emptyMap())));
+    }
+
+    /**
+     * Requested attributes are not present, expect default values to be returned
+     */
+    @Test
+    public void testGetTypedListMap_NotPresent() {
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, null);
+
+        assertThat(pluginSetting.getTypedListMap(NOT_PRESENT_ATTRIBUTE, String.class, String.class),
+                is(equalTo(Collections.emptyMap())));
+    }
+
+    /**
+     * Requested attributes are not present, expect default values to be returned
+     */
+    @Test
     public void testGetBooleanOrDefault_NotPresent() {
         final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, null);
 
@@ -295,6 +425,105 @@ public class PluginSettingsTests {
         final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS_WITH_UNSUPPORTED_TYPE);
 
         assertThrows(IllegalArgumentException.class, () -> pluginSetting.getStringOrDefault(TEST_STRING_ATTRIBUTE, TEST_STRING_DEFAULT_VALUE));
+    }
+
+    @Test
+    public void testGetTypedList_UnsupportedType() {
+        final String UNSUPPORTED_TYPE = "not-stringlist";
+        final Map<String, Object> TEST_SETTINGS_WITH_UNSUPPORTED_TYPE = ImmutableMap.of(TEST_STRINGLIST_ATTRIBUTE, UNSUPPORTED_TYPE);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS_WITH_UNSUPPORTED_TYPE);
+
+        assertThrows(IllegalArgumentException.class, () -> pluginSetting.getTypedList(TEST_STRINGLIST_ATTRIBUTE, String.class));
+    }
+
+    @Test
+    public void testGetTypedList_UnsupportedListType() {
+        final List<Integer> UNSUPPORTED_TYPE = new ArrayList<>();
+        UNSUPPORTED_TYPE.add(1);
+        UNSUPPORTED_TYPE.add(2);
+        UNSUPPORTED_TYPE.add(3);
+
+        final Map<String, Object> TEST_SETTINGS_WITH_UNSUPPORTED_TYPE = ImmutableMap.of(TEST_STRINGLIST_ATTRIBUTE, UNSUPPORTED_TYPE);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS_WITH_UNSUPPORTED_TYPE);
+
+        assertThrows(IllegalArgumentException.class, () -> pluginSetting.getTypedList(TEST_STRINGLIST_ATTRIBUTE, String.class));
+    }
+
+    @Test
+    public void testGetTypedMap_UnsupportedType() {
+        final String UNSUPPORTED_TYPE = "not-stringmap";
+        final Map<String, Object> TEST_SETTINGS_WITH_UNSUPPORTED_TYPE = ImmutableMap.of(TEST_STRINGMAP_ATTRIBUTE, UNSUPPORTED_TYPE);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS_WITH_UNSUPPORTED_TYPE);
+
+        assertThrows(IllegalArgumentException.class, () -> pluginSetting.getTypedMap(TEST_STRINGMAP_ATTRIBUTE, String.class, String.class));
+    }
+
+
+    @Test
+    public void testGetTypedMap_UnsupportedMapValueType() {
+        final Map<String, Integer> UNSUPPORTED_TYPE = new HashMap<>();
+        UNSUPPORTED_TYPE.put("key1", 1);
+        UNSUPPORTED_TYPE.put("key2", 2);
+        UNSUPPORTED_TYPE.put("key3", 3);
+
+        final Map<String, Object> TEST_SETTINGS_WITH_UNSUPPORTED_TYPE = ImmutableMap.of(TEST_STRINGMAP_ATTRIBUTE, UNSUPPORTED_TYPE);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS_WITH_UNSUPPORTED_TYPE);
+
+        assertThrows(IllegalArgumentException.class, () -> pluginSetting.getTypedMap(TEST_STRINGMAP_ATTRIBUTE, String.class, String.class));
+    }
+
+    @Test
+    public void testGetTypedListMap_UnsupportedType() {
+        final String UNSUPPORTED_TYPE = "not-stringmap";
+        final Map<String, Object> TEST_SETTINGS_WITH_UNSUPPORTED_TYPE = ImmutableMap.of(TEST_STRINGLISTMAP_ATTRIBUTE, UNSUPPORTED_TYPE);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS_WITH_UNSUPPORTED_TYPE);
+
+        assertThrows(IllegalArgumentException.class, () -> pluginSetting.getTypedListMap(TEST_STRINGLISTMAP_ATTRIBUTE, String.class, String.class));
+    }
+
+    @Test
+    public void testGetTypedListMap_UnsupportedMapValueType() {
+        final Map<String, String> UNSUPPORTED_TYPE = new HashMap<>();
+        UNSUPPORTED_TYPE.put("key1", "value1");
+        UNSUPPORTED_TYPE.put("key2", "value2");
+        UNSUPPORTED_TYPE.put("key3", "value3");
+
+        final Map<String, Object> TEST_SETTINGS_WITH_UNSUPPORTED_TYPE = ImmutableMap.of(TEST_STRINGLISTMAP_ATTRIBUTE, UNSUPPORTED_TYPE);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS_WITH_UNSUPPORTED_TYPE);
+
+        assertThrows(IllegalArgumentException.class, () -> pluginSetting.getTypedListMap(TEST_STRINGLISTMAP_ATTRIBUTE, String.class, String.class));
+    }
+
+    @Test
+    public void testGetTypedListMap_UnsupportedMapKeyType() {
+        final Map<Integer, List<String>> UNSUPPORTED_TYPE = new HashMap<>();
+        final List<String> STRING_LIST_VALUE = new ArrayList<>();
+        STRING_LIST_VALUE.add("value1");
+
+        UNSUPPORTED_TYPE.put(1, STRING_LIST_VALUE);
+        UNSUPPORTED_TYPE.put(2, STRING_LIST_VALUE);
+        UNSUPPORTED_TYPE.put(3, STRING_LIST_VALUE);
+
+        final Map<String, Object> TEST_SETTINGS_WITH_UNSUPPORTED_TYPE = ImmutableMap.of(TEST_STRINGLISTMAP_ATTRIBUTE, UNSUPPORTED_TYPE);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS_WITH_UNSUPPORTED_TYPE);
+
+        assertThrows(IllegalArgumentException.class, () -> pluginSetting.getTypedListMap(TEST_STRINGLISTMAP_ATTRIBUTE, String.class, String.class));
+    }
+
+    @Test
+    public void testGetTypedListMap_UnsupportedMapValueListType() {
+        final Map<String, List<Integer>> UNSUPPORTED_TYPE = new HashMap<>();
+        final List<Integer> INT_LIST_VALUE = new ArrayList<>();
+        INT_LIST_VALUE.add(1);
+
+        UNSUPPORTED_TYPE.put("value1", INT_LIST_VALUE);
+        UNSUPPORTED_TYPE.put("value2", INT_LIST_VALUE);
+        UNSUPPORTED_TYPE.put("value3", INT_LIST_VALUE);
+
+        final Map<String, Object> TEST_SETTINGS_WITH_UNSUPPORTED_TYPE = ImmutableMap.of(TEST_STRINGLISTMAP_ATTRIBUTE, UNSUPPORTED_TYPE);
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, TEST_SETTINGS_WITH_UNSUPPORTED_TYPE);
+
+        assertThrows(IllegalArgumentException.class, () -> pluginSetting.getTypedListMap(TEST_STRINGLISTMAP_ATTRIBUTE, String.class, String.class));
     }
 
     @Test
