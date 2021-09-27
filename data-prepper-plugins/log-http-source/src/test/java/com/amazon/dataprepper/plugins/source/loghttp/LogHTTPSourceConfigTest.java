@@ -21,7 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
 public class LogHTTPSourceConfigTest {
-    private static final String PLUGIN_NAME = "log_http_source";
+    private static final String PLUGIN_NAME = "log_http";
     private static final int TEST_PORT = 45600;
     private static final int TEST_REQUEST_TIMEOUT_MS = 777;
     private static final int TEST_THREAD_COUNT = 888;

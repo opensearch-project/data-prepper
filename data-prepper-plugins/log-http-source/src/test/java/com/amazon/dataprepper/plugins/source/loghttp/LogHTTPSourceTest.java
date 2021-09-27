@@ -73,7 +73,7 @@ class LogHTTPSourceTest {
         lenient().when(serverBuilder.build()).thenReturn(server);
         lenient().when(server.start()).thenReturn(completableFuture);
 
-        testPluginSetting = new PluginSetting("log_http_source", new HashMap<>());
+        testPluginSetting = new PluginSetting("log_http", new HashMap<>());
         testPluginSetting.setPipelineName("pipeline");
         testBuffer = getBuffer();
         logHTTPSourceUnderTest = new LogHTTPSource(testPluginSetting);

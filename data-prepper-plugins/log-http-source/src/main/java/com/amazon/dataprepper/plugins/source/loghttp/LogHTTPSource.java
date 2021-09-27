@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
-@DataPrepperPlugin(name = "log_http_source", type = PluginType.SOURCE)
+@DataPrepperPlugin(name = "log_http", type = PluginType.SOURCE)
 public class LogHTTPSource implements Source<Record<String>> {
     private static final Logger LOG = LoggerFactory.getLogger(LogHTTPSource.class);
 
@@ -69,7 +69,7 @@ public class LogHTTPSource implements Source<Record<String>> {
             Thread.currentThread().interrupt();
             throw new RuntimeException(ex);
         }
-        LOG.info("Started log_http_source...");
+        LOG.info("Started log_http source...");
     }
 
     @Override
@@ -88,6 +88,6 @@ public class LogHTTPSource implements Source<Record<String>> {
                 throw new RuntimeException(ex);
             }
         }
-        LOG.info("Stopped log_http_source.");
+        LOG.info("Stopped log_http source.");
     }
 }
