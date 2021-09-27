@@ -1,7 +1,7 @@
 # Log HTTP Source
 
 This is a source plugin that supports HTTP protocol. Currently ONLY support Json UTF-8 codec for incoming request, e.g. 
-`[{"key1", "value1"}, {"key2", "value2"}]`.
+`[{"key1": "value1"}, {"key2": "value2"}]`.
 
 
 ## Usages
