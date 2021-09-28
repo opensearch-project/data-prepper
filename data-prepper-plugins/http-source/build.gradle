@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+}
+
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:blocking-buffer')
+    implementation "com.linecorp.armeria:armeria:1.9.2"
+    testImplementation 'org.assertj:assertj-core:3.20.2'
+    testImplementation "org.hamcrest:hamcrest:2.2"
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule { //in addition to core projects rule
+            limit {
+                minimum = 0.90
+            }
+        }
+    }
+}
