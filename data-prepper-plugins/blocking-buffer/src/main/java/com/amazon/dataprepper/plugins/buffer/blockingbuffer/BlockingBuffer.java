@@ -15,6 +15,7 @@ import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.AbstractBuffer;
 import com.amazon.dataprepper.model.buffer.Buffer;
+import com.amazon.dataprepper.model.buffer.PayloadSizeOverflowException;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.CheckpointState;
@@ -54,6 +55,7 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     private static final String ATTRIBUTE_BUFFER_CAPACITY = "buffer_size";
     private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
 
+    private final int bufferCapacity;
     private final int batchSize;
     private final BlockingQueue<T> blockingQueue;
     private final String pipelineName;
@@ -69,6 +71,7 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
      */
     public BlockingBuffer(final int bufferCapacity, final int batchSize, final String pipelineName) {
         super("BlockingBuffer", pipelineName);
+        this.bufferCapacity = bufferCapacity;
         this.batchSize = batchSize;
         this.blockingQueue = new LinkedBlockingQueue<>(bufferCapacity);
         this.capacitySemaphore = new Semaphore(bufferCapacity);
@@ -107,6 +110,32 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
         } catch (InterruptedException ex) {
             LOG.error("Pipeline [{}] - Buffer is full, interrupted while waiting to write the record", pipelineName, ex);
             throw new TimeoutException("Buffer is full, timed out waiting for a slot");
+        }
+    }
+
+    @Override
+    public void doWriteAll(Collection<T> records, int timeoutInMillis) throws Exception {
+        final int size = records.size();
+        if (size > bufferCapacity) {
+            throw new PayloadSizeOverflowException(format("Buffer capacity too small for the size of records: %d", size));
+        }
+        try {
+            final boolean permitAcquired = capacitySemaphore.tryAcquire(size, timeoutInMillis, TimeUnit.MILLISECONDS);
+            if (!permitAcquired) {
+                throw new TimeoutException(
+                        format("Pipeline [%s] - Buffer does not have enough capacity left for the size of records: %d, " +
+                                        "timed out waiting for slots.",
+                        pipelineName, size));
+            }
+            blockingQueue.addAll(records);
+        } catch (InterruptedException ex) {
+            LOG.error("Pipeline [{}] - Buffer does not have enough capacity left for the size of records: {}, " +
+                            "interrupted while waiting to write the records",
+                    pipelineName, size, ex);
+            throw new TimeoutException(
+                    format("Pipeline [%s] - Buffer does not have enough capacity left for the size of records: %d, " +
+                            "timed out waiting for slots.",
+                    pipelineName, size));
         }
     }
 
