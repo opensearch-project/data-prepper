@@ -22,6 +22,7 @@ import com.linecorp.armeria.server.ServerBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
@@ -46,11 +47,14 @@ public class HTTPSource implements Source<Record<String>> {
             // TODO: allow tls/ssl
             sb.http(sourceConfig.getPort());
             sb.maxNumConnections(sourceConfig.getMaxConnectionCount());
+            final int requestTimeoutInMillis = sourceConfig.getRequestTimeoutInMillis();
+            // Allow 2*requestTimeoutInMillis to accommodate non-blocking operations other than buffer writing.
+            sb.requestTimeout(Duration.ofMillis(2*requestTimeoutInMillis));
             final int threads = sourceConfig.getThreadCount();
             final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
             sb.blockingTaskExecutor(blockingTaskExecutor, true);
             // TODO: attach ThrottlingService
-            final LogHTTPService logHTTPService = new LogHTTPService(sourceConfig.getRequestTimeoutInMillis(), buffer);
+            final LogHTTPService logHTTPService = new LogHTTPService(requestTimeoutInMillis, buffer);
             sb.annotatedService(logHTTPService);
             // TODO: attach HealthCheckService
 
