@@ -33,20 +33,26 @@ import java.util.concurrent.TimeoutException;
 import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.Statistic;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 public class AbstractBufferTest {
+    private static final String BUFFER_NAME = "testBuffer";
+    private static final String PIPELINE_NAME = "pipelineName";
+
+    private PluginSetting testPluginSetting;
+
+    @Before
+    public void setUp() {
+        MetricsTestUtil.initMetrics();
+        testPluginSetting = new PluginSetting(BUFFER_NAME, Collections.emptyMap());
+        testPluginSetting.setPipelineName(PIPELINE_NAME);
+    }
 
     @Test
     public void testWriteMetrics() throws TimeoutException {
         // Given
-        final String bufferName = "testBuffer";
-        final String pipelineName = "pipelineName";
-        MetricsTestUtil.initMetrics();
-
-        PluginSetting pluginSetting = new PluginSetting(bufferName, Collections.emptyMap());
-        pluginSetting.setPipelineName(pipelineName);
-        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferImpl(pluginSetting);
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferImpl(testPluginSetting);
 
         // When
         for(int i=0; i<5; i++) {
@@ -55,9 +61,9 @@ public class AbstractBufferTest {
 
         // Then
         final List<Measurement> recordsWrittenMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.RECORDS_WRITTEN).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.RECORDS_WRITTEN).toString());
         final List<Measurement> writeTimeMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.WRITE_TIME_ELAPSED).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.WRITE_TIME_ELAPSED).toString());
         Assert.assertEquals(1, recordsWrittenMeasurements.size());
         Assert.assertEquals(5.0, recordsWrittenMeasurements.get(0).getValue(), 0);
         Assert.assertEquals(5.0, MetricsTestUtil.getMeasurementFromList(writeTimeMeasurements, Statistic.COUNT).getValue(), 0);
@@ -71,13 +77,7 @@ public class AbstractBufferTest {
     @Test
     public void testWriteAllMetrics() throws Exception {
         // Given
-        final String bufferName = "testBuffer";
-        final String pipelineName = "pipelineName";
-        MetricsTestUtil.initMetrics();
-
-        PluginSetting pluginSetting = new PluginSetting(bufferName, Collections.emptyMap());
-        pluginSetting.setPipelineName(pipelineName);
-        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferImpl(pluginSetting);
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferImpl(testPluginSetting);
         final Collection<Record<String>> testRecords = new ArrayList<>();
         for(int i=0; i<5; i++) {
             testRecords.add(new Record<>(UUID.randomUUID().toString()));
@@ -88,9 +88,9 @@ public class AbstractBufferTest {
 
         // Then
         final List<Measurement> recordsWrittenMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.RECORDS_WRITTEN).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.RECORDS_WRITTEN).toString());
         final List<Measurement> writeTimeMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.WRITE_TIME_ELAPSED).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.WRITE_TIME_ELAPSED).toString());
         Assert.assertEquals(1, recordsWrittenMeasurements.size());
         Assert.assertEquals(5.0, recordsWrittenMeasurements.get(0).getValue(), 0);
         Assert.assertEquals(1.0, MetricsTestUtil.getMeasurementFromList(writeTimeMeasurements, Statistic.COUNT).getValue(), 0);
@@ -104,13 +104,7 @@ public class AbstractBufferTest {
     @Test
     public void testReadMetrics() throws Exception {
         // Given
-        final String bufferName = "testBuffer";
-        final String pipelineName = "pipelineName";
-        MetricsTestUtil.initMetrics();
-
-        PluginSetting pluginSetting = new PluginSetting(bufferName, Collections.emptyMap());
-        pluginSetting.setPipelineName(pipelineName);
-        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferImpl(pluginSetting);
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferImpl(testPluginSetting);
         final Collection<Record<String>> testRecords = new ArrayList<>();
         for(int i=0; i<5; i++) {
             testRecords.add(new Record<>(UUID.randomUUID().toString()));
@@ -122,13 +116,13 @@ public class AbstractBufferTest {
 
         // Then
         final List<Measurement> recordsReadMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.RECORDS_READ).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.RECORDS_READ).toString());
         final List<Measurement> recordsInFlightMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.RECORDS_INFLIGHT).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.RECORDS_INFLIGHT).toString());
         final List<Measurement> recordsProcessedMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(MetricNames.RECORDS_PROCESSED).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(MetricNames.RECORDS_PROCESSED).toString());
         final List<Measurement> readTimeMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.READ_TIME_ELAPSED).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.READ_TIME_ELAPSED).toString());
         Assert.assertEquals(1, recordsReadMeasurements.size());
         Assert.assertEquals(5.0, recordsReadMeasurements.get(0).getValue(), 0);
         Assert.assertEquals(1, recordsInFlightMeasurements.size());
@@ -148,13 +142,7 @@ public class AbstractBufferTest {
     @Test
     public void testCheckpointMetrics() throws Exception {
         // Given
-        final String bufferName = "testBuffer";
-        final String pipelineName = "pipelineName";
-        MetricsTestUtil.initMetrics();
-
-        PluginSetting pluginSetting = new PluginSetting(bufferName, Collections.emptyMap());
-        pluginSetting.setPipelineName(pipelineName);
-        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferImpl(pluginSetting);
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferImpl(testPluginSetting);
         final Collection<Record<String>> testRecords = new ArrayList<>();
         for(int i=0; i<5; i++) {
             testRecords.add(new Record<>(UUID.randomUUID().toString()));
@@ -162,7 +150,7 @@ public class AbstractBufferTest {
         abstractBuffer.writeAll(testRecords, 1000);
         final Map.Entry<Collection<Record<String>>, CheckpointState> readResult = abstractBuffer.read(1000);
         final List<Measurement> checkpointTimeMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.CHECKPOINT_TIME_ELAPSED).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.CHECKPOINT_TIME_ELAPSED).toString());
         Assert.assertEquals(0.0, MetricsTestUtil.getMeasurementFromList(checkpointTimeMeasurements, Statistic.COUNT).getValue(), 0);
         Assert.assertEquals(0.0, MetricsTestUtil.getMeasurementFromList(checkpointTimeMeasurements, Statistic.TOTAL_TIME).getValue(), 0);
 
@@ -172,9 +160,9 @@ public class AbstractBufferTest {
         // Then
         Assert.assertEquals(0, abstractBuffer.getRecordsInFlight());
         final List<Measurement> recordsInFlightMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.RECORDS_INFLIGHT).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.RECORDS_INFLIGHT).toString());
         final List<Measurement> recordsProcessedMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(MetricNames.RECORDS_PROCESSED).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(MetricNames.RECORDS_PROCESSED).toString());
         final Measurement recordsInFlightMeasurement = recordsInFlightMeasurements.get(0);
         final Measurement recordsProcessedMeasurement = recordsProcessedMeasurements.get(0);
         Assert.assertEquals(0.0, recordsInFlightMeasurement.getValue(), 0);
@@ -189,18 +177,13 @@ public class AbstractBufferTest {
     @Test
     public void testWriteTimeoutMetric() throws TimeoutException {
         // Given
-        final String bufferName = "testBuffer";
-        final String pipelineName = "pipelineName";
-        MetricsTestUtil.initMetrics();
-        PluginSetting pluginSetting = new PluginSetting(bufferName, Collections.emptyMap());
-        pluginSetting.setPipelineName(pipelineName);
-        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferTimeoutImpl(pluginSetting);
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferTimeoutImpl(testPluginSetting);
 
         // When/Then
         Assert.assertThrows(TimeoutException.class, () -> abstractBuffer.write(new Record<>(UUID.randomUUID().toString()), 1000));
 
         final List<Measurement> timeoutMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.WRITE_TIMEOUTS).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.WRITE_TIMEOUTS).toString());
         Assert.assertEquals(1, timeoutMeasurements.size());
         Assert.assertEquals(1.0, timeoutMeasurements.get(0).getValue(), 0);
     }
@@ -208,12 +191,7 @@ public class AbstractBufferTest {
     @Test
     public void testWriteAllTimeoutMetric() throws TimeoutException {
         // Given
-        final String bufferName = "testBuffer";
-        final String pipelineName = "pipelineName";
-        MetricsTestUtil.initMetrics();
-        PluginSetting pluginSetting = new PluginSetting(bufferName, Collections.emptyMap());
-        pluginSetting.setPipelineName(pipelineName);
-        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferTimeoutImpl(pluginSetting);
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferTimeoutImpl(testPluginSetting);
         final Collection<Record<String>> testRecords = Arrays.asList(
                 new Record<>(UUID.randomUUID().toString()), new Record<>(UUID.randomUUID().toString()));
 
@@ -221,7 +199,7 @@ public class AbstractBufferTest {
         Assert.assertThrows(TimeoutException.class, () -> abstractBuffer.writeAll(testRecords, 1000));
 
         final List<Measurement> timeoutMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(bufferName).add(MetricNames.WRITE_TIMEOUTS).toString());
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.WRITE_TIMEOUTS).toString());
         Assert.assertEquals(1, timeoutMeasurements.size());
         Assert.assertEquals(1.0, timeoutMeasurements.get(0).getValue(), 0);
     }
@@ -229,10 +207,7 @@ public class AbstractBufferTest {
     @Test
     public void testWriteRuntimeException() {
         // Given
-        final String bufferName = "testBuffer";
-        final String pipelineName = "pipelineName";
-        MetricsTestUtil.initMetrics();
-        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferNpeImpl(bufferName, pipelineName);
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferNpeImpl(BUFFER_NAME, PIPELINE_NAME);
 
         // When/Then
         Assert.assertThrows(NullPointerException.class, () -> abstractBuffer.write(new Record<>(UUID.randomUUID().toString()), 1000));
@@ -241,10 +216,7 @@ public class AbstractBufferTest {
     @Test
     public void testWriteAllRuntimeException() {
         // Given
-        final String bufferName = "testBuffer";
-        final String pipelineName = "pipelineName";
-        MetricsTestUtil.initMetrics();
-        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferNpeImpl(bufferName, pipelineName);
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferNpeImpl(BUFFER_NAME, PIPELINE_NAME);
         final Collection<Record<String>> testRecords = Arrays.asList(
                 new Record<>(UUID.randomUUID().toString()), new Record<>(UUID.randomUUID().toString()));
 
