@@ -205,6 +205,17 @@ public class AbstractBufferTest {
     }
 
     @Test
+    public void testWriteAllPayloadSizeOverflowException() {
+        // Given
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferPayloadSizeOverflowImpl(testPluginSetting);
+        final Collection<Record<String>> testRecords = Arrays.asList(
+                new Record<>(UUID.randomUUID().toString()), new Record<>(UUID.randomUUID().toString()));
+
+        // When/Then
+        Assert.assertThrows(PayloadSizeOverflowException.class, () -> abstractBuffer.writeAll(testRecords, 1000));
+    }
+
+    @Test
     public void testWriteRuntimeException() {
         // Given
         final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferNpeImpl(BUFFER_NAME, PIPELINE_NAME);
@@ -297,6 +308,17 @@ public class AbstractBufferTest {
         @Override
         public void doWriteAll(Collection<Record<String>> records, int timeoutInMillis) throws TimeoutException {
             throw new TimeoutException();
+        }
+    }
+
+    public static class AbstractBufferPayloadSizeOverflowImpl extends AbstractBufferImpl {
+        public AbstractBufferPayloadSizeOverflowImpl(final PluginSetting pluginSetting) {
+            super(pluginSetting);
+        }
+
+        @Override
+        public void doWriteAll(Collection<Record<String>> records, int timeoutInMillis) throws PayloadSizeOverflowException {
+            throw new PayloadSizeOverflowException("test error message");
         }
     }
 
