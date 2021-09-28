@@ -152,7 +152,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     /**
      * This method should implement the logic for writing to the  buffer
      *
-     * @param records          Record to write to buffer
+     * @param records          Collection of records to write to buffer
      * @param timeoutInMillis Timeout for write operation in millis
      * @throws Exception
      */
