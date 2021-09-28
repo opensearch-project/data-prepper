@@ -87,10 +87,7 @@ public class BlockingBufferTests {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_SIZE, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
-        final Collection<Record<String>> testRecords = new ArrayList<>();
-        for (int i = 0; i < TEST_BUFFER_SIZE + 1; i++) {
-            testRecords.add(new Record<>(UUID.randomUUID().toString()));
-        }
+        final Collection<Record<String>> testRecords = generateBatchRecords(TEST_BUFFER_SIZE + 1);
         blockingBuffer.writeAll(testRecords, TEST_WRITE_TIMEOUT);
     }
 
@@ -104,14 +101,11 @@ public class BlockingBufferTests {
     }
 
     @Test(expected = TimeoutException.class)
-    public void testNoEmptySpaceWriteAllOnly() throws Exception {
+    public void testNoAvailSpaceWriteAllOnly() throws Exception {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(2, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
-        final Collection<Record<String>> testRecords = new ArrayList<>();
-        for (int i = 0; i < 2; i++) {
-            testRecords.add(new Record<>(UUID.randomUUID().toString()));
-        }
+        final Collection<Record<String>> testRecords = generateBatchRecords(2);
         blockingBuffer.write(new Record<>("FILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
         blockingBuffer.writeAll(testRecords, TEST_WRITE_TIMEOUT);
     }
@@ -155,10 +149,7 @@ public class BlockingBufferTests {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(2, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
-        final Collection<Record<String>> testRecords = new ArrayList<>();
-        for (int i = 0; i < 2; i++) {
-            testRecords.add(new Record<>(UUID.randomUUID().toString()));
-        }
+        final Collection<Record<String>> testRecords = generateBatchRecords(2);
         blockingBuffer.writeAll(testRecords, TEST_WRITE_TIMEOUT);
 
         // When
@@ -237,5 +228,13 @@ public class BlockingBufferTests {
         final PluginSetting testSettings = new PluginSetting(pluginName, settings);
         testSettings.setPipelineName(TEST_PIPELINE_NAME);
         return testSettings;
+    }
+
+    private Collection<Record<String>> generateBatchRecords(final int numRecords) {
+        final Collection<Record<String>> results = new ArrayList<>();
+        for (int i = 0; i < numRecords; i++) {
+            results.add(new Record<>(UUID.randomUUID().toString()));
+        }
+        return results;
     }
 }
