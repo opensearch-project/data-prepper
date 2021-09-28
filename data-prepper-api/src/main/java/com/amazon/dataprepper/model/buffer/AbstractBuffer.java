@@ -86,10 +86,10 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     }
 
     /**
-     * Records metrics for ingress, time elapsed, and timeouts, while calling the doWrite method
+     * Records metrics for ingress, time elapsed, and timeouts, while calling the doWriteAll method
      * to perform the actual write
      *
-     * @param records          the Record to add
+     * @param records          the collection of Record to add
      * @param timeoutInMillis how long to wait before giving up
      * @throws Exception
      */
