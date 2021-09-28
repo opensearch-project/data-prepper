@@ -29,7 +29,6 @@ import org.mockito.Mock;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -38,6 +37,7 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mockStatic;
@@ -80,7 +80,7 @@ public class GrokPrepperTests {
             }});
 
             grokCompilerMockedStatic.when(GrokCompiler::newInstance).thenReturn(grokCompiler);
-            when(grokCompiler.compile(anyString(), anyBoolean())).thenReturn(grok);
+            when(grokCompiler.compile(eq(matchConfig.get("message").get(0)), anyBoolean())).thenReturn(grok);
             when(grok.match(anyString())).thenReturn(match);
             when(match.capture()).thenReturn(capture);
 
@@ -107,7 +107,7 @@ public class GrokPrepperTests {
     }
 
     @Test
-    public void singleMatchMergeTest() throws JsonProcessingException {
+    public void testMatchMerge() throws JsonProcessingException {
 
         String testData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] BEF25A72965 \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\"}";
         Record<String> record = new Record<>(testData);
@@ -127,7 +127,7 @@ public class GrokPrepperTests {
     }
 
     @Test
-    public void singleMatchMergeCollisionStringsTest() throws JsonProcessingException {
+    public void testMatchMergeCollisionStrings() throws JsonProcessingException {
         String testData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] BEF25A72965 \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\","
                 .concat("\"field_capture_1\":\"value_capture_collision\"}");
 
@@ -149,7 +149,7 @@ public class GrokPrepperTests {
     }
 
     @Test
-    public void singleMatchMergeCollisionIntsTest() throws JsonProcessingException {
+    public void testMatchMergeCollisionInts() throws JsonProcessingException {
         capture.put("field_capture_1", 20);
 
         String testData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] BEF25A72965 \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\","
@@ -173,17 +173,17 @@ public class GrokPrepperTests {
     }
 
     @Test
-    public void singleMatchMergeCollisionMixedTypesTest() throws JsonProcessingException {
-        capture.put("field_capture_1", "20");
+    public void testMatchMergeCollisionWithListMixedTypes() throws JsonProcessingException {
+        capture.put("field_capture_1", "30");
 
         String testData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] BEF25A72965 \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\","
-                .concat("\"field_capture_1\": 10}");
+                .concat("\"field_capture_1\":[10,\"20\"]}");
 
         Record<String> record = new Record<>(testData);
 
         String resultData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] BEF25A72965 \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\","
-                .concat("\"field_capture_1\":[ 10,")
-                .concat("\"20\" ],")
+                .concat("\"field_capture_1\":[10,")
+                .concat("\"20\",\"30\"],")
                 .concat("\"field_capture_2\":\"value_capture_2\",")
                 .concat("\"field_capture_3\":\"value_capture_3\"}");
 

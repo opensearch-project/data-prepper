@@ -139,7 +139,7 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
                 continue;
             }
 
-            if (List.class.isAssignableFrom(original.get(updateEntry.getKey()).getClass())) {
+            if (original.get(updateEntry.getKey()) != null && List.class.isAssignableFrom(original.get(updateEntry.getKey()).getClass())) {
                 ((List<Object>) original.get(updateEntry.getKey())).add(updateEntry.getValue());
             } else {
                 List<Object> values = new ArrayList<>(Collections.singletonList(original.get(updateEntry.getKey())));
