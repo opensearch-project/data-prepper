@@ -67,6 +67,11 @@ public class TestBuffer implements Buffer<Record<String>> {
     }
 
     @Override
+    public void writeAll(final Collection<Record<String>> records, final int timeoutInMillis) throws Exception {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public Map.Entry<Collection<Record<String>>, CheckpointState> read(int timeoutInMillis) {
         final List<Record<String>> records = new ArrayList<>();
         int index = 0;
