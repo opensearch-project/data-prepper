@@ -33,8 +33,8 @@ import java.util.concurrent.TimeoutException;
 import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.Statistic;
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class AbstractBufferTest {
     private static final String BUFFER_NAME = "testBuffer";
@@ -42,7 +42,7 @@ public class AbstractBufferTest {
 
     private PluginSetting testPluginSetting;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         MetricsTestUtil.initMetrics();
         testPluginSetting = new PluginSetting(BUFFER_NAME, Collections.emptyMap());
