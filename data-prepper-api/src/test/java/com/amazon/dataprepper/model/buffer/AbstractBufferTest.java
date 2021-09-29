@@ -205,14 +205,14 @@ public class AbstractBufferTest {
     }
 
     @Test
-    public void testWriteAllPayloadSizeOverflowException() {
+    public void testWriteAllSizeOverflowException() {
         // Given
-        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferPayloadSizeOverflowImpl(testPluginSetting);
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferSizeOverflowImpl(testPluginSetting);
         final Collection<Record<String>> testRecords = Arrays.asList(
                 new Record<>(UUID.randomUUID().toString()), new Record<>(UUID.randomUUID().toString()));
 
         // When/Then
-        Assert.assertThrows(PayloadSizeOverflowException.class, () -> abstractBuffer.writeAll(testRecords, 1000));
+        Assert.assertThrows(SizeOverflowException.class, () -> abstractBuffer.writeAll(testRecords, 1000));
     }
 
     @Test
@@ -311,14 +311,14 @@ public class AbstractBufferTest {
         }
     }
 
-    public static class AbstractBufferPayloadSizeOverflowImpl extends AbstractBufferImpl {
-        public AbstractBufferPayloadSizeOverflowImpl(final PluginSetting pluginSetting) {
+    public static class AbstractBufferSizeOverflowImpl extends AbstractBufferImpl {
+        public AbstractBufferSizeOverflowImpl(final PluginSetting pluginSetting) {
             super(pluginSetting);
         }
 
         @Override
-        public void doWriteAll(Collection<Record<String>> records, int timeoutInMillis) throws PayloadSizeOverflowException {
-            throw new PayloadSizeOverflowException("test error message");
+        public void doWriteAll(Collection<Record<String>> records, int timeoutInMillis) throws SizeOverflowException {
+            throw new SizeOverflowException("test error message");
         }
     }
 

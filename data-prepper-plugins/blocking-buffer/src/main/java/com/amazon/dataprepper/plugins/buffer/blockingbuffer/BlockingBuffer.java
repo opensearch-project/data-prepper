@@ -15,7 +15,7 @@ import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.AbstractBuffer;
 import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.buffer.PayloadSizeOverflowException;
+import com.amazon.dataprepper.model.buffer.SizeOverflowException;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.CheckpointState;
@@ -117,7 +117,7 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     public void doWriteAll(Collection<T> records, int timeoutInMillis) throws Exception {
         final int size = records.size();
         if (size > bufferCapacity) {
-            throw new PayloadSizeOverflowException(format("Buffer capacity too small for the size of records: %d", size));
+            throw new SizeOverflowException(format("Buffer capacity too small for the size of records: %d", size));
         }
         try {
             final boolean permitAcquired = capacitySemaphore.tryAcquire(size, timeoutInMillis, TimeUnit.MILLISECONDS);

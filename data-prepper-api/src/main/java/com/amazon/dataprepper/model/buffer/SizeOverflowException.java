@@ -11,8 +11,8 @@
 
 package com.amazon.dataprepper.model.buffer;
 
-public class PayloadSizeOverflowException extends Exception {
-    public PayloadSizeOverflowException(final String message) {
+public class SizeOverflowException extends Exception {
+    public SizeOverflowException(final String message) {
         super(message);
     }
 }

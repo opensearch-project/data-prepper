@@ -11,7 +11,7 @@
 
 package com.amazon.dataprepper.plugins.buffer.blockingbuffer;
 
-import com.amazon.dataprepper.model.buffer.PayloadSizeOverflowException;
+import com.amazon.dataprepper.model.buffer.SizeOverflowException;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.CheckpointState;
@@ -81,8 +81,8 @@ public class BlockingBufferTests {
         blockingBuffer.write(null, TEST_WRITE_TIMEOUT);
     }
 
-    @Test(expected = PayloadSizeOverflowException.class)
-    public void testWriteAllPayloadSizeOverflow() throws Exception {
+    @Test(expected = SizeOverflowException.class)
+    public void testWriteAllSizeOverflow() throws Exception {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_SIZE, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
