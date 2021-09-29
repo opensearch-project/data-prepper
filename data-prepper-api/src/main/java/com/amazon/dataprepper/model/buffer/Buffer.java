@@ -38,7 +38,9 @@ public interface Buffer<T extends Record<?>> {
      *
      * @param records the collection of records to add
      * @param timeoutInMillis how long to wait before giving up
-     * @throws Exception mostly {@link TimeoutException} or {@link SizeOverflowException}. Can be other custom exception
+     * @throws TimeoutException Unable to write to the buffer within the timeout
+     * @throws SizeOverflowException The number of records exceeds the total capacity of the buffer. This cannot be retried.
+     * @throws RuntimeException Other exceptions
      */
     void writeAll(Collection<T> records, int timeoutInMillis) throws Exception;
 
