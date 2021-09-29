@@ -15,7 +15,7 @@ import com.amazon.dataprepper.model.buffer.SizeOverflowException;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.CheckpointState;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -73,40 +73,40 @@ public class BlockingBufferTests {
         assertThat(blockingBuffer, notNullValue());
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test
     public void testInsertNull() throws TimeoutException {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_SIZE, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
-        blockingBuffer.write(null, TEST_WRITE_TIMEOUT);
+        assertThrows(NullPointerException.class, () -> blockingBuffer.write(null, TEST_WRITE_TIMEOUT));
     }
 
-    @Test(expected = SizeOverflowException.class)
+    @Test
     public void testWriteAllSizeOverflow() throws Exception {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_SIZE, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
         final Collection<Record<String>> testRecords = generateBatchRecords(TEST_BUFFER_SIZE + 1);
-        blockingBuffer.writeAll(testRecords, TEST_WRITE_TIMEOUT);
+        assertThrows(SizeOverflowException.class, () -> blockingBuffer.writeAll(testRecords, TEST_WRITE_TIMEOUT));
     }
 
-    @Test(expected = TimeoutException.class)
+    @Test
     public void testNoEmptySpaceWriteOnly() throws TimeoutException {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(1, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
         blockingBuffer.write(new Record<>("FILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
-        blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT);
+        assertThrows(TimeoutException.class, () -> blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT));
     }
 
-    @Test(expected = TimeoutException.class)
+    @Test
     public void testNoAvailSpaceWriteAllOnly() throws Exception {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(2, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
         final Collection<Record<String>> testRecords = generateBatchRecords(2);
         blockingBuffer.write(new Record<>("FILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
-        blockingBuffer.writeAll(testRecords, TEST_WRITE_TIMEOUT);
+        assertThrows(TimeoutException.class, () -> blockingBuffer.writeAll(testRecords, TEST_WRITE_TIMEOUT));
     }
 
     @Test
