@@ -140,6 +140,8 @@ public class BlockingBufferTests {
 
         // Then
         blockingBuffer.write(new Record<>("REFILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
+        final Map.Entry<Collection<Record<String>>, CheckpointState> readCheckResult = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        assertEquals(1, readCheckResult.getKey().size());
     }
 
     @Test
@@ -157,6 +159,8 @@ public class BlockingBufferTests {
 
         // Then
         blockingBuffer.writeAll(testRecords, TEST_WRITE_TIMEOUT);
+        final Map.Entry<Collection<Record<String>>, CheckpointState> readCheckResult = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        assertEquals(2, readCheckResult.getKey().size());
     }
 
     @Test
