@@ -14,9 +14,11 @@ package com.amazon.dataprepper.plugins.source.loghttp;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import com.linecorp.armeria.client.ResponseTimeoutException;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpMethod;
+import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
@@ -32,9 +34,12 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -85,7 +90,7 @@ class HTTPSourceTest {
     }
 
     @Test
-    public void testHTTPJsonResponse() {
+    public void testHTTPJsonResponse200() {
         HTTPSourceUnderTest.start(testBuffer);
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
@@ -96,8 +101,49 @@ class HTTPSourceTest {
                         .build(),
                 HttpData.ofUtf8("[{\"log\": \"somelog\"}]"))
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status().code()).isEqualTo(200)).join();
+                .whenComplete((i, ex) -> assertThat(i.status()).isEqualTo(HttpStatus.OK)).join();
         Assertions.assertFalse(testBuffer.isEmpty());
+    }
+
+    @Test
+    public void testHTTPJsonResponse429() {
+        // Prepare
+        final Map<String, Object> settings = new HashMap<>();
+        final int testMaxPendingRequests = 1;
+        final int testThreadCount = 1;
+        settings.put(HTTPSourceConfig.MAX_PENDING_REQUESTS, testMaxPendingRequests);
+        settings.put(HTTPSourceConfig.THREAD_COUNT, testThreadCount);
+        testPluginSetting = new PluginSetting("http", settings);
+        testPluginSetting.setPipelineName("pipeline");
+        HTTPSourceUnderTest = new HTTPSource(testPluginSetting);
+        // Start the source
+        HTTPSourceUnderTest.start(testBuffer);
+        final RequestHeaders testRequestHeaders = RequestHeaders.builder().scheme(SessionProtocol.HTTP)
+                .authority("127.0.0.1:2021")
+                .method(HttpMethod.POST)
+                .path("/log/ingest")
+                .contentType(MediaType.JSON_UTF_8)
+                .build();
+        final HttpData testHttpData = HttpData.ofUtf8("[{\"log\": \"somelog\"}]");
+
+        // Fill in the buffer
+        WebClient.of().execute(testRequestHeaders, testHttpData).aggregate().whenComplete(
+                        (response, ex) -> assertThat(response.status()).isEqualTo(HttpStatus.OK)).join();
+
+        // Send requests to throttle the server
+        // Set the client timeout to be less than source request_timeout / (testMaxPendingRequests + testThreadCount)
+        WebClient testWebClient = WebClient.builder().responseTimeout(Duration.ofMillis(100)).build();
+        for (int i = 0; i < testMaxPendingRequests + testThreadCount; i++) {
+            try {
+                testWebClient.execute(testRequestHeaders, testHttpData).aggregate().join();
+            } catch (CompletionException e) {
+                assertThat(e.getCause()).isInstanceOf(ResponseTimeoutException.class);
+            }
+        }
+
+        // When/Then
+        testWebClient.execute(testRequestHeaders, testHttpData).aggregate().whenComplete(
+                        (response, ex) -> assertThat(response.status()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS)).join();
     }
 
     @Test
