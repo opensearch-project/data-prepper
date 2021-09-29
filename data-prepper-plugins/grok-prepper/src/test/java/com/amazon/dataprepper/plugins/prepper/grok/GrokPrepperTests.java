@@ -174,7 +174,12 @@ public class GrokPrepperTests {
 
     @Test
     public void testMatchMergeCollisionWithListMixedTypes() throws JsonProcessingException {
-        capture.put("field_capture_1", "30");
+        List<Object> captureListValues = new ArrayList<>();
+        captureListValues.add("30");
+        captureListValues.add(40);
+        captureListValues.add(null);
+
+        capture.put("field_capture_1", captureListValues);
 
         String testData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] BEF25A72965 \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\","
                 .concat("\"field_capture_1\":[10,\"20\"]}");
@@ -183,7 +188,31 @@ public class GrokPrepperTests {
 
         String resultData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] BEF25A72965 \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\","
                 .concat("\"field_capture_1\":[10,")
-                .concat("\"20\",\"30\"],")
+                .concat("\"20\",\"30\",40,null],")
+                .concat("\"field_capture_2\":\"value_capture_2\",")
+                .concat("\"field_capture_3\":\"value_capture_3\"}");
+
+        Record<String> resultRecord = new Record<>(resultData);
+
+        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+
+        assertThat(grokkedRecords.size(), equalTo(1));
+        assertThat(grokkedRecords.get(0), notNullValue());
+        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+    }
+
+    @Test
+    public void testMatchMergeCollisionWithNullValue() throws JsonProcessingException {
+        capture.put("field_capture_1", "value_capture_1");
+
+        String testData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] BEF25A72965 \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\","
+                .concat("\"field_capture_1\":null}");
+
+        Record<String> record = new Record<>(testData);
+
+        String resultData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] BEF25A72965 \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\","
+                .concat("\"field_capture_1\":[null,")
+                .concat("\"value_capture_1\"],")
                 .concat("\"field_capture_2\":\"value_capture_2\",")
                 .concat("\"field_capture_3\":\"value_capture_3\"}");
 
