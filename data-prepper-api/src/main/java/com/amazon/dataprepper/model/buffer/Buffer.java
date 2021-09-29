@@ -29,6 +29,7 @@ public interface Buffer<T extends Record<?>> {
      *
      * @param record the Record to add
      * @param timeoutInMillis how long to wait before giving up
+     * @throws TimeoutException thrown when timeout for writing into the Buffer
      */
     void write(T record, int timeoutInMillis) throws TimeoutException;
 
@@ -37,6 +38,7 @@ public interface Buffer<T extends Record<?>> {
      *
      * @param records the collection of records to add
      * @param timeoutInMillis how long to wait before giving up
+     * @throws Exception mostly {@link TimeoutException} or {@link SizeOverflowException}. Can be other custom exception
      */
     void writeAll(Collection<T> records, int timeoutInMillis) throws Exception;
 
