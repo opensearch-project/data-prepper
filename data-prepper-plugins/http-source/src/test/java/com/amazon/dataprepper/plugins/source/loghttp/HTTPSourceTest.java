@@ -130,7 +130,7 @@ class HTTPSourceTest {
         WebClient.of().execute(testRequestHeaders, testHttpData).aggregate().whenComplete(
                         (response, ex) -> assertThat(response.status()).isEqualTo(HttpStatus.OK)).join();
 
-        // Send requests to throttle the server
+        // Send requests to throttle the server when buffer is full
         // Set the client timeout to be less than source request_timeout / (testMaxPendingRequests + testThreadCount)
         WebClient testWebClient = WebClient.builder().responseTimeout(Duration.ofMillis(100)).build();
         for (int i = 0; i < testMaxPendingRequests + testThreadCount; i++) {
