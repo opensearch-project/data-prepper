@@ -57,10 +57,7 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
         fieldToGrok = new LinkedHashMap<>();
 
         registerPatterns();
-
-        for (Map.Entry<String, List<String>> entry : grokPrepperConfig.getMatch().entrySet()) {
-            fieldToGrok.put(entry.getKey(), entry.getValue().stream().map(item -> grokCompiler.compile(item, grokPrepperConfig.isNamedCapturesOnly())).collect(Collectors.toList()));
-        }
+        compileMatchPatterns();
     }
 
     /**
@@ -71,20 +68,20 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
      * @return Record  modified output records
      */
     @Override
-    public Collection<Record<String>> doExecute(Collection<Record<String>> records) {
+    public Collection<Record<String>> doExecute(final Collection<Record<String>> records) {
         final List<Record<String>> recordsOut = new LinkedList<>();
 
         for (Record<String> record : records) {
             try {
                 final Map<String, Object> recordMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
 
-                for (Map.Entry<String, List<Grok>> entry : fieldToGrok.entrySet()) {
-                    for (Grok grok : entry.getValue()) {
+                for (final Map.Entry<String, List<Grok>> entry : fieldToGrok.entrySet()) {
+                    for (final Grok grok : entry.getValue()) {
                         if (recordMap.containsKey(entry.getKey())) {
                             Match match = grok.match(recordMap.get(entry.getKey()).toString());
                             match.setKeepEmptyCaptures(grokPrepperConfig.isKeepEmptyCaptures());
 
-                            mergeUpdateWithOriginalMap(recordMap, match.capture());
+                            mergeCaptures(recordMap, match.capture());
                         }
                     }
                 }
@@ -119,8 +116,17 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
         grokCompiler.registerDefaultPatterns();
     }
 
-    private void mergeUpdateWithOriginalMap(final Map<String, Object> original, final Map<String, Object> updates) {
-        for (Map.Entry<String, Object> updateEntry : updates.entrySet()) {
+    private void compileMatchPatterns() {
+        for (final Map.Entry<String, List<String>> entry : grokPrepperConfig.getMatch().entrySet()) {
+            fieldToGrok.put(entry.getKey(), entry.getValue()
+                            .stream()
+                            .map(item -> grokCompiler.compile(item, grokPrepperConfig.isNamedCapturesOnly()))
+                            .collect(Collectors.toList()));
+        }
+    }
+
+    private void mergeCaptures(final Map<String, Object> original, final Map<String, Object> updates) {
+        for (final Map.Entry<String, Object> updateEntry : updates.entrySet()) {
             if (!(original.containsKey(updateEntry.getKey()))) {
                 original.put(updateEntry.getKey(), updateEntry.getValue());
                 continue;
@@ -129,7 +135,7 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
             if (original.get(updateEntry.getKey()) instanceof List) {
                 mergeValueWithValues(updateEntry.getValue(), (List<Object>) original.get(updateEntry.getKey()));
             } else {
-                List<Object> values = new ArrayList<>(Collections.singletonList(original.get(updateEntry.getKey())));
+                final List<Object> values = new ArrayList<>(Collections.singletonList(original.get(updateEntry.getKey())));
                 mergeValueWithValues(updateEntry.getValue(), values);
                 original.put(updateEntry.getKey(), values);
             }
