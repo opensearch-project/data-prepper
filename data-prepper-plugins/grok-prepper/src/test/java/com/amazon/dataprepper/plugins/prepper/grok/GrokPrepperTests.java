@@ -38,7 +38,6 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mockStatic;
@@ -97,7 +96,7 @@ public class GrokPrepperTests {
 
         messageInput = UUID.randomUUID().toString();
 
-        when(grok.match(anyString())).thenReturn(match);
+        when(grok.match(messageInput)).thenReturn(match);
         when(match.capture()).thenReturn(capture);
     }
 
