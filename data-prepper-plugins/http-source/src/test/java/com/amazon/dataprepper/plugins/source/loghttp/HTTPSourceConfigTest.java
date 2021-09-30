@@ -225,7 +225,6 @@ public class HTTPSourceConfigTest {
                                                                 final String sslKey,
                                                                 final String sslKeyPassword) {
         final Map<String, Object> settings = new HashMap<>();
-        // TODO: add parameters on tls/ssl
         settings.put(HTTPSourceConfig.PORT, port);
         settings.put(HTTPSourceConfig.REQUEST_TIMEOUT, requestTimeoutInMillis);
         settings.put(HTTPSourceConfig.THREAD_COUNT, threadCount);
