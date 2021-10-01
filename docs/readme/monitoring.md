@@ -48,8 +48,8 @@ plugin types.
 
 ### Naming
 Metrics follow a naming convention of **PIPELINE_NAME_PLUGIN_NAME_METRIC_NAME** . For example, a 
-**recordsIn** metric for the **elasticsearch-sink** plugin in a pipeline named **output-pipeline**
-would have a qualified name of **output-pipeline_elasticsearch_sink_recordsIn**.
+**recordsIn** metric for the **opensearch-sink** plugin in a pipeline named **output-pipeline**
+would have a qualified name of **output-pipeline_opensearch_sink_recordsIn**.
 
 ### Serving
 By default, metrics are served from the **metrics/prometheus** endpoint on the Data Prepper server. The format

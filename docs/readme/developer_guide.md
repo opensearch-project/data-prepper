@@ -1,4 +1,10 @@
-# Project Setup
+# Data Prepper Developer Guide
+
+This page is for anybody who wishes to contribute code to Data Prepper. Welcome!
+
+## Contributions
+
+First, please read our [contribution guide](../../CONTRIBUTING.md) for more information on how to contribute to Data Prepper.
 
 ## Installation Prerequisites
 
@@ -55,22 +61,7 @@ java -jar data-prepper-core-$VERSION.jar pipelines.yaml data-prepper-config.yaml
 
 Optionally add `"-Dlog4j.configurationFile=config/log4j2.properties"` to the command if you would like to pass a custom log4j2 properties file. If no properties file is provided, Data Prepper will default to the log4j2.properties file in the *shared-config* directory.
 
-### APIs
-Running the project locally will expose a server on port 4900 by default. The following 
-APIs are available:
+## More Information
 
-* /list
-  * lists running pipelines
-* /shutdown
-  * starts a graceful shutdown of the Data Prepper
-* /metrics/prometheus
-  * returns a scrape of the Data Prepper metrics in Prometheus text format. This API is available provided 
-    `metricsRegistries` parameter in data prepper configuration file `data-prepper-config.yaml` has `Prometheus` as one 
-    of the registry
-* /metrics/sys
-  * returns JVM metrics in Prometheus text format. This API is available provided `metricsRegistries` parameter in data 
-    prepper configuration file `data-prepper-config.yaml` has `Prometheus` as one of the registry
-
-
-### Running the example app
-To run the example app against your local changes, use the docker found [here](https://github.com/opensearch-project/data-prepper/tree/master/examples/dev/trace-analytics-sample-app)
+Please read our [Error Handling](error_handling.md) and [Logs](logs.md) guides for specific development guidance
+on those topics.

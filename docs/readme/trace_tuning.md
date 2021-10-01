@@ -8,13 +8,13 @@ To scale horizontally, deploy multiple Data Prepper instances to form a cluster 
 
 ## Scaling Tips
 
-We would like to provide the users with some useful tips for scaling. We recommend the users to modify parameters based on their requirements. Also, monitor the Data Prepper host metrics and Elasticsearch metrics to ensure the configuration is working as expected.
+We would like to provide the users with some useful tips for scaling. We recommend the users to modify parameters based on their requirements. Also, monitor the Data Prepper host metrics and OpenSearch metrics to ensure the configuration is working as expected.
 
 ### Buffer
 
 The total number of trace requests that Data Prepper is processing is equal to sum of `buffer_size` in `otel-trace-pipeline` and `raw-trace-pipeline`. 
 
-The total number of trace requests inflight to Elasticsearch is equal to the product of `batch_size` and `workers` in `raw-trace-pipeline`.
+The total number of trace requests inflight to OpenSearch is equal to the product of `batch_size` and `workers` in `raw-trace-pipeline`.
 
 Our recommendation is that
  * have same `buffer_size` in `otel-trace-pipeline` and `raw-trace-pipeline`
@@ -25,7 +25,7 @@ Our recommendation is that
 
 The `workers` setting determines the number of threads that will be used by Data Prepper to process requests from the buffer. 
 
-Our recommendation is that set the workers based on the CPU utilization, this value can be higher than available processors as the Data Prepper spends significant I/O time in sending data to elasticsearch.
+Our recommendation is that set the workers based on the CPU utilization, this value can be higher than available processors as the Data Prepper spends significant I/O time in sending data to OpenSearch.
 
 ### Heap
 
