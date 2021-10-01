@@ -3,28 +3,21 @@
 
 We envision Data Prepper as an open source data collector for observability data (trace, logs, metrics) that can filter, enrich, transform, normalize, and aggregate data for downstream analysis and visualization. It will support stateful processing across multiple instances of data pipelines for observability use cases such as distributed tracing and multi-line log events (e.g. stack traces, aggregations, and log-to-metric transformations). Currently Data Prepper supports processing of distributed trace data and will support processing of logs and metric data in the future. 
 
-## Table of Contents
+Please read the [Overview](docs/readme/overview.md) to understand what Data Prepper is and how it works.
 
-- [Overview](docs/readme/overview.md)
-- Trace Analytics
-  - [Overview](docs/readme/trace_overview.md)
-  - [Trace Analytics Setup](docs/readme/trace_setup.md)
-  - [Scaling and Tuning](docs/readme/trace_tuning.md)
-- Project Details
-  - [Setup](docs/readme/project_setup.md)
-  - [Error Handling](docs/readme/error_handling.md)
-  - [Logging](docs/readme/logs.md)
-  - [Monitoring](docs/readme/monitoring.md)
-  - [Contribute](#Contribute)
-  - [Code of Conduct](#Code-of-Conduct)
-  - [Security Issue Notifications](#Security-Issue-Notifications)
-  - [License](#License)
+## Getting Started
 
+Our [Getting Started](docs/readme/getting_started.md) guide is the best starting point for anybody
+who wants to run Data Prepper.
 
+Please read the [Trace Analytics](docs/readme/trace_analytics.md) guide to get started with using
+Data Prepper for trace analytics use cases.
 
 ## Contribute
 
-We invite developers from the larger OpenSearch community to contribute and help improve test coverage and give us feedback on where improvements can be made in design, code and documentation. You can look at  [contribution guide](CONTRIBUTING.md) for more information on how to contribute.
+We invite developers from the larger OpenSearch community to contribute and help improve test coverage and give us feedback on where improvements can be made in design, code and documentation. You can look at [contribution guide](CONTRIBUTING.md) for more information on how to contribute.
+
+If you are looking to contribute code, or just to build from source, please see our [Developer Guilde](docs/readme/developer_guide.md).
 
 ## Code of Conduct
 
@@ -36,7 +29,7 @@ If you discover a potential security issue in this project, please refer to the 
 
 ## License
 
-This library is licensed under the Apache 2.0 License. [Refer](LICENSE)
+This library is licensed under the [Apache 2.0 License](LICENSE)
 
 ## Copyright
 
