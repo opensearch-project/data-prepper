@@ -4,7 +4,7 @@ Data Prepper for Trace Analytics in v0.8.x supports both vertical and horizontal
 
 To scale vertically, simply adjust the size of your single Data Prepper instance to meet your workload's demands. 
 
-To scale horizontally, deploy multiple Data Prepper instances to form a cluster by using the [Peer Forwarder plugin](../../data-prepper-plugins/peer-forwarder/README.md). This plugin enables Data Preppers to communicate with others in the cluster and is required for horizontally-scaling deployments.
+To scale horizontally, deploy multiple Data Prepper instances to form a cluster by using the [Peer Forwarder plugin](../data-prepper-plugins/peer-forwarder/README.md). This plugin enables Data Preppers to communicate with others in the cluster and is required for horizontally-scaling deployments.
 
 ## Scaling Tips
 
@@ -44,9 +44,9 @@ Data Prepper uses the disk to write logs. In the current version, you can redire
 
 ## AWS
 
-[AWS EC2 Cloudformation](../../deployment-template/ec2/data-prepper-ec2-deployment-cfn.yaml) template provides user-friendly mechanism to configure the above scaling attributes.
+[AWS EC2 Cloudformation](../deployment-template/ec2/data-prepper-ec2-deployment-cfn.yaml) template provides user-friendly mechanism to configure the above scaling attributes.
 
-[Kubernetes config files](../../deployment-template/k8s/README.md) and [EKS config files](../../deployment-template/eks/README.md) are available to configure these attributes in a cluster deployment.
+[Kubernetes config files](../deployment-template/k8s/README.md) and [EKS config files](../deployment-template/eks/README.md) are available to configure these attributes in a cluster deployment.
 
 ## Benchmark
 
