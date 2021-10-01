@@ -71,14 +71,14 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
     public Collection<Record<String>> doExecute(final Collection<Record<String>> records) {
         final List<Record<String>> recordsOut = new LinkedList<>();
 
-        for (Record<String> record : records) {
+        for (final Record<String> record : records) {
             try {
                 final Map<String, Object> recordMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
 
                 for (final Map.Entry<String, List<Grok>> entry : fieldToGrok.entrySet()) {
                     for (final Grok grok : entry.getValue()) {
                         if (recordMap.containsKey(entry.getKey())) {
-                            Match match = grok.match(recordMap.get(entry.getKey()).toString());
+                            final Match match = grok.match(recordMap.get(entry.getKey()).toString());
                             match.setKeepEmptyCaptures(grokPrepperConfig.isKeepEmptyCaptures());
 
                             mergeCaptures(recordMap, match.capture());

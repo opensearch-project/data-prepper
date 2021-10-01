@@ -44,6 +44,10 @@ public class GrokPrepperIT {
                 GrokPrepperConfig.TARGET);
 
         pluginSetting.setPipelineName("grokPipeline");
+
+        // This is a COMMONAPACHELOG pattern with the following format
+        // COMMONAPACHELOG %{IPORHOST:clientip} %{USER:ident} %{USER:auth} \[%{HTTPDATE:timestamp}\] "(?:%{WORD:verb} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})" %{NUMBER:response} (?:%{NUMBER:bytes}|-)
+        // Note that rawrequest is missing from the log below, which means that it will not be captured unless keep_empty_captures is true
         messageInput = "\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\"";
     }
 

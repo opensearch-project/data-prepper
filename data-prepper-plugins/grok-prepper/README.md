@@ -24,7 +24,9 @@ prepper:
 
 ## Notes on Patterns
 
-The Grok Prepper internally uses the [java-grok Library](https://github.com/thekrakken/java-grok), so any patterns compatible there are compatible with Grok Prepper.
+The Grok Prepper uses the [java-grok Library](https://github.com/thekrakken/java-grok) internally and supports all java-grok Library compatible patterns.
+
+[Default Patterns](https://github.com/thekrakken/java-grok/blob/master/src/main/resources/patterns/patterns)
 
 ## Metrics
 
