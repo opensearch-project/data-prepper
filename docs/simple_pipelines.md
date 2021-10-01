@@ -1,4 +1,4 @@
-# Data Prepper Tutorial
+# Simple Pipeline
 
 This tutorial walks you through creating a simple Data Prepper and configuring it.
 
