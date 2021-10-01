@@ -24,4 +24,4 @@ Apart from common metrics in [AbstractPrepper](https://github.com/opensearch-pro
 ## Developer Guide
 This plugin is compatible with Java 8. See 
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md) 
-- [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/readme/monitoring.md)
+- [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)
