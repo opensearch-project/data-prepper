@@ -28,7 +28,7 @@ To achieve trace analytics in Data Prepper we have three pipelines `otel-trace-p
 
 ### OpenTelemetry Trace Source
 
-The [OpenTelemetry source](../../data-prepper-plugins/otel-trace-source/README.md) accepts trace data from the OpenTelemetry collector. The source depends on [OpenTelemetry Protocol](https://github.com/open-telemetry/opentelemetry-specification/tree/master/specification/protocol). The source officially support transport over gRPC. The source also supports industry-standard encryption (TLS/HTTPS).
+The [OpenTelemetry source](../data-prepper-plugins/otel-trace-source/README.md) accepts trace data from the OpenTelemetry collector. The source depends on [OpenTelemetry Protocol](https://github.com/open-telemetry/opentelemetry-specification/tree/master/specification/protocol). The source officially support transport over gRPC. The source also supports industry-standard encryption (TLS/HTTPS).
 
 ### Preppers
 
@@ -39,11 +39,11 @@ We have two preppers for the Trace Analytics feature,
 
 ### OpenSearch sink
 
-We have a generic sink that writes the data to OpenSearch as the destination. The [opensearch sink](../../data-prepper-plugins/opensearch/README.md) has configuration options related to OpenSearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc.
+We have a generic sink that writes the data to OpenSearch as the destination. The [opensearch sink](../data-prepper-plugins/opensearch/README.md) has configuration options related to OpenSearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc.
 For the trace analytics feature, the sink has specific configurations which enables the sink to use indices and index templates specific to this feature. Trace analytics specific OpenSearch indices are,
 
-* *otel-v1-apm-span* -  This index stores the output from [otel-trace-raw-prepper](../../data-prepper-plugins/otel-trace-raw-prepper/README.md).
-* *otel-v1-apm-service-map* - This index stores the output from the [service-map-prepper](../../data-prepper-plugins/service-map-stateful/README.md).
+* *otel-v1-apm-span* -  This index stores the output from [otel-trace-raw-prepper](../data-prepper-plugins/otel-trace-raw-prepper/README.md).
+* *otel-v1-apm-service-map* - This index stores the output from the [service-map-prepper](../data-prepper-plugins/service-map-stateful/README.md).
 
 ### Pipeline Configuration
 
@@ -161,7 +161,7 @@ The main changes you will need to make are:
 * `aws_sigv4` - If you are Amazon OpenSearch Service with AWS signing, set this to `true`. It will sign requests with the default AWS credentials provider.
 * `aws_region` - If you are Amazon OpenSearch Service with AWS signing, set this value to your region.
 
-The the [Data Prepper OpenSearch Sink](../../data-prepper-plugins/opensearch/README.md#Configuration) documents
+The the [Data Prepper OpenSearch Sink](../data-prepper-plugins/opensearch/README.md#Configuration) documents
 other configurations available for OpenSearch.
 
 ### Data Prepper Configuration

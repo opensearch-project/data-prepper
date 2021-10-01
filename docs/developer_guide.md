@@ -4,7 +4,7 @@ This page is for anybody who wishes to contribute code to Data Prepper. Welcome!
 
 ## Contributions
 
-First, please read our [contribution guide](../../CONTRIBUTING.md) for more information on how to contribute to Data Prepper.
+First, please read our [contribution guide](../CONTRIBUTING.md) for more information on how to contribute to Data Prepper.
 
 ## Installation Prerequisites
 
