@@ -67,10 +67,8 @@ public class GrokPrepperTests {
 
     @BeforeEach
     public void setup() {
-        final Map<String, List<String>> matchConfig = new HashMap<>();
-        matchConfig.put("message", new ArrayList<String>() {{
-            add("%{COMMONAPACHELOG}");
-        }});
+        final Map<String, List<String>> matchConfig = new HashMap<>();:
+        matchConfig.put("message", Collections.singletonList("%{COMMONAPACHELOG}"));
 
         pluginSetting = completePluginSettingForGrokPrepper(
                 GrokPrepperConfig.DEFAULT_BREAK_ON_MATCH,
