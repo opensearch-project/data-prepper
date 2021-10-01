@@ -31,7 +31,7 @@ You will configure two files:
 Depending on what you want to do, we have a few different guides to configuring Data Prepper.
 
 * [Trace Analytics](trace_analytics.md) - Learn how to setup Data Prepper for trace observability
-* [Sample Pipeline](sample_pipelines.md) - Learn the basics of Data Prepper pipelines with some simple configurations.
+* [Simple Pipeline](simple_pipelines.md) - Learn the basics of Data Prepper pipelines with some simple configurations.
 
 ## Running
 
