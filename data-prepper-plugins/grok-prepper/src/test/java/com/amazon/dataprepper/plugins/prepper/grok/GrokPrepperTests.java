@@ -67,7 +67,7 @@ public class GrokPrepperTests {
 
     @BeforeEach
     public void setup() {
-        final Map<String, List<String>> matchConfig = new HashMap<>();:
+        final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList("%{COMMONAPACHELOG}"));
 
         pluginSetting = completePluginSettingForGrokPrepper(
