@@ -86,6 +86,33 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     }
 
     /**
+     * Records metrics for ingress, time elapsed, and timeouts, while calling the doWriteAll method
+     * to perform the actual write
+     *
+     * @param records          the collection of Record to add
+     * @param timeoutInMillis how long to wait before giving up
+     * @throws Exception
+     */
+    @Override
+    public void writeAll(Collection<T> records, int timeoutInMillis) throws Exception {
+        long startTime = System.nanoTime();
+
+        try {
+            final int size = records.size();
+            doWriteAll(records, timeoutInMillis);
+            recordsWrittenCounter.increment(size);
+            recordsInBuffer.addAndGet(size);
+        } catch (Exception e) {
+            if (e instanceof TimeoutException) {
+                writeTimeoutCounter.increment();
+            }
+            throw e;
+        } finally {
+            writeTimer.record(System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
+        }
+    }
+
+    /**
      * Records egress and time elapsed metrics, while calling the doRead function to
      * do the actual read
      *
@@ -121,6 +148,15 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
      * @throws TimeoutException
      */
     public abstract void doWrite(T record, int timeoutInMillis) throws TimeoutException;
+
+    /**
+     * This method should implement the logic for writing to the  buffer
+     *
+     * @param records          Collection of records to write to buffer
+     * @param timeoutInMillis Timeout for write operation in millis
+     * @throws Exception
+     */
+    public abstract void doWriteAll(Collection<T> records, int timeoutInMillis) throws Exception;
 
     /**
      * This method should implement the logic for reading from the buffer
