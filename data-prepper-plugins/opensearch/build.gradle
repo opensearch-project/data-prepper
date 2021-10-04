@@ -47,7 +47,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
-    implementation 'software.amazon.awssdk:auth:2.17.15'
+    implementation 'software.amazon.awssdk:auth:2.17.51'
     implementation 'software.amazon.awssdk:http-client-spi:2.17.15'
     implementation 'software.amazon.awssdk:sdk-core:2.17.15'
     implementation 'software.amazon.awssdk:aws-core:2.17.15'
@@ -66,6 +66,8 @@ dependencies {
     testImplementation "org.awaitility:awaitility:4.1.0"
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
     testImplementation "commons-io:commons-io:2.11.0"
+    testImplementation 'net.bytebuddy:byte-buddy:1.11.18'
+    testImplementation 'net.bytebuddy:byte-buddy-agent:1.11.18'
 }
 
 // Workaround for Werror
@@ -94,7 +96,7 @@ configurations.all {
     }
     // The OpenSearch plugins appear to provide their own version of Mockito
     // which is causing problems, so we exclude it.
-    exclude group: 'org.mockito'
+    exclude (group: 'org.elasticsearch', module: "securemock");
 }
 
 test {
