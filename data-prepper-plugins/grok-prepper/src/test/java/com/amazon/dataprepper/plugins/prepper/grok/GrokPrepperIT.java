@@ -26,6 +26,7 @@ public class GrokPrepperIT {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
     private final String PLUGIN_NAME = "grok";
+    private String messageInput;
 
     @BeforeEach
     public void setup() {
@@ -43,6 +44,11 @@ public class GrokPrepperIT {
                 GrokPrepperConfig.TARGET);
 
         pluginSetting.setPipelineName("grokPipeline");
+
+        // This is a COMMONAPACHELOG pattern with the following format
+        // COMMONAPACHELOG %{IPORHOST:clientip} %{USER:ident} %{USER:auth} \[%{HTTPDATE:timestamp}\] "(?:%{WORD:verb} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})" %{NUMBER:response} (?:%{NUMBER:bytes}|-)
+        // Note that rawrequest is missing from the log below, which means that it will not be captured unless keep_empty_captures is true
+        messageInput = "\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\"";
     }
 
     @AfterEach
@@ -76,6 +82,25 @@ public class GrokPrepperIT {
     }
 
     @Test
+    public void testMatchNoCaptures() throws JsonProcessingException {
+        final String nonMatchingPattern = "%{SYSLOGBASE}";
+        final Map<String, List<String>> matchConfig = new HashMap<>();
+        matchConfig.put("message", Collections.singletonList(nonMatchingPattern));
+
+        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
+        grokPrepper = new GrokPrepper(pluginSetting);
+
+        String testData = "{\"message\":" + messageInput + "}";
+        Record<String> record = new Record<>(testData);
+
+        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+
+        assertThat(grokkedRecords.size(), equalTo(1));
+        assertThat(grokkedRecords.get(0), notNullValue());
+        assertThat(equalRecords(grokkedRecords.get(0), record), equalTo(true));
+    }
+
+    @Test
     public void testSingleMatchSinglePatternWithDefaults() throws JsonProcessingException {
         final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList("%{COMMONAPACHELOG}"));
@@ -83,10 +108,10 @@ public class GrokPrepperIT {
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        String testData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\"}";
+        String testData = "{\"message\":" + messageInput + "}";
         Record<String> record = new Record<>(testData);
 
-        String resultData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\","
+        String resultData = "{\"message\":" + messageInput + ","
                 .concat("\"clientip\":\"127.0.0.1\",")
                 .concat("\"ident\":\"user-identifier\",")
                 .concat("\"auth\":\"frank\",")
@@ -118,10 +143,10 @@ public class GrokPrepperIT {
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        String testData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\"}";
+        String testData = "{\"message\":" + messageInput + "}";
         Record<String> record = new Record<>(testData);
 
-        String resultData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\","
+        String resultData = "{\"message\":" + messageInput + ","
                 .concat("\"clientip\":\"127.0.0.1\",")
                 .concat("\"ident\":\"user-identifier\",")
                 .concat("\"auth\":\"frank\",")
@@ -150,10 +175,10 @@ public class GrokPrepperIT {
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        String testData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\"}";
+        String testData = "{\"message\":" + messageInput + "}";
         Record<String> record = new Record<>(testData);
 
-        String resultData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\","
+        String resultData = "{\"message\":" + messageInput + ","
                 .concat("\"verb\":\"GET\",")
                 .concat("\"request\":\"/apache_pb.gif\",")
                 .concat("\"httpversion\":\"1.0\",")
@@ -178,12 +203,12 @@ public class GrokPrepperIT {
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        String testData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\","
+        String testData = "{\"message\":" + messageInput + ","
                 .concat("\"extra_field\":\"My host IP is 192.0.2.1\"}");
 
         Record<String> record = new Record<>(testData);
 
-        String resultData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\","
+        String resultData = "{\"message\":" + messageInput + ","
                 .concat("\"extra_field\":\"My host IP is 192.0.2.1\",")
                 .concat("\"clientip\":\"127.0.0.1\",")
                 .concat("\"ident\":\"user-identifier\",")
@@ -214,10 +239,10 @@ public class GrokPrepperIT {
         pluginSetting.getSettings().put(GrokPrepperConfig.KEEP_EMPTY_CAPTURES, true);
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        String testData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\"}";
+        String testData = "{\"message\":" + messageInput + "}";
         Record<String> record = new Record<>(testData);
 
-        String resultData = "{\"message\":\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\","
+        String resultData = "{\"message\":" + messageInput + ","
                 .concat("\"clientip\":\"127.0.0.1\",")
                 .concat("\"ident\":\"user-identifier\",")
                 .concat("\"auth\":\"frank\",")

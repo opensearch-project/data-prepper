@@ -11,14 +11,18 @@
 
 package com.amazon.dataprepper.plugins.buffer.blockingbuffer;
 
+import com.amazon.dataprepper.model.buffer.SizeOverflowException;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.CheckpointState;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -69,21 +73,40 @@ public class BlockingBufferTests {
         assertThat(blockingBuffer, notNullValue());
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test
     public void testInsertNull() throws TimeoutException {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_SIZE, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
-        blockingBuffer.write(null, TEST_WRITE_TIMEOUT);
+        assertThrows(NullPointerException.class, () -> blockingBuffer.write(null, TEST_WRITE_TIMEOUT));
     }
 
-    @Test(expected = TimeoutException.class)
+    @Test
+    public void testWriteAllSizeOverflow() throws Exception {
+        final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_SIZE, TEST_BATCH_SIZE,
+                TEST_PIPELINE_NAME);
+        assertThat(blockingBuffer, notNullValue());
+        final Collection<Record<String>> testRecords = generateBatchRecords(TEST_BUFFER_SIZE + 1);
+        assertThrows(SizeOverflowException.class, () -> blockingBuffer.writeAll(testRecords, TEST_WRITE_TIMEOUT));
+    }
+
+    @Test
     public void testNoEmptySpaceWriteOnly() throws TimeoutException {
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(1, TEST_BATCH_SIZE,
                 TEST_PIPELINE_NAME);
         assertThat(blockingBuffer, notNullValue());
         blockingBuffer.write(new Record<>("FILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
-        blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT);
+        assertThrows(TimeoutException.class, () -> blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT));
+    }
+
+    @Test
+    public void testNoAvailSpaceWriteAllOnly() throws Exception {
+        final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(2, TEST_BATCH_SIZE,
+                TEST_PIPELINE_NAME);
+        assertThat(blockingBuffer, notNullValue());
+        final Collection<Record<String>> testRecords = generateBatchRecords(2);
+        blockingBuffer.write(new Record<>("FILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
+        assertThrows(TimeoutException.class, () -> blockingBuffer.writeAll(testRecords, TEST_WRITE_TIMEOUT));
     }
 
     @Test
@@ -97,7 +120,10 @@ public class BlockingBufferTests {
         blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
 
         // Then
-        assertThrows(TimeoutException.class, () -> blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT));
+        final Record<String> timeoutRecord = new Record<>("TIMEOUT");
+        assertThrows(TimeoutException.class, () -> blockingBuffer.write(timeoutRecord, TEST_WRITE_TIMEOUT));
+        assertThrows(
+                TimeoutException.class, () -> blockingBuffer.writeAll(Collections.singletonList(timeoutRecord), TEST_WRITE_TIMEOUT));
     }
 
     @Test
@@ -113,7 +139,28 @@ public class BlockingBufferTests {
         blockingBuffer.checkpoint(readResult.getValue());
 
         // Then
-        blockingBuffer.write(new Record<>("TIMEOUT"), TEST_WRITE_TIMEOUT);
+        blockingBuffer.write(new Record<>("REFILL_THE_BUFFER"), TEST_WRITE_TIMEOUT);
+        final Map.Entry<Collection<Record<String>>, CheckpointState> readCheckResult = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        assertEquals(1, readCheckResult.getKey().size());
+    }
+
+    @Test
+    public void testWriteAllIntoEmptySpaceAfterCheckedRead() throws Exception {
+        // Given
+        final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(2, TEST_BATCH_SIZE,
+                TEST_PIPELINE_NAME);
+        assertThat(blockingBuffer, notNullValue());
+        final Collection<Record<String>> testRecords = generateBatchRecords(2);
+        blockingBuffer.writeAll(testRecords, TEST_WRITE_TIMEOUT);
+
+        // When
+        final Map.Entry<Collection<Record<String>>, CheckpointState> readResult = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        blockingBuffer.checkpoint(readResult.getValue());
+
+        // Then
+        blockingBuffer.writeAll(testRecords, TEST_WRITE_TIMEOUT);
+        final Map.Entry<Collection<Record<String>>, CheckpointState> readCheckResult = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        assertEquals(2, readCheckResult.getKey().size());
     }
 
     @Test
@@ -184,5 +231,13 @@ public class BlockingBufferTests {
         final PluginSetting testSettings = new PluginSetting(pluginName, settings);
         testSettings.setPipelineName(TEST_PIPELINE_NAME);
         return testSettings;
+    }
+
+    private Collection<Record<String>> generateBatchRecords(final int numRecords) {
+        final Collection<Record<String>> results = new ArrayList<>();
+        for (int i = 0; i < numRecords; i++) {
+            results.add(new Record<>(UUID.randomUUID().toString()));
+        }
+        return results;
     }
 }
