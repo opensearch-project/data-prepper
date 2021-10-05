@@ -12,6 +12,7 @@
 package com.amazon.dataprepper.plugins.sink.opensearch;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.junit.Test;
 
 import java.util.Collections;
