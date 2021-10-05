@@ -56,6 +56,7 @@ public class HTTPSource implements Source<Record<String>> {
                 LOG.info("SSL/TLS is enabled.");
                 final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
                 final Certificate certificate = certificateProvider.getCertificate();
+                // TODO: enable encrypted key with password
                 sb.https(sourceConfig.getPort()).tls(
                         new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
                         new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
