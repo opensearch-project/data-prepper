@@ -28,6 +28,6 @@ public class CertificateProviderFactory {
     public CertificateProvider getCertificateProvider() {
         // TODO: support more certificate providers
         LOG.info("Using local file system to get certificate and private key for SSL/TLS.");
-        return new FileCertificateProvider(httpSourceConfig.getSslCert(), httpSourceConfig.getSslKey());
+        return new FileCertificateProvider(httpSourceConfig.getSslCertificateFile(), httpSourceConfig.getSslKeyFile());
     }
 }

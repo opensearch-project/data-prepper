@@ -24,15 +24,15 @@ import java.util.Map;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 class CertificateProviderFactoryTest {
-    private final String TEST_SSL_CERT = getClass().getClassLoader().getResource("test_cert.crt").getFile();
-    private final String TEST_SSL_KEY = getClass().getClassLoader().getResource("test_decrypted_key.key").getFile();
+    private final String TEST_SSL_CERTIFICATE_FILE = getClass().getClassLoader().getResource("test_cert.crt").getFile();
+    private final String TEST_SSL_KEY_FILE = getClass().getClassLoader().getResource("test_decrypted_key.key").getFile();
 
     @Test
     public void getFileCertificateProviderSuccess() {
         final Map<String, Object> settingsMap = new HashMap<>();
         settingsMap.put("ssl", true);
-        settingsMap.put("ssl_certificate", TEST_SSL_CERT);
-        settingsMap.put("ssl_key", TEST_SSL_KEY);
+        settingsMap.put("ssl_certificate_file", TEST_SSL_CERTIFICATE_FILE);
+        settingsMap.put("ssl_key_file", TEST_SSL_KEY_FILE);
 
         final PluginSetting pluginSetting = new PluginSetting(null, settingsMap);
         pluginSetting.setPipelineName("pipeline");

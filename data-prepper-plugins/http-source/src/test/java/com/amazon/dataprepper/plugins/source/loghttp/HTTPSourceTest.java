@@ -55,8 +55,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class HTTPSourceTest {
-    private final String TEST_SSL_CERT = getClass().getClassLoader().getResource("test_cert.crt").getFile();
-    private final String TEST_SSL_KEY = getClass().getClassLoader().getResource("test_decrypted_key.key").getFile();
+    private final String TEST_SSL_CERTIFICATE_FILE = getClass().getClassLoader().getResource("test_cert.crt").getFile();
+    private final String TEST_SSL_KEY_FILE = getClass().getClassLoader().getResource("test_decrypted_key.key").getFile();
 
     @Mock
     private ServerBuilder serverBuilder;
@@ -119,15 +119,15 @@ class HTTPSourceTest {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             when(server.stop()).thenReturn(completableFuture);
 
-            final Path certFilePath = Path.of(TEST_SSL_CERT);
-            final Path keyFilePath = Path.of(TEST_SSL_KEY);
+            final Path certFilePath = Path.of(TEST_SSL_CERTIFICATE_FILE);
+            final Path keyFilePath = Path.of(TEST_SSL_KEY_FILE);
             final String certAsString = Files.readString(certFilePath);
             final String keyAsString = Files.readString(keyFilePath);
 
             final Map<String, Object> settingsMap = new HashMap<>();
             settingsMap.put(HTTPSourceConfig.SSL, true);
-            settingsMap.put(HTTPSourceConfig.SSL_CERT, TEST_SSL_CERT);
-            settingsMap.put(HTTPSourceConfig.SSL_KEY, TEST_SSL_KEY);
+            settingsMap.put(HTTPSourceConfig.SSL_CERTIFICATE_FILE, TEST_SSL_CERTIFICATE_FILE);
+            settingsMap.put(HTTPSourceConfig.SSL_KEY_FILE, TEST_SSL_KEY_FILE);
 
             testPluginSetting = new PluginSetting(null, settingsMap);
             testPluginSetting.setPipelineName("pipeline");
@@ -151,8 +151,8 @@ class HTTPSourceTest {
         final Map<String, Object> settingsMap = new HashMap<>();
         settingsMap.put(HTTPSourceConfig.REQUEST_TIMEOUT, 200);
         settingsMap.put(HTTPSourceConfig.SSL, true);
-        settingsMap.put(HTTPSourceConfig.SSL_CERT, TEST_SSL_CERT);
-        settingsMap.put(HTTPSourceConfig.SSL_KEY, TEST_SSL_KEY);
+        settingsMap.put(HTTPSourceConfig.SSL_CERTIFICATE_FILE, TEST_SSL_CERTIFICATE_FILE);
+        settingsMap.put(HTTPSourceConfig.SSL_KEY_FILE, TEST_SSL_KEY_FILE);
         testPluginSetting = new PluginSetting("http", settingsMap);
         testPluginSetting.setPipelineName("pipeline");
         HTTPSourceUnderTest = new HTTPSource(testPluginSetting);
