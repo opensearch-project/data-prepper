@@ -19,6 +19,12 @@ source:
 * max_connection_count(Optional) => An `int` larger than 0 represents the maximum allowed number of open connections. Default is `500`.
 * max_pending_requests(Optional) => An `int` larger than 0 represents the maximum allowed number of tasks in the ScheduledThreadPool work queue. Default is `1024`.
 
+### SSL
+
+* ssl(Optional) => A `boolean` enables TLS/SSL. Default is ```true```.
+* ssl_certificate(Optional) => A `String` represents the SSL certificate chain file path. Required if ```ssl``` is set to ```true```.
+* ssl_key(Optional) => A `String` represents the SSL key file path. Only decrypted key file is supported. Required if ```ssl``` is set to ```true```.
+
 ## Metrics
 
 TBD
