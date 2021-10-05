@@ -22,8 +22,8 @@ source:
 ### SSL
 
 * ssl(Optional) => A `boolean` enables TLS/SSL. Default is ```true```.
-* ssl_certificate(Optional) => A `String` represents the SSL certificate chain file path. Required if ```ssl``` is set to ```true```.
-* ssl_key(Optional) => A `String` represents the SSL key file path. Only decrypted key file is supported. Required if ```ssl``` is set to ```true```.
+* ssl_certificate_file(Optional) => A `String` represents the SSL certificate chain file path. Required if ```ssl``` is set to ```true```.
+* ssl_key_file(Optional) => A `String` represents the SSL key file path. Only decrypted key file is supported. Required if ```ssl``` is set to ```true```.
 
 ## Metrics
 

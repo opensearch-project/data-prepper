@@ -30,8 +30,8 @@ public class HTTPSourceConfigTest {
     private static final int TEST_THREAD_COUNT = 888;
     private static final int TEST_MAX_CONNECTION_COUNT = 999;
     private static final int TEST_MAX_PENDING_REQUESTS = 666;
-    private final String TEST_SSL_CERT = getClass().getClassLoader().getResource("test_cert.crt").getFile();
-    private final String TEST_SSL_KEY = getClass().getClassLoader().getResource("test_decrypted_key.key").getFile();
+    private final String TEST_SSL_CERTIFICATE_FILE = getClass().getClassLoader().getResource("test_cert.crt").getFile();
+    private final String TEST_SSL_KEY_FILE = getClass().getClassLoader().getResource("test_decrypted_key.key").getFile();
 
     @Test
     public void testDefault() {
@@ -70,8 +70,8 @@ public class HTTPSourceConfigTest {
         assertEquals(TEST_MAX_CONNECTION_COUNT, sourceConfig.getMaxConnectionCount());
         assertEquals(TEST_MAX_PENDING_REQUESTS, sourceConfig.getMaxPendingRequests());
         assertFalse(sourceConfig.isSsl());
-        assertNull(sourceConfig.getSslCert());
-        assertNull(sourceConfig.getSslKey());
+        assertNull(sourceConfig.getSslCertificateFile());
+        assertNull(sourceConfig.getSslKeyFile());
         assertNull(sourceConfig.getSslKeyPassword());
     }
 
@@ -85,8 +85,8 @@ public class HTTPSourceConfigTest {
                 TEST_MAX_CONNECTION_COUNT,
                 TEST_MAX_PENDING_REQUESTS,
                 true,
-                TEST_SSL_CERT,
-                TEST_SSL_KEY,
+                TEST_SSL_CERTIFICATE_FILE,
+                TEST_SSL_KEY_FILE,
                 null
         );
         final HTTPSourceConfig sourceConfig = HTTPSourceConfig.buildConfig(pluginSetting);
@@ -98,8 +98,8 @@ public class HTTPSourceConfigTest {
         assertEquals(TEST_MAX_CONNECTION_COUNT, sourceConfig.getMaxConnectionCount());
         assertEquals(TEST_MAX_PENDING_REQUESTS, sourceConfig.getMaxPendingRequests());
         assertTrue(sourceConfig.isSsl());
-        assertEquals(TEST_SSL_CERT, sourceConfig.getSslCert());
-        assertEquals(TEST_SSL_KEY, sourceConfig.getSslKey());
+        assertEquals(TEST_SSL_CERTIFICATE_FILE, sourceConfig.getSslCertificateFile());
+        assertEquals(TEST_SSL_KEY_FILE, sourceConfig.getSslKeyFile());
         assertNull(sourceConfig.getSslKeyPassword());
     }
 
@@ -193,7 +193,7 @@ public class HTTPSourceConfigTest {
                 0,
                 true,
                 "invalid path",
-                TEST_SSL_KEY,
+                TEST_SSL_KEY_FILE,
                 null
         );
         assertThrows(IllegalArgumentException.class, () -> HTTPSourceConfig.buildConfig(invalidPluginSetting));
@@ -208,7 +208,7 @@ public class HTTPSourceConfigTest {
                 TEST_MAX_CONNECTION_COUNT,
                 0,
                 true,
-                TEST_SSL_CERT,
+                TEST_SSL_CERTIFICATE_FILE,
                 "invalid path",
                 null
         );
@@ -221,8 +221,8 @@ public class HTTPSourceConfigTest {
                                                                 final int maxConnectionCount,
                                                                 final int maxPendingRequests,
                                                                 final boolean ssl,
-                                                                final String sslCert,
-                                                                final String sslKey,
+                                                                final String sslCertificateFile,
+                                                                final String sslKeyFile,
                                                                 final String sslKeyPassword) {
         final Map<String, Object> settings = new HashMap<>();
         settings.put(HTTPSourceConfig.PORT, port);
@@ -231,8 +231,8 @@ public class HTTPSourceConfigTest {
         settings.put(HTTPSourceConfig.MAX_CONNECTION_COUNT, maxConnectionCount);
         settings.put(HTTPSourceConfig.MAX_PENDING_REQUESTS, maxPendingRequests);
         settings.put(HTTPSourceConfig.SSL, ssl);
-        settings.put(HTTPSourceConfig.SSL_CERT, sslCert);
-        settings.put(HTTPSourceConfig.SSL_KEY, sslKey);
+        settings.put(HTTPSourceConfig.SSL_CERTIFICATE_FILE, sslCertificateFile);
+        settings.put(HTTPSourceConfig.SSL_KEY_FILE, sslKeyFile);
         settings.put(HTTPSourceConfig.SSL_KEY_PASSWORD, sslKeyPassword);
         return new PluginSetting(PLUGIN_NAME, settings);
     }
