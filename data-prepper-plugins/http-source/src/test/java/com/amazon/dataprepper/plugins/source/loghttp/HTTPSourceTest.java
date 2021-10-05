@@ -106,11 +106,14 @@ class HTTPSourceTest {
     }
 
     @Test
-    public void testHTTPJsonResponse429() {
+    public void testHTTPJsonResponse429() throws InterruptedException {
         // Prepare
         final Map<String, Object> settings = new HashMap<>();
         final int testMaxPendingRequests = 1;
         final int testThreadCount = 1;
+        final int clientTimeoutInMillis = 100;
+        final int serverTimeoutInMillis = (testMaxPendingRequests + testThreadCount + 1) * clientTimeoutInMillis;
+        settings.put(HTTPSourceConfig.REQUEST_TIMEOUT, serverTimeoutInMillis);
         settings.put(HTTPSourceConfig.MAX_PENDING_REQUESTS, testMaxPendingRequests);
         settings.put(HTTPSourceConfig.THREAD_COUNT, testThreadCount);
         testPluginSetting = new PluginSetting("http", settings);
@@ -131,8 +134,8 @@ class HTTPSourceTest {
                         (response, ex) -> assertThat(response.status()).isEqualTo(HttpStatus.OK)).join();
 
         // Send requests to throttle the server when buffer is full
-        // Set the client timeout to be less than source request_timeout / (testMaxPendingRequests + testThreadCount)
-        WebClient testWebClient = WebClient.builder().responseTimeout(Duration.ofMillis(100)).build();
+        // Set the client timeout to be less than source serverTimeoutInMillis / (testMaxPendingRequests + testThreadCount)
+        WebClient testWebClient = WebClient.builder().responseTimeoutMillis(clientTimeoutInMillis).build();
         for (int i = 0; i < testMaxPendingRequests + testThreadCount; i++) {
             try {
                 testWebClient.execute(testRequestHeaders, testHttpData).aggregate().join();
@@ -144,6 +147,14 @@ class HTTPSourceTest {
         // When/Then
         testWebClient.execute(testRequestHeaders, testHttpData).aggregate().whenComplete(
                         (response, ex) -> assertThat(response.status()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS)).join();
+        // Wait until source server timeout a request processing thread
+        Thread.sleep(serverTimeoutInMillis);
+        // New request should timeout instead of being rejected
+        try {
+            testWebClient.execute(testRequestHeaders, testHttpData).aggregate().join();
+        } catch (CompletionException e) {
+            assertThat(e.getCause()).isInstanceOf(ResponseTimeoutException.class);
+        }
     }
 
     @Test
