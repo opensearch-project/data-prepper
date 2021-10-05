@@ -9,7 +9,7 @@
  *  GitHub history for details.
  */
 
-package com.amazon.dataprepper.plugins.sink.opensearch;
+package com.amazon.dataprepper.plugins.sink.opensearch.index;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -39,7 +39,7 @@ public class IndexConfiguration {
     public static final String DOCUMENT_ID_FIELD = "document_id_field";
     public static final long DEFAULT_BULK_SIZE = 5L;
 
-    private final String indexType;
+    private final IndexType indexType;
     private final String indexAlias;
     private final Map<String, Object> indexTemplate;
     private final String documentIdField;
@@ -47,14 +47,14 @@ public class IndexConfiguration {
 
     @SuppressWarnings("unchecked")
     private IndexConfiguration(final Builder builder) {
-        if (builder.isRaw && builder.isServiceMap) {
+        if (builder.isTraceAnalyticsRaw && builder.isTraceAnalyticsServiceMap) {
             throw new IllegalStateException("trace_analytics_raw and trace_analytics_service_map cannot be both true.");
-        } else if (builder.isRaw) {
-            this.indexType  = IndexConstants.RAW;
-        } else if (builder.isServiceMap) {
-            this.indexType  = IndexConstants.SERVICE_MAP;
+        } else if (builder.isTraceAnalyticsRaw) {
+            this.indexType  = IndexType.TRACE_ANALYTICS_RAW;
+        } else if (builder.isTraceAnalyticsServiceMap) {
+            this.indexType  = IndexType.TRACE_ANALYTICS_SERVICE_MAP;
         } else {
-            this.indexType  = IndexConstants.CUSTOM;
+            this.indexType  = IndexType.CUSTOM;
         }
 
         this.indexTemplate = readIndexTemplate(builder.templateFile, indexType);
@@ -81,9 +81,9 @@ public class IndexConfiguration {
         this.bulkSize = builder.bulkSize;
 
         String documentIdField = builder.documentIdField;
-        if (indexType.equals(IndexConstants.RAW)) {
+        if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW)) {
             documentIdField = "spanId";
-        } else if (indexType.equals(IndexConstants.SERVICE_MAP)) {
+        } else if (indexType.equals(IndexType.TRACE_ANALYTICS_SERVICE_MAP)) {
             documentIdField = "hashId";
         }
         this.documentIdField = documentIdField;
@@ -112,7 +112,7 @@ public class IndexConfiguration {
         return builder.build();
     }
 
-    public String getIndexType() {
+    public IndexType getIndexType() {
         return indexType;
     }
 
@@ -141,13 +141,13 @@ public class IndexConfiguration {
      * @param indexType
      * @return
      */
-    private Map<String, Object> readIndexTemplate(final String templateFile, final String indexType) {
+    private Map<String, Object> readIndexTemplate(final String templateFile, final IndexType indexType) {
         try {
             URL templateURL = null;
-            if (indexType.equals(IndexConstants.RAW)) {
+            if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW)) {
                 templateURL = getClass().getClassLoader()
                         .getResource(IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
-            } else if (indexType.equals(IndexConstants.SERVICE_MAP)) {
+            } else if (indexType.equals(IndexType.TRACE_ANALYTICS_SERVICE_MAP)) {
                 templateURL = getClass().getClassLoader()
                         .getResource(IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
             } else if (templateFile != null) {
@@ -165,8 +165,8 @@ public class IndexConfiguration {
     }
 
     public static class Builder {
-        private boolean isRaw = false;
-        private boolean isServiceMap = false;
+        private boolean isTraceAnalyticsRaw = false;
+        private boolean isTraceAnalyticsServiceMap = false;
         private String indexAlias;
         private String templateFile;
         private int numShards;
@@ -176,13 +176,13 @@ public class IndexConfiguration {
 
         public Builder setIsRaw(final Boolean isRaw) {
             checkNotNull(isRaw, "trace_analytics_raw cannot be null.");
-            this.isRaw = isRaw;
+            this.isTraceAnalyticsRaw = isRaw;
             return this;
         }
 
         public Builder setIsServiceMap(final Boolean isServiceMap) {
             checkNotNull(isServiceMap, "trace_analytics_service_map cannot be null.");
-            this.isServiceMap = isServiceMap;
+            this.isTraceAnalyticsServiceMap = isServiceMap;
             return this;
         }
 
