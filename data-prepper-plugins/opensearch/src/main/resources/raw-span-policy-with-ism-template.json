@@ -17,6 +17,6 @@
     ],
     "ism_template": {
       "index_patterns": ["otel-v1-apm-span-*"]
-    }
+    } //7.12 or 7.13 or later needs this field.
   }
 }

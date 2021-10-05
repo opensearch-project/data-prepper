@@ -15,6 +15,10 @@ import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
+import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexConstants;
+import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexManager;
+import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Measurement;
 import org.apache.commons.io.FileUtils;
@@ -87,7 +91,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
   public void testInstantiateSinkRawSpanDefault() throws IOException {
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
-    final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
+    final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
     Request request = new Request(HttpMethod.HEAD, indexAlias);
     Response response = client().performRequest(request);
     assertEquals(SC_OK, response.getStatusLine().getStatusCode());
@@ -126,11 +130,11 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
   }
 
   public void testInstantiateSinkRawSpanReservedAliasAlreadyUsedAsIndex() throws IOException {
-    final String reservedIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
+    final String reservedIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
     final Request request = new Request(HttpMethod.PUT, reservedIndexAlias);
     client().performRequest(request);
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
-    assertThrows(String.format(OpenSearchSink.INDEX_ALIAS_USED_AS_INDEX_ERROR, reservedIndexAlias),
+    assertThrows(String.format(IndexManager.INDEX_ALIAS_USED_AS_INDEX_ERROR, reservedIndexAlias),
             RuntimeException.class, () -> new OpenSearchSink(pluginSetting));
   }
 
@@ -146,7 +150,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
 
-    final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
+    final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
     assertEquals(2, retSources.size());
     assertTrue(retSources.containsAll(Arrays.asList(expData1, expData2)));
@@ -207,7 +211,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final StringBuilder content = new StringBuilder();
     Files.lines(Paths.get(expDLQFile)).forEach(content::append);
     assertTrue(content.toString().contains(testDoc1));
-    final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.RAW);
+    final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
     assertEquals(1, retSources.size());
     assertEquals(expData, retSources.get(0));
@@ -231,7 +235,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
   public void testInstantiateSinkServiceMapDefault() throws IOException {
     final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
-    final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.SERVICE_MAP);
+    final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP);
     final Request request = new Request(HttpMethod.HEAD, indexAlias);
     final Response response = client().performRequest(request);
     assertEquals(SC_OK, response.getStatusLine().getStatusCode());
@@ -255,7 +259,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
-    final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexConstants.SERVICE_MAP);
+    final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
     assertEquals(1, retSources.size());
     assertEquals(expData, retSources.get(0));

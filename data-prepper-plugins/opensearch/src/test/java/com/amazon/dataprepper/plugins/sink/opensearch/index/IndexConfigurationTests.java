@@ -9,7 +9,7 @@
  *  GitHub history for details.
  */
 
-package com.amazon.dataprepper.plugins.sink.opensearch;
+package com.amazon.dataprepper.plugins.sink.opensearch.index;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import org.junit.Test;
@@ -20,12 +20,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.amazon.dataprepper.plugins.sink.opensearch.IndexConstants.CUSTOM;
-import static com.amazon.dataprepper.plugins.sink.opensearch.IndexConstants.RAW;
-import static com.amazon.dataprepper.plugins.sink.opensearch.IndexConstants.RAW_DEFAULT_TEMPLATE_FILE;
-import static com.amazon.dataprepper.plugins.sink.opensearch.IndexConstants.SERVICE_MAP;
-import static com.amazon.dataprepper.plugins.sink.opensearch.IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE;
-import static com.amazon.dataprepper.plugins.sink.opensearch.IndexConstants.TYPE_TO_DEFAULT_ALIAS;
+import static com.amazon.dataprepper.plugins.sink.opensearch.index.IndexConstants.RAW_DEFAULT_TEMPLATE_FILE;
+import static com.amazon.dataprepper.plugins.sink.opensearch.index.IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE;
+import static com.amazon.dataprepper.plugins.sink.opensearch.index.IndexConstants.TYPE_TO_DEFAULT_ALIAS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
@@ -39,7 +36,7 @@ public class IndexConfigurationTests {
   public void testRawAPMSpan() {
     final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder().setIsRaw(true).build();
     final URL expTemplateURL = indexConfiguration.getClass().getClassLoader().getResource(RAW_DEFAULT_TEMPLATE_FILE);
-    assertEquals(TYPE_TO_DEFAULT_ALIAS.get(RAW), indexConfiguration.getIndexAlias());
+    assertEquals(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW), indexConfiguration.getIndexAlias());
     assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
   }
 
@@ -48,7 +45,7 @@ public class IndexConfigurationTests {
     final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder().setIsServiceMap(true).build();
     final URL expTemplateURL = indexConfiguration
             .getClass().getClassLoader().getResource(SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
-    assertEquals(TYPE_TO_DEFAULT_ALIAS.get(SERVICE_MAP), indexConfiguration.getIndexAlias());
+    assertEquals(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP), indexConfiguration.getIndexAlias());
     assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
   }
 
@@ -63,7 +60,7 @@ public class IndexConfigurationTests {
             .withBulkSize(10)
             .build();
 
-    assertEquals(CUSTOM, indexConfiguration.getIndexType());
+    assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
     assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
     assertEquals(10, indexConfiguration.getBulkSize());
     assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
@@ -85,7 +82,7 @@ public class IndexConfigurationTests {
             .withBulkSize(10)
             .build();
 
-    assertEquals(CUSTOM, indexConfiguration.getIndexType());
+    assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
     assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
     assertEquals(10, indexConfiguration.getBulkSize());
     assertTrue(indexConfiguration.getIndexTemplate().isEmpty());
@@ -109,7 +106,7 @@ public class IndexConfigurationTests {
             .withNumReplicas(1)
             .build();
 
-    assertEquals(CUSTOM, indexConfiguration.getIndexType());
+    assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
     assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
     assertEquals(10, indexConfiguration.getBulkSize());
     assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
@@ -137,7 +134,7 @@ public class IndexConfigurationTests {
             .withBulkSize(10)
             .build();
 
-    assertEquals(CUSTOM, indexConfiguration.getIndexType());
+    assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
     assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
     assertEquals(10, indexConfiguration.getBulkSize());
     assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
@@ -169,8 +166,8 @@ public class IndexConfigurationTests {
     final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
     final URL expTemplateFile = indexConfiguration
             .getClass().getClassLoader().getResource(RAW_DEFAULT_TEMPLATE_FILE);
-    assertEquals(RAW, indexConfiguration.getIndexType());
-    assertEquals(TYPE_TO_DEFAULT_ALIAS.get(RAW), indexConfiguration.getIndexAlias());
+    assertEquals(IndexType.TRACE_ANALYTICS_RAW, indexConfiguration.getIndexType());
+    assertEquals(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW), indexConfiguration.getIndexAlias());
     assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
     assertEquals(5, indexConfiguration.getBulkSize());
     assertEquals("spanId", indexConfiguration.getDocumentIdField());
@@ -183,8 +180,8 @@ public class IndexConfigurationTests {
     final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
     final URL expTemplateFile = indexConfiguration
             .getClass().getClassLoader().getResource(SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
-    assertEquals(SERVICE_MAP, indexConfiguration.getIndexType());
-    assertEquals(TYPE_TO_DEFAULT_ALIAS.get(SERVICE_MAP), indexConfiguration.getIndexAlias());
+    assertEquals(IndexType.TRACE_ANALYTICS_SERVICE_MAP, indexConfiguration.getIndexType());
+    assertEquals(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP), indexConfiguration.getIndexAlias());
     assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
     assertEquals(5, indexConfiguration.getBulkSize());
     assertEquals("hashId", indexConfiguration.getDocumentIdField());
@@ -208,7 +205,7 @@ public class IndexConfigurationTests {
     final PluginSetting pluginSetting = generatePluginSetting(
             false, false, testIndexAlias, defaultTemplateFilePath, testBulkSize, testIdField);
     final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
-    assertEquals(CUSTOM, indexConfiguration.getIndexType());
+    assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
     assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
     assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
     assertEquals(testBulkSize, indexConfiguration.getBulkSize());
