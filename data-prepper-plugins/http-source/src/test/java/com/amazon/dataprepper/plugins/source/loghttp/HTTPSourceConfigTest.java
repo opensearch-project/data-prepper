@@ -30,8 +30,8 @@ public class HTTPSourceConfigTest {
     private static final int TEST_THREAD_COUNT = 888;
     private static final int TEST_MAX_CONNECTION_COUNT = 999;
     private static final int TEST_MAX_PENDING_REQUESTS = 666;
-    private final String TEST_SSL_CERT = getClass().getClassLoader().getResource("test-data-prepper.crt").getFile();
-    private final String TEST_SSL_KEY = getClass().getClassLoader().getResource("test-data-prepper.key").getFile();
+    private final String TEST_SSL_CERT = getClass().getClassLoader().getResource("test_cert.crt").getFile();
+    private final String TEST_SSL_KEY = getClass().getClassLoader().getResource("test_decrypted_key.key").getFile();
 
     @Test
     public void testDefault() {
