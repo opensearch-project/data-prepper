@@ -59,9 +59,9 @@ public class HTTPSource implements Source<Record<String>> {
                     maxPendingRequests, blockingTaskExecutor.getQueue());
             final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests);
             // TODO: allow customization on URI path for log ingestion
-            sb.decorator("/log/ingest", ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
+            sb.decorator(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
             final LogHTTPService logHTTPService = new LogHTTPService(requestTimeoutInMillis, buffer);
-            sb.annotatedService("/log/ingest", logHTTPService);
+            sb.annotatedService(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI, logHTTPService);
             // TODO: attach HealthCheckService
 
             server = sb.build();
