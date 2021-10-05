@@ -41,7 +41,7 @@ public class GrokPrepperIT {
                 GrokPrepperConfig.DEFAULT_PATTERNS_FILES_GLOB,
                 Collections.emptyMap(),
                 GrokPrepperConfig.DEFAULT_TIMEOUT_MILLIS,
-                GrokPrepperConfig.TARGET);
+                GrokPrepperConfig.DEFAULT_TARGET);
 
         pluginSetting.setPipelineName("grokPipeline");
 
@@ -132,7 +132,7 @@ public class GrokPrepperIT {
     }
 
     @Test
-    public void testSingleMatchMultiplePatternWithDefaults() throws JsonProcessingException {
+    public void testSingleMatchMultiplePatternWithBreakOnMatchFalse() throws JsonProcessingException {
         final Map<String, List<String>> matchConfig = new HashMap<>();
         final List<String> patternsToMatchMessage = new ArrayList<>();
         patternsToMatchMessage.add("%{COMMONAPACHELOG}");
@@ -141,6 +141,7 @@ public class GrokPrepperIT {
         matchConfig.put("message", patternsToMatchMessage);
 
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
+        pluginSetting.getSettings().put(GrokPrepperConfig.BREAK_ON_MATCH, false);
         grokPrepper = new GrokPrepper(pluginSetting);
 
         String testData = "{\"message\":" + messageInput + "}";
@@ -195,12 +196,13 @@ public class GrokPrepperIT {
     }
 
     @Test
-    public void testMultipleMatchWithDefaults() throws JsonProcessingException {
+    public void testMultipleMatchWithBreakOnMatchFalse() throws JsonProcessingException {
         final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList("%{COMMONAPACHELOG}"));
         matchConfig.put("extra_field", Collections.singletonList("%{GREEDYDATA} %{IPORHOST:host}"));
 
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
+        pluginSetting.getSettings().put(GrokPrepperConfig.BREAK_ON_MATCH, false);
         grokPrepper = new GrokPrepper(pluginSetting);
 
         String testData = "{\"message\":" + messageInput + ","
@@ -279,6 +281,68 @@ public class GrokPrepperIT {
                 .concat("\"NUMBER\":\"123456\",")
                 .concat("\"GREEDYDATA\":\"This is my greedy data before matching\",")
                 .concat("\"host\":\"192.0.2.1\"}");
+
+        Record<String> resultRecord = new Record<>(resultData);
+
+        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+
+        assertThat(grokkedRecords.size(), equalTo(1));
+        assertThat(grokkedRecords.get(0), notNullValue());
+        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+    }
+
+    @Test
+    public void testPatternDefinitions() throws JsonProcessingException {
+        final Map<String, List<String>> matchConfig = new HashMap<>();
+        matchConfig.put("message", Collections.singletonList("%{GREEDYDATA:greedy_data} %{CUSTOMPHONENUMBERPATTERN:my_number}"));
+
+        final Map<String, String> patternDefinitions = new HashMap<>();
+        patternDefinitions.put("CUSTOMPHONENUMBERPATTERN", "\\d\\d\\d-\\d\\d\\d-\\d\\d\\d");
+
+        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
+        pluginSetting.getSettings().put(GrokPrepperConfig.PATTERN_DEFINITIONS, patternDefinitions);
+        grokPrepper = new GrokPrepper(pluginSetting);
+
+        String testData = "{\"message\":\"This is my greedy data before matching with my phone number 123-456-789\"}";
+        Record<String> record = new Record<>(testData);
+
+        String resultData = "{\"message\":\"This is my greedy data before matching with my phone number 123-456-789\","
+                .concat("\"greedy_data\":\"This is my greedy data before matching with my phone number\",")
+                .concat("\"my_number\":\"123-456-789\"}");
+
+        Record<String> resultRecord = new Record<>(resultData);
+
+        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+
+        assertThat(grokkedRecords.size(), equalTo(1));
+        assertThat(grokkedRecords.get(0), notNullValue());
+        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+    }
+
+    @Test
+    public void testPatternsDirWithDefaultPatternsFilesGlob() {
+        final List<String> patternsDir = new ArrayList<>();
+        patternsDir.add("../../../../../../../resources");
+    }
+
+    @Test
+    public void testPatternsDirWithCustomPatternsFilesGlob() {
+    }
+
+    @Test
+    public void testMatchWithNamedCapturesSyntax() throws JsonProcessingException {
+        final Map<String, List<String>> matchConfig = new HashMap<>();
+        matchConfig.put("message", Collections.singletonList("%{GREEDYDATA:greedy_data} (?<mynumber>\\d\\d\\d-\\d\\d\\d-\\d\\d\\d)"));
+
+        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
+        grokPrepper = new GrokPrepper(pluginSetting);
+
+        String testData = "{\"message\":\"This is my greedy data before matching with my phone number 123-456-789\"}";
+        Record<String> record = new Record<>(testData);
+
+        String resultData = "{\"message\":\"This is my greedy data before matching with my phone number 123-456-789\","
+                .concat("\"greedy_data\":\"This is my greedy data before matching with my phone number\",")
+                .concat("\"mynumber\":\"123-456-789\"}");
 
         Record<String> resultRecord = new Record<>(resultData);
 
