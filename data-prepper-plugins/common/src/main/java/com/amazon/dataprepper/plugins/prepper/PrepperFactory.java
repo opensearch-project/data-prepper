@@ -21,7 +21,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Old class for creating Preppers.
+ *
+ * @deprecated in 1.2. Use {@link com.amazon.dataprepper.model.plugin.PluginFactory} instead.
+ */
 @SuppressWarnings({"rawtypes"})
+@Deprecated
 public class PrepperFactory extends PluginFactory {
 
     public static List<Prepper> newPreppers(final PluginSetting pluginSetting) {
