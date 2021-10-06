@@ -66,6 +66,8 @@ dependencies {
     testImplementation "org.awaitility:awaitility:4.1.0"
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
     testImplementation "commons-io:commons-io:2.11.0"
+    testImplementation 'net.bytebuddy:byte-buddy:1.11.18'
+    testImplementation 'net.bytebuddy:byte-buddy-agent:1.11.18'
 }
 
 // Workaround for Werror
@@ -96,7 +98,7 @@ configurations.all {
     }
     // The OpenSearch plugins appear to provide their own version of Mockito
     // which is causing problems, so we exclude it.
-    exclude group: 'org.mockito'
+    exclude (group: 'org.elasticsearch', module: "securemock");
 }
 
 test {

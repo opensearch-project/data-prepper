@@ -4,17 +4,17 @@ Data Prepper for Trace Analytics in v0.8.x supports both vertical and horizontal
 
 To scale vertically, simply adjust the size of your single Data Prepper instance to meet your workload's demands. 
 
-To scale horizontally, deploy multiple Data Prepper instances to form a cluster by using the [Peer Forwarder plugin](../../data-prepper-plugins/peer-forwarder/README.md). This plugin enables Data Preppers to communicate with others in the cluster and is required for horizontally-scaling deployments.
+To scale horizontally, deploy multiple Data Prepper instances to form a cluster by using the [Peer Forwarder plugin](../data-prepper-plugins/peer-forwarder/README.md). This plugin enables Data Preppers to communicate with others in the cluster and is required for horizontally-scaling deployments.
 
 ## Scaling Tips
 
-We would like to provide the users with some useful tips for scaling. We recommend the users to modify parameters based on their requirements. Also, monitor the Data Prepper host metrics and Elasticsearch metrics to ensure the configuration is working as expected.
+We would like to provide the users with some useful tips for scaling. We recommend the users to modify parameters based on their requirements. Also, monitor the Data Prepper host metrics and OpenSearch metrics to ensure the configuration is working as expected.
 
 ### Buffer
 
 The total number of trace requests that Data Prepper is processing is equal to sum of `buffer_size` in `otel-trace-pipeline` and `raw-trace-pipeline`. 
 
-The total number of trace requests inflight to Elasticsearch is equal to the product of `batch_size` and `workers` in `raw-trace-pipeline`.
+The total number of trace requests inflight to OpenSearch is equal to the product of `batch_size` and `workers` in `raw-trace-pipeline`.
 
 Our recommendation is that
  * have same `buffer_size` in `otel-trace-pipeline` and `raw-trace-pipeline`
@@ -25,7 +25,7 @@ Our recommendation is that
 
 The `workers` setting determines the number of threads that will be used by Data Prepper to process requests from the buffer. 
 
-Our recommendation is that set the workers based on the CPU utilization, this value can be higher than available processors as the Data Prepper spends significant I/O time in sending data to elasticsearch.
+Our recommendation is that set the workers based on the CPU utilization, this value can be higher than available processors as the Data Prepper spends significant I/O time in sending data to OpenSearch.
 
 ### Heap
 
@@ -44,9 +44,9 @@ Data Prepper uses the disk to write logs. In the current version, you can redire
 
 ## AWS
 
-[AWS EC2 Cloudformation](../../deployment-template/ec2/data-prepper-ec2-deployment-cfn.yaml) template provides user-friendly mechanism to configure the above scaling attributes.
+[AWS EC2 Cloudformation](../deployment-template/ec2/data-prepper-ec2-deployment-cfn.yaml) template provides user-friendly mechanism to configure the above scaling attributes.
 
-[Kubernetes config files](../../deployment-template/k8s/README.md) and [EKS config files](../../deployment-template/eks/README.md) are available to configure these attributes in a cluster deployment.
+[Kubernetes config files](../deployment-template/k8s/README.md) and [EKS config files](../deployment-template/eks/README.md) are available to configure these attributes in a cluster deployment.
 
 ## Benchmark
 

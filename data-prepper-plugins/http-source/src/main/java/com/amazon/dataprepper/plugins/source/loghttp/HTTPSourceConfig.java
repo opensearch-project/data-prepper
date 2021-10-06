@@ -24,6 +24,7 @@ public class HTTPSourceConfig {
     static final String THREAD_COUNT = "thread_count";
     static final String MAX_CONNECTION_COUNT = "max_connection_count";
     static final String MAX_PENDING_REQUESTS = "max_pending_requests";
+    static final String DEFAULT_LOG_INGEST_URI = "/log/ingest";
     static final String SSL = "ssl";
     static final String SSL_CERTIFICATE_FILE = "ssl_certificate_file";
     static final String SSL_KEY_FILE = "ssl_key_file";

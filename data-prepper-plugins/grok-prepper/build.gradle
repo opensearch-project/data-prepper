@@ -18,6 +18,7 @@ dependencies {
     implementation "io.krakens:java-grok:0.1.9"
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     testImplementation "org.hamcrest:hamcrest:2.2"
+    testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
 }
 
 jacocoTestCoverageVerification {

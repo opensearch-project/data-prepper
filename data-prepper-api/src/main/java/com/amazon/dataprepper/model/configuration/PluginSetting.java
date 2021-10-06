@@ -254,13 +254,13 @@ public class PluginSetting {
         throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
     }
 
-    private <T> void checkObjectType(String attribute, Object object, Class<T> type) {
+    private <T> void checkObjectType(final String attribute, final Object object, final Class<T> type) {
         if (!(type.isAssignableFrom(object.getClass()))){
             throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
         }
     }
 
-    private <T> void checkObjectForListType(String attribute, Object object, Class<T> type) {
+    private <T> void checkObjectForListType(final String attribute, final Object object, final Class<T> type) {
         checkObjectType(attribute, object, List.class);
 
         ((List<?>) object).forEach(o -> {
