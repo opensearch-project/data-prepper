@@ -28,7 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -97,7 +97,7 @@ class LogHTTPServiceTest {
                 .build();
         List<Map<String, Object>> jsonList = new ArrayList<>();
         for (int i = 0; i < numJson; i++) {
-            jsonList.add(new HashMap<String, Object>() {{ put("log", UUID.randomUUID().toString()); }});
+            jsonList.add(Collections.singletonMap("log", UUID.randomUUID().toString()));
         }
         String content = mapper.writeValueAsString(jsonList);
         HttpData httpData = HttpData.ofUtf8(content);

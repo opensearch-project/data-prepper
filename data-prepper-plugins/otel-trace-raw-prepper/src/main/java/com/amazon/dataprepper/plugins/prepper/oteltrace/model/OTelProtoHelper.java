@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 
 public final class OTelProtoHelper {
 
-    private final static ObjectMapper OBJECT_MAPPER =  new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER =  new ObjectMapper();
     private static final String SERVICE_NAME = "service.name";
     private static final String SPAN_ATTRIBUTES = "span.attributes";
     static final String RESOURCE_ATTRIBUTES = "resource.attributes";
@@ -41,14 +41,14 @@ public final class OTelProtoHelper {
      */
     private static final String DOT = ".";
     private static final String AT = "@";
-    public final static Function<String, String> REPLACE_DOT_WITH_AT = i -> i.replace(DOT, AT);
+    public static final Function<String, String> REPLACE_DOT_WITH_AT = i -> i.replace(DOT, AT);
     /**
      * Span and Resource attributes are essential for kibana so they should not be nested. SO we will prefix them with "span.attributes"
      * and "resource.attributes".
      *
      */
-    public final static Function<String, String> SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> SPAN_ATTRIBUTES + DOT + i.replace(DOT, AT);
-    public final static Function<String, String> RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> RESOURCE_ATTRIBUTES + DOT + i.replace(DOT, AT);
+    public static final Function<String, String> SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> SPAN_ATTRIBUTES + DOT + i.replace(DOT, AT);
+    public static final Function<String, String> RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> RESOURCE_ATTRIBUTES + DOT + i.replace(DOT, AT);
 
 
     public static Object convertAnyValue(final AnyValue value) {
