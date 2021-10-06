@@ -20,6 +20,12 @@ import java.lang.reflect.InvocationTargetException;
 
 import static java.lang.String.format;
 
+/**
+ * Old class for creating plugins.
+ *
+ * @deprecated in 1.2. Use {@link com.amazon.dataprepper.model.plugin.PluginFactory} instead.
+ */
+@Deprecated
 public class PluginFactory {
     private static final Logger LOG = LoggerFactory.getLogger(PluginFactory.class);
 

@@ -11,11 +11,13 @@
 
 package com.amazon.dataprepper;
 
+import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.parser.PipelineParser;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.parser.model.MetricRegistryType;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
+import com.amazon.dataprepper.plugin.DefaultPluginFactory;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
@@ -128,7 +130,8 @@ public class DataPrepper {
      */
     public boolean execute(final String configurationFileLocation) {
         LOG.info("Using {} configuration file", configurationFileLocation);
-        final PipelineParser pipelineParser = new PipelineParser(configurationFileLocation);
+        final PluginFactory pluginFactory = new DefaultPluginFactory();
+        final PipelineParser pipelineParser = new PipelineParser(configurationFileLocation, pluginFactory);
         transformationPipelines = pipelineParser.parseConfiguration();
         if (transformationPipelines.size() == 0) {
             LOG.error("No valid pipeline is available for execution, exiting");

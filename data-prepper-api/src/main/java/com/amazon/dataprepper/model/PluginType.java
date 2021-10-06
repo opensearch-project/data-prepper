@@ -16,10 +16,16 @@ import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
 
+@Deprecated
 public enum PluginType {
+    NONE("none", Void.class),
+    @Deprecated
     SOURCE("source", Source.class),
+    @Deprecated
     BUFFER("buffer", Buffer.class),
+    @Deprecated
     PREPPER("prepper", Prepper.class),
+    @Deprecated
     SINK("sink", Sink.class);
 
     private final String pluginName;
