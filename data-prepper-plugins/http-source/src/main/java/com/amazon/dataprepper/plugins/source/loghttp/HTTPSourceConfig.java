@@ -20,6 +20,7 @@ public class HTTPSourceConfig {
     static final String THREAD_COUNT = "thread_count";
     static final String MAX_CONNECTION_COUNT = "max_connection_count";
     static final String MAX_PENDING_REQUESTS = "max_pending_requests";
+    static final String DEFAULT_LOG_INGEST_URI = "/log/ingest";
     static final int DEFAULT_PORT = 2021;
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final int DEFAULT_THREAD_COUNT = 200;

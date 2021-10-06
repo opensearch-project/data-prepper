@@ -19,6 +19,7 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
+import com.linecorp.armeria.server.throttling.ThrottlingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,9 +54,14 @@ public class HTTPSource implements Source<Record<String>> {
             final int threads = sourceConfig.getThreadCount();
             final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
             sb.blockingTaskExecutor(blockingTaskExecutor, true);
-            // TODO: attach ThrottlingService
+            final int maxPendingRequests = sourceConfig.getMaxPendingRequests();
+            final LogThrottlingStrategy logThrottlingStrategy = new LogThrottlingStrategy(
+                    maxPendingRequests, blockingTaskExecutor.getQueue());
+            final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests);
+            // TODO: allow customization on URI path for log ingestion
+            sb.decorator(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
             final LogHTTPService logHTTPService = new LogHTTPService(requestTimeoutInMillis, buffer);
-            sb.annotatedService(logHTTPService);
+            sb.annotatedService(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI, logHTTPService);
             // TODO: attach HealthCheckService
 
             server = sb.build();
