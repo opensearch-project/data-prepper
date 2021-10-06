@@ -2,6 +2,7 @@ package com.amazon.dataprepper.plugins.certificate.model;
 
 import static java.util.Objects.requireNonNull;
 
+// TODO: accommodate encrypted private key with password
 public class Certificate {
     /**
      * The base64 PEM-encoded certificate.
