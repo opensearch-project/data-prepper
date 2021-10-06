@@ -28,8 +28,11 @@ import java.util.Set;
  * and also the default provided plugins.
  * <p>
  * TODO Add capability to discover custom new plugins
+ *
+ * @deprecated in 1.2. Use {@link com.amazon.dataprepper.model.plugin.PluginFactory}
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
+@Deprecated
 public final class  PluginRepository {
     private static final String DEFAULT_PLUGINS_CLASSPATH = "com.amazon.dataprepper.plugins";
     private static final Map<String, Class<Source>> SOURCES = new HashMap<>();

@@ -16,7 +16,13 @@ import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.plugins.PluginFactory;
 import com.amazon.dataprepper.plugins.PluginRepository;
 
+/**
+ * Old class for creating sinks.
+ *
+ * @deprecated in 1.2. Use {@link com.amazon.dataprepper.model.plugin.PluginFactory} instead.
+ */
 @SuppressWarnings({"rawtypes"})
+@Deprecated
 public class SinkFactory extends PluginFactory {
 
     public static Sink newSink(final PluginSetting pluginSetting) {
