@@ -320,13 +320,71 @@ public class GrokPrepperIT {
     }
 
     @Test
-    public void testPatternsDirWithDefaultPatternsFilesGlob() {
+    public void testPatternsDirWithDefaultPatternsFilesGlob() throws JsonProcessingException {
+        final String patternDirectory = "./src/test/resources/patterns";
+
         final List<String> patternsDir = new ArrayList<>();
-        patternsDir.add("../../../../../../../resources");
+        patternsDir.add(patternDirectory);
+
+        final Map<String, List<String>> matchConfig = new HashMap<>();
+        matchConfig.put("message", Collections.singletonList("My birthday is %{CUSTOMBIRTHDAYPATTERN:my_birthday} and my phone number is %{CUSTOMPHONENUMBERPATTERN:my_number}"));
+
+        String testData = "{\"message\":\"My birthday is April 15, 1991 and my phone number is 123-456-789\"}";
+        Record<String> record = new Record<>(testData);
+
+        String resultData = "{\"message\":\"My birthday is April 15, 1991 and my phone number is 123-456-789\","
+                .concat("\"my_birthday\":\"April 15, 1991\",")
+                .concat("\"my_number\":\"123-456-789\"}");
+
+        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
+        pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_DIR, patternsDir);
+        grokPrepper = new GrokPrepper(pluginSetting);
+
+        Record<String> resultRecord = new Record<>(resultData);
+
+        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+
+        assertThat(grokkedRecords.size(), equalTo(1));
+        assertThat(grokkedRecords.get(0), notNullValue());
+        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
     }
 
     @Test
-    public void testPatternsDirWithCustomPatternsFilesGlob() {
+    public void testPatternsDirWithCustomPatternsFilesGlob() throws JsonProcessingException {
+        final String patternDirectory = "./src/test/resources/patterns";
+
+        final List<String> patternsDir = new ArrayList<>();
+        patternsDir.add(patternDirectory);
+
+        final Map<String, List<String>> matchConfig = new HashMap<>();
+        matchConfig.put("message", Collections.singletonList("My phone number is %{CUSTOMPHONENUMBERPATTERN:my_number}"));
+
+        String testData = "{\"message\":\"My phone number is 123-456-789\"}";
+        Record<String> record = new Record<>(testData);
+
+        String resultData = "{\"message\":\"My phone number is 123-456-789\","
+                .concat("\"my_number\":\"123-456-789\"}");
+
+        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
+        pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_DIR, patternsDir);
+        pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_FILES_GLOB, ".*1.txt");
+        grokPrepper = new GrokPrepper(pluginSetting);
+
+        Record<String> resultRecord = new Record<>(resultData);
+
+        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+
+        assertThat(grokkedRecords.size(), equalTo(1));
+        assertThat(grokkedRecords.get(0), notNullValue());
+        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+
+        final Map<String, List<String>> matchConfigWithPatterns2Pattern = new HashMap<>();
+        matchConfigWithPatterns2Pattern.put("message", Collections.singletonList("My birthday is %{CUSTOMBIRTHDAYPATTERN:my_birthday}"));
+
+        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfigWithPatterns2Pattern);
+
+        Throwable throwable = assertThrows(IllegalArgumentException.class, () -> new GrokPrepper((pluginSetting)));
+        assertThat("No definition for key 'CUSTOMBIRTHDAYPATTERN' found, aborting", equalTo(throwable.getMessage()));
     }
 
     @Test
@@ -354,7 +412,7 @@ public class GrokPrepperIT {
     }
 
     @Test
-    public void testCompileNonRegisteredPattern() {
+    public void testCompileNonRegisteredPatternThrowsIllegalArgumentException() {
 
         grokPrepper = new GrokPrepper(pluginSetting);
 

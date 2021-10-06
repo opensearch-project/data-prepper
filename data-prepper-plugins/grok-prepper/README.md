@@ -16,11 +16,34 @@ prepper:
 
 ## Configuration
 
+TODO: provide examples for using each configuration
+
 * `match` (Optional): A `Map<String, List<String>>` that specifies which fields of a Record to match which patterns against. Default value is `{}`
 
-* `keep_empty_captures` (Optional): A `boolean` that specifies whether `null` captures should be kept. Default value is `false`
 
+* `keep_empty_captures` (Optional): A `boolean` that specifies whether `null` captures should be kept. Default value is `false`
+  
+  
 * `named_captures_only` (Optional): A `boolean` that specifies whether to only keep named captures. Default value is `true`
+  
+  
+* `break_on_match` (Optional): A `boolean` that specifies whether to match all patterns from the `match` field against a Record, 
+  or to stop once the first successful pattern match is found. Default value is `true`
+  
+
+* `overwrite` (Optional): A `List<String>` that specifies which existing fields of a Record to overwrite if there is a capture with the same field value. Default value is `[]`
+
+
+* `pattern_definitions` (Optional): A `Map<String, String>` that allows for custom pattern use inline. Default value is `{}`
+
+
+* `patterns_dir` (Optional): A `List<String` that specifies that path of directories that contain custom pattern files you would like to use. Default value is `[]`
+
+
+* `patterns_files_glob` (Optional): A regex `String` that describes which pattern files to use from the directories specified for `patterns_dir`. Default value is `.*`
+
+
+* `target` (Optional): A `String` that will wrap all captures for a Record in an additional outer key value. Default value is `null`
 
 ## Notes on Patterns
 
