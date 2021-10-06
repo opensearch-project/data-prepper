@@ -21,7 +21,7 @@ import java.util.Map;
 
 
 public final class RawSpan {
-    private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     /**
      * HexString representation of the trace_id in the @see <a href="https://github.com/open-telemetry/opentelemetry-proto/blob/master/opentelemetry/proto/trace/v1/trace.proto#L75">OpenTelemetry spec</a>
      */

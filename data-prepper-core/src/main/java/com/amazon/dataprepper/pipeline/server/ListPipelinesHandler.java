@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 public class ListPipelinesHandler implements HttpHandler {
 
     private final DataPrepper dataPrepper;
-    private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final Logger LOG = LoggerFactory.getLogger(ListPipelinesHandler.class);
 
     public ListPipelinesHandler(final DataPrepper dataPrepper) {

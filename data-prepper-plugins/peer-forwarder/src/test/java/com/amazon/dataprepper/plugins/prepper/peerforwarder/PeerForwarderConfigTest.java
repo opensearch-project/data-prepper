@@ -91,17 +91,23 @@ public class PeerForwarderConfigTest {
 
         settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, EMPTY_SSL_KEY_CERT_FILE);
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings){{ setPipelineName(PIPELINE_NAME); }});
+            final PluginSetting pluginSetting = new PluginSetting("peer_forwarder", settings);
+            pluginSetting.setPipelineName(PIPELINE_NAME);
+            PeerForwarderConfig.buildConfig(pluginSetting);
         });
 
         settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, null);
         Assert.assertThrows(IllegalArgumentException.class, () -> {
-            PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings){{ setPipelineName(PIPELINE_NAME); }});
+            final PluginSetting pluginSetting = new PluginSetting("peer_forwarder", settings);
+            pluginSetting.setPipelineName(PIPELINE_NAME);
+            PeerForwarderConfig.buildConfig(pluginSetting);
         });
 
         settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, INVALID_SSL_KEY_CERT_FILE);
         Assert.assertThrows(RuntimeException.class, () -> {
-            PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings){{ setPipelineName(PIPELINE_NAME); }});
+            final PluginSetting pluginSetting = new PluginSetting("peer_forwarder", settings);
+            pluginSetting.setPipelineName(PIPELINE_NAME);
+            PeerForwarderConfig.buildConfig(pluginSetting);
         });
     }
 
@@ -113,7 +119,9 @@ public class PeerForwarderConfigTest {
         settings.put(PeerForwarderConfig.SSL, true);
         settings.put(PeerForwarderConfig.SSL_KEY_CERT_FILE, VALID_SSL_KEY_CERT_FILE);
 
-        PeerForwarderConfig.buildConfig(new PluginSetting("peer_forwarder", settings){{ setPipelineName(PIPELINE_NAME); }});
+        final PluginSetting pluginSetting = new PluginSetting("peer_forwarder", settings);
+        pluginSetting.setPipelineName(PIPELINE_NAME);
+        PeerForwarderConfig.buildConfig(pluginSetting);
         verify(peerClientPool, times(1)).setSsl(true);
         final ArgumentCaptor<Certificate> certificateArgumentCaptor = ArgumentCaptor.forClass(Certificate.class);
         verify(peerClientPool, times(1)).setCertificate(certificateArgumentCaptor.capture());

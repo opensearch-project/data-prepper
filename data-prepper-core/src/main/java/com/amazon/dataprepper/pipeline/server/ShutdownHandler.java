@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 public class ShutdownHandler implements HttpHandler {
 
     private final DataPrepper dataPrepper;
-    private final static Logger LOG = LoggerFactory.getLogger(ShutdownHandler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ShutdownHandler.class);
 
     public ShutdownHandler(final DataPrepper dataPrepper) {
         this.dataPrepper = dataPrepper;
