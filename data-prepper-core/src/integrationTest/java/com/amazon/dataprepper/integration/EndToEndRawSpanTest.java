@@ -18,6 +18,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
 import com.linecorp.armeria.client.Clients;
+import com.linecorp.armeria.client.retry.RetryRule;
+import com.linecorp.armeria.client.retry.RetryingClient;
 import com.linecorp.armeria.internal.shaded.bouncycastle.util.encoders.Hex;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
@@ -152,8 +154,10 @@ public class EndToEndRawSpanTest {
     }
 
     private void sendExportTraceServiceRequestToSource(final int port, final ExportTraceServiceRequest request) {
-        Clients.newClient(String.format("gproto+http://127.0.0.1:%d/", port),
-                TraceServiceGrpc.TraceServiceBlockingStub.class).export(request);
+        TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(String.format("gproto+http://127.0.0.1:%d/", port))
+                .decorator(RetryingClient.newDecorator(RetryRule.failsafe()))
+                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
+        client.export(request);
     }
 
     private List<Map<String, Object>> getSourcesFromSearchHits(final SearchHits searchHits) {
