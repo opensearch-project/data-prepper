@@ -59,7 +59,7 @@ import static org.mockito.Mockito.when;
 
 public class OTelTraceRawPrepperTest {
 
-    private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final long TEST_TRACE_FLUSH_INTERVAL = 3L;
     private static final int TEST_CONCURRENCY_SCALE = 2;
 

@@ -13,15 +13,30 @@ package com.amazon.dataprepper.benchmarks.prepper.state;
 
 import com.amazon.dataprepper.plugins.prepper.state.MapDbPrepperState;
 import com.google.common.primitives.SignedBytes;
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.Threads;
+import org.openjdk.jmh.annotations.Warmup;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.TreeMap;
+import java.util.UUID;
 
 @State(Scope.Benchmark)
 public class MapDbPrepperStateBenchmarks {
     private static final int BATCH_SIZE = 100;
     private static final int NUM_BATCHES = 10000;
+    private static final int DEFAULT_CONCURRENCY = 16;
     private static final Random RANDOM = new Random();
     private static final String DB_PATH = "data/benchmark";
     private static final String DB_NAME = "benchmarkDb";
@@ -51,7 +66,7 @@ public class MapDbPrepperStateBenchmarks {
                 throw new RuntimeException(String.format("Unable to create the directory at the provided path: %s", path.getName()));
             }
         }
-        mapDbPrepperState = new MapDbPrepperState<>(new File(DB_PATH), DB_NAME);
+        mapDbPrepperState = new MapDbPrepperState<>(new File(DB_PATH), DB_NAME, DEFAULT_CONCURRENCY);
 
     }
 

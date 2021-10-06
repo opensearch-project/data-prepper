@@ -48,7 +48,8 @@ public class PrepperFactoryTests {
 
     @Test
     public void testNewMultiInstancePrepperClassByNameThatExists() {
-        final PluginSetting testPrepperConfiguration = new PluginSetting("test_prepper", new HashMap<>()){{setProcessWorkers(2);}};
+        final PluginSetting testPrepperConfiguration = new PluginSetting("test_prepper", new HashMap<>());
+        testPrepperConfiguration.setProcessWorkers(2);
         testPrepperConfiguration.setPipelineName(TEST_PIPELINE);
         final List<Prepper> actualPrepperSets = PrepperFactory.newPreppers(testPrepperConfiguration);
         assertEquals(2, actualPrepperSets.size());

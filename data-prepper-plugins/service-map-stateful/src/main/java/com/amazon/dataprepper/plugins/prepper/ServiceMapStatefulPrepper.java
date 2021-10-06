@@ -57,10 +57,10 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
     private static long windowDurationMillis;
     private static CyclicBarrier allThreadsCyclicBarrier;
 
-    private volatile static MapDbPrepperState<ServiceMapStateData> previousWindow;
-    private volatile static MapDbPrepperState<ServiceMapStateData> currentWindow;
-    private volatile static MapDbPrepperState<String> previousTraceGroupWindow;
-    private volatile static MapDbPrepperState<String> currentTraceGroupWindow;
+    private static volatile MapDbPrepperState<ServiceMapStateData> previousWindow;
+    private static volatile MapDbPrepperState<ServiceMapStateData> currentWindow;
+    private static volatile MapDbPrepperState<String> previousTraceGroupWindow;
+    private static volatile MapDbPrepperState<String> currentTraceGroupWindow;
     //TODO: Consider keeping this state in a db
     private static final Set<ServiceMapRelationship> RELATIONSHIP_STATE = Sets.newConcurrentHashSet();
     private static File dbPath;
