@@ -136,11 +136,9 @@ class HTTPSourceTest {
         // Set the client timeout to be less than source serverTimeoutInMillis / (testMaxPendingRequests + testThreadCount)
         WebClient testWebClient = WebClient.builder().responseTimeoutMillis(clientTimeoutInMillis).build();
         for (int i = 0; i < testMaxPendingRequests + testThreadCount; i++) {
-            try {
-                testWebClient.execute(testRequestHeaders, testHttpData).aggregate().join();
-            } catch (CompletionException e) {
-                assertThat(e.getCause()).isInstanceOf(ResponseTimeoutException.class);
-            }
+            CompletionException actualException = Assertions.assertThrows(
+                    CompletionException.class, () -> testWebClient.execute(testRequestHeaders, testHttpData).aggregate().join());
+            assertThat(actualException.getCause()).isInstanceOf(ResponseTimeoutException.class);
         }
 
         // When/Then
@@ -149,11 +147,9 @@ class HTTPSourceTest {
         // Wait until source server timeout a request processing thread
         Thread.sleep(serverTimeoutInMillis);
         // New request should timeout instead of being rejected
-        try {
-            testWebClient.execute(testRequestHeaders, testHttpData).aggregate().join();
-        } catch (CompletionException e) {
-            assertThat(e.getCause()).isInstanceOf(ResponseTimeoutException.class);
-        }
+        CompletionException actualException = Assertions.assertThrows(
+                CompletionException.class, () -> testWebClient.execute(testRequestHeaders, testHttpData).aggregate().join());
+        assertThat(actualException.getCause()).isInstanceOf(ResponseTimeoutException.class);
     }
 
     @Test
