@@ -154,8 +154,6 @@ public class GrokPrepperTests {
         lenient().when(grok2.match(messageInput)).thenReturn(match2);
         lenient().when(match2.capture()).thenReturn(capture2);
 
-        verifyNoInteractions(grok2, match2);
-
         capture.put("field_capture_1", "value_capture_1");
         capture.put("field_capture_2", "value_capture_2");
         capture.put("field_capture_3", "value_capture_3");
@@ -174,6 +172,7 @@ public class GrokPrepperTests {
 
         List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
 
+        verifyNoInteractions(grok2, match2);
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
         assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
