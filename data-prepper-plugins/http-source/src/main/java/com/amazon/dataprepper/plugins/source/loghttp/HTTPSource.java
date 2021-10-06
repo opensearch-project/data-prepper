@@ -17,12 +17,17 @@ import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
+import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
+import com.amazon.dataprepper.plugins.certificate.model.Certificate;
+import com.amazon.dataprepper.plugins.source.loghttp.certificate.CertificateProviderFactory;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.throttling.ThrottlingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -32,10 +37,12 @@ public class HTTPSource implements Source<Record<String>> {
     private static final Logger LOG = LoggerFactory.getLogger(HTTPSource.class);
 
     private final HTTPSourceConfig sourceConfig;
+    private final CertificateProviderFactory certificateProviderFactory;
     private Server server;
 
     public HTTPSource(final PluginSetting pluginSetting) {
         sourceConfig = HTTPSourceConfig.buildConfig(pluginSetting);
+        certificateProviderFactory = new CertificateProviderFactory(sourceConfig);
     }
 
     @Override
@@ -45,8 +52,19 @@ public class HTTPSource implements Source<Record<String>> {
         }
         if (server == null) {
             final ServerBuilder sb = Server.builder();
-            // TODO: allow tls/ssl
-            sb.http(sourceConfig.getPort());
+            if (sourceConfig.isSsl()) {
+                LOG.info("SSL/TLS is enabled.");
+                final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
+                final Certificate certificate = certificateProvider.getCertificate();
+                // TODO: enable encrypted key with password
+                sb.https(sourceConfig.getPort()).tls(
+                        new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
+                        new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
+                        )
+                );
+            } else {
+                sb.http(sourceConfig.getPort());
+            }
             sb.maxNumConnections(sourceConfig.getMaxConnectionCount());
             final int requestTimeoutInMillis = sourceConfig.getRequestTimeoutInMillis();
             // Allow 2*requestTimeoutInMillis to accommodate non-blocking operations other than buffer writing.
