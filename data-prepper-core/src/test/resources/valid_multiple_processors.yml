@@ -1,6 +1,6 @@
 entry-pipeline:
   source:
-    otel_trace_source:
+    random:
   sink:
     - pipeline:
         name: "raw-pipeline"

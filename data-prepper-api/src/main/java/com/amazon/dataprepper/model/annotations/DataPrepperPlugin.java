@@ -40,5 +40,17 @@ public @interface DataPrepperPlugin {
      */
     String name();
 
-    PluginType type();
+    /**
+     * @deprecated Remove in favor of {@link DataPrepperPlugin#pluginType()}
+     * @return The plugin type enum
+     */
+    @Deprecated
+    PluginType type() default PluginType.NONE;
+
+    /**
+     * The class type for this plugin.
+     *
+     * @return The Java class
+     */
+    Class<?> pluginType() default Void.class;
 }

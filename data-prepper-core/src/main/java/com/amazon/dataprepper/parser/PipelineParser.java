@@ -11,18 +11,16 @@
 
 package com.amazon.dataprepper.parser;
 
+import com.amazon.dataprepper.model.annotations.SingleThread;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.parser.model.PipelineConfiguration;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.PipelineConnector;
-import com.amazon.dataprepper.plugins.buffer.BufferFactory;
-import com.amazon.dataprepper.plugins.prepper.PrepperFactory;
-import com.amazon.dataprepper.plugins.sink.SinkFactory;
-import com.amazon.dataprepper.plugins.source.SourceFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,10 +30,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -50,9 +51,11 @@ public class PipelineParser {
     private static final String ATTRIBUTE_NAME = "name";
     private final String configurationFileLocation;
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
+    private final PluginFactory pluginFactory;
 
-    public PipelineParser(final String configurationFileLocation) {
+    public PipelineParser(final String configurationFileLocation, final PluginFactory pluginFactory) {
         this.configurationFileLocation = configurationFileLocation;
+        this.pluginFactory = Objects.requireNonNull(pluginFactory);
     }
 
     /**
@@ -91,15 +94,16 @@ public class PipelineParser {
             final PluginSetting sourceSetting = pipelineConfiguration.getSourcePluginSetting();
             final Optional<Source> pipelineSource = getSourceIfPipelineType(pipelineName, sourceSetting,
                     pipelineMap, pipelineConfigurationMap);
-            final Source source = pipelineSource.orElseGet(() -> SourceFactory.newSource(sourceSetting));
+            final Source source = pipelineSource.orElseGet(() ->
+                    pluginFactory.loadPlugin(Source.class, sourceSetting));
 
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
-            final Buffer buffer = BufferFactory.newBuffer(pipelineConfiguration.getBufferPluginSetting());
+            final Buffer buffer = pluginFactory.loadPlugin(Buffer.class, pipelineConfiguration.getBufferPluginSetting());
 
             LOG.info("Building preppers for the pipeline [{}]", pipelineName);
             final int prepperThreads = pipelineConfiguration.getWorkers();
             final List<List<Prepper>> prepperSets = pipelineConfiguration.getPrepperPluginSettings().stream()
-                    .map(PrepperFactory::newPreppers)
+                    .map(this::newPreppers)
                     .collect(Collectors.toList());
             final int readBatchDelay = pipelineConfiguration.getReadBatchDelay();
 
@@ -117,6 +121,19 @@ public class PipelineParser {
             processRemoveIfRequired(pipelineName, pipelineConfigurationMap, pipelineMap);
         }
 
+    }
+
+    private List<Prepper> newPreppers(final PluginSetting pluginSetting) {
+        final Class<?> clazz = pluginFactory.getPluginClass(Prepper.class, pluginSetting.getName());
+        if (clazz.isAnnotationPresent(SingleThread.class)) {
+            final List<Prepper> preppers = new ArrayList<>();
+            for (int i = 0; i < pluginSetting.getNumberOfProcessWorkers(); i++) {
+                preppers.add(pluginFactory.loadPlugin(Prepper.class, pluginSetting));
+            }
+            return preppers;
+        } else {
+            return Collections.singletonList(pluginFactory.loadPlugin(Prepper.class, pluginSetting));
+        }
     }
 
     private Optional<Source> getSourceIfPipelineType(
@@ -157,7 +174,7 @@ public class PipelineParser {
             sourceConnectorMap.put(pipelineName, pipelineConnector); //TODO retrieve from parent Pipeline using name
             return pipelineConnector;
         } else {
-            return SinkFactory.newSink(pluginSetting);
+            return pluginFactory.loadPlugin(Sink.class, pluginSetting);
         }
     }
 
