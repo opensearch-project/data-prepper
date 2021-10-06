@@ -11,18 +11,10 @@
 
 package com.amazon.dataprepper.benchmarks.prepper;
 
+import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.prepper.ServiceMapStatefulPrepper;
 import com.google.protobuf.ByteString;
-import com.amazon.dataprepper.model.record.Record;
-
-import java.io.File;
-import java.io.UnsupportedEncodingException;
-import java.time.Clock;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
-
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
@@ -39,6 +31,13 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
+
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 
 @State(Scope.Thread)
 public class ServiceMapStatefulPrepperBenchmarks {
@@ -60,7 +59,8 @@ public class ServiceMapStatefulPrepperBenchmarks {
 
     @Setup(Level.Trial)
     public void setupServiceMapStatefulPrepper() {
-        serviceMapStatefulPrepper = new ServiceMapStatefulPrepper(windowDurationSeconds*1000, new File(DB_PATH), Clock.systemDefaultZone());
+        final PluginSetting pluginSetting = new PluginSetting("plugin", Collections.singletonMap("window_duration", windowDurationSeconds*1000));
+        serviceMapStatefulPrepper = new ServiceMapStatefulPrepper(pluginSetting);
     }
 
     /**

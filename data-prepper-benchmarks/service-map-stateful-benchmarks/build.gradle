@@ -24,6 +24,13 @@ repositories {
 }
 
 dependencies {
+    implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:service-map-stateful')
     jmh "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetryProto}"
+}
+
+checkstyle {
+    checkstyleMain.enabled = false
+    checkstyleTest.enabled = false
+    checkstyleJmh.enabled = false
 }

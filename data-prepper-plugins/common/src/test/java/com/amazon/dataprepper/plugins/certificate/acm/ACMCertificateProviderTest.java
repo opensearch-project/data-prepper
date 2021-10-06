@@ -2,7 +2,11 @@ package com.amazon.dataprepper.plugins.certificate.acm;
 
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.amazonaws.services.certificatemanager.AWSCertificateManager;
-import com.amazonaws.services.certificatemanager.model.*;
+import com.amazonaws.services.certificatemanager.model.ExportCertificateRequest;
+import com.amazonaws.services.certificatemanager.model.ExportCertificateResult;
+import com.amazonaws.services.certificatemanager.model.InvalidArnException;
+import com.amazonaws.services.certificatemanager.model.RequestInProgressException;
+import com.amazonaws.services.certificatemanager.model.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

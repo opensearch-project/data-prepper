@@ -29,7 +29,8 @@ class StaticPeerListProvider_CreateTest {
 
     @BeforeEach
     void setup() {
-        pluginSetting = new PluginSetting(PLUGIN_NAME, new HashMap<>()){{ setPipelineName(PIPELINE_NAME); }};
+        pluginSetting = new PluginSetting(PLUGIN_NAME, new HashMap<>());
+        pluginSetting.setPipelineName(PIPELINE_NAME);
 
         pluginMetrics = mock(PluginMetrics.class);
     }
