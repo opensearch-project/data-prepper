@@ -83,7 +83,6 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
 
             try {
                 final Map<String, Object> recordMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
-
                 final Map<String, Object> grokkedLog = new HashMap<>();
 
                 for (final Map.Entry<String, List<Grok>> entry : fieldToGrok.entrySet()) {
@@ -154,20 +153,19 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
                 if (dirFiles != null) {
                     for (final File file : dirFiles) {
                         if (compiledFilesGlob.matcher(file.getName()).find()) {
-                            registerPatternsForFile(file.getAbsolutePath());
+                            registerPatternsForFile(file);
                         }
                     }
                 } else {
                     LOG.info("Directory {} is empty", directory);
                 }
             } catch (NullPointerException e) {
-                LOG.error("Directory is null");
+                LOG.error("Pattern directory is null", e);
             }
         }
     }
 
-    private void registerPatternsForFile(final String filePath) {
-        final File file = new File(filePath);
+    private void registerPatternsForFile(final File file) {
         try (final InputStream in = new FileInputStream(file)) {
             grokCompiler.register(in);
         } catch (FileNotFoundException e) {
