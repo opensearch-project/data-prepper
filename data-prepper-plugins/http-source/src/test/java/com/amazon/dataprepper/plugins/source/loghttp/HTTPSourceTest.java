@@ -11,6 +11,8 @@
 
 package com.amazon.dataprepper.plugins.source.loghttp;
 
+import com.amazon.dataprepper.metrics.MetricNames;
+import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
@@ -25,6 +27,8 @@ import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
+import io.micrometer.core.instrument.Measurement;
+import io.micrometer.core.instrument.Statistic;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -44,7 +48,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
@@ -58,6 +64,16 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class HTTPSourceTest {
+    /**
+     * TODO: according to the new coding guideline, consider refactoring the following test cases into HTTPSourceIT.
+     * - testHTTPJsonResponse200()
+     * - testHTTPJsonResponse400()
+     * - testHTTPJsonResponse415()
+     * - testHTTPJsonResponse429()
+     * - testHTTPSJsonResponse()
+     */
+    private final String PLUGIN_NAME = "http";
+    private final String TEST_PIPELINE_NAME = "test_pipeline";
     private final String TEST_SSL_CERTIFICATE_FILE = getClass().getClassLoader().getResource("test_cert.crt").getFile();
     private final String TEST_SSL_KEY_FILE = getClass().getClassLoader().getResource("test_decrypted_key.key").getFile();
 
@@ -73,12 +89,48 @@ class HTTPSourceTest {
     private PluginSetting testPluginSetting;
     private BlockingBuffer<Record<String>> testBuffer;
     private HTTPSource HTTPSourceUnderTest;
+    private List<Measurement> requestsReceivedMeasurements;
+    private List<Measurement> successRequestsMeasurements;
+    private List<Measurement> requestTimeoutsMeasurements;
+    private List<Measurement> badRequestsMeasurements;
+    private List<Measurement> rejectedRequestsMeasurements;
+    private List<Measurement> requestProcessDurationMeasurements;
+    private List<Measurement> payloadSummaryMeasurements;
 
     private BlockingBuffer<Record<String>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 1);
         integerHashMap.put("batch_size", 1);
-        return new BlockingBuffer<>(new PluginSetting("blocking_buffer", integerHashMap));
+        final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap) {{
+            setPipelineName(TEST_PIPELINE_NAME);
+        }};
+        return new BlockingBuffer<>(pluginSetting);
+    }
+
+    private void refreshMeasurements() {
+        final String metricNamePrefix = new StringJoiner(MetricNames.DELIMITER)
+                .add(TEST_PIPELINE_NAME).add(PLUGIN_NAME).toString();
+        requestsReceivedMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
+                        .add(LogHTTPService.REQUESTS_RECEIVED).toString());
+        successRequestsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
+                        .add(LogHTTPService.SUCCESS_REQUESTS).toString());
+        requestTimeoutsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
+                        .add(LogHTTPService.REQUEST_TIMEOUTS).toString());
+        badRequestsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
+                        .add(LogHTTPService.BAD_REQUESTS).toString());
+        rejectedRequestsMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
+                        .add(LogThrottlingRejectHandler.REQUESTS_REJECTED).toString());
+        requestProcessDurationMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
+                        .add(LogHTTPService.REQUEST_PROCESS_DURATION).toString());
+        payloadSummaryMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
+                        .add(LogHTTPService.PAYLOAD_SUMMARY).toString());
     }
 
     @BeforeEach
@@ -89,20 +141,30 @@ class HTTPSourceTest {
         lenient().when(serverBuilder.build()).thenReturn(server);
         lenient().when(server.start()).thenReturn(completableFuture);
 
-        testPluginSetting = new PluginSetting("http", new HashMap<>());
-        testPluginSetting.setPipelineName("pipeline");
+        MetricsTestUtil.initMetrics();
+        testPluginSetting = new PluginSetting(PLUGIN_NAME, new HashMap<>()) {{
+            setPipelineName(TEST_PIPELINE_NAME);
+        }};
         testBuffer = getBuffer();
         HTTPSourceUnderTest = new HTTPSource(testPluginSetting);
     }
 
     @AfterEach
     public void cleanUp() {
-        HTTPSourceUnderTest.stop();
+        if (HTTPSourceUnderTest != null) {
+            HTTPSourceUnderTest.stop();
+        }
     }
 
     @Test
     public void testHTTPJsonResponse200() {
+        // Prepare
+        final String testData = "[{\"log\": \"somelog\"}]";
+        final int testPayloadSize = testData.getBytes().length;
         HTTPSourceUnderTest.start(testBuffer);
+        refreshMeasurements();
+
+        // When
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
                         .authority("127.0.0.1:2021")
@@ -110,10 +172,111 @@ class HTTPSourceTest {
                         .path("/log/ingest")
                         .contentType(MediaType.JSON_UTF_8)
                         .build(),
-                HttpData.ofUtf8("[{\"log\": \"somelog\"}]"))
+                HttpData.ofUtf8(testData))
                 .aggregate()
                 .whenComplete((i, ex) -> assertThat(i.status()).isEqualTo(HttpStatus.OK)).join();
+
+        // Then
         Assertions.assertFalse(testBuffer.isEmpty());
+        // Verify metrics
+        final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
+                requestsReceivedMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, requestReceivedCount.getValue());
+        final Measurement successRequestsCount = MetricsTestUtil.getMeasurementFromList(
+                successRequestsMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, successRequestsCount.getValue());
+        final Measurement requestProcessDurationCount = MetricsTestUtil.getMeasurementFromList(
+                requestProcessDurationMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, requestProcessDurationCount.getValue());
+        final Measurement requestProcessDurationMax = MetricsTestUtil.getMeasurementFromList(
+                requestProcessDurationMeasurements, Statistic.MAX);
+        Assertions.assertTrue(requestProcessDurationMax.getValue() > 0);
+        final Measurement payloadSummaryMax = MetricsTestUtil.getMeasurementFromList(
+                payloadSummaryMeasurements, Statistic.MAX);
+        Assertions.assertEquals(testPayloadSize, payloadSummaryMax.getValue());
+    }
+
+    @Test
+    public void testHTTPJsonResponse400() {
+        // Prepare
+        final String testBadData = "}";
+        final int testPayloadSize = testBadData.getBytes().length;
+        HTTPSourceUnderTest.start(testBuffer);
+        refreshMeasurements();
+
+        // When
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("127.0.0.1:2021")
+                        .method(HttpMethod.POST)
+                        .path("/log/ingest")
+                        .contentType(MediaType.JSON_UTF_8)
+                        .build(),
+                HttpData.ofUtf8(testBadData))
+                .aggregate()
+                .whenComplete((i, ex) -> assertThat(i.status()).isEqualTo(HttpStatus.BAD_REQUEST)).join();
+
+        // Then
+        Assertions.assertTrue(testBuffer.isEmpty());
+        // Verify metrics
+        final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
+                requestsReceivedMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, requestReceivedCount.getValue());
+        final Measurement badRequestsCount = MetricsTestUtil.getMeasurementFromList(
+                badRequestsMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, badRequestsCount.getValue());
+    }
+
+    @Test
+    public void testHTTPJsonResponse415() throws InterruptedException {
+        // Prepare
+        final Map<String, Object> settings = new HashMap<>();
+        final int testMaxPendingRequests = 1;
+        final int testThreadCount = 1;
+        final int serverTimeoutInMillis = 500;
+        settings.put(HTTPSourceConfig.REQUEST_TIMEOUT, serverTimeoutInMillis);
+        settings.put(HTTPSourceConfig.MAX_PENDING_REQUESTS, testMaxPendingRequests);
+        settings.put(HTTPSourceConfig.THREAD_COUNT, testThreadCount);
+        testPluginSetting = new PluginSetting(PLUGIN_NAME, settings);
+        testPluginSetting.setPipelineName(TEST_PIPELINE_NAME);
+        HTTPSourceUnderTest = new HTTPSource(testPluginSetting);
+        // Start the source
+        HTTPSourceUnderTest.start(testBuffer);
+        refreshMeasurements();
+        final RequestHeaders testRequestHeaders = RequestHeaders.builder().scheme(SessionProtocol.HTTP)
+                .authority("127.0.0.1:2021")
+                .method(HttpMethod.POST)
+                .path("/log/ingest")
+                .contentType(MediaType.JSON_UTF_8)
+                .build();
+        final HttpData testHttpData = HttpData.ofUtf8("[{\"log\": \"somelog\"}]");
+
+        // Fill in the buffer
+        WebClient.of().execute(testRequestHeaders, testHttpData).aggregate().whenComplete(
+                (response, ex) -> assertThat(response.status()).isEqualTo(HttpStatus.OK)).join();
+
+        // Disable client timeout
+        WebClient testWebClient = WebClient.builder().responseTimeoutMillis(0).build();
+
+        // When/Then
+        testWebClient.execute(testRequestHeaders, testHttpData)
+                .aggregate()
+                .whenComplete((i, ex) -> assertThat(i.status()).isEqualTo(HttpStatus.REQUEST_TIMEOUT))
+                .join();
+        // verify metrics
+        final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
+                requestsReceivedMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(2.0, requestReceivedCount.getValue());
+        final Measurement successRequestsCount = MetricsTestUtil.getMeasurementFromList(
+                successRequestsMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, successRequestsCount.getValue());
+        final Measurement requestTimeoutsCount = MetricsTestUtil.getMeasurementFromList(
+                requestTimeoutsMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, requestTimeoutsCount.getValue());
+        final Measurement requestProcessDurationMax = MetricsTestUtil.getMeasurementFromList(
+                requestProcessDurationMeasurements, Statistic.MAX);
+        final double maxDurationInMillis = 1000 * requestProcessDurationMax.getValue();
+        Assertions.assertTrue(maxDurationInMillis > serverTimeoutInMillis);
     }
 
     @Test
@@ -127,11 +290,12 @@ class HTTPSourceTest {
         settings.put(HTTPSourceConfig.REQUEST_TIMEOUT, serverTimeoutInMillis);
         settings.put(HTTPSourceConfig.MAX_PENDING_REQUESTS, testMaxPendingRequests);
         settings.put(HTTPSourceConfig.THREAD_COUNT, testThreadCount);
-        testPluginSetting = new PluginSetting("http", settings);
-        testPluginSetting.setPipelineName("pipeline");
+        testPluginSetting = new PluginSetting(PLUGIN_NAME, settings);
+        testPluginSetting.setPipelineName(TEST_PIPELINE_NAME);
         HTTPSourceUnderTest = new HTTPSource(testPluginSetting);
         // Start the source
         HTTPSourceUnderTest.start(testBuffer);
+        refreshMeasurements();
         final RequestHeaders testRequestHeaders = RequestHeaders.builder().scheme(SessionProtocol.HTTP)
                 .authority("127.0.0.1:2021")
                 .method(HttpMethod.POST)
@@ -156,12 +320,23 @@ class HTTPSourceTest {
         // When/Then
         testWebClient.execute(testRequestHeaders, testHttpData).aggregate().whenComplete(
                 (response, ex) -> assertThat(response.status()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS)).join();
+
         // Wait until source server timeout a request processing thread
         Thread.sleep(serverTimeoutInMillis);
         // New request should timeout instead of being rejected
         CompletionException actualException = Assertions.assertThrows(
                 CompletionException.class, () -> testWebClient.execute(testRequestHeaders, testHttpData).aggregate().join());
         assertThat(actualException.getCause()).isInstanceOf(ResponseTimeoutException.class);
+        // verify metrics
+        final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
+                requestsReceivedMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(testMaxPendingRequests + testThreadCount + 2, requestReceivedCount.getValue());
+        final Measurement successRequestsCount = MetricsTestUtil.getMeasurementFromList(
+                successRequestsMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, successRequestsCount.getValue());
+        final Measurement rejectedRequestsCount = MetricsTestUtil.getMeasurementFromList(
+                rejectedRequestsMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, rejectedRequestsCount.getValue());
     }
 
     @Test
@@ -180,8 +355,8 @@ class HTTPSourceTest {
             settingsMap.put(HTTPSourceConfig.SSL_CERTIFICATE_FILE, TEST_SSL_CERTIFICATE_FILE);
             settingsMap.put(HTTPSourceConfig.SSL_KEY_FILE, TEST_SSL_KEY_FILE);
 
-            testPluginSetting = new PluginSetting(null, settingsMap);
-            testPluginSetting.setPipelineName("pipeline");
+            testPluginSetting = new PluginSetting(PLUGIN_NAME, settingsMap);
+            testPluginSetting.setPipelineName(TEST_PIPELINE_NAME);
             HTTPSourceUnderTest = new HTTPSource(testPluginSetting);
             HTTPSourceUnderTest.start(testBuffer);
             HTTPSourceUnderTest.stop();
@@ -198,14 +373,13 @@ class HTTPSourceTest {
 
     @Test
     void testHTTPSJsonResponse() {
-
         final Map<String, Object> settingsMap = new HashMap<>();
         settingsMap.put(HTTPSourceConfig.REQUEST_TIMEOUT, 200);
         settingsMap.put(HTTPSourceConfig.SSL, true);
         settingsMap.put(HTTPSourceConfig.SSL_CERTIFICATE_FILE, TEST_SSL_CERTIFICATE_FILE);
         settingsMap.put(HTTPSourceConfig.SSL_KEY_FILE, TEST_SSL_KEY_FILE);
-        testPluginSetting = new PluginSetting("http", settingsMap);
-        testPluginSetting.setPipelineName("pipeline");
+        testPluginSetting = new PluginSetting(PLUGIN_NAME, settingsMap);
+        testPluginSetting.setPipelineName(TEST_PIPELINE_NAME);
         HTTPSourceUnderTest = new HTTPSource(testPluginSetting);
 
         testBuffer = getBuffer();
@@ -233,8 +407,8 @@ class HTTPSourceTest {
 
     @Test
     public void testStartWithEmptyBuffer() {
-        testPluginSetting = new PluginSetting(null, Collections.emptyMap());
-        testPluginSetting.setPipelineName("pipeline");
+        testPluginSetting = new PluginSetting(PLUGIN_NAME, Collections.emptyMap());
+        testPluginSetting.setPipelineName(TEST_PIPELINE_NAME);
         final HTTPSource source = new HTTPSource(testPluginSetting);
         Assertions.assertThrows(IllegalStateException.class, () -> source.start(null));
     }
