@@ -11,6 +11,7 @@
 
 package com.amazon.dataprepper.plugins.source.loghttp;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
@@ -39,10 +40,12 @@ public class HTTPSource implements Source<Record<String>> {
     private final HTTPSourceConfig sourceConfig;
     private final CertificateProviderFactory certificateProviderFactory;
     private Server server;
+    private final PluginMetrics pluginMetrics;
 
     public HTTPSource(final PluginSetting pluginSetting) {
         sourceConfig = HTTPSourceConfig.buildConfig(pluginSetting);
         certificateProviderFactory = new CertificateProviderFactory(sourceConfig);
+        pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
     }
 
     @Override
@@ -75,10 +78,10 @@ public class HTTPSource implements Source<Record<String>> {
             final int maxPendingRequests = sourceConfig.getMaxPendingRequests();
             final LogThrottlingStrategy logThrottlingStrategy = new LogThrottlingStrategy(
                     maxPendingRequests, blockingTaskExecutor.getQueue());
-            final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests);
+            final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests, pluginMetrics);
             // TODO: allow customization on URI path for log ingestion
             sb.decorator(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
-            final LogHTTPService logHTTPService = new LogHTTPService(requestTimeoutInMillis, buffer);
+            final LogHTTPService logHTTPService = new LogHTTPService(requestTimeoutInMillis, buffer, pluginMetrics);
             sb.annotatedService(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI, logHTTPService);
             // TODO: attach HealthCheckService
 
