@@ -107,6 +107,9 @@ class HTTPSourceTest {
         return new BlockingBuffer<>(pluginSetting);
     }
 
+    /**
+     * This method should be invoked after {@link HTTPSource::start(Buffer<T> buffer)} to scrape metrics
+     */
     private void refreshMeasurements() {
         final String metricNamePrefix = new StringJoiner(MetricNames.DELIMITER)
                 .add(TEST_PIPELINE_NAME).add(PLUGIN_NAME).toString();

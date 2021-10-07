@@ -5,7 +5,7 @@ This is a source plugin that supports HTTP protocol. Currently ONLY support Json
 
 
 ## Usages
-Example `.yaml` configuration:
+Currently, we are exposing `/log/ingest` URI path for http log ingestion. Example `.yaml` configuration:
 ```
 source:
     - http:
@@ -27,7 +27,18 @@ source:
 
 ## Metrics
 
-TBD
+### Counter
+- `requestsReceived`: measures total number of requests received by `/log/ingest` endpoint.
+- `requestsRejected`: measures total number of requests rejected by HTTP source plugin.
+- `successRequests`: measures total number of requests successfully processed by HTTP source plugin.
+- `badRequests`: measures total number of requests with invalid content type or format processed by HTTP source plugin.
+- `requestTimeouts`: measures total number of requests that time out in the HTTP source server.
+
+### Timer
+- `requestProcessDuration`: measures latency of requests processed by the HTTP source plugin. 
+
+### Summary
+- `payloadSummary`: measures the distribution of incoming requests payload sizes.
 
 ## Developer Guide
 This plugin is compatible with Java 14. See 
