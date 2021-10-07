@@ -14,7 +14,7 @@ ext.versionMap = [
         junitJupiter : '5.7.2',
         mockito : '3.11.2',
         opentelemetryProto : '1.0.1-alpha',
-        opensearchVersion : '1.0.0'
+        opensearchVersion : '1.1.0'
 ]
 
 ext.coreProjects = [project(':data-prepper-api'), project(':data-prepper-core'), project('data-prepper-plugins:common')]
