@@ -52,8 +52,8 @@ public class OpenSearchSink extends AbstractSink<Record<String>> {
 
   private BufferedWriter dlqWriter;
   private final OpenSearchSinkConfiguration openSearchSinkConfig;
+  private final IndexManagerFactory indexManagerFactory;
   private RestHighLevelClient restHighLevelClient;
-  private IndexManagerFactory indexManagerFactory;
   private IndexManager indexManager;
   private Supplier<BulkRequest> bulkRequestSupplier;
   private BulkRetryStrategy bulkRetryStrategy;
@@ -72,6 +72,8 @@ public class OpenSearchSink extends AbstractSink<Record<String>> {
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
     this.indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();
     this.documentIdField = openSearchSinkConfig.getIndexConfiguration().getDocumentIdField();
+    this.indexManagerFactory = new IndexManagerFactory();
+
     try {
       initialize();
     } catch (final IOException e) {
@@ -83,7 +85,6 @@ public class OpenSearchSink extends AbstractSink<Record<String>> {
   public void initialize() throws IOException {
     LOG.info("Initializing OpenSearch sink");
     restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
-    indexManagerFactory = new IndexManagerFactory();
     indexManager = indexManagerFactory.getIndexManager(indexType, restHighLevelClient, openSearchSinkConfig);
     final boolean isISMEnabled = indexManager.checkISMEnabled();
     final Optional<String> policyIdOptional = isISMEnabled ? indexManager.checkAndCreatePolicy() :

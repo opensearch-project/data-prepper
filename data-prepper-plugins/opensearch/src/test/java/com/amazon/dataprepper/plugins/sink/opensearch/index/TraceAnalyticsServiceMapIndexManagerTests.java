@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -72,14 +73,16 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
         when(restHighLevelClient.indices()).thenReturn(indicesClient);
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test
     public void constructor_NullRestClient() throws IOException {
-        new DefaultIndexManager(null, openSearchSinkConfiguration);
+        assertThrows(NullPointerException.class, () ->
+                new TraceAnalyticsServiceMapIndexManager(null, openSearchSinkConfiguration));
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test
     public void constructor_NullConfiguration() throws IOException {
-        new DefaultIndexManager(restHighLevelClient, null);
+        assertThrows(NullPointerException.class, () ->
+                new TraceAnalyticsServiceMapIndexManager(restHighLevelClient, null));
     }
 
     @Test
