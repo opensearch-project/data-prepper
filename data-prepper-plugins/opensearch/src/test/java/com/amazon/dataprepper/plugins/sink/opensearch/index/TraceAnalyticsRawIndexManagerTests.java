@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -80,14 +81,16 @@ public class TraceAnalyticsRawIndexManagerTests {
         when(restHighLevelClient.indices()).thenReturn(indicesClient);
     }
 
-    @Test(expected = NullPointerException.class)
-    public void constructor_NullRestClient() throws IOException {
-        new DefaultIndexManager(null, openSearchSinkConfiguration);
+    @Test
+    public void constructor_NullRestClient() {
+        assertThrows(NullPointerException.class, () ->
+                new TraceAnalyticsRawIndexManager(null, openSearchSinkConfiguration));
     }
 
-    @Test(expected = NullPointerException.class)
-    public void constructor_NullConfiguration() throws IOException {
-        new DefaultIndexManager(restHighLevelClient, null);
+    @Test
+    public void constructor_NullConfiguration() {
+        assertThrows(NullPointerException.class, () ->
+                new TraceAnalyticsRawIndexManager(restHighLevelClient, null));
     }
 
     @Test
