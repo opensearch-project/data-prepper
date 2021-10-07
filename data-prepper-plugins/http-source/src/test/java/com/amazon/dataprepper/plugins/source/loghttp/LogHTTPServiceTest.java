@@ -22,6 +22,7 @@ import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
@@ -31,9 +32,11 @@ import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.stubbing.Answer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -41,8 +44,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -82,6 +89,14 @@ class LogHTTPServiceTest {
         when(pluginMetrics.counter(LogHTTPService.BAD_REQUESTS)).thenReturn(badRequestsCounter);
         when(pluginMetrics.summary(LogHTTPService.PAYLOAD_SUMMARY)).thenReturn(payloadSummary);
         when(pluginMetrics.timer(LogHTTPService.REQUEST_PROCESS_DURATION)).thenReturn(requestProcessDuration);
+        when(requestProcessDuration.record(ArgumentMatchers.<Supplier<HttpResponse>>any())).thenAnswer(
+                (Answer<HttpResponse>) invocation -> {
+                    final Object[] args = invocation.getArguments();
+                    @SuppressWarnings("unchecked")
+                    final Supplier<HttpResponse> supplier = (Supplier<HttpResponse>) args[0];
+                    return supplier.get();
+                }
+        );
 
         Buffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_CAPACITY, 8, "test-pipeline");
         logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer, pluginMetrics);
@@ -97,6 +112,14 @@ class LogHTTPServiceTest {
 
         // Then
         assertEquals(HttpStatus.OK, postResponse.status());
+        verify(requestsReceivedCounter, times(1)).increment();
+        verify(requestTimeoutsCounter, never()).increment();
+        verify(successRequestsCounter, times(1)).increment();
+        verify(badRequestsCounter, never()).increment();
+        final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
+        verify(payloadSummary, times(1)).record(payloadLengthCaptor.capture());
+        assertEquals(testRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
+        verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Supplier<HttpResponse>>any());
     }
 
     @Test
@@ -109,6 +132,14 @@ class LogHTTPServiceTest {
 
         // Then
         assertEquals(HttpStatus.BAD_REQUEST, postResponse.status());
+        verify(requestsReceivedCounter, times(1)).increment();
+        verify(requestTimeoutsCounter, never()).increment();
+        verify(successRequestsCounter, never()).increment();
+        verify(badRequestsCounter, times(1)).increment();
+        final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
+        verify(payloadSummary, times(1)).record(payloadLengthCaptor.capture());
+        assertEquals(testBadRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
+        verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Supplier<HttpResponse>>any());
     }
 
     @Test
@@ -124,6 +155,14 @@ class LogHTTPServiceTest {
 
         // Then
         assertEquals(HttpStatus.REQUEST_TIMEOUT, timeoutPostResponse.status());
+        verify(requestsReceivedCounter, times(2)).increment();
+        verify(requestTimeoutsCounter, times(1)).increment();
+        verify(successRequestsCounter, times(1)).increment();
+        verify(badRequestsCounter, never()).increment();
+        final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
+        verify(payloadSummary, times(2)).record(payloadLengthCaptor.capture());
+        assertEquals(timeoutRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
+        verify(requestProcessDuration, times(2)).record(ArgumentMatchers.<Supplier<HttpResponse>>any());
     }
 
     private AggregatedHttpRequest generateRandomValidHTTPRequest(int numJson) throws JsonProcessingException,
