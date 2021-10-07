@@ -11,6 +11,7 @@
 
 package com.amazon.dataprepper.plugins.source.loghttp;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
@@ -24,8 +25,15 @@ import com.linecorp.armeria.common.HttpRequest;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,18 +43,48 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class LogHTTPServiceTest {
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final int TEST_BUFFER_CAPACITY = 3;
     private static final int TEST_TIMEOUT_IN_MILLIS = 500;
 
+    @Mock
+    private PluginMetrics pluginMetrics;
+
+    @Mock
+    private Counter requestsReceivedCounter;
+
+    @Mock
+    private Counter requestTimeoutsCounter;
+
+    @Mock
+    private Counter successRequestsCounter;
+
+    @Mock
+    private Counter badRequestsCounter;
+
+    @Mock
+    private DistributionSummary payloadSummary;
+
+    @Mock
+    private Timer requestProcessDuration;
+
     private LogHTTPService logHTTPService;
 
     @BeforeEach
     public void setUp() {
+        when(pluginMetrics.counter(LogHTTPService.REQUESTS_RECEIVED)).thenReturn(requestsReceivedCounter);
+        when(pluginMetrics.counter(LogHTTPService.REQUEST_TIMEOUTS)).thenReturn(requestTimeoutsCounter);
+        when(pluginMetrics.counter(LogHTTPService.SUCCESS_REQUESTS)).thenReturn(successRequestsCounter);
+        when(pluginMetrics.counter(LogHTTPService.BAD_REQUESTS)).thenReturn(badRequestsCounter);
+        when(pluginMetrics.summary(LogHTTPService.PAYLOAD_SUMMARY)).thenReturn(payloadSummary);
+        when(pluginMetrics.timer(LogHTTPService.REQUEST_PROCESS_DURATION)).thenReturn(requestProcessDuration);
+
         Buffer<Record<String>> blockingBuffer = new BlockingBuffer<>(TEST_BUFFER_CAPACITY, 8, "test-pipeline");
-        logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer);
+        logHTTPService = new LogHTTPService(TEST_TIMEOUT_IN_MILLIS, blockingBuffer, pluginMetrics);
     }
 
     @Test
