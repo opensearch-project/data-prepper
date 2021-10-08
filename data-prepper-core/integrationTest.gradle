@@ -159,7 +159,7 @@ def createDataPrepperDockerContainerFromPullImage(final String taskBaseName, fin
  * OpenSearch Docker tasks
  */
 task pullOpenSearchDockerImage(type: DockerPullImage) {
-    image = 'opensearchproject/opensearch:1.0.0'
+    image = 'opensearchproject/opensearch:1.1.0'
 }
 
 task createOpenSearchDockerContainer(type: DockerCreateContainer) {
