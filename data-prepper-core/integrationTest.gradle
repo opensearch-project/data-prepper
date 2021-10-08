@@ -119,7 +119,7 @@ def logDataPrepperDockerContainer(final DockerStartContainer startDataPrepperDoc
     return tasks.create("log${startDataPrepperDockerContainerTask.getName()}", DockerLogsContainer) {
         dependsOn startDataPrepperDockerContainerTask
         targetContainerId startDataPrepperDockerContainerTask.getContainerId()
-        follow = true
+        follow = false
         tailAll = true
         onNext { message ->
             // Each log message from the container will be passed as it's made available
