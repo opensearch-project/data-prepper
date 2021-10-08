@@ -137,6 +137,7 @@ public class EndToEndServiceMapTest {
 
     private void sendExportTraceServiceRequestToSource(final int port, final ExportTraceServiceRequest request) {
         TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(String.format("gproto+http://127.0.0.1:%d/", port))
+                .responseTimeoutMillis(0)
                 .decorator(LoggingClient.builder()
                         .requestLogLevel(LogLevel.INFO)
                         .successfulResponseLogLevel(LogLevel.INFO)
