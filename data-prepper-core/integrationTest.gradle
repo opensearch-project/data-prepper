@@ -182,6 +182,13 @@ task startOpenSearchDockerContainer(type: DockerStartContainer) {
     }
 }
 
+task logOpenSearchDockerContainer(type: DockerLogsContainer) {
+    dependsOn startOpenSearchDockerContainer
+    targetContainerId startOpenSearchDockerContainer.getContainerId()
+    follow = true
+    tailAll = true
+}
+
 task stopOpenSearchDockerContainer(type: DockerStopContainer) {
     targetContainerId createOpenSearchDockerContainer.getContainerId()
 
@@ -209,8 +216,11 @@ task rawSpanEndToEndTest(type: Test) {
     dependsOn startDataPrepper2Task
     dependsOn logDataPrepper1Task
     dependsOn logDataPrepper2Task
+    dependsOn logOpenSearchDockerContainer
     startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
     startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
+    logOpenSearchDockerContainer.mustRunAfter 'logDataPrepper1Task'
+    logOpenSearchDockerContainer.mustRunAfter 'logDataPrepper2Task'
     // wait for data-preppers to be ready
     doFirst {
         sleep(10*1000)
