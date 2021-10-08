@@ -37,7 +37,7 @@ source:
 ### Timer
 - `requestProcessDuration`: measures latency of requests processed by the HTTP source plugin in seconds. 
 
-### Summary
+### Distribution Summary
 - `payloadSize`: measures the distribution of incoming requests payload sizes in bytes.
 
 ## Developer Guide
