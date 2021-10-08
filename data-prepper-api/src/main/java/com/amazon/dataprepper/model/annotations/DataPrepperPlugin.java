@@ -20,14 +20,20 @@ import java.lang.annotation.Target;
 import java.lang.annotation.RetentionPolicy;
 
 /**
- * Annotates a Data Prepper Java plugin that includes Source, Sink, Buffer and Prepper.
- * The value returned from {@link #name()} represents the name of the plugin and is used in the pipeline configuration
- * and the optional {@link #type()}
- *
- * TODO 1. Pick a different name - Plugin, Component, Resource conflicts with
- * other most used frameworks and may confuse users
- * TODO 2. Add capability for ElementType.METHOD
- * TODO 3. Add expected RECORD_TYPE for input and expected RECORD_TYPE for output
+ * Annotates a Data Prepper plugin. This can be a pipeline component such
+ * as {@link com.amazon.dataprepper.model.source.Source},
+ * {@link com.amazon.dataprepper.model.buffer.Buffer},
+ * {@link com.amazon.dataprepper.model.prepper.Prepper}, or
+ * {@link com.amazon.dataprepper.model.sink.Sink}. It can also be another
+ * plugin-supported class.
+ * <p>
+ * The value provided in the {@link #name()} attribute determines the name of
+ * the plugin as would be found in the pipeline configuration.
+ * <p>
+ * You must define either the {@link #pluginType()} or {@link #type()} to load
+ * as a plugin. Right now, neither are required at compile-time. However, in a
+ * future release of Data Prepper we will make {@link #pluginType()} required
+ * and remove {@link #type()} altogether.
  */
 
 @Documented
@@ -41,7 +47,10 @@ public @interface DataPrepperPlugin {
     String name();
 
     /**
-     * @deprecated Remove in favor of {@link DataPrepperPlugin#pluginType()}
+     * The enum of supported pipeline component types.
+     *
+     * @deprecated Remove in favor of {@link DataPrepperPlugin#pluginType()}.
+     * This value will be removed in an upcoming release of Data Prepper.
      * @return The plugin type enum
      */
     @Deprecated
@@ -49,8 +58,12 @@ public @interface DataPrepperPlugin {
 
     /**
      * The class type for this plugin.
+     * <p>
+     * While this property is not currently required, you should supply it. A
+     * future version of Data Prepper will make this a required attribute.
      *
      * @return The Java class
+     * @since 1.2
      */
     Class<?> pluginType() default Void.class;
 }
