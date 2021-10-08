@@ -119,6 +119,7 @@ def logDataPrepperDockerContainer(final DockerStartContainer startDataPrepperDoc
     return tasks.create("log${startDataPrepperDockerContainerTask.getName()}", DockerLogsContainer) {
         dependsOn startDataPrepperDockerContainerTask
         targetContainerId startDataPrepperDockerContainerTask.getContainerId()
+        follow = true
     }
 }
 
