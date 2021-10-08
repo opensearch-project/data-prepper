@@ -31,7 +31,7 @@ public class GrokPrepperConfig {
     static final boolean DEFAULT_BREAK_ON_MATCH = true;
     static final boolean DEFAULT_KEEP_EMPTY_CAPTURES = false;
     static final boolean DEFAULT_NAMED_CAPTURES_ONLY = true;
-    static final String DEFAULT_PATTERNS_FILES_GLOB = ".*";
+    static final String DEFAULT_PATTERNS_FILES_GLOB = "*";
     static final int DEFAULT_TIMEOUT_MILLIS = 30000;
     static final String DEFAULT_TARGET = null;
 
