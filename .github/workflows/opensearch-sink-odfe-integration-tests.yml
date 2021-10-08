@@ -29,8 +29,8 @@ jobs:
         run: chmod +x gradlew
       - name: Run ODFE docker
         run: |
-          docker pull amazon/opendistro-for-elasticsearch:${{ odfe }}
-          docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -d amazon/opendistro-for-elasticsearch:${{ odfe }}
+          docker pull amazon/opendistro-for-elasticsearch:${{ matrix.odfe }}
+          docker run -p 9200:9200 -p 9600:9600 -e "discovery.type=single-node" -d amazon/opendistro-for-elasticsearch:${{ matrix.odfe }}
           sleep 90
       - name: Run ODFE tests
         run: |
