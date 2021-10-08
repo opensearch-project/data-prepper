@@ -122,8 +122,10 @@ def logDataPrepperDockerContainer(final DockerStartContainer startDataPrepperDoc
         follow = false
         tailAll = true
         onNext { message ->
-            // Each log message from the container will be passed as it's made available
-            logger.quiet message.toString()
+            def foundMessage = message.toString()
+            if (foundMessage.contains("Excepion")) {
+                throw new StopExecutionException(foundMessage)
+            }
         }
     }
 }
