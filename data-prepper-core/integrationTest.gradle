@@ -169,7 +169,7 @@ task startOpenSearchDockerContainer(type: DockerStartContainer) {
     targetContainerId createOpenSearchDockerContainer.getContainerId()
 
     doLast {
-        sleep(90*1000)
+        sleep(120*1000)
     }
 }
 
