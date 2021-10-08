@@ -219,8 +219,6 @@ task rawSpanEndToEndTest(type: Test) {
     dependsOn logOpenSearchDockerContainer
     startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
     startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
-    logOpenSearchDockerContainer.mustRunAfter logDataPrepper1Task
-    logOpenSearchDockerContainer.mustRunAfter logDataPrepper2Task
     // wait for data-preppers to be ready
     doFirst {
         sleep(10*1000)
@@ -263,8 +261,6 @@ task rawSpanCompatibilityEndToEndTest(type: Test) {
     dependsOn logOpenSearchDockerContainer
     startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
     startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
-    logOpenSearchDockerContainer.mustRunAfter logDataPrepper1Task
-    logOpenSearchDockerContainer.mustRunAfter logDataPrepper2Task
     // wait for data-preppers to be ready
     doFirst {
         sleep(10*1000)
