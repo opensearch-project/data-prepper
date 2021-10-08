@@ -23,6 +23,7 @@ import com.amazon.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.Nested;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.Mock;
@@ -60,17 +61,13 @@ public class GrokPrepperTests {
     private Match match;
 
     @Mock
-    private Match match2;
-
-    @Mock
     private Grok grok;
 
     @Mock
-    private Grok grok2;
+    private Grok grokSecondMatch;
 
     private final String PLUGIN_NAME = "grok";
     private Map<String, Object> capture;
-    private Map<String, Object> capture2;
     private final Map<String, List<String>> matchConfig = new HashMap<>();
 
     @BeforeEach
@@ -92,12 +89,11 @@ public class GrokPrepperTests {
         try (MockedStatic<GrokCompiler> grokCompilerMockedStatic = mockStatic(GrokCompiler.class)) {
             grokCompilerMockedStatic.when(GrokCompiler::newInstance).thenReturn(grokCompiler);
             when(grokCompiler.compile(eq(matchConfig.get("message").get(0)), anyBoolean())).thenReturn(grok);
-            when(grokCompiler.compile(eq(matchConfig.get("message").get(1)), anyBoolean())).thenReturn(grok2);
+            when(grokCompiler.compile(eq(matchConfig.get("message").get(1)), anyBoolean())).thenReturn(grokSecondMatch);
             grokPrepper = new GrokPrepper(pluginSetting);
         }
 
         capture = new HashMap<>();
-        capture2 = new HashMap<>();
 
         messageInput = UUID.randomUUID().toString();
 
@@ -105,22 +101,6 @@ public class GrokPrepperTests {
         when(match.capture()).thenReturn(capture);
     }
 
-    @Test
-    public void testNoCaptures() throws JsonProcessingException {
-        initialize(getDefaultPluginSetting());
-
-        lenient().when(grok2.match(messageInput)).thenReturn(match2);
-        lenient().when(match2.capture()).thenReturn(capture2);
-
-        String testData = "{\"message\":" + "\"" + messageInput + "\"}";
-        Record<String> record = new Record<>(testData);
-
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
-
-        assertThat(grokkedRecords.size(), equalTo(1));
-        assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), record), equalTo(true));
-    }
 
     @Test
     public void testMatchMerge() throws JsonProcessingException {
@@ -137,70 +117,6 @@ public class GrokPrepperTests {
                                 .concat("\"field_capture_1\":\"value_capture_1\",")
                                 .concat("\"field_capture_2\":\"value_capture_2\",")
                                 .concat("\"field_capture_3\":\"value_capture_3\"}");
-
-        Record<String> resultRecord = new Record<>(resultData);
-
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
-
-        assertThat(grokkedRecords.size(), equalTo(1));
-        assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
-    }
-
-    @Test
-    public void testBreakOnMatchTrue() throws JsonProcessingException {
-        initialize(getDefaultPluginSetting());
-
-        lenient().when(grok2.match(messageInput)).thenReturn(match2);
-        lenient().when(match2.capture()).thenReturn(capture2);
-
-        capture.put("field_capture_1", "value_capture_1");
-        capture.put("field_capture_2", "value_capture_2");
-        capture.put("field_capture_3", "value_capture_3");
-
-        capture2.put("field_capture2", "value_capture2");
-
-        String testData = "{\"message\":" + "\"" + messageInput + "\"}";
-        Record<String> record = new Record<>(testData);
-
-        String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"field_capture_1\":\"value_capture_1\",")
-                .concat("\"field_capture_2\":\"value_capture_2\",")
-                .concat("\"field_capture_3\":\"value_capture_3\"}");
-
-        Record<String> resultRecord = new Record<>(resultData);
-
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
-
-        verifyNoInteractions(grok2, match2);
-        assertThat(grokkedRecords.size(), equalTo(1));
-        assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
-    }
-
-    @Test
-    public void testBreakOnMatchFalse() throws JsonProcessingException {
-        final PluginSetting pluginSetting = getDefaultPluginSetting();
-        pluginSetting.getSettings().put(GrokPrepperConfig.BREAK_ON_MATCH, false);
-        initialize(pluginSetting);
-
-        when(grok2.match(messageInput)).thenReturn(match2);
-        when(match2.capture()).thenReturn(capture2);
-
-        capture.put("field_capture_1", "value_capture_1");
-        capture.put("field_capture_2", "value_capture_2");
-        capture.put("field_capture_3", "value_capture_3");
-
-        capture2.put("field_capture2", "value_capture2");
-
-        String testData = "{\"message\":" + "\"" + messageInput + "\"}";
-        Record<String> record = new Record<>(testData);
-
-        String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"field_capture_1\":\"value_capture_1\",")
-                .concat("\"field_capture_2\":\"value_capture_2\",")
-                .concat("\"field_capture2\":\"value_capture2\",")
-                .concat("\"field_capture_3\":\"value_capture_3\"}");
 
         Record<String> resultRecord = new Record<>(resultData);
 
@@ -383,6 +299,100 @@ public class GrokPrepperTests {
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
         assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+    }
+
+    @Nested
+    class WithMultipleMatches {
+        @Mock
+        private Match secondMatch;
+
+        private Map<String, Object> secondCapture;
+
+        @BeforeEach
+        public void setup() {
+            secondCapture = new HashMap<>();
+        }
+
+        @Test
+        public void testNoCaptures() throws JsonProcessingException {
+            initialize(getDefaultPluginSetting());
+
+            lenient().when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
+            lenient().when(secondMatch.capture()).thenReturn(secondCapture);
+
+            String testData = "{\"message\":" + "\"" + messageInput + "\"}";
+            Record<String> record = new Record<>(testData);
+
+            List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+
+            assertThat(grokkedRecords.size(), equalTo(1));
+            assertThat(grokkedRecords.get(0), notNullValue());
+            assertThat(equalRecords(grokkedRecords.get(0), record), equalTo(true));
+        }
+
+        @Test
+        public void testBreakOnMatchTrue() throws JsonProcessingException {
+            initialize(getDefaultPluginSetting());
+
+            lenient().when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
+            lenient().when(secondMatch.capture()).thenReturn(secondCapture);
+
+            capture.put("field_capture_1", "value_capture_1");
+            capture.put("field_capture_2", "value_capture_2");
+            capture.put("field_capture_3", "value_capture_3");
+
+            secondCapture.put("field_secondCapture", "value_capture2");
+
+            String testData = "{\"message\":" + "\"" + messageInput + "\"}";
+            Record<String> record = new Record<>(testData);
+
+            String resultData = "{\"message\":" + "\"" + messageInput + "\","
+                    .concat("\"field_capture_1\":\"value_capture_1\",")
+                    .concat("\"field_capture_2\":\"value_capture_2\",")
+                    .concat("\"field_capture_3\":\"value_capture_3\"}");
+
+            Record<String> resultRecord = new Record<>(resultData);
+
+            List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+
+            verifyNoInteractions(grokSecondMatch, secondMatch);
+            assertThat(grokkedRecords.size(), equalTo(1));
+            assertThat(grokkedRecords.get(0), notNullValue());
+            assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        }
+
+        @Test
+        public void testBreakOnMatchFalse() throws JsonProcessingException {
+            final PluginSetting pluginSetting = getDefaultPluginSetting();
+            pluginSetting.getSettings().put(GrokPrepperConfig.BREAK_ON_MATCH, false);
+            initialize(pluginSetting);
+
+            when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
+            when(secondMatch.capture()).thenReturn(secondCapture);
+
+            capture.put("field_capture_1", "value_capture_1");
+            capture.put("field_capture_2", "value_capture_2");
+            capture.put("field_capture_3", "value_capture_3");
+
+            secondCapture.put("field_secondCapture", "value_secondCapture");
+
+            String testData = "{\"message\":" + "\"" + messageInput + "\"}";
+            Record<String> record = new Record<>(testData);
+
+            String resultData = "{\"message\":" + "\"" + messageInput + "\","
+                    .concat("\"field_capture_1\":\"value_capture_1\",")
+                    .concat("\"field_capture_2\":\"value_capture_2\",")
+                    .concat("\"field_secondCapture\":\"value_secondCapture\",")
+                    .concat("\"field_capture_3\":\"value_capture_3\"}");
+
+            Record<String> resultRecord = new Record<>(resultData);
+
+            List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+
+            assertThat(grokkedRecords.size(), equalTo(1));
+            assertThat(grokkedRecords.get(0), notNullValue());
+            assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        }
     }
 
     private PluginSetting getDefaultPluginSetting() {
