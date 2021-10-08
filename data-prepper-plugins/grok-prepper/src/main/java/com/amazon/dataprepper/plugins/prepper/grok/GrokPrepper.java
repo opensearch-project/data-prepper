@@ -63,12 +63,12 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
     private final GrokCompiler grokCompiler;
     private final Map<String, List<Grok>> fieldToGrok;
     private final GrokPrepperConfig grokPrepperConfig;
-    private final Set<String> overwriteKeys;
+    private final Set<String> keysToOverwrite;
 
     public GrokPrepper(final PluginSetting pluginSetting) {
         super(pluginSetting);
         grokPrepperConfig = GrokPrepperConfig.buildConfig(pluginSetting);
-        overwriteKeys = new HashSet<>(grokPrepperConfig.getOverwrite());
+        keysToOverwrite = new HashSet<>(grokPrepperConfig.getkeysToOverwrite());
         grokCompiler = GrokCompiler.newInstance();
         fieldToGrok = new LinkedHashMap<>();
 
@@ -88,11 +88,9 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
         final List<Record<String>> recordsOut = new LinkedList<>();
 
         for (final Record<String> record : records) {
-            boolean foundMatchToBreakOn = false;
-
             try {
                 final Map<String, Object> recordMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
-                final Map<String, Object> grokkedLog = new HashMap<>();
+                final Map<String, Object> grokkedCaptures = new HashMap<>();
 
                 for (final Map.Entry<String, List<Grok>> entry : fieldToGrok.entrySet()) {
                     for (final Grok grok : entry.getValue()) {
@@ -101,23 +99,22 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
                             match.setKeepEmptyCaptures(grokPrepperConfig.isKeepEmptyCaptures());
 
                             final Map<String, Object> captures = match.capture();
-                            mergeCaptures(grokkedLog, captures);
+                            mergeCaptures(grokkedCaptures, captures);
 
-                            if (captures.size() > 0 && grokPrepperConfig.isBreakOnMatch()) {
-                                foundMatchToBreakOn = true;
+                            if (shouldBreakOnMatch(grokkedCaptures)) {
                                 break;
                             }
                         }
                     }
-                    if (foundMatchToBreakOn) {
+                    if (shouldBreakOnMatch(grokkedCaptures)) {
                         break;
                     }
                 }
 
-                if (grokPrepperConfig.getTarget() != null) {
-                    recordMap.put(grokPrepperConfig.getTarget(), grokkedLog);
+                if (grokPrepperConfig.getTargetKey() != null) {
+                    recordMap.put(grokPrepperConfig.getTargetKey(), grokkedCaptures);
                 } else {
-                    mergeCaptures(recordMap, grokkedLog);
+                    mergeCaptures(recordMap, grokkedCaptures);
                 }
 
                 final Record<String> grokkedRecord = new Record<>(OBJECT_MAPPER.writeValueAsString(recordMap), record.getMetadata());
@@ -153,7 +150,7 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
     }
 
     private void registerPatternsDir() {
-        for (final String directory : grokPrepperConfig.getPatternsDir()) {
+        for (final String directory : grokPrepperConfig.getPatternsDirectories()) {
             final Path path = FileSystems.getDefault().getPath(directory);
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(path, grokPrepperConfig.getPatternsFilesGlob())) {
                 for (final Path patternFile : stream) {
@@ -191,7 +188,7 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
 
     private void mergeCaptures(final Map<String, Object> original, final Map<String, Object> updates) {
         for (final Map.Entry<String, Object> updateEntry : updates.entrySet()) {
-            if (!(original.containsKey(updateEntry.getKey())) || overwriteKeys.contains(updateEntry.getKey())) {
+            if (!(original.containsKey(updateEntry.getKey())) || keysToOverwrite.contains(updateEntry.getKey())) {
                 original.put(updateEntry.getKey(), updateEntry.getValue());
                 continue;
             }
@@ -212,5 +209,9 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
         } else {
             values.add(value);
         }
+    }
+
+    private boolean shouldBreakOnMatch(final Map<String, Object> captures) {
+        return captures.size() > 0 && grokPrepperConfig.isBreakOnMatch();
     }
 }
