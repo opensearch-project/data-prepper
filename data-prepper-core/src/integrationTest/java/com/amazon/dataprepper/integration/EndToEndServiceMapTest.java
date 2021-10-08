@@ -27,8 +27,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.linecorp.armeria.client.Clients;
+import com.linecorp.armeria.client.logging.LoggingClient;
 import com.linecorp.armeria.client.retry.RetryRule;
 import com.linecorp.armeria.client.retry.RetryingClient;
+import com.linecorp.armeria.common.logging.LogLevel;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.common.v1.AnyValue;
@@ -135,6 +137,11 @@ public class EndToEndServiceMapTest {
 
     private void sendExportTraceServiceRequestToSource(final int port, final ExportTraceServiceRequest request) {
         TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(String.format("gproto+http://127.0.0.1:%d/", port))
+                .decorator(LoggingClient.builder()
+                        .requestLogLevel(LogLevel.INFO)
+                        .successfulResponseLogLevel(LogLevel.INFO)
+                        .failureResponseLogLevel(LogLevel.WARN)
+                        .newDecorator())
                 .decorator(RetryingClient.newDecorator(RetryRule.failsafe()))
                 .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
         client.export(request);
