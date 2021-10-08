@@ -115,6 +115,13 @@ def startDataPrepperDockerContainer(final DockerCreateContainer createDataPreppe
     }
 }
 
+def logDataPrepperDockerContainer(final DockerStartContainer startDataPrepperDockerContainerTask) {
+    return tasks.create("log${startDataPrepperDockerContainerTask.getName()}", DockerLogsContainer) {
+        dependsOn startDataPrepperDockerContainerTask
+        targetContainerId startDataPrepperDockerContainerTask.getContainerId()
+    }
+}
+
 def stopDataPrepperDockerContainer(final DockerStartContainer startDataPrepperDockerContainerTask) {
     return tasks.create("stop${startDataPrepperDockerContainerTask.getName()}", DockerStopContainer) {
         targetContainerId startDataPrepperDockerContainerTask.getContainerId()
@@ -169,7 +176,7 @@ task startOpenSearchDockerContainer(type: DockerStartContainer) {
     targetContainerId createOpenSearchDockerContainer.getContainerId()
 
     doLast {
-        sleep(120*1000)
+        sleep(90*1000)
     }
 }
 
@@ -194,8 +201,12 @@ task rawSpanEndToEndTest(type: Test) {
             "rawSpanDataPrepper2", "dataprepper2", 21891, 4901, "/app/${RAW_SPAN_PIPELINE_YAML}")
     def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
     def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
+    def logDataPrepper1Task = logDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
+    def logDataPrepper2Task = logDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
     dependsOn startDataPrepper1Task
     dependsOn startDataPrepper2Task
+    dependsOn logDataPrepper1Task
+    dependsOn logDataPrepper2Task
     startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
     startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
     // wait for data-preppers to be ready
@@ -231,8 +242,12 @@ task rawSpanCompatibilityEndToEndTest(type: Test) {
             "rawSpanDataPrepperFromPull", "dataprepper2", 21891, 4901, "src/integrationTest/resources/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
     def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
     def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
+    def logDataPrepper1Task = logDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
+    def logDataPrepper2Task = logDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
     dependsOn startDataPrepper1Task
     dependsOn startDataPrepper2Task
+    dependsOn logDataPrepper1Task
+    dependsOn logDataPrepper2Task
     startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
     startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
     // wait for data-preppers to be ready
