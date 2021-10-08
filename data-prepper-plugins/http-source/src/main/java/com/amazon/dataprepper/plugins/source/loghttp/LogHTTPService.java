@@ -39,7 +39,7 @@ public class LogHTTPService {
     public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String SUCCESS_REQUESTS = "successRequests";
     public static final String BAD_REQUESTS = "badRequests";
-    public static final String PAYLOAD_SUMMARY = "payloadSummary";
+    public static final String PAYLOAD_SIZE = "payloadSize";
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
 
     // TODO: support other data-types as request body, e.g. json_lines, msgpack
@@ -50,7 +50,7 @@ public class LogHTTPService {
     private final Counter requestTimeoutsCounter;
     private final Counter successRequestsCounter;
     private final Counter badRequestsCounter;
-    private final DistributionSummary payloadSummary;
+    private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
 
     public LogHTTPService(final int bufferWriteTimeoutInMillis,
@@ -63,7 +63,7 @@ public class LogHTTPService {
         requestTimeoutsCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
         badRequestsCounter = pluginMetrics.counter(BAD_REQUESTS);
-        payloadSummary = pluginMetrics.summary(PAYLOAD_SUMMARY);
+        payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
     }
 
@@ -77,7 +77,7 @@ public class LogHTTPService {
 
         List<String> jsonList;
         final HttpData content = aggregatedHttpRequest.content();
-        payloadSummary.record(content.length());
+        payloadSizeSummary.record(content.length());
         try {
             jsonList = jsonCodec.parse(content);
         } catch (IOException e) {

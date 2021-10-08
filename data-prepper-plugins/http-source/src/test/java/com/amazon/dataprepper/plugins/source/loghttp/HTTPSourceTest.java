@@ -95,7 +95,7 @@ class HTTPSourceTest {
     private List<Measurement> badRequestsMeasurements;
     private List<Measurement> rejectedRequestsMeasurements;
     private List<Measurement> requestProcessDurationMeasurements;
-    private List<Measurement> payloadSummaryMeasurements;
+    private List<Measurement> payloadSizeSummaryMeasurements;
 
     private BlockingBuffer<Record<String>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
@@ -131,9 +131,9 @@ class HTTPSourceTest {
         requestProcessDurationMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
                         .add(LogHTTPService.REQUEST_PROCESS_DURATION).toString());
-        payloadSummaryMeasurements = MetricsTestUtil.getMeasurementList(
+        payloadSizeSummaryMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
-                        .add(LogHTTPService.PAYLOAD_SUMMARY).toString());
+                        .add(LogHTTPService.PAYLOAD_SIZE).toString());
     }
 
     @BeforeEach
@@ -194,9 +194,9 @@ class HTTPSourceTest {
         final Measurement requestProcessDurationMax = MetricsTestUtil.getMeasurementFromList(
                 requestProcessDurationMeasurements, Statistic.MAX);
         Assertions.assertTrue(requestProcessDurationMax.getValue() > 0);
-        final Measurement payloadSummaryMax = MetricsTestUtil.getMeasurementFromList(
-                payloadSummaryMeasurements, Statistic.MAX);
-        Assertions.assertEquals(testPayloadSize, payloadSummaryMax.getValue());
+        final Measurement payloadSizeMax = MetricsTestUtil.getMeasurementFromList(
+                payloadSizeSummaryMeasurements, Statistic.MAX);
+        Assertions.assertEquals(testPayloadSize, payloadSizeMax.getValue());
     }
 
     @Test
