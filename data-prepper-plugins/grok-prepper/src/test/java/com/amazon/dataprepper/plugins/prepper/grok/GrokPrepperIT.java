@@ -41,7 +41,7 @@ public class GrokPrepperIT {
                 GrokPrepperConfig.DEFAULT_PATTERNS_FILES_GLOB,
                 Collections.emptyMap(),
                 GrokPrepperConfig.DEFAULT_TIMEOUT_MILLIS,
-                GrokPrepperConfig.DEFAULT_TARGET);
+                GrokPrepperConfig.DEFAULT_TARGET_KEY);
 
         pluginSetting.setPipelineName("grokPipeline");
 
@@ -60,23 +60,23 @@ public class GrokPrepperIT {
                                                               final boolean keepEmptyCaptures,
                                                               final Map<String, List<String>> match,
                                                               final boolean namedCapturesOnly,
-                                                              final List<String> overwrite,
-                                                              final List<String> patternsDir,
+                                                              final List<String> keysToOverwrite,
+                                                              final List<String> patternsDirectories,
                                                               final String patternsFilesGlob,
                                                               final Map<String, String> patternDefinitions,
                                                               final int timeoutMillis,
-                                                              final String target) {
+                                                              final String targetKey) {
         final Map<String, Object> settings = new HashMap<>();
         settings.put(GrokPrepperConfig.BREAK_ON_MATCH, breakOnMatch);
         settings.put(GrokPrepperConfig.NAMED_CAPTURES_ONLY, namedCapturesOnly);
         settings.put(GrokPrepperConfig.MATCH, match);
         settings.put(GrokPrepperConfig.KEEP_EMPTY_CAPTURES, keepEmptyCaptures);
-        settings.put(GrokPrepperConfig.OVERWRITE, overwrite);
-        settings.put(GrokPrepperConfig.PATTERNS_DIR, patternsDir);
+        settings.put(GrokPrepperConfig.KEYS_TO_OVERWRITE, keysToOverwrite);
+        settings.put(GrokPrepperConfig.PATTERNS_DIRECTORIES, patternsDirectories);
         settings.put(GrokPrepperConfig.PATTERN_DEFINITIONS, patternDefinitions);
         settings.put(GrokPrepperConfig.PATTERNS_FILES_GLOB, patternsFilesGlob);
         settings.put(GrokPrepperConfig.TIMEOUT_MILLIS, timeoutMillis);
-        settings.put(GrokPrepperConfig.TARGET, target);
+        settings.put(GrokPrepperConfig.TARGET_KEY, targetKey);
 
         return new PluginSetting(PLUGIN_NAME, settings);
     }
@@ -323,8 +323,8 @@ public class GrokPrepperIT {
     public void testPatternsDirWithDefaultPatternsFilesGlob() throws JsonProcessingException {
         final String patternDirectory = "./src/test/resources/patterns";
 
-        final List<String> patternsDir = new ArrayList<>();
-        patternsDir.add(patternDirectory);
+        final List<String> patternsDirectories = new ArrayList<>();
+        patternsDirectories.add(patternDirectory);
 
         final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList("My birthday is %{CUSTOMBIRTHDAYPATTERN:my_birthday} and my phone number is %{CUSTOMPHONENUMBERPATTERN:my_number}"));
@@ -337,7 +337,7 @@ public class GrokPrepperIT {
                 .concat("\"my_number\":\"123-456-789\"}");
 
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
-        pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_DIR, patternsDir);
+        pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_DIRECTORIES, patternsDirectories);
         grokPrepper = new GrokPrepper(pluginSetting);
 
         Record<String> resultRecord = new Record<>(resultData);
@@ -353,8 +353,8 @@ public class GrokPrepperIT {
     public void testPatternsDirWithCustomPatternsFilesGlob() throws JsonProcessingException {
         final String patternDirectory = "./src/test/resources/patterns";
 
-        final List<String> patternsDir = new ArrayList<>();
-        patternsDir.add(patternDirectory);
+        final List<String> patternsDirectories = new ArrayList<>();
+        patternsDirectories.add(patternDirectory);
 
         final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList("My phone number is %{CUSTOMPHONENUMBERPATTERN:my_number}"));
@@ -366,7 +366,7 @@ public class GrokPrepperIT {
                 .concat("\"my_number\":\"123-456-789\"}");
 
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
-        pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_DIR, patternsDir);
+        pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_DIRECTORIES, patternsDirectories);
         pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_FILES_GLOB, "*1.txt");
         grokPrepper = new GrokPrepper(pluginSetting);
 

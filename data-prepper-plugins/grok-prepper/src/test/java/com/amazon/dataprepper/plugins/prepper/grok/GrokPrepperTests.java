@@ -106,17 +106,17 @@ public class GrokPrepperTests {
     public void testMatchMerge() throws JsonProcessingException {
         initialize(getDefaultPluginSetting());
 
-        capture.put("field_capture_1", "value_capture_1");
-        capture.put("field_capture_2", "value_capture_2");
-        capture.put("field_capture_3", "value_capture_3");
+        capture.put("key_capture_1", "value_capture_1");
+        capture.put("key_capture_2", "value_capture_2");
+        capture.put("key_capture_3", "value_capture_3");
 
         String testData = "{\"message\":" + "\"" + messageInput + "\"}";
         Record<String> record = new Record<>(testData);
 
         String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                                .concat("\"field_capture_1\":\"value_capture_1\",")
-                                .concat("\"field_capture_2\":\"value_capture_2\",")
-                                .concat("\"field_capture_3\":\"value_capture_3\"}");
+                                .concat("\"key_capture_1\":\"value_capture_1\",")
+                                .concat("\"key_capture_2\":\"value_capture_2\",")
+                                .concat("\"key_capture_3\":\"value_capture_3\"}");
 
         Record<String> resultRecord = new Record<>(resultData);
 
@@ -130,22 +130,22 @@ public class GrokPrepperTests {
     @Test
     public void testTarget() throws JsonProcessingException {
         final PluginSetting pluginSetting = getDefaultPluginSetting();
-        pluginSetting.getSettings().put(GrokPrepperConfig.TARGET, "test_target");
+        pluginSetting.getSettings().put(GrokPrepperConfig.TARGET_KEY, "test_target");
         initialize(pluginSetting);
 
 
-        capture.put("field_capture_1", "value_capture_1");
-        capture.put("field_capture_2", "value_capture_2");
-        capture.put("field_capture_3", "value_capture_3");
+        capture.put("key_capture_1", "value_capture_1");
+        capture.put("key_capture_2", "value_capture_2");
+        capture.put("key_capture_3", "value_capture_3");
 
         String testData = "{\"message\":" + "\"" + messageInput + "\"}";
         Record<String> record = new Record<>(testData);
 
         String resultData = "{\"message\":" + "\"" + messageInput + "\","
                 .concat("\"test_target\":{")
-                .concat("\"field_capture_1\":\"value_capture_1\",")
-                .concat("\"field_capture_2\":\"value_capture_2\",")
-                .concat("\"field_capture_3\":\"value_capture_3\"}}");
+                .concat("\"key_capture_1\":\"value_capture_1\",")
+                .concat("\"key_capture_2\":\"value_capture_2\",")
+                .concat("\"key_capture_3\":\"value_capture_3\"}}");
 
         Record<String> resultRecord = new Record<>(resultData);
 
@@ -159,21 +159,21 @@ public class GrokPrepperTests {
     @Test
     public void testOverwrite() throws JsonProcessingException {
         final PluginSetting pluginSetting = getDefaultPluginSetting();
-        pluginSetting.getSettings().put(GrokPrepperConfig.OVERWRITE, Collections.singletonList("message"));
+        pluginSetting.getSettings().put(GrokPrepperConfig.KEYS_TO_OVERWRITE, Collections.singletonList("message"));
         initialize(pluginSetting);
 
-        capture.put("field_capture_1", "value_capture_1");
-        capture.put("field_capture_2", "value_capture_2");
-        capture.put("field_capture_3", "value_capture_3");
+        capture.put("key_capture_1", "value_capture_1");
+        capture.put("key_capture_2", "value_capture_2");
+        capture.put("key_capture_3", "value_capture_3");
         capture.put("message", "overwrite_the_original_message");
 
         String testData = "{\"message\":" + "\"" + messageInput + "\"}";
         Record<String> record = new Record<>(testData);
 
         String resultData = "{\"message\":\"overwrite_the_original_message\","
-                .concat("\"field_capture_1\":\"value_capture_1\",")
-                .concat("\"field_capture_2\":\"value_capture_2\",")
-                .concat("\"field_capture_3\":\"value_capture_3\"}");
+                .concat("\"key_capture_1\":\"value_capture_1\",")
+                .concat("\"key_capture_2\":\"value_capture_2\",")
+                .concat("\"key_capture_3\":\"value_capture_3\"}");
 
         Record<String> resultRecord = new Record<>(resultData);
 
@@ -188,20 +188,20 @@ public class GrokPrepperTests {
     public void testMatchMergeCollisionStrings() throws JsonProcessingException {
         initialize(getDefaultPluginSetting());
 
-        capture.put("field_capture_1", "value_capture_1");
-        capture.put("field_capture_2", "value_capture_2");
-        capture.put("field_capture_3", "value_capture_3");
+        capture.put("key_capture_1", "value_capture_1");
+        capture.put("key_capture_2", "value_capture_2");
+        capture.put("key_capture_3", "value_capture_3");
 
         String testData =  "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"field_capture_1\":\"value_capture_collision\"}");
+                .concat("\"key_capture_1\":\"value_capture_collision\"}");
 
         Record<String> record = new Record<>(testData);
 
         String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"field_capture_1\":[\"value_capture_collision\",")
+                .concat("\"key_capture_1\":[\"value_capture_collision\",")
                 .concat("\"value_capture_1\"],")
-                .concat("\"field_capture_2\":\"value_capture_2\",")
-                .concat("\"field_capture_3\":\"value_capture_3\"}");
+                .concat("\"key_capture_2\":\"value_capture_2\",")
+                .concat("\"key_capture_3\":\"value_capture_3\"}");
 
         Record<String> resultRecord = new Record<>(resultData);
 
@@ -216,20 +216,20 @@ public class GrokPrepperTests {
     public void testMatchMergeCollisionInts() throws JsonProcessingException {
         initialize(getDefaultPluginSetting());
 
-        capture.put("field_capture_1", 20);
-        capture.put("field_capture_2", "value_capture_2");
-        capture.put("field_capture_3", "value_capture_3");
+        capture.put("key_capture_1", 20);
+        capture.put("key_capture_2", "value_capture_2");
+        capture.put("key_capture_3", "value_capture_3");
 
         String testData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"field_capture_1\": 10}");
+                .concat("\"key_capture_1\": 10}");
 
         Record<String> record = new Record<>(testData);
 
         String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"field_capture_1\":[ 10,")
+                .concat("\"key_capture_1\":[ 10,")
                 .concat("20 ],")
-                .concat("\"field_capture_2\":\"value_capture_2\",")
-                .concat("\"field_capture_3\":\"value_capture_3\"}");
+                .concat("\"key_capture_2\":\"value_capture_2\",")
+                .concat("\"key_capture_3\":\"value_capture_3\"}");
 
         Record<String> resultRecord = new Record<>(resultData);
 
@@ -249,20 +249,20 @@ public class GrokPrepperTests {
         captureListValues.add(40);
         captureListValues.add(null);
 
-        capture.put("field_capture_1", captureListValues);
-        capture.put("field_capture_2", "value_capture_2");
-        capture.put("field_capture_3", "value_capture_3");
+        capture.put("key_capture_1", captureListValues);
+        capture.put("key_capture_2", "value_capture_2");
+        capture.put("key_capture_3", "value_capture_3");
 
         String testData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"field_capture_1\":[10,\"20\"]}");
+                .concat("\"key_capture_1\":[10,\"20\"]}");
 
         Record<String> record = new Record<>(testData);
 
         String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"field_capture_1\":[10,")
+                .concat("\"key_capture_1\":[10,")
                 .concat("\"20\",\"30\",40,null],")
-                .concat("\"field_capture_2\":\"value_capture_2\",")
-                .concat("\"field_capture_3\":\"value_capture_3\"}");
+                .concat("\"key_capture_2\":\"value_capture_2\",")
+                .concat("\"key_capture_3\":\"value_capture_3\"}");
 
         Record<String> resultRecord = new Record<>(resultData);
 
@@ -277,20 +277,20 @@ public class GrokPrepperTests {
     public void testMatchMergeCollisionWithNullValue() throws JsonProcessingException {
         initialize(getDefaultPluginSetting());
 
-        capture.put("field_capture_1", "value_capture_1");
-        capture.put("field_capture_2", "value_capture_2");
-        capture.put("field_capture_3", "value_capture_3");
+        capture.put("key_capture_1", "value_capture_1");
+        capture.put("key_capture_2", "value_capture_2");
+        capture.put("key_capture_3", "value_capture_3");
 
         String testData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"field_capture_1\":null}");
+                .concat("\"key_capture_1\":null}");
 
         Record<String> record = new Record<>(testData);
 
         String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"field_capture_1\":[null,")
+                .concat("\"key_capture_1\":[null,")
                 .concat("\"value_capture_1\"],")
-                .concat("\"field_capture_2\":\"value_capture_2\",")
-                .concat("\"field_capture_3\":\"value_capture_3\"}");
+                .concat("\"key_capture_2\":\"value_capture_2\",")
+                .concat("\"key_capture_3\":\"value_capture_3\"}");
 
         Record<String> resultRecord = new Record<>(resultData);
 
@@ -337,19 +337,19 @@ public class GrokPrepperTests {
             lenient().when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
             lenient().when(secondMatch.capture()).thenReturn(secondCapture);
 
-            capture.put("field_capture_1", "value_capture_1");
-            capture.put("field_capture_2", "value_capture_2");
-            capture.put("field_capture_3", "value_capture_3");
+            capture.put("key_capture_1", "value_capture_1");
+            capture.put("key_capture_2", "value_capture_2");
+            capture.put("key_capture_3", "value_capture_3");
 
-            secondCapture.put("field_secondCapture", "value_capture2");
+            secondCapture.put("key_secondCapture", "value_capture2");
 
             String testData = "{\"message\":" + "\"" + messageInput + "\"}";
             Record<String> record = new Record<>(testData);
 
             String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                    .concat("\"field_capture_1\":\"value_capture_1\",")
-                    .concat("\"field_capture_2\":\"value_capture_2\",")
-                    .concat("\"field_capture_3\":\"value_capture_3\"}");
+                    .concat("\"key_capture_1\":\"value_capture_1\",")
+                    .concat("\"key_capture_2\":\"value_capture_2\",")
+                    .concat("\"key_capture_3\":\"value_capture_3\"}");
 
             Record<String> resultRecord = new Record<>(resultData);
 
@@ -370,20 +370,20 @@ public class GrokPrepperTests {
             when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
             when(secondMatch.capture()).thenReturn(secondCapture);
 
-            capture.put("field_capture_1", "value_capture_1");
-            capture.put("field_capture_2", "value_capture_2");
-            capture.put("field_capture_3", "value_capture_3");
+            capture.put("key_capture_1", "value_capture_1");
+            capture.put("key_capture_2", "value_capture_2");
+            capture.put("key_capture_3", "value_capture_3");
 
-            secondCapture.put("field_secondCapture", "value_secondCapture");
+            secondCapture.put("key_secondCapture", "value_secondCapture");
 
             String testData = "{\"message\":" + "\"" + messageInput + "\"}";
             Record<String> record = new Record<>(testData);
 
             String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                    .concat("\"field_capture_1\":\"value_capture_1\",")
-                    .concat("\"field_capture_2\":\"value_capture_2\",")
-                    .concat("\"field_secondCapture\":\"value_secondCapture\",")
-                    .concat("\"field_capture_3\":\"value_capture_3\"}");
+                    .concat("\"key_capture_1\":\"value_capture_1\",")
+                    .concat("\"key_capture_2\":\"value_capture_2\",")
+                    .concat("\"key_secondCapture\":\"value_secondCapture\",")
+                    .concat("\"key_capture_3\":\"value_capture_3\"}");
 
             Record<String> resultRecord = new Record<>(resultData);
 
@@ -407,30 +407,30 @@ public class GrokPrepperTests {
                 GrokPrepperConfig.DEFAULT_PATTERNS_FILES_GLOB,
                 Collections.emptyMap(),
                 GrokPrepperConfig.DEFAULT_TIMEOUT_MILLIS,
-                GrokPrepperConfig.DEFAULT_TARGET);
+                GrokPrepperConfig.DEFAULT_TARGET_KEY);
     }
 
     private PluginSetting completePluginSettingForGrokPrepper(final boolean breakOnMatch,
                                                               final boolean keepEmptyCaptures,
                                                               final Map<String, List<String>> match,
                                                               final boolean namedCapturesOnly,
-                                                              final List<String> overwrite,
-                                                              final List<String> patternsDir,
+                                                              final List<String> keysToOverwrite,
+                                                              final List<String> patternsDirectories,
                                                               final String patternsFilesGlob,
                                                               final Map<String, String> patternDefinitions,
                                                               final int timeoutMillis,
-                                                              final String target) {
+                                                              final String targetKey) {
         final Map<String, Object> settings = new HashMap<>();
         settings.put(GrokPrepperConfig.BREAK_ON_MATCH, breakOnMatch);
         settings.put(GrokPrepperConfig.NAMED_CAPTURES_ONLY, namedCapturesOnly);
         settings.put(GrokPrepperConfig.MATCH, match);
         settings.put(GrokPrepperConfig.KEEP_EMPTY_CAPTURES, keepEmptyCaptures);
-        settings.put(GrokPrepperConfig.OVERWRITE, overwrite);
-        settings.put(GrokPrepperConfig.PATTERNS_DIR, patternsDir);
+        settings.put(GrokPrepperConfig.KEYS_TO_OVERWRITE, keysToOverwrite);
+        settings.put(GrokPrepperConfig.PATTERNS_DIRECTORIES, patternsDirectories);
         settings.put(GrokPrepperConfig.PATTERN_DEFINITIONS, patternDefinitions);
         settings.put(GrokPrepperConfig.PATTERNS_FILES_GLOB, patternsFilesGlob);
         settings.put(GrokPrepperConfig.TIMEOUT_MILLIS, timeoutMillis);
-        settings.put(GrokPrepperConfig.TARGET, target);
+        settings.put(GrokPrepperConfig.TARGET_KEY, targetKey);
 
         return new PluginSetting(PLUGIN_NAME, settings);
     }
