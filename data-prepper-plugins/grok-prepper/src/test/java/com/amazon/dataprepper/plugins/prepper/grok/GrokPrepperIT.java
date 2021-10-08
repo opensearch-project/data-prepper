@@ -367,7 +367,7 @@ public class GrokPrepperIT {
 
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
         pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_DIR, patternsDir);
-        pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_FILES_GLOB, ".*1.txt");
+        pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_FILES_GLOB, "*1.txt");
         grokPrepper = new GrokPrepper(pluginSetting);
 
         Record<String> resultRecord = new Record<>(resultData);

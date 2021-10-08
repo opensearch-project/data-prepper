@@ -34,15 +34,22 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.DirectoryStream;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.NotDirectoryException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
+import java.util.Set;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 
@@ -56,10 +63,12 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
     private final GrokCompiler grokCompiler;
     private final Map<String, List<Grok>> fieldToGrok;
     private final GrokPrepperConfig grokPrepperConfig;
+    private final Set<String> overwriteKeys;
 
     public GrokPrepper(final PluginSetting pluginSetting) {
         super(pluginSetting);
         grokPrepperConfig = GrokPrepperConfig.buildConfig(pluginSetting);
+        overwriteKeys = new HashSet<>(grokPrepperConfig.getOverwrite());
         grokCompiler = GrokCompiler.newInstance();
         fieldToGrok = new LinkedHashMap<>();
 
@@ -79,7 +88,7 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
         final List<Record<String>> recordsOut = new LinkedList<>();
 
         for (final Record<String> record : records) {
-            boolean foundMatch = false;
+            boolean foundMatchToBreakOn = false;
 
             try {
                 final Map<String, Object> recordMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
@@ -95,12 +104,12 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
                             mergeCaptures(grokkedLog, captures);
 
                             if (captures.size() > 0 && grokPrepperConfig.isBreakOnMatch()) {
-                                foundMatch = true;
+                                foundMatchToBreakOn = true;
                                 break;
                             }
                         }
                     }
-                    if (foundMatch) {
+                    if (foundMatchToBreakOn) {
                         break;
                     }
                 }
@@ -144,23 +153,19 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
     }
 
     private void registerPatternsDir() {
-        final Pattern compiledFilesGlob = Pattern.compile(grokPrepperConfig.getPatternsFilesGlob());
         for (final String directory : grokPrepperConfig.getPatternsDir()) {
-            try {
-                final File dir = new File(directory);
-                final File[] dirFiles = dir.listFiles();
-
-                if (dirFiles != null) {
-                    for (final File file : dirFiles) {
-                        if (compiledFilesGlob.matcher(file.getName()).find()) {
-                            registerPatternsForFile(file);
-                        }
-                    }
-                } else {
-                    LOG.info("Directory {} is empty", directory);
+            final Path path = FileSystems.getDefault().getPath(directory);
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(path, grokPrepperConfig.getPatternsFilesGlob())) {
+                for (final Path patternFile : stream) {
+                    registerPatternsForFile(patternFile.toFile());
                 }
-            } catch (NullPointerException e) {
-                LOG.error("Pattern directory is null", e);
+            }
+            catch (PatternSyntaxException e) {
+                LOG.error("Glob pattern {} is invalid", grokPrepperConfig.getPatternsFilesGlob());
+            } catch (NotDirectoryException e) {
+                LOG.error("{} is not a directory", directory, e);
+            } catch (IOException e) {
+                LOG.error("Error getting directory {}", directory, e);
             }
         }
     }
@@ -186,7 +191,7 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
 
     private void mergeCaptures(final Map<String, Object> original, final Map<String, Object> updates) {
         for (final Map.Entry<String, Object> updateEntry : updates.entrySet()) {
-            if (!(original.containsKey(updateEntry.getKey())) || grokPrepperConfig.getOverwrite().contains(updateEntry.getKey())) {
+            if (!(original.containsKey(updateEntry.getKey())) || overwriteKeys.contains(updateEntry.getKey())) {
                 original.put(updateEntry.getKey(), updateEntry.getValue());
                 continue;
             }

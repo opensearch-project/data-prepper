@@ -40,7 +40,7 @@ TODO: provide examples for using each configuration
 * `patterns_dir` (Optional): A `List<String` that specifies that path of directories that contain custom pattern files you would like to use. Default value is `[]`
 
 
-* `patterns_files_glob` (Optional): A regex `String` that describes which pattern files to use from the directories specified for `patterns_dir`. Default value is `.*`
+* `patterns_files_glob` (Optional): A glob `String` that describes which pattern files to use from the directories specified for `patterns_dir`. Default value is `*`
 
 
 * `target` (Optional): A `String` that will wrap all captures for a Record in an additional outer key value. Default value is `null`
