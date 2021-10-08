@@ -27,10 +27,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.linecorp.armeria.client.Clients;
-import com.linecorp.armeria.client.logging.LoggingClient;
-import com.linecorp.armeria.client.retry.RetryRule;
-import com.linecorp.armeria.client.retry.RetryingClient;
-import com.linecorp.armeria.common.logging.LogLevel;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.common.v1.AnyValue;
