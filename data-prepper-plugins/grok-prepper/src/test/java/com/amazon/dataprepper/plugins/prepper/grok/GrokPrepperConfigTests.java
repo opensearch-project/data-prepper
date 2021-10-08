@@ -16,8 +16,8 @@ import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFA
 import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_KEEP_EMPTY_CAPTURES;
 import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_NAMED_CAPTURES_ONLY;
 import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_PATTERNS_FILES_GLOB;
+import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_TARGET_KEY;
 import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_TIMEOUT_MILLIS;
-import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperConfig.DEFAULT_TARGET;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -36,12 +36,12 @@ public class GrokPrepperConfigTests {
     private static final String PLUGIN_NAME = "grok";
 
     private static final Map<String, List<String>> TEST_MATCH = new HashMap<>();
-    private static final List<String> TEST_OVERWRITE = new ArrayList<>();
-    private static final List<String> TEST_PATTERNS_DIR = new ArrayList<>();
+    private static final List<String> TEST_KEYS_TO_OVERWRITE = new ArrayList<>();
+    private static final List<String> TEST_PATTERNS_DIRECTORIES = new ArrayList<>();
     private static final String TEST_PATTERNS_FILES_GLOB = ".*pat";
     private static final Map<String, String> TEST_PATTERN_DEFINITIONS = new HashMap<>();
     private static final int TEST_TIMEOUT_MILLIS = 100000;
-    private static final String TEST_TARGET = "test_target";
+    private static final String TEST_TARGET_KEY = "test_target";
 
     private static final Map<String, String> TEST_INVALID_MATCH = new HashMap<>();
 
@@ -56,11 +56,11 @@ public class GrokPrepperConfigTests {
 
         TEST_INVALID_MATCH.put("invalid_message_key", "invalid_message_value");
 
-        TEST_OVERWRITE.add("message");
-        TEST_OVERWRITE.add("randomKey");
+        TEST_KEYS_TO_OVERWRITE.add("message");
+        TEST_KEYS_TO_OVERWRITE.add("randomKey");
 
-        TEST_PATTERNS_DIR.add("/patterns");
-        TEST_PATTERNS_DIR.add("patterns/second");
+        TEST_PATTERNS_DIRECTORIES.add("/patterns");
+        TEST_PATTERNS_DIRECTORIES.add("patterns/second");
 
         TEST_PATTERN_DEFINITIONS.put("JAVAFILE", "(?:[A-Za-z0-9_.-]+java)");
         TEST_PATTERN_DEFINITIONS.put("BEAGLE", "beagle");
@@ -73,11 +73,11 @@ public class GrokPrepperConfigTests {
         assertThat(grokPrepperConfig.isBreakOnMatch(), equalTo(DEFAULT_BREAK_ON_MATCH));
         assertThat(grokPrepperConfig.isKeepEmptyCaptures(), equalTo(DEFAULT_KEEP_EMPTY_CAPTURES));
         assertThat(grokPrepperConfig.getMatch(), equalTo(Collections.emptyMap()));
-        assertThat(grokPrepperConfig.getOverwrite(), equalTo(Collections.emptyList()));
+        assertThat(grokPrepperConfig.getkeysToOverwrite(), equalTo(Collections.emptyList()));
         assertThat(grokPrepperConfig.getPatternDefinitions(), equalTo(Collections.emptyMap()));
-        assertThat(grokPrepperConfig.getPatternsDir(), equalTo(Collections.emptyList()));
+        assertThat(grokPrepperConfig.getPatternsDirectories(), equalTo(Collections.emptyList()));
         assertThat(grokPrepperConfig.getPatternsFilesGlob(), equalTo(DEFAULT_PATTERNS_FILES_GLOB));
-        assertThat(grokPrepperConfig.getTarget(), equalTo(DEFAULT_TARGET));
+        assertThat(grokPrepperConfig.getTargetKey(), equalTo(DEFAULT_TARGET_KEY));
         assertThat(grokPrepperConfig.isNamedCapturesOnly(), equalTo(DEFAULT_NAMED_CAPTURES_ONLY));
         assertThat(grokPrepperConfig.getTimeoutMillis(), equalTo(DEFAULT_TIMEOUT_MILLIS));
     }
@@ -89,23 +89,23 @@ public class GrokPrepperConfigTests {
                 true,
                 TEST_MATCH,
                 false,
-                TEST_OVERWRITE,
-                TEST_PATTERNS_DIR,
+                TEST_KEYS_TO_OVERWRITE,
+                TEST_PATTERNS_DIRECTORIES,
                 TEST_PATTERNS_FILES_GLOB,
                 TEST_PATTERN_DEFINITIONS,
                 TEST_TIMEOUT_MILLIS,
-                TEST_TARGET);
+                TEST_TARGET_KEY);
 
         final GrokPrepperConfig grokPrepperConfig = GrokPrepperConfig.buildConfig(validPluginSetting);
 
         assertThat(grokPrepperConfig.isBreakOnMatch(), equalTo(false));
         assertThat(grokPrepperConfig.isKeepEmptyCaptures(), equalTo(true));
         assertThat(grokPrepperConfig.getMatch(), equalTo(TEST_MATCH));
-        assertThat(grokPrepperConfig.getOverwrite(), equalTo(TEST_OVERWRITE));
+        assertThat(grokPrepperConfig.getkeysToOverwrite(), equalTo(TEST_KEYS_TO_OVERWRITE));
         assertThat(grokPrepperConfig.getPatternDefinitions(), equalTo(TEST_PATTERN_DEFINITIONS));
-        assertThat(grokPrepperConfig.getPatternsDir(), equalTo(TEST_PATTERNS_DIR));
+        assertThat(grokPrepperConfig.getPatternsDirectories(), equalTo(TEST_PATTERNS_DIRECTORIES));
         assertThat(grokPrepperConfig.getPatternsFilesGlob(), equalTo(TEST_PATTERNS_FILES_GLOB));
-        assertThat(grokPrepperConfig.getTarget(), equalTo(TEST_TARGET));
+        assertThat(grokPrepperConfig.getTargetKey(), equalTo(TEST_TARGET_KEY));
         assertThat(grokPrepperConfig.isNamedCapturesOnly(), equalTo(false));
         assertThat(grokPrepperConfig.getTimeoutMillis(), equalTo(TEST_TIMEOUT_MILLIS));
     }
@@ -117,12 +117,12 @@ public class GrokPrepperConfigTests {
                 true,
                 TEST_MATCH,
                 false,
-                TEST_OVERWRITE,
-                TEST_PATTERNS_DIR,
+                TEST_KEYS_TO_OVERWRITE,
+                TEST_PATTERNS_DIRECTORIES,
                 TEST_PATTERNS_FILES_GLOB,
                 TEST_PATTERN_DEFINITIONS,
                 TEST_TIMEOUT_MILLIS,
-                TEST_TARGET);
+                TEST_TARGET_KEY);
 
         invalidPluginSetting.getSettings().put(GrokPrepperConfig.MATCH, TEST_INVALID_MATCH);
 
@@ -133,23 +133,23 @@ public class GrokPrepperConfigTests {
                                                               final boolean keepEmptyCaptures,
                                                               final Map<String, List<String>> match,
                                                               final boolean namedCapturesOnly,
-                                                              final List<String> overwrite,
-                                                              final List<String> patternsDir,
+                                                              final List<String> keysToOverwrite,
+                                                              final List<String> patternsDirectories,
                                                               final String patternsFilesGlob,
                                                               final Map<String, String> patternDefinitions,
                                                               final int timeoutMillis,
-                                                              final String target) {
+                                                              final String targetKey) {
         final Map<String, Object> settings = new HashMap<>();
         settings.put(GrokPrepperConfig.BREAK_ON_MATCH, breakOnMatch);
         settings.put(GrokPrepperConfig.NAMED_CAPTURES_ONLY, namedCapturesOnly);
         settings.put(GrokPrepperConfig.MATCH, match);
         settings.put(GrokPrepperConfig.KEEP_EMPTY_CAPTURES, keepEmptyCaptures);
-        settings.put(GrokPrepperConfig.OVERWRITE, overwrite);
-        settings.put(GrokPrepperConfig.PATTERNS_DIR, patternsDir);
+        settings.put(GrokPrepperConfig.KEYS_TO_OVERWRITE, keysToOverwrite);
+        settings.put(GrokPrepperConfig.PATTERNS_DIRECTORIES, patternsDirectories);
         settings.put(GrokPrepperConfig.PATTERN_DEFINITIONS, patternDefinitions);
         settings.put(GrokPrepperConfig.PATTERNS_FILES_GLOB, patternsFilesGlob);
         settings.put(GrokPrepperConfig.TIMEOUT_MILLIS, timeoutMillis);
-        settings.put(GrokPrepperConfig.TARGET, target);
+        settings.put(GrokPrepperConfig.TARGET_KEY, targetKey);
 
         return new PluginSetting(PLUGIN_NAME, settings);
     }
