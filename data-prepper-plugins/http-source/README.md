@@ -35,10 +35,10 @@ source:
 - `requestTimeouts`: measures total number of requests that time out in the HTTP source server.
 
 ### Timer
-- `requestProcessDuration`: measures latency of requests processed by the HTTP source plugin. 
+- `requestProcessDuration`: measures latency of requests processed by the HTTP source plugin in seconds. 
 
 ### Summary
-- `payloadSummary`: measures the distribution of incoming requests payload sizes.
+- `payloadSize`: measures the distribution of incoming requests payload sizes in bytes.
 
 ## Developer Guide
 This plugin is compatible with Java 14. See 
