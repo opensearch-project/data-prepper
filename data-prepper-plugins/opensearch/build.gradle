@@ -50,7 +50,7 @@ dependencies {
     implementation 'software.amazon.awssdk:auth:2.17.15'
     implementation 'software.amazon.awssdk:http-client-spi:2.17.15'
     implementation 'software.amazon.awssdk:sdk-core:2.17.15'
-    implementation 'software.amazon.awssdk:aws-core:2.17.15'
+    implementation 'software.amazon.awssdk:aws-core:2.17.56'
     implementation 'software.amazon.awssdk:regions:2.17.15'
     implementation 'software.amazon.awssdk:utils:2.17.15'
     implementation 'software.amazon.awssdk:sts:2.17.15'
@@ -77,7 +77,7 @@ compileJava.options.warnings = false
 configurations.all {
     resolutionStrategy {
         force 'com.amazonaws:aws-java-sdk-core:1.12.67'
-        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.12.5'
+        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.0'
         force 'com.fasterxml.jackson.core:jackson-annotations:2.12.5'
         force 'com.fasterxml.jackson.core:jackson-databind:2.12.5'
         force 'com.fasterxml.jackson.core:jackson-core:2.12.5'
