@@ -21,52 +21,52 @@ public class GrokPrepperConfig {
     static final String KEEP_EMPTY_CAPTURES = "keep_empty_captures";
     static final String MATCH = "match";
     static final String NAMED_CAPTURES_ONLY = "named_captures_only";
-    static final String OVERWRITE= "overwrite";
+    static final String KEYS_TO_OVERWRITE= "keys_to_overwrite";
     static final String PATTERN_DEFINITIONS = "pattern_definitions";
-    static final String PATTERNS_DIR = "patterns_dir";
+    static final String PATTERNS_DIRECTORIES = "patterns_directories";
     static final String PATTERNS_FILES_GLOB = "patterns_files_glob";
     static final String TIMEOUT_MILLIS = "timeout_millis";
-    static final String TARGET = "target";
+    static final String TARGET_KEY = "target_key";
 
     static final boolean DEFAULT_BREAK_ON_MATCH = true;
     static final boolean DEFAULT_KEEP_EMPTY_CAPTURES = false;
     static final boolean DEFAULT_NAMED_CAPTURES_ONLY = true;
-    static final String DEFAULT_PATTERNS_FILES_GLOB = ".*";
+    static final String DEFAULT_PATTERNS_FILES_GLOB = "*";
     static final int DEFAULT_TIMEOUT_MILLIS = 30000;
-    static final String DEFAULT_TARGET = null;
+    static final String DEFAULT_TARGET_KEY = null;
 
     private final boolean breakOnMatch;
     private final boolean keepEmptyCaptures;
     private final Map<String, List<String>> match;
     private final boolean namedCapturesOnly;
-    private final List<String> overwrite;
-    private final List<String> patternsDir;
+    private final List<String> keysToOverwrite;
+    private final List<String> patternsDirectories;
     private final String patternsFilesGlob;
     private final Map<String, String> patternDefinitions;
     private final int timeoutMillis;
-    private final String target;
+    private final String targetKey;
 
     private GrokPrepperConfig(final boolean breakOnMatch,
                               final boolean keepEmptyCaptures,
                               final Map<String, List<String>> match,
                               final boolean namedCapturesOnly,
-                              final List<String> overwrite,
-                              final List<String> patternsDir,
+                              final List<String> keysToOverwrite,
+                              final List<String> patternsDirectories,
                               final String patternsFilesGlob,
                               final Map<String, String> patternDefinitions,
                               final int timeoutMillis,
-                              final String target) {
+                              final String targetKey) {
 
         this.breakOnMatch = breakOnMatch;
         this.keepEmptyCaptures = keepEmptyCaptures;
         this.match = match;
         this.namedCapturesOnly = namedCapturesOnly;
-        this.overwrite = overwrite;
-        this.patternsDir = patternsDir;
+        this.keysToOverwrite = keysToOverwrite;
+        this.patternsDirectories = patternsDirectories;
         this.patternsFilesGlob = patternsFilesGlob;
         this.patternDefinitions = patternDefinitions;
         this.timeoutMillis = timeoutMillis;
-        this.target = target;
+        this.targetKey = targetKey;
     }
 
     public static GrokPrepperConfig buildConfig(final PluginSetting pluginSetting) {
@@ -74,12 +74,12 @@ public class GrokPrepperConfig {
                 pluginSetting.getBooleanOrDefault(KEEP_EMPTY_CAPTURES, DEFAULT_KEEP_EMPTY_CAPTURES),
                 pluginSetting.getTypedListMap(MATCH, String.class, String.class),
                 pluginSetting.getBooleanOrDefault(NAMED_CAPTURES_ONLY, DEFAULT_NAMED_CAPTURES_ONLY),
-                pluginSetting.getTypedList(OVERWRITE, String.class),
-                pluginSetting.getTypedList(PATTERNS_DIR, String.class),
+                pluginSetting.getTypedList(KEYS_TO_OVERWRITE, String.class),
+                pluginSetting.getTypedList(PATTERNS_DIRECTORIES, String.class),
                 pluginSetting.getStringOrDefault(PATTERNS_FILES_GLOB, DEFAULT_PATTERNS_FILES_GLOB),
                 pluginSetting.getTypedMap(PATTERN_DEFINITIONS, String.class, String.class),
                 pluginSetting.getIntegerOrDefault(TIMEOUT_MILLIS, DEFAULT_TIMEOUT_MILLIS),
-                pluginSetting.getStringOrDefault(TARGET, DEFAULT_TARGET));
+                pluginSetting.getStringOrDefault(TARGET_KEY, DEFAULT_TARGET_KEY));
     }
 
     public boolean isBreakOnMatch() {
@@ -98,12 +98,12 @@ public class GrokPrepperConfig {
         return namedCapturesOnly;
     }
 
-    public List<String> getOverwrite() {
-        return overwrite;
+    public List<String> getkeysToOverwrite() {
+        return keysToOverwrite;
     }
 
-    public List<String> getPatternsDir() {
-        return patternsDir;
+    public List<String> getPatternsDirectories() {
+        return patternsDirectories;
     }
 
     public String getPatternsFilesGlob() {
@@ -118,7 +118,7 @@ public class GrokPrepperConfig {
         return timeoutMillis;
     }
 
-    public String getTarget() {
-        return target;
+    public String getTargetKey() {
+        return targetKey;
     }
 }

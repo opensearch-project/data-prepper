@@ -1,0 +1,1 @@
+CUSTOMBIRTHDAYPATTERN [A-Z][a-z]+ [\d]+, \d\d\d\d
