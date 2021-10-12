@@ -18,7 +18,7 @@ public class IndexManagerFactory {
         }
     }
 
-    private class DefaultIndexManager extends IndexManager {
+    private static class DefaultIndexManager extends IndexManager {
 
         public DefaultIndexManager(final RestHighLevelClient restHighLevelClient,
                                    final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
@@ -28,7 +28,7 @@ public class IndexManagerFactory {
 
     }
 
-    private class TraceAnalyticsRawIndexManager extends IndexManager {
+    private static class TraceAnalyticsRawIndexManager extends IndexManager {
         public TraceAnalyticsRawIndexManager(final RestHighLevelClient restHighLevelClient,
                                              final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
             super(restHighLevelClient, openSearchSinkConfiguration);
@@ -41,7 +41,7 @@ public class IndexManagerFactory {
 
     }
 
-    private class TraceAnalyticsServiceMapIndexManager extends IndexManager {
+    private static class TraceAnalyticsServiceMapIndexManager extends IndexManager {
 
         public TraceAnalyticsServiceMapIndexManager(final RestHighLevelClient restHighLevelClient,
                                                     final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
