@@ -4,8 +4,12 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.NoPluginFoundException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * The primary implementation of {@link PluginFactory}.
@@ -23,6 +27,7 @@ public class DefaultPluginFactory implements PluginFactory {
 
     /**
      * For testing only.
+     * TODO: Correct the constructors once we have dependency injection.
      */
     DefaultPluginFactory(
             final PluginProviderLoader pluginProviderLoader,
@@ -47,10 +52,30 @@ public class DefaultPluginFactory implements PluginFactory {
     }
 
     @Override
-    public <T> Class<? extends T> getPluginClass(final Class<T> baseClass, final String pluginName) {
+    public <T> List<T> loadPlugins(
+            final Class<T> baseClass, final PluginSetting pluginSetting,
+            final Function<Class<? extends T>, Integer> numberOfInstancesFunction) {
+
+        final String pluginName = pluginSetting.getName();
+        final Class<? extends T> pluginClass = getPluginClass(baseClass, pluginName);
+
+        final Integer numberOfInstances = numberOfInstancesFunction.apply(pluginClass);
+
+        if(numberOfInstances == null || numberOfInstances < 0)
+            throw new IllegalArgumentException("The numberOfInstances must be provided as a non-negative integer.");
+
+        final List<T> plugins = new ArrayList<>(numberOfInstances);
+        for (int i = 0; i < numberOfInstances; i++) {
+            plugins.add(pluginCreator.newPluginInstance(pluginClass, pluginSetting));
+        }
+        return plugins;
+    }
+
+    private <T> Class<? extends T> getPluginClass(final Class<T> baseClass, final String pluginName) {
         return pluginProviders.stream()
                 .map(pluginProvider -> pluginProvider.<T>findPluginClass(baseClass, pluginName))
-                .filter(Objects::nonNull)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .findFirst()
                 .orElseThrow(() -> new NoPluginFoundException(
                         "Unable to find a plugin named '" + pluginName + "'. Please ensure that plugin is annotated with appropriate values."));

@@ -5,6 +5,7 @@ import org.reflections.Reflections;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -31,7 +32,7 @@ public class ClasspathPluginProvider implements PluginProvider {
     }
 
     @Override
-    public <T> Class<? extends T> findPluginClass(final Class<T> pluginType, final String pluginName) {
+    public <T> Optional<Class<? extends T>> findPluginClass(final Class<T> pluginType, final String pluginName) {
         if (nameToSupportedTypeToPluginType == null) {
             nameToSupportedTypeToPluginType = scanForPlugins();
         }
@@ -39,9 +40,9 @@ public class ClasspathPluginProvider implements PluginProvider {
         final Map<Class<?>, Class<?>> supportedTypesMap = nameToSupportedTypeToPluginType.get(pluginName);
 
         if(supportedTypesMap == null) {
-            return null;
+            return Optional.empty();
         }
-        return (Class<? extends T>) supportedTypesMap.get(pluginType);
+        return Optional.ofNullable((Class<? extends T>) supportedTypesMap.get(pluginType));
     }
 
     private Map<String, Map<Class<?>, Class<?>>> scanForPlugins() {

@@ -30,8 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -124,16 +122,10 @@ public class PipelineParser {
     }
 
     private List<Prepper> newPreppers(final PluginSetting pluginSetting) {
-        final Class<?> clazz = pluginFactory.getPluginClass(Prepper.class, pluginSetting.getName());
-        if (clazz.isAnnotationPresent(SingleThread.class)) {
-            final List<Prepper> preppers = new ArrayList<>();
-            for (int i = 0; i < pluginSetting.getNumberOfProcessWorkers(); i++) {
-                preppers.add(pluginFactory.loadPlugin(Prepper.class, pluginSetting));
-            }
-            return preppers;
-        } else {
-            return Collections.singletonList(pluginFactory.loadPlugin(Prepper.class, pluginSetting));
-        }
+        return pluginFactory.loadPlugins(Prepper.class, pluginSetting,
+                actualClass -> actualClass.isAnnotationPresent(SingleThread.class) ?
+                pluginSetting.getNumberOfProcessWorkers() :
+                1);
     }
 
     private Optional<Source> getSourceIfPipelineType(
