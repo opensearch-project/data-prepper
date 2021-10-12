@@ -1,4 +1,4 @@
-package com.amazon.dataprepper.plugins.sink.opensearch.index.ismpolicy;
+package com.amazon.dataprepper.plugins.sink.opensearch.index;
 
 import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.client.RequestOptions;
@@ -14,7 +14,7 @@ import java.util.Optional;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class NoIsmPolicyManagement implements IsmPolicyManagementStrategy {
+class NoIsmPolicyManagement implements IsmPolicyManagementStrategy {
     private final RestHighLevelClient restHighLevelClient;
 
     public NoIsmPolicyManagement(final RestHighLevelClient restHighLevelClient) {

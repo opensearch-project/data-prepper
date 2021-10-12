@@ -38,7 +38,9 @@ import static org.mockito.MockitoAnnotations.initMocks;
 public class TraceAnalyticsRawIndexManagerTests {
     private static final String INDEX_ALIAS = "trace-raw-index-alias";
 
-    private TraceAnalyticsRawIndexManager traceAnalyticsRawIndexManager;
+    private IndexManagerFactory indexManagerFactory;
+
+    private IndexManager traceAnalyticsRawIndexManager;
 
     @Mock
     private RestHighLevelClient restHighLevelClient;
@@ -70,7 +72,11 @@ public class TraceAnalyticsRawIndexManagerTests {
     @Before
     public void setup() throws IOException {
         initMocks(this);
-        traceAnalyticsRawIndexManager = new TraceAnalyticsRawIndexManager(restHighLevelClient, openSearchSinkConfiguration);
+
+        indexManagerFactory = new IndexManagerFactory();
+
+        traceAnalyticsRawIndexManager = indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_RAW,
+                restHighLevelClient, openSearchSinkConfiguration);
 
         when(restHighLevelClient.cluster()).thenReturn(cluster);
         when(cluster.getSettings(any(ClusterGetSettingsRequest.class), any(RequestOptions.class)))
@@ -84,13 +90,13 @@ public class TraceAnalyticsRawIndexManagerTests {
     @Test
     public void constructor_NullRestClient() {
         assertThrows(NullPointerException.class, () ->
-                new TraceAnalyticsRawIndexManager(null, openSearchSinkConfiguration));
+                indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_RAW,null, openSearchSinkConfiguration));
     }
 
     @Test
     public void constructor_NullConfiguration() {
         assertThrows(NullPointerException.class, () ->
-                new TraceAnalyticsRawIndexManager(restHighLevelClient, null));
+                indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_RAW, restHighLevelClient, null));
     }
 
     @Test

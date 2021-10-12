@@ -1,4 +1,4 @@
-package com.amazon.dataprepper.plugins.sink.opensearch.index.ismpolicy;
+package com.amazon.dataprepper.plugins.sink.opensearch.index;
 
 import org.junit.Before;
 import org.junit.Test;
