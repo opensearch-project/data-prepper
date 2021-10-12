@@ -1,25 +1,29 @@
-package com.amazon.dataprepper.model.span;
+package com.amazon.dataprepper.model.trace;
 
 /**
  * Represents the attributes associated with an entire trace.
+ * @since 1.2
  */
 public interface TraceGroupFields {
 
     /**
      * Gets the end time of the trace in ISO 8601
      * @return the end time
+     * @since 1.2
      */
     String getEndTime();
 
     /**
      * Gets the duration of the entire trace in nanoseconds
-     * @return
+     * @return the duration
+     * @since 1.2
      */
-    String getDurationInNanos();
+    Long getDurationInNanos();
 
     /**
      * Gets the status code for the entire trace
      * @return the status code
+     * @since 1.2
      */
-    Integer getStatusCod();
+    Integer getStatusCode();
 }

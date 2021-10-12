@@ -14,7 +14,7 @@ plugins {
 }
 dependencies {
     implementation 'io.micrometer:micrometer-core'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.5'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
     testImplementation 'org.hamcrest:hamcrest:2.2'
 }
 jacocoTestCoverageVerification {
