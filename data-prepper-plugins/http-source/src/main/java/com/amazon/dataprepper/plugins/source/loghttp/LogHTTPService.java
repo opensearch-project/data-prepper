@@ -13,14 +13,12 @@ package com.amazon.dataprepper.plugins.source.loghttp;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.buffer.SizeOverflowException;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.loghttp.codec.JsonCodec;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
-import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.server.annotation.Blocking;
 import com.linecorp.armeria.server.annotation.Post;
 import io.micrometer.core.instrument.Counter;
@@ -31,7 +29,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 /*
