@@ -35,7 +35,9 @@ import static org.mockito.MockitoAnnotations.initMocks;
 public class DefaultIndexManagerTests {
     private static final String INDEX_ALIAS = "test-index-alias";
 
-    private DefaultIndexManager defaultIndexManager;
+    private IndexManagerFactory indexManagerFactory;
+
+    private IndexManager defaultIndexManager;
 
     @Mock
     private RestHighLevelClient restHighLevelClient;
@@ -61,7 +63,10 @@ public class DefaultIndexManagerTests {
     @Before
     public void setup() throws IOException {
         initMocks(this);
-        defaultIndexManager = new DefaultIndexManager(restHighLevelClient, openSearchSinkConfiguration);
+
+        indexManagerFactory = new IndexManagerFactory();
+
+        defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
 
         when(restHighLevelClient.cluster()).thenReturn(cluster);
         when(cluster.getSettings(any(ClusterGetSettingsRequest.class), any(RequestOptions.class)))
@@ -75,13 +80,13 @@ public class DefaultIndexManagerTests {
     @Test
     public void constructor_NullRestClient() {
         assertThrows(NullPointerException.class, () ->
-                new DefaultIndexManager(null, openSearchSinkConfiguration));
+                indexManagerFactory.getIndexManager(IndexType.CUSTOM, null, openSearchSinkConfiguration));
     }
 
     @Test
     public void constructor_NullConfiguration() {
         assertThrows(NullPointerException.class, () ->
-                new DefaultIndexManager(restHighLevelClient, null));
+                indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, null));
     }
 
     @Test

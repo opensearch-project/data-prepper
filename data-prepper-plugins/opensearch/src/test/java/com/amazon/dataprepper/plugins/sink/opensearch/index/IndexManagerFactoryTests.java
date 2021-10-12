@@ -6,7 +6,8 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.opensearch.client.RestHighLevelClient;
 
-import static org.junit.Assert.assertEquals;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.mockito.MockitoAnnotations.initMocks;
 
 public class IndexManagerFactoryTests {
@@ -29,20 +30,20 @@ public class IndexManagerFactoryTests {
     public void getIndexManager_TraceAnalyticsRaw() {
         final IndexManager indexManager =
                 indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_RAW, restHighLevelClient, openSearchSinkConfiguration);
-        assertEquals(TraceAnalyticsRawIndexManager.class, indexManager.getClass());
+        assertThat(indexManager, instanceOf(IndexManager.class));
     }
 
     @Test
     public void getIndexManager_TraceAnalyticsServiceMap() {
         final IndexManager indexManager =
                 indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_SERVICE_MAP, restHighLevelClient, openSearchSinkConfiguration);
-        assertEquals(TraceAnalyticsServiceMapIndexManager.class, indexManager.getClass());
+        assertThat(indexManager, instanceOf(IndexManager.class));
     }
 
     @Test
     public void getIndexManager_Default() {
         final IndexManager indexManager =
                 indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
-        assertEquals(DefaultIndexManager.class, indexManager.getClass());
+        assertThat(indexManager, instanceOf(IndexManager.class));
     }
 }
