@@ -1,5 +1,7 @@
 package com.amazon.dataprepper.plugin;
 
+import java.util.Optional;
+
 /**
  * Implementing classes are able to provide plugin classes to the plugin management
  * system.
@@ -16,8 +18,8 @@ public interface PluginProvider {
      *                   e.g. {@link com.amazon.dataprepper.model.sink.Sink}.
      * @param pluginName The name of the plugin
      * @param <T> The type
-     * @return The Java class for this plugin
+     * @return An {@link Optional} Java class for this plugin
      * @since 1.2
      */
-    <T> Class<? extends T> findPluginClass(Class<T> pluginType, String pluginName);
+    <T> Optional<Class<? extends T>> findPluginClass(Class<T> pluginType, String pluginName);
 }
