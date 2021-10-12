@@ -1,4 +1,4 @@
-package com.amazon.dataprepper.plugins.sink.opensearch.index.ismpolicy;
+package com.amazon.dataprepper.plugins.sink.opensearch.index;
 
 import org.opensearch.client.indices.CreateIndexRequest;
 
@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
-public interface IsmPolicyManagementStrategy {
+interface IsmPolicyManagementStrategy {
 
     Optional<String> checkAndCreatePolicy() throws IOException;
 

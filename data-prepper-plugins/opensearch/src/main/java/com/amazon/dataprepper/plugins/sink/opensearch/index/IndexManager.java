@@ -1,7 +1,6 @@
 package com.amazon.dataprepper.plugins.sink.opensearch.index;
 
 import com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
-import com.amazon.dataprepper.plugins.sink.opensearch.index.ismpolicy.IsmPolicyManagementStrategy;
 import org.opensearch.OpenSearchException;
 import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
 import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
