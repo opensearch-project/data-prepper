@@ -1,6 +1,5 @@
-package com.amazon.dataprepper.plugins.sink.opensearch.index.ismpolicy;
+package com.amazon.dataprepper.plugins.sink.opensearch.index;
 
-import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexConstants;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;

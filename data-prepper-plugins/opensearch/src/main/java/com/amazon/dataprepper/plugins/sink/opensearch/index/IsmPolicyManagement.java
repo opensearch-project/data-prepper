@@ -1,4 +1,4 @@
-package com.amazon.dataprepper.plugins.sink.opensearch.index.ismpolicy;
+package com.amazon.dataprepper.plugins.sink.opensearch.index;
 
 import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.action.admin.indices.alias.Alias;
@@ -22,7 +22,7 @@ import java.util.Optional;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class IsmPolicyManagement implements IsmPolicyManagementStrategy {
+class IsmPolicyManagement implements IsmPolicyManagementStrategy {
 
     // TODO: replace with new _opensearch API
     private static final String POLICY_MANAGEMENT_ENDPOINT = "/_opendistro/_ism/policies/";

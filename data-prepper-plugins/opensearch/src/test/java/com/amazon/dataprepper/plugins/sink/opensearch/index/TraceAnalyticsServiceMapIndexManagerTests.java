@@ -35,7 +35,9 @@ import static org.mockito.MockitoAnnotations.initMocks;
 public class TraceAnalyticsServiceMapIndexManagerTests {
     private static final String INDEX_ALIAS = "trace-service-map-index-alias";
 
-    private TraceAnalyticsServiceMapIndexManager traceAnalyticsServiceMapIndexManager;
+    private IndexManagerFactory indexManagerFactory;
+
+    private IndexManager traceAnalyticsServiceMapIndexManager;
 
     @Mock
     private RestHighLevelClient restHighLevelClient;
@@ -61,8 +63,11 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
     @Before
     public void setup() throws IOException {
         initMocks(this);
+
+        indexManagerFactory = new IndexManagerFactory();
+
         traceAnalyticsServiceMapIndexManager
-                = new TraceAnalyticsServiceMapIndexManager(restHighLevelClient, openSearchSinkConfiguration);
+                = indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_SERVICE_MAP, restHighLevelClient, openSearchSinkConfiguration);
 
         when(restHighLevelClient.cluster()).thenReturn(cluster);
         when(cluster.getSettings(any(ClusterGetSettingsRequest.class), any(RequestOptions.class)))
@@ -76,13 +81,13 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
     @Test
     public void constructor_NullRestClient() throws IOException {
         assertThrows(NullPointerException.class, () ->
-                new TraceAnalyticsServiceMapIndexManager(null, openSearchSinkConfiguration));
+                indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_SERVICE_MAP, null, openSearchSinkConfiguration));
     }
 
     @Test
     public void constructor_NullConfiguration() throws IOException {
         assertThrows(NullPointerException.class, () ->
-                new TraceAnalyticsServiceMapIndexManager(restHighLevelClient, null));
+                indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_SERVICE_MAP, restHighLevelClient, null));
     }
 
     @Test
