@@ -11,6 +11,14 @@ source:
     - http:
 ```
 
+### Response status
+
+* `200`: the request data has been successfully written into the buffer.
+* `400`: the request data is either in mal-format or unsupported codec.
+* `413`: the request data size is larger than the configured capacity.
+* `415`: the request fails to be written into the buffer within the timeout.
+* `429`: the request has been rejected due to the HTTP source executor being in full capacity.
+
 ## Configurations
 
 * port(Optional) => An `int` between 0 and 65535 represents the port source is running on. Default is ```2021```.
@@ -33,6 +41,7 @@ source:
 - `successRequests`: measures total number of requests successfully processed by HTTP source plugin.
 - `badRequests`: measures total number of requests with invalid content type or format processed by HTTP source plugin.
 - `requestTimeouts`: measures total number of requests that time out in the HTTP source server.
+- `requestsTooLarge`: measures total number of requests of which the events size in the content is larger than the buffer capacity.
 
 ### Timer
 - `requestProcessDuration`: measures latency of requests processed by the HTTP source plugin in seconds. 
