@@ -2,6 +2,9 @@ package com.amazon.dataprepper.model.plugin;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 
+import java.util.List;
+import java.util.function.Function;
+
 /**
  * Factory for loading Data Prepper plugins.
  *
@@ -20,14 +23,20 @@ public interface PluginFactory {
     <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting);
 
     /**
-     * Gets the Java class type for a given plugin. This does not instantiate
-     * any new plugin objects.
+     * Loads a specified number of plugin instances. The total number of instances is provided
+     * by the numberOfInstancesFunction.
      *
-     * @param baseClass The class type that the plugin supports
-     * @param pluginName The name of the plugin
+     * @param baseClass The class type that the plugin is supporting.
+     * @param pluginSetting The {@link PluginSetting} to configure this plugin
+     * @param numberOfInstancesFunction A {@link Function} which takes as input a {@link Class}
+     *                                  and returns an {@link Integer}. The input class is the actual
+     *                                  class plugin class instance. The returned integer value is
+     *                                  the total count of instances to create.
      * @param <T> The type
-     * @return The Java class type for this plugin
+     * @return One or more new instances of the plugin
      * @since 1.2
      */
-    <T> Class<? extends T> getPluginClass(final Class<T> baseClass, final String pluginName);
+    <T> List<T> loadPlugins(
+            final Class<T> baseClass, final PluginSetting pluginSetting,
+            final Function<Class<? extends T>, Integer> numberOfInstancesFunction);
 }

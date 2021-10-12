@@ -14,10 +14,11 @@ import org.reflections.Reflections;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
@@ -68,12 +69,13 @@ class ClasspathPluginProviderTest {
     }
 
     @Test
-    void findPlugin_should_return_null_if_no_plugins_found() {
+    void findPlugin_should_return_empty_if_no_plugins_found() {
         given(reflections.getTypesAnnotatedWith(DataPrepperPlugin.class))
                 .willReturn(Collections.emptySet());
 
-        assertThat(createObjectUnderTest().findPluginClass(Sink.class, "test_sink"),
-            nullValue());
+        final Optional<Class<? extends Sink>> optionalPlugin = createObjectUnderTest().findPluginClass(Sink.class, "test_sink");
+        assertThat(optionalPlugin, notNullValue());
+        assertThat(optionalPlugin.isPresent(), equalTo(false));
     }
 
     @Nested
@@ -87,27 +89,33 @@ class ClasspathPluginProviderTest {
         }
 
         @Test
-        void findPlugin_should_return_null_if_no_plugin_for_the_name() {
-            assertThat(createObjectUnderTest().findPluginClass(Sink.class, UUID.randomUUID().toString()),
-                    nullValue());
+        void findPlugin_should_return_empty_if_no_plugin_for_the_name() {
+            final Optional<Class<? extends Sink>> optionalPlugin = createObjectUnderTest().findPluginClass(Sink.class, UUID.randomUUID().toString());
+            assertThat(optionalPlugin, notNullValue());
+            assertThat(optionalPlugin.isPresent(), equalTo(false));
         }
 
         @Test
-        void findPlugin_should_return_null_if_plugin_found_for_another_type() {
-            assertThat(createObjectUnderTest().findPluginClass(Source.class, "test_sink"),
-                    nullValue());
+        void findPlugin_should_return_empty_if_plugin_found_for_another_type() {
+            final Optional<Class<? extends Source>> optionalPlugin = createObjectUnderTest().findPluginClass(Source.class, "test_sink");
+            assertThat(optionalPlugin, notNullValue());
+            assertThat(optionalPlugin.isPresent(), equalTo(false));
         }
 
         @Test
         void findPlugin_should_return_plugin_if_found_for_name_and_type() {
-            assertThat(createObjectUnderTest().findPluginClass(Sink.class, "test_sink"),
-                    equalTo(TestSink.class));
+            final Optional<Class<? extends Sink>> optionalPlugin = createObjectUnderTest().findPluginClass(Sink.class, "test_sink");
+            assertThat(optionalPlugin, notNullValue());
+            assertThat(optionalPlugin.isPresent(), equalTo(true));
+            assertThat(optionalPlugin.get(), equalTo(TestSink.class));
         }
 
         @Test
         void findPlugin_should_return_plugin_if_found_for_name_and_type_using_pluginType() {
-            assertThat(createObjectUnderTest().findPluginClass(Sink.class, "test_sink_updated"),
-                    equalTo(TestSinkUpdated.class));
+            final Optional<Class<? extends Sink>> optionalPlugin = createObjectUnderTest().findPluginClass(Sink.class, "test_sink_updated");
+            assertThat(optionalPlugin, notNullValue());
+            assertThat(optionalPlugin.isPresent(), equalTo(true));
+            assertThat(optionalPlugin.get(), equalTo(TestSinkUpdated.class));
         }
     }
 }
