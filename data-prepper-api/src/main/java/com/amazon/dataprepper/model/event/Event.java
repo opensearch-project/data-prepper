@@ -1,7 +1,5 @@
 package com.amazon.dataprepper.model.event;
 
-import com.fasterxml.jackson.databind.JsonNode;
-
 /**
  * All data flowing through Data Prepper will be represented as events. An event is the base representation of data.
  * An event can be defined as a collection of key-value pairs and the following interface represents the contract with this model.
@@ -42,11 +40,11 @@ public interface Event {
     void delete(String key);
 
     /**
-     * Generates a Json representation of the entire Event
-     * @return JsonNode of the event
+     * Generates a serialized Json string of the entire Event
+     * @return Json string of the event
      * @since 1.2
      */
-    JsonNode toJsonNode();
+    String toJsonNode();
 
     /**
      * Retrieves the EventMetadata
