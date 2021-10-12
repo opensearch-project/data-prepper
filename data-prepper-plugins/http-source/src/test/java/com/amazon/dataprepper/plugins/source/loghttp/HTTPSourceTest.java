@@ -68,6 +68,7 @@ class HTTPSourceTest {
      * TODO: according to the new coding guideline, consider refactoring the following test cases into HTTPSourceIT.
      * - testHTTPJsonResponse200()
      * - testHTTPJsonResponse400()
+     * - testHTTPJsonResponse413()
      * - testHTTPJsonResponse415()
      * - testHTTPJsonResponse429()
      * - testHTTPSJsonResponse()
@@ -93,6 +94,7 @@ class HTTPSourceTest {
     private List<Measurement> successRequestsMeasurements;
     private List<Measurement> requestTimeoutsMeasurements;
     private List<Measurement> badRequestsMeasurements;
+    private List<Measurement> requestsTooLargeMeasurements;
     private List<Measurement> rejectedRequestsMeasurements;
     private List<Measurement> requestProcessDurationMeasurements;
     private List<Measurement> payloadSizeSummaryMeasurements;
@@ -125,6 +127,9 @@ class HTTPSourceTest {
         badRequestsMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
                         .add(RequestExceptionHandler.BAD_REQUESTS).toString());
+        requestsTooLargeMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
+                        .add(RequestExceptionHandler.REQUESTS_TOO_LARGE).toString());
         rejectedRequestsMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
                         .add(LogThrottlingRejectHandler.REQUESTS_REJECTED).toString());
@@ -259,6 +264,9 @@ class HTTPSourceTest {
         final Measurement successRequestsCount = MetricsTestUtil.getMeasurementFromList(
                 successRequestsMeasurements, Statistic.COUNT);
         Assertions.assertEquals(0.0, successRequestsCount.getValue());
+        final Measurement requestsTooLargeCount = MetricsTestUtil.getMeasurementFromList(
+                requestsTooLargeMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, requestsTooLargeCount.getValue());
         final Measurement requestProcessDurationCount = MetricsTestUtil.getMeasurementFromList(
                 requestProcessDurationMeasurements, Statistic.COUNT);
         Assertions.assertEquals(1.0, requestProcessDurationCount.getValue());

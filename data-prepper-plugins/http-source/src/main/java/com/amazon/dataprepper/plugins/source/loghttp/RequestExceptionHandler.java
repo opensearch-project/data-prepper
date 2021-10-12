@@ -25,13 +25,16 @@ import java.util.concurrent.TimeoutException;
 public class RequestExceptionHandler {
     public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String BAD_REQUESTS = "badRequests";
+    public static final String REQUESTS_TOO_LARGE = "requestsTooLarge";
 
     private final Counter requestTimeoutsCounter;
     private final Counter badRequestsCounter;
+    private final Counter requestsTooLargeCounter;
 
     public RequestExceptionHandler(final PluginMetrics pluginMetrics) {
         requestTimeoutsCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
         badRequestsCounter = pluginMetrics.counter(BAD_REQUESTS);
+        requestsTooLargeCounter = pluginMetrics.counter(REQUESTS_TOO_LARGE);
     }
 
     public HttpResponse handleException(final Exception e) {
@@ -48,6 +51,7 @@ public class RequestExceptionHandler {
             requestTimeoutsCounter.increment();
             return HttpResponse.of(HttpStatus.REQUEST_TIMEOUT, MediaType.ANY_TYPE, message);
         } else if (e instanceof SizeOverflowException) {
+            requestsTooLargeCounter.increment();
             return HttpResponse.of(HttpStatus.REQUEST_ENTITY_TOO_LARGE, MediaType.ANY_TYPE, message);
         } else {
             return HttpResponse.of(HttpStatus.INTERNAL_SERVER_ERROR, MediaType.ANY_TYPE, message);

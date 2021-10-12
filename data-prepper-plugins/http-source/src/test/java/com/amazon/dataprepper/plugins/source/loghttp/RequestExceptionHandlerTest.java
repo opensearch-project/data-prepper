@@ -43,12 +43,16 @@ class RequestExceptionHandlerTest {
     @Mock
     private Counter badRequestsCounter;
 
+    @Mock
+    private Counter requestsTooLargeCounter;
+
     private RequestExceptionHandler requestExceptionHandler;
 
     @BeforeEach
     public void setUp() {
         when(pluginMetrics.counter(RequestExceptionHandler.REQUEST_TIMEOUTS)).thenReturn(requestTimeoutsCounter);
         when(pluginMetrics.counter(RequestExceptionHandler.BAD_REQUESTS)).thenReturn(badRequestsCounter);
+        when(pluginMetrics.counter(RequestExceptionHandler.REQUESTS_TOO_LARGE)).thenReturn(requestsTooLargeCounter);
 
         requestExceptionHandler = new RequestExceptionHandler(pluginMetrics);
     }
@@ -148,6 +152,8 @@ class RequestExceptionHandlerTest {
         aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.REQUEST_ENTITY_TOO_LARGE, aggregatedHttpResponse.status());
         assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
+        // verify metrics
+        verify(requestsTooLargeCounter, times(3)).increment();
     }
 
     @Test

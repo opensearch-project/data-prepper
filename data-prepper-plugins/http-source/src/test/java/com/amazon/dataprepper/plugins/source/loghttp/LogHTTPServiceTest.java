@@ -74,6 +74,9 @@ class LogHTTPServiceTest {
     private Counter badRequestsCounter;
 
     @Mock
+    private Counter requestsTooLargeCounter;
+
+    @Mock
     private DistributionSummary payloadSizeSummary;
 
     @Mock
@@ -87,6 +90,7 @@ class LogHTTPServiceTest {
         when(pluginMetrics.counter(RequestExceptionHandler.REQUEST_TIMEOUTS)).thenReturn(requestTimeoutsCounter);
         when(pluginMetrics.counter(LogHTTPService.SUCCESS_REQUESTS)).thenReturn(successRequestsCounter);
         when(pluginMetrics.counter(RequestExceptionHandler.BAD_REQUESTS)).thenReturn(badRequestsCounter);
+        when(pluginMetrics.counter(RequestExceptionHandler.REQUESTS_TOO_LARGE)).thenReturn(requestsTooLargeCounter);
         when(pluginMetrics.summary(LogHTTPService.PAYLOAD_SIZE)).thenReturn(payloadSizeSummary);
         when(pluginMetrics.timer(LogHTTPService.REQUEST_PROCESS_DURATION)).thenReturn(requestProcessDuration);
         when(requestProcessDuration.record(ArgumentMatchers.<Supplier<HttpResponse>>any())).thenAnswer(
@@ -116,6 +120,7 @@ class LogHTTPServiceTest {
         verify(requestTimeoutsCounter, never()).increment();
         verify(successRequestsCounter, times(1)).increment();
         verify(badRequestsCounter, never()).increment();
+        verify(requestsTooLargeCounter, never()).increment();
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
         assertEquals(testRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
@@ -136,9 +141,31 @@ class LogHTTPServiceTest {
         verify(requestTimeoutsCounter, never()).increment();
         verify(successRequestsCounter, never()).increment();
         verify(badRequestsCounter, times(1)).increment();
+        verify(requestsTooLargeCounter, never()).increment();
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
         assertEquals(testBadRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
+        verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Supplier<HttpResponse>>any());
+    }
+
+    @Test
+    public void testHTTPRequestEntityTooLarge() throws ExecutionException, InterruptedException, JsonProcessingException {
+        // Prepare
+        AggregatedHttpRequest testTooLargeRequest = generateRandomValidHTTPRequest(TEST_BUFFER_CAPACITY + 1);
+
+        // When
+        AggregatedHttpResponse postResponse = logHTTPService.doPost(testTooLargeRequest).aggregate().get();
+
+        // Then
+        assertEquals(HttpStatus.REQUEST_ENTITY_TOO_LARGE, postResponse.status());
+        verify(requestsReceivedCounter, times(1)).increment();
+        verify(requestTimeoutsCounter, never()).increment();
+        verify(successRequestsCounter, never()).increment();
+        verify(badRequestsCounter, never()).increment();
+        verify(requestsTooLargeCounter, times(1)).increment();
+        final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
+        verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
+        assertEquals(testTooLargeRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
         verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Supplier<HttpResponse>>any());
     }
 
@@ -159,6 +186,7 @@ class LogHTTPServiceTest {
         verify(requestTimeoutsCounter, times(1)).increment();
         verify(successRequestsCounter, times(1)).increment();
         verify(badRequestsCounter, never()).increment();
+        verify(requestsTooLargeCounter, never()).increment();
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(2)).record(payloadLengthCaptor.capture());
         assertEquals(timeoutRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
