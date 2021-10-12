@@ -84,9 +84,9 @@ class LogHTTPServiceTest {
     @BeforeEach
     public void setUp() {
         when(pluginMetrics.counter(LogHTTPService.REQUESTS_RECEIVED)).thenReturn(requestsReceivedCounter);
-        when(pluginMetrics.counter(LogHTTPService.REQUEST_TIMEOUTS)).thenReturn(requestTimeoutsCounter);
+        when(pluginMetrics.counter(RequestExceptionHandler.REQUEST_TIMEOUTS)).thenReturn(requestTimeoutsCounter);
         when(pluginMetrics.counter(LogHTTPService.SUCCESS_REQUESTS)).thenReturn(successRequestsCounter);
-        when(pluginMetrics.counter(LogHTTPService.BAD_REQUESTS)).thenReturn(badRequestsCounter);
+        when(pluginMetrics.counter(RequestExceptionHandler.BAD_REQUESTS)).thenReturn(badRequestsCounter);
         when(pluginMetrics.summary(LogHTTPService.PAYLOAD_SIZE)).thenReturn(payloadSizeSummary);
         when(pluginMetrics.timer(LogHTTPService.REQUEST_PROCESS_DURATION)).thenReturn(requestProcessDuration);
         when(requestProcessDuration.record(ArgumentMatchers.<Supplier<HttpResponse>>any())).thenAnswer(

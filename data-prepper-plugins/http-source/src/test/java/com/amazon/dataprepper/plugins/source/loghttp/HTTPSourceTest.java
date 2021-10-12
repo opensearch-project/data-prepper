@@ -121,10 +121,10 @@ class HTTPSourceTest {
                         .add(LogHTTPService.SUCCESS_REQUESTS).toString());
         requestTimeoutsMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
-                        .add(LogHTTPService.REQUEST_TIMEOUTS).toString());
+                        .add(RequestExceptionHandler.REQUEST_TIMEOUTS).toString());
         badRequestsMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
-                        .add(LogHTTPService.BAD_REQUESTS).toString());
+                        .add(RequestExceptionHandler.BAD_REQUESTS).toString());
         rejectedRequestsMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
                         .add(LogThrottlingRejectHandler.REQUESTS_REJECTED).toString());
@@ -228,6 +228,46 @@ class HTTPSourceTest {
         final Measurement badRequestsCount = MetricsTestUtil.getMeasurementFromList(
                 badRequestsMeasurements, Statistic.COUNT);
         Assertions.assertEquals(1.0, badRequestsCount.getValue());
+    }
+
+    @Test
+    public void testHTTPJsonResponse413() throws InterruptedException {
+        // Prepare
+        final String testData = "[{\"log\": \"test log 1\"}, {\"log\": \"test log 2\"}]";
+        final int testPayloadSize = testData.getBytes().length;
+        HTTPSourceUnderTest.start(testBuffer);
+        refreshMeasurements();
+
+        // When
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("127.0.0.1:2021")
+                        .method(HttpMethod.POST)
+                        .path("/log/ingest")
+                        .contentType(MediaType.JSON_UTF_8)
+                        .build(),
+                HttpData.ofUtf8(testData))
+                .aggregate()
+                .whenComplete((i, ex) -> assertThat(i.status()).isEqualTo(HttpStatus.REQUEST_ENTITY_TOO_LARGE)).join();
+
+        // Then
+        Assertions.assertTrue(testBuffer.isEmpty());
+        // Verify metrics
+        final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
+                requestsReceivedMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, requestReceivedCount.getValue());
+        final Measurement successRequestsCount = MetricsTestUtil.getMeasurementFromList(
+                successRequestsMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(0.0, successRequestsCount.getValue());
+        final Measurement requestProcessDurationCount = MetricsTestUtil.getMeasurementFromList(
+                requestProcessDurationMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, requestProcessDurationCount.getValue());
+        final Measurement requestProcessDurationMax = MetricsTestUtil.getMeasurementFromList(
+                requestProcessDurationMeasurements, Statistic.MAX);
+        Assertions.assertTrue(requestProcessDurationMax.getValue() > 0);
+        final Measurement payloadSizeMax = MetricsTestUtil.getMeasurementFromList(
+                payloadSizeSummaryMeasurements, Statistic.MAX);
+        Assertions.assertEquals(testPayloadSize, payloadSizeMax.getValue());
     }
 
     @Test
