@@ -2,11 +2,11 @@
 | Maintainer | GitHub ID | Affiliation |
 | --------------- | --------- | ----------- |
 | Qi Chen | [chenqi0805](https://github.com/chenqi0805) | Amazon |
+| Taylor Gray | [OMahtey](https://github.com/graytaylor0) | Amazon |
 | Lane Holloway | [laneholloway](https://github.com/laneholloway) | Amazon |
-| Bala Yadav | [yadavcbala](https://github.com/yadavcbala) | Amazon |
-| Austin Taghavi | [AustinTag](https://github.com/AustinTag) | Amazon |
-| Kowshik kowshikn | [kowshikn](https://github.com/kowshikn) | Amazon |
-| OMahtey | [OMahtey](https://github.com/OMahtey) | Amazon |
+| Han Jiang | [kowshikn](https://github.com/jianghancn) | Amazon |
+| Dinu John |  [nclaveeoh](https://github.com/dinujoh) | Amazon |
+| Christopher Manning | [cmanning09](https://github.com/cmanning09) | Amazon |
 | Shivani Shukla | [sshivanii](https://github.com/sshivanii) | Amazon |
-| Nick |  [nclaveeoh](https://github.com/nclaveeoh) | Amazon |
-| Jeff Wright | [wrijeff](https://github.com/wrijeff) | Amazon |
+| David Venable | [dlvenable](https://github.com/dlvenable) | Amazon |
+
