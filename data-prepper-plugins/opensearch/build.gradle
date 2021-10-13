@@ -88,7 +88,7 @@ configurations.all {
         force 'org.apache.httpcomponents:httpclient:4.5.13'
         force 'org.apache.httpcomponents:httpcore:4.4.13'
         force "org.hdrhistogram:HdrHistogram:2.1.12"
-        force 'joda-time:joda-time:2.10.10'
+        force 'joda-time:joda-time:2.10.12'
         force 'org.yaml:snakeyaml:1.29'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-smile:2.12.4'
         force 'junit:junit:4.13.2'
