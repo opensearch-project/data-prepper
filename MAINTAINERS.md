@@ -9,4 +9,3 @@
 | Christopher Manning | [cmanning09](https://github.com/cmanning09) | Amazon |
 | Shivani Shukla | [sshivanii](https://github.com/sshivanii) | Amazon |
 | David Venable | [dlvenable](https://github.com/dlvenable) | Amazon |
-
