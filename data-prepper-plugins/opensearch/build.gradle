@@ -53,7 +53,7 @@ dependencies {
     implementation 'software.amazon.awssdk:aws-core:2.17.15'
     implementation 'software.amazon.awssdk:regions:2.17.15'
     implementation 'software.amazon.awssdk:utils:2.17.15'
-    implementation 'software.amazon.awssdk:sts:2.17.15'
+    implementation 'software.amazon.awssdk:sts:2.17.59'
     implementation 'software.amazon.awssdk:url-connection-client:2.17.15'
     implementation 'io.micrometer:micrometer-core:1.7.3'
     // The OpenSearch build-tools plugin appears to be preventing Gradle's platform
@@ -66,8 +66,8 @@ dependencies {
     testImplementation "org.awaitility:awaitility:4.1.0"
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
     testImplementation "commons-io:commons-io:2.11.0"
-    testImplementation 'net.bytebuddy:byte-buddy:1.11.18'
-    testImplementation 'net.bytebuddy:byte-buddy-agent:1.11.18'
+    testImplementation 'net.bytebuddy:byte-buddy:1.11.20'
+    testImplementation 'net.bytebuddy:byte-buddy-agent:1.11.20'
 }
 
 // Workaround for Werror
@@ -79,16 +79,16 @@ configurations.all {
         force 'com.amazonaws:aws-java-sdk-core:1.12.67'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.0'
         force 'com.fasterxml.jackson.core:jackson-annotations:2.12.5'
-        force 'com.fasterxml.jackson.core:jackson-databind:2.12.5'
+        force 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
         force 'com.fasterxml.jackson.core:jackson-core:2.12.5'
         force 'com.fasterxml.jackson:jackson-bom:2.12.5'
-        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.12.5'
+        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.13.0'
         force 'commons-codec:commons-codec:1.15'
         force 'commons-logging:commons-logging:1.2'
         force 'org.apache.httpcomponents:httpclient:4.5.13'
         force 'org.apache.httpcomponents:httpcore:4.4.13'
         force "org.hdrhistogram:HdrHistogram:2.1.12"
-        force 'joda-time:joda-time:2.10.10'
+        force 'joda-time:joda-time:2.10.12'
         force 'org.yaml:snakeyaml:1.29'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-smile:2.12.4'
         force 'junit:junit:4.13.2'
