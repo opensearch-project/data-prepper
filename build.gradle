@@ -9,7 +9,7 @@
  *  GitHub history for details.
  */
 plugins {
-    id 'com.diffplug.spotless' version '5.12.4'
+    id 'com.diffplug.spotless' version '5.17.0'
 }
 
 apply from: file("${rootDir}/build-resources.gradle")
