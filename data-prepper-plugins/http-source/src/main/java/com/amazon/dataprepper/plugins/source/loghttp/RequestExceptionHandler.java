@@ -53,8 +53,7 @@ public class RequestExceptionHandler {
         } else if (e instanceof SizeOverflowException) {
             requestsTooLargeCounter.increment();
             return HttpResponse.of(HttpStatus.REQUEST_ENTITY_TOO_LARGE, MediaType.ANY_TYPE, message);
-        } else {
-            return HttpResponse.of(HttpStatus.INTERNAL_SERVER_ERROR, MediaType.ANY_TYPE, message);
         }
+        return HttpResponse.of(HttpStatus.INTERNAL_SERVER_ERROR, MediaType.ANY_TYPE, message);
     }
 }
