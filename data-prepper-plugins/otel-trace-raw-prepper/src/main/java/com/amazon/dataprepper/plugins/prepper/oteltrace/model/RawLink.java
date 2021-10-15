@@ -18,7 +18,7 @@ import java.util.Map;
 
 /**
  * Java POJO of https://github.com/open-telemetry/opentelemetry-proto/blob/master/opentelemetry/proto/trace/v1/trace.proto#L196
- * which is compatible with elasticsearch
+ * which is compatible with OpenSearch
  */
 public final class RawLink {
 

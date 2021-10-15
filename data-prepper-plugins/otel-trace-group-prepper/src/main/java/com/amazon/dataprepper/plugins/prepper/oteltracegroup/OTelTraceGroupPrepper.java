@@ -139,7 +139,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
                 optionalStringTraceGroupEntry.ifPresent(entry -> traceIdToTraceGroup.put(entry.getKey(), entry.getValue()));
             });
         } catch (Exception e) {
-            // TODO: retry for status code 429 of ElasticsearchException?
+            // TODO: retry for status code 429 of OpenSearchException?
             LOG.error("Search request for traceGroup failed for traceIds: {} due to {}", traceIds, e.getMessage());
         }
 

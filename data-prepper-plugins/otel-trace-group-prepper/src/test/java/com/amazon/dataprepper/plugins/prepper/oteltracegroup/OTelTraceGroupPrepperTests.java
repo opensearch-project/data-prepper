@@ -238,7 +238,7 @@ public class OTelTraceGroupPrepperTests {
     @Test
     public void testTraceGroupProcessMultiWorker() throws IOException, ExecutionException, InterruptedException {
         /*
-         * Note: we only test the threadsafety of the business logic in OtelTraceGroupPrepper. The elasticsearch REST client
+         * Note: we only test the threadsafety of the business logic in OtelTraceGroupPrepper. The OpenSearch REST client
          * itself is thread-safe {https://www.elastic.co/guide/en/elasticsearch/client/java-rest/current/_changing_the_client_8217_s_initialization_code.html}.
          */
         // Arrange
