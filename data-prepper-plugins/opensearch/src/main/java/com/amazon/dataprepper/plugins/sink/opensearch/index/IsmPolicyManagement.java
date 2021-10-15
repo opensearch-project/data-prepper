@@ -1,5 +1,9 @@
 package com.amazon.dataprepper.plugins.sink.opensearch.index;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.action.admin.indices.alias.Alias;
 import org.opensearch.action.admin.indices.alias.get.GetAliasesRequest;
@@ -29,6 +33,8 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     // TODO: replace with new _opensearch API
     private static final String POLICY_MANAGEMENT_ENDPOINT = "/_opendistro/_ism/policies/";
     public static final String DEFAULT_INDEX_SUFFIX = "-000001";
+    private static final String POLICY_FILE_ROOT_KEY = "policy";
+    private static final String POLICY_FILE_ISM_TEMPLATE_KEY = "ism_template";
 
     private final RestHighLevelClient restHighLevelClient;
     private final String policyName;
@@ -64,14 +70,23 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     @Override
     public Optional<String> checkAndCreatePolicy() throws IOException {
         final String policyManagementEndpoint = POLICY_MANAGEMENT_ENDPOINT + policyName;
-        Request request = createPolicyRequestFromFile(policyManagementEndpoint, policyFile);
+
+        String policyJsonString = retrievePolicyJsonString(policyFile);
+        Request request = createPolicyRequestFromFile(policyManagementEndpoint, policyJsonString);
+
         try {
             restHighLevelClient.getLowLevelClient().performRequest(request);
         } catch (ResponseException e1) {
             final String msg = e1.getMessage();
-            if (msg.contains("Invalid field: [ism_template]")
-                    && StringUtils.isNotEmpty(policyFileWithoutIsmTemplate)) {
-                request = createPolicyRequestFromFile(policyManagementEndpoint, policyFileWithoutIsmTemplate);
+            if (msg.contains("Invalid field: [ism_template]")) {
+
+                if(StringUtils.isEmpty(policyFileWithoutIsmTemplate)) {
+                    policyJsonString = dropIsmTemplateFromPolicy(policyJsonString);
+                } else {
+                    policyJsonString = retrievePolicyJsonString(policyFileWithoutIsmTemplate);
+                }
+
+                request = createPolicyRequestFromFile(policyManagementEndpoint, policyJsonString);
                 try {
                     restHighLevelClient.getLowLevelClient().performRequest(request);
                 } catch (ResponseException e2) {
@@ -121,8 +136,7 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
         return createIndexRequest;
     }
 
-    private Request createPolicyRequestFromFile(final String endPoint, final String fileName) throws IOException {
-        final StringBuilder policyJsonBuffer = new StringBuilder();
+    private String retrievePolicyJsonString(final String fileName) throws IOException {
         final File file = new File(fileName);
         final URL policyFileUrl;
         if (file.isAbsolute()) {
@@ -130,12 +144,25 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
         } else {
             policyFileUrl = getClass().getClassLoader().getResource(fileName);
         }
+        final StringBuilder policyJsonBuffer = new StringBuilder();
         try (final InputStream inputStream = policyFileUrl.openStream();
              final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
             reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
         }
+        return policyJsonBuffer.toString();
+    }
+
+    private Request createPolicyRequestFromFile(final String endPoint, final String policyJsonString) throws IOException {
         final Request request = new Request(HttpMethod.PUT, endPoint);
-        request.setJsonEntity(policyJsonBuffer.toString());
+        request.setJsonEntity(policyJsonString);
         return request;
     }
+
+    private String dropIsmTemplateFromPolicy(final String policyJsonString) throws JsonProcessingException {
+        final ObjectMapper mapper = new ObjectMapper();
+        final JsonNode jsonNode = mapper.readTree(policyJsonString);
+        ((ObjectNode)jsonNode.get(POLICY_FILE_ROOT_KEY)).remove(POLICY_FILE_ISM_TEMPLATE_KEY);
+        return jsonNode.toString();
+    }
+
 }
