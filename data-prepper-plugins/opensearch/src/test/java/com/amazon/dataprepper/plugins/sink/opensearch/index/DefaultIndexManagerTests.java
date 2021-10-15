@@ -11,6 +11,8 @@ import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
 import org.opensearch.client.ClusterClient;
 import org.opensearch.client.IndicesClient;
 import org.opensearch.client.RequestOptions;
+import org.opensearch.client.ResponseException;
+import org.opensearch.client.RestClient;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.indices.CreateIndexRequest;
 import org.opensearch.client.indices.GetIndexRequest;
@@ -52,19 +54,27 @@ public class DefaultIndexManagerTests {
     private ClusterGetSettingsResponse clusterGetSettingsResponse;
 
     @Mock
-    IndexConfiguration indexConfiguration;
+    private IndexConfiguration indexConfiguration;
 
     @Mock
-    IndicesClient indicesClient;
+    private IndicesClient indicesClient;
 
     @Mock
-    GetIndexTemplatesResponse getIndexTemplatesResponse;
+    private GetIndexTemplatesResponse getIndexTemplatesResponse;
+
+    @Mock
+    private RestClient restClient;
+
+    @Mock
+    private ResponseException responseException;
 
     @Before
     public void setup() throws IOException {
         initMocks(this);
 
         indexManagerFactory = new IndexManagerFactory();
+        when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
+        when(indexConfiguration.getIsmPolicyFile()).thenReturn(Optional.empty());
 
         defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
 
@@ -72,7 +82,6 @@ public class DefaultIndexManagerTests {
         when(cluster.getSettings(any(ClusterGetSettingsRequest.class), any(RequestOptions.class)))
                 .thenReturn(clusterGetSettingsResponse);
 
-        when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
         when(restHighLevelClient.indices()).thenReturn(indicesClient);
     }
@@ -81,18 +90,24 @@ public class DefaultIndexManagerTests {
     public void constructor_NullRestClient() {
         assertThrows(NullPointerException.class, () ->
                 indexManagerFactory.getIndexManager(IndexType.CUSTOM, null, openSearchSinkConfiguration));
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIsmPolicyFile();
     }
 
     @Test
     public void constructor_NullConfiguration() {
         assertThrows(NullPointerException.class, () ->
                 indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, null));
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIsmPolicyFile();
     }
 
     @Test
     public void checkISMEnabled_True() throws IOException {
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
         assertEquals(true, defaultIndexManager.checkISMEnabled());
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIsmPolicyFile();
         verify(restHighLevelClient).cluster();
         verify(cluster).getSettings(any(), any());
         verify(clusterGetSettingsResponse).getSetting(any());
@@ -102,22 +117,55 @@ public class DefaultIndexManagerTests {
     public void checkISMEnabled_False() throws IOException {
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
         assertEquals(false, defaultIndexManager.checkISMEnabled());
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIsmPolicyFile();
         verify(restHighLevelClient).cluster();
         verify(cluster).getSettings(any(), any());
         verify(clusterGetSettingsResponse).getSetting(any());
     }
 
+    @Test
+    public void checkAndCreatePolicy_Normal() throws IOException {
+        when(indexConfiguration.getIsmPolicyFile()).thenReturn(Optional.of("test-custom-index-policy-file.json"));
+        defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
+        when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
+        assertEquals(Optional.empty(), defaultIndexManager.checkAndCreatePolicy());
+        verify(restHighLevelClient).getLowLevelClient();
+        verify(restClient).performRequest(any());
+        verify(openSearchSinkConfiguration, times(3)).getIndexConfiguration();
+        verify(indexConfiguration, times(2)).getIsmPolicyFile();
+        verify(indexConfiguration).getIndexAlias();
+    }
+
+    @Test
+    public void checkAndCreatePolicy_Exception() throws IOException {
+        when(indexConfiguration.getIsmPolicyFile()).thenReturn(Optional.of("test-custom-index-policy-file.json"));
+        defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
+        when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
+        when(restClient.performRequest(any())).thenThrow(responseException);
+        when(responseException.getMessage()).thenReturn("Invalid field: [ism_template]");
+        assertThrows(ResponseException.class, () -> defaultIndexManager.checkAndCreatePolicy());
+        verify(restHighLevelClient, times(1)).getLowLevelClient();
+        verify(restClient, times(1)).performRequest(any());
+        verify(openSearchSinkConfiguration, times(3)).getIndexConfiguration();
+        verify(indexConfiguration, times(2)).getIsmPolicyFile();
+        verify(indexConfiguration).getIndexAlias();
+        verify(responseException, times(3)).getMessage();
+    }
 
     @Test
     public void checkAndCreatePolicy() throws IOException {
         assertEquals(Optional.empty(), defaultIndexManager.checkAndCreatePolicy());
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIsmPolicyFile();
     }
 
     @Test
     public void checkAndCreateIndexTemplate_NoIndexTemplateOnHost_ISMDisabled() throws IOException {
         when(indicesClient.existsTemplate(any(), any())).thenReturn(false);
         defaultIndexManager.checkAndCreateIndexTemplate(false, null);
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(3)).getIndexConfiguration();
+        verify(indexConfiguration).getIsmPolicyFile();
         verify(restHighLevelClient, times(2)).indices();
         verify(indicesClient).existsTemplate(any(), any());
         verify(indexConfiguration).getIndexAlias();
@@ -132,7 +180,8 @@ public class DefaultIndexManagerTests {
         when(indexConfiguration.getIndexTemplate()).thenReturn(configs);
         when(indicesClient.existsTemplate(any(), any())).thenReturn(false);
         defaultIndexManager.checkAndCreateIndexTemplate(true, null);
-        verify(openSearchSinkConfiguration, times(3)).getIndexConfiguration();
+        verify(indexConfiguration).getIsmPolicyFile();
+        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
         verify(restHighLevelClient, times(2)).indices();
         verify(indicesClient).existsTemplate(any(), any());
         verify(indexConfiguration).getIndexAlias();
@@ -148,7 +197,8 @@ public class DefaultIndexManagerTests {
         try {
             defaultIndexManager.checkAndCreateIndexTemplate(false, null);
         } catch (final RuntimeException e) {
-            verify(openSearchSinkConfiguration).getIndexConfiguration();
+            verify(indexConfiguration).getIsmPolicyFile();
+            verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
             verify(restHighLevelClient, times(2)).indices();
             verify(indicesClient).existsTemplate(any(), any());
             verify(indexConfiguration).getIndexAlias();
@@ -162,9 +212,10 @@ public class DefaultIndexManagerTests {
     public void checkAndCreateIndex_IndexAlreadyExists() throws IOException {
         when(indicesClient.exists(any(GetIndexRequest.class), any())).thenReturn(true);
         defaultIndexManager.checkAndCreateIndex();
+        verify(indexConfiguration).getIsmPolicyFile();
         verify(restHighLevelClient).indices();
         verify(indicesClient).exists(any(GetIndexRequest.class), any());
-        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
 
@@ -173,10 +224,11 @@ public class DefaultIndexManagerTests {
         when(indicesClient.exists(any(GetIndexRequest.class), any())).thenReturn(false);
         when(indicesClient.create(any(CreateIndexRequest.class), any())).thenReturn(null);
         defaultIndexManager.checkAndCreateIndex();
+        verify(indexConfiguration).getIsmPolicyFile();
         verify(restHighLevelClient, times(2)).indices();
         verify(indicesClient).exists(any(GetIndexRequest.class), any());
         verify(indicesClient).create(any(CreateIndexRequest.class), any());
-        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
 
@@ -187,10 +239,11 @@ public class DefaultIndexManagerTests {
         try {
             defaultIndexManager.checkAndCreateIndex();
         } catch (final IOException e) {
+            verify(indexConfiguration).getIsmPolicyFile();
             verify(restHighLevelClient, times(2)).indices();
             verify(indicesClient).exists(any(GetIndexRequest.class), any());
             verify(indicesClient).create(any(CreateIndexRequest.class), any());
-            verify(openSearchSinkConfiguration).getIndexConfiguration();
+            verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
             verify(indexConfiguration).getIndexAlias();
         }
     }
@@ -204,7 +257,9 @@ public class DefaultIndexManagerTests {
                 clusterGetSettingsResponse,
                 indexConfiguration,
                 indicesClient,
-                getIndexTemplatesResponse
+                getIndexTemplatesResponse,
+                restClient,
+                responseException
         );
     }
 }

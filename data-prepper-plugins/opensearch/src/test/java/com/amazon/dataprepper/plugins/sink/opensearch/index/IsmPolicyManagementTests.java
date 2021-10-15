@@ -70,6 +70,19 @@ public class IsmPolicyManagementTests {
     }
 
     @Test
+    public void checkAndCreatePolicy_OnlyOnePolicyFile_Exception() throws IOException {
+        ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient,
+                POLICY_NAME,
+                IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE);
+        when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
+        when(restClient.performRequest(any())).thenThrow(responseException);
+        when(responseException.getMessage()).thenReturn("Invalid field: [ism_template]");
+        assertThrows(ResponseException.class, () -> ismPolicyManagementStrategy.checkAndCreatePolicy());
+        verify(restHighLevelClient, times(1)).getLowLevelClient();
+        verify(restClient, times(1)).performRequest(any());
+    }
+
+    @Test
     public void checkAndCreatePolicy_ExceptionFirstThenSucceed() throws IOException {
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
         when(restClient.performRequest(any())).thenThrow(responseException).thenReturn(null);
@@ -78,7 +91,6 @@ public class IsmPolicyManagementTests {
         verify(restHighLevelClient, times(2)).getLowLevelClient();
         verify(restClient, times(2)).performRequest(any());
     }
-
 
     @Test
     public void getIndexPatterns() {

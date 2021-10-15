@@ -126,7 +126,7 @@ public class TraceAnalyticsRawIndexManagerTests {
     }
 
     @Test
-    public void checkAndCreatePolicy_ExceptionFirstThenSucceed() throws IOException {
+    public void checkAndCreatePolicy_ExceptionFirstThenSucceeds() throws IOException {
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
         when(restClient.performRequest(any())).thenThrow(responseException).thenReturn(null);
         when(responseException.getMessage()).thenReturn("Invalid field: [ism_template]");
