@@ -8,6 +8,7 @@ import org.opensearch.client.RestHighLevelClient;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
+import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
 public class IndexManagerFactoryTests {
@@ -19,6 +20,9 @@ public class IndexManagerFactoryTests {
 
     @Mock
     private OpenSearchSinkConfiguration openSearchSinkConfiguration;
+
+    @Mock
+    private IndexConfiguration indexConfiguration;
 
     @Before
     public void setup() {
@@ -42,8 +46,10 @@ public class IndexManagerFactoryTests {
 
     @Test
     public void getIndexManager_Default() {
+        when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
         final IndexManager indexManager =
                 indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
         assertThat(indexManager, instanceOf(IndexManager.class));
     }
+
 }

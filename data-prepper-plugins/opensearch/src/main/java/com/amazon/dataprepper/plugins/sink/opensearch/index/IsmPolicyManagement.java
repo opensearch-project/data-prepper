@@ -11,9 +11,11 @@ import org.opensearch.client.indices.CreateIndexRequest;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -30,32 +32,45 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
 
     private final RestHighLevelClient restHighLevelClient;
     private final String policyName;
-    private final String policyFileWithIsmTemplate;
+    private final String policyFile;
     private final String policyFileWithoutIsmTemplate;
 
     public IsmPolicyManagement(final RestHighLevelClient restHighLevelClient,
                                final String policyName,
-                               final String policyFileWithIsmTemplate,
+                               final String policyFile,
                                final String policyFileWithoutIsmTemplate) {
         checkNotNull(restHighLevelClient);
         checkArgument(StringUtils.isNotEmpty(policyName));
-        checkArgument(StringUtils.isNotEmpty(policyFileWithIsmTemplate));
+        checkArgument(StringUtils.isNotEmpty(policyFile));
         checkArgument(StringUtils.isNotEmpty(policyFileWithoutIsmTemplate));
         this.restHighLevelClient = restHighLevelClient;
         this.policyName = policyName;
-        this.policyFileWithIsmTemplate = policyFileWithIsmTemplate;
+        this.policyFile = policyFile;
         this.policyFileWithoutIsmTemplate = policyFileWithoutIsmTemplate;
+    }
+
+    public IsmPolicyManagement(final RestHighLevelClient restHighLevelClient,
+                               final String policyName,
+                               final String policyFile) {
+        checkNotNull(restHighLevelClient);
+        checkArgument(StringUtils.isNotEmpty(policyName));
+        checkArgument(StringUtils.isNotEmpty(policyFile));
+        this.restHighLevelClient = restHighLevelClient;
+        this.policyName = policyName;
+        this.policyFile = policyFile;
+        this.policyFileWithoutIsmTemplate = null;
     }
 
     @Override
     public Optional<String> checkAndCreatePolicy() throws IOException {
         final String policyManagementEndpoint = POLICY_MANAGEMENT_ENDPOINT + policyName;
-        Request request = createPolicyRequestFromFile(policyManagementEndpoint, policyFileWithIsmTemplate);
+        Request request = createPolicyRequestFromFile(policyManagementEndpoint, policyFile);
         try {
             restHighLevelClient.getLowLevelClient().performRequest(request);
         } catch (ResponseException e1) {
             final String msg = e1.getMessage();
-            if (msg.contains("Invalid field: [ism_template]")) {
+            if (msg.contains("Invalid field: [ism_template]")
+                    && StringUtils.isNotEmpty(policyFileWithoutIsmTemplate)) {
                 request = createPolicyRequestFromFile(policyManagementEndpoint, policyFileWithoutIsmTemplate);
                 try {
                     restHighLevelClient.getLowLevelClient().performRequest(request);
@@ -108,7 +123,14 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
 
     private Request createPolicyRequestFromFile(final String endPoint, final String fileName) throws IOException {
         final StringBuilder policyJsonBuffer = new StringBuilder();
-        try (final InputStream inputStream = getClass().getClassLoader().getResourceAsStream(fileName);
+        final File file = new File(fileName);
+        final URL policyFileUrl;
+        if (file.isAbsolute()) {
+            policyFileUrl = file.toURI().toURL();
+        } else {
+            policyFileUrl = getClass().getClassLoader().getResource(fileName);
+        }
+        try (final InputStream inputStream = policyFileUrl.openStream();
              final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
             reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
         }
@@ -116,6 +138,4 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
         request.setJsonEntity(policyJsonBuffer.toString());
         return request;
     }
-
-
 }

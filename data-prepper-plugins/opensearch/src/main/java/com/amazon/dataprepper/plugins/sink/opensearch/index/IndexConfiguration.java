@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -37,6 +38,7 @@ public class IndexConfiguration {
     public static final String NUM_REPLICAS = "number_of_replicas";
     public static final String BULK_SIZE = "bulk_size";
     public static final String DOCUMENT_ID_FIELD = "document_id_field";
+    public static final String ISM_POLICY_FILE = "ism_policy_file";
     public static final long DEFAULT_BULK_SIZE = 5L;
 
     private final IndexType indexType;
@@ -44,6 +46,7 @@ public class IndexConfiguration {
     private final Map<String, Object> indexTemplate;
     private final String documentIdField;
     private final long bulkSize;
+    private final Optional<String> ismPolicyFile;
 
     @SuppressWarnings("unchecked")
     private IndexConfiguration(final Builder builder) {
@@ -87,6 +90,7 @@ public class IndexConfiguration {
             documentIdField = "hashId";
         }
         this.documentIdField = documentIdField;
+        this.ismPolicyFile = builder.ismPolicyFile;
     }
 
     public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
@@ -109,6 +113,10 @@ public class IndexConfiguration {
         if (documentId != null) {
             builder = builder.withDocumentIdField(documentId);
         }
+
+        final String ismPolicyFile = pluginSetting.getStringOrDefault(ISM_POLICY_FILE, null);
+        builder = builder.withIsmPolicyFile(ismPolicyFile);
+
         return builder.build();
     }
 
@@ -130,6 +138,10 @@ public class IndexConfiguration {
 
     public long getBulkSize() {
         return bulkSize;
+    }
+
+    public Optional<String> getIsmPolicyFile() {
+        return ismPolicyFile;
     }
 
     /**
@@ -173,6 +185,7 @@ public class IndexConfiguration {
         private int numReplicas;
         private String documentIdField;
         private long bulkSize = DEFAULT_BULK_SIZE;
+        private Optional<String> ismPolicyFile;
 
         public Builder setIsRaw(final Boolean isRaw) {
             checkNotNull(isRaw, "trace_analytics_raw cannot be null.");
@@ -217,6 +230,11 @@ public class IndexConfiguration {
 
         public Builder withNumReplicas(final int numReplicas) {
             this.numReplicas = numReplicas;
+            return this;
+        }
+
+        public Builder withIsmPolicyFile(final String ismPolicyFile) {
+            this.ismPolicyFile = Optional.ofNullable(ismPolicyFile);
             return this;
         }
 

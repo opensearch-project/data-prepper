@@ -75,7 +75,8 @@ import static org.awaitility.Awaitility.await;
 public class OpenSearchSinkIT extends OpenSearchRestTestCase {
   private static final String PLUGIN_NAME = "opensearch";
   private static final String PIPELINE_NAME = "integTestPipeline";
-  public List<String> HOSTS = Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
+  private static final String TEST_CUSTOM_INDEX_POLICY_FILE = "test-custom-index-policy-file.json";
+  private List<String> HOSTS = Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
           .map(ip -> String.format("%s://%s", getProtocol(), ip)).collect(Collectors.toList());
   private static final String TEST_TEMPLATE_V1_FILE = "test-index-template.json";
   private static final String TEST_TEMPLATE_V2_FILE = "test-index-template-v2.json";
@@ -279,7 +280,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     sink.shutdown();
   }
 
-  public void testInstantiateSinkCustomIndex() throws IOException {
+  public void testInstantiateSinkCustomIndex_NoRollOver() throws IOException {
     final String testIndexAlias = "test-alias";
     final String testTemplateFile = Objects.requireNonNull(
             getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
@@ -293,6 +294,52 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     // Check restart for index already exists
     sink = new OpenSearchSink(pluginSetting);
     sink.shutdown();
+  }
+
+  public void testInstantiateSinkCustomIndex_WithIsmPolicy() throws IOException {
+    final String indexAlias = "sink-custom-index-ism-test-alias";
+    final String testTemplateFile = Objects.requireNonNull(
+            getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
+    final Map<String, Object> metadata = initializeConfigurationMetadata(false, false, indexAlias, testTemplateFile);
+    metadata.put(IndexConfiguration.ISM_POLICY_FILE, TEST_CUSTOM_INDEX_POLICY_FILE);
+    final PluginSetting pluginSetting = generatePluginSettingByMetadata(metadata);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting);
+    Request request = new Request(HttpMethod.HEAD, indexAlias);
+    Response response = client().performRequest(request);
+    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
+    final String index = String.format("%s-000001", indexAlias);
+    final Map<String, Object> mappings = getIndexMappings(index);
+    assertNotNull(mappings);
+    assertFalse((boolean) mappings.get("date_detection"));
+    sink.shutdown();
+
+    String expectedIndexPolicyName = indexAlias + "-policy";
+    if (isOSBundle()) {
+      // Check managed index
+      await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
+        assertEquals(expectedIndexPolicyName, getIndexPolicyId(index)); }
+      );
+    }
+
+    // roll over initial index
+    request = new Request(HttpMethod.POST, String.format("%s/_rollover", indexAlias));
+    request.setJsonEntity("{ \"conditions\" : { } }\n");
+    response = client().performRequest(request);
+    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
+
+    // Instantiate sink again
+    sink = new OpenSearchSink(pluginSetting);
+    // Make sure no new write index *-000001 is created under alias
+    final String rolloverIndexName = String.format("%s-000002", indexAlias);
+    request = new Request(HttpMethod.GET, rolloverIndexName + "/_alias");
+    response = client().performRequest(request);
+    assertEquals(true, checkIsWriteIndex(EntityUtils.toString(response.getEntity()), indexAlias, rolloverIndexName));
+    sink.shutdown();
+
+    if (isOSBundle()) {
+      // Check managed index
+      assertEquals(expectedIndexPolicyName, getIndexPolicyId(rolloverIndexName));
+    }
   }
 
   public void testInstantiateSinkDoesNotOverwriteNewerIndexTemplates() throws IOException {
@@ -377,8 +424,8 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
   }
 
-  private PluginSetting generatePluginSetting(final boolean isRaw, final boolean isServiceMap, final String indexAlias,
-                                              final String templateFilePath) {
+  private Map<String, Object> initializeConfigurationMetadata (final boolean isRaw, final boolean isServiceMap, final String indexAlias,
+                                                  final String templateFilePath) {
     final Map<String, Object> metadata = new HashMap<>();
     metadata.put(IndexConfiguration.TRACE_ANALYTICS_RAW_FLAG, isRaw);
     metadata.put(IndexConfiguration.TRACE_ANALYTICS_SERVICE_MAP_FLAG, isServiceMap);
@@ -391,8 +438,17 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
       metadata.put(ConnectionConfiguration.USERNAME, user);
       metadata.put(ConnectionConfiguration.PASSWORD, password);
     }
+    return metadata;
+  }
 
-    final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, metadata);
+  private PluginSetting generatePluginSetting(final boolean isRaw, final boolean isServiceMap, final String indexAlias,
+                                              final String templateFilePath) {
+    final Map<String, Object> metadata = initializeConfigurationMetadata(isRaw, isServiceMap, indexAlias, templateFilePath);
+    return generatePluginSettingByMetadata(metadata);
+  }
+
+  private PluginSetting generatePluginSettingByMetadata(final Map<String, Object> configurationMetadata) {
+    final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, configurationMetadata);
     pluginSetting.setPipelineName(PIPELINE_NAME);
     return pluginSetting;
   }
