@@ -31,6 +31,7 @@ import static org.junit.Assert.assertTrue;
 @SuppressWarnings("unchecked")
 public class IndexConfigurationTests {
     private static final String DEFAULT_TEMPLATE_FILE = "test-template-withshards.json";
+    private static final String TEST_CUSTOM_INDEX_POLICY_FILE = "test-custom-index-policy-file.json";
 
     @Test
     public void testRawAPMSpan() {
@@ -53,10 +54,12 @@ public class IndexConfigurationTests {
     public void testValidCustom() throws MalformedURLException {
         final String defaultTemplateFilePath = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
+
         final String testIndexAlias = "foo";
         IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
                 .withIndexAlias(testIndexAlias)
                 .withTemplateFile(defaultTemplateFilePath)
+                .withIsmPolicyFile(TEST_CUSTOM_INDEX_POLICY_FILE)
                 .withBulkSize(10)
                 .build();
 
