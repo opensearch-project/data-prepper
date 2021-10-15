@@ -37,11 +37,11 @@ source:
 
 ### Counter
 - `requestsReceived`: measures total number of requests received by `/log/ingest` endpoint.
-- `requestsRejected`: measures total number of requests rejected by HTTP source plugin.
-- `successRequests`: measures total number of requests successfully processed by HTTP source plugin.
-- `badRequests`: measures total number of requests with invalid content type or format processed by HTTP source plugin.
-- `requestTimeouts`: measures total number of requests that time out in the HTTP source server.
-- `requestsTooLarge`: measures total number of requests of which the events size in the content is larger than the buffer capacity.
+- `requestsRejected`: measures total number of requests rejected (429 response status code) by HTTP source plugin.
+- `successRequests`: measures total number of requests successfully processed (200 response status code) by HTTP source plugin.
+- `badRequests`: measures total number of requests with invalid content type or format processed by HTTP source plugin (400 response status code).
+- `requestTimeouts`: measures total number of requests that time out in the HTTP source server (415 response status code).
+- `requestsTooLarge`: measures total number of requests of which the events size in the content is larger than the buffer capacity (413 response status code).
 
 ### Timer
 - `requestProcessDuration`: measures latency of requests processed by the HTTP source plugin in seconds. 
