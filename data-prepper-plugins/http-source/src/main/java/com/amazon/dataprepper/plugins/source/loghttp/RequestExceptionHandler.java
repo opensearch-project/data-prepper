@@ -26,15 +26,18 @@ public class RequestExceptionHandler {
     public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String BAD_REQUESTS = "badRequests";
     public static final String REQUESTS_TOO_LARGE = "requestsTooLarge";
+    public static final String INTERNAL_SERVER_ERROR = "internalServerError";
 
     private final Counter requestTimeoutsCounter;
     private final Counter badRequestsCounter;
     private final Counter requestsTooLargeCounter;
+    private final Counter internalServerErrorCounter;
 
     public RequestExceptionHandler(final PluginMetrics pluginMetrics) {
         requestTimeoutsCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
         badRequestsCounter = pluginMetrics.counter(BAD_REQUESTS);
         requestsTooLargeCounter = pluginMetrics.counter(REQUESTS_TOO_LARGE);
+        internalServerErrorCounter = pluginMetrics.counter(INTERNAL_SERVER_ERROR);
     }
 
     public HttpResponse handleException(final Exception e) {
@@ -54,6 +57,7 @@ public class RequestExceptionHandler {
             requestsTooLargeCounter.increment();
             return HttpResponse.of(HttpStatus.REQUEST_ENTITY_TOO_LARGE, MediaType.ANY_TYPE, message);
         }
+        internalServerErrorCounter.increment();
         return HttpResponse.of(HttpStatus.INTERNAL_SERVER_ERROR, MediaType.ANY_TYPE, message);
     }
 }

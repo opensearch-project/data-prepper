@@ -77,6 +77,9 @@ class LogHTTPServiceTest {
     private Counter requestsTooLargeCounter;
 
     @Mock
+    private Counter internalServerErrorCounter;
+
+    @Mock
     private DistributionSummary payloadSizeSummary;
 
     @Mock
@@ -91,6 +94,7 @@ class LogHTTPServiceTest {
         when(pluginMetrics.counter(LogHTTPService.SUCCESS_REQUESTS)).thenReturn(successRequestsCounter);
         when(pluginMetrics.counter(RequestExceptionHandler.BAD_REQUESTS)).thenReturn(badRequestsCounter);
         when(pluginMetrics.counter(RequestExceptionHandler.REQUESTS_TOO_LARGE)).thenReturn(requestsTooLargeCounter);
+        when(pluginMetrics.counter(RequestExceptionHandler.INTERNAL_SERVER_ERROR)).thenReturn(internalServerErrorCounter);
         when(pluginMetrics.summary(LogHTTPService.PAYLOAD_SIZE)).thenReturn(payloadSizeSummary);
         when(pluginMetrics.timer(LogHTTPService.REQUEST_PROCESS_DURATION)).thenReturn(requestProcessDuration);
         when(requestProcessDuration.record(ArgumentMatchers.<Supplier<HttpResponse>>any())).thenAnswer(

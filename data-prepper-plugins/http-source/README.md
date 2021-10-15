@@ -42,6 +42,7 @@ source:
 - `badRequests`: measures total number of requests with invalid content type or format processed by HTTP source plugin (400 response status code).
 - `requestTimeouts`: measures total number of requests that time out in the HTTP source server (415 response status code).
 - `requestsTooLarge`: measures total number of requests of which the events size in the content is larger than the buffer capacity (413 response status code).
+- `internalServerError`: measures total number of requests processed by the HTTP source with custom exception type (500 response status code).
 
 ### Timer
 - `requestProcessDuration`: measures latency of requests processed by the HTTP source plugin in seconds. 

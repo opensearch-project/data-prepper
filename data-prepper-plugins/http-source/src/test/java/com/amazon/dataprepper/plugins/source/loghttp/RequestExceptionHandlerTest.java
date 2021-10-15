@@ -46,6 +46,9 @@ class RequestExceptionHandlerTest {
     @Mock
     private Counter requestsTooLargeCounter;
 
+    @Mock
+    private Counter internalServerErrorCounter;
+
     private RequestExceptionHandler requestExceptionHandler;
 
     @BeforeEach
@@ -53,6 +56,7 @@ class RequestExceptionHandlerTest {
         when(pluginMetrics.counter(RequestExceptionHandler.REQUEST_TIMEOUTS)).thenReturn(requestTimeoutsCounter);
         when(pluginMetrics.counter(RequestExceptionHandler.BAD_REQUESTS)).thenReturn(badRequestsCounter);
         when(pluginMetrics.counter(RequestExceptionHandler.REQUESTS_TOO_LARGE)).thenReturn(requestsTooLargeCounter);
+        when(pluginMetrics.counter(RequestExceptionHandler.INTERNAL_SERVER_ERROR)).thenReturn(internalServerErrorCounter);
 
         requestExceptionHandler = new RequestExceptionHandler(pluginMetrics);
     }
@@ -185,6 +189,8 @@ class RequestExceptionHandlerTest {
         aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, aggregatedHttpResponse.status());
         assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
+        // verify metrics
+        verify(internalServerErrorCounter, times(3)).increment();
     }
 
     static class UnknownException extends Exception {
