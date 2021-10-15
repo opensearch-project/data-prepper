@@ -212,7 +212,7 @@ public class ConnectionConfiguration {
       credentialsProvider = StsAssumeRoleCredentialsProvider.builder()
               .stsClient(StsClient.create())
               .refreshRequest(AssumeRoleRequest.builder()
-                      .roleSessionName("Elasticsearch-Sink-" + UUID.randomUUID()
+                      .roleSessionName("OpenSearch-Sink-" + UUID.randomUUID()
                               .toString())
                       .roleArn(awsStsRoleArn)
                       .build())
