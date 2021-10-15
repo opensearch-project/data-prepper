@@ -29,8 +29,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ZipkinElasticToOtel {
-    public static final Logger LOG = LoggerFactory.getLogger(ZipkinElasticToOtel.class);
+public class ZipkinOpenSearchToOtel {
+    public static final Logger LOG = LoggerFactory.getLogger(ZipkinOpenSearchToOtel.class);
 
     public static void main(final String[] args) throws IOException {
         if (args.length < 1) {
@@ -62,7 +62,7 @@ public class ZipkinElasticToOtel {
         while (sources.size() > 0) {
             System.out.println(String.format("Processing batch %d as ExportTraceServiceRequest", i));
             try {
-                final ExportTraceServiceRequest exportTraceServiceRequest = ZipkinElasticToOtelPrepper.sourcesToRequest(sources);
+                final ExportTraceServiceRequest exportTraceServiceRequest = ZipkinOpenSearchToOtelPrepper.sourcesToRequest(sources);
                 client.export(exportTraceServiceRequest);
             } catch (Exception e) {
                 LOG.error(e.getMessage(), e);

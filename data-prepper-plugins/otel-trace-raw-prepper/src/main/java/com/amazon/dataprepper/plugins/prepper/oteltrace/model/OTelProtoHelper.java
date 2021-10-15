@@ -64,7 +64,7 @@ public final class OTelProtoHelper {
                 return value.getDoubleValue();
             /**
              * Both {@link AnyValue.ARRAY_VALUE_FIELD_NUMBER} and {@link AnyValue.KVLIST_VALUE_FIELD_NUMBER} are
-             * nested objects. Storing them in flatten structure is not elasticsearch friendly. So they are stored
+             * nested objects. Storing them in flatten structure is not OpenSearch friendly. So they are stored
              * as Json string.
              */
             case ARRAY_VALUE:

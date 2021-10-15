@@ -33,7 +33,7 @@ apply plugin: 'opensearch.rest-test'
  *  GitHub history for details.
  */
 
-// To pass elasticsearch plugin check
+// To pass OpenSearch plugin check
 ext {
     licenseFile = rootProject.file('LICENSE')
     noticeFile = rootProject.file('NOTICE')

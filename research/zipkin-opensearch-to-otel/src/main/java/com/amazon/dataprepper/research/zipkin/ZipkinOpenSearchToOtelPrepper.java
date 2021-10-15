@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("unchecked")
-public class ZipkinElasticToOtelPrepper {
+public class ZipkinOpenSearchToOtelPrepper {
     public static String SPAN_ID = "id";
     public static String NAME = "name";
     public static String TRACE_ID = "traceId";
@@ -148,7 +148,7 @@ public class ZipkinElasticToOtelPrepper {
             final InstrumentationLibrarySpans.Builder isBuilder =
                     InstrumentationLibrarySpans.newBuilder();
             final List<Span> spanGroup = sourceGroup.stream()
-                    .map(ZipkinElasticToOtelPrepper::sourceToSpan).collect(Collectors.toList());
+                    .map(ZipkinOpenSearchToOtelPrepper::sourceToSpan).collect(Collectors.toList());
             isBuilder.addAllSpans(spanGroup);
             rsBuilder.addInstrumentationLibrarySpans(isBuilder);
             exportTraceServiceRequestBuilder.addResourceSpans(rsBuilder);
