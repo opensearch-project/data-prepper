@@ -70,7 +70,7 @@ public class IsmPolicyManagementTests {
     }
 
     @Test
-    public void checkAndCreatePolicy_OnlyOnePolicyFile_Exception() throws IOException {
+    public void checkAndCreatePolicy_OnlyOnePolicyFile_TwoExceptions() throws IOException {
         ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient,
                 POLICY_NAME,
                 IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE);
@@ -78,8 +78,21 @@ public class IsmPolicyManagementTests {
         when(restClient.performRequest(any())).thenThrow(responseException);
         when(responseException.getMessage()).thenReturn("Invalid field: [ism_template]");
         assertThrows(ResponseException.class, () -> ismPolicyManagementStrategy.checkAndCreatePolicy());
-        verify(restHighLevelClient, times(1)).getLowLevelClient();
-        verify(restClient, times(1)).performRequest(any());
+        verify(restHighLevelClient, times(2)).getLowLevelClient();
+        verify(restClient, times(2)).performRequest(any());
+    }
+
+    @Test
+    public void checkAndCreatePolicy_OnlyOnePolicyFile_FirstExceptionThenSucceeds() throws IOException {
+        ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient,
+                POLICY_NAME,
+                IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE);
+        when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
+        when(restClient.performRequest(any())).thenThrow(responseException).thenReturn(null);
+        when(responseException.getMessage()).thenReturn("Invalid field: [ism_template]");
+        assertEquals(Optional.of(POLICY_NAME), ismPolicyManagementStrategy.checkAndCreatePolicy());
+        verify(restHighLevelClient, times(2)).getLowLevelClient();
+        verify(restClient, times(2)).performRequest(any());
     }
 
     @Test
