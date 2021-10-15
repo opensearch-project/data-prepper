@@ -145,8 +145,8 @@ public class DefaultIndexManagerTests {
         when(restClient.performRequest(any())).thenThrow(responseException);
         when(responseException.getMessage()).thenReturn("Invalid field: [ism_template]");
         assertThrows(ResponseException.class, () -> defaultIndexManager.checkAndCreatePolicy());
-        verify(restHighLevelClient, times(1)).getLowLevelClient();
-        verify(restClient, times(1)).performRequest(any());
+        verify(restHighLevelClient, times(2)).getLowLevelClient();
+        verify(restClient, times(2)).performRequest(any());
         verify(openSearchSinkConfiguration, times(3)).getIndexConfiguration();
         verify(indexConfiguration, times(2)).getIsmPolicyFile();
         verify(indexConfiguration).getIndexAlias();

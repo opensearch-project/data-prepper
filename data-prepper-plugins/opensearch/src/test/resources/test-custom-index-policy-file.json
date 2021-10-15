@@ -14,6 +14,9 @@
           }
         ]
       }
-    ]
+    ],
+    "ism_template": {
+      "index_patterns": ["sink-custom-index-ism-test-alias-*"]
+    }
   }
 }
