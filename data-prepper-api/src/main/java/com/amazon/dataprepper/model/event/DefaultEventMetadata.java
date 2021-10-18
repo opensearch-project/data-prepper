@@ -24,7 +24,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * @since 1.2
  */
-public class EventMetadataImpl implements EventMetadata {
+public class DefaultEventMetadata implements EventMetadata {
 
     private final String eventType;
 
@@ -32,7 +32,7 @@ public class EventMetadataImpl implements EventMetadata {
 
     private final ImmutableMap<String, Object> attributes;
 
-    public EventMetadataImpl(final Builder builder) {
+    private DefaultEventMetadata(final Builder builder) {
 
         checkNotNull(builder.eventType, "eventType cannot be null");
         checkArgument(!builder.eventType.isEmpty(), "eventType cannot be empty");
@@ -44,20 +44,23 @@ public class EventMetadataImpl implements EventMetadata {
         this.attributes = builder.attributes == null ? new ImmutableMap.Builder<String, Object>().build() : ImmutableMap.copyOf(builder.attributes);
     }
 
-    @Override public String getEventType() {
+    @Override
+    public String getEventType() {
         return eventType;
     }
 
-    @Override public Instant getTimeReceived() {
+    @Override
+    public Instant getTimeReceived() {
         return timeReceived;
     }
 
-    @Override public Map<String, Object> getAttributes() {
+    @Override
+    public Map<String, Object> getAttributes() {
         return attributes;
     }
 
     /**
-     * A Builder for creating {@link EventMetadataImpl} instances.
+     * A Builder for creating {@link DefaultEventMetadata} instances.
      *
      * @since 1.2
      */
@@ -97,14 +100,14 @@ public class EventMetadataImpl implements EventMetadata {
         }
 
         /**
-         * Returns a newly created {@link EventMetadataImpl}.
-         * @return an {@link EventMetadataImpl}
+         * Returns a newly created {@link DefaultEventMetadata}.
+         * @return an {@link DefaultEventMetadata}
          * @since 1.2
          * @throws IllegalArgumentException if {@link #eventType} is an empty String
          * @throws NullPointerException if {@link #eventType} is null
          */
-        public EventMetadataImpl build() {
-            return new EventMetadataImpl(this);
+        public DefaultEventMetadata build() {
+            return new DefaultEventMetadata(this);
         }
     }
 }
