@@ -11,6 +11,14 @@ source:
     - http:
 ```
 
+### Response status
+
+* `200`: the request data has been successfully written into the buffer.
+* `400`: the request data is either in mal-format or unsupported codec.
+* `413`: the request data size is larger than the configured capacity.
+* `415`: the request fails to be written into the buffer within the timeout.
+* `429`: the request has been rejected due to the HTTP source executor being in full capacity.
+
 ## Configurations
 
 * port(Optional) => An `int` between 0 and 65535 represents the port source is running on. Default is ```2021```.
@@ -29,10 +37,12 @@ source:
 
 ### Counter
 - `requestsReceived`: measures total number of requests received by `/log/ingest` endpoint.
-- `requestsRejected`: measures total number of requests rejected by HTTP source plugin.
-- `successRequests`: measures total number of requests successfully processed by HTTP source plugin.
-- `badRequests`: measures total number of requests with invalid content type or format processed by HTTP source plugin.
-- `requestTimeouts`: measures total number of requests that time out in the HTTP source server.
+- `requestsRejected`: measures total number of requests rejected (429 response status code) by HTTP source plugin.
+- `successRequests`: measures total number of requests successfully processed (200 response status code) by HTTP source plugin.
+- `badRequests`: measures total number of requests with invalid content type or format processed by HTTP source plugin (400 response status code).
+- `requestTimeouts`: measures total number of requests that time out in the HTTP source server (415 response status code).
+- `requestsTooLarge`: measures total number of requests of which the events size in the content is larger than the buffer capacity (413 response status code).
+- `internalServerError`: measures total number of requests processed by the HTTP source with custom exception type (500 response status code).
 
 ### Timer
 - `requestProcessDuration`: measures latency of requests processed by the HTTP source plugin in seconds. 
