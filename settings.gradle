@@ -37,4 +37,5 @@ include 'data-prepper-plugins:peer-forwarder'
 include 'data-prepper-plugins:blocking-buffer'
 include 'data-prepper-plugins:http-source'
 include 'data-prepper-plugins:grok-prepper'
+include 'data-prepper-logstash-configuration'
 
