@@ -1,7 +1,7 @@
 package com.amazon.dataprepper.model.event;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -19,7 +19,7 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.lessThan;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class EventMetadataImplTest {
+public class DefaultEventMetadataTest {
 
     private EventMetadata eventMetadata;
 
@@ -29,7 +29,7 @@ public class EventMetadataImplTest {
 
     private Map<String, Object> testAttributes;
 
-    @Before
+    @BeforeEach
     public void setup() {
         testAttributes = new HashMap<>();
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID());
@@ -39,7 +39,7 @@ public class EventMetadataImplTest {
 
         testEventType = UUID.randomUUID().toString();
 
-        eventMetadata = new EventMetadataImpl.Builder()
+        eventMetadata = new DefaultEventMetadata.Builder()
                 .withAttributes(testAttributes)
                 .withEventType(testEventType)
                 .withTimeReceived(testTimeReceived)
@@ -80,7 +80,7 @@ public class EventMetadataImplTest {
 
         final Instant before = Instant.now();
 
-        EventMetadata result = new EventMetadataImpl.Builder()
+        EventMetadata result = new DefaultEventMetadata.Builder()
                 .withEventType(testEventType)
                 .build();
 
@@ -94,7 +94,7 @@ public class EventMetadataImplTest {
     @Test
     public void testBuild_withoutMap() {
 
-        final EventMetadata result = new EventMetadataImpl.Builder()
+        final EventMetadata result = new DefaultEventMetadata.Builder()
                 .withEventType(testEventType)
                 .build();
 
@@ -107,11 +107,11 @@ public class EventMetadataImplTest {
 
     @Test
     public void testBuild_withoutEventType_throwsAnException() {
-        assertThrows(NullPointerException.class, () -> new EventMetadataImpl.Builder().build());
+        assertThrows(NullPointerException.class, () -> new DefaultEventMetadata.Builder().build());
     }
 
     @Test
     public void testBuild_withoutEmptyEventType_throwsAnException() {
-        assertThrows(IllegalArgumentException.class, () -> new EventMetadataImpl.Builder().withEventType("").build());
+        assertThrows(IllegalArgumentException.class, () -> new DefaultEventMetadata.Builder().withEventType("").build());
     }
 }

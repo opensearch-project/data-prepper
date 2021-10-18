@@ -11,6 +11,7 @@
 
 package com.amazon.dataprepper.model.event;
 
+import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,24 +44,22 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * @since 1.2
  */
-public class JacksonEventImpl implements Event {
+public class JacksonEvent implements Event {
 
-    private static final Logger LOG = LoggerFactory.getLogger(JacksonEventImpl.class);
+    private static final Logger LOG = LoggerFactory.getLogger(JacksonEvent.class);
 
     private static final String DOT_NOTATION_REGEX = "\\.";
+
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     private final EventMetadata eventMetadata;
 
     private final JsonNode jsonNode;
 
-    private final ObjectMapper mapper;
-
-    public JacksonEventImpl(final Builder builder) {
-
-        this.mapper = new ObjectMapper();
+    private JacksonEvent(final Builder builder) {
 
         if (builder.eventMetadata == null) {
-            this.eventMetadata = new EventMetadataImpl.Builder()
+            this.eventMetadata = new DefaultEventMetadata.Builder()
                     .withEventType(builder.eventType)
                     .withTimeReceived(builder.timeReceived)
                     .withAttributes(builder.eventMetadataAttributes)
@@ -83,27 +82,28 @@ public class JacksonEventImpl implements Event {
      * @param value value to set the key to
      * @since 1.2
      */
-    @Override public void put(final String key, final Object value) {
+    @Override
+    public void put(final String key, final Object value) {
 
         checkKeyArgument(key);
 
         final LinkedList<String> keys = new LinkedList<>(Arrays.asList(key.split(DOT_NOTATION_REGEX)));
-        recursivelyTraverseAndPut(jsonNode, keys, value);
-    }
 
-    private void recursivelyTraverseAndPut(final JsonNode node, final LinkedList<String> keys, final Object value) {
+        JsonNode parentNode = jsonNode;
 
-        if (keys.size() == 1) {
-            final JsonNode valueNode = mapper.valueToTree(value);
-            ((ObjectNode) node).set(keys.get(0), valueNode);
-        } else {
-            final String key = keys.removeFirst();
-            JsonNode baseNode = node.get(toJsonPointerExpression(key));
-            if (baseNode == null) {
-                baseNode = mapper.createObjectNode();
-                ((ObjectNode) node).set(key, baseNode);
+        while (!keys.isEmpty()) {
+            if (keys.size() == 1) {
+                final JsonNode valueNode = mapper.valueToTree(value);
+                ((ObjectNode) parentNode).set(keys.removeFirst(), valueNode);
+            } else {
+                final String childKey = keys.removeFirst();
+                JsonNode childNode = parentNode.get(toJsonPointerExpression(childKey));
+                if (childNode == null) {
+                    childNode = mapper.createObjectNode();
+                    ((ObjectNode) parentNode).set(childKey, childNode);
+                }
+                parentNode = childNode;
             }
-            recursivelyTraverseAndPut(baseNode, keys, value);
         }
     }
 
@@ -115,12 +115,14 @@ public class JacksonEventImpl implements Event {
      * @throws RuntimeException if it is unable to map the value to the provided clazz
      * @since 1.2
      */
-    @Override public <T> T get(final String key, final Class<T> clazz) {
+    @Override
+    public <T> T get(final String key, final Class<T> clazz) {
 
         checkKeyArgument(key);
-        final String jsonPointerExpression = getBaseJsonPointerExpression(key);
 
-        JsonNode node = jsonNode.at(jsonPointerExpression);
+        final JsonPointer jsonPointer = toJsonPointer(key);
+
+        JsonNode node = jsonNode.at(jsonPointer);
         if (node.isMissingNode()) {
             return null;
         }
@@ -137,8 +139,9 @@ public class JacksonEventImpl implements Event {
         return key.replaceAll("\\.", "\\/");
     }
 
-    private String getBaseJsonPointerExpression(final String key) {
-        return SEPARATOR + toJsonPointerExpression(key);
+    private JsonPointer toJsonPointer(final String key) {
+        String jsonPointerExpression = SEPARATOR + toJsonPointerExpression(key);
+        return JsonPointer.compile(jsonPointerExpression);
     }
 
     /**
@@ -146,7 +149,8 @@ public class JacksonEventImpl implements Event {
      *
      * @param key the field to be deleted
      */
-    @Override public void delete(final String key) {
+    @Override
+    public void delete(final String key) {
 
         checkKeyArgument(key);
         final int index = key.lastIndexOf(".");
@@ -155,8 +159,8 @@ public class JacksonEventImpl implements Event {
         String leafKey = key;
 
         if (index != -1) {
-            final String jsonPointerExpression = getBaseJsonPointerExpression(key.substring(0, index));
-            baseNode = jsonNode.at(jsonPointerExpression);
+            final JsonPointer jsonPointer = toJsonPointer(key.substring(0, index));
+            baseNode = jsonNode.at(jsonPointer);
             leafKey = key.substring(index + 1);
         }
 
@@ -165,11 +169,13 @@ public class JacksonEventImpl implements Event {
         }
     }
 
-    @Override public String toJsonString() {
+    @Override
+    public String toJsonString() {
         return jsonNode.toString();
     }
 
-    @Override public EventMetadata getMetadata() {
+    @Override
+    public EventMetadata getMetadata() {
         return eventMetadata;
     }
 
@@ -180,7 +186,7 @@ public class JacksonEventImpl implements Event {
     }
 
     /**
-     * Builder for creating {@link JacksonEventImpl}.
+     * Builder for creating {@link JacksonEvent}.
      * @since 1.2
      */
     public static class Builder {
@@ -241,12 +247,12 @@ public class JacksonEventImpl implements Event {
         }
 
         /**
-         * Returns a newly created {@link JacksonEventImpl}.
+         * Returns a newly created {@link JacksonEvent}.
          * @return an event
          * @since 1.2
          */
-        public JacksonEventImpl build() {
-            return new JacksonEventImpl(this);
+        public JacksonEvent build() {
+            return new JacksonEvent(this);
         }
     }
 }

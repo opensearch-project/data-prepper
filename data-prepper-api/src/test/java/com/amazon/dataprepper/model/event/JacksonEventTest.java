@@ -1,7 +1,9 @@
 package com.amazon.dataprepper.model.event;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -16,18 +18,18 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 
-public class JacksonEventImplTest {
+public class JacksonEventTest {
 
     private Event event;
 
     private String eventType;
 
-    @Before
+    @BeforeEach
     public void setup() {
 
         eventType = UUID.randomUUID().toString();
 
-        event = new JacksonEventImpl.Builder()
+        event = new JacksonEvent.Builder()
                 .withEventType(eventType)
                 .build();
     }
@@ -177,59 +179,16 @@ public class JacksonEventImplTest {
         assertThat(result, is(nullValue()));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"", "withSpecialChars*$%", ".withPrefixDot", "withSuffixDot.", "-withPrefixDash", "\\.withEscapeChars", "\\\\-withMultipleEscapeChars",
+            "withDashSuffix-", "withDashSuffix-.nestedKey", "withDashPrefix.-nestedKey" })
+    void testKey_withInvalidKey_throwsIllegalArgumentException(final String invalidKey) {
+        assertThrowsForKeyCheck(IllegalArgumentException.class, invalidKey);
+    }
+
     @Test
-    public void testKey_withNull_throwsNullPointerException() {
+    public void testKey_withNullKey_throwsNullPointerException() {
         assertThrowsForKeyCheck(NullPointerException.class, null);
-    }
-
-    @Test
-    public void testKey_withString_throwsException() {
-        assertThrowsForKeyCheck(IllegalArgumentException.class, "");
-    }
-
-    @Test
-    public void testKey_withSpecialCharacters_throwsException() {
-        assertThrowsForKeyCheck(IllegalArgumentException.class, "bogusKey&");
-    }
-
-    @Test
-    public void testKey_withPrefixedPeriod_throwsException() {
-        assertThrowsForKeyCheck(IllegalArgumentException.class, ".bogusKey");
-    }
-
-    @Test
-    public void testKey_withSuffixedPeriod_throwsException() {
-        assertThrowsForKeyCheck(IllegalArgumentException.class, "bogusKey.");
-    }
-
-    @Test
-    public void testKey_withPrefixedDash_throwsException() {
-        assertThrowsForKeyCheck(IllegalArgumentException.class, "-bogusKey");
-    }
-
-    @Test
-    public void testKey_withEscapeCharacters_throwsException() {
-        assertThrowsForKeyCheck(IllegalArgumentException.class, "\\.bogusKey");
-    }
-
-    @Test
-    public void testKey_withMultipleEscapeChars_throwsException() {
-        assertThrowsForKeyCheck(IllegalArgumentException.class, "\\\\-bogusKey");
-    }
-
-    @Test
-    public void testKey_withSuffixedDash_throwsException() {
-        assertThrowsForKeyCheck(IllegalArgumentException.class, "bogusKey-");
-    }
-
-    @Test
-    public void testKey_withSuffixedDashInNestedKey_throwsException() {
-        assertThrowsForKeyCheck(IllegalArgumentException.class, "bogusKey-.nested");
-    }
-
-    @Test
-    public void testKey_withPrefixedDashInNestedKey_throwsException() {
-        assertThrowsForKeyCheck(IllegalArgumentException.class, "bogusKey.-nested");
     }
 
     private <T extends Throwable> void assertThrowsForKeyCheck(final Class<T> expectedThrowable, final String key) {
@@ -257,7 +216,7 @@ public class JacksonEventImplTest {
 
     @Test
     public void testBuild_withEventType() {
-        event = new JacksonEventImpl.Builder()
+        event = new JacksonEvent.Builder()
                 .withEventType(eventType)
                 .build();
 
@@ -269,7 +228,7 @@ public class JacksonEventImplTest {
 
         final Instant now = Instant.now();
 
-        event = new JacksonEventImpl.Builder()
+        event = new JacksonEvent.Builder()
                 .withEventType(eventType)
                 .withTimeReceived(now)
                 .build();
@@ -284,7 +243,7 @@ public class JacksonEventImplTest {
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID());
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
-        event = new JacksonEventImpl.Builder()
+        event = new JacksonEvent.Builder()
                 .withEventType(eventType)
                 .withEventMetadataAttributes(testAttributes)
                 .build();
@@ -301,11 +260,11 @@ public class JacksonEventImplTest {
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         final String emEventType = UUID.randomUUID().toString();
 
-        final EventMetadata metadata = new EventMetadataImpl.Builder()
+        final EventMetadata metadata = new DefaultEventMetadata.Builder()
                 .withEventType(emEventType)
                 .build();
 
-        event = new JacksonEventImpl.Builder()
+        event = new JacksonEvent.Builder()
                 .withEventType(eventType)
                 .withTimeReceived(now)
                 .withEventMetadataAttributes(testAttributes)
@@ -320,11 +279,11 @@ public class JacksonEventImplTest {
     @Test
     public void testBuild_withEventMetadata() {
 
-        EventMetadata metadata = new EventMetadataImpl.Builder()
+        EventMetadata metadata = new DefaultEventMetadata.Builder()
                 .withEventType(eventType)
                 .build();
 
-        event = new JacksonEventImpl.Builder()
+        event = new JacksonEvent.Builder()
                 .withEventMetadata(metadata)
                 .build();
 
@@ -338,7 +297,7 @@ public class JacksonEventImplTest {
         final String value = UUID.randomUUID().toString();
         final TestObject testObject = new TestObject(value);
 
-        event = new JacksonEventImpl.Builder()
+        event = new JacksonEvent.Builder()
                 .withEventType(eventType)
                 .withData(testObject)
                 .build();
