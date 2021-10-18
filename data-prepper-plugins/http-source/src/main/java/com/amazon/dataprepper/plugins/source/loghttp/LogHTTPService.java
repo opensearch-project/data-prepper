@@ -19,16 +19,17 @@ import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
-import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.server.annotation.Blocking;
 import com.linecorp.armeria.server.annotation.Post;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 /*
 * A HTTP service for log ingestion to be executed by BlockingTaskExecutor.
@@ -36,20 +37,19 @@ import java.util.concurrent.TimeoutException;
 @Blocking
 public class LogHTTPService {
     public static final String REQUESTS_RECEIVED = "requestsReceived";
-    public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String SUCCESS_REQUESTS = "successRequests";
-    public static final String BAD_REQUESTS = "badRequests";
     public static final String PAYLOAD_SIZE = "payloadSize";
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
+
+    private static final Logger LOG = LoggerFactory.getLogger(LogHTTPService.class);
 
     // TODO: support other data-types as request body, e.g. json_lines, msgpack
     private final JsonCodec jsonCodec = new JsonCodec();
     private final Buffer<Record<String>> buffer;
     private final int bufferWriteTimeoutInMillis;
+    private final RequestExceptionHandler requestExceptionHandler;
     private final Counter requestsReceivedCounter;
-    private final Counter requestTimeoutsCounter;
     private final Counter successRequestsCounter;
-    private final Counter badRequestsCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
 
@@ -59,10 +59,9 @@ public class LogHTTPService {
         this.buffer = buffer;
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
 
+        requestExceptionHandler = new RequestExceptionHandler(pluginMetrics);
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
-        requestTimeoutsCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
-        badRequestsCounter = pluginMetrics.counter(BAD_REQUESTS);
         payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
     }
@@ -81,17 +80,15 @@ public class LogHTTPService {
         try {
             jsonList = jsonCodec.parse(content);
         } catch (IOException e) {
-            badRequestsCounter.increment();
-            return HttpResponse.of(HttpStatus.BAD_REQUEST, MediaType.ANY_TYPE, "Bad request data format. Needs to be json array.");
+            LOG.error("Failed to write the request content [{}] due to:", content.toStringUtf8(), e);
+            return requestExceptionHandler.handleException(e, "Bad request data format. Needs to be json array.");
         }
-        for (String json: jsonList) {
-            try {
-                // TODO: switch to new API writeAll once ready
-                buffer.write(new Record<>(json), bufferWriteTimeoutInMillis);
-            } catch (TimeoutException e) {
-                requestTimeoutsCounter.increment();
-                return HttpResponse.of(HttpStatus.REQUEST_TIMEOUT, MediaType.ANY_TYPE, e.getMessage());
-            }
+        final List<Record<String>> records = jsonList.stream().map(Record::new).collect(Collectors.toList());
+        try {
+            buffer.writeAll(records, bufferWriteTimeoutInMillis);
+        } catch (Exception e) {
+            LOG.error("Failed to write the request content [{}] due to:", content.toStringUtf8(), e);
+            return requestExceptionHandler.handleException(e);
         }
         successRequestsCounter.increment();
         return HttpResponse.of(HttpStatus.OK);
