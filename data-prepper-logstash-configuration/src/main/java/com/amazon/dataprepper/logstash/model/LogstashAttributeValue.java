@@ -1,14 +1,14 @@
 package com.amazon.dataprepper.logstash.model;
 
-public class AttributeValue {
-    ValueType attributeValueType;
+public class LogstashAttributeValue {
+    LogstashValueType attributeValueType;
     Object value;
 
-    public ValueType getAttributeValueType() {
+    public LogstashValueType getAttributeValueType() {
         return attributeValueType;
     }
 
-    public void setAttributeValueType(ValueType attributeValueType) {
+    public void setAttributeValueType(LogstashValueType attributeValueType) {
         this.attributeValueType = attributeValueType;
     }
 

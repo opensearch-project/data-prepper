@@ -1,6 +1,6 @@
 package com.amazon.dataprepper.logstash.model;
 
-public enum ValueType {
+public enum LogstashValueType {
     STRING,
     NUMBER,
     ID,
