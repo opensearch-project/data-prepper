@@ -2,9 +2,9 @@ package com.amazon.dataprepper.logstash.model;
 
 import java.util.List;
 
-public class Plugin {
+public class LogstashPlugin {
     String pluginName;
-    List<Attribute> attributes;
+    List<LogstashAttribute> attributes;
 
     public String getPluginName() {
         return pluginName;
@@ -14,11 +14,11 @@ public class Plugin {
         this.pluginName = pluginName;
     }
 
-    public List<Attribute> getAttributes() {
+    public List<LogstashAttribute> getAttributes() {
         return attributes;
     }
 
-    public void setAttributes(List<Attribute> attributes) {
+    public void setAttributes(List<LogstashAttribute> attributes) {
         this.attributes = attributes;
     }
 }
