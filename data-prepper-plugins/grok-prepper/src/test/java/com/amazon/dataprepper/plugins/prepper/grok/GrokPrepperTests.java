@@ -351,7 +351,6 @@ public class GrokPrepperTests {
         Record<String> resultRecord = new Record<>(resultData);
 
         List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
-
         verifyNoInteractions(executorService);
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());

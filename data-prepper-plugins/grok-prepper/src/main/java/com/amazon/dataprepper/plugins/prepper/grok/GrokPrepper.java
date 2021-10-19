@@ -106,8 +106,7 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
                 if (grokPrepperConfig.getTimeoutMillis() == 0) {
                     matchAndMerge(recordMap);
                 } else {
-                    final Runnable matchTimeoutRunnable = () -> matchAndMerge(recordMap);
-                    runWithTimeout(matchTimeoutRunnable);
+                    runWithTimeout(() -> matchAndMerge(recordMap));
                 }
 
                 final Record<String> grokkedRecord = new Record<>(OBJECT_MAPPER.writeValueAsString(recordMap), record.getMetadata());
@@ -121,7 +120,6 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
                 recordsOut.add(record);
             } catch (ExecutionException e) {
                 LOG.error("An exception occurred while matching on record [{}]", record.getData(), e);
-                e.printStackTrace();
                 recordsOut.add(record);
             } catch (InterruptedException e) {
                 LOG.error("Matching on record [{}] was interrupted", record.getData(), e);
