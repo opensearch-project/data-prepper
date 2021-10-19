@@ -1,8 +1,8 @@
 package com.amazon.dataprepper.logstash.model;
 
-public class Attribute {
+public class LogstashAttribute {
     String attributeName;
-    AttributeValue attributeValue;
+    LogstashAttributeValue attributeValue;
 
     public String getAttributeName() {
         return attributeName;
@@ -12,11 +12,11 @@ public class Attribute {
         this.attributeName = attributeName;
     }
 
-    public AttributeValue getAttributeValue() {
+    public LogstashAttributeValue getAttributeValue() {
         return attributeValue;
     }
 
-    public void setAttributeValue(AttributeValue attributeValue) {
+    public void setAttributeValue(LogstashAttributeValue attributeValue) {
         this.attributeValue = attributeValue;
     }
 }
