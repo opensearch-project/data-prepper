@@ -2,9 +2,14 @@ package com.amazon.dataprepper.logstash.model;
 
 import java.util.List;
 
+/**
+ * Class to hold Logstash configuration plugin name and list of {@link LogstashAttribute}
+ *
+ * @since 1.2
+ */
 public class LogstashPlugin {
-    String pluginName;
-    List<LogstashAttribute> attributes;
+    private String pluginName;
+    private List<LogstashAttribute> attributes;
 
     public String getPluginName() {
         return pluginName;
