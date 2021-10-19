@@ -102,7 +102,7 @@ public class IndexConfiguration {
             builder = builder.withTemplateFile(templateFile);
         }
         builder = builder.withNumShards(pluginSetting.getIntegerOrDefault(NUM_SHARDS, 0));
-        builder = builder.withNumShards(pluginSetting.getIntegerOrDefault(NUM_REPLICAS, 0));
+        builder = builder.withNumReplicas(pluginSetting.getIntegerOrDefault(NUM_REPLICAS, 0));
         final Long batchSize = pluginSetting.getLongOrDefault(BULK_SIZE, DEFAULT_BULK_SIZE);
         builder = builder.withBulkSize(batchSize);
         final String documentId = pluginSetting.getStringOrDefault(DOCUMENT_ID_FIELD, null);
