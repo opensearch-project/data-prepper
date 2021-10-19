@@ -1,8 +1,13 @@
 package com.amazon.dataprepper.logstash.model;
 
+/**
+ * Class to hold Logstash configuration attribute name and {@link LogstashAttributeValue}
+ *
+ * @since 1.2
+ */
 public class LogstashAttribute {
-    String attributeName;
-    LogstashAttributeValue attributeValue;
+    private String attributeName;
+    private LogstashAttributeValue attributeValue;
 
     public String getAttributeName() {
         return attributeName;

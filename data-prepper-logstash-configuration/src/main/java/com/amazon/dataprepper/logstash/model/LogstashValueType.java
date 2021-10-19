@@ -1,9 +1,14 @@
 package com.amazon.dataprepper.logstash.model;
 
+/**
+ * Types of attribute values in Logstash configuration
+ *
+ * @since 1.2
+ */
 public enum LogstashValueType {
     STRING,
     NUMBER,
-    ID,
+    BAREWORD,
     ARRAY,
     HASH,
     PLUGIN
