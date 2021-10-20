@@ -11,11 +11,11 @@
 
 package com.amazon.dataprepper.plugins.prepper;
 
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.SingleThread;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
+import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.prepper.state.MapDbPrepperState;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,7 +39,7 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @SingleThread
-@DataPrepperPlugin(name = "service_map_stateful", type = PluginType.PREPPER)
+@DataPrepperPlugin(name = "service_map_stateful", pluginType = Prepper.class)
 public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
 
     public static final String SPANS_DB_SIZE = "spansDbSize";
