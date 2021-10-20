@@ -50,7 +50,7 @@ subprojects {
         }
     }
     dependencies {
-        implementation 'com.google.guava:guava:29.0-jre'
+        implementation 'com.google.guava:guava:31.0.1-jre'
         implementation platform('io.micrometer:micrometer-bom:1.7.3')
         implementation 'org.slf4j:slf4j-api:1.7.32'
         testImplementation platform("org.junit:junit-bom:${versionMap.junitJupiter}")
@@ -58,10 +58,28 @@ subprojects {
         testImplementation 'org.junit.vintage:junit-vintage-engine'
         testImplementation "org.mockito:mockito-core:${versionMap.mockito}"
         testImplementation "org.mockito:mockito-junit-jupiter:${versionMap.mockito}"
+        constraints {
+            implementation('org.apache.httpcomponents:httpclient') {
+                version {
+                    require '4.5.13'
+                }
+                because 'We want the newest version of httpclient.'
+            }
+        }
     }
     test {
         useJUnitPlatform()
     }
+
+    configurations.all {
+        resolutionStrategy.eachDependency { def details ->
+            if (details.requested.group == 'io.netty' && !details.requested.name.startsWith('netty-tcnative')) {
+                details.useVersion '4.1.61.Final'
+                details.because 'includes CVE fix'
+            }
+        }
+    }
+
     build.dependsOn test
     jacocoTestReport {
         dependsOn test // tests are required to run before generating the report
