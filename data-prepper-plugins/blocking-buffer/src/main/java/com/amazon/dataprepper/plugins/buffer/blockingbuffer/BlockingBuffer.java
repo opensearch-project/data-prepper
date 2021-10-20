@@ -11,14 +11,13 @@
 
 package com.amazon.dataprepper.plugins.buffer.blockingbuffer;
 
-import com.amazon.dataprepper.model.PluginType;
+import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.AbstractBuffer;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.buffer.SizeOverflowException;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.model.CheckpointState;
 import com.google.common.base.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +45,7 @@ import static java.lang.String.format;
  * record is null. {@link #read(int)} retrieves and removes the batch of records from the head of the queue. The
  * batch size is defined/determined by the configuration attribute {@link #ATTRIBUTE_BATCH_SIZE} or the timeout parameter
  */
-@DataPrepperPlugin(name = "bounded_blocking", type = PluginType.BUFFER)
+@DataPrepperPlugin(name = "bounded_blocking", pluginType = Buffer.class)
 public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(BlockingBuffer.class);
     private static final int DEFAULT_BUFFER_CAPACITY = 512;

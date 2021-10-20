@@ -11,7 +11,6 @@
 
 package com.amazon.dataprepper.plugins;
 
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
@@ -21,7 +20,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@DataPrepperPlugin(name = "test_sink", type = PluginType.SINK)
+@DataPrepperPlugin(name = "test_sink", pluginType = Sink.class)
 public class TestSink implements Sink<Record<String>> {
     private final List<Record<String>> collectedRecords;
     private final boolean failSinkForTest;

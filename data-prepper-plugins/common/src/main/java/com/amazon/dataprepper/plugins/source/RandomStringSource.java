@@ -11,25 +11,25 @@
 
 package com.amazon.dataprepper.plugins.source;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Generates a random string every 500 milliseconds. Intended to be used for testing setups
  */
-@DataPrepperPlugin(name = "random", type = PluginType.SOURCE)
+@DataPrepperPlugin(name = "random", pluginType = Source.class)
 public class RandomStringSource implements Source<Record<String>> {
 
     private static Logger LOG = LoggerFactory.getLogger(RandomStringSource.class);

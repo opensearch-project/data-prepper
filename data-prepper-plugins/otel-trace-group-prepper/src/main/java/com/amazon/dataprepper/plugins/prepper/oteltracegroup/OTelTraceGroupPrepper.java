@@ -11,10 +11,10 @@
 
 package com.amazon.dataprepper.plugins.prepper.oteltracegroup;
 
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
+import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.prepper.oteltracegroup.model.TraceGroup;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -48,7 +48,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
-@DataPrepperPlugin(name = "otel_trace_group_prepper", type = PluginType.PREPPER)
+@DataPrepperPlugin(name = "otel_trace_group_prepper", pluginType = Prepper.class)
 public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Record<String>> {
 
     public static final String RECORDS_IN_MISSING_TRACE_GROUP = "recordsInMissingTraceGroup";
