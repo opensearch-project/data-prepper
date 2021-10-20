@@ -21,10 +21,8 @@ import io.krakens.grok.api.GrokCompiler;
 import io.krakens.grok.api.Match;
 import com.amazon.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.Nested;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.Mock;
 import org.junit.jupiter.api.Test;
@@ -35,6 +33,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -42,9 +45,10 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.verify;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -53,6 +57,12 @@ public class GrokPrepperTests {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
     private String messageInput;
+
+    @Mock
+    private ExecutorService executorService;
+
+    @Mock
+    private Future task;
 
     @Mock
     private GrokCompiler grokCompiler;
@@ -65,46 +75,46 @@ public class GrokPrepperTests {
 
     @Mock
     private Grok grokSecondMatch;
-
+    private PluginSetting pluginSetting;
     private final String PLUGIN_NAME = "grok";
     private Map<String, Object> capture;
     private final Map<String, List<String>> matchConfig = new HashMap<>();
 
     @BeforeEach
-    public void setup() {
+    public void setup() throws TimeoutException, ExecutionException, InterruptedException {
+        pluginSetting = getDefaultPluginSetting();
+        pluginSetting.setPipelineName("grokPipeline");
+
         final List<String> matchPatterns = new ArrayList<>();
         matchPatterns.add("%{PATTERN1}");
         matchPatterns.add("%{PATTERN2}");
         matchConfig.put("message", matchPatterns);
-    }
 
-    @AfterEach
-    public void tearDown() {
-      grokPrepper.shutdown();
-    }
-
-    private void initialize(final PluginSetting pluginSetting) {
-        pluginSetting.setPipelineName("grokPipeline");
-
-        try (MockedStatic<GrokCompiler> grokCompilerMockedStatic = mockStatic(GrokCompiler.class)) {
-            grokCompilerMockedStatic.when(GrokCompiler::newInstance).thenReturn(grokCompiler);
-            when(grokCompiler.compile(eq(matchConfig.get("message").get(0)), anyBoolean())).thenReturn(grok);
-            when(grokCompiler.compile(eq(matchConfig.get("message").get(1)), anyBoolean())).thenReturn(grokSecondMatch);
-            grokPrepper = new GrokPrepper(pluginSetting);
-        }
+        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
 
         capture = new HashMap<>();
 
         messageInput = UUID.randomUUID().toString();
 
-        when(grok.match(messageInput)).thenReturn(match);
-        when(match.capture()).thenReturn(capture);
+        lenient().when(grokCompiler.compile(eq(matchConfig.get("message").get(0)), anyBoolean())).thenReturn(grok);
+        lenient().when(grokCompiler.compile(eq(matchConfig.get("message").get(1)), anyBoolean())).thenReturn(grokSecondMatch);
+
+        lenient().when(grok.match(messageInput)).thenReturn(match);
+        lenient().when(match.capture()).thenReturn(capture);
+        lenient().when(executorService.submit(any(Runnable.class))).then(a -> {
+            a.<Runnable>getArgument(0).run();
+            return task;
+        });
+        lenient().when(task.get(GrokPrepperConfig.DEFAULT_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)).thenReturn(null);
     }
 
+    private GrokPrepper createObjectUnderTest() {
+        return new GrokPrepper(pluginSetting, grokCompiler, executorService);
+    }
 
     @Test
     public void testMatchMerge() throws JsonProcessingException {
-        initialize(getDefaultPluginSetting());
+        grokPrepper = createObjectUnderTest();
 
         capture.put("key_capture_1", "value_capture_1");
         capture.put("key_capture_2", "value_capture_2");
@@ -129,9 +139,8 @@ public class GrokPrepperTests {
 
     @Test
     public void testTarget() throws JsonProcessingException {
-        final PluginSetting pluginSetting = getDefaultPluginSetting();
         pluginSetting.getSettings().put(GrokPrepperConfig.TARGET_KEY, "test_target");
-        initialize(pluginSetting);
+        grokPrepper = createObjectUnderTest();
 
 
         capture.put("key_capture_1", "value_capture_1");
@@ -158,9 +167,8 @@ public class GrokPrepperTests {
 
     @Test
     public void testOverwrite() throws JsonProcessingException {
-        final PluginSetting pluginSetting = getDefaultPluginSetting();
         pluginSetting.getSettings().put(GrokPrepperConfig.KEYS_TO_OVERWRITE, Collections.singletonList("message"));
-        initialize(pluginSetting);
+        grokPrepper = createObjectUnderTest();
 
         capture.put("key_capture_1", "value_capture_1");
         capture.put("key_capture_2", "value_capture_2");
@@ -186,7 +194,7 @@ public class GrokPrepperTests {
 
     @Test
     public void testMatchMergeCollisionStrings() throws JsonProcessingException {
-        initialize(getDefaultPluginSetting());
+        grokPrepper = createObjectUnderTest();
 
         capture.put("key_capture_1", "value_capture_1");
         capture.put("key_capture_2", "value_capture_2");
@@ -214,7 +222,7 @@ public class GrokPrepperTests {
 
     @Test
     public void testMatchMergeCollisionInts() throws JsonProcessingException {
-        initialize(getDefaultPluginSetting());
+        grokPrepper = createObjectUnderTest();
 
         capture.put("key_capture_1", 20);
         capture.put("key_capture_2", "value_capture_2");
@@ -242,7 +250,7 @@ public class GrokPrepperTests {
 
     @Test
     public void testMatchMergeCollisionWithListMixedTypes() throws JsonProcessingException {
-        initialize(getDefaultPluginSetting());
+        grokPrepper = createObjectUnderTest();
 
         List<Object> captureListValues = new ArrayList<>();
         captureListValues.add("30");
@@ -275,7 +283,7 @@ public class GrokPrepperTests {
 
     @Test
     public void testMatchMergeCollisionWithNullValue() throws JsonProcessingException {
-        initialize(getDefaultPluginSetting());
+        grokPrepper = createObjectUnderTest();
 
         capture.put("key_capture_1", "value_capture_1");
         capture.put("key_capture_2", "value_capture_2");
@@ -301,6 +309,69 @@ public class GrokPrepperTests {
         assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
     }
 
+    @Test
+    public void testThatTimeoutExceptionIsCaughtAndProcessingContinues() throws JsonProcessingException, TimeoutException, ExecutionException, InterruptedException {
+        when(task.get(GrokPrepperConfig.DEFAULT_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS)).thenThrow(TimeoutException.class);
+
+        grokPrepper = createObjectUnderTest();
+
+        capture.put("key_capture_1", "value_capture_1");
+        capture.put("key_capture_2", "value_capture_2");
+        capture.put("key_capture_3", "value_capture_3");
+
+        String testData = "{\"message\":" + "\"" + messageInput + "\"}";
+        Record<String> record = new Record<>(testData);
+
+        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+
+        assertThat(grokkedRecords.size(), equalTo(1));
+        assertThat(grokkedRecords.get(0), notNullValue());
+        assertThat(equalRecords(grokkedRecords.get(0), record), equalTo(true));
+    }
+
+    @Test
+    public void testThatProcessingWithTimeoutMillisOfZeroDoesNotInteractWithExecutorServiceAndReturnsCorrectResult() throws JsonProcessingException {
+        pluginSetting.getSettings().put(GrokPrepperConfig.TIMEOUT_MILLIS, 0);
+        grokPrepper = createObjectUnderTest();
+
+        capture.put("key_capture_1", "value_capture_1");
+        capture.put("key_capture_2", "value_capture_2");
+        capture.put("key_capture_3", "value_capture_3");
+
+        String testData = "{\"message\":" + "\"" + messageInput + "\"}";
+
+        Record<String> record = new Record<>(testData);
+        grokPrepper.doExecute(Collections.singletonList(record));
+
+        String resultData = "{\"message\":" + "\"" + messageInput + "\","
+                .concat("\"key_capture_1\":\"value_capture_1\",")
+                .concat("\"key_capture_2\":\"value_capture_2\",")
+                .concat("\"key_capture_3\":\"value_capture_3\"}");
+
+        Record<String> resultRecord = new Record<>(resultData);
+
+        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        verifyNoInteractions(executorService);
+        assertThat(grokkedRecords.size(), equalTo(1));
+        assertThat(grokkedRecords.get(0), notNullValue());
+        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+    }
+
+
+    @Test
+    public void testPrepareForShutdown() {
+        grokPrepper = createObjectUnderTest();
+        grokPrepper.prepareForShutdown();
+        verify(executorService).shutdown();
+    }
+
+    @Test
+    public void testShutdown() {
+        grokPrepper = createObjectUnderTest();
+        grokPrepper.shutdown();
+        verify(executorService).shutdownNow();
+    }
+
     @Nested
     class WithMultipleMatches {
         @Mock
@@ -315,7 +386,7 @@ public class GrokPrepperTests {
 
         @Test
         public void testNoCaptures() throws JsonProcessingException {
-            initialize(getDefaultPluginSetting());
+            grokPrepper = createObjectUnderTest();
 
             lenient().when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
             lenient().when(secondMatch.capture()).thenReturn(secondCapture);
@@ -332,7 +403,7 @@ public class GrokPrepperTests {
 
         @Test
         public void testBreakOnMatchTrue() throws JsonProcessingException {
-            initialize(getDefaultPluginSetting());
+            grokPrepper = createObjectUnderTest();
 
             lenient().when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
             lenient().when(secondMatch.capture()).thenReturn(secondCapture);
@@ -363,9 +434,8 @@ public class GrokPrepperTests {
 
         @Test
         public void testBreakOnMatchFalse() throws JsonProcessingException {
-            final PluginSetting pluginSetting = getDefaultPluginSetting();
             pluginSetting.getSettings().put(GrokPrepperConfig.BREAK_ON_MATCH, false);
-            initialize(pluginSetting);
+            grokPrepper = createObjectUnderTest();
 
             when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
             when(secondMatch.capture()).thenReturn(secondCapture);
