@@ -11,7 +11,6 @@
 
 package com.amazon.dataprepper.plugins.sink;
 
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
@@ -20,7 +19,7 @@ import com.amazon.dataprepper.model.sink.Sink;
 import java.util.Collection;
 import java.util.Iterator;
 
-@DataPrepperPlugin(name = "stdout", type = PluginType.SINK)
+@DataPrepperPlugin(name = "stdout", pluginType = Sink.class)
 public class StdOutSink implements Sink<Record<String>> {
 
     /**

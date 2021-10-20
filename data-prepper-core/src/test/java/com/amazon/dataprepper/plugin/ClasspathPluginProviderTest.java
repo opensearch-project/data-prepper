@@ -4,7 +4,7 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.plugins.TestSink;
-import com.amazon.dataprepper.plugins.TestSinkUpdated;
+import com.amazon.dataprepper.plugins.TestSinkDeprecatedApproach;
 import com.amazon.dataprepper.plugins.TestSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -85,7 +85,7 @@ class ClasspathPluginProviderTest {
         void setUp() {
             given(reflections.getTypesAnnotatedWith(DataPrepperPlugin.class))
                     .willReturn(new HashSet<>(Arrays.asList(
-                            TestSink.class, TestSource.class, TestSinkUpdated.class)));
+                            TestSink.class, TestSource.class, TestSinkDeprecatedApproach.class)));
         }
 
         @Test
@@ -104,18 +104,18 @@ class ClasspathPluginProviderTest {
 
         @Test
         void findPlugin_should_return_plugin_if_found_for_name_and_type() {
-            final Optional<Class<? extends Sink>> optionalPlugin = createObjectUnderTest().findPluginClass(Sink.class, "test_sink");
+            final Optional<Class<? extends Sink>> optionalPlugin = createObjectUnderTest().findPluginClass(Sink.class, "test_sink_deprecated_type");
             assertThat(optionalPlugin, notNullValue());
             assertThat(optionalPlugin.isPresent(), equalTo(true));
-            assertThat(optionalPlugin.get(), equalTo(TestSink.class));
+            assertThat(optionalPlugin.get(), equalTo(TestSinkDeprecatedApproach.class));
         }
 
         @Test
         void findPlugin_should_return_plugin_if_found_for_name_and_type_using_pluginType() {
-            final Optional<Class<? extends Sink>> optionalPlugin = createObjectUnderTest().findPluginClass(Sink.class, "test_sink_updated");
+            final Optional<Class<? extends Sink>> optionalPlugin = createObjectUnderTest().findPluginClass(Sink.class, "test_sink");
             assertThat(optionalPlugin, notNullValue());
             assertThat(optionalPlugin.isPresent(), equalTo(true));
-            assertThat(optionalPlugin.get(), equalTo(TestSinkUpdated.class));
+            assertThat(optionalPlugin.get(), equalTo(TestSink.class));
         }
     }
 }

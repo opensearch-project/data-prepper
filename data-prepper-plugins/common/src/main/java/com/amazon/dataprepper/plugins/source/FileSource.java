@@ -11,7 +11,6 @@
 
 package com.amazon.dataprepper.plugins.source;
 
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
@@ -30,7 +29,7 @@ import java.util.concurrent.TimeoutException;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
 
-@DataPrepperPlugin(name = "file", type = PluginType.SOURCE)
+@DataPrepperPlugin(name = "file", pluginType = Source.class)
 public class FileSource implements Source<Record<String>> {
     private static final Logger LOG = LoggerFactory.getLogger(FileSource.class);
     private static final String ATTRIBUTE_PATH = "path";

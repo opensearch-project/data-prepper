@@ -11,7 +11,6 @@
 
 package com.amazon.dataprepper.plugins;
 
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.record.Record;
@@ -23,7 +22,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@DataPrepperPlugin(name = "test_source", type = PluginType.SOURCE)
+@DataPrepperPlugin(name = "test_source", pluginType = Source.class)
 public class TestSource implements Source<Record<String>> {
     public static final List<Record<String>> TEST_DATA = Stream.of("TEST")
             .map(Record::new).collect(Collectors.toList());

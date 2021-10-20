@@ -24,7 +24,7 @@ repositories {
 }
 
 application {
-    mainClass = 'com.amazon.dataprepper.research.zipkin.ZipkinElasticToOtel'
+    mainClass = 'com.amazon.dataprepper.research.zipkin.ZipkinOpenSearchToOtel'
 }
 
 run {

@@ -16,8 +16,8 @@ import com.amazon.dataprepper.model.record.Record;
 import java.util.Collection;
 
 /**
- * Data Prepper sink interface. Sink may publish records to a disk or a file or
- * to elasticsearch or other pipelines or external systems
+ * Data Prepper sink interface. Sink may publish records to a disk, a file,
+ * to OpenSearch, other pipelines, or other external systems.
  */
 public interface Sink<T extends Record<?>> {
 
