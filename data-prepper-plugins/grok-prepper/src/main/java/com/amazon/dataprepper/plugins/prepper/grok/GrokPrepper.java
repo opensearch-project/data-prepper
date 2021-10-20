@@ -140,7 +140,7 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
     @Override
     public boolean isReadyForShutdown() {
         try {
-            if (executorService.awaitTermination(grokPrepperConfig.getTimeoutMillis(), TimeUnit.MILLISECONDS)) {
+            if (executorService.awaitTermination(300, TimeUnit.MILLISECONDS)) {
                 LOG.info("Successfully waited for running task to terminate");
             }
         } catch (InterruptedException e) {
