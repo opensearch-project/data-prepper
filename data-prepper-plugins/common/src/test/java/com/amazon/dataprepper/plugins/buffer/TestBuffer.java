@@ -11,12 +11,11 @@
 
 package com.amazon.dataprepper.plugins.buffer;
 
-import com.amazon.dataprepper.model.PluginType;
+import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.model.CheckpointState;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -27,7 +26,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.TimeoutException;
 
-@DataPrepperPlugin(name = "test_buffer", type = PluginType.BUFFER)
+@DataPrepperPlugin(name = "test_buffer", pluginType = Buffer.class)
 public class TestBuffer implements Buffer<Record<String>> {
     private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
     private static final String ATTRIBUTE_IMITATE_TIMEOUT = "imitate_timeout";

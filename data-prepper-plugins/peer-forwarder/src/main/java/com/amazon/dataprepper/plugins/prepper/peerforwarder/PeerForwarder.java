@@ -11,10 +11,10 @@
 
 package com.amazon.dataprepper.plugins.prepper.peerforwarder;
 
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
+import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery.StaticPeerListProvider;
 import io.micrometer.core.instrument.Counter;
@@ -40,7 +40,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@DataPrepperPlugin(name = "peer_forwarder", type = PluginType.PREPPER)
+@DataPrepperPlugin(name = "peer_forwarder", pluginType = Prepper.class)
 public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<ExportTraceServiceRequest>> {
     public static final String REQUESTS = "requests";
     public static final String LATENCY = "latency";

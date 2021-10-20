@@ -12,17 +12,14 @@
 package com.amazon.dataprepper.plugins.prepper.grok;
 
 
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
-
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
-
+import com.amazon.dataprepper.model.prepper.Prepper;
+import com.amazon.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.krakens.grok.api.Grok;
 import io.krakens.grok.api.GrokCompiler;
 import io.krakens.grok.api.Match;
@@ -53,7 +50,7 @@ import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 
-@DataPrepperPlugin(name = "grok", type = PluginType.PREPPER)
+@DataPrepperPlugin(name = "grok", pluginType = Prepper.class)
 public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(GrokPrepper.class);

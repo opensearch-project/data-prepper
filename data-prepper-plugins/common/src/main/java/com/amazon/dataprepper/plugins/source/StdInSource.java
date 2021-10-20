@@ -11,7 +11,6 @@
 
 package com.amazon.dataprepper.plugins.source;
 
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
@@ -30,7 +29,7 @@ import static java.lang.String.format;
  * A simple source which reads data from console each line at a time. It exits when it reads case insensitive "exit"
  * from console or if Pipeline notifies to stop.
  */
-@DataPrepperPlugin(name = "stdin", type = PluginType.SOURCE)
+@DataPrepperPlugin(name = "stdin", pluginType = Source.class)
 public class StdInSource implements Source<Record<String>> {
     private static final Logger LOG = LoggerFactory.getLogger(StdInSource.class);
     private static final String ATTRIBUTE_TIMEOUT = "write_timeout";

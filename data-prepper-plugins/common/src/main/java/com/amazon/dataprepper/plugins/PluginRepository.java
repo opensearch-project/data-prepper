@@ -21,6 +21,7 @@ import org.reflections.Reflections;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -51,7 +52,7 @@ public final class  PluginRepository {
             final DataPrepperPlugin dataPrepperPluginAnnotation = annotatedClass
                     .getAnnotation(DataPrepperPlugin.class);
             final String pluginName = dataPrepperPluginAnnotation.name();
-            final PluginType pluginType = dataPrepperPluginAnnotation.type();
+            final PluginType pluginType = extractPluginType(dataPrepperPluginAnnotation);
             switch (pluginType) {
                 case SOURCE:
                     SOURCES.put(pluginName, (Class<Source>) annotatedClass);
@@ -67,6 +68,26 @@ public final class  PluginRepository {
                     break;
             }
         }
+    }
+
+    private static PluginType extractPluginType(final DataPrepperPlugin dataPrepperPluginAnnotation) {
+        PluginType pluginType = dataPrepperPluginAnnotation.type();
+        if(pluginType == PluginType.NONE) {
+            final Class<?> pluginClassType = dataPrepperPluginAnnotation.pluginType();
+            if(Objects.equals(pluginClassType, Source.class)) {
+                pluginType = PluginType.SOURCE;
+            }
+            else if(Objects.equals(pluginClassType, Buffer.class)) {
+                pluginType = PluginType.BUFFER;
+            }
+            else if(Objects.equals(pluginClassType, Prepper.class)) {
+                pluginType = PluginType.PREPPER;
+            }
+            else if(Objects.equals(pluginClassType, Sink.class)) {
+                pluginType = PluginType.SINK;
+            }
+        }
+        return pluginType;
     }
 
     public static Class<Source> getSourceClass(final String name) {

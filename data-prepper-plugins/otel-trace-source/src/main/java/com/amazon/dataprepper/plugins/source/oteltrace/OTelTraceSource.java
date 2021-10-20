@@ -12,16 +12,15 @@
 package com.amazon.dataprepper.plugins.source.oteltrace;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
-import com.amazon.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.amazon.dataprepper.plugins.health.HealthGrpcService;
+import com.amazon.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
@@ -36,7 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
-@DataPrepperPlugin(name = "otel_trace_source", type = PluginType.SOURCE)
+@DataPrepperPlugin(name = "otel_trace_source", pluginType = Source.class)
 public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceSource.class);
     private final OTelTraceSourceConfig oTelTraceSourceConfig;

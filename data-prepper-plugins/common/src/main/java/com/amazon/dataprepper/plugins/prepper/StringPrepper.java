@@ -11,7 +11,6 @@
 
 package com.amazon.dataprepper.plugins.prepper;
 
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.Prepper;
@@ -24,7 +23,7 @@ import java.util.Collection;
  * An simple String implementation of {@link Prepper} which generates new Records with upper case or lowercase content. The current
  * simpler implementation does not handle errors (if any).
  */
-@DataPrepperPlugin(name = "string_converter", type = PluginType.PREPPER)
+@DataPrepperPlugin(name = "string_converter", pluginType = Prepper.class)
 public class StringPrepper implements Prepper<Record<String>, Record<String>> {
 
     public static final String UPPER_CASE = "upper_case";

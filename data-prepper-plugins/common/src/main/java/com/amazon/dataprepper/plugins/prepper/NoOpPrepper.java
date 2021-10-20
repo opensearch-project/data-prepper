@@ -11,7 +11,6 @@
 
 package com.amazon.dataprepper.plugins.prepper;
 
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.Prepper;
@@ -19,7 +18,7 @@ import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
-@DataPrepperPlugin(name = "no-op", type = PluginType.PREPPER)
+@DataPrepperPlugin(name = "no-op", pluginType = Prepper.class)
 public class NoOpPrepper<InputT extends Record<?>> implements Prepper<InputT, InputT> {
 
     /**
