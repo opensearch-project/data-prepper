@@ -11,7 +11,6 @@
 
 package com.amazon.dataprepper.plugins.sink;
 
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
@@ -26,7 +25,7 @@ import java.util.Collection;
 
 import static java.lang.String.format;
 
-@DataPrepperPlugin(name = "file", type = PluginType.SINK)
+@DataPrepperPlugin(name = "file", pluginType = Sink.class)
 public class FileSink implements Sink<Record<String>> {
     private static final String SAMPLE_FILE_PATH = "src/resources/file-test-sample-output.txt";
 

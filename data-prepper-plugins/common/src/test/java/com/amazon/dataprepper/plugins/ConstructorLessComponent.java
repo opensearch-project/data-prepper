@@ -11,7 +11,6 @@
 
 package com.amazon.dataprepper.plugins;
 
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.record.Record;
@@ -19,7 +18,7 @@ import com.amazon.dataprepper.model.source.Source;
 
 import java.util.concurrent.TimeoutException;
 
-@DataPrepperPlugin(name = "junit-test", type = PluginType.SOURCE)
+@DataPrepperPlugin(name = "junit-test", pluginType = Source.class)
 public class ConstructorLessComponent implements Source<Record<String>> {
 
     @Override

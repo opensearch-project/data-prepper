@@ -11,11 +11,11 @@
 
 package com.amazon.dataprepper.plugins.sink.opensearch;
 
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.AbstractSink;
+import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
 import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexType;
@@ -27,7 +27,11 @@ import org.opensearch.action.index.IndexRequest;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.common.unit.ByteSizeUnit;
-import org.opensearch.common.xcontent.*;
+import org.opensearch.common.xcontent.LoggingDeprecationHandler;
+import org.opensearch.common.xcontent.NamedXContentRegistry;
+import org.opensearch.common.xcontent.XContentFactory;
+import org.opensearch.common.xcontent.XContentParser;
+import org.opensearch.common.xcontent.XContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +45,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-@DataPrepperPlugin(name = "opensearch", type = PluginType.SINK)
+@DataPrepperPlugin(name = "opensearch", pluginType = Sink.class)
 public class OpenSearchSink extends AbstractSink<Record<String>> {
   public static final String BULKREQUEST_LATENCY = "bulkRequestLatency";
   public static final String BULKREQUEST_ERRORS = "bulkRequestErrors";

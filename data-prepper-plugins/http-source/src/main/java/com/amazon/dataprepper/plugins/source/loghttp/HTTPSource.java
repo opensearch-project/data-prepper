@@ -12,7 +12,6 @@
 package com.amazon.dataprepper.plugins.source.loghttp;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
@@ -33,7 +32,7 @@ import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
-@DataPrepperPlugin(name = "http", type = PluginType.SOURCE)
+@DataPrepperPlugin(name = "http", pluginType = Source.class)
 public class HTTPSource implements Source<Record<String>> {
     private static final Logger LOG = LoggerFactory.getLogger(HTTPSource.class);
 
