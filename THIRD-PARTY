@@ -1,384 +1,678 @@
-**  Log4j-core; version 2.14.0 -- https://logging.apache.org/log4j/2.x/
-** Amazon ION Java; version 1.0.2 -- https://github.com/amzn/ion-java
-** android annotations; version 4.1.1.4 --
-https://github.com/androidannotations/androidannotations
-** Apache Lucene; version 8.7.0 -- http://lucene.apache.org/
-** armeria-grpc; version 1.6.0 -- https://github.com/line/armeria
-** aws-java-sdk-core; version 1.11.1001 -- https://aws.amazon.com/sdk-for-java/
-** aws-request-signing-apache-interceptor; version b3772780da --
-https://github.com/awslabs/aws-request-signing-apache-interceptor
-** bval; version 2.0.4 -- https://github.com/apache/bval
-** byte-buddy; version 1.10.9 -- http://bytebuddy.net
-** commons-codec; version 1.15 -- https://github.com/apache/commons-codec
-** commons-logging; version 1.2 --
-https://github.com/apache/commons-logging/tree/LOGGING_1_1_3
-** Elasticsearch; version 7.10.2 -- https://github.com/elastic/elasticsearch
-** Error Prone; version 2.3.4 -- https://github.com/google/error-prone
-** Findbugs Jsr305; version 3.0.2 --
-https://search.maven.org/artifact/com.google.code.findbugs/jsr305/3.0.2/jar
-** Google Gson; version 2.8.6 -- https://github.com/google/gson
-** gRPC; version 1.36.1 -- https://github.com/grpc/grpc
-** guava; version 30.1.1-jre -- https://github.com/google/guava
-** Hppc; version 0.8.1 --
-https://github.com/carrotsearch/hppc/blob/master/LICENSE.txt
-** httpcomponents-core; version 4.4.12 --
-https://github.com/apache/httpcomponents-core/blob/rel/v4.4.1
-** J2ObjC; version 1.3 -- https://developers.google.com/j2objc/
-** Jackson; version 2.12.3 -- http://github.com/FasterXML/jackson
-** JavaAssist; version 3.26.0-GA --
-https://github.com/jboss-javassist/javassist
-** JavaxValidationApi; version 2.0.1.Final -- http://beanvalidation.org
-** jetbrains-annotations; version 13.0 --
-https://github.com/JetBrains/java-annotations/blob/master/LICENSE.txt
-** jffi; version 1.2.23 -- https://github.com/jnr/jffi/blob/jffi-1.2.23
-** jna; version 5.5.0 -- https://github.com/java-native-access/jna
-** jnr a64asm; version 1.0.0 --
-https://github.com/jnr/jnr-a64asm/tree/jnr-a64asm-1.0.0
-** jnr constants; version 0.9.15 --
-https://github.com/jnr/jnr-constants/tree/jnr-constants-0.9.15
-** joda-time; version 2.10.4 -- http://www.joda.org/joda-time/
-** Kotlin; version 1.4.32 -- https://github.com/JetBrains/kotlin
-** log4j-slf4j-impl; version 2.14.0 -- https://logging.apache.org/log4j/2.x/
-** lz4-java; version 1.3.0 -- https://github.com/lz4/lz4-java/tree/1.3.0
-** MapDB; version 3.0.8 -- http://www.mapdb.org/
-** micrometer; version 1.6.6 --
-https://github.com/micrometer-metrics/micrometer
-** micrometer-registry-prometheus; version 1.6.5 --
-https://github.com/micrometer-metrics/micrometer
 ** MustacheJava; version 0.9.6 -- https://github.com/spullara/mustache.java
-** netty 4.1.51; version 4.1.63.Final --
-https://github.com/netty/netty/tree/netty-4.1.50.Final
-** OpenSearch Java High Level Rest Client; version 1.0.0.0-beta --
-https://github.com/opensearch-project/OpenSearch
-** OpenTelemetry 0.10.0; version 1.0.1-alpha --
-https://github.com/open-telemetry/opentelemetry-java
+** t-digest; version 3.2 -- https://github.com/tdunning/t-digest/tree/t-digest-3.2
+** Findbugs Jsr305; version 3.0.2 -- https://search.maven.org/artifact/com.google.code.findbugs/jsr305/3.0.2/jar
+** byte-buddy; version 1.10.9 -- http://bytebuddy.net
+** lz4-java; version 1.3.0 -- https://github.com/lz4/lz4-java/tree/1.3.0
+** joda-time; version 2.10.4 -- http://www.joda.org/joda-time/
+** Google Gson; version 2.8.6 -- https://github.com/google/gson
+** jnr constants; version 0.9.15 -- https://github.com/jnr/jnr-constants/tree/jnr-constants-0.9.15
+** jffi; version 1.2.23 -- https://github.com/jnr/jffi/blob/jffi-1.2.23
+** jnr a64asm; version 1.0.0 -- https://github.com/jnr/jnr-a64asm/tree/jnr-a64asm-1.0.0
+** aws-request-signing-apache-interceptor; version b3772780da -- https://github.com/awslabs/aws-request-signing-apache-interceptor
+** commons-codec; version 1.15 -- https://github.com/apache/commons-codec
+** MapDB; version 3.0.8 -- http://www.mapdb.org/
+** bval; version 2.0.4 -- https://github.com/apache/bval
+** JavaxValidationApi; version 2.0.1.Final -- http://beanvalidation.org
+** android annotations; version 4.1.1.4 -- https://github.com/androidannotations/androidannotations 
+** Hppc; version 0.8.1 -- https://github.com/carrotsearch/hppc/blob/master/LICENSE.txt
 ** perfmark-api; version 0.23.0 -- https://github.com/perfmark/perfmark
-** SnakeYAML; version 1.28 -- http://www.snakeyaml.org
-** t-digest; version 3.2 --
-https://github.com/tdunning/t-digest/tree/t-digest-3.2
+** JavaAssist; version 3.26.0-GA -- https://github.com/jboss-javassist/javassist
+** commons-logging; version 1.2 -- https://commons.apache.org/proper/commons-logging/
+** jetbrains-annotations; version 13.0 -- https://github.com/JetBrains/java-annotations/blob/master/LICENSE.txt
+** J2ObjC; version 1.3 -- https://developers.google.com/j2objc/
+** Amazon ION Java; version 1.0.2 -- https://github.com/amzn/ion-java
+** jna; version 5.5.0 -- https://github.com/java-native-access/jna/tree/5.5.0
+** Apache Lucene; version 8.7.0 -- http://lucene.apache.org/
+** Elasticsearch; version 7.10.2 -- https://github.com/elastic/elasticsearch
+** OpenTelemetry 0.10.0; version 1.0.1-alpha -- https://github.com/open-telemetry/opentelemetry-java
+** micrometer-registry-prometheus; version 1.6.5 -- https://github.com/micrometer-metrics/micrometer
+** OpenSearch Java High Level Rest Client; version 1.0.0.0-beta -- https://github.com/opensearch-project/OpenSearch
+** netty-reactive-streams; version 2.0.5 -- https://github.com/playframework/netty-reactive-streams
+** snakeyaml; version 1.29 -- https://bitbucket.org/asomov/snakeyaml/src/snakeyaml-1.29/
+** Jackson; version 2.12.4 -- http://github.com/FasterXML/jackson
+** Error Prone; version 2.7.1 -- https://github.com/google/error-prone
+** gRPC; version 1.38.1 -- https://github.com/grpc/grpc
+** aws-java-sdk-core; version 1.12.43 -- https://aws.amazon.com/sdk-for-java/
+** guava; version 31.0.1-jre -- https://github.com/google/guava
+** log4j-slf4j-impl; version 2.14.1 -- https://logging.apache.org/log4j/2.x/
+**  Log4j-core; version 2.14.1 -- https://logging.apache.org/log4j/2.x/
+** armeria-grpc; version 1.9.2 -- https://github.com/line/armeria
+** Kotlin; version 1.5.30 -- https://github.com/JetBrains/kotlin
+** micrometer; version 1.7.2 -- https://github.com/micrometer-metrics/micrometer 
+** aws-java-sdk; version 2.17.15 -- https://github.com/aws/aws-sdk-java-v2
+** netty 4.1.51; version 4.1.61.Final -- https://github.com/netty/netty/tree/netty-4.1.50.Final
+** commons-io; version 2.11.0 -- http://commons.apache.org/proper/commons-io/
+** httpcomponents-core; version 4.5.13 -- https://github.com/apache/httpcomponents-core/blob/rel/v4.4.1
+** apache/commons-lang; version 3.x -- https://github.com/apache/commons-lang
+** aws-eventstream; version 1.0.1 -- https://github.com/awslabs/aws-eventstream-java
 
 Apache License
-
 Version 2.0, January 2004
+http://www.apache.org/licenses/
 
-http://www.apache.org/licenses/ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND
-DISTRIBUTION
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 
-   1. Definitions.
+1. Definitions.
 
-      "License" shall mean the terms and conditions for use, reproduction, and
-      distribution as defined by Sections 1 through 9 of this document.
+"License" shall mean the terms and conditions for use, reproduction, and
+distribution as defined by Sections 1 through 9 of this document.
 
-      "Licensor" shall mean the copyright owner or entity authorized by the
-      copyright owner that is granting the License.
+"Licensor" shall mean the copyright owner or entity authorized by the copyright
+owner that is granting the License.
 
-      "Legal Entity" shall mean the union of the acting entity and all other
-      entities that control, are controlled by, or are under common control
-      with that entity. For the purposes of this definition, "control" means
-      (i) the power, direct or indirect, to cause the direction or management
-      of such entity, whether by contract or otherwise, or (ii) ownership of
-      fifty percent (50%) or more of the outstanding shares, or (iii)
-      beneficial ownership of such entity.
+"Legal Entity" shall mean the union of the acting entity and all other entities
+that control, are controlled by, or are under common control with that entity.
+For the purposes of this definition, "control" means (i) the power, direct or
+indirect, to cause the direction or management of such entity, whether by
+contract or otherwise, or (ii) ownership of fifty percent (50%) or more of the
+outstanding shares, or (iii) beneficial ownership of such entity.
 
-      "You" (or "Your") shall mean an individual or Legal Entity exercising
-      permissions granted by this License.
+"You" (or "Your") shall mean an individual or Legal Entity exercising
+permissions granted by this License.
 
-      "Source" form shall mean the preferred form for making modifications,
-      including but not limited to software source code, documentation source,
-      and configuration files.
+"Source" form shall mean the preferred form for making modifications, including
+but not limited to software source code, documentation source, and configuration
+files.
 
-      "Object" form shall mean any form resulting from mechanical
-      transformation or translation of a Source form, including but not limited
-      to compiled object code, generated documentation, and conversions to
-      other media types.
+"Object" form shall mean any form resulting from mechanical transformation or
+translation of a Source form, including but not limited to compiled object code,
+generated documentation, and conversions to other media types.
 
-      "Work" shall mean the work of authorship, whether in Source or Object
-      form, made available under the License, as indicated by a copyright
-      notice that is included in or attached to the work (an example is
-      provided in the Appendix below).
+"Work" shall mean the work of authorship, whether in Source or Object form, made
+available under the License, as indicated by a copyright notice that is included
+in or attached to the work (an example is provided in the Appendix below).
 
-      "Derivative Works" shall mean any work, whether in Source or Object form,
-      that is based on (or derived from) the Work and for which the editorial
-      revisions, annotations, elaborations, or other modifications represent,
-      as a whole, an original work of authorship. For the purposes of this
-      License, Derivative Works shall not include works that remain separable
-      from, or merely link (or bind by name) to the interfaces of, the Work and
-      Derivative Works thereof.
+"Derivative Works" shall mean any work, whether in Source or Object form, that
+is based on (or derived from) the Work and for which the editorial revisions,
+annotations, elaborations, or other modifications represent, as a whole, an
+original work of authorship. For the purposes of this License, Derivative Works
+shall not include works that remain separable from, or merely link (or bind by
+name) to the interfaces of, the Work and Derivative Works thereof.
 
-      "Contribution" shall mean any work of authorship, including the original
-      version of the Work and any modifications or additions to that Work or
-      Derivative Works thereof, that is intentionally submitted to Licensor for
-      inclusion in the Work by the copyright owner or by an individual or Legal
-      Entity authorized to submit on behalf of the copyright owner. For the
-      purposes of this definition, "submitted" means any form of electronic,
-      verbal, or written communication sent to the Licensor or its
-      representatives, including but not limited to communication on electronic
-      mailing lists, source code control systems, and issue tracking systems
-      that are managed by, or on behalf of, the Licensor for the purpose of
-      discussing and improving the Work, but excluding communication that is
-      conspicuously marked or otherwise designated in writing by the copyright
-      owner as "Not a Contribution."
+"Contribution" shall mean any work of authorship, including the original version
+of the Work and any modifications or additions to that Work or Derivative Works
+thereof, that is intentionally submitted to Licensor for inclusion in the Work
+by the copyright owner or by an individual or Legal Entity authorized to submit
+on behalf of the copyright owner. For the purposes of this definition,
+"submitted" means any form of electronic, verbal, or written communication sent
+to the Licensor or its representatives, including but not limited to
+communication on electronic mailing lists, source code control systems, and
+issue tracking systems that are managed by, or on behalf of, the Licensor for
+the purpose of discussing and improving the Work, but excluding communication
+that is conspicuously marked or otherwise designated in writing by the copyright
+owner as "Not a Contribution."
 
-      "Contributor" shall mean Licensor and any individual or Legal Entity on
-      behalf of whom a Contribution has been received by Licensor and
-      subsequently incorporated within the Work.
+"Contributor" shall mean Licensor and any individual or Legal Entity on behalf
+of whom a Contribution has been received by Licensor and subsequently
+incorporated within the Work.
 
-   2. Grant of Copyright License. Subject to the terms and conditions of this
-   License, each Contributor hereby grants to You a perpetual, worldwide,
-   non-exclusive, no-charge, royalty-free, irrevocable copyright license to
-   reproduce, prepare Derivative Works of, publicly display, publicly perform,
-   sublicense, and distribute the Work and such Derivative Works in Source or
-   Object form.
+2. Grant of Copyright License. Subject to the terms and conditions of this
+License, each Contributor hereby grants to You a perpetual, worldwide,
+non-exclusive, no-charge, royalty-free, irrevocable copyright license to
+reproduce, prepare Derivative Works of, publicly display, publicly perform,
+sublicense, and distribute the Work and such Derivative Works in Source or
+Object form.
 
-   3. Grant of Patent License. Subject to the terms and conditions of this
-   License, each Contributor hereby grants to You a perpetual, worldwide,
-   non-exclusive, no-charge, royalty-free, irrevocable (except as stated in
-   this section) patent license to make, have made, use, offer to sell, sell,
-   import, and otherwise transfer the Work, where such license applies only to
-   those patent claims licensable by such Contributor that are necessarily
-   infringed by their Contribution(s) alone or by combination of their
-   Contribution(s) with the Work to which such Contribution(s) was submitted.
-   If You institute patent litigation against any entity (including a
-   cross-claim or counterclaim in a lawsuit) alleging that the Work or a
-   Contribution incorporated within the Work constitutes direct or contributory
-   patent infringement, then any patent licenses granted to You under this
-   License for that Work shall terminate as of the date such litigation is
-   filed.
+3. Grant of Patent License. Subject to the terms and conditions of this License,
+each Contributor hereby grants to You a perpetual, worldwide, non-exclusive,
+no-charge, royalty-free, irrevocable (except as stated in this section) patent
+license to make, have made, use, offer to sell, sell, import, and otherwise
+transfer the Work, where such license applies only to those patent claims
+licensable by such Contributor that are necessarily infringed by their
+Contribution(s) alone or by combination of their Contribution(s) with the Work
+to which such Contribution(s) was submitted. If You institute patent litigation
+against any entity (including a cross-claim or counterclaim in a lawsuit)
+alleging that the Work or a Contribution incorporated within the Work
+constitutes direct or contributory patent infringement, then any patent licenses
+granted to You under this License for that Work shall terminate as of the date
+such litigation is filed.
 
-   4. Redistribution. You may reproduce and distribute copies of the Work or
-   Derivative Works thereof in any medium, with or without modifications, and
-   in Source or Object form, provided that You meet the following conditions:
+4. Redistribution. You may reproduce and distribute copies of the Work or
+Derivative Works thereof in any medium, with or without modifications, and in
+Source or Object form, provided that You meet the following conditions:
 
-      (a) You must give any other recipients of the Work or Derivative Works a
-      copy of this License; and
+     (a) You must give any other recipients of the Work or Derivative Works a
+copy of this License; and
 
-      (b) You must cause any modified files to carry prominent notices stating
-      that You changed the files; and
+     (b) You must cause any modified files to carry prominent notices stating
+that You changed the files; and
 
-      (c) You must retain, in the Source form of any Derivative Works that You
-      distribute, all copyright, patent, trademark, and attribution notices
-      from the Source form of the Work, excluding those notices that do not
-      pertain to any part of the Derivative Works; and
+     (c) You must retain, in the Source form of any Derivative Works that You
+distribute, all copyright, patent, trademark, and attribution notices from the
+Source form of the Work, excluding those notices that do not pertain to any part
+of the Derivative Works; and
 
-      (d) If the Work includes a "NOTICE" text file as part of its
-      distribution, then any Derivative Works that You distribute must include
-      a readable copy of the attribution notices contained within such NOTICE
-      file, excluding those notices that do not pertain to any part of the
-      Derivative Works, in at least one of the following places: within a
-      NOTICE text file distributed as part of the Derivative Works; within the
-      Source form or documentation, if provided along with the Derivative
-      Works; or, within a display generated by the Derivative Works, if and
-      wherever such third-party notices normally appear. The contents of the
-      NOTICE file are for informational purposes only and do not modify the
-      License. You may add Your own attribution notices within Derivative Works
-      that You distribute, alongside or as an addendum to the NOTICE text from
-      the Work, provided that such additional attribution notices cannot be
-      construed as modifying the License.
+     (d) If the Work includes a "NOTICE" text file as part of its distribution,
+then any Derivative Works that You distribute must include a readable copy of
+the attribution notices contained within such NOTICE file, excluding those
+notices that do not pertain to any part of the Derivative Works, in at least one
+of the following places: within a NOTICE text file distributed as part of the
+Derivative Works; within the Source form or documentation, if provided along
+with the Derivative Works; or, within a display generated by the Derivative
+Works, if and wherever such third-party notices normally appear. The contents of
+the NOTICE file are for informational purposes only and do not modify the
+License. You may add Your own attribution notices within Derivative Works that
+You distribute, alongside or as an addendum to the NOTICE text from the Work,
+provided that such additional attribution notices cannot be construed as
+modifying the License.
 
-      You may add Your own copyright statement to Your modifications and may
-      provide additional or different license terms and conditions for use,
-      reproduction, or distribution of Your modifications, or for any such
-      Derivative Works as a whole, provided Your use, reproduction, and
-      distribution of the Work otherwise complies with the conditions stated in
-      this License.
+     You may add Your own copyright statement to Your modifications and may
+provide additional or different license terms and conditions for use,
+reproduction, or distribution of Your modifications, or for any such Derivative
+Works as a whole, provided Your use, reproduction, and distribution of the Work
+otherwise complies with the conditions stated in this License.
 
-   5. Submission of Contributions. Unless You explicitly state otherwise, any
-   Contribution intentionally submitted for inclusion in the Work by You to the
-   Licensor shall be under the terms and conditions of this License, without
-   any additional terms or conditions. Notwithstanding the above, nothing
-   herein shall supersede or modify the terms of any separate license agreement
-   you may have executed with Licensor regarding such Contributions.
+5. Submission of Contributions. Unless You explicitly state otherwise, any
+Contribution intentionally submitted for inclusion in the Work by You to the
+Licensor shall be under the terms and conditions of this License, without any
+additional terms or conditions. Notwithstanding the above, nothing herein shall
+supersede or modify the terms of any separate license agreement you may have
+executed with Licensor regarding such Contributions.
 
-   6. Trademarks. This License does not grant permission to use the trade
-   names, trademarks, service marks, or product names of the Licensor, except
-   as required for reasonable and customary use in describing the origin of the
-   Work and reproducing the content of the NOTICE file.
+6. Trademarks. This License does not grant permission to use the trade names,
+trademarks, service marks, or product names of the Licensor, except as required
+for reasonable and customary use in describing the origin of the Work and
+reproducing the content of the NOTICE file.
 
-   7. Disclaimer of Warranty. Unless required by applicable law or agreed to in
-   writing, Licensor provides the Work (and each Contributor provides its
-   Contributions) on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-   KIND, either express or implied, including, without limitation, any
-   warranties or conditions of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or
-   FITNESS FOR A PARTICULAR PURPOSE. You are solely responsible for determining
-   the appropriateness of using or redistributing the Work and assume any risks
-   associated with Your exercise of permissions under this License.
+7. Disclaimer of Warranty. Unless required by applicable law or agreed to in
+writing, Licensor provides the Work (and each Contributor provides its
+Contributions) on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied, including, without limitation, any warranties
+or conditions of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+PARTICULAR PURPOSE. You are solely responsible for determining the
+appropriateness of using or redistributing the Work and assume any risks
+associated with Your exercise of permissions under this License.
 
-   8. Limitation of Liability. In no event and under no legal theory, whether
-   in tort (including negligence), contract, or otherwise, unless required by
-   applicable law (such as deliberate and grossly negligent acts) or agreed to
-   in writing, shall any Contributor be liable to You for damages, including
-   any direct, indirect, special, incidental, or consequential damages of any
-   character arising as a result of this License or out of the use or inability
-   to use the Work (including but not limited to damages for loss of goodwill,
-   work stoppage, computer failure or malfunction, or any and all other
-   commercial damages or losses), even if such Contributor has been advised of
-   the possibility of such damages.
+8. Limitation of Liability. In no event and under no legal theory, whether in
+tort (including negligence), contract, or otherwise, unless required by
+applicable law (such as deliberate and grossly negligent acts) or agreed to in
+writing, shall any Contributor be liable to You for damages, including any
+direct, indirect, special, incidental, or consequential damages of any character
+arising as a result of this License or out of the use or inability to use the
+Work (including but not limited to damages for loss of goodwill, work stoppage,
+computer failure or malfunction, or any and all other commercial damages or
+losses), even if such Contributor has been advised of the possibility of such
+damages.
 
-   9. Accepting Warranty or Additional Liability. While redistributing the Work
-   or Derivative Works thereof, You may choose to offer, and charge a fee for,
-   acceptance of support, warranty, indemnity, or other liability obligations
-   and/or rights consistent with this License. However, in accepting such
-   obligations, You may act only on Your own behalf and on Your sole
-   responsibility, not on behalf of any other Contributor, and only if You
-   agree to indemnify, defend, and hold each Contributor harmless for any
-   liability incurred by, or claims asserted against, such Contributor by
-   reason of your accepting any such warranty or additional liability. END OF
-   TERMS AND CONDITIONS
+9. Accepting Warranty or Additional Liability. While redistributing the Work or
+Derivative Works thereof, You may choose to offer, and charge a fee for,
+acceptance of support, warranty, indemnity, or other liability obligations
+and/or rights consistent with this License. However, in accepting such
+obligations, You may act only on Your own behalf and on Your sole
+responsibility, not on behalf of any other Contributor, and only if You agree to
+indemnify, defend, and hold each Contributor harmless for any liability incurred
+by, or claims asserted against, such Contributor by reason of your accepting any
+such warranty or additional liability.
+
+END OF TERMS AND CONDITIONS
 
 APPENDIX: How to apply the Apache License to your work.
 
 To apply the Apache License to your work, attach the following boilerplate
 notice, with the fields enclosed by brackets "[]" replaced with your own
-identifying information. (Don't include the brackets!) The text should be
+identifying information. (Don't include the brackets!)  The text should be
 enclosed in the appropriate comment syntax for the file format. We also
 recommend that a file or class name and description of purpose be included on
-the same "printed page" as the copyright notice for easier identification
-within third-party archives.
+the same "printed page" as the copyright notice for easier identification within
+third-party archives.
 
 Copyright [yyyy] [name of copyright owner]
 
 Licensed under the Apache License, Version 2.0 (the "License");
-
 you may not use this file except in compliance with the License.
-
 You may obtain a copy of the License at
 
 http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
-
 distributed under the License is distributed on an "AS IS" BASIS,
-
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-
 See the License for the specific language governing permissions and
-
 limitations under the License.
 
-* For  Log4j-core see also this required NOTICE:
-    Apache Log4j Core
-    Copyright 1999-2012 Apache Software Foundation
-
-    This product includes software developed at
-    The Apache Software Foundation (http://www.apache.org/).
-
-    ResolverUtil.java
-    Copyright 2005-2006 Tim Fennell
-* For Amazon ION Java see also this required NOTICE:
-    Amazon Ion Java
-    Copyright 2007-2019 Amazon.com, Inc. or its affiliates. All Rights
-    Reserved.
-* For android annotations see also this required NOTICE:
-    Copyright (C) 2010-2016 eBusiness Information, Excilys Group
-        Copyright (C) 2016-2020 the AndroidAnnotations project
-* For Apache Lucene see also this required NOTICE:
-    Apache Lucene
-    Copyright 2006 The Apache Software Foundation
-
-    This product includes software developed by
-    The Apache Software Foundation (http://www.apache.org/).
-
-    The snowball stemmers in
-      contrib/snowball/src/java/net/sf/snowball
-    were developed by Martin Porter and Richard Boulton.
-    The full snowball package is available from
-      http://snowball.tartarus.org/
-
-    The Arabic stemmer (contrib/analyzers) comes with a default
-    stopword list that is BSD-licensed created by Jacques Savoy. The file
-    resides in
-    contrib/analyzers/common/src/resources/org/apache/lucene/analysis/ar/stopwords.txt.
-    See http://members.unine.ch/jacques.savoy/clef/index.html.
-
-    The Persian analyzer (contrib/analyzers) comes with a default
-    stopword list that is BSD-licensed created by Jacques Savoy. The file
-    resides in
-    contrib/analyzers/common/src/resources/org/apache/lucene/analysis/fa/stopwords.txt.
-    See http://members.unine.ch/jacques.savoy/clef/index.html.
-
-    Includes lib/servlet-api-2.4.jar from  Apache Tomcat
-
-    The SmartChineseAnalyzer source code (under contrib/analyzers) was
-    provided by Xiaoping Gao and copyright 2009 by www.imdict.net.
-
-    ICU4J, (under contrib/collation) is licensed under an MIT styles license
-    (contrib/collation/lib/ICU-LICENSE.txt) and Copyright (c) 1995-2008
-    International Business Machines Corporation and others
-* For armeria-grpc see also this required NOTICE:
-    Armeria
-    =======
-
-    Please visit the official web site for more information:
-
-      * https://armeria.dev/
-* For aws-java-sdk-core see also this required NOTICE:
-    Copyright 2013-2018 Amazon.com, Inc. or its affiliates. All Rights
-    Reserved.
-* For aws-request-signing-apache-interceptor see also this required NOTICE:
-    AWS Request Signing Interceptor
-    Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-* For bval see also this required NOTICE:
-    Apache BVal project
-    Copyright 2010-2018 The Apache Software Foundation.
-
-    This product includes software developed by
-    The Apache Software Foundation (http://www.apache.org/).
-
-
-    The following copyright notice(s) were affixed to portions of this code
-    with which this file is now or was at one time distributed.
-
-    This product includes software developed by Agimatec GmbH.
-    Copyright 2007-2010 Agimatec GmbH. All rights reserved.
+* For MustacheJava see also this required NOTICE:
+    Copyright 2010 RightTime, Inc.
+* For t-digest see also this required NOTICE:
+    The code for the t-digest was originally authored by Ted Dunning
+    A number of small but very helpful changes have been contributed by Adrien
+Grand (https://github.com/jpountz)
+* For Findbugs Jsr305 see also this required NOTICE:
+    Copyright (C) 2006, University of Maryland
 * For byte-buddy see also this required NOTICE:
     Copyright ${project.inceptionYear} - ${current.year} ${copyright.holder}
-
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
-
         http://www.apache.org/licenses/LICENSE-2.0
-
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
+* For lz4-java see also this required NOTICE:
+    Copyright 2020 Adrien Grand and the lz4-java contributors.
+* For joda-time see also this required NOTICE:
+    Copyright 2018 Joda.org
+       Licensed under the Apache License, Version 2.0 (the "License");
+       you may not use this file except in compliance with the License.
+       You may obtain a copy of the License at
+           http://www.apache.org/licenses/LICENSE-2.0
+       Unless required by applicable law or agreed to in writing, software
+       distributed under the License is distributed on an "AS IS" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+       See the License for the specific language governing permissions and
+       limitations under the License.
+* For Google Gson see also this required NOTICE:
+    Copyright (C) 2008-2018 Google Inc.
+* For jnr constants see also this required NOTICE:
+    No copyright or notice
+* For jffi see also this required NOTICE:
+    Copyright (C) 2007 Free Software Foundation, Inc. <http://fsf.org/>
+     Everyone is permitted to copy and distribute verbatim copies
+     of this license document, but changing it is not allowed.
+* For jnr a64asm see also this required NOTICE:
+    Copyright (C) 2018 Ossdev07
+* For aws-request-signing-apache-interceptor see also this required NOTICE:
+    AWS Request Signing Interceptor
+    Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 * For commons-codec see also this required NOTICE:
     Apache Commons Codec
     Copyright 2002-2020 The Apache Software Foundation
-
     This product includes software developed at
     The Apache Software Foundation (https://www.apache.org/).
-
     src/test/org/apache/commons/codec/language/DoubleMetaphoneTest.java
     contains test data from http://aspell.net/test/orig/batch0.tab.
     Copyright (C) 2002 Kevin Atkinson (kevina@gnu.org)
-
-    ===============================================================================
-
+===============================================================================
     The content of package org.apache.commons.codec.language.bm has been
-    translated
+translated
     from the original php source code available at
-    http://stevemorse.org/phoneticinfo.htm
+http://stevemorse.org/phoneticinfo.htm
     with permission from the original authors.
     Original source copyright:
     Copyright (c) 2008 Alexander Beider & Stephen P. Morse.
+* For MapDB see also this required NOTICE:
+    "Copyright (C) 2008 The Guava Authors"
+    "Copyright (C) 2009 The Guava Authors"
+    "Copyright (c) 2012 Jan Kotek"
+    "Copyright (c) 2006, 2008 Junio C Hamano"
+    MapDB
+    Copyright 2012-2014 Jan Kotek
+    This product includes software developed by Thomas Mueller and H2 group
+    Relicensed under Apache License 2 with Thomas permission.
+    (CompressLZF.java and EncryptionXTEA.java)
+    Copyright (c) 2004-2011 H2 Group
+    This product includes software developed by Doug Lea and JSR 166 group:
+    (LongConcurrentMap.java, Atomic.java)
+     * Written by Doug Lea with assistance from members of JCP JSR-166
+     * Expert Group and released to the public domain, as explained at
+     * http://creativecommons.org/licenses/publicdomain
+    This product includes software developed for Apache Solr
+    (LongConcurrentLRUMap.java)
+    Copyright 2006-2014 The Apache Software Foundation
+    This product includes software developed for Apache Harmony
+    (LongHashMap.java)
+    Copyright 2008-2012 The Apache Software Foundation
+    This product includes software developed by Nathen Sweet for Kryo
+    Relicensed under Apache License 2 (or later) with Nathans permission.
+    (DataInput2.packInt/Long and DataOutput.unpackInt/Long methods)
+    Copyright (c) 2012 Nathan Sweet
+    This product includes software developed for Android project
+    (SerializerPojo, a few lines to invoke constructor, see comments)
+    //Copyright (C) 2012 The Android Open Source Project, licenced under Apache
+2 license
+    This product includes software developed by Heinz Kabutz for
+javaspecialists.eu
+    (SerializerPojo, a few lines to invoke constructor, see comments)
+    2010-2014 Heinz Kabutz
+    Some Map unit tests are from  Google Collections.
+    Credit goes to Jared Levy, George van den Driessche and other Google
+Collections developers.
+    Copyright (C) 2007 Google Inc.
+    Luc Peuvrier wrote some unit tests for ConcurrerentNavigableMap interface.
+* For bval see also this required NOTICE:
+    Apache License
+                               Version 2.0, January 2004
+                            http://www.apache.org/licenses/
+       TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+       1. Definitions.
+          "License" shall mean the terms and conditions for use, reproduction,
+          and distribution as defined by Sections 1 through 9 of this document.
+          "Licensor" shall mean the copyright owner or entity authorized by
+          the copyright owner that is granting the License.
+          "Legal Entity" shall mean the union of the acting entity and all
+          other entities that control, are controlled by, or are under common
+          control with that entity. For the purposes of this definition,
+          "control" means (i) the power, direct or indirect, to cause the
+          direction or management of such entity, whether by contract or
+          otherwise, or (ii) ownership of fifty percent (50%) or more of the
+          outstanding shares, or (iii) beneficial ownership of such entity.
+          "You" (or "Your") shall mean an individual or Legal Entity
+          exercising permissions granted by this License.
+          "Source" form shall mean the preferred form for making modifications,
+          including but not limited to software source code, documentation
+          source, and configuration files.
+          "Object" form shall mean any form resulting from mechanical
+          transformation or translation of a Source form, including but
+          not limited to compiled object code, generated documentation,
+          and conversions to other media types.
+          "Work" shall mean the work of authorship, whether in Source or
+          Object form, made available under the License, as indicated by a
+          copyright notice that is included in or attached to the work
+          (an example is provided in the Appendix below).
+          "Derivative Works" shall mean any work, whether in Source or Object
+          form, that is based on (or derived from) the Work and for which the
+          editorial revisions, annotations, elaborations, or other modifications
+          represent, as a whole, an original work of authorship. For the
+purposes
+          of this License, Derivative Works shall not include works that remain
+          separable from, or merely link (or bind by name) to the interfaces of,
+          the Work and Derivative Works thereof.
+          "Contribution" shall mean any work of authorship, including
+          the original version of the Work and any modifications or additions
+          to that Work or Derivative Works thereof, that is intentionally
+          submitted to Licensor for inclusion in the Work by the copyright owner
+          or by an individual or Legal Entity authorized to submit on behalf of
+          the copyright owner. For the purposes of this definition, "submitted"
+          means any form of electronic, verbal, or written communication sent
+          to the Licensor or its representatives, including but not limited to
+          communication on electronic mailing lists, source code control
+systems,
+          and issue tracking systems that are managed by, or on behalf of, the
+          Licensor for the purpose of discussing and improving the Work, but
+          excluding communication that is conspicuously marked or otherwise
+          designated in writing by the copyright owner as "Not a Contribution."
+          "Contributor" shall mean Licensor and any individual or Legal Entity
+          on behalf of whom a Contribution has been received by Licensor and
+          subsequently incorporated within the Work.
+       2. Grant of Copyright License. Subject to the terms and conditions of
+          this License, each Contributor hereby grants to You a perpetual,
+          worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+          copyright license to reproduce, prepare Derivative Works of,
+          publicly display, publicly perform, sublicense, and distribute the
+          Work and such Derivative Works in Source or Object form.
+       3. Grant of Patent License. Subject to the terms and conditions of
+          this License, each Contributor hereby grants to You a perpetual,
+          worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+          (except as stated in this section) patent license to make, have made,
+          use, offer to sell, sell, import, and otherwise transfer the Work,
+          where such license applies only to those patent claims licensable
+          by such Contributor that are necessarily infringed by their
+          Contribution(s) alone or by combination of their Contribution(s)
+          with the Work to which such Contribution(s) was submitted. If You
+          institute patent litigation against any entity (including a
+          cross-claim or counterclaim in a lawsuit) alleging that the Work
+          or a Contribution incorporated within the Work constitutes direct
+          or contributory patent infringement, then any patent licenses
+          granted to You under this License for that Work shall terminate
+          as of the date such litigation is filed.
+       4. Redistribution. You may reproduce and distribute copies of the
+          Work or Derivative Works thereof in any medium, with or without
+          modifications, and in Source or Object form, provided that You
+          meet the following conditions:
+          (a) You must give any other recipients of the Work or
+              Derivative Works a copy of this License; and
+          (b) You must cause any modified files to carry prominent notices
+              stating that You changed the files; and
+          (c) You must retain, in the Source form of any Derivative Works
+              that You distribute, all copyright, patent, trademark, and
+              attribution notices from the Source form of the Work,
+              excluding those notices that do not pertain to any part of
+              the Derivative Works; and
+          (d) If the Work includes a "NOTICE" text file as part of its
+              distribution, then any Derivative Works that You distribute must
+              include a readable copy of the attribution notices contained
+              within such NOTICE file, excluding those notices that do not
+              pertain to any part of the Derivative Works, in at least one
+              of the following places: within a NOTICE text file distributed
+              as part of the Derivative Works; within the Source form or
+              documentation, if provided along with the Derivative Works; or,
+              within a display generated by the Derivative Works, if and
+              wherever such third-party notices normally appear. The contents
+              of the NOTICE file are for informational purposes only and
+              do not modify the License. You may add Your own attribution
+              notices within Derivative Works that You distribute, alongside
+              or as an addendum to the NOTICE text from the Work, provided
+              that such additional attribution notices cannot be construed
+              as modifying the License.
+          You may add Your own copyright statement to Your modifications and
+          may provide additional or different license terms and conditions
+          for use, reproduction, or distribution of Your modifications, or
+          for any such Derivative Works as a whole, provided Your use,
+          reproduction, and distribution of the Work otherwise complies with
+          the conditions stated in this License.
+       5. Submission of Contributions. Unless You explicitly state otherwise,
+          any Contribution intentionally submitted for inclusion in the Work
+          by You to the Licensor shall be under the terms and conditions of
+          this License, without any additional terms or conditions.
+          Notwithstanding the above, nothing herein shall supersede or modify
+          the terms of any separate license agreement you may have executed
+          with Licensor regarding such Contributions.
+       6. Trademarks. This License does not grant permission to use the trade
+          names, trademarks, service marks, or product names of the Licensor,
+          except as required for reasonable and customary use in describing the
+          origin of the Work and reproducing the content of the NOTICE file.
+       7. Disclaimer of Warranty. Unless required by applicable law or
+          agreed to in writing, Licensor provides the Work (and each
+          Contributor provides its Contributions) on an "AS IS" BASIS,
+          WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+          implied, including, without limitation, any warranties or conditions
+          of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+          PARTICULAR PURPOSE. You are solely responsible for determining the
+          appropriateness of using or redistributing the Work and assume any
+          risks associated with Your exercise of permissions under this License.
+       8. Limitation of Liability. In no event and under no legal theory,
+          whether in tort (including negligence), contract, or otherwise,
+          unless required by applicable law (such as deliberate and grossly
+          negligent acts) or agreed to in writing, shall any Contributor be
+          liable to You for damages, including any direct, indirect, special,
+          incidental, or consequential damages of any character arising as a
+          result of this License or out of the use or inability to use the
+          Work (including but not limited to damages for loss of goodwill,
+          work stoppage, computer failure or malfunction, or any and all
+          other commercial damages or losses), even if such Contributor
+          has been advised of the possibility of such damages.
+       9. Accepting Warranty or Additional Liability. While redistributing
+          the Work or Derivative Works thereof, You may choose to offer,
+          and charge a fee for, acceptance of support, warranty, indemnity,
+          or other liability obligations and/or rights consistent with this
+          License. However, in accepting such obligations, You may act only
+          on Your own behalf and on Your sole responsibility, not on behalf
+          of any other Contributor, and only if You agree to indemnify,
+          defend, and hold each Contributor harmless for any liability
+          incurred by, or claims asserted against, such Contributor by reason
+          of your accepting any such warranty or additional liability.
+       END OF TERMS AND CONDITIONS
+       APPENDIX: How to apply the Apache License to your work.
+          To apply the Apache License to your work, attach the following
+          boilerplate notice, with the fields enclosed by brackets "[]"
+          replaced with your own identifying information. (Don't include
+          the brackets!)  The text should be enclosed in the appropriate
+          comment syntax for the file format. We also recommend that a
+          file or class name and description of purpose be included on the
+          same "printed page" as the copyright notice for easier
+          identification within third-party archives.
+       Copyright [yyyy] [name of copyright owner]
+       Licensed under the Apache License, Version 2.0 (the "License");
+       you may not use this file except in compliance with the License.
+       You may obtain a copy of the License at
+           http://www.apache.org/licenses/LICENSE-2.0
+       Unless required by applicable law or agreed to in writing, software
+       distributed under the License is distributed on an "AS IS" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+       See the License for the specific language governing permissions and
+       limitations under the License.
+* For JavaxValidationApi see also this required NOTICE:
+    # Notices for Eclipse Jakarta Bean Validation
+    This content is produced and maintained by the Eclipse Jakarta Bean
+Validation
+    project.
+    * Project home: https://projects.eclipse.org/projects/ee4j.bean-validation
+    ## Trademarks
+     Jakarta Bean Validation is a trademark of the Eclipse Foundation.
+    ## Copyright
+    All content is the property of the respective authors or their employers.
+For
+    more information regarding authorship of content, please consult the listed
+    source code repository logs.
+    ## Declared Project Licenses
+    This program and the accompanying materials are made available under the
+terms
+    of the Apache License, Version 2.0 which is available at
+    https://www.apache.org/licenses/LICENSE-2.0.
+    SPDX-License-Identifier: Apache-2.0
+    ## Source Code
+    The project maintains the following source code repositories:
+     * [The specification
+repository](https://github.com/eclipse-ee4j/beanvalidation-spec)
+     * [The API repository](https://github.com/eclipse-ee4j/beanvalidation-api)
+     * [The TCK repository](https://github.com/eclipse-ee4j/beanvalidation-tck)
+    ## Third-party Content
+    This project leverages the following third party content.
+    Test dependencies:
+     * [TestNG](https://github.com/cbeust/testng) - Apache License 2.0
+     * [JCommander](https://github.com/cbeust/jcommander) - Apache License 2.0
+     * [SnakeYAML](https://bitbucket.org/asomov/snakeyaml/src) - Apache License
+2.0
+* For android annotations see also this required NOTICE:
+    Copyright (C) 2010-2016 eBusiness Information, Excilys Group
+        Copyright (C) 2016-2020 the AndroidAnnotations project
+* For Hppc see also this required NOTICE:
+    ACKNOWLEDGEMENT
+    ===============
+    HPPC borrowed code, ideas or both from:
+     * Apache Lucene, http://lucene.apache.org/
+       (Apache license)
+     * Fastutil, http://fastutil.di.unimi.it/
+       (Apache license)
+     * Koloboke, https://github.com/OpenHFT/Koloboke
+       (Apache license)
+* For perfmark-api see also this required NOTICE:
+    Copyright 2019 Google LLC
+* For JavaAssist see also this required NOTICE:
+    Copyright (C) 1999-2020 by Shigeru Chiba, All rights reserved.
 * For commons-logging see also this required NOTICE:
-    Apache Commons Logging
-    Copyright 2003-2014 The Apache Software Foundation
-
-    This product includes software developed at
+    Copyright © 2001-2014 The Apache Software Foundation. All Rights Reserved.
+    Apache Commons, Apache Commons Logging, Apache, the Apache feather logo, and
+the Apache Commons project logos are trademarks of The Apache Software
+Foundation. All other marks mentioned may be trademarks or registered trademarks
+of their respective owners.
+* For jetbrains-annotations see also this required NOTICE:
+    "Copyright 2000-2020 JetBrains s.r.o."
+    "Copyright 2000-2016 JetBrains s.r.o."
+    "Copyright (c) 2006, 2008 Junio C Hamano"
+* For J2ObjC see also this required NOTICE:
+    Copyright (C) 2007-2016, International Business Machines Corporation and
+others.
+    Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights reserved.
+    © 2016 and later: Unicode, Inc. and others.
+    Copyright (C) 2016-2019 The Android Open Source Project
+* For Amazon ION Java see also this required NOTICE:
+    Amazon Ion Java
+    Copyright 2007-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* For jna see also this required NOTICE:
+    Copyright (c) 2007 Timothy Wall
+    Java Native Access project (JNA) is dual-licensed under 2
+    alternative Open Source/Free licenses: LGPL 2.1 or later and
+    Apache License 2.0. (starting with JNA version 4.0.0).
+    You can freely decide which license you want to apply to
+    the project.
+    You may obtain a copy of the LGPL License at:
+    http://www.gnu.org/licenses/licenses.html
+    A copy is also included in the downloadable source code package
+    containing JNA, in file "LGPL2.1", under the same directory
+    as this file.
+    You may obtain a copy of the Apache License at:
+    http://www.apache.org/licenses/
+    A copy is also included in the downloadable source code package
+    containing JNA, in file "AL2.0", under the same directory
+    as this file.
+* For Apache Lucene see also this required NOTICE:
+    Apache Lucene
+    Copyright 2006 The Apache Software Foundation
+    This product includes software developed by
     The Apache Software Foundation (http://www.apache.org/).
+    The snowball stemmers in
+      contrib/snowball/src/java/net/sf/snowball
+    were developed by Martin Porter and Richard Boulton.
+    The full snowball package is available from
+      http://snowball.tartarus.org/
+    The Arabic stemmer (contrib/analyzers) comes with a default
+    stopword list that is BSD-licensed created by Jacques Savoy.  The file
+resides in
+contrib/analyzers/common/src/resources/org/apache/lucene/analysis/ar/stopwords.txt.
+    See http://members.unine.ch/jacques.savoy/clef/index.html.
+    The Persian analyzer (contrib/analyzers) comes with a default
+    stopword list that is BSD-licensed created by Jacques Savoy.  The file
+resides in
+contrib/analyzers/common/src/resources/org/apache/lucene/analysis/fa/stopwords.txt.
+    See http://members.unine.ch/jacques.savoy/clef/index.html.
+    Includes lib/servlet-api-2.4.jar from  Apache Tomcat
+    The SmartChineseAnalyzer source code (under contrib/analyzers) was
+    provided by Xiaoping Gao and copyright 2009 by www.imdict.net.
+    ICU4J, (under contrib/collation) is licensed under an MIT styles license
+    (contrib/collation/lib/ICU-LICENSE.txt) and Copyright (c) 1995-2008
+    International Business Machines Corporation and others
 * For Elasticsearch see also this required NOTICE:
     Elasticsearch
     Copyright 2009-2018 Elasticsearch
-
     This product includes software developed by The Apache Software
     Foundation (http://www.apache.org/).
-
     This product includes software developed by
     Joda.org (http://www.joda.org/).
+* For OpenTelemetry 0.10.0 see also this required NOTICE:
+    Copyright The OpenTelemetry Authors
+     * SPDX-License-Identifier: Apache-2.0
+* For micrometer-registry-prometheus see also this required NOTICE:
+    Micrometer
+    Copyright (c) 2017-Present VMware, Inc. All Rights Reserved.
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+       https://www.apache.org/licenses/LICENSE-2.0
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+-------------------------------------------------------------------------------
+    This product contains a modified portion of
+'io.netty.util.internal.logging',
+    in the Netty/Common library distributed by The Netty Project:
+      * Copyright 2013 The Netty Project
+      * License: Apache License v2.0
+      * Homepage: https://netty.io
+    This product contains a modified portion of 'StringUtils.isBlank()',
+    in the Commons Lang library distributed by The Apache Software Foundation:
+      * Copyright 2001-2019 The Apache Software Foundation
+      * License: Apache License v2.0
+      * Homepage: https://commons.apache.org/proper/commons-lang/
+    This product contains a modified portion of 'JsonUtf8Writer',
+    in the Moshi library distributed by Square, Inc:
+      * Copyright 2010 Google Inc.
+      * License: Apache License v2.0
+      * Homepage: https://github.com/square/moshi
+    This product contains a modified portion of the 'org.springframework.lang'
+    package in the Spring Framework library, distributed by VMware, Inc:
+      * Copyright 2002-2019 the original author or authors.
+      * License: Apache License v2.0
+      * Homepage: https://spring.io/projects/spring-framework
+* For OpenSearch Java High Level Rest Client see also this required NOTICE:
+    OpenSearch
+    Copyright 2021 OpenSearch Contributors
+    This product includes software developed by
+    Elasticsearch (http://www.elastic.co).
+    Copyright 2009-2018 Elasticsearch
+    This product includes software developed by The Apache Software
+    Foundation (http://www.apache.org/).
+    This product includes software developed by
+    Joda.org (http://www.joda.org/).
+* For netty-reactive-streams see also this required NOTICE:
+    Copyright (c) 2015-2020 Lightbend Inc
+* For snakeyaml see also this required NOTICE:
+    Copyright (c) 2008, http://www.snakeyaml.org
+* For Jackson see also this required NOTICE:
+    Copyright ©2008-2021 FasterXML, LLC.
 * For Error Prone see also this required NOTICE:
     Copyright (C) 2009 The Guava Authors
     Copyright 2011 The Error Prone Authors.
@@ -391,297 +685,128 @@ limitations under the License.
     Copyright 2018 The Error Prone Authors.
     Copyright 2019 The Error Prone Authors.
     Copyright 2020 The Error Prone Authors.
-* For Findbugs Jsr305 see also this required NOTICE:
-    Copyright (C) 2006, University of Maryland
-* For Google Gson see also this required NOTICE:
-    Copyright (C) 2008-2018 Google Inc.
 * For gRPC see also this required NOTICE:
     Copyright 2014 The gRPC Authors
+* For aws-java-sdk-core see also this required NOTICE:
+    Copyright 2013-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 * For guava see also this required NOTICE:
     Copyright (C) 2011 The Guava Authors
-* For Hppc see also this required NOTICE:
-    ACKNOWLEDGEMENT
-    ===============
-
-    HPPC borrowed code, ideas or both from:
-
-     * Apache Lucene, http://lucene.apache.org/
-       (Apache license)
-     * Fastutil, http://fastutil.di.unimi.it/
-       (Apache license)
-     * Koloboke, https://github.com/OpenHFT/Koloboke
-       (Apache license)
-* For httpcomponents-core see also this required NOTICE:
-    Apache HttpComponents CoreCopyright 2005-2015 The Apache Software
-    FoundationThis product includes software developed atThe Apache Software
-    Foundation (http://www.apache.org/).This project contains annotations
-    derived from JCIP-ANNOTATIONSCopyright (c) 2005 Brian Goetz and Tim
-    Peierls. See http://www.jcip.net
-* For J2ObjC see also this required NOTICE:
-    Copyright (C) 2007-2016, International Business Machines Corporation and
-    others.
-    Copyright (c) 2012, 2013, Oracle and/or its affiliates. All rights
-    reserved.
-    © 2016 and later: Unicode, Inc. and others.
-    Copyright (C) 2016-2019 The Android Open Source Project
-* For Jackson see also this required NOTICE:
-    Copyright ©2008-2020 FasterXML, LLC.
-* For JavaAssist see also this required NOTICE:
-    Copyright (C) 1999-2020 by Shigeru Chiba, All rights reserved.
-* For JavaxValidationApi see also this required NOTICE:
-    # Notices for Eclipse Jakarta Bean Validation
-
-    This content is produced and maintained by the Eclipse Jakarta Bean
-    Validation
-    project.
-
-    * Project home: https://projects.eclipse.org/projects/ee4j.bean-validation
-
-    ## Trademarks
-
-     Jakarta Bean Validation is a trademark of the Eclipse Foundation.
-
-    ## Copyright
-
-    All content is the property of the respective authors or their employers.
-    For
-    more information regarding authorship of content, please consult the listed
-    source code repository logs.
-
-    ## Declared Project Licenses
-
-    This program and the accompanying materials are made available under the
-    terms
-    of the Apache License, Version 2.0 which is available at
-    https://www.apache.org/licenses/LICENSE-2.0.
-
-    SPDX-License-Identifier: Apache-2.0
-
-    ## Source Code
-
-    The project maintains the following source code repositories:
-
-     * [The specification
-     repository](https://github.com/eclipse-ee4j/beanvalidation-spec)
-     * [The API repository](https://github.com/eclipse-ee4j/beanvalidation-api)
-     * [The TCK repository](https://github.com/eclipse-ee4j/beanvalidation-tck)
-
-    ## Third-party Content
-
-    This project leverages the following third party content.
-
-    Test dependencies:
-
-     * [TestNG](https://github.com/cbeust/testng) - Apache License 2.0
-     * [JCommander](https://github.com/cbeust/jcommander) - Apache License 2.0
-     * [SnakeYAML](https://bitbucket.org/asomov/snakeyaml/src) - Apache License
-     2.0
-* For jetbrains-annotations see also this required NOTICE:
-    "Copyright 2000-2020 JetBrains s.r.o."
-    "Copyright 2000-2016 JetBrains s.r.o."
-    "Copyright (c) 2006, 2008 Junio C Hamano"
-* For jffi see also this required NOTICE:
-    Copyright (C) 2007 Free Software Foundation, Inc. <http://fsf.org/>
-     Everyone is permitted to copy and distribute verbatim copies
-     of this license document, but changing it is not allowed.
-* For jna see also this required NOTICE:
-    Copyright (c) 2007 Timothy Wall
-
-    Java Native Access project (JNA) is dual-licensed under 2
-    alternative Open Source/Free licenses: LGPL 2.1 or later and
-    Apache License 2.0. (starting with JNA version 4.0.0).
-
-    You can freely decide which license you want to apply to
-    the project.
-
-    You may obtain a copy of the LGPL License at:
-
-    http://www.gnu.org/licenses/licenses.html
-
-    A copy is also included in the downloadable source code package
-    containing JNA, in file "LGPL2.1", under the same directory
-    as this file.
-
-    You may obtain a copy of the Apache License at:
-
-    http://www.apache.org/licenses/
-
-    A copy is also included in the downloadable source code package
-    containing JNA, in file "AL2.0", under the same directory
-    as this file.
-* For jnr a64asm see also this required NOTICE:
-    Copyright (C) 2018 Ossdev07
-* For jnr constants see also this required NOTICE:
-    No copyright or notice
-* For joda-time see also this required NOTICE:
-    Copyright 2018 Joda.org
-
-       Licensed under the Apache License, Version 2.0 (the "License");
-       you may not use this file except in compliance with the License.
-       You may obtain a copy of the License at
-
-           http://www.apache.org/licenses/LICENSE-2.0
-
-       Unless required by applicable law or agreed to in writing, software
-       distributed under the License is distributed on an "AS IS" BASIS,
-       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-       See the License for the specific language governing permissions and
-       limitations under the License.
-* For Kotlin see also this required NOTICE:
-    Copyright 2010-2020 JetBrains s.r.o and respective authors and developers
 * For log4j-slf4j-impl see also this required NOTICE:
     Apache Log4j SLF4J Binding
     Copyright 1999-2020 The Apache Software Foundation
-* For lz4-java see also this required NOTICE:
-    Copyright 2020 Adrien Grand and the lz4-java contributors.
-* For MapDB see also this required NOTICE:
-    "Copyright (C) 2008 The Guava Authors"
-    "Copyright (C) 2009 The Guava Authors"
-    "Copyright (c) 2012 Jan Kotek"
-    "Copyright (c) 2006, 2008 Junio C Hamano"
-
-    MapDB
-    Copyright 2012-2014 Jan Kotek
-
-    This product includes software developed by Thomas Mueller and H2 group
-    Relicensed under Apache License 2 with Thomas permission.
-    (CompressLZF.java and EncryptionXTEA.java)
-    Copyright (c) 2004-2011 H2 Group
-
-
-    This product includes software developed by Doug Lea and JSR 166 group:
-    (LongConcurrentMap.java, Atomic.java)
-     * Written by Doug Lea with assistance from members of JCP JSR-166
-     * Expert Group and released to the public domain, as explained at
-     * http://creativecommons.org/licenses/publicdomain
-
-
-    This product includes software developed for Apache Solr
-    (LongConcurrentLRUMap.java)
-    Copyright 2006-2014 The Apache Software Foundation
-
-    This product includes software developed for Apache Harmony
-    (LongHashMap.java)
-    Copyright 2008-2012 The Apache Software Foundation
-
-
-    This product includes software developed by Nathen Sweet for Kryo
-    Relicensed under Apache License 2 (or later) with Nathans permission.
-    (DataInput2.packInt/Long and DataOutput.unpackInt/Long methods)
-    Copyright (c) 2012 Nathan Sweet
-
-    This product includes software developed for Android project
-    (SerializerPojo, a few lines to invoke constructor, see comments)
-    //Copyright (C) 2012 The Android Open Source Project, licenced under Apache
-    2 license
-
-
-    This product includes software developed by Heinz Kabutz for
-    javaspecialists.eu
-    (SerializerPojo, a few lines to invoke constructor, see comments)
-    2010-2014 Heinz Kabutz
-
-
-    Some Map unit tests are from  Google Collections.
-    Credit goes to Jared Levy, George van den Driessche and other Google
-    Collections developers.
-    Copyright (C) 2007 Google Inc.
-
-    Luc Peuvrier wrote some unit tests for ConcurrerentNavigableMap interface.
+* For  Log4j-core see also this required NOTICE:
+    Apache Log4j Core
+    Copyright 1999-2012 Apache Software Foundation
+    This product includes software developed at
+    The Apache Software Foundation (http://www.apache.org/).
+    ResolverUtil.java
+    Copyright 2005-2006 Tim Fennell
+* For armeria-grpc see also this required NOTICE:
+    Armeria
+    =======
+    Please visit the official web site for more information:
+      * https://armeria.dev/
+* For Kotlin see also this required NOTICE:
+    Copyright 2010-2020 JetBrains s.r.o and respective authors and developers
 * For micrometer see also this required NOTICE:
     Micrometer
-
     Copyright (c) 2017-Present VMware, Inc. All Rights Reserved.
-* For micrometer-registry-prometheus see also this required NOTICE:
-    Micrometer
-
-    Copyright (c) 2017-Present VMware, Inc. All Rights Reserved.
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-       https://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
-    -------------------------------------------------------------------------------
-
-    This product contains a modified portion of
-    'io.netty.util.internal.logging',
-    in the Netty/Common library distributed by The Netty Project:
-
-      * Copyright 2013 The Netty Project
-      * License: Apache License v2.0
-      * Homepage: https://netty.io
-
-    This product contains a modified portion of 'StringUtils.isBlank()',
-    in the Commons Lang library distributed by The Apache Software Foundation:
-
-      * Copyright 2001-2019 The Apache Software Foundation
-      * License: Apache License v2.0
-      * Homepage: https://commons.apache.org/proper/commons-lang/
-
-    This product contains a modified portion of 'JsonUtf8Writer',
-    in the Moshi library distributed by Square, Inc:
-
-      * Copyright 2010 Google Inc.
-      * License: Apache License v2.0
-      * Homepage: https://github.com/square/moshi
-
-    This product contains a modified portion of the 'org.springframework.lang'
-    package in the Spring Framework library, distributed by VMware, Inc:
-
-      * Copyright 2002-2019 the original author or authors.
-      * License: Apache License v2.0
-      * Homepage: https://spring.io/projects/spring-framework
-* For MustacheJava see also this required NOTICE:
-    Copyright 2010 RightTime, Inc.
+* For aws-java-sdk see also this required NOTICE:
+    AWS SDK for Java 2.0
+    Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+    This product includes software developed by
+    Amazon Technologies, Inc (http://www.amazon.com/).
+    **********************
+    THIRD PARTY COMPONENTS
+    **********************
+    This software includes third party software subject to the following
+copyrights:
+    - XML parsing and utility functions from JetS3t - Copyright 2006-2009 James
+Murty.
+    - PKCS#1 PEM encoded private key parsing and utility functions from
+oauth.googlecode.com - Copyright 1998-2010 AOL Inc.
+    - Apache Commons Lang - https://github.com/apache/commons-lang
+    - Netty Reactive Streams -
+https://github.com/playframework/netty-reactive-streams
+    The licenses for these third party components are included in LICENSE.txt
+    - For Apache Commons Lang see also this required NOTICE:
+      Apache Commons Lang
+      Copyright 2001-2020 The Apache Software Foundation
+      This product includes software developed at
+      The Apache Software Foundation (https://www.apache.org/).
 * For netty 4.1.51 see also this required NOTICE:
     Please visit the Netty web site for more information:
-
       * https://netty.io/
-
     Copyright 2014 The Netty Project
-* For OpenSearch Java High Level Rest Client see also this required NOTICE:
-    OpenSearch
-    Copyright 2021 OpenSearch Contributors
+* For commons-io see also this required NOTICE:
+    Copyright 2002-2021 The Apache Software Foundation
+    This product includes software developed at
+    The Apache Software Foundation (https://www.apache.org/).
+* For httpcomponents-core see also this required NOTICE:
+    Apache HttpComponents CoreCopyright 2005-2015 The Apache Software
+FoundationThis product includes software developed atThe Apache Software
+Foundation (http://www.apache.org/).This project contains annotations derived
+from JCIP-ANNOTATIONSCopyright (c) 2005 Brian Goetz and Tim Peierls. See
+http://www.jcip.net
+* For apache/commons-lang see also this required NOTICE:
+    Apache Commons Lang
+    Copyright 2001-2021 The Apache Software Foundation
+    This product includes software developed at
+    The Apache Software Foundation (https://www.apache.org/).
+* For aws-eventstream see also this required NOTICE:
+    AWS EventStream for Java
+    Copyright 2017 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 
-    This product includes software developed by
-    Elasticsearch (http://www.elastic.co).
-    Copyright 2009-2018 Elasticsearch
+------
 
-    This product includes software developed by The Apache Software
-    Foundation (http://www.apache.org/).
+** LatencyUtils; version 2.0.3 -- https://github.com/LatencyUtils/LatencyUtils/tree/LatencyUtils-2.0.3
 
-    This product includes software developed by
-    Joda.org (http://www.joda.org/).
-* For OpenTelemetry 0.10.0 see also this required NOTICE:
-    Copyright The OpenTelemetry Authors
-     * SPDX-License-Identifier: Apache-2.0
-* For perfmark-api see also this required NOTICE:
-    Copyright 2019 Google LLC
-* For SnakeYAML see also this required NOTICE:
-    "Copyright (c) 2008, http://www.snakeyaml.org"
-    "Copyright 2003-2010 Christian d\'Heureuse, Inventec Informatik AG, Zurich,
-    Switzerland"
-    "Copyright (c) 2008 Google Inc."
-    "Copyright (c) 2006, 2008 Junio C Hamano"
-    "Copyright License. Subject to the terms and conditions of"
-    "Copyright 2007-present the original author or authors."
-* For t-digest see also this required NOTICE:
-    The code for the t-digest was originally authored by Ted Dunning
+Copyright (c) 2012, 2013, 2014 Gil Tene
 
-    A number of small but very helpful changes have been contributed by Adrien
-    Grand (https://github.com/jpountz)
+  * This code was Written by Gil Tene of Azul Systems, and released to the
+  * public domain, as explained at
+http://creativecommons.org/publicdomain/zero/1.0/
+
+ For users of this code who wish to consume it under the "BSD" license
+ rather than under the public domain or CC0 contribution text mentioned
+ above, the code found under this directory is *also* provided under the
+ following license (commonly referred to as the BSD 2-Clause License). This
+ license does not detract from the above stated release of the code into
+ the public domain, and simply represents an additional license granted by
+ the Author.
+
+ -----------------------------------------------------------------------------
+ ** Beginning of "BSD 2-Clause License" text. **
+
+  Copyright (c) 2012, 2013, 2014 Gil Tene
+  All rights reserved.
+
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
+
+  1. Redistributions of source code must retain the above copyright notice,
+     this list of conditions and the following disclaimer.
+
+  2. Redistributions in binary form must reproduce the above copyright notice,
+     this list of conditions and the following disclaimer in the documentation
+     and/or other materials provided with the distribution.
+
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+  THE POSSIBILITY OF SUCH DAMAGE.
 
 ------
 
 ** HdrHistogram; version 2.1.12 -- https://github.com/HdrHistogram/HdrHistogram
+
 Copyright (c) 2012, 2013, 2014, 2015, 2016 Gil Tene
  Copyright (c) 2014 Michael Barker
  Copyright (c) 2014 Matt Warren
@@ -731,53 +856,8 @@ the Author.
 
 ------
 
-** LatencyUtils; version 2.0.3 --
-https://github.com/LatencyUtils/LatencyUtils/tree/LatencyUtils-2.0.3
-Copyright (c) 2012, 2013, 2014 Gil Tene
-
-  * This code was Written by Gil Tene of Azul Systems, and released to the
-  * public domain, as explained at
-  http://creativecommons.org/publicdomain/zero/1.0/
-
- For users of this code who wish to consume it under the "BSD" license
- rather than under the public domain or CC0 contribution text mentioned
- above, the code found under this directory is *also* provided under the
- following license (commonly referred to as the BSD 2-Clause License). This
- license does not detract from the above stated release of the code into
- the public domain, and simply represents an additional license granted by
- the Author.
-
- -----------------------------------------------------------------------------
- ** Beginning of "BSD 2-Clause License" text. **
-
-  Copyright (c) 2012, 2013, 2014 Gil Tene
-  All rights reserved.
-
-  Redistribution and use in source and binary forms, with or without
-  modification, are permitted provided that the following conditions are met:
-
-  1. Redistributions of source code must retain the above copyright notice,
-     this list of conditions and the following disclaimer.
-
-  2. Redistributions in binary form must reproduce the above copyright notice,
-     this list of conditions and the following disclaimer in the documentation
-     and/or other materials provided with the distribution.
-
-  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
-  THE POSSIBILITY OF SUCH DAMAGE.
-
-------
-
 ** ow2-asm; version 7.1 -- https://asm.ow2.io/index.html
+
 Copyright (c) 2000-2011 INRIA, France Telecom
 
 ASM is released under the following 3-Clause BSD License:
@@ -812,8 +892,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 ------
 
-** google-protobuf; version 3.15.8 --
-https://github.com/protocolbuffers/protobuf
+** google-protobuf; version 3.17.3 -- https://github.com/protocolbuffers/protobuf
+
 Copyright 2008 Google Inc.  All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -849,23 +929,27 @@ support library is itself covered by the above license.
 
 ------
 
-** reactive-streams; version 1.0.3 --
-https://github.com/reactive-streams/reactive-streams-jvm/tree/v1.0.3
-No copyright statement found
+** reactive-streams; version 1.0.3 -- https://www.reactive-streams.org/
 
-Licensed under Public Domain (CC0)
+Copyright 2014 Reactive Streams
 
-To the extent possible under law, the person who associated CC0 with
-this code has waived all copyright and related or neighboring
-rights to this code.
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so.
 
-You should have received a copy of the CC0 legalcode along with this
-work. If not, see <http://creativecommons.org/publicdomain/zero/1.0/>.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ------
 
-** eclipse-collections; version 11.0.0.M2 --
-https://github.com/eclipse/eclipse-collections
+** eclipse-collections; version 11.0.0.M3 -- https://github.com/eclipse/eclipse-collections
+
 Copyright (c) 2016 Shotaro Sano.
 
 Copyright (c) 2015 Goldman Sachs.
@@ -896,16 +980,15 @@ distributed by that particular Contributor. A Contribution 'originates' from a
 Contributor if it was added to the Program by such Contributor itself or anyone
 acting on such Contributor's behalf. Contributions do not include additions to
 the Program which: (i) are separate modules of software distributed in
-conjunction with the Program under their own license agreement, and (ii) are
-not derivative works of the Program.
+conjunction with the Program under their own license agreement, and (ii) are not
+derivative works of the Program.
 "Contributor" means any person or entity that distributes the Program.
 
 "Licensed Patents" mean patent claims licensable by a Contributor which are
 necessarily infringed by the use or sale of its Contribution alone or when
 combined with the Program.
 
-"Program" means the Contributions distributed in accordance with this
-Agreement.
+"Program" means the Contributions distributed in accordance with this Agreement.
 
 "Recipient" means anyone who receives the Program under this Agreement,
 including all Contributors.
@@ -915,43 +998,42 @@ including all Contributors.
 a) Subject to the terms of this Agreement, each Contributor hereby grants
 Recipient a non-exclusive, worldwide, royalty-free copyright license to
 reproduce, prepare derivative works of, publicly display, publicly perform,
-distribute and sublicense the Contribution of such Contributor, if any, and
-such derivative works, in source code and object code form.
+distribute and sublicense the Contribution of such Contributor, if any, and such
+derivative works, in source code and object code form.
 b) Subject to the terms of this Agreement, each Contributor hereby grants
-Recipient a non-exclusive, worldwide, royalty-free patent license under
-Licensed Patents to make, use, sell, offer to sell, import and otherwise
-transfer the Contribution of such Contributor, if any, in source code and
-object code form. This patent license shall apply to the combination of the
-Contribution and the Program if, at the time the Contribution is added by the
-Contributor, such addition of the Contribution causes such combination to be
-covered by the Licensed Patents. The patent license shall not apply to any
-other combinations which include the Contribution. No hardware per se is
-licensed hereunder.
+Recipient a non-exclusive, worldwide, royalty-free patent license under Licensed
+Patents to make, use, sell, offer to sell, import and otherwise transfer the
+Contribution of such Contributor, if any, in source code and object code form.
+This patent license shall apply to the combination of the Contribution and the
+Program if, at the time the Contribution is added by the Contributor, such
+addition of the Contribution causes such combination to be covered by the
+Licensed Patents. The patent license shall not apply to any other combinations
+which include the Contribution. No hardware per se is licensed hereunder.
 c) Recipient understands that although each Contributor grants the licenses to
 its Contributions set forth herein, no assurances are provided by any
 Contributor that the Program does not infringe the patent or other intellectual
-property rights of any other entity. Each Contributor disclaims any liability
-to Recipient for claims brought by any other entity based on infringement of
+property rights of any other entity. Each Contributor disclaims any liability to
+Recipient for claims brought by any other entity based on infringement of
 intellectual property rights or otherwise. As a condition to exercising the
 rights and licenses granted hereunder, each Recipient hereby assumes sole
 responsibility to secure any other intellectual property rights needed, if any.
 For example, if a third party patent license is required to allow Recipient to
-distribute the Program, it is Recipient's responsibility to acquire that
-license before distributing the Program.
-d) Each Contributor represents that to its knowledge it has sufficient
-copyright rights in its Contribution, if any, to grant the copyright license
-set forth in this Agreement.
+distribute the Program, it is Recipient's responsibility to acquire that license
+before distributing the Program.
+d) Each Contributor represents that to its knowledge it has sufficient copyright
+rights in its Contribution, if any, to grant the copyright license set forth in
+this Agreement.
 3. REQUIREMENTS
 
-A Contributor may choose to distribute the Program in object code form under
-its own license agreement, provided that:
+A Contributor may choose to distribute the Program in object code form under its
+own license agreement, provided that:
 
 a) it complies with the terms and conditions of this Agreement; and
 b) its license agreement:
 i) effectively disclaims on behalf of all Contributors all warranties and
-conditions, express and implied, including warranties or conditions of title
-and non-infringement, and implied warranties or conditions of merchantability
-and fitness for a particular purpose;
+conditions, express and implied, including warranties or conditions of title and
+non-infringement, and implied warranties or conditions of merchantability and
+fitness for a particular purpose;
 ii) effectively excludes on behalf of all Contributors all liability for
 damages, including direct, indirect, special, incidental and consequential
 damages, such as lost profits;
@@ -988,10 +1070,10 @@ connection with its distribution of the Program in a commercial product
 offering. The obligations in this section do not apply to any claims or Losses
 relating to any actual or alleged intellectual property infringement. In order
 to qualify, an Indemnified Contributor must: a) promptly notify the Commercial
-Contributor in writing of such claim, and b) allow the Commercial Contributor
-to control, and cooperate with the Commercial Contributor in, the defense and
-any related settlement negotiations. The Indemnified Contributor may
-participate in any such claim at its own expense.
+Contributor in writing of such claim, and b) allow the Commercial Contributor to
+control, and cooperate with the Commercial Contributor in, the defense and any
+related settlement negotiations. The Indemnified Contributor may participate in
+any such claim at its own expense.
 
 For example, a Contributor might include the Program in a commercial product
 offering, Product X. That Contributor is then a Commercial Contributor. If that
@@ -1009,11 +1091,11 @@ EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, THE PROGRAM IS PROVIDED ON AN
 "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESS OR
 IMPLIED INCLUDING, WITHOUT LIMITATION, ANY WARRANTIES OR CONDITIONS OF TITLE,
 NON-INFRINGEMENT, MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE. Each
-Recipient is solely responsible for determining the appropriateness of using
-and distributing the Program and assumes all risks associated with its exercise
-of rights under this Agreement , including but not limited to the risks and
-costs of program errors, compliance with applicable laws, damage to or loss of
-data, programs or equipment, and unavailability or interruption of operations.
+Recipient is solely responsible for determining the appropriateness of using and
+distributing the Program and assumes all risks associated with its exercise of
+rights under this Agreement , including but not limited to the risks and costs
+of program errors, compliance with applicable laws, damage to or loss of data,
+programs or equipment, and unavailability or interruption of operations.
 
 6. DISCLAIMER OF LIABILITY
 
@@ -1021,8 +1103,8 @@ EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, NEITHER RECIPIENT NOR ANY
 CONTRIBUTORS SHALL HAVE ANY LIABILITY FOR ANY DIRECT, INDIRECT, INCIDENTAL,
 SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING WITHOUT LIMITATION LOST
 PROFITS), HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
-WAY OUT OF THE USE OR DISTRIBUTION OF THE PROGRAM OR THE EXERCISE OF ANY RIGHTS
+STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+OUT OF THE USE OR DISTRIBUTION OF THE PROGRAM OR THE EXERCISE OF ANY RIGHTS
 GRANTED HEREUNDER, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 
 7. GENERAL
@@ -1036,8 +1118,8 @@ provision valid and enforceable.
 If Recipient institutes patent litigation against any entity (including a
 cross-claim or counterclaim in a lawsuit) alleging that the Program itself
 (excluding combinations of the Program with other software or hardware)
-infringes such Recipient's patent(s), then such Recipient's rights granted
-under Section 2(b) shall terminate as of the date such litigation is filed.
+infringes such Recipient's patent(s), then such Recipient's rights granted under
+Section 2(b) shall terminate as of the date such litigation is filed.
 
 All Recipient's rights under this Agreement shall terminate if it fails to
 comply with any of the material terms or conditions of this Agreement and does
@@ -1045,8 +1127,8 @@ not cure such failure in a reasonable period of time after becoming aware of
 such noncompliance. If all Recipient's rights under this Agreement terminate,
 Recipient agrees to cease use and distribution of the Program as soon as
 reasonably practicable. However, Recipient's obligations under this Agreement
-and any licenses granted by Recipient relating to the Program shall continue
-and survive.
+and any licenses granted by Recipient relating to the Program shall continue and
+survive.
 
 Everyone is permitted to copy and distribute copies of this Agreement, but in
 order to avoid inconsistency the Agreement is copyrighted and may only be
@@ -1069,23 +1151,14 @@ this Agreement are reserved.
 This Agreement is governed by the laws of the State of New York and the
 intellectual property laws of the United States of America. No party to this
 Agreement will bring a legal action under this Agreement more than one year
-after the cause of action arose. Each party waives its rights to a jury trial
-in any resulting litigation.
+after the cause of action arose. Each party waives its rights to a jury trial in
+any resulting litigation.
 
 ------
 
-** common-annotations-api; version 1.3.5 --
-https://projects.eclipse.org/projects/ee4j.ca
-Notices for Jakarta Annotations
-
-This content is produced and maintained by the Jakarta Annotations project.
-
-    Project home: https://projects.eclipse.org/projects/ee4j.ca
-
-Trademarks
-
-Jakarta Annotations is a trademark of the Eclipse Foundation.
+** common-annotations-api; version 1.3.5 -- https://projects.eclipse.org/projects/ee4j.ca
 ** javax.ws.rs; version 2.1.1 -- https://github.com/eclipse-ee4j/jaxrs-api
+
 # Notices for Jakarta RESTful Web Services
 
 This content is produced and maintained by the **Jakarta RESTful Web Services**
@@ -1103,10 +1176,11 @@ All content is the property of the respective authors or their employers. For
 more information regarding authorship of content, please consult the listed
 source code repository logs.
 
-    * Package common-annotations-api's source code may be found at:
-      https://github.com/eclipse-ee4j/common-annotations-api/tree/1.3.5
     * Package javax.ws.rs's source code may be found at:
       https://github.com/eclipse-ee4j/jaxrs-api
+
+    * Package common-annotations-api's source code may be found at:
+      https://github.com/eclipse-ee4j/common-annotations-api/tree/1.3.5
 
 # Eclipse Public License - v 2.0
 
@@ -1691,8 +1765,8 @@ source code repository logs.
 
         You should have received a copy of the GNU General Public License
         along with this program; if not, write to the Free Software
-        Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
-        02110-1335 USA
+        Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1335
+USA
 
     Also add information on how to contact you by electronic and paper mail.
 
@@ -1749,107 +1823,8 @@ source code repository logs.
 
 ------
 
-** corretto-docker; version 15-al2-full --
-https://github.com/corretto/corretto-docker
-Copyright (C) 2018 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to deal in
-the Software without restriction, including without limitation the rights to
-use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-of the Software, and to permit persons to whom the Software is furnished to do
-so.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-------
-
-** curiostack; version protobuf-jackson-1.2.0 --
-https://github.com/curioswitch/curiostack/tree/protobuf-jackson-1.1.0
-Copyright (c) 2020 Choko (choko@curioswitch.org)
-
-MIT License
-
-Copyright (c) 2020 Choko (choko@curioswitch.org)
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-------
-
-** animal-sniffer-annotations; version 1.19 --
-https://www.mojohaus.org/animal-sniffer/animal-sniffer-annotations/
-Copyright (c) 2009 codehaus.org.
-
-The MIT License
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-
-------
-
-** slf4j-api; version 1.7.30 -- http://www.slf4j.org
-Copyright (c) 2004-2017 QOS.ch
- All rights reserved.
-
-Permission is hereby granted, free  of charge, to any person obtaining
- a  copy  of this  software  and  associated  documentation files  (the
- "Software"), to  deal in  the Software without  restriction, including
- without limitation  the rights to  use, copy, modify,  merge, publish,
- distribute,  sublicense, and/or sell  copies of  the Software,  and to
- permit persons to whom the Software  is furnished to do so, subject to
- the following conditions:
-
- The  above  copyright  notice  and  this permission  notice  shall  be
- included in all copies or substantial portions of the Software.
-
- THE  SOFTWARE IS  PROVIDED  "AS  IS", WITHOUT  WARRANTY  OF ANY  KIND,
- EXPRESS OR  IMPLIED, INCLUDING  BUT NOT LIMITED  TO THE  WARRANTIES OF
- MERCHANTABILITY,    FITNESS    FOR    A   PARTICULAR    PURPOSE    AND
- NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
- LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
- OF CONTRACT, TORT OR OTHERWISE,  ARISING FROM, OUT OF OR IN CONNECTION
- WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-------
-
 ** jnr x86asm; version 1.0.2 -- https://github.com/jnr/jnr-x86asm/tree/1.0.2
+
 Copyright (C) 2010 Wayne Meissner
  Copyright (c) 2008-2009, Petr Kobalicek <kobalicek.petr@gmail.com>
 
@@ -1879,7 +1854,34 @@ Copyright (C) 2010 Wayne Meissner
 
 ------
 
+** animal-sniffer-annotations; version 1.19 -- https://www.mojohaus.org/animal-sniffer/animal-sniffer-annotations/
+
+Copyright (c) 2009 codehaus.org.
+
+The MIT License
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+------
+
 ** JOpt-Simple; version 5.0.2 -- https://github.com/jopt-simple/jopt-simple
+
 Copyright (c) 2004-2014 Paul R. Holser, Jr.
 
  The MIT License
@@ -1907,7 +1909,113 @@ Copyright (c) 2004-2014 Paul R. Holser, Jr.
 
 ------
 
+** curiostack; version protobuf-jackson-1.2.0 -- https://github.com/curioswitch/curiostack/tree/protobuf-jackson-1.1.0
+** slf4j-api; version 1.7.32 -- http://www.slf4j.org
+
+Copyright (c) 2004-2017 QOS.ch
+ All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+------
+
+** checkerframework-checker-qual; version 3.12.0 -- https://checkerframework.org/
+
+Checker Framework qualifiers
+Copyright 2004-present by the Checker Framework developers
+
+MIT License:
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+------
+
+** BountyCastle Java; version 1.66 -- https://github.com/bcgit/bc-java/tree/r1rv66
+
+Copyright (c) 2000 - 2020 The Legion of the Bouncy Castle Inc.
+(https://www.bouncycastle.org)
+
+Please note this should be read in the same way as the MIT license.
+
+Please also note this licensing model is made possible through funding from
+donations and the sale of support contracts.
+License
+
+Copyright (c) 2000 - 2020 The Legion of the Bouncy Castle Inc.
+(https://www.bouncycastle.org)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+------
+
+** corretto-docker; version 15-al2-full -- https://github.com/corretto/corretto-docker
+
+Copyright (C) 2018 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+------
+
 ** reflections; version 0.9.12 -- https://github.com/ronmamo/reflections
+
 Copyright (C) 2004 Sam Hocevar <sam@hocevar.net>
 
  DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
