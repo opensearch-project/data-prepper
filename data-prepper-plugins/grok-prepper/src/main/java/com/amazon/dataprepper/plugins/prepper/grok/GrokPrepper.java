@@ -46,6 +46,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
@@ -61,13 +67,19 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
     private final Map<String, List<Grok>> fieldToGrok;
     private final GrokPrepperConfig grokPrepperConfig;
     private final Set<String> keysToOverwrite;
+    private final ExecutorService executorService;
 
     public GrokPrepper(final PluginSetting pluginSetting) {
+        this(pluginSetting, GrokCompiler.newInstance(), Executors.newSingleThreadExecutor());
+    }
+
+    GrokPrepper(final PluginSetting pluginSetting, final GrokCompiler grokCompiler, final ExecutorService executorService) {
         super(pluginSetting);
-        grokPrepperConfig = GrokPrepperConfig.buildConfig(pluginSetting);
-        keysToOverwrite = new HashSet<>(grokPrepperConfig.getkeysToOverwrite());
-        grokCompiler = GrokCompiler.newInstance();
-        fieldToGrok = new LinkedHashMap<>();
+        this.grokPrepperConfig = GrokPrepperConfig.buildConfig(pluginSetting);
+        this.keysToOverwrite = new HashSet<>(grokPrepperConfig.getkeysToOverwrite());
+        this.grokCompiler = grokCompiler;
+        this.fieldToGrok = new LinkedHashMap<>();
+        this.executorService = executorService;
 
         registerPatterns();
         compileMatchPatterns();
@@ -87,31 +99,11 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
         for (final Record<String> record : records) {
             try {
                 final Map<String, Object> recordMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
-                final Map<String, Object> grokkedCaptures = new HashMap<>();
 
-                for (final Map.Entry<String, List<Grok>> entry : fieldToGrok.entrySet()) {
-                    for (final Grok grok : entry.getValue()) {
-                        if (recordMap.containsKey(entry.getKey())) {
-                            final Match match = grok.match(recordMap.get(entry.getKey()).toString());
-                            match.setKeepEmptyCaptures(grokPrepperConfig.isKeepEmptyCaptures());
-
-                            final Map<String, Object> captures = match.capture();
-                            mergeCaptures(grokkedCaptures, captures);
-
-                            if (shouldBreakOnMatch(grokkedCaptures)) {
-                                break;
-                            }
-                        }
-                    }
-                    if (shouldBreakOnMatch(grokkedCaptures)) {
-                        break;
-                    }
-                }
-
-                if (grokPrepperConfig.getTargetKey() != null) {
-                    recordMap.put(grokPrepperConfig.getTargetKey(), grokkedCaptures);
+                if (grokPrepperConfig.getTimeoutMillis() == 0) {
+                    matchAndMerge(recordMap);
                 } else {
-                    mergeCaptures(recordMap, grokkedCaptures);
+                    runWithTimeout(() -> matchAndMerge(recordMap));
                 }
 
                 final Record<String> grokkedRecord = new Record<>(OBJECT_MAPPER.writeValueAsString(recordMap), record.getMetadata());
@@ -120,33 +112,52 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
             } catch (JsonProcessingException e) {
                 LOG.error("Failed to parse the record [{}]", record.getData());
                 recordsOut.add(record);
+            } catch (TimeoutException e) {
+                LOG.error("Matching on record [{}] took longer than [{}] and timed out", record.getData(), grokPrepperConfig.getTimeoutMillis());
+                recordsOut.add(record);
+            } catch (ExecutionException e) {
+                LOG.error("An exception occurred while matching on record [{}]", record.getData(), e);
+                recordsOut.add(record);
+            } catch (InterruptedException e) {
+                LOG.error("Matching on record [{}] was interrupted", record.getData(), e);
+                recordsOut.add(record);
+            } catch (RuntimeException e) {
+                LOG.error("Unknown exception occurred when matching record [{}]", record.getData(), e);
+                recordsOut.add(record);
             }
-        }
+         }
         return recordsOut;
     }
 
     @Override
     public void prepareForShutdown() {
-
+        executorService.shutdown();
     }
 
     @Override
     public boolean isReadyForShutdown() {
+        try {
+            if (executorService.awaitTermination(300, TimeUnit.MILLISECONDS)) {
+                LOG.info("Successfully waited for running task to terminate");
+            }
+        } catch (InterruptedException e) {
+            LOG.error("Interrupted while waiting for running task to terminate", e);
+        }
         return true;
     }
 
     @Override
     public void shutdown() {
-
+        executorService.shutdownNow();
     }
 
     private void registerPatterns() {
         grokCompiler.registerDefaultPatterns();
         grokCompiler.register(grokPrepperConfig.getPatternDefinitions());
-        registerPatternsDir();
+        registerPatternsDirectories();
     }
 
-    private void registerPatternsDir() {
+    private void registerPatternsDirectories() {
         for (final String directory : grokPrepperConfig.getPatternsDirectories()) {
             final Path path = FileSystems.getDefault().getPath(directory);
             try (DirectoryStream<Path> stream = Files.newDirectoryStream(path, grokPrepperConfig.getPatternsFilesGlob())) {
@@ -183,6 +194,35 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
         }
     }
 
+    private void matchAndMerge(final Map<String, Object> recordMap) {
+        final Map<String, Object> grokkedCaptures = new HashMap<>();
+
+        for (final Map.Entry<String, List<Grok>> entry : fieldToGrok.entrySet()) {
+            for (final Grok grok : entry.getValue()) {
+                if (recordMap.containsKey(entry.getKey())) {
+                    final Match match = grok.match(recordMap.get(entry.getKey()).toString());
+                    match.setKeepEmptyCaptures(grokPrepperConfig.isKeepEmptyCaptures());
+
+                    final Map<String, Object> captures = match.capture();
+                    mergeCaptures(grokkedCaptures, captures);
+
+                    if (shouldBreakOnMatch(grokkedCaptures)) {
+                        break;
+                    }
+                }
+            }
+            if (shouldBreakOnMatch(grokkedCaptures)) {
+                break;
+            }
+        }
+
+        if (grokPrepperConfig.getTargetKey() != null) {
+            recordMap.put(grokPrepperConfig.getTargetKey(), grokkedCaptures);
+        } else {
+            mergeCaptures(recordMap, grokkedCaptures);
+        }
+    }
+
     private void mergeCaptures(final Map<String, Object> original, final Map<String, Object> updates) {
         for (final Map.Entry<String, Object> updateEntry : updates.entrySet()) {
             if (!(original.containsKey(updateEntry.getKey())) || keysToOverwrite.contains(updateEntry.getKey())) {
@@ -210,5 +250,10 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
 
     private boolean shouldBreakOnMatch(final Map<String, Object> captures) {
         return captures.size() > 0 && grokPrepperConfig.isBreakOnMatch();
+    }
+
+    private void runWithTimeout(final Runnable runnable) throws TimeoutException, ExecutionException, InterruptedException {
+        Future<?> task = executorService.submit(runnable);
+        task.get(grokPrepperConfig.getTimeoutMillis(), TimeUnit.MILLISECONDS);
     }
 }
