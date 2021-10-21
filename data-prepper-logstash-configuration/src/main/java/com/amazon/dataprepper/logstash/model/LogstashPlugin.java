@@ -8,22 +8,38 @@ import java.util.List;
  * @since 1.2
  */
 public class LogstashPlugin {
-    private String pluginName;
-    private List<LogstashAttribute> attributes;
+    private final String pluginName;
+    private final List<LogstashAttribute> attributes;
 
     public String getPluginName() {
         return pluginName;
-    }
-
-    public void setPluginName(String pluginName) {
-        this.pluginName = pluginName;
     }
 
     public List<LogstashAttribute> getAttributes() {
         return attributes;
     }
 
-    public void setAttributes(List<LogstashAttribute> attributes) {
-        this.attributes = attributes;
+    private LogstashPlugin(LogstashPluginBuilder builder) {
+        this.pluginName = builder.pluginName;
+        this.attributes = builder.attributes;
+    }
+
+    public static class LogstashPluginBuilder {
+        private String pluginName;
+        private List<LogstashAttribute> attributes;
+
+        public LogstashPluginBuilder pluginName(final String pluginName) {
+            this.pluginName = pluginName;
+            return this;
+        }
+
+        public LogstashPluginBuilder attributes(final List<LogstashAttribute> attributes) {
+            this.attributes = attributes;
+            return this;
+        }
+
+        public LogstashPlugin build() {
+            return new LogstashPlugin(this);
+        }
     }
 }
