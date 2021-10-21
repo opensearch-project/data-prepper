@@ -9,13 +9,26 @@ import java.util.Map;
  * @since 1.2
  */
 public class LogstashConfiguration {
-    private Map<LogstashPluginType, List<LogstashPlugin>> pluginSections;
+    private final Map<LogstashPluginType, List<LogstashPlugin>> pluginSections;
 
     public List<LogstashPlugin> getPluginSection(LogstashPluginType pluginType) {
         return pluginSections.get(pluginType);
     }
 
-    public void setPluginSection(LogstashPluginType pluginType, List<LogstashPlugin> plugins) {
-        pluginSections.put(pluginType, plugins);
+    private LogstashConfiguration(LogstashConfigurationBuilder builder) {
+        this.pluginSections = builder.pluginSections;
+    }
+
+    public static class LogstashConfigurationBuilder {
+        private Map<LogstashPluginType, List<LogstashPlugin>> pluginSections;
+
+        public LogstashConfigurationBuilder pluginSections(LogstashPluginType pluginType, List<LogstashPlugin> plugins) {
+            this.pluginSections.put(pluginType, plugins);
+            return this;
+        }
+
+        public LogstashConfiguration build() {
+            return new LogstashConfiguration(this);
+        }
     }
 }
