@@ -29,7 +29,7 @@ public class JacksonEventTest {
 
         eventType = UUID.randomUUID().toString();
 
-        event = new JacksonEvent.Builder()
+        event = JacksonEvent.builder()
                 .withEventType(eventType)
                 .build();
     }
@@ -216,7 +216,7 @@ public class JacksonEventTest {
 
     @Test
     public void testBuild_withEventType() {
-        event = new JacksonEvent.Builder()
+        event = JacksonEvent.builder()
                 .withEventType(eventType)
                 .build();
 
@@ -228,7 +228,7 @@ public class JacksonEventTest {
 
         final Instant now = Instant.now();
 
-        event = new JacksonEvent.Builder()
+        event = JacksonEvent.builder()
                 .withEventType(eventType)
                 .withTimeReceived(now)
                 .build();
@@ -243,7 +243,7 @@ public class JacksonEventTest {
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID());
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
-        event = new JacksonEvent.Builder()
+        event = JacksonEvent.builder()
                 .withEventType(eventType)
                 .withEventMetadataAttributes(testAttributes)
                 .build();
@@ -260,11 +260,11 @@ public class JacksonEventTest {
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         final String emEventType = UUID.randomUUID().toString();
 
-        final EventMetadata metadata = new DefaultEventMetadata.Builder()
+        final EventMetadata metadata = DefaultEventMetadata.builder()
                 .withEventType(emEventType)
                 .build();
 
-        event = new JacksonEvent.Builder()
+        event = JacksonEvent.builder()
                 .withEventType(eventType)
                 .withTimeReceived(now)
                 .withEventMetadataAttributes(testAttributes)
@@ -279,11 +279,11 @@ public class JacksonEventTest {
     @Test
     public void testBuild_withEventMetadata() {
 
-        EventMetadata metadata = new DefaultEventMetadata.Builder()
+        EventMetadata metadata = DefaultEventMetadata.builder()
                 .withEventType(eventType)
                 .build();
 
-        event = new JacksonEvent.Builder()
+        event = JacksonEvent.builder()
                 .withEventMetadata(metadata)
                 .build();
 
@@ -297,9 +297,10 @@ public class JacksonEventTest {
         final String value = UUID.randomUUID().toString();
         final TestObject testObject = new TestObject(value);
 
-        event = new JacksonEvent.Builder()
+        event = JacksonEvent.builder()
                 .withEventType(eventType)
                 .withData(testObject)
+                .getThis()
                 .build();
 
         assertThat(event.get("field1", String.class), is(equalTo(value)));
