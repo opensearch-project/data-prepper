@@ -12,6 +12,7 @@
 package com.amazon.dataprepper.plugins.prepper.grok;
 
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -20,12 +21,17 @@ import io.krakens.grok.api.Grok;
 import io.krakens.grok.api.GrokCompiler;
 import io.krakens.grok.api.Match;
 import com.amazon.dataprepper.model.record.Record;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.Nested;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.Mock;
 import org.junit.jupiter.api.Test;
+import org.mockito.stubbing.Answer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -38,12 +44,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -75,6 +83,25 @@ public class GrokPrepperTests {
 
     @Mock
     private Grok grokSecondMatch;
+
+    @Mock
+    private PluginMetrics pluginMetrics;
+
+    @Mock
+    private Counter grokProcessingMatchSuccessCounter;
+
+    @Mock
+    private Counter grokProcessingMatchFailureCounter;
+
+    @Mock
+    private Counter grokProcessingErrorsCounter;
+
+    @Mock
+    private Counter grokProcessingTimeoutsCounter;
+
+    @Mock
+    private Timer grokProcessingTime;
+
     private PluginSetting pluginSetting;
     private final String PLUGIN_NAME = "grok";
     private Map<String, Object> capture;
@@ -82,6 +109,26 @@ public class GrokPrepperTests {
 
     @BeforeEach
     public void setup() throws TimeoutException, ExecutionException, InterruptedException {
+        when(pluginMetrics.counter(GrokPrepper.GROK_PROCESSING_MATCH_SUCCESS)).thenReturn(grokProcessingMatchSuccessCounter);
+        when(pluginMetrics.counter(GrokPrepper.GROK_PROCESSING_MATCH_FAILURE)).thenReturn(grokProcessingMatchFailureCounter);
+        when(pluginMetrics.counter(GrokPrepper.GROK_PROCESSING_TIMEOUTS)).thenReturn(grokProcessingTimeoutsCounter);
+        when(pluginMetrics.counter(GrokPrepper.GROK_PROCESSING_ERRORS)).thenReturn(grokProcessingErrorsCounter);
+        when(pluginMetrics.timer(GrokPrepper.GROK_PROCESSING_TIME)).thenReturn(grokProcessingTime);
+
+        /*doAnswer((Answer<Runnable>) invocation -> {
+            final Runnable runnable = invocation.getArgument(0);
+            runnable.run();
+            return null;
+        }).when(grokProcessingTime.record(ArgumentMatchers.<Supplier <<Runnable>>any()));
+
+        when(grokProcessingTime.record(ArgumentMatchers.<Runnable>any())).thenAnswer(
+                (Answer<Runnable>) invocation -> {
+                    final Object[] args = invocation.getArguments();
+                    @SuppressWarnings("unchecked")
+                    final Runnable runnable = (Runnable) args[0];
+                    return null;
+                }
+        );*/
         pluginSetting = getDefaultPluginSetting();
         pluginSetting.setPipelineName("grokPipeline");
 

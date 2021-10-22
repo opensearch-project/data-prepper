@@ -57,7 +57,22 @@ The Grok Prepper uses the [java-grok Library](https://github.com/thekrakken/java
 
 ## Metrics
 
-TBD
+Counter
+
+* `grokProcessingMatchFailure`: records the number of Records that did not match any of the patterns specified in the match field
+  
+
+* `grokProcessingMatchSuccess`: records the number of Records that found at least one pattern match from the match field
+  
+
+* `grokProcessingErrors`: records the total number of processing errors for Records
+
+
+* `grokProcessingTimeouts`: records the total number of Records that timed out while matching
+
+Timer
+
+* `grokProcessingTime`: the time each individual Record takes matching against patterns from `match`. The `avg` is the most useful metric for this Timer.
 
 ## Developer Guide
 This plugin is compatible with Java 14. See

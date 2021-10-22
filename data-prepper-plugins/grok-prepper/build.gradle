@@ -19,6 +19,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
+    implementation 'io.micrometer:micrometer-core'
 }
 
 jacocoTestCoverageVerification {
