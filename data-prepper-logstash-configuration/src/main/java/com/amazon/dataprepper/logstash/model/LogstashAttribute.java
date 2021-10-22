@@ -1,5 +1,7 @@
 package com.amazon.dataprepper.logstash.model;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 /**
  * Class to hold Logstash configuration attribute name and {@link LogstashAttributeValue}
  *
@@ -17,21 +19,33 @@ public class LogstashAttribute {
         return attributeValue;
     }
 
-    private LogstashAttribute (LogstashAttributeBuilder builder) {
+    private LogstashAttribute (Builder builder) {
+        checkNotNull(builder.attributeName, "attribute name cannot be null");
+        checkNotNull(builder.attributeValue, "attribute value cannot be null");
+
         this.attributeName = builder.attributeName;
         this.attributeValue = builder.attributeValue;
     }
 
-    public static class LogstashAttributeBuilder {
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
+     * A Builder for creating {@link LogstashAttribute} instances.
+     *
+     * @since 1.2
+     */
+    public static class Builder {
         private String attributeName;
         private LogstashAttributeValue attributeValue;
 
-        public LogstashAttributeBuilder attributeName(final String attributeName) {
+        public Builder attributeName(final String attributeName) {
             this.attributeName = attributeName;
             return this;
         }
 
-        public LogstashAttributeBuilder attributeValue(final LogstashAttributeValue attributeValue) {
+        public Builder attributeValue(final LogstashAttributeValue attributeValue) {
             this.attributeValue = attributeValue;
             return this;
         }
