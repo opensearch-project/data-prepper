@@ -60,6 +60,15 @@ public class DefaultEventMetadata implements EventMetadata {
     }
 
     /**
+     * Constructs an empty builder.
+     * @return a builder
+     * @since 1.2
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
      * A Builder for creating {@link DefaultEventMetadata} instances.
      *
      * @since 1.2

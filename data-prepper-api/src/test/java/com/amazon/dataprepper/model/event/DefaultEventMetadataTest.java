@@ -39,7 +39,7 @@ public class DefaultEventMetadataTest {
 
         testEventType = UUID.randomUUID().toString();
 
-        eventMetadata = new DefaultEventMetadata.Builder()
+        eventMetadata = DefaultEventMetadata.builder()
                 .withAttributes(testAttributes)
                 .withEventType(testEventType)
                 .withTimeReceived(testTimeReceived)
@@ -80,7 +80,7 @@ public class DefaultEventMetadataTest {
 
         final Instant before = Instant.now();
 
-        EventMetadata result = new DefaultEventMetadata.Builder()
+        EventMetadata result = DefaultEventMetadata.builder()
                 .withEventType(testEventType)
                 .build();
 
@@ -94,7 +94,7 @@ public class DefaultEventMetadataTest {
     @Test
     public void testBuild_withoutMap() {
 
-        final EventMetadata result = new DefaultEventMetadata.Builder()
+        final EventMetadata result = DefaultEventMetadata.builder()
                 .withEventType(testEventType)
                 .build();
 
@@ -107,11 +107,14 @@ public class DefaultEventMetadataTest {
 
     @Test
     public void testBuild_withoutEventType_throwsAnException() {
-        assertThrows(NullPointerException.class, () -> new DefaultEventMetadata.Builder().build());
+        final DefaultEventMetadata.Builder builder = DefaultEventMetadata.builder();
+        assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test
     public void testBuild_withoutEmptyEventType_throwsAnException() {
-        assertThrows(IllegalArgumentException.class, () -> new DefaultEventMetadata.Builder().withEventType("").build());
+        final DefaultEventMetadata.Builder builder = DefaultEventMetadata.builder()
+                .withEventType("");
+        assertThrows(IllegalArgumentException.class, builder::build);
     }
 }

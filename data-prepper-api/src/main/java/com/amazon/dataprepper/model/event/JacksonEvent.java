@@ -56,7 +56,7 @@ public class JacksonEvent implements Event {
 
     private final JsonNode jsonNode;
 
-    private JacksonEvent(final Builder builder) {
+    protected JacksonEvent(final Builder builder) {
 
         if (builder.eventMetadata == null) {
             this.eventMetadata = new DefaultEventMetadata.Builder()
@@ -186,22 +186,37 @@ public class JacksonEvent implements Event {
     }
 
     /**
+     * Constructs an empty builder.
+     * @return a builder
+     * @since 1.2
+     */
+    public static Builder builder() {
+        return new Builder() {
+            @Override public Builder getThis() {
+                return this;
+            }
+        };
+    }
+
+    /**
      * Builder for creating {@link JacksonEvent}.
      * @since 1.2
      */
-    public static class Builder {
+    public abstract static class Builder<T extends Builder<T>> {
         private EventMetadata eventMetadata;
         private Object data;
         private String eventType;
         private Instant timeReceived;
         private Map<String, Object> eventMetadataAttributes;
 
+        public abstract T getThis();
+
         /**
          * Sets the event type for the metadata if a {@link #withEventMetadata} is not used.
          * @param eventType the event type
          * @since 1.2
          */
-        public Builder withEventType(final String eventType) {
+        public Builder<T> withEventType(final String eventType) {
             this.eventType = eventType;
             return this;
         }
@@ -211,7 +226,7 @@ public class JacksonEvent implements Event {
          * @param eventMetadataAttributes the attributes
          * @since 1.2
          */
-        public Builder withEventMetadataAttributes(final Map<String, Object> eventMetadataAttributes) {
+        public Builder<T> withEventMetadataAttributes(final Map<String, Object> eventMetadataAttributes) {
             this.eventMetadataAttributes = eventMetadataAttributes;
             return this;
         }
@@ -221,7 +236,7 @@ public class JacksonEvent implements Event {
          * @param timeReceived the time an event was received
          * @since 1.2
          */
-        public Builder withTimeReceived(final Instant timeReceived) {
+        public Builder<T> withTimeReceived(final Instant timeReceived) {
             this.timeReceived = timeReceived;
             return this;
         }
@@ -231,7 +246,7 @@ public class JacksonEvent implements Event {
          * @param eventMetadata the metadata
          * @since 1.2
          */
-        public Builder withEventMetadata(final EventMetadata eventMetadata) {
+        public Builder<T> withEventMetadata(final EventMetadata eventMetadata) {
             this.eventMetadata = eventMetadata;
             return this;
         }
@@ -241,7 +256,7 @@ public class JacksonEvent implements Event {
          * @param data the data
          * @since 1.2
          */
-        public Builder withData(final Object data) {
+        public Builder<T> withData(final Object data) {
             this.data = data;
             return this;
         }
