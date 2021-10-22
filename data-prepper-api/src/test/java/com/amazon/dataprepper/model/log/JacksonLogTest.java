@@ -18,7 +18,7 @@ public class JacksonLogTest {
         final Log log = JacksonLog.builder().build();
 
         assertThat(log, is(notNullValue()));
-        assertThat(log.getMetadata().getEventType(), is(equalTo("Log")));
+        assertThat(log.getMetadata().getEventType(), is(equalTo("LOG")));
     }
 
     @Test
@@ -29,7 +29,7 @@ public class JacksonLogTest {
                 .build();
 
         assertThat(log, is(notNullValue()));
-        assertThat(log.getMetadata().getEventType(), is(equalTo("Log")));
+        assertThat(log.getMetadata().getEventType(), is(equalTo("LOG")));
     }
 
     @Test
