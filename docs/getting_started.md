@@ -1,5 +1,9 @@
 # Getting Started with Data Prepper
 
+If you are migrating from Open Distro Data Prepper,
+visit the [Migrating from Open Distro](migrating_from_opendistro.md) page.
+Otherwise, please continue.
+
 ## Installation
 
 There are two ways to install Data Prepper for running.
