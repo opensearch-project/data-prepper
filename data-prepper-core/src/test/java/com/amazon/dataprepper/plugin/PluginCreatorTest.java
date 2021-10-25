@@ -6,6 +6,8 @@ import com.amazon.dataprepper.model.plugin.PluginInvocationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.UUID;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -15,6 +17,7 @@ import static org.mockito.Mockito.mock;
 class PluginCreatorTest {
 
     private PluginSetting pluginSetting;
+    private String pluginName;
 
     public static class ValidPluginClass {
         private final PluginSetting pluginSetting;
@@ -40,6 +43,8 @@ class PluginCreatorTest {
     @BeforeEach
     void setUp() {
         pluginSetting = mock(PluginSetting.class);
+
+        pluginName = UUID.randomUUID().toString();
     }
 
     private PluginCreator createObjectUnderTest() {
@@ -47,20 +52,20 @@ class PluginCreatorTest {
     }
 
     @Test
-    void newPluginInstance_should_create_new_instance_from_PluginSettings() {
+    void newPluginInstance_should_create_new_instance_from_pluginConfiguration() {
 
-        final ValidPluginClass instance = createObjectUnderTest().newPluginInstance(ValidPluginClass.class, pluginSetting);
+        final ValidPluginClass instance = createObjectUnderTest().newPluginInstance(ValidPluginClass.class, pluginSetting, pluginName);
 
         assertThat(instance, notNullValue());
         assertThat(instance.pluginSetting, equalTo(pluginSetting));
     }
 
     @Test
-    void newPluginInstance_should_throw_if_no_constructor_with_PluginSetting() {
+    void newPluginInstance_should_throw_if_no_constructor_with_pluginConfiguration() {
 
         final PluginCreator objectUnderTest = createObjectUnderTest();
         assertThrows(InvalidPluginDefinitionException.class,
-                () -> objectUnderTest.newPluginInstance(PluginClassWithoutConstructor.class, pluginSetting));
+                () -> objectUnderTest.newPluginInstance(PluginClassWithoutConstructor.class, pluginSetting, pluginName));
     }
 
     @Test
@@ -68,7 +73,7 @@ class PluginCreatorTest {
 
         final PluginCreator objectUnderTest = createObjectUnderTest();
         assertThrows(InvalidPluginDefinitionException.class,
-                () -> objectUnderTest.newPluginInstance(AbstractPluginClass.class, pluginSetting));
+                () -> objectUnderTest.newPluginInstance(AbstractPluginClass.class, pluginSetting, pluginName));
     }
 
     @Test
@@ -76,6 +81,6 @@ class PluginCreatorTest {
 
         final PluginCreator objectUnderTest = createObjectUnderTest();
         assertThrows(PluginInvocationException.class,
-                () -> objectUnderTest.newPluginInstance(AlwaysThrowingPluginClass.class, pluginSetting));
+                () -> objectUnderTest.newPluginInstance(AlwaysThrowingPluginClass.class, pluginSetting, pluginName));
     }
 }

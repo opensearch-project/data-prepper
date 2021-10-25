@@ -1,6 +1,5 @@
 package com.amazon.dataprepper.plugin;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import com.amazon.dataprepper.model.plugin.PluginInvocationException;
 import org.slf4j.Logger;
@@ -15,14 +14,16 @@ import static java.lang.String.format;
 class PluginCreator {
     private static final Logger LOG = LoggerFactory.getLogger(PluginCreator.class);
 
-    <T> T newPluginInstance(final Class<T> pluginClass, final PluginSetting pluginSetting) {
+    <T> T newPluginInstance(final Class<T> pluginClass,
+                            final Object pluginConfiguration,
+                            final String pluginName) {
         Objects.requireNonNull(pluginClass);
 
-        final String pluginName = pluginSetting.getName();
-        final Constructor<?> constructor = getConstructor(pluginClass, pluginName);
+        final Class<?> pluginConfigurationType = pluginConfiguration.getClass();
+        final Constructor<?> constructor = getConstructor(pluginClass, pluginConfigurationType, pluginName);
 
         try {
-            return (T) constructor.newInstance(pluginSetting);
+            return (T) constructor.newInstance(pluginConfiguration);
         } catch (final IllegalAccessException | InstantiationException ex) {
             LOG.error("Encountered exception while instantiating the plugin {}", pluginClass.getSimpleName(), ex);
             throw new InvalidPluginDefinitionException("Unable to access or instantiate the plugin '" + pluginClass.getSimpleName() + ".'", ex);
@@ -32,15 +33,15 @@ class PluginCreator {
         }
     }
 
-    private <T> Constructor<?> getConstructor(final Class<T> pluginClass, final String pluginName) {
+    private <T> Constructor<?> getConstructor(final Class<T> pluginClass, final Class<?> pluginConfigurationType, final String pluginName) {
         try {
-            return pluginClass.getConstructor(PluginSetting.class);
+            return pluginClass.getConstructor(pluginConfigurationType);
         } catch (final NoSuchMethodException ex) {
             LOG.error("Data Prepper plugin requires a constructor with {} parameter;" +
-                            " Plugin {} with name {} is missing such constructor.", PluginSetting.class.getSimpleName(),
+                            " Plugin {} with name {} is missing such constructor.", pluginConfigurationType,
                     pluginClass.getSimpleName(), pluginName, ex);
             throw new InvalidPluginDefinitionException(format("Data Prepper plugin requires a constructor with %s parameter;" +
-                            " Plugin %s with name %s is missing such constructor.", PluginSetting.class.getSimpleName(),
+                            " Plugin %s with name %s is missing such constructor.", pluginConfigurationType,
                     pluginClass.getSimpleName(), pluginName), ex);
         }
     }
