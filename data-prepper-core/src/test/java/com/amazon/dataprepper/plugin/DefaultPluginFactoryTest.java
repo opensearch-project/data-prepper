@@ -29,6 +29,7 @@ class DefaultPluginFactoryTest {
 
     private PluginProviderLoader pluginProviderLoader;
     private PluginCreator pluginCreator;
+    private PluginConfigurationConverter pluginConfigurationConverter;
     private Collection<PluginProvider> pluginProviders;
     private PluginProvider firstPluginProvider;
     private Class<?> baseClass;
@@ -39,6 +40,7 @@ class DefaultPluginFactoryTest {
     void setUp() {
         pluginProviderLoader = mock(PluginProviderLoader.class);
         pluginCreator = mock(PluginCreator.class);
+        pluginConfigurationConverter = mock(PluginConfigurationConverter.class);
 
         pluginProviders = new ArrayList<>();
         given(pluginProviderLoader.getPluginProviders()).willReturn(pluginProviders);
@@ -52,7 +54,7 @@ class DefaultPluginFactoryTest {
     }
 
     private DefaultPluginFactory createObjectUnderTest() {
-        return new DefaultPluginFactory(pluginProviderLoader, pluginCreator);
+        return new DefaultPluginFactory(pluginProviderLoader, pluginCreator, pluginConfigurationConverter);
     }
 
     @Test
@@ -136,7 +138,10 @@ class DefaultPluginFactoryTest {
         void loadPlugin_should_create_a_new_instance_of_the_first_plugin_found() {
 
             final TestSink expectedInstance = mock(TestSink.class);
-            given(pluginCreator.newPluginInstance(expectedPluginClass, pluginSetting))
+            final Object convertedConfiguration = mock(Object.class);
+            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+                    .willReturn(convertedConfiguration);
+            given(pluginCreator.newPluginInstance(expectedPluginClass, convertedConfiguration, pluginName))
                     .willReturn(expectedInstance);
 
             assertThat(createObjectUnderTest().loadPlugin(baseClass, pluginSetting),
@@ -155,7 +160,7 @@ class DefaultPluginFactoryTest {
 
         @ParameterizedTest
         @ValueSource(ints = {-100, -2, -1})
-        void loadPlugins_should_throw_for_invalid_number_of_instances(int numberOfInstances) {
+        void loadPlugins_should_throw_for_invalid_number_of_instances(final int numberOfInstances) {
 
             final DefaultPluginFactory objectUnderTest = createObjectUnderTest();
             assertThrows(IllegalArgumentException.class, () -> objectUnderTest.loadPlugins(
@@ -178,7 +183,10 @@ class DefaultPluginFactoryTest {
         @Test
         void loadPlugins_should_return_a_single_instance_when_the_the_numberOfInstances_is_1() {
             final TestSink expectedInstance = mock(TestSink.class);
-            given(pluginCreator.newPluginInstance(expectedPluginClass, pluginSetting))
+            final Object convertedConfiguration = mock(Object.class);
+            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+                    .willReturn(convertedConfiguration);
+            given(pluginCreator.newPluginInstance(expectedPluginClass, convertedConfiguration, pluginName))
                     .willReturn(expectedInstance);
 
             final List<?> plugins = createObjectUnderTest().loadPlugins(
@@ -194,7 +202,11 @@ class DefaultPluginFactoryTest {
             final TestSink expectedInstance1 = mock(TestSink.class);
             final TestSink expectedInstance2 = mock(TestSink.class);
             final TestSink expectedInstance3 = mock(TestSink.class);
-            given(pluginCreator.newPluginInstance(expectedPluginClass, pluginSetting))
+            final Object convertedConfiguration = mock(Object.class);
+            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+                    .willReturn(convertedConfiguration);
+
+            given(pluginCreator.newPluginInstance(expectedPluginClass, convertedConfiguration, pluginName))
                     .willReturn(expectedInstance1)
                     .willReturn(expectedInstance2)
                     .willReturn(expectedInstance3);
