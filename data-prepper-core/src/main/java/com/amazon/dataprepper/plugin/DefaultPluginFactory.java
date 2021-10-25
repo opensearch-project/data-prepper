@@ -1,5 +1,6 @@
 package com.amazon.dataprepper.plugin;
 
+import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.NoPluginFoundException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
@@ -20,9 +21,10 @@ public class DefaultPluginFactory implements PluginFactory {
 
     private final Collection<PluginProvider> pluginProviders;
     private final PluginCreator pluginCreator;
+    private final PluginConfigurationConverter pluginConfigurationConverter;
 
     public DefaultPluginFactory() {
-        this(new PluginProviderLoader(), new PluginCreator());
+        this(new PluginProviderLoader(), new PluginCreator(), new PluginConfigurationConverter());
     }
 
     /**
@@ -31,9 +33,11 @@ public class DefaultPluginFactory implements PluginFactory {
      */
     DefaultPluginFactory(
             final PluginProviderLoader pluginProviderLoader,
-            final PluginCreator pluginCreator) {
+            final PluginCreator pluginCreator,
+            final PluginConfigurationConverter pluginConfigurationConverter) {
         Objects.requireNonNull(pluginProviderLoader);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
+        this.pluginConfigurationConverter = Objects.requireNonNull(pluginConfigurationConverter);
 
         this.pluginProviders = Objects.requireNonNull(pluginProviderLoader.getPluginProviders());
 
@@ -48,7 +52,9 @@ public class DefaultPluginFactory implements PluginFactory {
         final String pluginName = pluginSetting.getName();
         final Class<? extends T> pluginClass = getPluginClass(baseClass, pluginName);
 
-        return pluginCreator.newPluginInstance(pluginClass, pluginSetting);
+        final Object configuration = getConfiguration(pluginSetting, pluginClass);
+
+        return pluginCreator.newPluginInstance(pluginClass, configuration, pluginName);
     }
 
     @Override
@@ -64,11 +70,20 @@ public class DefaultPluginFactory implements PluginFactory {
         if(numberOfInstances == null || numberOfInstances < 0)
             throw new IllegalArgumentException("The numberOfInstances must be provided as a non-negative integer.");
 
+        final Object configuration = getConfiguration(pluginSetting, pluginClass);
+
         final List<T> plugins = new ArrayList<>(numberOfInstances);
         for (int i = 0; i < numberOfInstances; i++) {
-            plugins.add(pluginCreator.newPluginInstance(pluginClass, pluginSetting));
+            plugins.add(pluginCreator.newPluginInstance(pluginClass, configuration, pluginName));
         }
         return plugins;
+    }
+
+    private <T> Object getConfiguration(final PluginSetting pluginSetting, final Class<? extends T> pluginClass) {
+        final DataPrepperPlugin pluginAnnotation = pluginClass.getAnnotation(DataPrepperPlugin.class);
+
+        final Class<?> pluginConfigurationType = pluginAnnotation.pluginConfigurationType();
+        return pluginConfigurationConverter.convert(pluginConfigurationType, pluginSetting);
     }
 
     private <T> Class<? extends T> getPluginClass(final Class<T> baseClass, final String pluginName) {
