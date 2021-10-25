@@ -1,4 +1,4 @@
-package com.amazon.dataprepper.logstash.model;
+package org.opensearch.dataprepper.logstash.model;
 
 /**
  * Types of plugins in Logstash configuration

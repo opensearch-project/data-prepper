@@ -1,4 +1,4 @@
-package com.amazon.dataprepper.logstash.model;
+package org.opensearch.dataprepper.logstash.model;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
