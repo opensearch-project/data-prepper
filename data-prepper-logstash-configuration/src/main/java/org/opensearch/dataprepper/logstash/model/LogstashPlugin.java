@@ -1,4 +1,4 @@
-package com.amazon.dataprepper.logstash.model;
+package org.opensearch.dataprepper.logstash.model;
 
 import java.util.List;
 
