@@ -1,4 +1,4 @@
-package com.amazon.dataprepper.logstash.model;
+package org.opensearch.dataprepper.logstash.model;
 
 /**
  * Types of attribute values in Logstash configuration
