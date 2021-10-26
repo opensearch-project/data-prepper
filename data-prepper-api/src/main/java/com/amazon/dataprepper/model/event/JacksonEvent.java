@@ -32,8 +32,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * A Jackson Implementation of {@link Event} interface. This implementation relies heavily on JsonNode to manage the keys of the event.
  * <p>
- * This implementation supports JsonPointer for keys to access nested structures. For example using the key "fizz/buzz" would allow a
- * user to retrieve the number 42 using {@link #get(String, Class)} from the nested structure below.
+ * This implementation supports [JsonPointer](https://datatracker.ietf.org/doc/html/rfc6901) for keys to access nested structures.
+ * For example using the key "fizz/buzz" would allow a user to retrieve the number 42 using {@link #get(String, Class)} from the nested structure below.
  * <p>
  *     {
  *         "foo": "bar"
