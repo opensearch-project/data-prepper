@@ -40,23 +40,28 @@ public class DefaultLink implements Link {
         this.droppedAttributesCount = builder.droppedAttributesCount == null ? 0 : builder.droppedAttributesCount;
     }
 
-    @Override public String getTraceId() {
+    @Override
+    public String getTraceId() {
         return traceId;
     }
 
-    @Override public String getSpanId() {
+    @Override
+    public String getSpanId() {
         return spanId;
     }
 
-    @Override public String getTraceState() {
+    @Override
+    public String getTraceState() {
         return traceState;
     }
 
-    @Override public Map<String, Object> getAttributes() {
+    @Override
+    public Map<String, Object> getAttributes() {
         return attributes;
     }
 
-    @Override public Integer getDroppedAttributesCount() {
+    @Override
+    public Integer getDroppedAttributesCount() {
         return droppedAttributesCount;
     }
 

@@ -29,15 +29,18 @@ public class DefaultTraceGroupFields implements TraceGroupFields {
         this.statusCode = builder.statusCode;
     }
 
-    @Override public String getEndTime() {
+    @Override
+    public String getEndTime() {
         return endTime;
     }
 
-    @Override public Long getDurationInNanos() {
+    @Override
+    public Long getDurationInNanos() {
         return durationInNanos;
     }
 
-    @Override public Integer getStatusCode() {
+    @Override
+    public Integer getStatusCode() {
         return statusCode;
     }
 

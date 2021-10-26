@@ -4,9 +4,6 @@ import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.Date;
@@ -23,7 +20,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@ExtendWith(MockitoExtension.class)
 public class JacksonSpanTest {
 
     private static final String TEST_TRACE_ID =  UUID.randomUUID().toString();
@@ -45,10 +41,8 @@ public class JacksonSpanTest {
     
     private JacksonSpan jacksonSpan;
 
-    @Mock(serializable = true)
     private DefaultLink defaultLink;
 
-    @Mock(serializable = true)
     private DefaultSpanEvent defaultSpanEvent;
 
     private DefaultTraceGroupFields defaultTraceGroupFields;
@@ -206,104 +200,146 @@ public class JacksonSpanTest {
     }
     
     @Test
-    public void testBuilder() {
-        final JacksonSpan result = builder.build();
+    public void testBuilder_withAllParameters_createsSpan() {
+        final JacksonSpan result = JacksonSpan.builder()
+                .withSpanId(TEST_SPAN_ID)
+                .withTraceId(TEST_TRACE_ID)
+                .withTraceState(TEST_TRACE_STATE)
+                .withParentSpanId(TEST_PARENT_SPAN_ID)
+                .withName(TEST_NAME)
+                .withKind(TEST_KIND)
+                .withStartTime(TEST_START_TIME)
+                .withEndTime(TEST_END_TIME)
+                .withAttributes(TEST_ATTRIBUTES)
+                .withDroppedAttributesCount(TEST_DROPPED_ATTRIBUTES_COUNT)
+                .withEvents(Arrays.asList(defaultSpanEvent))
+                .withDroppedEventsCount(TEST_DROPPED_EVENTS_COUNT)
+                .withLinks(Arrays.asList(defaultLink))
+                .withDroppedLinksCount(TEST_DROPPED_LINKS_COUNT)
+                .withTraceGroup(TEST_TRACE_GROUP)
+                .withDurationInNanos(TEST_DURATION_IN_NANOS)
+                .withTraceGroupFields(defaultTraceGroupFields)
+                .build();
 
         assertThat(result, is(notNullValue()));
+    }
+
+    @Test
+    public void testBuilder_withoutParameters_throwsNullPointerException() {
+        final JacksonEvent.Builder builder = JacksonSpan.builder();
+        assertThrows(NullPointerException.class, builder::build);
     }
     
     @Test
     public void testBuilder_withoutTraceId_throwsNullPointerException() {
-        assertThrows(NullPointerException.class, () -> builder.withTraceId(null));
+        builder.withTraceId(null);
+        assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withEmptyTraceId_throwsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> builder.withTraceId(""));
+        builder.withTraceId("");
+        assertThrows(IllegalArgumentException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withoutSpanId_throwsNullPointerException() {
-        assertThrows(NullPointerException.class, () -> builder.withSpanId(null));
+        builder.withSpanId(null);
+        assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withEmptySpanId_throwsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> builder.withSpanId(""));
+        builder.withSpanId("");
+        assertThrows(IllegalArgumentException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withoutTraceState_throwsNullPointerException() {
-        assertThrows(NullPointerException.class, () -> builder.withTraceState(null));
+        builder.withTraceState(null);
+        assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withEmptyTraceState_throwsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> builder.withTraceState(""));
+        builder.withTraceState("");
+        assertThrows(IllegalArgumentException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withoutParentSpanId_throwsNullPointerException() {
-        assertThrows(NullPointerException.class, () -> builder.withParentSpanId(null));
+        builder.withParentSpanId(null);
+        assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withEmptyParentSpanId_throwsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> builder.withParentSpanId(""));
+        builder.withParentSpanId("");
+        assertThrows(IllegalArgumentException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withoutName_throwsNullPointerException() {
-        assertThrows(NullPointerException.class, () -> builder.withName(null));
+        builder.withName(null);
+        assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withEmptyName_throwsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> builder.withName(""));
+        builder.withName("");
+        assertThrows(IllegalArgumentException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withoutKind_throwsNullPointerException() {
-        assertThrows(NullPointerException.class, () -> builder.withKind(null));
+        builder.withKind(null);
+        assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withEmptyKind_throwsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> builder.withKind(""));
+        builder.withKind("");
+        assertThrows(IllegalArgumentException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withoutStartTime_throwsNullPointerException() {
-        assertThrows(NullPointerException.class, () -> builder.withStartTime(null));
+        builder.withStartTime(null);
+        assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withEmptyStartTime_throwsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> builder.withStartTime(""));
+        builder.withStartTime("");
+        assertThrows(IllegalArgumentException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withoutEndTime_throwsNullPointerException() {
-        assertThrows(NullPointerException.class, () -> builder.withEndTime(null));
+        builder.withEndTime(null);
+        assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withEmptyEndTime_throwsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> builder.withEndTime(""));
+        builder.withEndTime("");
+        assertThrows(IllegalArgumentException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withoutTraceGroup_throwsNullPointerException() {
-        assertThrows(NullPointerException.class, () -> builder.withTraceGroup(null));
+        builder.withTraceGroup(null);
+        assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test
     public void testBuilder_withEmptyTraceGroup_throwsIllegalArgumentException() {
-        assertThrows(IllegalArgumentException.class, () -> builder.withTraceGroup(""));
+        builder.withTraceGroup("");
+        assertThrows(IllegalArgumentException.class, builder::build);
     }
 
     @Test
-    public void testBuilder_allRequiredParameters() {
+    public void testBuilder_allRequiredParameters_createsSpanWithDefaultValues() {
 
         final JacksonSpan span = JacksonSpan.builder()
                 .withSpanId(TEST_SPAN_ID)
@@ -330,7 +366,43 @@ public class JacksonSpanTest {
     }
 
     @Test
-    public void testBuilder_missingRequiredParameters() {
+    public void testBuilder_withNullAttributes_createsSpanWithDefaultValue() {
+        final JacksonSpan span = builder.withAttributes(null).build();
+        assertThat(span.getAttributes(), is(equalTo(new HashMap<>())));
+    }
+
+    @Test
+    public void testBuilder_withNullDroppedAttributesCount_createsSpanWithDefaultValue() {
+        final JacksonSpan span = builder.withDroppedAttributesCount(null).build();
+        assertThat(span.getDroppedAttributesCount(), is(equalTo(0)));
+    }
+
+    @Test
+    public void testBuilder_withNullEvents_createsSpanWithDefaultValue() {
+        final JacksonSpan span = builder.withEvents(null).build();
+        assertThat(span.getEvents(), is(equalTo(new LinkedList<>())));
+    }
+
+    @Test
+    public void testBuilder_withNullDroppedEventsCount_createsSpanWithDefaultValue() {
+        final JacksonSpan span = builder.withDroppedEventsCount(null).build();
+        assertThat(span.getDroppedEventsCount(), is(equalTo(0)));
+    }
+
+    @Test
+    public void testBuilder_withNullLinks_createsSpanWithDefaultValue() {
+        final JacksonSpan span = builder.withLinks(null).build();
+        assertThat(span.getLinks(), is(equalTo(new LinkedList<>())));
+    }
+
+    @Test
+    public void testBuilder_withNullDroppedLinksCount_createsSpanWithDefaultValue() {
+        final JacksonSpan span = builder.withDroppedLinksCount(null).build();
+        assertThat(span.getDroppedLinksCount(), is(equalTo(0)));
+    }
+
+    @Test
+    public void testBuilder_missingRequiredParameters_throwsNullPointerException() {
 
         final JacksonEvent.Builder builder = JacksonSpan.builder()
                 .withSpanId(TEST_SPAN_ID)
@@ -343,6 +415,6 @@ public class JacksonSpanTest {
                 .withTraceGroup(TEST_TRACE_GROUP)
                 .withDurationInNanos(TEST_DURATION_IN_NANOS);
 
-        assertThrows(IllegalArgumentException.class, builder::build);
+        assertThrows(NullPointerException.class, builder::build);
     }
 }

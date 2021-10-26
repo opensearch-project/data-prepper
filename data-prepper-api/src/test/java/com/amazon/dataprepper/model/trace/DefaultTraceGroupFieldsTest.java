@@ -49,7 +49,7 @@ public class DefaultTraceGroupFieldsTest {
     }
 
     @Test
-    public void testBuild() {
+    public void testBuilder_withAllParameters_createsTraceGroupFields() {
 
         final DefaultTraceGroupFields result = DefaultTraceGroupFields.builder()
                 .withDurationInNanos(TEST_DURATION)
@@ -58,6 +58,12 @@ public class DefaultTraceGroupFieldsTest {
                 .build();
 
         assertThat(result, is(notNullValue()));
+    }
+
+    @Test
+    public void testBuilder_withoutParameters_throws_nullPointerException() {
+        final DefaultTraceGroupFields.Builder builder = DefaultTraceGroupFields.builder();
+        assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test

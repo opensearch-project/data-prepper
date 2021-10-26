@@ -129,11 +129,23 @@ public class DefaultLinkTest {
     }
 
     @Test
-    public void testBuilder() {
+    public void testBuilder_withAllParameters_createsLink() {
 
-        final DefaultLink defaultLink = builder.build();
+        final DefaultLink defaultLink = DefaultLink.builder()
+                .withAttributes(TEST_ATTRIBUTES)
+                .withDroppedAttributesCount(TEST_DROPPED_ATTRIBUTE_COUNT)
+                .withSpanId(TEST_SPAN_ID)
+                .withTraceId(TEST_TRACE_ID)
+                .withTraceState(TEST_TRACE_STATE)
+                .build();
 
         assertThat(defaultLink, is(notNullValue()));
+    }
+
+    @Test
+    public void testBuilder_withoutParameters_throwsNullPointerException() {
+        final DefaultLink.Builder builder = DefaultLink.builder();
+        assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test

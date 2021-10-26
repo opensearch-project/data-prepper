@@ -5,11 +5,9 @@ import com.amazon.dataprepper.model.event.JacksonEvent;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -39,8 +37,10 @@ public class JacksonSpan extends JacksonEvent implements Span {
     private static final String DURATION_IN_NANOS_KEY = "durationInNanos";
     private static final String TRACE_GROUP_FIELDS_KEY = "traceGroupFields";
 
-    private static final List<String> ALL_KEYS = Arrays.asList(TRACE_ID_KEY, SPAN_ID_KEY, TRACE_STATE_KEY, PARENT_SPAN_ID_KEY, PARENT_SPAN_ID_KEY,
-            NAME_KEY, KIND_KEY, START_TIME_KEY, END_TIME_KEY, TRACE_GROUP_KEY, DURATION_IN_NANOS_KEY, TRACE_GROUP_FIELDS_KEY);
+    private static final List<String>
+            REQUIRED_NON_EMPTY_KEYS = Arrays.asList(TRACE_ID_KEY, SPAN_ID_KEY, TRACE_STATE_KEY, PARENT_SPAN_ID_KEY, PARENT_SPAN_ID_KEY,
+            NAME_KEY, KIND_KEY, START_TIME_KEY, END_TIME_KEY, TRACE_GROUP_KEY);
+    private static final List<String> REQUIRED_NON_NULL_KEYS = Arrays.asList(DURATION_IN_NANOS_KEY, TRACE_GROUP_FIELDS_KEY);
 
     protected JacksonSpan(final Builder builder) {
         super(builder);
@@ -50,71 +50,88 @@ public class JacksonSpan extends JacksonEvent implements Span {
         checkAndSetDefaultValues();
     }
 
-    @Override public String getTraceId() {
+    @Override
+    public String getTraceId() {
         return this.get(TRACE_ID_KEY, String.class);
     }
 
-    @Override public String getSpanId() {
+    @Override
+    public String getSpanId() {
         return this.get(SPAN_ID_KEY, String.class);
     }
 
-    @Override public String getTraceState() {
+    @Override
+    public String getTraceState() {
         return this.get(TRACE_STATE_KEY, String.class);
     }
 
-    @Override public String getParentSpanId() {
+    @Override
+    public String getParentSpanId() {
         return this.get(PARENT_SPAN_ID_KEY, String.class);
     }
 
-    @Override public String getName() {
+    @Override
+    public String getName() {
         return this.get(NAME_KEY, String.class);
     }
 
-    @Override public String getKind() {
+    @Override
+    public String getKind() {
         return this.get(KIND_KEY, String.class);
     }
 
-    @Override public String getStartTime() {
+    @Override
+    public String getStartTime() {
         return this.get(START_TIME_KEY, String.class);
     }
 
-    @Override public String getEndTime() {
+    @Override
+    public String getEndTime() {
         return this.get(END_TIME_KEY, String.class);
     }
 
-    @Override public Map<String, Object> getAttributes() {
+    @Override
+    public Map<String, Object> getAttributes() {
         return this.get(ATTRIBUTES_KEY, Map.class);
     }
 
-    @Override public Integer getDroppedAttributesCount() {
+    @Override
+    public Integer getDroppedAttributesCount() {
         return this.get(DROPPED_ATTRIBUTES_COUNT_KEY, Integer.class);
     }
 
-    @Override public List<? extends SpanEvent> getEvents() {
+    @Override
+    public List<? extends SpanEvent> getEvents() {
         return this.getList(EVENTS_KEY, DefaultSpanEvent.class);
     }
 
-    @Override public Integer getDroppedEventsCount() {
+    @Override
+    public Integer getDroppedEventsCount() {
         return this.get(DROPPED_EVENTS_COUNT_KEY, Integer.class);
     }
 
-    @Override public List<? extends Link> getLinks() {
+    @Override
+    public List<? extends Link> getLinks() {
         return this.getList(LINKS_KEY, DefaultLink.class);
     }
 
-    @Override public Integer getDroppedLinksCount() {
+    @Override
+    public Integer getDroppedLinksCount() {
         return this.get(DROPPED_LINKS_COUNT_KEY, Integer.class);
     }
 
-    @Override public String getTraceGroup() {
+    @Override
+    public String getTraceGroup() {
         return this.get(TRACE_GROUP_KEY, String.class);
     }
 
-    @Override public Long getDurationInNanos() {
+    @Override
+    public Long getDurationInNanos() {
         return this.get(DURATION_IN_NANOS_KEY, Long.class);
     }
 
-    @Override public TraceGroupFields getTraceGroupFields() {
+    @Override
+    public TraceGroupFields getTraceGroupFields() {
         return this.get(TRACE_GROUP_FIELDS_KEY, DefaultTraceGroupFields.class);
     }
 
@@ -152,18 +169,16 @@ public class JacksonSpan extends JacksonEvent implements Span {
      * Builder for creating {@link JacksonSpan}
      * @since 1.2
      */
-    public static class Builder  extends JacksonEvent.Builder<Builder> {
+    public static class Builder extends JacksonEvent.Builder<Builder> {
 
-        private Map<String, Object> data;
-
-        private Set<String> remainingRequiredFields;
+        private final Map<String, Object> data;
 
         public Builder() {
             data = new HashMap();
-            remainingRequiredFields = new HashSet(ALL_KEYS);
         }
 
-        @Override public Builder getThis() {
+        @Override
+        public Builder getThis() {
             return this;
         }
 
@@ -173,9 +188,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withSpanId(final String spanId) {
-            checkNotNull(spanId, "spanId cannot be null");
-            checkArgument(!spanId.isEmpty(), "spanId cannot be an empty string");
-            putAndMarkAsProvided(SPAN_ID_KEY, spanId);
+            data.put(SPAN_ID_KEY, spanId);
             return this;
         }
 
@@ -185,9 +198,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withTraceId(final String traceId) {
-            checkNotNull(traceId, "traceId cannot be null");
-            checkArgument(!traceId.isEmpty(), "traceId cannot be an empty string");
-            putAndMarkAsProvided(TRACE_ID_KEY, traceId);
+            data.put(TRACE_ID_KEY, traceId);
             return this;
         }
 
@@ -197,9 +208,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withTraceState(final String traceState) {
-            checkNotNull(traceState, "traceState cannot be null");
-            checkArgument(!traceState.isEmpty(), "traceState cannot be an empty string");
-            putAndMarkAsProvided(TRACE_STATE_KEY, traceState);
+            data.put(TRACE_STATE_KEY, traceState);
             return this;
         }
 
@@ -209,9 +218,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withParentSpanId(final String parentSpanId) {
-            checkNotNull(parentSpanId, "parentSpanId cannot be null");
-            checkArgument(!parentSpanId.isEmpty(), "parentSpanId cannot be an empty string");
-            putAndMarkAsProvided(PARENT_SPAN_ID_KEY, parentSpanId);
+            data.put(PARENT_SPAN_ID_KEY, parentSpanId);
             return this;
         }
 
@@ -221,9 +228,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withName(final String name) {
-            checkNotNull(name, "name cannot be null");
-            checkArgument(!name.isEmpty(), "name cannot be an empty string");
-            putAndMarkAsProvided(NAME_KEY, name);
+            data.put(NAME_KEY, name);
             return this;
         }
 
@@ -233,9 +238,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withKind(final String kind) {
-            checkNotNull(kind, "kind cannot be null");
-            checkArgument(!kind.isEmpty(), "kind cannot be an empty string");
-            putAndMarkAsProvided(KIND_KEY, kind);
+            data.put(KIND_KEY, kind);
             return this;
         }
 
@@ -245,9 +248,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withStartTime(final String startTime) {
-            checkNotNull(startTime, "startTime cannot be null");
-            checkArgument(!startTime.isEmpty(), "startTime cannot be an empty string");
-            putAndMarkAsProvided(START_TIME_KEY, startTime);
+            data.put(START_TIME_KEY, startTime);
             return this;
         }
 
@@ -257,9 +258,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withEndTime(final String endTime) {
-            checkNotNull(endTime, "endTime cannot be null");
-            checkArgument(!endTime.isEmpty(), "endTime cannot be an empty string");
-            putAndMarkAsProvided(END_TIME_KEY, endTime);
+            data.put(END_TIME_KEY, endTime);
             return this;
         }
 
@@ -269,7 +268,6 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withAttributes(final Map<String, Object> attributes) {
-            checkNotNull(attributes, "attributes cannot be null");
             data.put(ATTRIBUTES_KEY, attributes);
             return this;
         }
@@ -280,7 +278,6 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withDroppedAttributesCount(final Integer droppedAttributesCount) {
-            checkNotNull(droppedAttributesCount, "droppedAttributesCount cannot be null");
             data.put(DROPPED_ATTRIBUTES_COUNT_KEY, droppedAttributesCount);
             return this;
         }
@@ -291,7 +288,6 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withEvents(final List<SpanEvent> events) {
-            checkNotNull(events, "events cannot be null");
             data.put(EVENTS_KEY, events);
             return this;
         }
@@ -302,7 +298,6 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withDroppedEventsCount(final Integer droppedEventsCount) {
-            checkNotNull(droppedEventsCount, "droppedEventsCount cannot be null");
             data.put(DROPPED_EVENTS_COUNT_KEY, droppedEventsCount);
             return this;
         }
@@ -313,7 +308,6 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withLinks(final List<Link> links) {
-            checkNotNull(links, "links cannot be null");
             data.put(LINKS_KEY, links);
             return this;
         }
@@ -324,7 +318,6 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withDroppedLinksCount(final Integer droppedLinksCount) {
-            checkNotNull(droppedLinksCount, "droppedLinksCount cannot be null");
             data.put(DROPPED_LINKS_COUNT_KEY, droppedLinksCount);
             return this;
         }
@@ -335,9 +328,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withTraceGroup(final String traceGroup) {
-            checkNotNull(traceGroup, "traceGroup cannot be null");
-            checkArgument(!traceGroup.isEmpty(), "traceGroup cannot be an empty string");
-            putAndMarkAsProvided(TRACE_GROUP_KEY, traceGroup);
+            data.put(TRACE_GROUP_KEY, traceGroup);
             return this;
         }
 
@@ -347,8 +338,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withDurationInNanos(final Long durationInNanos) {
-            checkNotNull(durationInNanos, "durationInNanos cannot be null");
-            putAndMarkAsProvided(DURATION_IN_NANOS_KEY, durationInNanos);
+            data.put(DURATION_IN_NANOS_KEY, durationInNanos);
             return this;
         }
 
@@ -358,14 +348,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public Builder withTraceGroupFields(final TraceGroupFields traceGroupFields) {
-            checkNotNull(traceGroupFields, "traceGroupFields cannot be null");
-            putAndMarkAsProvided(TRACE_GROUP_FIELDS_KEY, traceGroupFields);
-            return this;
-        }
-
-        private Builder putAndMarkAsProvided(final String key, final Object value) {
-            data.put(key, value);
-            remainingRequiredFields.remove(key);
+            data.put(TRACE_GROUP_FIELDS_KEY, traceGroupFields);
             return this;
         }
 
@@ -375,11 +358,23 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @since 1.2
          */
         public JacksonSpan build() {
-            checkArgument(remainingRequiredFields.isEmpty(),
-                    String.format("The following values were not provided and  are required: %s", remainingRequiredFields));
+            validateParameters();
             this.withData(data);
             this.withEventType(EventType.TRACE.toString());
             return new JacksonSpan(this);
+        }
+
+        private void validateParameters() {
+            REQUIRED_NON_EMPTY_KEYS.forEach(key -> {
+                final String value = (String) data.get(key);
+                checkNotNull(value, String.format("%s cannot be null", key));
+                checkArgument(!value.isEmpty(),  String.format("%s cannot be an empty string", key));
+            });
+
+            REQUIRED_NON_NULL_KEYS.forEach(key -> {
+                final Object value = data.get(key);
+                checkNotNull(value, String.format("%s cannot be null", key));
+            });
         }
 
     }

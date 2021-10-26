@@ -113,9 +113,20 @@ public class DefaultSpanEventTest {
     }
 
     @Test
-    public void testBuilder() {
-        final DefaultSpanEvent spanEvent = builder.build();
+    public void testBuilder_withValidParameters_createsEvent() {
+        final DefaultSpanEvent spanEvent = DefaultSpanEvent.builder()
+                .withName(TEST_NAME)
+                .withTime(TEST_TIME)
+                .withAttributes(TEST_ATTRIBUTES)
+                .withDroppedAttributesCount(TEST_DROPPED_ATTRIBUTE_COUNT)
+                .build();
         assertThat(spanEvent, is(notNullValue()));
+    }
+
+    @Test
+    public void testBuilder_withoutParameters_throwsNullPointerException() {
+        final DefaultSpanEvent.Builder builder = DefaultSpanEvent.builder();
+        assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test
