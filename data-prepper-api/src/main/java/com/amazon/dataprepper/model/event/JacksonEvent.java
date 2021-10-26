@@ -16,14 +16,18 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -134,17 +138,55 @@ public class JacksonEvent implements Event {
 
         final String trimmedKey = checkAndTrimKey(key);
 
-        final JsonPointer jsonPointer = toJsonPointer(trimmedKey);
-
-        JsonNode node = jsonNode.at(jsonPointer);
+        final JsonNode node = getNode(trimmedKey);
         if (node.isMissingNode()) {
             return null;
         }
 
+        return mapToObject(key, node, clazz);
+    }
+
+    private JsonNode getNode(final String key) {
+        final JsonPointer jsonPointer = toJsonPointer(key);
+        return jsonNode.at(jsonPointer);
+    }
+
+    private <T> T mapToObject(final String key, final JsonNode node, final Class<T> clazz) {
         try {
             return mapper.treeToValue(node, clazz);
         } catch (final JsonProcessingException e) {
             LOG.error("Unable to map {} to {}", key, clazz, e);
+            throw new RuntimeException(String.format("Unable to map %s to %s", key, clazz), e);
+        }
+    }
+
+    /**
+     * Retrieves the given key from the Event as a List
+     * @param key the value to retrieve from
+     * @param clazz the return type of elements in the list
+     * @return a List of clazz
+     * @throws RuntimeException if it is unable to map the elements in the list to the provided clazz
+     * @since 1.2
+     */
+    @Override
+    public <T> List<T> getList(final String key, final Class<T> clazz) {
+
+        final String trimmedKey = checkAndTrimKey(key);
+
+        final JsonNode node = getNode(trimmedKey);
+        if (node.isMissingNode()) {
+            return null;
+        }
+
+        return mapToList(key, node, clazz);
+    }
+
+    private <T> List<T> mapToList(final String key, final JsonNode node, final Class<T> clazz) {
+        try {
+            final ObjectReader reader = mapper.readerFor(TypeFactory.defaultInstance().constructCollectionType(List.class, clazz));
+            return reader.readValue(node);
+        } catch (final IOException e) {
+            LOG.error("Unable to map {} to List of {}", key, clazz, e);
             throw new RuntimeException(String.format("Unable to map %s to %s", key, clazz), e);
         }
     }
