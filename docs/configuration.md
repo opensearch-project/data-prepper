@@ -70,3 +70,16 @@ privateKeyPassword: "other_password"
 serverPort: 1234
 metricRegistries: [Prometheus]
 ```
+
+A default data-prepper-config.yaml with tls is provided to the Data Prepper Docker image. The steps that were taken to create the `keystore.p12` for this configuration can be found 
+[here](https://github.com/opensearch-project/data-prepper/tree/main/release/docker/config/README.md). Note that these steps can be used as an example to create your own secure keystore for Data Prepper. Also note that when using a keystore with
+a `.p12` extension, the passwords for the keystore and the private key must be the same.
+
+```yaml
+ssl: true
+keyStoreFilePath: "/usr/share/data-prepper/keystore.p12"
+keyStorePassword: "password"
+privateKeyPassword: "password"
+serverPort: 4900
+metricRegistries: [Prometheus]
+```

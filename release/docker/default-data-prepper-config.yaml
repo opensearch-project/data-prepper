@@ -1,0 +1,6 @@
+ssl: true
+keyStoreFilePath: "/usr/share/data-prepper/keystore.p12"
+keyStorePassword: "password"
+privateKeyPassword: "password"
+serverPort: 4900
+metricRegistries: [Prometheus]
