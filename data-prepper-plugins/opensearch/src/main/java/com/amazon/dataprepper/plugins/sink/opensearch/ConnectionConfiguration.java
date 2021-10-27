@@ -29,13 +29,13 @@ import org.opensearch.client.RestClientBuilder;
 import org.opensearch.client.RestHighLevelClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
-import software.amazon.awssdk.arns.Arn;
 
 import javax.net.ssl.SSLContext;
 import java.io.InputStream;
@@ -45,6 +45,7 @@ import java.nio.file.Paths;
 import java.security.KeyStore;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
+import java.time.temporal.ValueRange;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -70,6 +71,12 @@ public class ConnectionConfiguration {
   public static final String AWS_STS_ROLE_ARN = "aws_sts_role_arn";
   public static final String PROXY = "proxy";
 
+  /**
+   * The valid port range per https://tools.ietf.org/html/rfc6335.
+   */
+  private final static ValueRange VALID_PORT_RANGE = ValueRange.of(0, 65535);
+
+
   private final List<String> hosts;
   private final String username;
   private final String password;
@@ -83,43 +90,43 @@ public class ConnectionConfiguration {
   private final Optional<String> proxy;
   private final String pipelineName;
 
-  public List<String> getHosts() {
+  List<String> getHosts() {
     return hosts;
   }
 
-  public String getUsername() {
+  String getUsername() {
     return username;
   }
 
-  public String getPassword() {
+  String getPassword() {
     return password;
   }
 
-  public boolean isAwsSigv4() {
+  boolean isAwsSigv4() {
     return awsSigv4;
   }
 
-  public String getAwsRegion() {
+  String getAwsRegion() {
     return awsRegion;
   }
 
-  public String getAwsStsRoleArn() {
+  String getAwsStsRoleArn() {
     return awsStsRoleArn;
   }
 
-  public Path getCertPath() {
+  Path getCertPath() {
     return certPath;
   }
 
-  public Optional<String> getProxy() {
+  Optional<String> getProxy() {
     return proxy;
   }
 
-  public Integer getSocketTimeout() {
+  Integer getSocketTimeout() {
     return socketTimeout;
   }
 
-  public Integer getConnectTimeout() {
+  Integer getConnectTimeout() {
     return connectTimeout;
   }
 
@@ -259,11 +266,24 @@ public class ConnectionConfiguration {
     );
   }
 
-  private void setHttpProxyIfApplicable(final HttpAsyncClientBuilder httpClientBuilder){
-    if (proxy == null || !proxy.isPresent()) {
+  private void setHttpProxyIfApplicable(final HttpAsyncClientBuilder httpClientBuilder) {
+    if (proxy == null) {
+      //In integration testing environment, this could be null. Having this line to avoid NPE.
       return;
     }
-    httpClientBuilder.setProxy(HttpHost.create(proxy.get()));
+    proxy.ifPresent(
+            p -> {
+              final HttpHost httpProxyHost = HttpHost.create(p);
+              checkProxyPort(httpProxyHost.getPort());
+              httpClientBuilder.setProxy(httpProxyHost);
+            }
+    );
+  }
+
+  private void checkProxyPort(final int port) {
+    if (!VALID_PORT_RANGE.isValidIntValue(port)) {
+      throw new IllegalArgumentException("Invalid or missing proxy port.");
+    }
   }
 
   private void attachSSLContext(final HttpAsyncClientBuilder httpClientBuilder) {

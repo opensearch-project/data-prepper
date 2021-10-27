@@ -30,7 +30,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class ConnectionConfigurationTests {
-    public static final String PROXY_PARAMETER = "proxy";
+    private static final String PROXY_PARAMETER = "proxy";
     private final List<String> TEST_HOSTS = Collections.singletonList("http://localhost:9200");
     private final String TEST_USERNAME = "admin";
     private final String TEST_PASSWORD = "admin";
@@ -178,6 +178,7 @@ public class ConnectionConfigurationTests {
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
         final RestHighLevelClient client = connectionConfiguration.createClient();
         assertNotNull(client);
         client.close();
@@ -192,16 +193,42 @@ public class ConnectionConfigurationTests {
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
         final RestHighLevelClient client = connectionConfiguration.createClient();
         assertNotNull(client);
         client.close();
     }
 
     @Test
-    public void testCreateClient_WithInvalidHttpProxy_WrongPort() {
+    public void testCreateClient_WithInvalidHttpProxy_InvalidPort() {
         final Map<String, Object> metadata = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "example.com:port";
+        metadata.put(PROXY_PARAMETER, testHttpProxy);
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
+        assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient());
+    }
+
+    @Test
+    public void testCreateClient_WithInvalidHttpProxy_NoPort() {
+        final Map<String, Object> metadata = generateConfigurationMetadata(
+                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
+        final String testHttpProxy = "example.com";
+        metadata.put(PROXY_PARAMETER, testHttpProxy);
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient());
+    }
+
+    @Test
+    public void testCreateClient_WithInvalidHttpProxy_PortNotInRange() {
+        final Map<String, Object> metadata = generateConfigurationMetadata(
+                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
+        final String testHttpProxy = "example.com:888888";
         metadata.put(PROXY_PARAMETER, testHttpProxy);
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
         final ConnectionConfiguration connectionConfiguration =
@@ -218,6 +245,7 @@ public class ConnectionConfigurationTests {
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
         assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient());
     }
 
