@@ -46,6 +46,7 @@ import java.security.KeyStore;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -67,6 +68,7 @@ public class ConnectionConfiguration {
   public static final String AWS_SIGV4 = "aws_sigv4";
   public static final String AWS_REGION = "aws_region";
   public static final String AWS_STS_ROLE_ARN = "aws_sts_role_arn";
+  public static final String PROXY = "proxy";
 
   private final List<String> hosts;
   private final String username;
@@ -78,6 +80,7 @@ public class ConnectionConfiguration {
   private final boolean awsSigv4;
   private final String awsRegion;
   private final String awsStsRoleArn;
+  private final Optional<String> proxy;
   private final String pipelineName;
 
   public List<String> getHosts() {
@@ -108,6 +111,10 @@ public class ConnectionConfiguration {
     return certPath;
   }
 
+  public Optional<String> getProxy() {
+    return proxy;
+  }
+
   public Integer getSocketTimeout() {
     return socketTimeout;
   }
@@ -127,6 +134,7 @@ public class ConnectionConfiguration {
     this.awsSigv4 = builder.awsSigv4;
     this.awsRegion = builder.awsRegion;
     this.awsStsRoleArn = builder.awsStsRoleArn;
+    this.proxy = builder.proxy;
     this.pipelineName = builder.pipelineName;
   }
 
@@ -166,6 +174,9 @@ public class ConnectionConfiguration {
       //We will set insecure flag only if certPath is null
       builder = builder.withInsecure(insecure);
     }
+    final String proxy = pluginSetting.getStringOrDefault(PROXY, null);
+    builder = builder.withProxy(proxy);
+
     return builder.build();
   }
 
@@ -226,6 +237,7 @@ public class ConnectionConfiguration {
     restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
       httpClientBuilder.addInterceptorLast(httpRequestInterceptor);
       attachSSLContext(httpClientBuilder);
+      setHttpProxyIfApplicable(httpClientBuilder);
       return httpClientBuilder;
     });
   }
@@ -241,9 +253,17 @@ public class ConnectionConfiguration {
             httpClientBuilder -> {
               httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
               attachSSLContext(httpClientBuilder);
+              setHttpProxyIfApplicable(httpClientBuilder);
               return httpClientBuilder;
             }
     );
+  }
+
+  private void setHttpProxyIfApplicable(final HttpAsyncClientBuilder httpClientBuilder){
+    if (proxy == null || !proxy.isPresent()) {
+      return;
+    }
+    httpClientBuilder.setProxy(HttpHost.create(proxy.get()));
   }
 
   private void attachSSLContext(final HttpAsyncClientBuilder httpClientBuilder) {
@@ -294,6 +314,7 @@ public class ConnectionConfiguration {
     private boolean awsSigv4;
     private String awsRegion;
     private String awsStsRoleArn;
+    private Optional<String> proxy;
     private String pipelineName;
 
 
@@ -359,6 +380,11 @@ public class ConnectionConfiguration {
         }
       }
       this.awsStsRoleArn = awsStsRoleArn;
+      return this;
+    }
+
+    public Builder withProxy(final String proxy) {
+      this.proxy = Optional.ofNullable(proxy);
       return this;
     }
 
