@@ -78,6 +78,8 @@ Default is null.
 
 - `password`(optional): A String of password used in the [internal users](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles) of ODFE cluster. Default is null.
 
+- `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:<port>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
+
 - `trace_analytics_raw`(optional): A boolean flag indicates APM trace analytics raw span data type. e.g.
 ```
 {
