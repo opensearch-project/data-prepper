@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -174,7 +175,7 @@ public class ConnectionConfigurationTests {
         final Map<String, Object> metadata = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "121.121.121.121:80";
-        metadata.put("proxy", testHttpProxy);
+        metadata.put(PROXY_PARAMETER, testHttpProxy);
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
@@ -189,7 +190,7 @@ public class ConnectionConfigurationTests {
         final Map<String, Object> metadata = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "example.com:80";
-        metadata.put("proxy", testHttpProxy);
+        metadata.put(PROXY_PARAMETER, testHttpProxy);
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
@@ -247,6 +248,16 @@ public class ConnectionConfigurationTests {
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
         assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient());
+    }
+
+    @Test
+    public void testCreateClient_WithConnectionConfigurationBuilder_ProxyOptionalObjectShouldNotBeNull() throws IOException {
+        final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(TEST_HOSTS);
+        final ConnectionConfiguration connectionConfiguration = builder.build();
+        assertEquals(Optional.empty(), connectionConfiguration.getProxy());
+        final RestHighLevelClient client = connectionConfiguration.createClient();
+        assertNotNull(client);
+        client.close();
     }
 
     private PluginSetting generatePluginSetting(

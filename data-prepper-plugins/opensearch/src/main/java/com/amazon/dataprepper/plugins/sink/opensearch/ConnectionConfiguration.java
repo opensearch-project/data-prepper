@@ -267,10 +267,6 @@ public class ConnectionConfiguration {
   }
 
   private void setHttpProxyIfApplicable(final HttpAsyncClientBuilder httpClientBuilder) {
-    if (proxy == null) {
-      //In integration testing environment, this could be null. Having this line to avoid NPE.
-      return;
-    }
     proxy.ifPresent(
             p -> {
               final HttpHost httpProxyHost = HttpHost.create(p);
@@ -334,7 +330,7 @@ public class ConnectionConfiguration {
     private boolean awsSigv4;
     private String awsRegion;
     private String awsStsRoleArn;
-    private Optional<String> proxy;
+    private Optional<String> proxy = Optional.empty();
     private String pipelineName;
 
 
