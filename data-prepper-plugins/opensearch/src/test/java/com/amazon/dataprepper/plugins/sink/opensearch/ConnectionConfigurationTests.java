@@ -201,6 +201,21 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
+    public void testCreateClient_WithValidHttpProxy_SchemeProvided() throws IOException {
+        final Map<String, Object> metadata = generateConfigurationMetadata(
+                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
+        final String testHttpProxy = "http://example.com:4350";
+        metadata.put(PROXY_PARAMETER, testHttpProxy);
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
+        final RestHighLevelClient client = connectionConfiguration.createClient();
+        assertNotNull(client);
+        client.close();
+    }
+
+    @Test
     public void testCreateClient_WithInvalidHttpProxy_InvalidPort() {
         final Map<String, Object> metadata = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
