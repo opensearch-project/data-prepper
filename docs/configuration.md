@@ -61,19 +61,7 @@ Data Prepper allows the following properties to be configured:
 * `serverPort`: integer port number to use for server APIs. Defaults to `4900`
 * `metricRegistries`: list of metrics registries for publishing the generated metrics. Defaults to Prometheus; Prometheus and CloudWatch are currently supported.
 
-Example Data Prepper configuration file (data-prepper-config.yaml):
-```yaml
-ssl: true
-keyStoreFilePath: "/usr/share/data-prepper/keystore.jks"
-keyStorePassword: "password"
-privateKeyPassword: "other_password"
-serverPort: 1234
-metricRegistries: [Prometheus]
-```
-
-A default data-prepper-config.yaml with tls is provided to the Data Prepper Docker image. The steps that were taken to create the `keystore.p12` for this configuration can be found 
-[here](https://github.com/opensearch-project/data-prepper/tree/main/release/docker/config/README.md). Note that these steps can be used as an example to create your own secure keystore for Data Prepper. Also note that when using a keystore with
-a `.p12` extension, the passwords for the keystore and the private key must be the same.
+Example Data Prepper configuration file (data-prepper-config.yaml) with SSL enabled:
 
 ```yaml
 ssl: true
@@ -82,4 +70,52 @@ keyStorePassword: "password"
 privateKeyPassword: "password"
 serverPort: 4900
 metricRegistries: [Prometheus]
+```
+
+The Data Prepper Docker image runs with SSL enabled using a default self-signed certificate. 
+For more robust security, you should generate your own private key and certificate. 
+You can generate the certificate using existing tools such as OpenSSL. 
+If you'd like a short primer, you can mimic the [steps used to create the default certificate](https://github.com/opensearch-project/data-prepper/tree/main/release/docker/config/README.md), and change them to suite your needs. 
+Please note that for PKCS12 files (.p12), you should use the same password for the keystore and private key.
+
+To run the Data Prepper Docker image with the default `data-prepper-config.yaml`, the command should look like this.
+
+```
+docker run \
+ --name data-prepper-test \
+ -p 4900:4900 \
+ --expose 21890 \
+ -v /full/path/to/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml \
+ data-prepper/data-prepper:latest
+```
+
+To disable SSL, create a `data-prepper-config.yaml` with the following configuration.
+
+```yaml
+ssl: false
+```
+
+In order to pass your own `data-prepper-config.yaml`, mount it as a volume in the Docker image with the command
+
+```
+docker run \
+ --name data-prepper-test \
+ -p 4900:4900 \
+ --expose 21890 \
+ -v /full/path/to/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml \
+ -v /full/path/to/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml \
+ data-prepper/data-prepper:latest
+```
+
+If your `data-prepper-config.yaml` has SSL enabled, and you are using your own keystore, it will need to be mounted as a Docker volume as well.
+
+```
+docker run \
+ --name data-prepper-test \
+ -p 4900:4900 \
+ --expose 21890 \
+ -v /full/path/to/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml \
+ -v /full/path/to/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml \
+ -v /full/path/to/keystore.p12:/usr/share/data-prepper/keystore.p12 \
+ data-prepper/data-prepper:latest
 ```
