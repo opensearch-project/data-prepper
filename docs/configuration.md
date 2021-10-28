@@ -95,27 +95,16 @@ To disable SSL, create a `data-prepper-config.yaml` with the following configura
 ssl: false
 ```
 
-In order to pass your own `data-prepper-config.yaml`, mount it as a volume in the Docker image with the command
+In order to pass your own `data-prepper-config.yaml`, mount it as a volume in the Docker image by adding the argument below to `docker run`. Note that the config must be mounted to `/usr/share/data-prepper/data-prepper-config.yaml`
 
 ```
-docker run \
- --name data-prepper-test \
- -p 4900:4900 \
- --expose 21890 \
- -v /full/path/to/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml \
- -v /full/path/to/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml \
- data-prepper/data-prepper:latest
+v /full/path/to/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
 ```
 
-If your `data-prepper-config.yaml` has SSL enabled, and you are using your own keystore, it will need to be mounted as a Docker volume as well.
+If your `data-prepper-config.yaml` has SSL enabled, and you are using your own keystore, it will need to be mounted as a Docker volume as well. Note that the mount path should correspond with
+the `keyStoreFilePath` field from your `data-prepper-config.yaml`. It is recommended to mount to `/usr/share/data-prepper/data-prepper-config.yaml` to ensure that the path exists in the Docker image.
+To do so, add the argument below to the `docker run` command.
 
 ```
-docker run \
- --name data-prepper-test \
- -p 4900:4900 \
- --expose 21890 \
- -v /full/path/to/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml \
- -v /full/path/to/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml \
- -v /full/path/to/keystore.p12:/usr/share/data-prepper/keystore.p12 \
- data-prepper/data-prepper:latest
+ -v /full/path/to/keystore.p12:/usr/share/data-prepper/keystore.p12
 ```
