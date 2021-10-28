@@ -14,6 +14,8 @@ package com.amazon.dataprepper.plugins.sink.opensearch.index;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,13 +28,11 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class IndexConfiguration {
-    /**
-     * TODO: add index management policy parameters
-     */
     public static final String SETTINGS = "settings";
     public static final String TRACE_ANALYTICS_RAW_FLAG = "trace_analytics_raw";
     public static final String TRACE_ANALYTICS_SERVICE_MAP_FLAG = "trace_analytics_service_map";
     public static final String INDEX_ALIAS = "index";
+    public static final String INDEX_TYPE = "index_type";
     public static final String TEMPLATE_FILE = "template_file";
     public static final String NUM_SHARDS = "number_of_shards";
     public static final String NUM_REPLICAS = "number_of_replicas";
@@ -41,24 +41,18 @@ public class IndexConfiguration {
     public static final String ISM_POLICY_FILE = "ism_policy_file";
     public static final long DEFAULT_BULK_SIZE = 5L;
 
-    private final IndexType indexType;
+    private IndexType indexType;
     private final String indexAlias;
     private final Map<String, Object> indexTemplate;
     private final String documentIdField;
     private final long bulkSize;
     private final Optional<String> ismPolicyFile;
 
+    private static final Logger LOG = LoggerFactory.getLogger(IndexManager.class);
+
     @SuppressWarnings("unchecked")
     private IndexConfiguration(final Builder builder) {
-        if (builder.isTraceAnalyticsRaw && builder.isTraceAnalyticsServiceMap) {
-            throw new IllegalStateException("trace_analytics_raw and trace_analytics_service_map cannot be both true.");
-        } else if (builder.isTraceAnalyticsRaw) {
-            this.indexType  = IndexType.TRACE_ANALYTICS_RAW;
-        } else if (builder.isTraceAnalyticsServiceMap) {
-            this.indexType  = IndexType.TRACE_ANALYTICS_SERVICE_MAP;
-        } else {
-            this.indexType  = IndexType.CUSTOM;
-        }
+        determineIndexType(builder);
 
         this.indexTemplate = readIndexTemplate(builder.templateFile, indexType);
 
@@ -93,6 +87,31 @@ public class IndexConfiguration {
         this.ismPolicyFile = builder.ismPolicyFile;
     }
 
+    private void determineIndexType(Builder builder) {
+        if(builder.indexType != null) {
+            Optional<IndexType> mappedIndexType = IndexType.get(builder.indexType);
+            if (mappedIndexType.isPresent()) {
+                indexType = mappedIndexType.get();
+            } else {
+                throw new IllegalArgumentException("Value of the parameter, index_type, must be from the list: "
+                        + IndexType.getIndexTypeValueStrings());
+            }
+        } else if (builder.isTraceAnalyticsRaw && builder.isTraceAnalyticsServiceMap) {
+            throw new IllegalStateException("trace_analytics_raw and trace_analytics_service_map cannot be both true.");
+        } else if (builder.isTraceAnalyticsRaw) {
+            this.indexType  = IndexType.TRACE_ANALYTICS_RAW;
+        } else if (builder.isTraceAnalyticsServiceMap) {
+            this.indexType  = IndexType.TRACE_ANALYTICS_SERVICE_MAP;
+        } else {
+            this.indexType  = IndexType.CUSTOM;
+        }
+
+        if(builder.isTraceAnalyticsRaw || builder.isTraceAnalyticsServiceMap) {
+            LOG.warn("The parameters, trace_analytics_raw and trace_analytics_service_map, are deprecated. Please use index_type parameter instead.");
+        }
+
+    }
+
     public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
         IndexConfiguration.Builder builder = new IndexConfiguration.Builder();
         builder.setIsRaw(pluginSetting.getBooleanOrDefault(TRACE_ANALYTICS_RAW_FLAG, false));
@@ -100,6 +119,10 @@ public class IndexConfiguration {
         final String indexAlias = pluginSetting.getStringOrDefault(INDEX_ALIAS, null);
         if (indexAlias != null) {
             builder = builder.withIndexAlias(indexAlias);
+        }
+        final String indexType = pluginSetting.getStringOrDefault(INDEX_TYPE, null);
+        if(indexType != null) {
+            builder = builder.withIndexType(indexType);
         }
         final String templateFile = pluginSetting.getStringOrDefault(TEMPLATE_FILE, null);
         if (templateFile != null) {
@@ -180,6 +203,7 @@ public class IndexConfiguration {
         private boolean isTraceAnalyticsRaw = false;
         private boolean isTraceAnalyticsServiceMap = false;
         private String indexAlias;
+        private String indexType;
         private String templateFile;
         private int numShards;
         private int numReplicas;
@@ -203,6 +227,13 @@ public class IndexConfiguration {
             checkArgument(indexAlias != null, "indexAlias cannot be null.");
             checkArgument(!indexAlias.isEmpty(), "indexAlias cannot be empty");
             this.indexAlias = indexAlias;
+            return this;
+        }
+
+        public Builder withIndexType(final String indexType) {
+            checkArgument(indexType != null, "indexType cannot be null.");
+            checkArgument(!indexType.isEmpty(), "indexType cannot be empty");
+            this.indexType = indexType;
             return this;
         }
 
