@@ -29,13 +29,13 @@ import org.opensearch.client.RestClientBuilder;
 import org.opensearch.client.RestHighLevelClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
-import software.amazon.awssdk.arns.Arn;
 
 import javax.net.ssl.SSLContext;
 import java.io.InputStream;
@@ -45,7 +45,9 @@ import java.nio.file.Paths;
 import java.security.KeyStore;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
+import java.time.temporal.ValueRange;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -67,6 +69,13 @@ public class ConnectionConfiguration {
   public static final String AWS_SIGV4 = "aws_sigv4";
   public static final String AWS_REGION = "aws_region";
   public static final String AWS_STS_ROLE_ARN = "aws_sts_role_arn";
+  public static final String PROXY = "proxy";
+
+  /**
+   * The valid port range per https://tools.ietf.org/html/rfc6335.
+   */
+  private final static ValueRange VALID_PORT_RANGE = ValueRange.of(0, 65535);
+
 
   private final List<String> hosts;
   private final String username;
@@ -78,41 +87,46 @@ public class ConnectionConfiguration {
   private final boolean awsSigv4;
   private final String awsRegion;
   private final String awsStsRoleArn;
+  private final Optional<String> proxy;
   private final String pipelineName;
 
-  public List<String> getHosts() {
+  List<String> getHosts() {
     return hosts;
   }
 
-  public String getUsername() {
+  String getUsername() {
     return username;
   }
 
-  public String getPassword() {
+  String getPassword() {
     return password;
   }
 
-  public boolean isAwsSigv4() {
+  boolean isAwsSigv4() {
     return awsSigv4;
   }
 
-  public String getAwsRegion() {
+  String getAwsRegion() {
     return awsRegion;
   }
 
-  public String getAwsStsRoleArn() {
+  String getAwsStsRoleArn() {
     return awsStsRoleArn;
   }
 
-  public Path getCertPath() {
+  Path getCertPath() {
     return certPath;
   }
 
-  public Integer getSocketTimeout() {
+  Optional<String> getProxy() {
+    return proxy;
+  }
+
+  Integer getSocketTimeout() {
     return socketTimeout;
   }
 
-  public Integer getConnectTimeout() {
+  Integer getConnectTimeout() {
     return connectTimeout;
   }
 
@@ -127,6 +141,7 @@ public class ConnectionConfiguration {
     this.awsSigv4 = builder.awsSigv4;
     this.awsRegion = builder.awsRegion;
     this.awsStsRoleArn = builder.awsStsRoleArn;
+    this.proxy = builder.proxy;
     this.pipelineName = builder.pipelineName;
   }
 
@@ -166,6 +181,9 @@ public class ConnectionConfiguration {
       //We will set insecure flag only if certPath is null
       builder = builder.withInsecure(insecure);
     }
+    final String proxy = pluginSetting.getStringOrDefault(PROXY, null);
+    builder = builder.withProxy(proxy);
+
     return builder.build();
   }
 
@@ -226,6 +244,7 @@ public class ConnectionConfiguration {
     restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
       httpClientBuilder.addInterceptorLast(httpRequestInterceptor);
       attachSSLContext(httpClientBuilder);
+      setHttpProxyIfApplicable(httpClientBuilder);
       return httpClientBuilder;
     });
   }
@@ -241,9 +260,26 @@ public class ConnectionConfiguration {
             httpClientBuilder -> {
               httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
               attachSSLContext(httpClientBuilder);
+              setHttpProxyIfApplicable(httpClientBuilder);
               return httpClientBuilder;
             }
     );
+  }
+
+  private void setHttpProxyIfApplicable(final HttpAsyncClientBuilder httpClientBuilder) {
+    proxy.ifPresent(
+            p -> {
+              final HttpHost httpProxyHost = HttpHost.create(p);
+              checkProxyPort(httpProxyHost.getPort());
+              httpClientBuilder.setProxy(httpProxyHost);
+            }
+    );
+  }
+
+  private void checkProxyPort(final int port) {
+    if (!VALID_PORT_RANGE.isValidIntValue(port)) {
+      throw new IllegalArgumentException("Invalid or missing proxy port.");
+    }
   }
 
   private void attachSSLContext(final HttpAsyncClientBuilder httpClientBuilder) {
@@ -294,6 +330,7 @@ public class ConnectionConfiguration {
     private boolean awsSigv4;
     private String awsRegion;
     private String awsStsRoleArn;
+    private Optional<String> proxy = Optional.empty();
     private String pipelineName;
 
 
@@ -359,6 +396,11 @@ public class ConnectionConfiguration {
         }
       }
       this.awsStsRoleArn = awsStsRoleArn;
+      return this;
+    }
+
+    public Builder withProxy(final String proxy) {
+      this.proxy = Optional.ofNullable(proxy);
       return this;
     }
 

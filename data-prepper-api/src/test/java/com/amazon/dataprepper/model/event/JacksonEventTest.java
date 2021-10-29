@@ -6,7 +6,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -29,14 +31,26 @@ public class JacksonEventTest {
 
         eventType = UUID.randomUUID().toString();
 
-        event = new JacksonEvent.Builder()
+        event = JacksonEvent.builder()
                 .withEventType(eventType)
                 .build();
     }
 
     @Test
-    public void testPutAndGet_withString() {
-        final String key = UUID.randomUUID().toString();
+    public void testPutAndGet_withRandomString() {
+        final String key = "aRandomKey" + UUID.randomUUID();
+        final UUID value = UUID.randomUUID();
+
+        event.put(key, value);
+        final UUID result = event.get(key, UUID.class);
+
+        assertThat(result, is(notNullValue()));
+        assertThat(result, is(equalTo(value)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"foo", "foo-bar", "foo_bar", "foo.bar", "/foo", "/foo/"})
+    void testPutAndGet_withStrings(final String key) {
         final UUID value = UUID.randomUUID();
 
         event.put(key, value);
@@ -48,7 +62,7 @@ public class JacksonEventTest {
 
     @Test
     public void testPutAndGet_withMultLevelKey() {
-        final String key = "foo.bar";
+        final String key = "foo/bar";
         final UUID value = UUID.randomUUID();
 
         event.put(key, value);
@@ -60,7 +74,7 @@ public class JacksonEventTest {
 
     @Test
     public void testPutAndGet_withMultLevelKeyTwice() {
-        final String key = "foo.bar";
+        final String key = "foo/bar";
         final UUID value = UUID.randomUUID();
 
         event.put(key, value);
@@ -69,7 +83,7 @@ public class JacksonEventTest {
         assertThat(result, is(notNullValue()));
         assertThat(result, is(equalTo(value)));
 
-        final String key2 = "foo.fizz";
+        final String key2 = "foo/fizz";
         final UUID value2 = UUID.randomUUID();
 
         event.put(key2, value2);
@@ -81,7 +95,7 @@ public class JacksonEventTest {
 
     @Test
     public void testPutAndGet_withMultLevelKeyWithADash() {
-        final String key = "foo.bar-bar";
+        final String key = "foo/bar-bar";
         final UUID value = UUID.randomUUID();
 
         event.put(key, value);
@@ -93,10 +107,10 @@ public class JacksonEventTest {
 
     @Test
     public void testPutUpdateAndGet_withPojo() {
-        final String key = "foo.bar";
+        final String key = "foo/bar";
         final String nestedValue = UUID.randomUUID().toString();
         final TestObject value = new TestObject(nestedValue);
-        final String nestedKey = "foo.bar.field1";
+        final String nestedKey = "foo/bar/field1";
 
         event.put(key, value);
         final String actualNestedValue = event.get(nestedKey, String.class);
@@ -113,8 +127,27 @@ public class JacksonEventTest {
     }
 
     @Test
+    public void testPutUpdateAndGet_withList() {
+        final String key = "foo/bar";
+        final List<Integer> numbers = Arrays.asList(1, 2, 3);
+
+        event.put(key, numbers);
+
+        final List<Integer> value = event.get(key, List.class);
+        assertThat(value, is(notNullValue()));
+        assertThat(value, is(is(equalTo(numbers))));
+
+        final String item2Key = key + "/1";
+        event.put(item2Key, 42);
+
+        final Integer item2Value = event.get(item2Key, Integer.class);
+        assertThat(item2Value, is(notNullValue()));
+        assertThat(item2Value, is(equalTo(42)));
+    }
+
+    @Test
     public void testGet_withIncorrectPojo() {
-        final String key = "foo.bar";
+        final String key = "foo/bar";
         final String nestedValue = UUID.randomUUID().toString();
         final TestObject value = new TestObject(nestedValue);
 
@@ -125,7 +158,7 @@ public class JacksonEventTest {
 
     @Test
     public void testGet_withEmptyEvent() {
-        final String key = "foo.bar";
+        final String key = "foo/bar";
 
         UUID result = event.get(key, UUID.class);
 
@@ -134,7 +167,7 @@ public class JacksonEventTest {
 
     @Test
     public void testOverwritingExistingKey() {
-        final String key = "foo.bar";
+        final String key = "foo/bar";
         final UUID value = UUID.randomUUID();
 
         event.put(key, UUID.randomUUID());
@@ -158,7 +191,7 @@ public class JacksonEventTest {
 
     @Test
     public void testDelete_withNestedKey() {
-        final String key = "foo.bar";
+        final String key = "foo/bar";
 
         event.put(key, UUID.randomUUID());
         event.delete(key);
@@ -169,7 +202,7 @@ public class JacksonEventTest {
 
     @Test
     public void testDelete_withNonexistentKey() {
-        final String key = "foo.bar";
+        final String key = "foo/bar";
         UUID result = event.get(key, UUID.class);
         assertThat(result, is(nullValue()));
 
@@ -180,8 +213,9 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "withSpecialChars*$%", ".withPrefixDot", "withSuffixDot.", "-withPrefixDash", "\\.withEscapeChars", "\\\\-withMultipleEscapeChars",
-            "withDashSuffix-", "withDashSuffix-.nestedKey", "withDashPrefix.-nestedKey" })
+    @ValueSource(strings = {"", "withSpecialChars*$%", "-withPrefixDash", "\\-withEscapeChars", "\\\\/withMultipleEscapeChars",
+            "withDashSuffix-", "withDashSuffix-/nestedKey", "withDashPrefix/-nestedKey", "_withUnderscorePrefix", "withUnderscoreSuffix_",
+            ".withDotPrefix", "withDotSuffix."})
     void testKey_withInvalidKey_throwsIllegalArgumentException(final String invalidKey) {
         assertThrowsForKeyCheck(IllegalArgumentException.class, invalidKey);
     }
@@ -209,14 +243,15 @@ public class JacksonEventTest {
         event.put("foo", "bar");
         final String value = UUID.randomUUID().toString();
         event.put("testObject", new TestObject(value));
+        event.put("list", Arrays.asList(1, 4, 5));
         final String result = event.toJsonString();
 
-        assertThat(result, is(equalTo(String.format("{\"foo\":\"bar\",\"testObject\":{\"field1\":\"%s\"}}", value))));
+        assertThat(result, is(equalTo(String.format("{\"foo\":\"bar\",\"testObject\":{\"field1\":\"%s\"},\"list\":[1,4,5]}", value))));
     }
 
     @Test
     public void testBuild_withEventType() {
-        event = new JacksonEvent.Builder()
+        event = JacksonEvent.builder()
                 .withEventType(eventType)
                 .build();
 
@@ -228,7 +263,7 @@ public class JacksonEventTest {
 
         final Instant now = Instant.now();
 
-        event = new JacksonEvent.Builder()
+        event = JacksonEvent.builder()
                 .withEventType(eventType)
                 .withTimeReceived(now)
                 .build();
@@ -243,7 +278,7 @@ public class JacksonEventTest {
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID());
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
-        event = new JacksonEvent.Builder()
+        event = JacksonEvent.builder()
                 .withEventType(eventType)
                 .withEventMetadataAttributes(testAttributes)
                 .build();
@@ -260,11 +295,11 @@ public class JacksonEventTest {
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         final String emEventType = UUID.randomUUID().toString();
 
-        final EventMetadata metadata = new DefaultEventMetadata.Builder()
+        final EventMetadata metadata = DefaultEventMetadata.builder()
                 .withEventType(emEventType)
                 .build();
 
-        event = new JacksonEvent.Builder()
+        event = JacksonEvent.builder()
                 .withEventType(eventType)
                 .withTimeReceived(now)
                 .withEventMetadataAttributes(testAttributes)
@@ -279,11 +314,11 @@ public class JacksonEventTest {
     @Test
     public void testBuild_withEventMetadata() {
 
-        EventMetadata metadata = new DefaultEventMetadata.Builder()
+        EventMetadata metadata = DefaultEventMetadata.builder()
                 .withEventType(eventType)
                 .build();
 
-        event = new JacksonEvent.Builder()
+        event = JacksonEvent.builder()
                 .withEventMetadata(metadata)
                 .build();
 
@@ -297,9 +332,10 @@ public class JacksonEventTest {
         final String value = UUID.randomUUID().toString();
         final TestObject testObject = new TestObject(value);
 
-        event = new JacksonEvent.Builder()
+        event = JacksonEvent.builder()
                 .withEventType(eventType)
                 .withData(testObject)
+                .getThis()
                 .build();
 
         assertThat(event.get("field1", String.class), is(equalTo(value)));
