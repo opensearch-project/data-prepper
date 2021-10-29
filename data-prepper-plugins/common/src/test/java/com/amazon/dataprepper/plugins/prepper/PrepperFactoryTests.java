@@ -15,7 +15,8 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.plugins.PluginException;
 import com.amazon.dataprepper.plugins.sink.SinkFactory;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.List;
@@ -31,11 +32,19 @@ import static org.junit.Assert.assertThrows;
 @SuppressWarnings("rawtypes")
 public class PrepperFactoryTests {
     private static String TEST_PIPELINE = "test-pipeline";
+
+    @AfterEach
+    void cleanUp() {
+        PrepperFactory.dangerousMethod_setPluginFunction(null);
+    }
+
     /**
      * Tests if PrepperFactory is able to retrieve default Source plugins by name
      */
     @Test
     public void testNewSingletonPrepperClassByNameThatExists() {
+        PrepperFactory.dangerousMethod_setPluginFunction((s, c) -> new NoOpPrepper<>());
+
         final PluginSetting noOpPrepperConfiguration = new PluginSetting("no-op", new HashMap<>());
         noOpPrepperConfiguration.setPipelineName(TEST_PIPELINE);
         final List<Prepper> actualPrepperSets = PrepperFactory.newPreppers(noOpPrepperConfiguration);
