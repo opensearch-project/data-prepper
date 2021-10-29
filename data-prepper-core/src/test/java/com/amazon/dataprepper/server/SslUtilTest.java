@@ -23,9 +23,11 @@ public class SslUtilTest {
     private static final String P12_KEYSTORE = "src/test/resources/tls/test_keystore.p12";
     private static final String JKS_KEYSTORE = "src/test/resources/tls/test_keystore.jks";
 
-    private static final String KEYSTORE_WITH_PASSWORDS = "src/test/resources/tls/test_keystore_with_passwords.p12";
+    private static final String KEYSTORE_WITH_PASSWORDS = "src/test/resources/tls/test_keystore_with_different_passwords.p12";
     private static final String KEYSTORE_PASSWORD = "password";
     private static final String PRIVATE_KEY_PASSWORD = "key";
+
+    private static final String KEYSTORE_WITH_IDENTICAL_PASSWORDS = "src/test/resources/tls/test_keystore_with_identical_passwords.p12";
 
     @Test
     public void testLoadP12KeyStore() {
@@ -40,8 +42,14 @@ public class SslUtilTest {
     }
 
     @Test
-    public void testLoadP12KeyStoreWithPasswords() {
+    public void testLoadP12KeyStoreWithDifferentPasswords() {
         SSLContext result = SslUtil.createSslContext(KEYSTORE_WITH_PASSWORDS, KEYSTORE_PASSWORD, PRIVATE_KEY_PASSWORD);
+        assertEquals("TLS", result.getProtocol());
+    }
+
+    @Test
+    public void testLoadP12KeyStoreWithIdenticalPasswords() {
+        SSLContext result = SslUtil.createSslContext(KEYSTORE_WITH_IDENTICAL_PASSWORDS, KEYSTORE_PASSWORD, KEYSTORE_PASSWORD);
         assertEquals("TLS", result.getProtocol());
     }
 }

@@ -16,7 +16,7 @@ plugins {
 docker {
     name "${project.rootProject.name}:${project.version}"
     tag "${project.rootProject.name}", "${project.version}"
-    files project(':data-prepper-core').jar.archivePath
+    files project(':data-prepper-core').jar.archivePath, "${project.projectDir}/config/default-data-prepper-config.yaml", "${project.projectDir}/config/default-keystore.p12"
     buildArgs(['JAR_FILE'       : project(':data-prepper-core').jar.archiveName,
                'CONFIG_FILEPATH': '/usr/share/data-prepper/data-prepper-config.yaml',
                'PIPELINE_FILEPATH': '/usr/share/data-prepper/pipelines.yaml'])
