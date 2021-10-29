@@ -37,7 +37,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * A Jackson Implementation of {@link Event} interface. This implementation relies heavily on JsonNode to manage the keys of the event.
  * <p>
  * This implementation supports [JsonPointer](https://datatracker.ietf.org/doc/html/rfc6901) for keys to access nested structures.
- * For example using the key "fizz/buzz" would allow a user to retrieve the number 42 using {@link #get(String, Class)} from the nested structure below.
+ * For example using the key "/fizz/buzz" would allow a user to retrieve the number 42 using {@link #get(String, Class)} from the nested structure below.
+ * Additionally, a key structure without a prefixed "/" will access the same value: "fizz/buzz"
  * <p>
  *     {
  *         "foo": "bar"
@@ -143,7 +144,7 @@ public class JacksonEvent implements Event {
             return null;
         }
 
-        return mapToObject(key, node, clazz);
+        return mapNodeToObject(key, node, clazz);
     }
 
     private JsonNode getNode(final String key) {
@@ -151,7 +152,7 @@ public class JacksonEvent implements Event {
         return jsonNode.at(jsonPointer);
     }
 
-    private <T> T mapToObject(final String key, final JsonNode node, final Class<T> clazz) {
+    private <T> T mapNodeToObject(final String key, final JsonNode node, final Class<T> clazz) {
         try {
             return mapper.treeToValue(node, clazz);
         } catch (final JsonProcessingException e) {
@@ -178,10 +179,10 @@ public class JacksonEvent implements Event {
             return null;
         }
 
-        return mapToList(key, node, clazz);
+        return mapNodeToList(key, node, clazz);
     }
 
-    private <T> List<T> mapToList(final String key, final JsonNode node, final Class<T> clazz) {
+    private <T> List<T> mapNodeToList(final String key, final JsonNode node, final Class<T> clazz) {
         try {
             final ObjectReader reader = mapper.readerFor(TypeFactory.defaultInstance().constructCollectionType(List.class, clazz));
             return reader.readValue(node);
