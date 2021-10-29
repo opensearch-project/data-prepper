@@ -6,14 +6,14 @@ Fluent Bit → Data Prepper → OpenSearch. This log ingestion flow is shown in 
 
 ![](../../docs/images/LogIngestionFluentBit_DataPrepper_OpenSearch.jpg)
 
-##List of Components
+## List of Components
 
 - An OpenSearch domain running locally. The steps to get started with OpenSearch can be found [here](https://opensearch.org/downloads.html).
 - Data Prepper, which includes a `pipeline.yaml` and a `data-prepper-config.yaml` 
 - A FluentBit agent running through Docker
 - An Apache Log Generator in the form of a python script
 
-###Data Prepper Setup
+### Data Prepper Setup
 
 1. Pull down the Data Prepper repository
 
@@ -64,7 +64,7 @@ java -jar data-prepper-core/build/libs/data-prepper-core-1.2.0-SNAPSHOT.jar /ful
 If you see an error that looks like this: `Caused by: java.lang.RuntimeException: Connection refused`, then that probably means you don't have OpenSearch running locally. 
 Go [here](https://opensearch.org/downloads.html) to do so before moving on to the next step of this guide.
 
-###FluentBit Setup
+### FluentBit Setup
 
 The FluentBit setup includes a `docker-compose.yaml`, a `fluent-bit.conf`, and a log file which corresponds to where FluentBit will look for logs.
 
