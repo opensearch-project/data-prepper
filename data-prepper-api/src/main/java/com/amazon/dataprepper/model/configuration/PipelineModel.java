@@ -10,7 +10,6 @@ import java.util.List;
  *
  * @since 1.2
  */
-
 public class PipelineModel {
 
     private final PluginModel sourcePluginModel;

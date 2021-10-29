@@ -15,6 +15,7 @@ plugins {
 dependencies {
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation 'org.hamcrest:hamcrest:2.2'
 }
 jacocoTestCoverageVerification {
@@ -22,8 +23,7 @@ jacocoTestCoverageVerification {
     violationRules {
         rule { //in addition to core projects rule - this one checks for 100% code coverage for this project
             limit {
-//                minimum = 1.0 //keep this at 100%
-                minimum = 0.8 //reducing it temporarily
+                minimum = 1.0 //keep this at 100%
             }
         }
     }

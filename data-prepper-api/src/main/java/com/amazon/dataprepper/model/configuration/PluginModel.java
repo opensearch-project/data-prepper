@@ -1,7 +1,19 @@
 package com.amazon.dataprepper.model.configuration;
 
+import com.fasterxml.jackson.core.JacksonException;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+
+import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -9,8 +21,8 @@ import java.util.Map;
  *
  * @since 1.2
  */
-@JsonSerialize(using = PluginModelSerializer.class)
-@JsonDeserialize(using = PluginModelDeserializer.class)
+@JsonSerialize(using = PluginModel.PluginModelSerializer.class)
+@JsonDeserialize(using = PluginModel.PluginModelDeserializer.class)
 public class PluginModel {
 
     private final String pluginName;
@@ -28,4 +40,57 @@ public class PluginModel {
     public Map<String, Object> getPluginSettings() {
         return pluginSettings;
     }
+
+    /**
+     * Custom Serializer for Plugin Model
+     *
+     * @since 1.2
+     */
+    static class PluginModelSerializer extends StdSerializer<PluginModel> {
+
+        private final ObjectMapper mapper = new ObjectMapper();
+
+        public PluginModelSerializer() {
+            this(null);
+        }
+
+        public PluginModelSerializer(Class<PluginModel> t) {
+            super(t);
+        }
+
+        @Override
+        public void serialize(
+                PluginModel value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+            gen.writeStartObject();
+            gen.writeObjectField(value.getPluginName(), value.getPluginSettings());
+            gen.writeEndObject();
+        }
+    }
+
+    /**
+     * Custom Deserializer for Plugin Model
+     *
+     * @since 1.2
+     */
+    static class PluginModelDeserializer extends StdDeserializer<PluginModel> {
+
+        ObjectMapper mapper = new ObjectMapper();
+
+        public PluginModelDeserializer() {
+            this(null);
+        }
+
+        public PluginModelDeserializer(Class<PluginModel> t) {
+            super(t);
+        }
+
+        @Override
+        public PluginModel deserialize(JsonParser jsonParser, DeserializationContext context) throws IOException, JacksonException {
+            JsonNode node = jsonParser.getCodec().readTree(jsonParser);
+            String pluginName = node.get("pluginName").asText();
+            Map<String, Object> settingsMap = mapper.convertValue(node.get("pluginSettings"), new TypeReference<Map<String, Object>>(){});
+            return new PluginModel(pluginName, settingsMap);
+        }
+    }
+
 }
