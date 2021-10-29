@@ -13,11 +13,19 @@ who wants to run Data Prepper.
 Please read the [Trace Analytics](docs/trace_analytics.md) guide to get started with using
 Data Prepper for trace analytics use cases.
 
+## Project Resources
+
+* [Downloads](https://opensearch.org/downloads.html)
+* [Documentation](https://opensearch.org/docs/latest/monitoring-plugins/trace/data-prepper/)
+* [Configuration Reference](https://opensearch.org/docs/latest/monitoring-plugins/trace/data-prepper-reference/)
+* Need help? Try the [Data Prepper category](https://discuss.opendistrocommunity.dev/c/data-prepper/61) in the OpenSearch forums
+* [Project Principles](https://opensearch.org/#principles)
+
 ## Contribute
 
 We invite developers from the larger OpenSearch community to contribute and help improve test coverage and give us feedback on where improvements can be made in design, code and documentation. You can look at [contribution guide](CONTRIBUTING.md) for more information on how to contribute.
 
-If you are looking to contribute code, or just to build from source, please see our [Developer Guilde](docs/developer_guide.md).
+If you are looking to contribute code, or just to build from source, please see our [Developer Guide](docs/developer_guide.md).
 
 ## Code of Conduct
 
