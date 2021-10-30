@@ -1,10 +1,10 @@
 # Data Prepper Log Ingestion Demo Guide
 
-This is a guide that will help users test out Data Prepper Log Ingestion. 
-This guide will go through the steps that need to be taken in order to use Data Prepper to create a simple Log Ingestion Pipeline from \
+This is a guide that will walk users through setting up a sample Data Prepper for log ingestion. 
+This guide will go through the steps required to create a simple log ingestion pipeline from \
 Fluent Bit → Data Prepper → OpenSearch. This log ingestion flow is shown in the diagram below.
 
-![](../../docs/images/LogIngestionFluentBit_DataPrepper_OpenSearch.jpg)
+![](../../docs/images/Log_Ingestion_FluentBit_DataPrepper_OpenSearch.jpg)
 
 ## List of Components
 
@@ -63,6 +63,12 @@ java -jar data-prepper-core/build/libs/data-prepper-core-1.2.0-SNAPSHOT.jar /ful
 
 If you see an error that looks like this: `Caused by: java.lang.RuntimeException: Connection refused`, then that probably means you don't have OpenSearch running locally. 
 Go [here](https://opensearch.org/downloads.html) to do so before moving on to the next step of this guide.
+
+If Data Prepper is running correctly, you should see something similar to the following line as the latest output in your terminal.
+
+```
+INFO  com.amazon.dataprepper.pipeline.ProcessWorker - grok-pipeline Worker: No records received from buffer
+```
 
 ### FluentBit Setup
 
@@ -127,6 +133,20 @@ Run the apache log generator python script so that it sends an apache log to the
 
 ```
 python apache-fake-log-gen.py -n 0 -s 2 -l "CLF" -o "LOG" -f "/full/path/to/test.log"
+```
+
+You should now be able to check your terminal output for FluentBit and Data Prepper to verify that they are processing logs.
+
+The following FluentBit ouptut means that FluentBit was able to forward logs to the Data Prepper http source
+
+```
+fluent-bit_1  | [2021/10/30 17:16:39] [ info] [output:http:http.0] host.docker.internal:2021, HTTP status=200
+```
+
+The following Data Prepper output indicates that Data Prepper is successfully processing logs from FluentBit
+
+```
+2021-10-30T12:17:17,474 [grok-pipeline-prepper-worker-1-thread-1] INFO  com.amazon.dataprepper.pipeline.ProcessWorker -  grok-pipeline Worker: Processing 2 records from buffer
 ```
 
 Finally, head into OpenSearch Dashboards ([http://localhost:5601](http://localhost:5601)) to view your processed logs.
