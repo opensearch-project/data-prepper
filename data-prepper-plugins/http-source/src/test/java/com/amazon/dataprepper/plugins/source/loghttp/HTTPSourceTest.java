@@ -89,7 +89,6 @@ class HTTPSourceTest {
     @Mock
     private CompletableFuture<Void> completableFuture;
 
-    private PluginSetting testPluginSetting;
     private BlockingBuffer<Record<String>> testBuffer;
     private HTTPSource HTTPSourceUnderTest;
     private List<Measurement> requestsReceivedMeasurements;
@@ -289,17 +288,14 @@ class HTTPSourceTest {
     }
 
     @Test
-    public void testHTTPJsonResponse415() throws InterruptedException {
+    public void testHTTPJsonResponse415() {
         // Prepare
-        final Map<String, Object> settings = new HashMap<>();
         final int testMaxPendingRequests = 1;
         final int testThreadCount = 1;
         final int serverTimeoutInMillis = 500;
-        settings.put(HTTPSourceConfig.REQUEST_TIMEOUT, serverTimeoutInMillis);
-        settings.put(HTTPSourceConfig.MAX_PENDING_REQUESTS, testMaxPendingRequests);
-        settings.put(HTTPSourceConfig.THREAD_COUNT, testThreadCount);
-        testPluginSetting = new PluginSetting(PLUGIN_NAME, settings);
-        testPluginSetting.setPipelineName(TEST_PIPELINE_NAME);
+        when(sourceConfig.getRequestTimeoutInMillis()).thenReturn(serverTimeoutInMillis);
+        when(sourceConfig.getMaxPendingRequests()).thenReturn(testMaxPendingRequests);
+        when(sourceConfig.getThreadCount()).thenReturn(testThreadCount);
         HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics);
         // Start the source
         HTTPSourceUnderTest.start(testBuffer);

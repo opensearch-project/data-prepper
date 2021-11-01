@@ -19,9 +19,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class HTTPSourceConfig {
-    static final String REQUEST_TIMEOUT = "request_timeout";
-    static final String THREAD_COUNT = "thread_count";
-    static final String MAX_PENDING_REQUESTS = "max_pending_requests";
     static final String DEFAULT_LOG_INGEST_URI = "/log/ingest";
     static final String SSL = "ssl";
     static final String SSL_CERTIFICATE_FILE = "ssl_certificate_file";
@@ -32,15 +29,31 @@ public class HTTPSourceConfig {
     static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
     static final int DEFAULT_MAX_PENDING_REQUESTS = 1024;
 
+    @JsonProperty("port")
     private int port = DEFAULT_PORT;
+
     @JsonProperty("request_timeout")
     private int requestTimeoutInMillis = DEFAULT_REQUEST_TIMEOUT_MS;
+
+    @JsonProperty("thread_count")
     private int threadCount = DEFAULT_THREAD_COUNT;
+
+    @JsonProperty("max_connection_count")
     private int maxConnectionCount = DEFAULT_MAX_CONNECTION_COUNT;
+
+    @JsonProperty("max_pending_requests")
     private int maxPendingRequests = DEFAULT_MAX_PENDING_REQUESTS;
+
+    @JsonProperty(SSL)
     private boolean ssl;
+
+    @JsonProperty(SSL_CERTIFICATE_FILE)
     private String sslCertificateFile;
+
+    @JsonProperty(SSL_KEY_FILE)
     private String sslKeyFile;
+
+    @JsonProperty("ssl_key_password")
     private String sslKeyPassword;
 
     // TODO: Remove once JSR-303 validation is available

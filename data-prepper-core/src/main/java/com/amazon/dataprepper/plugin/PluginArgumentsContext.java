@@ -16,19 +16,17 @@ import java.util.function.Supplier;
  */
 class PluginArgumentsContext {
     private final Map<Class<?>, Supplier<Object>> typedArgumentsSuppliers;
-    private final Class<?> singleParameterObject;
 
     private PluginArgumentsContext(final Builder builder) {
+        Objects.requireNonNull(builder.pluginSetting,
+                "PluginArgumentsContext received a null Builder object. This is likely an error in the plugin framework.");
+
         typedArgumentsSuppliers = new HashMap<>();
 
-        Objects.requireNonNull(builder.pluginSetting);
         typedArgumentsSuppliers.put(builder.pluginSetting.getClass(), () -> builder.pluginSetting);
 
         if(builder.pluginConfiguration != null) {
             typedArgumentsSuppliers.put(builder.pluginConfiguration.getClass(), () -> builder.pluginConfiguration);
-            singleParameterObject = builder.pluginConfiguration.getClass();
-        } else {
-            singleParameterObject = builder.pluginSetting.getClass();
         }
 
         typedArgumentsSuppliers.put(PluginMetrics.class, () -> PluginMetrics.fromPluginSetting(builder.pluginSetting));
@@ -39,10 +37,6 @@ class PluginArgumentsContext {
                 .map(this::getRequiredArgumentSupplier)
                 .map(Supplier::get)
                 .toArray();
-    }
-
-    Class<?> getSingleParameterType() {
-        return singleParameterObject;
     }
 
     private Supplier<Object> getRequiredArgumentSupplier(final Class<?> parameterType) {

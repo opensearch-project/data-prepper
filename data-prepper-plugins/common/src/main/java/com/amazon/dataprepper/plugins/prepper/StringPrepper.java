@@ -12,6 +12,7 @@
 package com.amazon.dataprepper.plugins.prepper;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
+import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
@@ -50,6 +51,7 @@ public class StringPrepper implements Prepper<Record<String>, Record<String>> {
      *
      * @param configuration instance with metadata information from pipeline pluginSetting file.
      */
+    @DataPrepperPluginConstructor
     public StringPrepper(final Configuration configuration) {
         this.upperCase = configuration.getUpperCase();
     }

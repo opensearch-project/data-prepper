@@ -1,6 +1,7 @@
 package com.amazon.dataprepper.plugin;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import com.amazon.dataprepper.model.plugin.PluginInvocationException;
 import org.slf4j.Logger;
@@ -18,16 +19,15 @@ class PluginCreator {
     private static final Logger LOG = LoggerFactory.getLogger(PluginCreator.class);
 
     <T> T newPluginInstance(final Class<T> pluginClass,
-                            final PluginArgumentsContext pluginConstructionContext,
+                            final PluginArgumentsContext pluginArgumentsContext,
                             final String pluginName) {
         Objects.requireNonNull(pluginClass);
-        Objects.requireNonNull(pluginConstructionContext);
+        Objects.requireNonNull(pluginArgumentsContext);
         Objects.requireNonNull(pluginName);
 
-        final Class<?> singleParameterType = pluginConstructionContext.getSingleParameterType();
-        final Constructor<?> constructor = getConstructor(pluginClass, singleParameterType, pluginName);
+        final Constructor<?> constructor = getConstructor(pluginClass, pluginName);
 
-        final Object[] constructorArguments = pluginConstructionContext.createArguments(constructor.getParameterTypes());
+        final Object[] constructorArguments = pluginArgumentsContext.createArguments(constructor.getParameterTypes());
 
         try {
             return (T) constructor.newInstance(constructorArguments);
@@ -40,7 +40,7 @@ class PluginCreator {
         }
     }
 
-    private <T> Constructor<?> getConstructor(final Class<T> pluginClass, final Class<?> singleParameterType, final String pluginName) {
+    private <T> Constructor<?> getConstructor(final Class<T> pluginClass, final String pluginName) {
 
         final Constructor<?>[] constructors = pluginClass.getConstructors();
 
@@ -48,29 +48,27 @@ class PluginCreator {
         if(annotatedConstructor.isPresent())
             return annotatedConstructor.get();
 
-
-        final Optional<Constructor<?>> singleParameterConstructor = Arrays.stream(constructors)
-                .filter(c -> Arrays.equals(c.getParameterTypes(), new Class[]{singleParameterType}))
+        final Optional<Constructor<?>> pluginSettingOnlyConstructor = Arrays.stream(constructors)
+                .filter(c -> Arrays.equals(c.getParameterTypes(), new Class[]{PluginSetting.class}))
                 .findFirst();
 
-        if(singleParameterConstructor.isPresent())
-            return singleParameterConstructor.get();
+        if(pluginSettingOnlyConstructor.isPresent())
+            return pluginSettingOnlyConstructor.get();
 
         final Optional<Constructor<?>> defaultConstructor = Arrays.stream(constructors)
                 .filter(c -> c.getParameterTypes().length == 0)
                 .findFirst();
 
-
         if(defaultConstructor.isPresent())
             return defaultConstructor.get();
 
         final String error =
-                String.format("Data Prepper plugin requires a constructor which is either: " +
-                        "1. Annotated with @DataPrepperPlugin; " +
-                        "2. Contains a single argument of type %s; or " +
-                        "3. Has a default constructor. " +
-                        "Plugin %s with name %s is missing such constructor.",
-        singleParameterType, pluginClass.getSimpleName(), pluginName);
+                String.format("Data Prepper plugin %s with name %s does not have a valid plugin constructor. " +
+                        "Please ensure the plugin has a constructor that either: " +
+                        "1. Is annotated with @DataPrepperPlugin; " +
+                        "2. Contains a single argument of type PluginSetting; or " +
+                        "3. Is the default constructor.",
+        pluginClass.getSimpleName(), pluginName);
 
         LOG.error("{}", error);
         throw new InvalidPluginDefinitionException(error);

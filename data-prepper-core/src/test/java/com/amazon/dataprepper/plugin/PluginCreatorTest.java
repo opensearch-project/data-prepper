@@ -92,8 +92,6 @@ class PluginCreatorTest {
     void newPluginInstance_should_create_new_instance_from_annotated_constructor() {
 
         final AlternatePluginConfig alternatePluginConfig = mock(AlternatePluginConfig.class);
-        given(pluginConstructionContext.getSingleParameterType())
-                .willReturn((Class) AlternatePluginConfig.class);
         given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class, AlternatePluginConfig.class}))
                 .willReturn(new Object[] { pluginSetting, alternatePluginConfig });
 
@@ -106,9 +104,7 @@ class PluginCreatorTest {
     }
 
     @Test
-    void newPluginInstance_should_create_new_instance_from_singleArgumentType_if_provided() {
-        given(pluginConstructionContext.getSingleParameterType())
-                .willReturn((Class) PluginSetting.class);
+    void newPluginInstance_should_create_new_instance_from_PluginSetting_if_the_constructor() {
         given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class}))
                 .willReturn(new Object[] { pluginSetting });
 
@@ -143,9 +139,6 @@ class PluginCreatorTest {
 
     @Test
     void newPluginInstance_should_throw_if_plugin_throws_in_constructor() {
-
-        given(pluginConstructionContext.getSingleParameterType())
-                .willReturn((Class) PluginSetting.class);
         given(pluginConstructionContext.createArguments(new Class[] {PluginSetting.class}))
                 .willReturn(new Object[] { pluginSetting });
 

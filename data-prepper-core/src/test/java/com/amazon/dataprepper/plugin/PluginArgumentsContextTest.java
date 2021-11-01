@@ -28,25 +28,6 @@ class PluginArgumentsContextTest {
     }
 
     @Test
-    void getSingleParameterType_should_return_PluginSetting_if_no_pluginConfiguration_is_provided() {
-        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
-                .withPluginSetting(pluginSetting)
-                .build();
-
-        assertThat(objectUnderTest.getSingleParameterType(), equalTo(PluginSetting.class));
-    }
-
-    @Test
-    void getSingleParameterType_should_return_the_type_of_pluginConfiguration_if_provided() {
-        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
-                .withPluginConfiguration(testPluginConfiguration)
-                .withPluginSetting(pluginSetting)
-                .build();
-
-        assertThat(objectUnderTest.getSingleParameterType(), equalTo(TestPluginConfiguration.class));
-    }
-
-    @Test
     void createArguments_with_unavailable_argument_should_throw() {
         final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
