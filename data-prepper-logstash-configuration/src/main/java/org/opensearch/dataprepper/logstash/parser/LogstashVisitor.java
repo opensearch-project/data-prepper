@@ -17,7 +17,7 @@ import java.util.LinkedList;
 import java.util.ArrayList;
 
 /**
- * Class to populate Logstash configuration model POJO's using ANTLR
+ * Class to populate Logstash configuration model objects using ANTLR
  *
  * @since 1.2
  */
@@ -30,9 +30,9 @@ public class LogstashVisitor extends LogstashBaseVisitor {
     private final Map<String, Object> hashEntries = new LinkedHashMap<>();
 
     @Override
-    public Object visitConfig(LogstashParser.ConfigContext ctx) {
-        for(int i = 0; i < ctx.plugin_section().size(); i++) {
-            visitPlugin_section(ctx.plugin_section().get(i));
+    public Object visitConfig(LogstashParser.ConfigContext configContext) {
+        for(int i = 0; i < configContext.plugin_section().size(); i++) {
+            visitPlugin_section(configContext.plugin_section().get(i));
         }
         return LogstashConfiguration.builder()
                 .pluginSections(pluginSections)
@@ -40,12 +40,12 @@ public class LogstashVisitor extends LogstashBaseVisitor {
     }
 
     @Override
-    public Object visitPlugin_section(LogstashParser.Plugin_sectionContext ctx) {
+    public Object visitPlugin_section(LogstashParser.Plugin_sectionContext pluginSectionContext) {
 
         LogstashPluginType logstashPluginType;
         logstashPluginList = new LinkedList<>();
 
-        switch (ctx.plugin_type().getText()) {
+        switch (pluginSectionContext.plugin_type().getText()) {
             case "input":
                 logstashPluginType = LogstashPluginType.INPUT;
                 break;
@@ -59,8 +59,8 @@ public class LogstashVisitor extends LogstashBaseVisitor {
                 throw new LogstashParsingException("only input, filter and output plugin sections are supported.");
         }
 
-        for (int i = 0; i < ctx.branch_or_plugin().size(); i++) {
-            logstashPluginList.add((LogstashPlugin) visitBranch_or_plugin(ctx.branch_or_plugin().get(i)));
+        for (int i = 0; i < pluginSectionContext.branch_or_plugin().size(); i++) {
+            logstashPluginList.add((LogstashPlugin) visitBranch_or_plugin(pluginSectionContext.branch_or_plugin().get(i)));
         }
 
         pluginSections.put(logstashPluginType, logstashPluginList);
@@ -69,10 +69,10 @@ public class LogstashVisitor extends LogstashBaseVisitor {
     }
 
     @Override
-    public Object visitBranch_or_plugin(LogstashParser.Branch_or_pluginContext ctx) {
+    public Object visitBranch_or_plugin(LogstashParser.Branch_or_pluginContext branchOrPluginContext) {
 
-        if (ctx.getChild(0) instanceof LogstashParser.PluginContext) {
-            return visitPlugin(ctx.plugin());
+        if (branchOrPluginContext.getChild(0) instanceof LogstashParser.PluginContext) {
+            return visitPlugin(branchOrPluginContext.plugin());
         }
         else {
             throw new LogstashParsingException("conditionals are not supported");
@@ -80,12 +80,12 @@ public class LogstashVisitor extends LogstashBaseVisitor {
     }
 
     @Override
-    public Object visitPlugin(LogstashParser.PluginContext ctx) {
-        String pluginName = ctx.name().getText();
+    public Object visitPlugin(LogstashParser.PluginContext pluginContext) {
+        String pluginName = pluginContext.name().getText();
         List<LogstashAttribute> logstashAttributeList = new ArrayList<>();
 
-        for (int i = 0; i < ctx.attributes().attribute().size(); i++) {
-            logstashAttributeList.add((LogstashAttribute) visitAttribute(ctx.attributes().attribute().get(i)));
+        for (int i = 0; i < pluginContext.attributes().attribute().size(); i++) {
+            logstashAttributeList.add((LogstashAttribute) visitAttribute(pluginContext.attributes().attribute().get(i)));
         }
 
         return LogstashPlugin.builder()
@@ -95,33 +95,33 @@ public class LogstashVisitor extends LogstashBaseVisitor {
     }
 
     @Override
-    public Object visitAttribute(LogstashParser.AttributeContext ctx) {
+    public Object visitAttribute(LogstashParser.AttributeContext attributeContext) {
         LogstashValueType logstashValueType = null;
         Object value = null;
 
-        if (ctx.value().getChild(0) instanceof LogstashParser.ArrayContext) {
+        if (attributeContext.value().getChild(0) instanceof LogstashParser.ArrayContext) {
             logstashValueType = LogstashValueType.ARRAY;
-            value = visitArray(ctx.value().array());
+            value = visitArray(attributeContext.value().array());
         }
-        else if (ctx.value().getChild(0) instanceof LogstashParser.HashContext) {
+        else if (attributeContext.value().getChild(0) instanceof LogstashParser.HashContext) {
             logstashValueType = LogstashValueType.HASH;
-            value = visitHash(ctx.value().hash());
+            value = visitHash(attributeContext.value().hash());
         }
-        else if (ctx.value().getChild(0) instanceof LogstashParser.PluginContext) {
+        else if (attributeContext.value().getChild(0) instanceof LogstashParser.PluginContext) {
             throw new LogstashParsingException("plugins are not supported in attribute");
         }
 
-        else if (ctx.value().NUMBER() != null && ctx.value().getText().equals(ctx.value().NUMBER().toString())) {
+        else if (attributeContext.value().NUMBER() != null && attributeContext.value().getText().equals(attributeContext.value().NUMBER().toString())) {
             logstashValueType = LogstashValueType.NUMBER;
-            value = Double.valueOf(ctx.value().getText());
+            value = Double.valueOf(attributeContext.value().getText());
         }
-        else if (ctx.value().BAREWORD() != null && ctx.value().getText().equals(ctx.value().BAREWORD().toString())) {
+        else if (attributeContext.value().BAREWORD() != null && attributeContext.value().getText().equals(attributeContext.value().BAREWORD().toString())) {
             logstashValueType = LogstashValueType.BAREWORD;
-            value = ctx.value().getText();
+            value = attributeContext.value().getText();
         }
-        else if (ctx.value().STRING() != null && ctx.value().getText().equals(ctx.value().STRING().toString())) {
+        else if (attributeContext.value().STRING() != null && attributeContext.value().getText().equals(attributeContext.value().STRING().toString())) {
             logstashValueType = LogstashValueType.STRING;
-            value = ctx.value().getText().replaceAll("^\"|\"$|^'|'$", "");
+            value = attributeContext.value().getText().replaceAll("^\"|\"$|^'|'$", "");
         }
 
         LogstashAttributeValue logstashAttributeValue =  LogstashAttributeValue.builder()
@@ -130,41 +130,41 @@ public class LogstashVisitor extends LogstashBaseVisitor {
                 .build();
 
         return LogstashAttribute.builder()
-                .attributeName(ctx.name().getText())
+                .attributeName(attributeContext.name().getText())
                 .attributeValue(logstashAttributeValue)
                 .build();
     }
 
     @Override
-    public Object visitArray(LogstashParser.ArrayContext ctx) {
+    public Object visitArray(LogstashParser.ArrayContext arrayContext) {
         List<String> values = new LinkedList<>();
 
-        for(int i = 0; i < ctx.value().size(); i++)
-            values.add(ctx.value().get(i).getText() );
+        for(int i = 0; i < arrayContext.value().size(); i++)
+            values.add(arrayContext.value().get(i).getText() );
         return values;
     }
 
     @Override
-    public Object visitHash(LogstashParser.HashContext ctx) {
-        return visitHashentries(ctx.hashentries());
+    public Object visitHash(LogstashParser.HashContext hashContext) {
+        return visitHashentries(hashContext.hashentries());
     }
 
     @Override
-    public Object visitHashentries(LogstashParser.HashentriesContext ctx) {
-        for (int i = 0; i < ctx.hashentry().size(); i++) {
-            visitHashentry((ctx.hashentry().get(i)));
+    public Object visitHashentries(LogstashParser.HashentriesContext hashentriesContext) {
+        for (int i = 0; i < hashentriesContext.hashentry().size(); i++) {
+            visitHashentry((hashentriesContext.hashentry().get(i)));
         }
         return hashEntries;
     }
 
     @Override
-    public Object visitHashentry(LogstashParser.HashentryContext ctx) {
+    public Object visitHashentry(LogstashParser.HashentryContext hashentryContext) {
 
-        if (ctx.value().getChild(0) instanceof LogstashParser.ArrayContext)
-            hashEntries.put(ctx.hashname().getText(), visitArray(ctx.value().array()));
+        if (hashentryContext.value().getChild(0) instanceof LogstashParser.ArrayContext)
+            hashEntries.put(hashentryContext.hashname().getText(), visitArray(hashentryContext.value().array()));
 
         else
-            hashEntries.put(ctx.hashname().getText(), ctx.value().getText());
+            hashEntries.put(hashentryContext.hashname().getText(), hashentryContext.value().getText());
 
         return hashEntries;
     }

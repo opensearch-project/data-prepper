@@ -1,11 +1,10 @@
 package org.opensearch.dataprepper.logstash.exception;
 
 /**
- * Exception for ANTLR failures
+ * Exception thrown when ANTLR fails to parse the Logstash configuration
  *
  * @since 1.2
  */
-
 public class LogstashGrammarException extends LogstashParsingException {
 
     public LogstashGrammarException(String errorMessage) {
