@@ -54,7 +54,7 @@ dependencies {
     implementation 'software.amazon.awssdk:regions:2.17.15'
     implementation 'software.amazon.awssdk:utils:2.17.15'
     implementation 'software.amazon.awssdk:sts:2.17.15'
-    implementation 'software.amazon.awssdk:url-connection-client:2.17.15'
+    implementation 'software.amazon.awssdk:url-connection-client:2.17.71'
     implementation 'software.amazon.awssdk:arns:2.17.15'
     implementation 'io.micrometer:micrometer-core:1.7.3'
     // The OpenSearch build-tools plugin appears to be preventing Gradle's platform
