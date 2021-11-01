@@ -4,22 +4,46 @@ import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasKey;
 
 public class PluginModelTests {
 
+    private static class PluginHolder {
+        private PluginModel singlePlugin;
+        private List<PluginModel> listOfPlugins;
+
+        public PluginModel getSinglePlugin() {
+            return singlePlugin;
+        }
+
+        public List<PluginModel> getListOfPlugins() {
+            return listOfPlugins;
+        }
+
+        public void setSinglePlugin(PluginModel singlePlugin) {
+            this.singlePlugin = singlePlugin;
+        }
+
+        public void setListOfPlugins(List<PluginModel> listOfPlugins) {
+            this.listOfPlugins = listOfPlugins;
+        }
+    }
+
     @Test
     public final void testSerializingPluginModel_noExceptions() throws JsonGenerationException, JsonMappingException, IOException {
-        final PluginModel pluginModel = new PluginModel("pluginName", new HashMap<>());
+        final PluginModel pluginModel = new PluginModel("customPlugin", new HashMap<>());
         final String serialized = new ObjectMapper().writeValueAsString(pluginModel);
         assertThat(serialized, notNullValue());
         assertThat(pluginModel.getPluginName(), notNullValue());
@@ -27,52 +51,59 @@ public class PluginModelTests {
     }
 
     @Test
-    public final void testUsingCustomSerializer_noExceptions() throws JsonGenerationException, JsonMappingException, IOException {
-        final PluginModel pluginModel = new PluginModel("pluginName", new HashMap<>());
+    public final void testSerialization_empty_plugin_to_YAML() throws JsonGenerationException, JsonMappingException, IOException {
+        final PluginModel pluginModel = new PluginModel("customPlugin", new HashMap<>());
 
-        final ObjectMapper mapper = new ObjectMapper();
-
-        final SimpleModule simpleModule = new SimpleModule();
-        simpleModule.addSerializer(PluginModel.class, new PluginModel.PluginModelSerializer());
-        mapper.registerModule(simpleModule);
+        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 
         final String serialized = mapper.writeValueAsString(pluginModel);
         assertThat(serialized, notNullValue());
+        assertThat(serialized, equalTo("---\ncustomPlugin: {}\n"));
     }
 
     @Test
     public final void testUsingCustomSerializerWithPluginSettings_noExceptions() throws JsonGenerationException, JsonMappingException, IOException {
-        final PluginModel pluginModel = new PluginModel("pluginName", validPluginSettings());
+        final PluginModel pluginModel = new PluginModel("customPlugin", validPluginSettings());
 
-        final ObjectMapper mapper = new ObjectMapper();
-
-        final SimpleModule simpleModule = new SimpleModule();
-        simpleModule.addSerializer(PluginModel.class, new PluginModel.PluginModelSerializer());
-        mapper.registerModule(simpleModule);
+        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 
         final String serialized = mapper.writeValueAsString(pluginModel);
         assertThat(serialized, notNullValue());
-    }
-
-    @Test
-    public final void testDeserializingPluginModel_noExceptions() throws JsonParseException, JsonMappingException, IOException {
-        final String yaml = "pluginName:\n key1: value1";
-        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-        PluginModel readValue = mapper.readValue(yaml, PluginModel.class);
-        assertThat(readValue, notNullValue());
+        assertThat(serialized, equalTo("---\ncustomPlugin:\n  key1: \"value1\"\n  key2: \"value2\"\n  key3: \"value3\"\n"));
     }
 
     @Test
     public final void testUsingCustomDeserializer_noExceptions() throws JsonParseException, JsonMappingException, IOException {
-        final String yaml = "pluginName:\n key1: value1";
+        InputStream inputStream = PluginModelTests.class.getResourceAsStream("/single_plugin.yml");
+
         final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 
-        final SimpleModule module = new SimpleModule();
-        module.addDeserializer(PluginModel.class, new PluginModel.PluginModelDeserializer());
-        mapper.registerModule(module);
-
-        final PluginModel readValue = mapper.readValue(yaml, PluginModel.class);
+        final PluginHolder readValue = mapper.readValue(inputStream, PluginHolder.class);
         assertThat(readValue, notNullValue());
+        assertThat(readValue.singlePlugin.getPluginName(), equalTo("pluginName"));
+        assertThat(readValue.singlePlugin.getPluginSettings(), notNullValue());
+        assertThat(readValue.singlePlugin.getPluginSettings(), hasKey("key1"));
+        assertThat(readValue.singlePlugin.getPluginSettings().get("key1"), equalTo("value1"));
+    }
+
+    @Test
+    public final void testUsingCustomDeserializer_with_array() throws JsonParseException, JsonMappingException, IOException {
+        InputStream inputStream = PluginModelTests.class.getResourceAsStream("/list_of_plugins.yml");
+
+        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+
+        final PluginHolder readValue = mapper.readValue(inputStream, PluginHolder.class);
+        assertThat(readValue, notNullValue());
+        assertThat(readValue.listOfPlugins, notNullValue());
+        assertThat(readValue.listOfPlugins.size(), equalTo(2));
+        assertThat(readValue.listOfPlugins.get(0).getPluginName(), equalTo("customPluginA"));
+        assertThat(readValue.listOfPlugins.get(0).getPluginSettings(), notNullValue());
+        assertThat(readValue.listOfPlugins.get(0).getPluginSettings(), hasKey("key1"));
+        assertThat(readValue.listOfPlugins.get(0).getPluginSettings().get("key1"), equalTo("value1"));
+        assertThat(readValue.listOfPlugins.get(1).getPluginName(), equalTo("customPluginB"));
+        assertThat(readValue.listOfPlugins.get(1).getPluginSettings(), notNullValue());
+        assertThat(readValue.listOfPlugins.get(1).getPluginSettings(), hasKey("key2"));
+        assertThat(readValue.listOfPlugins.get(1).getPluginSettings().get("key2"), equalTo("value2"));
     }
 
     public static Map<String, Object> validPluginSettings() {

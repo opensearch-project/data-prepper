@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
@@ -87,8 +88,14 @@ public class PluginModel {
         @Override
         public PluginModel deserialize(JsonParser jsonParser, DeserializationContext context) throws IOException, JacksonException {
             JsonNode node = jsonParser.getCodec().readTree(jsonParser);
-            String pluginName = node.get("pluginName").asText();
-            Map<String, Object> settingsMap = mapper.convertValue(node.get("pluginSettings"), new TypeReference<Map<String, Object>>(){});
+
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            Map.Entry<String, JsonNode> onlyField = fields.next();
+
+            String pluginName = onlyField.getKey();
+            JsonNode value = onlyField.getValue();
+
+            Map<String, Object> settingsMap = mapper.convertValue(value, new TypeReference<Map<String, Object>>(){});
             return new PluginModel(pluginName, settingsMap);
         }
     }
