@@ -23,7 +23,6 @@ public class TestDataProvider {
     static final String RANDOM_STRING_2 = UUID.randomUUID().toString();
     static final String RANDOM_VALUE = String.valueOf(new Random().nextInt(1000));
 
-    // data
     public static LogstashConfiguration configData() {
         return LogstashConfiguration.builder().pluginSections(pluginSectionData()).build();
     }

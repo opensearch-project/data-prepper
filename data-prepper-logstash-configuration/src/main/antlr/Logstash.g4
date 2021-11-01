@@ -1,3 +1,7 @@
+/*
+* Grammar file for parsing Logstash configurations
+*/
+
 grammar Logstash;
 
 @header {

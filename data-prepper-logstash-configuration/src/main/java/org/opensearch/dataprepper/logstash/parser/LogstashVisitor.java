@@ -110,7 +110,6 @@ public class LogstashVisitor extends LogstashBaseVisitor {
         else if (attributeContext.value().getChild(0) instanceof LogstashParser.PluginContext) {
             throw new LogstashParsingException("plugins are not supported in attribute");
         }
-
         else if (attributeContext.value().NUMBER() != null && attributeContext.value().getText().equals(attributeContext.value().NUMBER().toString())) {
             logstashValueType = LogstashValueType.NUMBER;
             value = Double.valueOf(attributeContext.value().getText());
