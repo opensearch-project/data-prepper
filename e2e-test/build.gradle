@@ -31,10 +31,10 @@ subprojects {
     task copyDataPrepperJar(type: Copy) {
         dependsOn DATA_PREPPER_CORE_JAR
         from("${DATA_PREPPER_CORE_JAR.archivePath}")
-        into "${project(':qa-test').buildDir}/bin"
+        into "${project(':e2e-test').buildDir}/bin"
     }
 
     ext {
-        data_prepper_jar_filepath = "${project(':qa-test').buildDir}/bin/${DATA_PREPPER_CORE_JAR.archiveName}"
+        dataPrepperJarFilepath = "${project(':e2e-test').buildDir.name}/bin/${DATA_PREPPER_CORE_JAR.archiveName}"
     }
 }

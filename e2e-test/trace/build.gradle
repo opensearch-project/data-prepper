@@ -32,7 +32,7 @@ task createDataPrepperDockerFile(type: Dockerfile) {
     exposePort(21890)
     exposePort(4900)
     workingDir("/app")
-    copyFile("${data_prepper_jar_filepath}", "/app/data-prepper.jar")
+    copyFile("${dataPrepperJarFilepath}", "/app/data-prepper.jar")
     copyFile("src/integrationTest/resources/${RAW_SPAN_PIPELINE_YAML}", "/app/${RAW_SPAN_PIPELINE_YAML}")
     copyFile("src/integrationTest/resources/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}", "/app/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
     copyFile("src/integrationTest/resources/${SERVICE_MAP_PIPELINE_YAML}", "/app/${SERVICE_MAP_PIPELINE_YAML}")

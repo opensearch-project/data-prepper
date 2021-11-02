@@ -10,7 +10,7 @@ Run from current directory
 ```
 or from project root directory
 ```
-./gradlew :qa-test:trace:rawSpanEndToEndTest
+./gradlew :e2e-test:trace:rawSpanEndToEndTest
 ```
 
 ## Raw Span Ingestion Pipelines Compatibility End-to-end test
@@ -21,7 +21,7 @@ Run from current directory
 ```
 or from project root directory
 ```
-./gradlew :qa-test:trace:rawSpanCompatibilityEndToEndTest
+./gradlew :e2e-test:trace:rawSpanCompatibilityEndToEndTest
 ```
 
 ## Service Map Ingestion Pipelines End-to-end test
@@ -32,5 +32,5 @@ Run from current directory
 ```
 or from project root directory
 ```
-./gradlew :qa-test:trace:serviceMapEndToEndTest
+./gradlew :e2e-test:trace:serviceMapEndToEndTest
 ```
