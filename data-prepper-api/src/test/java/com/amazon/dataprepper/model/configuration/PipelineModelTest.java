@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -14,8 +15,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 public class PipelineModelTest {
 
-    public static final Integer TEST_WORKERS = 1;
-    public static final Integer TEST_READ_BATCH_DELAY = 3_000;
+    public static Random random = new Random();
+    public static final Integer TEST_WORKERS = random.nextInt(30);
+    public static final Integer TEST_READ_BATCH_DELAY = random.nextInt(40);
     public static PluginModel TEST_VALID_SOURCE_PLUGIN_MODEL = new PluginModel("source-plugin", validPluginSettings());
     public static PluginModel TEST_VALID_PREPPERS_PLUGIN_MODEL = new PluginModel("prepper", validPluginSettings());
     public static PluginModel TEST_VALID_SINKS_PLUGIN_MODEL = new PluginModel("sink", validPluginSettings());

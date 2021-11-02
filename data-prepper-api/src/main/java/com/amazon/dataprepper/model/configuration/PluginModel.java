@@ -55,13 +55,13 @@ public class PluginModel {
             this(null);
         }
 
-        public PluginModelSerializer(Class<PluginModel> t) {
-            super(t);
+        public PluginModelSerializer(Class<PluginModel> valueClass) {
+            super(valueClass);
         }
 
         @Override
         public void serialize(
-                PluginModel value, JsonGenerator gen, SerializerProvider provider) throws IOException {
+                final PluginModel value, final JsonGenerator gen, final SerializerProvider provider) throws IOException {
             gen.writeStartObject();
             gen.writeObjectField(value.getPluginName(), value.getPluginSettings());
             gen.writeEndObject();
@@ -81,12 +81,12 @@ public class PluginModel {
             this(null);
         }
 
-        public PluginModelDeserializer(Class<PluginModel> t) {
-            super(t);
+        public PluginModelDeserializer(Class<PluginModel> valueClass) {
+            super(valueClass);
         }
 
         @Override
-        public PluginModel deserialize(JsonParser jsonParser, DeserializationContext context) throws IOException, JacksonException {
+        public PluginModel deserialize(final JsonParser jsonParser, final DeserializationContext context) throws IOException, JacksonException {
             JsonNode node = jsonParser.getCodec().readTree(jsonParser);
 
             Iterator<Map.Entry<String, JsonNode>> fields = node.fields();

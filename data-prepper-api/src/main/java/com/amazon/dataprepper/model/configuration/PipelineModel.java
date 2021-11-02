@@ -15,8 +15,8 @@ public class PipelineModel {
     private final PluginModel sourcePluginModel;
     private final List<PluginModel> prepperPluginModel;
     private final List<PluginModel> sinkPluginModel;
-    private Integer workers = 1;
-    private Integer readBatchDelay = 3_000;
+    private final Integer workers;
+    private final Integer readBatchDelay;
 
     @JsonCreator
     public PipelineModel(

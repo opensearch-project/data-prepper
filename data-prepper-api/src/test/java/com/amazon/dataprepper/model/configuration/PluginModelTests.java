@@ -7,8 +7,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.jupiter.api.Test;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,8 +62,11 @@ public class PluginModelTests {
         final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 
         final String serialized = mapper.writeValueAsString(pluginModel);
+
+        InputStream inputStream = PluginModelTests.class.getResourceAsStream("/empty_plugin_serialized.yml");
+
         assertThat(serialized, notNullValue());
-        assertThat(serialized, equalTo("---\ncustomPlugin: {}\n"));
+        assertThat(serialized, equalTo(convertInputStreamToString(inputStream)));
     }
 
     @Test
@@ -68,8 +76,10 @@ public class PluginModelTests {
         final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 
         final String serialized = mapper.writeValueAsString(pluginModel);
+
+        InputStream inputStream = PluginModelTests.class.getResourceAsStream("/serialized_with_plugin_settings.yml");
         assertThat(serialized, notNullValue());
-        assertThat(serialized, equalTo("---\ncustomPlugin:\n  key1: \"value1\"\n  key2: \"value2\"\n  key3: \"value3\"\n"));
+        assertThat(serialized, equalTo(convertInputStreamToString(inputStream)));
     }
 
     @Test
@@ -112,6 +122,19 @@ public class PluginModelTests {
         settings.put("key2", "value2");
         settings.put("key3", "value3");
         return settings;
+    }
+
+    public static String convertInputStreamToString(InputStream inputStream) {
+        StringBuilder stringBuilder = new StringBuilder();
+        try (Reader reader = new BufferedReader(new InputStreamReader(inputStream, Charset.forName(StandardCharsets.UTF_8.name())))) {
+            int counter = 0;
+            while ((counter = reader.read()) != -1) {
+                stringBuilder.append((char) counter);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return stringBuilder.toString();
     }
 
 }
