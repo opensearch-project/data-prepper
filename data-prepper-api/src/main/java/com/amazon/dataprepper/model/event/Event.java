@@ -11,6 +11,8 @@
 
 package com.amazon.dataprepper.model.event;
 
+import java.util.List;
+
 /**
  * All data flowing through Data Prepper will be represented as events. An event is the base representation of data.
  * An event can be defined as a collection of key-value pairs and the following interface represents the contract with this model.
@@ -42,6 +44,16 @@ public interface Event {
      * @since 1.2
      */
     <T> T get(String key, Class<T> clazz);
+
+    /**
+     * Retrieves the given key from the Event as a List
+     *
+     * @param key the value to retrieve from
+     * @param clazz the return type of elements in the list
+     * @return List<T> a list of clazz elements
+     * @since 1.2
+     */
+    <T> List<T> getList(String key, Class<T> clazz);
 
     /**
      * Deletes the given key from the Event
