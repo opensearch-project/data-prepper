@@ -157,6 +157,17 @@ public class JacksonEventTest {
     }
 
     @Test
+    public void testGetList_withIncorrectPojo() {
+        final String key = "foo.bar";
+        final String nestedValue = UUID.randomUUID().toString();
+        final TestObject value = new TestObject(nestedValue);
+
+        event.put(key, Arrays.asList(value));
+
+        assertThrows(RuntimeException.class, () -> event.getList(key, UUID.class));
+    }
+
+    @Test
     public void testGet_withEmptyEvent() {
         final String key = "foo/bar";
 
