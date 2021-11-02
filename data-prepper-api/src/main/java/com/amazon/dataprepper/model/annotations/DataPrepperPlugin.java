@@ -12,6 +12,7 @@
 package com.amazon.dataprepper.model.annotations;
 
 import com.amazon.dataprepper.model.PluginType;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -66,4 +67,15 @@ public @interface DataPrepperPlugin {
      * @since 1.2
      */
     Class<?> pluginType() default Void.class;
+
+    /**
+     * The configuration type which the plugin takes in the constructor.
+     * <p>
+     * By default, this value is a {@link PluginSetting}, but you can provide
+     * a POJO object to facilitate cleaner code in your plugins.
+     *
+     * @return The Java class type for plugin configurations
+     * @since 1.2
+     */
+    Class<?> pluginConfigurationType() default PluginSetting.class;
 }

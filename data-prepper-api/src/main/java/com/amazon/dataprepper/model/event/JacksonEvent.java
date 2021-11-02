@@ -15,6 +15,7 @@ import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,15 +26,14 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
-import static com.fasterxml.jackson.core.JsonPointer.SEPARATOR;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * A Jackson Implementation of {@link Event} interface. This implementation relies heavily on JsonNode to manage the keys of the event.
  * <p>
- * This implementation supports dot-notation for keys to access nested structures. For example using the key "fizz.buzz" would allow a
- * user to retrieve the number 42 using {@link #get(String, Class)} from the nested structure below.
+ * This implementation supports [JsonPointer](https://datatracker.ietf.org/doc/html/rfc6901) for keys to access nested structures.
+ * For example using the key "fizz/buzz" would allow a user to retrieve the number 42 using {@link #get(String, Class)} from the nested structure below.
  * <p>
  *     {
  *         "foo": "bar"
@@ -48,7 +48,7 @@ public class JacksonEvent implements Event {
 
     private static final Logger LOG = LoggerFactory.getLogger(JacksonEvent.class);
 
-    private static final String DOT_NOTATION_REGEX = "\\.";
+    private static final String SEPARATOR = "/";
 
     private static final ObjectMapper mapper = new ObjectMapper();
 
@@ -56,7 +56,7 @@ public class JacksonEvent implements Event {
 
     private final JsonNode jsonNode;
 
-    private JacksonEvent(final Builder builder) {
+    protected JacksonEvent(final Builder builder) {
 
         if (builder.eventMetadata == null) {
             this.eventMetadata = new DefaultEventMetadata.Builder()
@@ -85,26 +85,40 @@ public class JacksonEvent implements Event {
     @Override
     public void put(final String key, final Object value) {
 
-        checkKeyArgument(key);
+        final String trimmedKey = checkAndTrimKey(key);
 
-        final LinkedList<String> keys = new LinkedList<>(Arrays.asList(key.split(DOT_NOTATION_REGEX)));
+        final LinkedList<String> keys = new LinkedList<>(Arrays.asList(trimmedKey.split(SEPARATOR)));
 
         JsonNode parentNode = jsonNode;
 
         while (!keys.isEmpty()) {
             if (keys.size() == 1) {
-                final JsonNode valueNode = mapper.valueToTree(value);
-                ((ObjectNode) parentNode).set(keys.removeFirst(), valueNode);
+                setNode(parentNode, keys.removeFirst(), value);
             } else {
                 final String childKey = keys.removeFirst();
-                JsonNode childNode = parentNode.get(toJsonPointerExpression(childKey));
-                if (childNode == null) {
-                    childNode = mapper.createObjectNode();
-                    ((ObjectNode) parentNode).set(childKey, childNode);
+                if (!childKey.isEmpty()) {
+                    parentNode = getOrCreateNode(parentNode, childKey);
                 }
-                parentNode = childNode;
             }
         }
+    }
+
+    private void setNode(final JsonNode parentNode, final String leafKey, final Object value) {
+        final JsonNode valueNode = mapper.valueToTree(value);
+        if (isNumeric(leafKey)) {
+            ((ArrayNode) parentNode).set(Integer.parseInt(leafKey), valueNode);
+        } else {
+            ((ObjectNode) parentNode).set(leafKey, valueNode);
+        }
+    }
+
+    private JsonNode getOrCreateNode(final JsonNode node, final String key) {
+        JsonNode childNode = node.get(key);
+        if (childNode == null) {
+            childNode = mapper.createObjectNode();
+            ((ObjectNode) node).set(key, childNode);
+        }
+        return childNode;
     }
 
     /**
@@ -118,9 +132,9 @@ public class JacksonEvent implements Event {
     @Override
     public <T> T get(final String key, final Class<T> clazz) {
 
-        checkKeyArgument(key);
+        final String trimmedKey = checkAndTrimKey(key);
 
-        final JsonPointer jsonPointer = toJsonPointer(key);
+        final JsonPointer jsonPointer = toJsonPointer(trimmedKey);
 
         JsonNode node = jsonNode.at(jsonPointer);
         if (node.isMissingNode()) {
@@ -135,12 +149,8 @@ public class JacksonEvent implements Event {
         }
     }
 
-    private String toJsonPointerExpression(final String key) {
-        return key.replaceAll("\\.", "\\/");
-    }
-
     private JsonPointer toJsonPointer(final String key) {
-        String jsonPointerExpression = SEPARATOR + toJsonPointerExpression(key);
+        String jsonPointerExpression = SEPARATOR + key;
         return JsonPointer.compile(jsonPointerExpression);
     }
 
@@ -152,16 +162,16 @@ public class JacksonEvent implements Event {
     @Override
     public void delete(final String key) {
 
-        checkKeyArgument(key);
-        final int index = key.lastIndexOf(".");
+        final String trimmedKey = checkAndTrimKey(key);
+        final int index = trimmedKey.lastIndexOf(SEPARATOR);
 
         JsonNode baseNode = jsonNode;
-        String leafKey = key;
+        String leafKey = trimmedKey;
 
         if (index != -1) {
-            final JsonPointer jsonPointer = toJsonPointer(key.substring(0, index));
+            final JsonPointer jsonPointer = toJsonPointer(trimmedKey.substring(0, index));
             baseNode = jsonNode.at(jsonPointer);
-            leafKey = key.substring(index + 1);
+            leafKey = trimmedKey.substring(index + 1);
         }
 
         if (!baseNode.isMissingNode()) {
@@ -179,29 +189,66 @@ public class JacksonEvent implements Event {
         return eventMetadata;
     }
 
-    private void checkKeyArgument(final String key) {
+    private String checkAndTrimKey(final String key) {
+        checkKey(key);
+        return trimKey(key);
+    }
+
+    private void checkKey(final String key) {
         checkNotNull(key, "key cannot be null");
         checkArgument(!key.isEmpty(), "key cannot be an empty string");
-        checkArgument(key.matches("^([a-zA-Z0-9]([\\w -]*[a-zA-Z0-9])+\\.?)+(?<!\\.)$"), "key must contain only alphanumeric chars with .- and  must follow dot notation (ie. 'field.to.key')");
+        checkArgument(key.matches(
+                        "^/?((([a-zA-Z][a-zA-Z0-9-_.]+[a-zA-Z0-9])|\\d)/?)+$"),
+                String.format("key %s must contain only alphanumeric chars with .-_ and must follow JsonPointer (ie. 'field/to/key')", key));
+    }
+
+    private String trimKey(final String key) {
+
+        final String trimmedLeadingSlash = key.startsWith(SEPARATOR) ? key.substring(1) : key;
+        return trimmedLeadingSlash.endsWith(SEPARATOR) ? trimmedLeadingSlash.substring(0, trimmedLeadingSlash.length() - 2) : trimmedLeadingSlash;
+    }
+
+    private boolean isNumeric(final String str) {
+        try {
+            Integer.parseInt(str);
+            return true;
+        } catch(final NumberFormatException e){
+            return false;
+        }
+    }
+
+    /**
+     * Constructs an empty builder.
+     * @return a builder
+     * @since 1.2
+     */
+    public static Builder builder() {
+        return new Builder() {
+            @Override public Builder getThis() {
+                return this;
+            }
+        };
     }
 
     /**
      * Builder for creating {@link JacksonEvent}.
      * @since 1.2
      */
-    public static class Builder {
+    public abstract static class Builder<T extends Builder<T>> {
         private EventMetadata eventMetadata;
         private Object data;
         private String eventType;
         private Instant timeReceived;
         private Map<String, Object> eventMetadataAttributes;
 
+        public abstract T getThis();
+
         /**
          * Sets the event type for the metadata if a {@link #withEventMetadata} is not used.
          * @param eventType the event type
          * @since 1.2
          */
-        public Builder withEventType(final String eventType) {
+        public Builder<T> withEventType(final String eventType) {
             this.eventType = eventType;
             return this;
         }
@@ -211,7 +258,7 @@ public class JacksonEvent implements Event {
          * @param eventMetadataAttributes the attributes
          * @since 1.2
          */
-        public Builder withEventMetadataAttributes(final Map<String, Object> eventMetadataAttributes) {
+        public Builder<T> withEventMetadataAttributes(final Map<String, Object> eventMetadataAttributes) {
             this.eventMetadataAttributes = eventMetadataAttributes;
             return this;
         }
@@ -221,7 +268,7 @@ public class JacksonEvent implements Event {
          * @param timeReceived the time an event was received
          * @since 1.2
          */
-        public Builder withTimeReceived(final Instant timeReceived) {
+        public Builder<T> withTimeReceived(final Instant timeReceived) {
             this.timeReceived = timeReceived;
             return this;
         }
@@ -231,7 +278,7 @@ public class JacksonEvent implements Event {
          * @param eventMetadata the metadata
          * @since 1.2
          */
-        public Builder withEventMetadata(final EventMetadata eventMetadata) {
+        public Builder<T> withEventMetadata(final EventMetadata eventMetadata) {
             this.eventMetadata = eventMetadata;
             return this;
         }
@@ -241,7 +288,7 @@ public class JacksonEvent implements Event {
          * @param data the data
          * @since 1.2
          */
-        public Builder withData(final Object data) {
+        public Builder<T> withData(final Object data) {
             this.data = data;
             return this;
         }

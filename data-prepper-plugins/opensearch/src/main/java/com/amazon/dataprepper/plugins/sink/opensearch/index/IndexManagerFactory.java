@@ -3,6 +3,8 @@ package com.amazon.dataprepper.plugins.sink.opensearch.index;
 import com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
 import org.opensearch.client.RestHighLevelClient;
 
+import java.util.Optional;
+
 public class IndexManagerFactory {
 
     public final IndexManager getIndexManager(final IndexType indexType,
@@ -20,10 +22,20 @@ public class IndexManagerFactory {
 
     private static class DefaultIndexManager extends IndexManager {
 
+        public static final String POLICY_NAME_SUFFIX = "-policy";
+
         public DefaultIndexManager(final RestHighLevelClient restHighLevelClient,
                                    final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
             super(restHighLevelClient, openSearchSinkConfiguration);
-            this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(restHighLevelClient);
+            final Optional<String> ismPolicyFile = openSearchSinkConfiguration.getIndexConfiguration().getIsmPolicyFile();
+            if (ismPolicyFile.isPresent()) {
+                final String indexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
+                final String indexPolicyName = indexAlias + POLICY_NAME_SUFFIX;
+                this.ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient, indexPolicyName, ismPolicyFile.get());
+            } else {
+                //Policy file doesn't exist
+                this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(restHighLevelClient);
+            }
         }
 
     }
