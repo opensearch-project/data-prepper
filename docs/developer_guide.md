@@ -63,5 +63,8 @@ Optionally add `"-Dlog4j.configurationFile=config/log4j2.properties"` to the com
 
 ## More Information
 
-Please read our [Error Handling](error_handling.md) and [Logs](logs.md) guides for specific development guidance
-on those topics.
+We have the following pages for specific development guidance on the topics:
+
+* [Plugin Development](plugin_development.md)
+* [Error Handling](error_handling.md)
+* [Logs](logs.md)
