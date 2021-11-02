@@ -24,7 +24,7 @@ dependencies {
     implementation project(':data-prepper-api')
     testImplementation project(':data-prepper-api').sourceSets.test.output
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetryProto}"
-    implementation "com.linecorp.armeria:armeria:1.9.2"
+    implementation "com.linecorp.armeria:armeria:1.13.2"
     implementation "com.linecorp.armeria:armeria-grpc:1.9.2"
     implementation 'com.amazonaws:aws-java-sdk-s3'
     implementation 'com.amazonaws:aws-java-sdk-acm'
