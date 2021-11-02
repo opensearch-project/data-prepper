@@ -29,7 +29,7 @@ dependencies {
     implementation "javax.validation:validation-api:2.0.1.Final"
     implementation "org.apache.bval:bval-extras:2.0.5"
     implementation "org.apache.bval:bval-jsr:2.0.5"
-    implementation "org.reflections:reflections:0.10.1"
+    implementation "org.reflections:reflections:0.10.2"
     implementation 'io.micrometer:micrometer-core'
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'io.micrometer:micrometer-registry-cloudwatch2'
