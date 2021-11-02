@@ -85,7 +85,7 @@ public interface Span extends Event {
      * @return a List of {@link SpanEvent}s
      * @since 1.2
      */
-    List<SpanEvent> getEvents();
+    List<? extends SpanEvent> getEvents();
 
     /**
      * Gets the total number of discarded events. 0 indicates no events were dropped.
@@ -98,7 +98,7 @@ public interface Span extends Event {
      * @return a List of {@link Link}s
      * @since 1.2
      */
-    List<Link> getLinks();
+    List<? extends Link> getLinks();
 
     /**
      * Gets the total number of dropped links. 0 indicates no links were dropped.
