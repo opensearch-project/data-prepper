@@ -11,17 +11,15 @@
 
 package com.amazon.dataprepper.plugins.source.loghttp.certificate;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.file.FileCertificateProvider;
 import com.amazon.dataprepper.plugins.source.loghttp.HTTPSourceConfig;
 import org.hamcrest.core.IsInstanceOf;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class CertificateProviderFactoryTest {
     private final String TEST_SSL_CERTIFICATE_FILE = getClass().getClassLoader().getResource("test_cert.crt").getFile();
@@ -29,14 +27,10 @@ class CertificateProviderFactoryTest {
 
     @Test
     public void getFileCertificateProviderSuccess() {
-        final Map<String, Object> settingsMap = new HashMap<>();
-        settingsMap.put("ssl", true);
-        settingsMap.put("ssl_certificate_file", TEST_SSL_CERTIFICATE_FILE);
-        settingsMap.put("ssl_key_file", TEST_SSL_KEY_FILE);
-
-        final PluginSetting pluginSetting = new PluginSetting(null, settingsMap);
-        pluginSetting.setPipelineName("pipeline");
-        final HTTPSourceConfig sourceConfig = HTTPSourceConfig.buildConfig(pluginSetting);
+        final HTTPSourceConfig sourceConfig = mock(HTTPSourceConfig.class);
+        when(sourceConfig.isSsl()).thenReturn(true);
+        when(sourceConfig.getSslCertificateFile()).thenReturn(TEST_SSL_CERTIFICATE_FILE);
+        when(sourceConfig.getSslKeyFile()).thenReturn(TEST_SSL_KEY_FILE);
 
         final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(sourceConfig);
         final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();

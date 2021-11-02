@@ -25,6 +25,10 @@ public class DefaultPluginFactory implements PluginFactory {
 
     public DefaultPluginFactory() {
         this(new PluginProviderLoader(), new PluginCreator(), new PluginConfigurationConverter());
+        // TODO: Remove this along with the removal of com.amazon.dataprepper.plugins.PluginFactory
+        com.amazon.dataprepper.plugins.PluginFactory.dangerousMethod_setPluginFunction(
+                ((pluginSetting, aClass) -> pluginCreator.newPluginInstance(aClass, getConstructionContext(pluginSetting, aClass), pluginSetting.getName()))
+        );
     }
 
     /**
@@ -52,9 +56,9 @@ public class DefaultPluginFactory implements PluginFactory {
         final String pluginName = pluginSetting.getName();
         final Class<? extends T> pluginClass = getPluginClass(baseClass, pluginName);
 
-        final Object configuration = getConfiguration(pluginSetting, pluginClass);
+        final PluginArgumentsContext constructionContext = getConstructionContext(pluginSetting, pluginClass);
 
-        return pluginCreator.newPluginInstance(pluginClass, configuration, pluginName);
+        return pluginCreator.newPluginInstance(pluginClass, constructionContext, pluginName);
     }
 
     @Override
@@ -70,25 +74,30 @@ public class DefaultPluginFactory implements PluginFactory {
         if(numberOfInstances == null || numberOfInstances < 0)
             throw new IllegalArgumentException("The numberOfInstances must be provided as a non-negative integer.");
 
-        final Object configuration = getConfiguration(pluginSetting, pluginClass);
+        final PluginArgumentsContext constructionContext = getConstructionContext(pluginSetting, pluginClass);
 
         final List<T> plugins = new ArrayList<>(numberOfInstances);
         for (int i = 0; i < numberOfInstances; i++) {
-            plugins.add(pluginCreator.newPluginInstance(pluginClass, configuration, pluginName));
+            plugins.add(pluginCreator.newPluginInstance(pluginClass, constructionContext, pluginName));
         }
         return plugins;
     }
 
-    private <T> Object getConfiguration(final PluginSetting pluginSetting, final Class<? extends T> pluginClass) {
+    private <T> PluginArgumentsContext getConstructionContext(final PluginSetting pluginSetting, final Class<? extends T> pluginClass) {
         final DataPrepperPlugin pluginAnnotation = pluginClass.getAnnotation(DataPrepperPlugin.class);
 
         final Class<?> pluginConfigurationType = pluginAnnotation.pluginConfigurationType();
-        return pluginConfigurationConverter.convert(pluginConfigurationType, pluginSetting);
+        final Object configuration = pluginConfigurationConverter.convert(pluginConfigurationType, pluginSetting);
+
+        return new PluginArgumentsContext.Builder()
+                .withPluginSetting(pluginSetting)
+                .withPluginConfiguration(configuration)
+                .build();
     }
 
     private <T> Class<? extends T> getPluginClass(final Class<T> baseClass, final String pluginName) {
         return pluginProviders.stream()
-                .map(pluginProvider -> pluginProvider.<T>findPluginClass(baseClass, pluginName))
+                .map(pluginProvider -> pluginProvider.findPluginClass(baseClass, pluginName))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .findFirst()
