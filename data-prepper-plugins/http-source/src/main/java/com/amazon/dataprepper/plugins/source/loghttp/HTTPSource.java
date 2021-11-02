@@ -13,8 +13,8 @@ package com.amazon.dataprepper.plugins.source.loghttp;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
+import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
@@ -32,7 +32,7 @@ import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
-@DataPrepperPlugin(name = "http", pluginType = Source.class)
+@DataPrepperPlugin(name = "http", pluginType = Source.class, pluginConfigurationType = HTTPSourceConfig.class)
 public class HTTPSource implements Source<Record<String>> {
     private static final Logger LOG = LoggerFactory.getLogger(HTTPSource.class);
 
@@ -41,14 +41,17 @@ public class HTTPSource implements Source<Record<String>> {
     private Server server;
     private final PluginMetrics pluginMetrics;
 
-    public HTTPSource(final PluginSetting pluginSetting) {
-        sourceConfig = HTTPSourceConfig.buildConfig(pluginSetting);
+    @DataPrepperPluginConstructor
+    public HTTPSource(final HTTPSourceConfig sourceConfig, final PluginMetrics pluginMetrics) {
+        // TODO: Remove once JSR-303 validation is available.
+        sourceConfig.validate();
+        this.sourceConfig = sourceConfig;
+        this.pluginMetrics = pluginMetrics;
         certificateProviderFactory = new CertificateProviderFactory(sourceConfig);
-        pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
     }
 
     @Override
-    public void start(Buffer<Record<String>> buffer) {
+    public void start(final Buffer<Record<String>> buffer) {
         if (buffer == null) {
             throw new IllegalStateException("Buffer provided is null");
         }

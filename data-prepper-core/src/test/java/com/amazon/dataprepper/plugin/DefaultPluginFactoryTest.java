@@ -21,6 +21,8 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -141,7 +143,7 @@ class DefaultPluginFactoryTest {
             final Object convertedConfiguration = mock(Object.class);
             given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
                     .willReturn(convertedConfiguration);
-            given(pluginCreator.newPluginInstance(expectedPluginClass, convertedConfiguration, pluginName))
+            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(PluginArgumentsContext.class), eq(pluginName)))
                     .willReturn(expectedInstance);
 
             assertThat(createObjectUnderTest().loadPlugin(baseClass, pluginSetting),
@@ -186,7 +188,7 @@ class DefaultPluginFactoryTest {
             final Object convertedConfiguration = mock(Object.class);
             given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
                     .willReturn(convertedConfiguration);
-            given(pluginCreator.newPluginInstance(expectedPluginClass, convertedConfiguration, pluginName))
+            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(PluginArgumentsContext.class), eq(pluginName)))
                     .willReturn(expectedInstance);
 
             final List<?> plugins = createObjectUnderTest().loadPlugins(
@@ -205,8 +207,7 @@ class DefaultPluginFactoryTest {
             final Object convertedConfiguration = mock(Object.class);
             given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
                     .willReturn(convertedConfiguration);
-
-            given(pluginCreator.newPluginInstance(expectedPluginClass, convertedConfiguration, pluginName))
+            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(PluginArgumentsContext.class), eq(pluginName)))
                     .willReturn(expectedInstance1)
                     .willReturn(expectedInstance2)
                     .willReturn(expectedInstance3);
