@@ -124,12 +124,6 @@ public class GrokPrepperTests {
         lenient().when(pluginMetrics.counter(GrokPrepper.GROK_PROCESSING_ERRORS)).thenReturn(grokProcessingErrorsCounter);
         lenient().when(pluginMetrics.timer(GrokPrepper.GROK_PROCESSING_TIME)).thenReturn(grokProcessingTime);
 
-        lenient().when(pluginMetrics.counter(GrokPrepper.GROK_PROCESSING_MATCH_SUCCESS)).thenReturn(grokProcessingMatchSuccessCounter);
-        lenient().when(pluginMetrics.counter(GrokPrepper.GROK_PROCESSING_MATCH_FAILURE)).thenReturn(grokProcessingMatchFailureCounter);
-        lenient().when(pluginMetrics.counter(GrokPrepper.GROK_PROCESSING_TIMEOUTS)).thenReturn(grokProcessingTimeoutsCounter);
-        lenient().when(pluginMetrics.counter(GrokPrepper.GROK_PROCESSING_ERRORS)).thenReturn(grokProcessingErrorsCounter);
-        lenient().when(pluginMetrics.timer(GrokPrepper.GROK_PROCESSING_TIME)).thenReturn(grokProcessingTime);
-
         lenient().doAnswer(a -> {
             a.<Runnable>getArgument(0).run();
             return null;

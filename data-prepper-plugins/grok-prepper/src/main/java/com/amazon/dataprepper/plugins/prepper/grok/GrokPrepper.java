@@ -221,7 +221,6 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
 
     private void matchAndMerge(final Map<String, Object> recordMap) {
         final Map<String, Object> grokkedCaptures = new HashMap<>();
-        boolean grokProcesingMatchSuccess = false;
 
         for (final Map.Entry<String, List<Grok>> entry : fieldToGrok.entrySet()) {
             for (final Grok grok : entry.getValue()) {
@@ -231,10 +230,6 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
 
                     final Map<String, Object> captures = match.capture();
                     mergeCaptures(grokkedCaptures, captures);
-
-                    if (captures.size() > 0) {
-                        grokProcesingMatchSuccess = true;
-                    }
 
                     if (shouldBreakOnMatch(grokkedCaptures)) {
                         break;
@@ -252,10 +247,10 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
             mergeCaptures(recordMap, grokkedCaptures);
         }
 
-        if (grokProcesingMatchSuccess) {
-            grokProcessingMatchSuccessCounter.increment();
-        } else {
+        if (grokkedCaptures.isEmpty()) {
             grokProcessingMatchFailureCounter.increment();
+        } else {
+            grokProcessingMatchSuccessCounter.increment();
         }
     }
 
