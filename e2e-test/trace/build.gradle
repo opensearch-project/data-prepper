@@ -1,58 +1,10 @@
-buildscript {
-    repositories {
-        maven {
-            url "https://plugins.gradle.org/m2/"
-        }
-    }
-    dependencies {
-        classpath 'com.bmuschko:gradle-docker-plugin:7.0.0'
-    }
-}
+apply plugin: DockerRemoteApiPlugin
 
-apply plugin: com.bmuschko.gradle.docker.DockerRemoteApiPlugin
 
-/*
- *  SPDX-License-Identifier: Apache-2.0
- *
- *  The OpenSearch Contributors require contributions made to
- *  this file be licensed under the Apache-2.0 license or a
- *  compatible open source license.
- *
- *  Modifications Copyright OpenSearch Contributors. See
- *  GitHub history for details.
- */
-
+import com.bmuschko.gradle.docker.DockerRemoteApiPlugin
 import com.bmuschko.gradle.docker.tasks.container.*
 import com.bmuschko.gradle.docker.tasks.image.*
 import com.bmuschko.gradle.docker.tasks.network.*
-
-sourceSets {
-    integrationTest {
-        java {
-            compileClasspath += main.output + test.output
-            runtimeClasspath += main.output + test.output
-            srcDir file('src/integrationTest/java')
-        }
-        resources.srcDir file('src/integrationTest/resources')
-    }
-}
-
-configurations {
-    integrationTestImplementation.extendsFrom testImplementation
-    integrationTestRuntime.extendsFrom testRuntime
-}
-
-dependencies {
-    integrationTestCompile project(':data-prepper-plugins:opensearch')
-    integrationTestCompile project(':data-prepper-plugins:otel-trace-group-prepper')
-    integrationTestImplementation "org.awaitility:awaitility:4.0.3"
-    integrationTestImplementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetryProto}"
-    integrationTestImplementation 'com.google.protobuf:protobuf-java-util:3.13.0'
-    integrationTestImplementation "com.linecorp.armeria:armeria:1.0.0"
-    integrationTestImplementation "com.linecorp.armeria:armeria-grpc:1.0.0"
-    integrationTestImplementation "org.opensearch.client:opensearch-rest-high-level-client:${versionMap.opensearchVersion}"
-    integrationTestImplementation 'com.fasterxml.jackson.core:jackson-databind'
-}
 
 /**
  * End-to-end test docker network
@@ -74,13 +26,13 @@ def SERVICE_MAP_PIPELINE_YAML = "service-map-e2e-pipeline.yml"
  * DataPrepper Docker tasks
  */
 task createDataPrepperDockerFile(type: Dockerfile) {
-    dependsOn jar
+    dependsOn copyDataPrepperJar
     destFile = project.file('build/docker/Dockerfile')
     from("adoptopenjdk/openjdk14:jre-14.0.1_7-alpine")
     exposePort(21890)
     exposePort(4900)
     workingDir("/app")
-    copyFile("build/libs/${jar.archiveName}", "/app/data-prepper.jar")
+    copyFile("${dataPrepperJarFilepath}", "/app/data-prepper.jar")
     copyFile("src/integrationTest/resources/${RAW_SPAN_PIPELINE_YAML}", "/app/${RAW_SPAN_PIPELINE_YAML}")
     copyFile("src/integrationTest/resources/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}", "/app/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
     copyFile("src/integrationTest/resources/${SERVICE_MAP_PIPELINE_YAML}", "/app/${SERVICE_MAP_PIPELINE_YAML}")
@@ -209,7 +161,7 @@ task rawSpanEndToEndTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
 
     filter {
-        includeTestsMatching "com.amazon.dataprepper.integration.EndToEndRawSpanTest.testPipelineEndToEnd*"
+        includeTestsMatching "com.amazon.dataprepper.integration.trace.EndToEndRawSpanTest.testPipelineEndToEnd*"
     }
 
     finalizedBy stopOpenSearchDockerContainer
@@ -246,7 +198,7 @@ task rawSpanCompatibilityEndToEndTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
 
     filter {
-        includeTestsMatching "com.amazon.dataprepper.integration.EndToEndRawSpanTest.testPipelineEndToEnd*"
+        includeTestsMatching "com.amazon.dataprepper.integration.trace.EndToEndRawSpanTest.testPipelineEndToEnd*"
     }
 
     finalizedBy stopOpenSearchDockerContainer
@@ -283,7 +235,7 @@ task serviceMapEndToEndTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
 
     filter {
-        includeTestsMatching "com.amazon.dataprepper.integration.EndToEndServiceMapTest*"
+        includeTestsMatching "com.amazon.dataprepper.integration.trace.EndToEndServiceMapTest*"
     }
 
     finalizedBy stopOpenSearchDockerContainer
@@ -294,4 +246,16 @@ task serviceMapEndToEndTest(type: Test) {
     finalizedBy removeDataPrepperDockerContainer(stopDataPrepper1Task as DockerStopContainer)
     finalizedBy removeDataPrepperDockerContainer(stopDataPrepper2Task as DockerStopContainer)
     finalizedBy removeDataPrepperNetwork
+}
+
+dependencies {
+    integrationTestCompile project(':data-prepper-plugins:opensearch')
+    integrationTestCompile project(':data-prepper-plugins:otel-trace-group-prepper')
+    integrationTestImplementation "org.awaitility:awaitility:4.0.3"
+    integrationTestImplementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetryProto}"
+    integrationTestImplementation 'com.google.protobuf:protobuf-java-util:3.13.0'
+    integrationTestImplementation "com.linecorp.armeria:armeria:1.0.0"
+    integrationTestImplementation "com.linecorp.armeria:armeria-grpc:1.0.0"
+    integrationTestImplementation "org.opensearch.client:opensearch-rest-high-level-client:${versionMap.opensearchVersion}"
+    integrationTestImplementation 'com.fasterxml.jackson.core:jackson-databind'
 }

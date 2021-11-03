@@ -1,0 +1,40 @@
+subprojects {
+    buildscript {
+        repositories {
+            maven {
+                url "https://plugins.gradle.org/m2/"
+            }
+        }
+        dependencies {
+            classpath 'com.bmuschko:gradle-docker-plugin:7.0.0'
+        }
+    }
+
+    sourceSets {
+        integrationTest {
+            java {
+                compileClasspath += main.output + test.output
+                runtimeClasspath += main.output + test.output
+                srcDir file('src/integrationTest/java')
+            }
+            resources.srcDir file('src/integrationTest/resources')
+        }
+    }
+
+    configurations {
+        integrationTestImplementation.extendsFrom testImplementation
+        integrationTestRuntime.extendsFrom testRuntime
+    }
+
+    def DATA_PREPPER_CORE_JAR = project(':data-prepper-core').jar
+
+    task copyDataPrepperJar(type: Copy) {
+        dependsOn DATA_PREPPER_CORE_JAR
+        from("${DATA_PREPPER_CORE_JAR.archivePath}")
+        into "${project.buildDir}/bin"
+    }
+
+    ext {
+        dataPrepperJarFilepath = "${project.buildDir.name}/bin/${DATA_PREPPER_CORE_JAR.archiveName}"
+    }
+}

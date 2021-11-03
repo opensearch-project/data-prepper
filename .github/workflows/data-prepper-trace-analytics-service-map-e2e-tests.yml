@@ -27,4 +27,4 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Run service-map end-to-end tests with Gradle
-        run: ./gradlew :data-prepper-core:serviceMapEndToEndTest
+        run: ./gradlew :e2e-test:trace:serviceMapEndToEndTest

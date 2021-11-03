@@ -1,4 +1,4 @@
-package com.amazon.dataprepper.integration;
+package com.amazon.dataprepper.integration.trace;
 
 import io.opentelemetry.proto.trace.v1.Span;
 
