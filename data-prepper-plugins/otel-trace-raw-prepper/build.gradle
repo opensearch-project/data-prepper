@@ -28,7 +28,7 @@ dependencies {
     testImplementation 'org.assertj:assertj-core:3.21.0'
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
     testImplementation "org.hamcrest:hamcrest:2.2"
-    testImplementation "org.awaitility:awaitility:4.1.0"
+    testImplementation "org.awaitility:awaitility:4.1.1"
 }
 
 jacocoTestCoverageVerification {
