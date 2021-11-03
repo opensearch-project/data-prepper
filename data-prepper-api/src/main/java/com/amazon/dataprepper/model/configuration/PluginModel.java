@@ -49,13 +49,11 @@ public class PluginModel {
      */
     static class PluginModelSerializer extends StdSerializer<PluginModel> {
 
-        private final ObjectMapper mapper = new ObjectMapper();
-
         public PluginModelSerializer() {
             this(null);
         }
 
-        public PluginModelSerializer(Class<PluginModel> valueClass) {
+        public PluginModelSerializer(final Class<PluginModel> valueClass) {
             super(valueClass);
         }
 
@@ -75,27 +73,27 @@ public class PluginModel {
      */
     static class PluginModelDeserializer extends StdDeserializer<PluginModel> {
 
-        ObjectMapper mapper = new ObjectMapper();
+        static final ObjectMapper mapper = new ObjectMapper();
 
         public PluginModelDeserializer() {
             this(null);
         }
 
-        public PluginModelDeserializer(Class<PluginModel> valueClass) {
+        public PluginModelDeserializer(final Class<PluginModel> valueClass) {
             super(valueClass);
         }
 
         @Override
         public PluginModel deserialize(final JsonParser jsonParser, final DeserializationContext context) throws IOException, JacksonException {
-            JsonNode node = jsonParser.getCodec().readTree(jsonParser);
+            final JsonNode node = jsonParser.getCodec().readTree(jsonParser);
 
-            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            final Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
             Map.Entry<String, JsonNode> onlyField = fields.next();
 
-            String pluginName = onlyField.getKey();
-            JsonNode value = onlyField.getValue();
+            final String pluginName = onlyField.getKey();
+            final JsonNode value = onlyField.getValue();
 
-            Map<String, Object> settingsMap = mapper.convertValue(value, new TypeReference<Map<String, Object>>(){});
+            final Map<String, Object> settingsMap = mapper.convertValue(value, new TypeReference<Map<String, Object>>(){});
             return new PluginModel(pluginName, settingsMap);
         }
     }
