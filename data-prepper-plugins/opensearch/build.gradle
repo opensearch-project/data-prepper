@@ -79,7 +79,7 @@ configurations.all {
     resolutionStrategy {
         force 'com.amazonaws:aws-java-sdk-core:1.12.67'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.0'
-        force 'com.fasterxml.jackson.core:jackson-annotations:2.12.5'
+        force 'com.fasterxml.jackson.core:jackson-annotations:2.13.0'
         force 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
         force 'com.fasterxml.jackson.core:jackson-core:2.12.5'
         force 'com.fasterxml.jackson:jackson-bom:2.12.5'
