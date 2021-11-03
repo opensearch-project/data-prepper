@@ -9,7 +9,7 @@
  *  GitHub history for details.
  */
 
-package com.amazon.dataprepper.integration;
+package com.amazon.dataprepper.integration.trace;
 
 
 import com.amazon.dataprepper.plugins.prepper.oteltracegroup.model.TraceGroup;
@@ -30,6 +30,8 @@ import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 import io.opentelemetry.proto.trace.v1.Status;
+import org.junit.Assert;
+import org.junit.Test;
 import org.opensearch.action.admin.indices.refresh.RefreshRequest;
 import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
@@ -37,8 +39,6 @@ import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.search.SearchHits;
 import org.opensearch.search.builder.SearchSourceBuilder;
-import org.junit.Assert;
-import org.junit.Test;
 
 import java.io.IOException;
 import java.time.Instant;

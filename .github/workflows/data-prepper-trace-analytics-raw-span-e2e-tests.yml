@@ -27,4 +27,4 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Run raw-span end-to-end tests with Gradle
-        run: ./gradlew :data-prepper-core:rawSpanEndToEndTest
+        run: ./gradlew :e2e-test:trace:rawSpanEndToEndTest
