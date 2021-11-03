@@ -113,10 +113,10 @@ Default is null.
       "traceGroupName": "MakePayement.auto"
     }
 ```
-- `trace_analytics_raw`(optional, deprecated): A boolean flag indicates APM trace analytics raw span data type.
+- `trace_analytics_raw`(optional, deprecated in favor of `index_type`): A boolean flag indicates APM trace analytics raw span data type.
 Default value is false. Set it to true for [Raw span trace analytics](#raw_span_trace_analytics). Set it to false for [Service map trace analytics](#service_map_trace_analytics).
 
-- `trace_analytics_service_map`(optional, deprecated): A boolean flag indicates APM trace analytics service map data type.
+- `trace_analytics_service_map`(optional, deprecated in favor of `index_type`): A boolean flag indicates APM trace analytics service map data type.
 Default value is false. Set it to true for [Service map trace analytics](#service_map_trace_analytics). Set it to false for [Raw span trace analytics](#raw_span_trace_analytics).
 
 - <a name="index"></a>`index`: A String used as index name for custom data type. Applicable and required only If index_type is explicitly `custom` or defaults to be `custom` while both `trace_analytics_raw` and `trace_analytics_service_map` are set to false.

@@ -181,7 +181,7 @@ public class IndexConfigurationTests {
     public void testReadIndexConfig_RawIndexType() {
         final Map<String, Object> metadata = initializeConfigMetaData(
                 null, null, null, null, null, null);
-        metadata.put(INDEX_TYPE, IndexType.TRACE_ANALYTICS_RAW.getValueString());
+        metadata.put(INDEX_TYPE, IndexType.TRACE_ANALYTICS_RAW.getValue());
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         final URL expTemplateFile = indexConfiguration
@@ -220,7 +220,7 @@ public class IndexConfigurationTests {
     public void testReadIndexConfig_ServiceMapIndexType() {
         final Map<String, Object> metadata = initializeConfigMetaData(
                 null, null, null, null, null, null);
-        metadata.put(INDEX_TYPE, IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValueString());
+        metadata.put(INDEX_TYPE, IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue());
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         final URL expTemplateFile = indexConfiguration
@@ -266,7 +266,7 @@ public class IndexConfigurationTests {
         final String testIdField = "someId";
         final Map<String, Object> metadata = initializeConfigMetaData(
                 true, false, testIndexAlias, defaultTemplateFilePath, testBulkSize, testIdField);
-        metadata.put(INDEX_TYPE, IndexType.CUSTOM.getValueString());
+        metadata.put(INDEX_TYPE, IndexType.CUSTOM.getValue());
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
