@@ -110,12 +110,6 @@ task stopOpenSearchDockerContainer(type: DockerStopContainer) {
     }
 }
 
-//task logContainer(type: DockerLogsContainer) {
-//    dependsOn startOpenSearchDockerContainer
-//    targetContainerId startOpenSearchDockerContainer.getContainerId()
-//    sink = project.file("${projectDir}/log-sink.txt").newWriter()
-//}
-
 /**
  * End to end test. Spins up OpenSearch and DataPrepper docker containers, then runs the integ test
  * Stops the docker containers when finished
