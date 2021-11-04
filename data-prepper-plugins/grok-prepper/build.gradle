@@ -15,8 +15,9 @@ plugins {
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:common')
-    implementation "io.krakens:java-grok:0.1.9"
     implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation "io.krakens:java-grok:0.1.9"
+    implementation 'io.micrometer:micrometer-core'
     testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
 }

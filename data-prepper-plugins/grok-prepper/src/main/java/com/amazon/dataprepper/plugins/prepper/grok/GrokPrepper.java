@@ -20,6 +20,8 @@ import com.amazon.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import io.krakens.grok.api.Grok;
 import io.krakens.grok.api.GrokCompiler;
 import io.krakens.grok.api.Match;
@@ -63,6 +65,18 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
 
+    static final String GROK_PROCESSING_MATCH_SUCCESS = "grokProcessingMatchSuccess";
+    static final String GROK_PROCESSING_MATCH_FAILURE = "grokProcessingMatchFailure";
+    static final String GROK_PROCESSING_ERRORS = "grokProcessingErrors";
+    static final String GROK_PROCESSING_TIMEOUTS = "grokProcessingTimeouts";
+    static final String GROK_PROCESSING_TIME = "grokProcessingTime";
+
+    private final Counter grokProcessingMatchFailureCounter;
+    private final Counter grokProcessingMatchSuccessCounter;
+    private final Counter grokProcessingErrorsCounter;
+    private final Counter grokProcessingTimeoutsCounter;
+    private final Timer grokProcessingTime;
+
     private final GrokCompiler grokCompiler;
     private final Map<String, List<Grok>> fieldToGrok;
     private final GrokPrepperConfig grokPrepperConfig;
@@ -80,6 +94,12 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
         this.grokCompiler = grokCompiler;
         this.fieldToGrok = new LinkedHashMap<>();
         this.executorService = executorService;
+
+        grokProcessingMatchSuccessCounter = pluginMetrics.counter(GROK_PROCESSING_MATCH_SUCCESS);
+        grokProcessingMatchFailureCounter = pluginMetrics.counter(GROK_PROCESSING_MATCH_FAILURE);
+        grokProcessingErrorsCounter = pluginMetrics.counter(GROK_PROCESSING_ERRORS);
+        grokProcessingTimeoutsCounter = pluginMetrics.counter(GROK_PROCESSING_TIMEOUTS);
+        grokProcessingTime = pluginMetrics.timer(GROK_PROCESSING_TIME);
 
         registerPatterns();
         compileMatchPatterns();
@@ -101,9 +121,9 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
                 final Map<String, Object> recordMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
 
                 if (grokPrepperConfig.getTimeoutMillis() == 0) {
-                    matchAndMerge(recordMap);
+                    grokProcessingTime.record(() -> matchAndMerge(recordMap));
                 } else {
-                    runWithTimeout(() -> matchAndMerge(recordMap));
+                    runWithTimeout(() -> grokProcessingTime.record(() -> matchAndMerge(recordMap)));
                 }
 
                 final Record<String> grokkedRecord = new Record<>(OBJECT_MAPPER.writeValueAsString(recordMap), record.getMetadata());
@@ -112,18 +132,23 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
             } catch (JsonProcessingException e) {
                 LOG.error("Failed to parse the record [{}]", record.getData());
                 recordsOut.add(record);
+                grokProcessingErrorsCounter.increment();
             } catch (TimeoutException e) {
                 LOG.error("Matching on record [{}] took longer than [{}] and timed out", record.getData(), grokPrepperConfig.getTimeoutMillis());
                 recordsOut.add(record);
+                grokProcessingTimeoutsCounter.increment();
             } catch (ExecutionException e) {
                 LOG.error("An exception occurred while matching on record [{}]", record.getData(), e);
                 recordsOut.add(record);
+                grokProcessingErrorsCounter.increment();
             } catch (InterruptedException e) {
                 LOG.error("Matching on record [{}] was interrupted", record.getData(), e);
                 recordsOut.add(record);
+                grokProcessingErrorsCounter.increment();
             } catch (RuntimeException e) {
                 LOG.error("Unknown exception occurred when matching record [{}]", record.getData(), e);
                 recordsOut.add(record);
+                grokProcessingErrorsCounter.increment();
             }
          }
         return recordsOut;
@@ -220,6 +245,12 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
             recordMap.put(grokPrepperConfig.getTargetKey(), grokkedCaptures);
         } else {
             mergeCaptures(recordMap, grokkedCaptures);
+        }
+
+        if (grokkedCaptures.isEmpty()) {
+            grokProcessingMatchFailureCounter.increment();
+        } else {
+            grokProcessingMatchSuccessCounter.increment();
         }
     }
 
