@@ -11,4 +11,8 @@ public class InvalidPluginDefinitionException extends RuntimeException {
     public InvalidPluginDefinitionException(final String message, final Throwable cause) {
         super(message, cause);
     }
+
+    public InvalidPluginDefinitionException(final String message) {
+        super(message);
+    }
 }

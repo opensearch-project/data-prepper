@@ -13,7 +13,6 @@ package com.amazon.dataprepper.plugins.source;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -32,14 +31,10 @@ import java.util.concurrent.TimeoutException;
 @DataPrepperPlugin(name = "random", pluginType = Source.class)
 public class RandomStringSource implements Source<Record<String>> {
 
-    private static Logger LOG = LoggerFactory.getLogger(RandomStringSource.class);
+    private static final Logger LOG = LoggerFactory.getLogger(RandomStringSource.class);
 
     private ExecutorService executorService;
     private boolean stop = false;
-
-    public RandomStringSource(final PluginSetting pluginSetting) {
-
-    }
 
     private void setExecutorService() {
         if(executorService == null || executorService.isShutdown()) {
@@ -50,7 +45,7 @@ public class RandomStringSource implements Source<Record<String>> {
     }
 
     @Override
-    public void start(Buffer<Record<String>> buffer) {
+    public void start(final Buffer<Record<String>> buffer) {
         setExecutorService();
         executorService.execute(() -> {
             while (!stop) {
@@ -58,9 +53,9 @@ public class RandomStringSource implements Source<Record<String>> {
                     LOG.info("Writing to buffer");
                     buffer.write(new Record<>(UUID.randomUUID().toString()), 500);
                     Thread.sleep(500);
-                } catch (InterruptedException e) {
+                } catch (final InterruptedException e) {
                     break;
-                } catch (TimeoutException e) {
+                } catch (final TimeoutException e) {
                     // Do nothing
                 }
             }
@@ -75,7 +70,7 @@ public class RandomStringSource implements Source<Record<String>> {
             if (!executorService.awaitTermination(500, TimeUnit.MILLISECONDS)) {
                 executorService.shutdownNow();
             }
-        } catch (InterruptedException ex) {
+        } catch (final InterruptedException ex) {
             executorService.shutdownNow();
         }
     }
