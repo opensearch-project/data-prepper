@@ -1,0 +1,6 @@
+pluginName: opensearch
+mappedAttributes:
+  hosts: hosts
+  user: username
+  password: password
+  index: index

@@ -1,0 +1,10 @@
+pluginName: opensearch
+mappedAttributes:
+  hosts: hosts
+  user: username
+  password: password
+  index: index
+additionalAttributes:
+  aws_sigv4: true
+  aws_region: us-east-1
+  insecure: false
