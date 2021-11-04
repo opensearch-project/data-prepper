@@ -13,6 +13,8 @@ package com.amazon.dataprepper.plugins.source.loghttp;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.buffer.Buffer;
+import com.amazon.dataprepper.model.log.JacksonLog;
+import com.amazon.dataprepper.model.log.Log;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.loghttp.codec.JsonCodec;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
@@ -45,7 +47,7 @@ public class LogHTTPService {
 
     // TODO: support other data-types as request body, e.g. json_lines, msgpack
     private final JsonCodec jsonCodec = new JsonCodec();
-    private final Buffer<Record<String>> buffer;
+    private final Buffer<Record<Log>> buffer;
     private final int bufferWriteTimeoutInMillis;
     private final RequestExceptionHandler requestExceptionHandler;
     private final Counter requestsReceivedCounter;
@@ -54,7 +56,7 @@ public class LogHTTPService {
     private final Timer requestProcessDuration;
 
     public LogHTTPService(final int bufferWriteTimeoutInMillis,
-                          final Buffer<Record<String>> buffer,
+                          final Buffer<Record<Log>> buffer,
                           final PluginMetrics pluginMetrics) {
         this.buffer = buffer;
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
@@ -83,7 +85,9 @@ public class LogHTTPService {
             LOG.error("Failed to write the request content [{}] due to:", content.toStringUtf8(), e);
             return requestExceptionHandler.handleException(e, "Bad request data format. Needs to be json array.");
         }
-        final List<Record<String>> records = jsonList.stream().map(Record::new).collect(Collectors.toList());
+        final List<Record<Log>> records = jsonList.stream()
+                .map(this::buildRecordLog)
+                .collect(Collectors.toList());
         try {
             buffer.writeAll(records, bufferWriteTimeoutInMillis);
         } catch (Exception e) {
@@ -92,5 +96,15 @@ public class LogHTTPService {
         }
         successRequestsCounter.increment();
         return HttpResponse.of(HttpStatus.OK);
+    }
+
+    private Record<Log> buildRecordLog(String json) {
+
+        final JacksonLog log = JacksonLog.builder()
+                .withData(json)
+                .getThis()
+                .build();
+
+        return new Record<>(log);
     }
 }

@@ -19,6 +19,7 @@ import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
+import com.amazon.dataprepper.model.log.Log;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
@@ -38,7 +39,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 @DataPrepperPlugin(name = "http", pluginType = Source.class, pluginConfigurationType = HTTPSourceConfig.class)
-public class HTTPSource implements Source<Record<String>> {
+public class HTTPSource implements Source<Record<Log>> {
     private static final Logger LOG = LoggerFactory.getLogger(HTTPSource.class);
 
     private final HTTPSourceConfig sourceConfig;
@@ -67,7 +68,7 @@ public class HTTPSource implements Source<Record<String>> {
     }
 
     @Override
-    public void start(final Buffer<Record<String>> buffer) {
+    public void start(final Buffer<Record<Log>> buffer) {
         if (buffer == null) {
             throw new IllegalStateException("Buffer provided is null");
         }

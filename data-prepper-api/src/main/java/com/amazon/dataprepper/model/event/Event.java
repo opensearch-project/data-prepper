@@ -76,4 +76,17 @@ public interface Event {
      */
     EventMetadata getMetadata();
 
+    /**
+     * Checks if the key exists.
+     * @param key
+     * @return returns true if the key exists, otherwise false
+     */
+    boolean containsKey(String key);
+
+    /**
+     * Checks if the value stored for the key is list
+     * @param key
+     * @return returns true if the key is a list, otherwise false
+     */
+    boolean isValueAList(String key);
 }

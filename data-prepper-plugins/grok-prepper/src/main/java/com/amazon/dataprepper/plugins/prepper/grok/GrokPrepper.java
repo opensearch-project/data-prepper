@@ -14,12 +14,10 @@ package com.amazon.dataprepper.plugins.prepper.grok;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import io.krakens.grok.api.Grok;
@@ -59,11 +57,9 @@ import java.util.stream.Collectors;
 
 
 @DataPrepperPlugin(name = "grok", pluginType = Prepper.class)
-public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>> {
+public class GrokPrepper extends AbstractPrepper<Record<Event>, Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(GrokPrepper.class);
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
 
     static final String GROK_PROCESSING_MATCH_SUCCESS = "grokProcessingMatchSuccess";
     static final String GROK_PROCESSING_MATCH_FAILURE = "grokProcessingMatchFailure";
@@ -113,26 +109,21 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
      * @return Record  modified output records
      */
     @Override
-    public Collection<Record<String>> doExecute(final Collection<Record<String>> records) {
-        final List<Record<String>> recordsOut = new LinkedList<>();
+    public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
+        final List<Record<Event>> recordsOut = new LinkedList<>();
 
-        for (final Record<String> record : records) {
+        for (final Record<Event> record : records) {
             try {
-                final Map<String, Object> recordMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
+                final Event event = record.getData();
 
                 if (grokPrepperConfig.getTimeoutMillis() == 0) {
-                    grokProcessingTime.record(() -> matchAndMerge(recordMap));
+                    grokProcessingTime.record(() -> matchAndMerge(event));
                 } else {
-                    runWithTimeout(() -> grokProcessingTime.record(() -> matchAndMerge(recordMap)));
+                    runWithTimeout(() -> grokProcessingTime.record(() -> matchAndMerge(event)));
                 }
 
-                final Record<String> grokkedRecord = new Record<>(OBJECT_MAPPER.writeValueAsString(recordMap), record.getMetadata());
+                final Record<Event> grokkedRecord = new Record<>(event, record.getMetadata());
                 recordsOut.add(grokkedRecord);
-
-            } catch (JsonProcessingException e) {
-                LOG.error("Failed to parse the record [{}]", record.getData());
-                recordsOut.add(record);
-                grokProcessingErrorsCounter.increment();
             } catch (TimeoutException e) {
                 LOG.error("Matching on record [{}] took longer than [{}] and timed out", record.getData(), grokPrepperConfig.getTimeoutMillis());
                 recordsOut.add(record);
@@ -219,13 +210,14 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
         }
     }
 
-    private void matchAndMerge(final Map<String, Object> recordMap) {
+    private void matchAndMerge(final Event event) {
         final Map<String, Object> grokkedCaptures = new HashMap<>();
 
         for (final Map.Entry<String, List<Grok>> entry : fieldToGrok.entrySet()) {
             for (final Grok grok : entry.getValue()) {
-                if (recordMap.containsKey(entry.getKey())) {
-                    final Match match = grok.match(recordMap.get(entry.getKey()).toString());
+                final String field = event.get(entry.getKey(), String.class);
+                if (!field.isEmpty()) {
+                    final Match match = grok.match(field);
                     match.setKeepEmptyCaptures(grokPrepperConfig.isKeepEmptyCaptures());
 
                     final Map<String, Object> captures = match.capture();
@@ -242,9 +234,9 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
         }
 
         if (grokPrepperConfig.getTargetKey() != null) {
-            recordMap.put(grokPrepperConfig.getTargetKey(), grokkedCaptures);
+            event.put(grokPrepperConfig.getTargetKey(), grokkedCaptures);
         } else {
-            mergeCaptures(recordMap, grokkedCaptures);
+            mergeCaptures(event, grokkedCaptures);
         }
 
         if (grokkedCaptures.isEmpty()) {
@@ -267,6 +259,27 @@ public class GrokPrepper extends AbstractPrepper<Record<String>, Record<String>>
                 final List<Object> values = new ArrayList<>(Collections.singletonList(original.get(updateEntry.getKey())));
                 mergeValueWithValues(updateEntry.getValue(), values);
                 original.put(updateEntry.getKey(), values);
+            }
+        }
+    }
+
+    private void mergeCaptures(final Event event, final Map<String, Object> updates) {
+        for (final Map.Entry<String, Object> updateEntry : updates.entrySet()) {
+
+            if (!(event.containsKey(updateEntry.getKey())) || keysToOverwrite.contains(updateEntry.getKey())) {
+                event.put(updateEntry.getKey(), updateEntry.getValue());
+                continue;
+            }
+
+            if (event.isValueAList(updateEntry.getKey())) {
+                final List<Object> fieldList = event.getList(updateEntry.getKey(), Object.class);
+                mergeValueWithValues(updateEntry.getValue(), fieldList);
+                event.put(updateEntry.getKey(), fieldList);
+            } else {
+                final Object fieldObject = event.get(updateEntry.getKey(), Object.class);
+                final List<Object> values = new ArrayList<>(Collections.singletonList(fieldObject));
+                mergeValueWithValues(updateEntry.getValue(), values);
+                event.put(updateEntry.getKey(), values);
             }
         }
     }

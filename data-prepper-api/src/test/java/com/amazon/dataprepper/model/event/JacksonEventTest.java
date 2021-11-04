@@ -223,6 +223,45 @@ public class JacksonEventTest {
         assertThat(result, is(nullValue()));
     }
 
+    @Test
+    public void testContainsKey_withKey() {
+        final String key = "foo";
+
+        event.put(key, UUID.randomUUID());
+        assertThat(event.containsKey(key), is(true));
+    }
+
+    @Test
+    public void testContainsKey_withouthKey() {
+        final String key = "foo";
+
+        event.put(key, UUID.randomUUID());
+        assertThat(event.containsKey("bar"), is(false));
+    }
+
+    @Test
+    public void testIsValueAList_withAList() {
+        final String key = "foo";
+        final List<Integer> numbers = Arrays.asList(1, 2, 3);
+
+        event.put(key, numbers);
+        assertThat(event.isValueAList(key), is(true));
+    }
+
+    @Test
+    public void testIsValueAList_withoutAList() {
+        final String key = "foo";
+        event.put(key, UUID.randomUUID());
+        assertThat(event.isValueAList(key), is(false));
+    }
+
+    @Test
+    public void testIsValueAList_withNull() {
+        final String key = "foo";
+        event.put(key, null);
+        assertThat(event.isValueAList(key), is(false));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"", "withSpecialChars*$%", "-withPrefixDash", "\\-withEscapeChars", "\\\\/withMultipleEscapeChars",
             "withDashSuffix-", "withDashSuffix-/nestedKey", "withDashPrefix/-nestedKey", "_withUnderscorePrefix", "withUnderscoreSuffix_",
@@ -351,4 +390,33 @@ public class JacksonEventTest {
 
         assertThat(event.get("field1", String.class), is(equalTo(value)));
     }
+
+    @Test
+    public void testBuild_withStringData() {
+
+        final String jsonString = "{\"foo\": \"bar\"}";
+
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis()
+                .build();
+
+        assertThat(event.get("foo", String.class), is(equalTo("bar")));
+    }
+
+    @Test
+    public void testBuild_withInvalidStringData() {
+
+        final String jsonString = "foobar";
+
+        final JacksonEvent.Builder builder = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis();
+
+        assertThrows(IllegalArgumentException.class, () -> builder.build());
+    }
+
+
 }
