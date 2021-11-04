@@ -18,22 +18,26 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 
 
-public class TestDataProvider {
+class TestDataProvider {
     static final String RANDOM_STRING_1 = UUID.randomUUID().toString();
     static final String RANDOM_STRING_2 = UUID.randomUUID().toString();
     static final String RANDOM_VALUE = String.valueOf(new Random().nextInt(1000));
 
     public static LogstashConfiguration configData() {
-        return LogstashConfiguration.builder().pluginSections(pluginSectionData()).build();
+        List<LogstashPlugin> pluginContextList = new LinkedList<>(Collections.singletonList(pluginWithOneArrayContextAttributeData()));
+        Map<LogstashPluginType, List<LogstashPlugin>> pluginSections = new LinkedHashMap<>();
+        pluginSections.put(LogstashPluginType.INPUT, pluginContextList);
+
+        return LogstashConfiguration.builder().pluginSections(pluginSections).build();
     }
 
-    public static Map<LogstashPluginType, List<LogstashPlugin>> pluginSectionData() {
+    public static List<LogstashPlugin> pluginSectionData() {
 
         List<LogstashPlugin> pluginContextList = new LinkedList<>(Collections.singletonList(pluginWithOneArrayContextAttributeData()));
         Map<LogstashPluginType, List<LogstashPlugin>> pluginSections = new LinkedHashMap<>();
         pluginSections.put(LogstashPluginType.INPUT, pluginContextList);
 
-        return pluginSections;
+        return pluginContextList;
     }
 
     public static LogstashPlugin pluginWithNoAttributeData() {
@@ -87,36 +91,42 @@ public class TestDataProvider {
 
     public static LogstashAttribute attributeWithBareWordTypeValueData() {
         LogstashAttributeValue logstashAttributeValue = LogstashAttributeValue.builder().
-                attributeValueType(LogstashValueType.BAREWORD).value(TestDataProvider.RANDOM_STRING_2).build();
+                attributeValueType(LogstashValueType.BAREWORD).value(RANDOM_STRING_2).build();
         return LogstashAttribute.builder()
-                .attributeName(TestDataProvider.RANDOM_STRING_1).attributeValue(logstashAttributeValue).build();
+                .attributeName(RANDOM_STRING_1).attributeValue(logstashAttributeValue).build();
     }
 
     public static LogstashAttribute attributeWithStringTypeValueData() {
         LogstashAttributeValue logstashAttributeValue = LogstashAttributeValue.builder().
-                attributeValueType(LogstashValueType.STRING).value(TestDataProvider.RANDOM_STRING_2).build();
+                attributeValueType(LogstashValueType.STRING).value(RANDOM_STRING_2).build();
         return LogstashAttribute.builder()
-                .attributeName(TestDataProvider.RANDOM_STRING_1).attributeValue(logstashAttributeValue).build();
+                .attributeName(RANDOM_STRING_1).attributeValue(logstashAttributeValue).build();
     }
 
     public static List<String> arrayData() {
-        return new LinkedList<>(
-                Arrays.asList(TestDataProvider.RANDOM_STRING_1, TestDataProvider.RANDOM_STRING_2)
-        );
+        return Arrays.asList(RANDOM_STRING_1, RANDOM_STRING_2);
     }
 
-    public static Map<String, Object> hashEntryArrayData() {
+    public static Map<String, Object> hashEntriesArrayData() {
         Map<String, Object> hashentry = new HashMap<>();
         hashentry.put(RANDOM_STRING_1, new LinkedList<>(Arrays.asList(RANDOM_STRING_1, RANDOM_STRING_2)));
 
         return hashentry;
     }
 
-    public static Map<String, Object> hashEntryStringData() {
+    public static Map<String, Object> hashEntriesStringData() {
         Map<String, Object> hashentry = new HashMap<>();
         hashentry.put(RANDOM_STRING_1, RANDOM_STRING_2);
 
         return hashentry;
+    }
+
+    public static List<String> hashEntryArrayData() {
+        return Arrays.asList(RANDOM_STRING_1, RANDOM_STRING_2);
+    }
+
+    public static String hashEntryStringData() {
+        return RANDOM_STRING_2;
     }
 
 }

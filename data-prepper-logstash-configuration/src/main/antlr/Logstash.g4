@@ -1,7 +1,6 @@
 /*
-* Grammar file for parsing Logstash configurations
+* ANTLR grammar file for parsing Logstash configurations
 */
-
 grammar Logstash;
 
 @header {
@@ -94,7 +93,7 @@ not_in_expression: rvalue filler not_in_operator filler rvalue;
 
 rvalue: STRING | NUMBER | selector | array | method_call | regexp;
 
-regexp:  '/' ('^' | '\\' | '.' | '+' |.)*? '/';
+regexp:  '/' ('\\' | ~'/' .)*? '/';
 
 selector: selector_element+;
 
@@ -127,7 +126,7 @@ COMMENT: (WS? '#' ~('\r'|'\n')*)+;
 
 NEWLINE: ('\r'? '\n' | '\r')+ -> skip;
 
-WS: ( NEWLINE | ' ' | '\t' | '\r')+;
+WS: ( NEWLINE | ' ' | '\t')+;
 
 fragment DIGIT: [0-9];
 
@@ -139,4 +138,4 @@ STRING: DOUBLE_QUOTED_STRING | SINGLE_QUOTED_STRING;
 
 fragment DOUBLE_QUOTED_STRING : ('"' ( '\\"' | . )*? '"');
 
-fragment SINGLE_QUOTED_STRING : ('\'' ( . )*? '\'');
+fragment SINGLE_QUOTED_STRING : ('\'' ('\'' | . )*? '\'');
