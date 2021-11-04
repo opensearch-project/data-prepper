@@ -32,16 +32,22 @@ You can configure your Data Prepper core APIs through the `data-prepper-config.y
 
 Many of the Getting Started guides in this project disable SSL on the endpoint.
 
-```
+```yaml
 ssl: false
 ```
 
 To enable SSL on your Data Prepper endpoint, configure your `data-prepper-config.yaml`
 with the following:
 
-```
+```yaml
 ssl: true
-keyStoreFilePath: "/usr/share/data-prepper/keystore.jks"
+keyStoreFilePath: "/usr/share/data-prepper/keystore.p12"
 keyStorePassword: "secret"
 privateKeyPassword: "secret"
+```
+
+If you are using a self-signed certificate, you must add the `-k` flag to curl requests.
+
+```
+curl -k -X POST http://localhost:4900/shutdown
 ```

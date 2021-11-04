@@ -99,6 +99,8 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
                     )
                 );
             } else {
+                LOG.warn("Creating otel_trace_source without SSL/TLS. This is not secure.");
+                LOG.warn("In order to set up TLS for the otel_trace_source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-trace-source#ssl");
                 sb.http(oTelTraceSourceConfig.getPort());
             }
 

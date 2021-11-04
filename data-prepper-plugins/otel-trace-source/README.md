@@ -7,7 +7,7 @@ This is a source which follows the [OTLP Protocol](https://github.com/open-telem
 Example `.yaml` configuration:
 ```
 source:
-    - otel_trace_source:
+    otel_trace_source:
 ```
 
 ## Configurations
@@ -28,6 +28,34 @@ source:
 * useAcmCertForSSL(Optional) => A boolean enables TLS/SSL using certificate and private key from AWS Certificate Manager (ACM). Default is ```false```.
 * acmCertificateArn(Optional) => A `String` represents the ACM certificate ARN. ACM certificate take preference over S3 or local file system certificate. Required if ```useAcmCertForSSL``` is set to ```true```.
 * awsRegion(Optional) => A `String` represents the AWS region to use ACM or S3. Required if ```useAcmCertForSSL``` is set to ```true``` or ```sslKeyCertChainFile``` and ```sslKeyFile``` is ```AWS S3 path```.
+
+
+### Example to enable SSL using OpenSSL
+
+Create the following otel-trace-source configuration in your `pipeline.yaml`.
+
+```yaml
+source:
+  otel_trace_source:
+      ssl: true
+      sslKeyCertChainFile: "/full/path/to/certfile.crt"
+      sslKeyFile: "/full/path/to/keyfile.key"
+      unframed_requests: true
+```
+
+Generate a private key named `keyfile.key`, along with a self-signed certificate named `certfile.crt`.
+
+```
+openssl req  -nodes -new -x509  -keyout keyfile.key -out certfile.crt -subj "/L=test/O=Example Com Inc./OU=Example Com Inc. Root CA/CN=Example Com Inc. Root CA"
+```
+
+Make sure to replace the paths for the `sslKeyCertChainFile` and `sslKeyFile` for the otel-trace-source configuration with the actual paths of the files.
+
+Send a sample span with the following https curl command
+
+```
+curl -k -H 'Content-Type: application/json; charset=utf-8'  -d '{"resourceSpans":[{"instrumentationLibrarySpans":[{"spans":[{"spanId":"AAAAAAAAAAM=","name":"test-span"}]}]}]}' https://localhost:21890/opentelemetry.proto.collector.trace.v1.TraceService/Export
+```
 
 ## Metrics
 

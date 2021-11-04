@@ -58,7 +58,7 @@ public class HTTPSource implements Source<Record<String>> {
         if (server == null) {
             final ServerBuilder sb = Server.builder();
             if (sourceConfig.isSsl()) {
-                LOG.info("SSL/TLS is enabled.");
+                LOG.info("Creating http source with SSL/TLS enabled.");
                 final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
                 final Certificate certificate = certificateProvider.getCertificate();
                 // TODO: enable encrypted key with password
@@ -68,6 +68,8 @@ public class HTTPSource implements Source<Record<String>> {
                         )
                 );
             } else {
+                LOG.warn("Creating http source without SSL/TLS. This is not secure.");
+                LOG.warn("In order to set up TLS for the http source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#ssl");
                 sb.http(sourceConfig.getPort());
             }
             sb.maxNumConnections(sourceConfig.getMaxConnectionCount());
