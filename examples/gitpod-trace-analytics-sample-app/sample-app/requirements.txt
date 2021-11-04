@@ -1,0 +1,8 @@
+dash==1.17.0
+mysql-connector==2.2.9
+opentelemetry-exporter-otlp==1.0.0
+opentelemetry-instrumentation-flask==0.19b0
+opentelemetry-instrumentation-mysql==0.19b0
+opentelemetry-instrumentation-requests==0.19b0
+opentelemetry-sdk==1.0.0
+protobuf==3.15.6

@@ -1,0 +1,15 @@
+version: "3.7"
+services:
+  opensearch:
+    image: opensearchproject/opensearch:1.1.0
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+  analytics-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+        - "8087:8087"
