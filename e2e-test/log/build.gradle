@@ -27,8 +27,6 @@ task createDataPrepperDockerFile(type: Dockerfile) {
     dependsOn copyDataPrepperJar
     destFile = project.file('build/docker/Dockerfile')
     from("adoptopenjdk/openjdk14:jre-14.0.1_7-alpine")
-    exposePort(2021)
-    exposePort(4900)
     workingDir("/app")
     copyFile("${dataPrepperJarFilepath}", "/app/data-prepper.jar")
     copyFile("src/integrationTest/resources/${BASIC_GROK_PIPELINE_YAML}", "/app/${BASIC_GROK_PIPELINE_YAML}")
@@ -49,6 +47,7 @@ def createDataPrepperDockerContainer(final String taskBaseName, final String dat
         dependsOn buildDataPrepperDockerImage
         dependsOn createDataPrepperNetwork
         containerName = dataPrepperName
+        exposePorts("tcp", [2021, 4900])
         hostConfig.portBindings = [String.format('%d:2021', sourcePort), String.format('%d:4900', serverPort)]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
         cmd = ["java", "-jar", "data-prepper.jar", pipelineConfigYAML, "/app/data_prepper.yml"]
