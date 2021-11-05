@@ -1,10 +1,8 @@
 pluginName: opensearch
 mappedAttributes:
   hosts: hosts
-  user: username
-  password: password
   index: index
+  region: aws_region
 additionalAttributes:
   aws_sigv4: true
-  aws_region: us-east-1
   insecure: false
