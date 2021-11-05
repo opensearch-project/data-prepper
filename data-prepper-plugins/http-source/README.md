@@ -26,6 +26,35 @@ source:
 * thread_count(Optional) => An `int` larger than 0 represents the number of threads to keep in the ScheduledThreadPool. Default is `200`.
 * max_connection_count(Optional) => An `int` larger than 0 represents the maximum allowed number of open connections. Default is `500`.
 * max_pending_requests(Optional) => An `int` larger than 0 represents the maximum allowed number of tasks in the ScheduledThreadPool work queue. Default is `1024`.
+* authentication(Optional) => An authentication configuration. By default, this runs an unauthenticated server. See below for more information.
+
+### Authentication Configurations
+
+By default, the HTTP source input is unauthenticated.
+
+The following is an example of how to run the server with HTTP Basic authentication:
+
+```yaml
+source:
+  http:
+    authentication:
+      http_basic:
+        username: my-user
+        password: my_s3cr3t
+```
+
+You can also explicitly disable authentication with:
+
+```yaml
+source:
+  http:
+    authentication:
+      unauthenticated:
+```
+
+This plugin uses pluggable authentication. To provide custom authentication,
+create a plugin which implements [`ArmeriaAuthenticationProvider`](../armeria-common/src/main/java/com/amazon/dataprepper/armeria/authentication/ArmeriaAuthenticationProvider.java)
+
 
 ### SSL
 

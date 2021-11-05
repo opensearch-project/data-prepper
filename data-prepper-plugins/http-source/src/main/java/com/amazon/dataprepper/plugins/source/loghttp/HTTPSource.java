@@ -11,10 +11,14 @@
 
 package com.amazon.dataprepper.plugins.source.loghttp;
 
+import com.amazon.dataprepper.armeria.authentication.ArmeriaAuthenticationProvider;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import com.amazon.dataprepper.model.buffer.Buffer;
+import com.amazon.dataprepper.model.configuration.PluginModel;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
@@ -29,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
@@ -38,16 +43,27 @@ public class HTTPSource implements Source<Record<String>> {
 
     private final HTTPSourceConfig sourceConfig;
     private final CertificateProviderFactory certificateProviderFactory;
+    private final ArmeriaAuthenticationProvider authenticationProvider;
     private Server server;
     private final PluginMetrics pluginMetrics;
 
     @DataPrepperPluginConstructor
-    public HTTPSource(final HTTPSourceConfig sourceConfig, final PluginMetrics pluginMetrics) {
+    public HTTPSource(final HTTPSourceConfig sourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
         // TODO: Remove once JSR-303 validation is available.
         sourceConfig.validate();
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
         certificateProviderFactory = new CertificateProviderFactory(sourceConfig);
+        final PluginModel authenticationConfiguration = sourceConfig.getAuthentication();
+        final PluginSetting authenticationPluginSetting;
+        if(authenticationConfiguration != null) {
+            authenticationPluginSetting =
+                    new PluginSetting(authenticationConfiguration.getPluginName(), authenticationConfiguration.getPluginSettings());
+        } else {
+            authenticationPluginSetting =
+                    new PluginSetting(ArmeriaAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
+        }
+        authenticationProvider = pluginFactory.loadPlugin(ArmeriaAuthenticationProvider.class, authenticationPluginSetting);
     }
 
     @Override
@@ -70,6 +86,9 @@ public class HTTPSource implements Source<Record<String>> {
             } else {
                 sb.http(sourceConfig.getPort());
             }
+
+            authenticationProvider.addAuthenticationDecorator(sb);
+
             sb.maxNumConnections(sourceConfig.getMaxConnectionCount());
             final int requestTimeoutInMillis = sourceConfig.getRequestTimeoutInMillis();
             // Allow 2*requestTimeoutInMillis to accommodate non-blocking operations other than buffer writing.

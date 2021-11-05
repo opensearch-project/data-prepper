@@ -3,6 +3,7 @@ package com.amazon.dataprepper.plugin;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.InvalidPluginDefinitionException;
+import com.amazon.dataprepper.model.plugin.PluginFactory;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -30,6 +31,9 @@ class PluginArgumentsContext {
         }
 
         typedArgumentsSuppliers.put(PluginMetrics.class, () -> PluginMetrics.fromPluginSetting(builder.pluginSetting));
+
+        if(builder.pluginFactory != null)
+            typedArgumentsSuppliers.put(PluginFactory.class, () -> builder.pluginFactory);
     }
 
     Object[] createArguments(final Class<?>[] parameterTypes) {
@@ -50,6 +54,7 @@ class PluginArgumentsContext {
     static class Builder {
         private Object pluginConfiguration;
         private PluginSetting pluginSetting;
+        private PluginFactory pluginFactory;
 
         Builder withPluginConfiguration(final Object pluginConfiguration) {
             this.pluginConfiguration = pluginConfiguration;
@@ -58,6 +63,11 @@ class PluginArgumentsContext {
 
         Builder withPluginSetting(final PluginSetting pluginSetting) {
             this.pluginSetting = pluginSetting;
+            return this;
+        }
+
+        Builder withPluginFactory(final PluginFactory pluginFactory) {
+            this.pluginFactory = pluginFactory;
             return this;
         }
 
