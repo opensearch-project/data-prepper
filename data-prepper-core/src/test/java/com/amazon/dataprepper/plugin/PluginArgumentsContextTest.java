@@ -3,6 +3,7 @@ package com.amazon.dataprepper.plugin;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.InvalidPluginDefinitionException;
+import com.amazon.dataprepper.model.plugin.PluginFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -68,6 +69,18 @@ class PluginArgumentsContextTest {
 
         assertThat(objectUnderTest.createArguments(new Class[] { PluginSetting.class, TestPluginConfiguration.class }),
                 equalTo(new Object[] { pluginSetting, testPluginConfiguration }));
+    }
+
+    @Test
+    void createArguments_with_pluginFactory_should_return_the_instance_from_the_builder() {
+        final PluginFactory pluginFactory = mock(PluginFactory.class);
+        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+                .withPluginSetting(pluginSetting)
+                .withPluginFactory(pluginFactory)
+                .build();
+
+        assertThat(objectUnderTest.createArguments(new Class[] { PluginFactory.class }),
+                equalTo(new Object[] { pluginFactory }));
     }
 
     @Test
