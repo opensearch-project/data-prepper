@@ -1,0 +1,23 @@
+plugins {
+    id 'java'
+    id 'antlr'
+    id 'idea'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    antlr "org.antlr:antlr4:4.9.2"
+    testImplementation "org.hamcrest:hamcrest:2.2"
+    testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
+    testImplementation platform("org.junit:junit-bom:${versionMap.junitJupiter}")
+}
+
+generateGrammarSource {
+    maxHeapSize = "128m"
+    arguments += ['-listener', '-visitor']
+    outputDirectory = new File("build/generated-src/antlr/main/org/opensearch/dataprepper/logstash/".toString())
+}
+compileJava.dependsOn generateGrammarSource

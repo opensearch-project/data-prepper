@@ -45,6 +45,7 @@ subprojects {
     sourceCompatibility = '1.8'
     spotless {
         java {
+            targetExclude 'build/generated-src/antlr/**'
             // TODO: enrich format rules
             removeUnusedImports()
         }
