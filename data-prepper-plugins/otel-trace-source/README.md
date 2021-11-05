@@ -5,7 +5,7 @@ This is a source which follows the [OTLP Protocol](https://github.com/open-telem
 
 ## Usages
 Example `.yaml` configuration:
-```
+```yaml
 source:
     otel_trace_source:
 ```
@@ -51,7 +51,7 @@ openssl req  -nodes -new -x509  -keyout keyfile.key -out certfile.crt -subj "/L=
 
 Make sure to replace the paths for the `sslKeyCertChainFile` and `sslKeyFile` for the otel-trace-source configuration with the actual paths of the files.
 
-Send a sample span with the following https curl command
+Send a sample span with the following https curl command:
 
 ```
 curl -k -H 'Content-Type: application/json; charset=utf-8'  -d '{"resourceSpans":[{"instrumentationLibrarySpans":[{"spans":[{"spanId":"AAAAAAAAAAM=","name":"test-span"}]}]}]}' https://localhost:21890/opentelemetry.proto.collector.trace.v1.TraceService/Export

@@ -46,8 +46,10 @@ keyStorePassword: "secret"
 privateKeyPassword: "secret"
 ```
 
-If you are using a self-signed certificate, you must add the `-k` flag to curl requests.
+For more information on configuring your Data Prepper server with SSL, see [Server Configuration](https://github.com/opensearch-project/data-prepper/blob/main/docs/configuration.md#server-configuration). 
+
+If you are using a self-signed certificate, you can add the `-k` flag to quickly test out sending curl requests for the core APIs with SSL.
 
 ```
-curl -k -X POST http://localhost:4900/shutdown
+curl -k -X POST https://localhost:4900/shutdown
 ```
