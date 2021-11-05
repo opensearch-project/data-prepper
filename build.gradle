@@ -84,6 +84,9 @@ subprojects {
     build.dependsOn test
     jacocoTestReport {
         dependsOn test // tests are required to run before generating the report
+        reports {
+            xml.enabled true
+        }
     }
 
     task allDeps(type: DependencyReportTask) {}
@@ -101,7 +104,7 @@ configure(coreProjects) {
     jacocoTestReport {
         dependsOn test // tests are required to run before generating the report
         reports {
-            xml.enabled false
+            xml.enabled true
             csv.enabled false
             html.destination file("${buildDir}/reports/jacocoHtml")
         }

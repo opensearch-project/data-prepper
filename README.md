@@ -1,3 +1,4 @@
+[![codecov](https://codecov.io/gh/opensearch-project/data-prepper/branch/main/graph/badge.svg)](https://codecov.io/gh/opensearch-project/data-prepper)
 
 # Data Prepper
 
