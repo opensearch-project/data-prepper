@@ -4,6 +4,11 @@ receivers:
       grpc:
 
 exporters:
+  otlp/2:
+    endpoint: data-prepper:21890
+    insecure: false
+    insecure_skip_verify: true
+
   prometheus:
     endpoint: "0.0.0.0:8889"
     namespace: promexample
@@ -35,7 +40,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, zipkin, jaeger]
+      exporters: [logging, zipkin, jaeger, otlp/2]
     metrics:
       receivers: [otlp]
       processors: [batch]
