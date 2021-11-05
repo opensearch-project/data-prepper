@@ -11,6 +11,7 @@
 
 package com.amazon.dataprepper.plugins.source.loghttp;
 
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
 import io.micrometer.core.instrument.util.StringUtils;
@@ -55,6 +56,8 @@ public class HTTPSourceConfig {
 
     @JsonProperty("ssl_key_password")
     private String sslKeyPassword;
+
+    private PluginModel authentication;
 
     // TODO: Remove once JSR-303 validation is available
     void validate() {
@@ -110,5 +113,9 @@ public class HTTPSourceConfig {
 
     public String getSslKeyPassword() {
         return sslKeyPassword;
+    }
+
+    public PluginModel getAuthentication() {
+        return authentication;
     }
 }

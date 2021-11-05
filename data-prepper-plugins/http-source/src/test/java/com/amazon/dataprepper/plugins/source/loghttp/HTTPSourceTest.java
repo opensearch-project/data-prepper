@@ -11,10 +11,12 @@
 
 package com.amazon.dataprepper.plugins.source.loghttp;
 
+import com.amazon.dataprepper.armeria.authentication.ArmeriaAuthenticationProvider;
 import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.linecorp.armeria.client.ClientFactory;
@@ -58,6 +60,7 @@ import java.util.concurrent.ExecutionException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
@@ -101,6 +104,7 @@ class HTTPSourceTest {
     private List<Measurement> payloadSizeSummaryMeasurements;
     private HTTPSourceConfig sourceConfig;
     private PluginMetrics pluginMetrics;
+    private PluginFactory pluginFactory;
 
     private BlockingBuffer<Record<String>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
@@ -162,8 +166,13 @@ class HTTPSourceTest {
         MetricsTestUtil.initMetrics();
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
 
+        pluginFactory = mock(PluginFactory.class);
+        final ArmeriaAuthenticationProvider authenticationProvider = mock(ArmeriaAuthenticationProvider.class);
+        when(pluginFactory.loadPlugin(eq(ArmeriaAuthenticationProvider.class), any(PluginSetting.class)))
+                .thenReturn(authenticationProvider);
+
         testBuffer = getBuffer();
-        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics);
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
     }
 
     @AfterEach
@@ -296,7 +305,7 @@ class HTTPSourceTest {
         when(sourceConfig.getRequestTimeoutInMillis()).thenReturn(serverTimeoutInMillis);
         when(sourceConfig.getMaxPendingRequests()).thenReturn(testMaxPendingRequests);
         when(sourceConfig.getThreadCount()).thenReturn(testThreadCount);
-        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics);
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
         // Start the source
         HTTPSourceUnderTest.start(testBuffer);
         refreshMeasurements();
@@ -347,7 +356,7 @@ class HTTPSourceTest {
         when(sourceConfig.getRequestTimeoutInMillis()).thenReturn(serverTimeoutInMillis);
         when(sourceConfig.getMaxPendingRequests()).thenReturn(testMaxPendingRequests);
         when(sourceConfig.getThreadCount()).thenReturn(testThreadCount);
-        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics);
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
         // Start the source
         HTTPSourceUnderTest.start(testBuffer);
         refreshMeasurements();
@@ -408,7 +417,7 @@ class HTTPSourceTest {
             when(sourceConfig.isSsl()).thenReturn(true);
             when(sourceConfig.getSslCertificateFile()).thenReturn(TEST_SSL_CERTIFICATE_FILE);
             when(sourceConfig.getSslKeyFile()).thenReturn(TEST_SSL_KEY_FILE);
-            HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics);
+            HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
             HTTPSourceUnderTest.start(testBuffer);
             HTTPSourceUnderTest.stop();
 
@@ -433,7 +442,7 @@ class HTTPSourceTest {
         when(sourceConfig.isSsl()).thenReturn(true);
         when(sourceConfig.getSslCertificateFile()).thenReturn(TEST_SSL_CERTIFICATE_FILE);
         when(sourceConfig.getSslKeyFile()).thenReturn(TEST_SSL_KEY_FILE);
-        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics);
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
 
         testBuffer = getBuffer();
         HTTPSourceUnderTest.start(testBuffer);
@@ -460,14 +469,14 @@ class HTTPSourceTest {
 
     @Test
     public void testStartWithEmptyBuffer() {
-        final HTTPSource source = new HTTPSource(sourceConfig, pluginMetrics);
+        final HTTPSource source = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
         Assertions.assertThrows(IllegalStateException.class, () -> source.start(null));
     }
 
     @Test
     public void testStartWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
         // Prepare
-        final HTTPSource source = new HTTPSource(sourceConfig, pluginMetrics);
+        final HTTPSource source = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             when(completableFuture.get()).thenThrow(new ExecutionException("", null));
@@ -480,7 +489,7 @@ class HTTPSourceTest {
     @Test
     public void testStartWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
         // Prepare
-        final HTTPSource source = new HTTPSource(sourceConfig, pluginMetrics);
+        final HTTPSource source = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             final NullPointerException expCause = new NullPointerException();
@@ -495,7 +504,7 @@ class HTTPSourceTest {
     @Test
     public void testStartWithInterruptedException() throws ExecutionException, InterruptedException {
         // Prepare
-        final HTTPSource source = new HTTPSource(sourceConfig, pluginMetrics);
+        final HTTPSource source = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             when(completableFuture.get()).thenThrow(new InterruptedException());
@@ -509,7 +518,7 @@ class HTTPSourceTest {
     @Test
     public void testStopWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
         // Prepare
-        final HTTPSource source = new HTTPSource(sourceConfig, pluginMetrics);
+        final HTTPSource source = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             source.start(testBuffer);
@@ -524,7 +533,7 @@ class HTTPSourceTest {
     @Test
     public void testStopWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
         // Prepare
-        final HTTPSource source = new HTTPSource(sourceConfig, pluginMetrics);
+        final HTTPSource source = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             source.start(testBuffer);
@@ -541,7 +550,7 @@ class HTTPSourceTest {
     @Test
     public void testStopWithInterruptedException() throws ExecutionException, InterruptedException {
         // Prepare
-        final HTTPSource source = new HTTPSource(sourceConfig, pluginMetrics);
+        final HTTPSource source = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             source.start(testBuffer);
@@ -559,7 +568,7 @@ class HTTPSourceTest {
         // starting server
         HTTPSourceUnderTest.start(testBuffer);
 
-        final HTTPSource secondSource = new HTTPSource(sourceConfig, pluginMetrics);
+        final HTTPSource secondSource = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
         //Expect RuntimeException because when port is already in use, BindException is thrown which is not RuntimeException
         Assertions.assertThrows(RuntimeException.class, () -> secondSource.start(testBuffer));
     }
