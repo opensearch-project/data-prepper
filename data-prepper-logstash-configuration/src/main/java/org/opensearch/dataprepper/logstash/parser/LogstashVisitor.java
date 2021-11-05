@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 class LogstashVisitor extends LogstashBaseVisitor {
 
     @Override
-    public Object visitConfig(LogstashParser.ConfigContext configContext) {
+    public Object visitConfig(final LogstashParser.ConfigContext configContext) {
         final Map<LogstashPluginType, List<LogstashPlugin>> pluginSections = new LinkedHashMap<>();
 
         configContext.plugin_section().forEach(pluginSection -> {
@@ -44,7 +44,7 @@ class LogstashVisitor extends LogstashBaseVisitor {
     }
 
     @Override
-    public Object visitPlugin_section(LogstashParser.Plugin_sectionContext pluginSectionContext) {
+    public Object visitPlugin_section(final LogstashParser.Plugin_sectionContext pluginSectionContext) {
 
         return pluginSectionContext.branch_or_plugin().stream()
                 .map(this::visitBranch_or_plugin)
@@ -52,7 +52,7 @@ class LogstashVisitor extends LogstashBaseVisitor {
     }
 
     @Override
-    public Object visitBranch_or_plugin(LogstashParser.Branch_or_pluginContext branchOrPluginContext) {
+    public Object visitBranch_or_plugin(final LogstashParser.Branch_or_pluginContext branchOrPluginContext) {
 
         if (branchOrPluginContext.getChild(0) instanceof LogstashParser.PluginContext)
             return visitPlugin(branchOrPluginContext.plugin());
@@ -61,7 +61,7 @@ class LogstashVisitor extends LogstashBaseVisitor {
     }
 
     @Override
-    public Object visitPlugin(LogstashParser.PluginContext pluginContext) {
+    public Object visitPlugin(final LogstashParser.PluginContext pluginContext) {
         final String pluginName = pluginContext.name().getText();
         final List<LogstashAttribute> logstashAttributeList = pluginContext.attributes().attribute().stream()
                 .map(attribute -> (LogstashAttribute) visitAttribute(attribute))
@@ -74,7 +74,7 @@ class LogstashVisitor extends LogstashBaseVisitor {
     }
 
     @Override
-    public Object visitAttribute(LogstashParser.AttributeContext attributeContext) {
+    public Object visitAttribute(final LogstashParser.AttributeContext attributeContext) {
         LogstashValueType logstashValueType = null;
         Object value = null;
 
@@ -102,7 +102,7 @@ class LogstashVisitor extends LogstashBaseVisitor {
             value = attributeContext.value().getText().replaceAll("^\"|\"$|^'|'$", "");
         }
 
-        LogstashAttributeValue logstashAttributeValue =  LogstashAttributeValue.builder()
+        final LogstashAttributeValue logstashAttributeValue =  LogstashAttributeValue.builder()
                 .attributeValueType(logstashValueType)
                 .value(value)
                 .build();
@@ -114,19 +114,19 @@ class LogstashVisitor extends LogstashBaseVisitor {
     }
 
     @Override
-    public Object visitArray(LogstashParser.ArrayContext arrayContext) {
+    public Object visitArray(final LogstashParser.ArrayContext arrayContext) {
         return arrayContext.value().stream()
                 .map(RuleContext::getText)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public Object visitHash(LogstashParser.HashContext hashContext) {
+    public Object visitHash(final LogstashParser.HashContext hashContext) {
         return visitHashentries(hashContext.hashentries());
     }
 
     @Override
-    public Object visitHashentries(LogstashParser.HashentriesContext hashentriesContext) {
+    public Object visitHashentries(final LogstashParser.HashentriesContext hashentriesContext) {
         final Map<String, Object> hashEntries = new LinkedHashMap<>();
 
         hashentriesContext.hashentry().forEach(hashentryContext -> {
@@ -139,7 +139,7 @@ class LogstashVisitor extends LogstashBaseVisitor {
     }
 
     @Override
-    public Object visitHashentry(LogstashParser.HashentryContext hashentryContext) {
+    public Object visitHashentry(final LogstashParser.HashentryContext hashentryContext) {
         if (hashentryContext.value().getChild(0) instanceof LogstashParser.ArrayContext)
             return visitArray(hashentryContext.value().array());
 
