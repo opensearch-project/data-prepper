@@ -45,7 +45,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
 
-public class EndToEndBasicGrokTest {
+public class EndToEndBasicLogTest {
     private static final int HTTP_SOURCE_PORT = 2021;
     private static final String TEST_INDEX_NAME = "test-grok-index";
 

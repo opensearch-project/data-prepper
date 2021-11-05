@@ -119,11 +119,11 @@ task stopOpenSearchDockerContainer(type: DockerStopContainer) {
  * End to end test. Spins up OpenSearch and DataPrepper docker containers, then runs the integ test
  * Stops the docker containers when finished
  */
-task basicGrokEndToEndTest(type: Test) {
+task basicLogEndToEndTest(type: Test) {
     dependsOn build
     dependsOn startOpenSearchDockerContainer
     def createDataPrepperTask = createDataPrepperDockerContainer(
-            "basicGrokDataPrepper", "dataprepper", 2021, 4900, "/app/${BASIC_GROK_PIPELINE_YAML}")
+            "basicLogDataPrepper", "dataprepper", 2021, 4900, "/app/${BASIC_GROK_PIPELINE_YAML}")
     def startDataPrepperTask = startDataPrepperDockerContainer(createDataPrepperTask as DockerCreateContainer)
     dependsOn startDataPrepperTask
     startDataPrepperTask.mustRunAfter 'startOpenSearchDockerContainer'
@@ -138,7 +138,7 @@ task basicGrokEndToEndTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
 
     filter {
-        includeTestsMatching "com.amazon.dataprepper.integration.log.EndToEndBasicGrokTest.testPipelineEndToEnd*"
+        includeTestsMatching "com.amazon.dataprepper.integration.log.EndToEndBasicLogTest.testPipelineEndToEnd*"
     }
 
     finalizedBy stopOpenSearchDockerContainer

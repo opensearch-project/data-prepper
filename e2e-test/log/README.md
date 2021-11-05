@@ -6,9 +6,9 @@ This module includes e2e tests for log data ingestion supported by data-prepper.
 
 Run from current directory
 ```
-./gradlew :basicGrokEndToEndTest
+./gradlew :basicLogEndToEndTest
 ```
 or from project root directory
 ```
-./gradlew :e2e-test:log:basicGrokEndToEndTest
+./gradlew :e2e-test:log:basicLogEndToEndTest
 ```
