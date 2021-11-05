@@ -215,9 +215,9 @@ public class GrokPrepper extends AbstractPrepper<Record<Event>, Record<Event>> {
 
         for (final Map.Entry<String, List<Grok>> entry : fieldToGrok.entrySet()) {
             for (final Grok grok : entry.getValue()) {
-                final String field = event.get(entry.getKey(), String.class);
-                if (!field.isEmpty()) {
-                    final Match match = grok.match(field);
+                final String value = event.get(entry.getKey(), String.class);
+                if (!value.isEmpty()) {
+                    final Match match = grok.match(value);
                     match.setKeepEmptyCaptures(grokPrepperConfig.isKeepEmptyCaptures());
 
                     final Map<String, Object> captures = match.capture();
@@ -272,9 +272,9 @@ public class GrokPrepper extends AbstractPrepper<Record<Event>, Record<Event>> {
             }
 
             if (event.isValueAList(updateEntry.getKey())) {
-                final List<Object> fieldList = event.getList(updateEntry.getKey(), Object.class);
-                mergeValueWithValues(updateEntry.getValue(), fieldList);
-                event.put(updateEntry.getKey(), fieldList);
+                final List<Object> values = event.getList(updateEntry.getKey(), Object.class);
+                mergeValueWithValues(updateEntry.getValue(), values);
+                event.put(updateEntry.getKey(), values);
             } else {
                 final Object fieldObject = event.get(updateEntry.getKey(), Object.class);
                 final List<Object> values = new ArrayList<>(Collections.singletonList(fieldObject));

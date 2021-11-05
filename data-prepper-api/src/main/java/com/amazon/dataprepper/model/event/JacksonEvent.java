@@ -89,9 +89,8 @@ public class JacksonEvent implements Event {
             } catch (final JsonProcessingException e) {
                 throw new IllegalArgumentException("Unable to convert data into an event");
             }
-        } else {
-            return mapper.valueToTree(data);
         }
+        return mapper.valueToTree(data);
     }
 
     /**
@@ -257,11 +256,11 @@ public class JacksonEvent implements Event {
 
     @Override
     public boolean isValueAList(final String key) {
-        try {
-            return getList(key, Object.class) != null;
-        } catch (final Exception e) {
-            return false;
-        }
+        final String trimmedKey = checkAndTrimKey(key);
+
+        final JsonNode node = getNode(trimmedKey);
+
+        return node.isArray();
     }
 
     private String checkAndTrimKey(final String key) {
