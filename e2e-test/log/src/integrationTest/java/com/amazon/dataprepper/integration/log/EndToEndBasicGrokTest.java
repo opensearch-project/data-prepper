@@ -43,6 +43,7 @@ import java.util.concurrent.TimeUnit;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasKey;
 
 public class EndToEndBasicGrokTest {
     private static final int HTTP_SOURCE_PORT = 2021;
@@ -79,7 +80,7 @@ public class EndToEndBasicGrokTest {
                 "date", "log", "clientip", "ident", "auth", "timestamp", "verb", "request", "httpversion", "response", "bytes");
         retrievedDocs.forEach(expectedDoc -> {
             for (String key: expectedDocKeys) {
-                Assert.assertNotNull(expectedDoc.get(key));
+                assertThat(expectedDoc, hasKey(key));
             }
         });
     }
@@ -130,10 +131,5 @@ public class EndToEndBasicGrokTest {
         }
         final String jsonData = objectMapper.writeValueAsString(jsonArray);
         return HttpData.ofUtf8(jsonData);
-    }
-
-    public static void main(String[] args) throws JsonProcessingException {
-        EndToEndBasicGrokTest endToEndBasicGrokTest = new EndToEndBasicGrokTest();
-        System.out.println(endToEndBasicGrokTest.generateRandomApacheLogHttpData(10).toStringUtf8());
     }
 }
