@@ -149,8 +149,8 @@ task basicGrokEndToEndTest(type: Test) {
 }
 
 dependencies {
+    implementation "com.github.javafaker:javafaker:1.0.2"
     integrationTestCompile project(':data-prepper-plugins:opensearch')
-    integrationTestImplementation "com.github.javafaker:javafaker:1.0.2"
     integrationTestImplementation "com.linecorp.armeria:armeria:1.0.0"
     integrationTestImplementation "org.awaitility:awaitility:4.0.3"
     integrationTestImplementation "org.opensearch.client:opensearch-rest-high-level-client:${versionMap.opensearchVersion}"
