@@ -109,15 +109,6 @@ services:
     depends_on:
       - otel-agent
 
-  metrics-load-generator:
-    build:
-      dockerfile: $PWD/app/Dockerfile
-      context: ./app
-    environment:
-      - OTEL_AGENT_ENDPOINT=otel-agent:4317
-    depends_on:
-      - otel-agent
-
   prometheus:
     container_name: prometheus
     image: prom/prometheus:latest
