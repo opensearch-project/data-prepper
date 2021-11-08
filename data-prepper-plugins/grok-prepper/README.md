@@ -50,12 +50,10 @@ As you can see, the extra keys for `clientip`, `timestamp`, and `response_status
 ## Configuration
 * `match` (Optional): A `Map<String, List<String>>` that specifies which keys of a Record to match which patterns against. Default value is `{}`
 
-This example match configuration will check logs for a `message` key, and if it exists, will match the value in this `message` key first against the `SYSLOGBASE` pattern, and then against the `COMMONAPACHELOG` pattern.
+The following example match configuration will check logs for a `message` key, and if it exists, will match the value in this `message` key first against the `SYSLOGBASE` pattern, and then against the `COMMONAPACHELOG` pattern.
 It will then check logs for a `timestamp` key, and if it exists, will attempt to match the value in this `timestamp` key against the `TIMESTAMP_ISO8601` pattern.
-
 Note that by default, matching will be done until there is a successful match. So if there is a successful match against the value in the `message` key for a pattern of `SYSLOGBASE`, no attempted matching will be done 
 for either the `COMMONAPACHELOG` or `TIMESTAMP_ISO8601` pattern. If you would like to match logs against every pattern in `match` no matter what, then see [break_on_match](#break_on_match).
-
 ```yaml
 prepper:
   - grok:
@@ -231,7 +229,7 @@ The resulting grokked log will now look like this.
 All of the grok captures were wrapped in an outer key named `grokked`.<br></br>
 
 * `timeout_millis` (Optional): An `int` that specifies the maximum amount of time, in milliseconds, that matching will be performed on an individual Record before it times out and moves on to the next Record.
-Setting a `timeout_millis = 0` will make it so that matching a Record never times out. Default value is `30,000`
+Setting a `timeout_millis = 0` will make it so that matching a Record never times out. If a Record does time out, it will remain the same as it was when input to the grok prepper. Default value is `30,000`
 
 ## Metrics
 
