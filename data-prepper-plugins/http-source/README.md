@@ -6,9 +6,9 @@ This is a source plugin that supports HTTP protocol. Currently ONLY support Json
 
 ## Usages
 Currently, we are exposing `/log/ingest` URI path for http log ingestion. Example `.yaml` configuration:
-```
+```yaml
 source:
-    - http:
+   http:
 ```
 
 ### Response status
@@ -58,11 +58,37 @@ create a plugin which implements [`ArmeriaAuthenticationProvider`](../armeria-co
 
 ### SSL
 
-* ssl(Optional) => A `boolean` enables TLS/SSL. Default is ```true```.
+* ssl(Optional) => A `boolean` enables TLS/SSL. Default is ```false```.
 * ssl_certificate_file(Optional) => A `String` represents the SSL certificate chain file path. Required if ```ssl``` is set to ```true```.
 * ssl_key_file(Optional) => A `String` represents the SSL key file path. Only decrypted key file is supported. Required if ```ssl``` is set to ```true```.
 
-## Metrics
+### Example to enable SSL using OpenSSL
+
+Create the following http source configuration in your `pipeline.yaml`.
+
+```yaml
+source:
+   http:
+       ssl: true
+       ssl_certificate_file: "/full/path/to/certfile.crt"
+       ssl_key_file: "/full/path/to/keyfile.key"
+```
+
+Generate a private key named `keyfile.key`, along with a self-signed certificate file named `certfile.crt`.
+
+```
+openssl req  -nodes -new -x509  -keyout keyfile.key -out certfile.crt -subj "/L=test/O=Example Com Inc./OU=Example Com Inc. Root CA/CN=Example Com Inc. Root CA"
+```
+
+Make sure to replace the paths for the `ssl_certificate_file` and `ssl_key_file` for the http source configuration with the actual paths of the files.
+
+Send a sample log with the following https curl command
+
+```
+curl -k -XPOST -H "Content-Type: application/json" -d '[{"log": "sample log"}]' https://localhost:2021/log/ingest
+```
+
+# Metrics
 
 ### Counter
 - `requestsReceived`: measures total number of requests received by `/log/ingest` endpoint.
