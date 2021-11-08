@@ -25,16 +25,14 @@ grok-pipeline:
     - stdout:
 ```
 
-Create a file named `grok_logs_json.log` and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
-
-The grok configuration from the `pipeline.yaml` will match the value in the `message` key of each log for a pattern matching `%{IPORHOST:clientip} \[%{HTTPDATE:timestamp}\] %{NUMBER:response_status:int}`.
-These three patterns (`IPORHOST`, `HTTPDATE`, and `NUMBER`) are default patterns.
-
-Copy the following log into `grok_logs_json.log` in order to align with this.
+Create the following file named `grok_logs_json.log` and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
 
 ```
 {"message": "127.0.0.1 198.126.12 [10/Oct/2000:13:55:36 -0700] 200"}
 ```
+
+The grok configuration from the `pipeline.yaml` will match the value in the `message` key of each log for a pattern matching `%{IPORHOST:clientip} \[%{HTTPDATE:timestamp}\] %{NUMBER:response_status:int}`.
+These three patterns (`IPORHOST`, `HTTPDATE`, and `NUMBER`) are default patterns. This pattern matches the format of the log in your `grok_logs_json.log` file.
 
 When you run Data Prepper with this `pipeline.yaml` passed in, you should see the following standard output.
 
@@ -66,10 +64,10 @@ prepper:
         timestamp: ["%{TIMESTAMP_ISO8601}"]  
 ```
 
-&nbsp;
+
 * `keep_empty_captures` (Optional): A `boolean` that specifies whether `null` captures should be kept. Note that `null` captures can only occur for certain regex patterns that have the potential to match nothing, such as `.*?`. Default value is `false`
 
-&nbsp;
+
 * `named_captures_only` (Optional): A `boolean` that specifies whether to only keep named captures. Default value is `true`
 
 
@@ -95,7 +93,7 @@ The resulting grokked log will now look like this.
 }
 ```
 
-Notice that the `ciientip` key is no longer there, because the `%{IPORHOST}` pattern is now an unnamed capture.
+Notice that the `clientip` key is no longer there, because the `%{IPORHOST}` pattern is now an unnamed capture.
 
 Now set `named_captures_only` to `false` as seen below.
 
@@ -128,12 +126,12 @@ The resulting grokked log will look like this.
 
 Note that the `IPORHOST` capture now shows up as a new key, along with some internal unnamed captures like `MONTH`, `YEAR`, etc. These patterns
 are being used by the `HTTPDATE` pattern, which can be seen in the [default patterns file](https://github.com/thekrakken/java-grok/blob/master/src/main/resources/patterns/patterns).
-&nbsp;
+
 ### <a name="break_on_match"></a>
 * `break_on_match` (Optional): A `boolean` that specifies whether to match all patterns from `match` against a Record, 
   or to stop once the first successful pattern match is found. Default value is `true`
+  
 
-&nbsp;
 * `keys_to_overwrite` (Optional): A `List<String>` that specifies which existing keys of a Record to overwrite if there is a capture with the same key value. Default value is `[]`
 
 Given the same setup from [Basic Grok Example](#basic-grok-example), modify the `pipeline.yaml` grok configuration to the following:
@@ -160,7 +158,6 @@ The resulting grokked log will now look like this.
 
 As you can see, the original `message` key was overwritten with the `NUMBER` 200.
 
-&nbsp;
 * `pattern_definitions` (Optional): A `Map<String, String>` that allows for custom pattern use inline. Default value is `{}`
 
 The following grok configuration creates a custom pattern named `CUSTOM_PATTERN`, and the pattern itself is a regex pattern.
@@ -173,7 +170,7 @@ prepper:
       match:
         message: ["%{CUSTOM_PATTERN:my_pattern}"]
 ```
-&nbsp;
+
 * `patterns_directories` (Optional): A `List<String>` that specifies that path of directories that contain custom pattern files you would like to use. Default value is `[]`
 
 Creating files of custom patterns makes it easy to organize them. Consider the following directory structure.
@@ -202,10 +199,9 @@ When adding custom patterns to a file, one pattern should be declared per line. 
 DOG beagle|chihuaha|retriever
 CAT persian|siamese|siberian
 ```
-&nbsp;
+
 * `patterns_files_glob` (Optional): A glob `String` that describes which pattern files to use from the directories specified for `patterns_directories`. Default value is `*`<br></br>
 
-  
 * `target_key` (Optional): A `String` that will wrap all captures for a Record in an additional outer key value. Default value is `null`
 
 
