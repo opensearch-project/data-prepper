@@ -51,7 +51,8 @@ public class DataPrepperServer {
                 LOG.info("Creating Data Prepper server with TLS");
                 this.server = createHttpsServer(port, keyStoreFilePath, keyStorePassword, privateKeyPassword);
             } else {
-                LOG.info("Creating Data Prepper server without TLS");
+                LOG.warn("Creating Data Prepper server without TLS. This is not secure.");
+                LOG.warn("In order to set up TLS for the Data Prepper server, go here: https://github.com/opensearch-project/data-prepper/blob/main/docs/configuration.md#server-configuration");
                 this.server = createHttpServer(port);
             }
         } catch (IOException e) {
