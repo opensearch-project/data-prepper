@@ -30,6 +30,8 @@ The following APIs are available:
 
 You can configure your Data Prepper core APIs through the `data-prepper-config.yaml` file. 
 
+### SSL/TLS Connection
+
 Many of the Getting Started guides in this project disable SSL on the endpoint.
 
 ```yaml
@@ -52,4 +54,27 @@ If you are using a self-signed certificate, you can add the `-k` flag to quickly
 
 ```
 curl -k -X POST https://localhost:4900/shutdown
+```
+
+### Authentication
+
+The Data Prepper Core APIs support HTTP Basic authentication.
+You can set the username and password with the following
+configuration in `data-prepper-config.yaml`:
+
+```
+authentication:
+  http_basic:
+    username: myuser
+    password: mys3cr3t
+```
+
+You can disable authentication of core endpoints using the following
+configuration. Use this with caution because the shutdown API and
+others will be accessible to anybody with network access to
+your Data Prepper instance.
+
+```
+authentication:
+  unauthenticated:
 ```
