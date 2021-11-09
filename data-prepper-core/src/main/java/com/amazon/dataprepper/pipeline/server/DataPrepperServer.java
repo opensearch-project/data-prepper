@@ -12,7 +12,11 @@
 package com.amazon.dataprepper.pipeline.server;
 
 import com.amazon.dataprepper.DataPrepper;
+import com.amazon.dataprepper.model.configuration.PluginModel;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
+import com.sun.net.httpserver.Authenticator;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsParameters;
@@ -27,6 +31,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 
@@ -36,7 +41,7 @@ import java.util.Set;
  */
 public class DataPrepperServer {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperServer.class);
-    private HttpServer server;
+    private final HttpServer server;
 
     public DataPrepperServer(final DataPrepper dataPrepper) {
         final DataPrepperConfiguration dataPrepperConfiguration = DataPrepper.getConfiguration();
@@ -45,6 +50,20 @@ public class DataPrepperServer {
         final String keyStoreFilePath = dataPrepperConfiguration.getKeyStoreFilePath();
         final String keyStorePassword = dataPrepperConfiguration.getKeyStorePassword();
         final String privateKeyPassword = dataPrepperConfiguration.getPrivateKeyPassword();
+
+        final PluginModel authenticationConfiguration = dataPrepperConfiguration.getAuthentication();
+        final PluginSetting authenticationPluginSetting;
+        if(authenticationConfiguration != null) {
+            authenticationPluginSetting =
+                    new PluginSetting(authenticationConfiguration.getPluginName(), authenticationConfiguration.getPluginSettings());
+        } else {
+            authenticationPluginSetting =
+                    new PluginSetting(DataPrepperCoreAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
+        }
+
+        final PluginFactory pluginFactory = dataPrepper.getPluginFactory();
+        final DataPrepperCoreAuthenticationProvider authenticationProvider = pluginFactory.loadPlugin(DataPrepperCoreAuthenticationProvider.class, authenticationPluginSetting);
+        final Authenticator authenticator = authenticationProvider.getAuthenticator();
 
         try {
             if (ssl) {
@@ -55,22 +74,26 @@ public class DataPrepperServer {
                 LOG.warn("In order to set up TLS for the Data Prepper server, go here: https://github.com/opensearch-project/data-prepper/blob/main/docs/configuration.md#server-configuration");
                 this.server = createHttpServer(port);
             }
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to create server", e);
+        } catch (final IOException ex) {
+            throw new RuntimeException("Failed to create server", ex);
         }
 
         getPrometheusMeterRegistryFromRegistries(Metrics.globalRegistry.getRegistries()).ifPresent(meterRegistry -> {
             final PrometheusMeterRegistry prometheusMeterRegistryForDataPrepper = (PrometheusMeterRegistry) meterRegistry;
-            server.createContext("/metrics/prometheus", new PrometheusMetricsHandler(prometheusMeterRegistryForDataPrepper));
+            server.createContext("/metrics/prometheus", new PrometheusMetricsHandler(prometheusMeterRegistryForDataPrepper))
+                    .setAuthenticator(authenticator);
         });
 
         getPrometheusMeterRegistryFromRegistries(DataPrepper.getSystemMeterRegistry().getRegistries()).ifPresent(
                 meterRegistry -> {
                     final PrometheusMeterRegistry prometheusMeterRegistryForSystem = (PrometheusMeterRegistry) meterRegistry;
-                    server.createContext("/metrics/sys", new PrometheusMetricsHandler(prometheusMeterRegistryForSystem));
+                    server.createContext("/metrics/sys", new PrometheusMetricsHandler(prometheusMeterRegistryForSystem))
+                            .setAuthenticator(authenticator);
                 });
-        server.createContext("/list", new ListPipelinesHandler(dataPrepper));
-        server.createContext("/shutdown", new ShutdownHandler(dataPrepper));
+        server.createContext("/list", new ListPipelinesHandler(dataPrepper))
+                .setAuthenticator(authenticator);
+        server.createContext("/shutdown", new ShutdownHandler(dataPrepper))
+                .setAuthenticator(authenticator);
     }
 
     private Optional<MeterRegistry> getPrometheusMeterRegistryFromRegistries(final Set<MeterRegistry> meterRegistries) {
