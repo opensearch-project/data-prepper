@@ -14,6 +14,8 @@ package com.amazon.dataprepper.plugins.sink.opensearch;
 import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
+import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexConstants;
@@ -146,7 +148,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     @SuppressWarnings("unchecked") final Map<String, Object> expData1 = mapper.readValue(testDoc1, Map.class);
     @SuppressWarnings("unchecked") final Map<String, Object> expData2 = mapper.readValue(testDoc2, Map.class);
 
-    final List<Record<String>> testRecords = Arrays.asList(new Record<>(testDoc1), new Record<>(testDoc2));
+    final List<Record<Object>> testRecords = Arrays.asList(new Record<>(testDoc1), new Record<>(testDoc2));
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
@@ -197,7 +199,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
     final ObjectMapper mapper = new ObjectMapper();
     @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc2, Map.class);
-    final List<Record<String>> testRecords = Arrays.asList(new Record<>(testDoc1), new Record<>(testDoc2));
+    final List<Record<Object>> testRecords = Arrays.asList(new Record<>(testDoc1), new Record<>(testDoc2));
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
     // generate temporary directory for dlq file
     final File tempDirectory = Files.createTempDirectory("").toFile();
@@ -256,7 +258,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final ObjectMapper mapper = new ObjectMapper();
     @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
 
-    final List<Record<String>> testRecords = Collections.singletonList(new Record<>(testDoc));
+    final List<Record<Object>> testRecords = Collections.singletonList(new Record<>(testDoc));
     final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
@@ -405,7 +407,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
             getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
     final String testIdField = "someId";
     final String testId = "foo";
-    final List<Record<String>> testRecords = Collections.singletonList(generateCustomRecord(testIdField, testId));
+    final List<Record<Object>> testRecords = Collections.singletonList(generateCustomRecord(testIdField, testId));
     final PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFile);
     pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
@@ -422,6 +424,30 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     assertEquals(3, bulkRequestLatencies.size());
     // COUNT
     Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+  }
+
+  public void testEventOutput() throws IOException, InterruptedException {
+
+    final Event testEvent = JacksonEvent.builder()
+            .withData("{\"log\": \"foobar\"}")
+            .withEventType("event")
+            .build();
+
+    final List<Record<Object>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+    final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
+    sink.output(testRecords);
+
+    final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
+    final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
+    final Map<String, Object> expectedContent = new HashMap<>();
+    expectedContent.put("log", "foobar");
+
+    assertEquals(1, retSources.size());
+    assertTrue(retSources.containsAll(Arrays.asList(expectedContent)));
+    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "log", "foobar"));
+    sink.shutdown();
   }
 
   private Map<String, Object> initializeConfigurationMetadata (final boolean isRaw, final boolean isServiceMap, final String indexAlias,
@@ -453,7 +479,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     return pluginSetting;
   }
 
-  private Record<String> generateCustomRecord(final String idField, final String documentId) throws IOException {
+  private Record<Object> generateCustomRecord(final String idField, final String documentId) throws IOException {
     return new Record<>(
             Strings.toString(
                     XContentFactory.jsonBuilder()

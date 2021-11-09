@@ -15,8 +15,10 @@ import com.amazon.dataprepper.armeria.authentication.ArmeriaAuthenticationProvid
 import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.metrics.PluginMetrics;
+import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
+import com.amazon.dataprepper.model.log.Log;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.linecorp.armeria.client.ClientFactory;
@@ -49,6 +51,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,7 +96,7 @@ class HTTPSourceTest {
     @Mock
     private CompletableFuture<Void> completableFuture;
 
-    private BlockingBuffer<Record<String>> testBuffer;
+    private BlockingBuffer<Record<Log>> testBuffer;
     private HTTPSource HTTPSourceUnderTest;
     private List<Measurement> requestsReceivedMeasurements;
     private List<Measurement> successRequestsMeasurements;
@@ -106,7 +110,7 @@ class HTTPSourceTest {
     private PluginMetrics pluginMetrics;
     private PluginFactory pluginFactory;
 
-    private BlockingBuffer<Record<String>> getBuffer() {
+    private BlockingBuffer<Record<Log>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 1);
         integerHashMap.put("batch_size", 1);
@@ -204,6 +208,12 @@ class HTTPSourceTest {
 
         // Then
         Assertions.assertFalse(testBuffer.isEmpty());
+
+        final Map.Entry<Collection<Record<Log>>, CheckpointState> result = testBuffer.read(100);
+        List<Record<Log>> records = new ArrayList<>(result.getKey());
+        Assertions.assertEquals(1, records.size());
+        final Record<Log> record = records.get(0);
+        Assertions.assertEquals("somelog", record.getData().get("log", String.class));
         // Verify metrics
         final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
                 requestsReceivedMeasurements, Statistic.COUNT);

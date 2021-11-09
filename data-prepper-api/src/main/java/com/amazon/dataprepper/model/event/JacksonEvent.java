@@ -13,6 +13,7 @@ package com.amazon.dataprepper.model.event;
 
 import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -57,6 +58,8 @@ public class JacksonEvent implements Event {
 
     private static final ObjectMapper mapper = new ObjectMapper();
 
+    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
+
     private final EventMetadata eventMetadata;
 
     private final JsonNode jsonNode;
@@ -73,12 +76,21 @@ public class JacksonEvent implements Event {
             this.eventMetadata = builder.eventMetadata;
         }
 
-        if (builder.data == null) {
-            this.jsonNode = mapper.valueToTree(new HashMap<>());
-        } else {
-            this.jsonNode = mapper.valueToTree(builder.data);
-        }
+        this.jsonNode = getInitialJsonNode(builder.data);
+    }
 
+    private JsonNode getInitialJsonNode(final Object data) {
+
+        if (data == null) {
+            return mapper.valueToTree(new HashMap<>());
+        } else if (data instanceof String) {
+            try {
+                return mapper.readTree((String) data);
+            } catch (final JsonProcessingException e) {
+                throw new IllegalArgumentException("Unable to convert data into an event");
+            }
+        }
+        return mapper.valueToTree(data);
     }
 
     /**
@@ -232,6 +244,25 @@ public class JacksonEvent implements Event {
         return eventMetadata;
     }
 
+    @Override
+    public boolean containsKey(final String key) {
+
+        final String trimmedKey = checkAndTrimKey(key);
+
+        final JsonNode node = getNode(trimmedKey);
+
+        return !node.isMissingNode();
+    }
+
+    @Override
+    public boolean isValueAList(final String key) {
+        final String trimmedKey = checkAndTrimKey(key);
+
+        final JsonNode node = getNode(trimmedKey);
+
+        return node.isArray();
+    }
+
     private String checkAndTrimKey(final String key) {
         checkKey(key);
         return trimKey(key);
@@ -278,6 +309,7 @@ public class JacksonEvent implements Event {
      * @since 1.2
      */
     public abstract static class Builder<T extends Builder<T>> {
+
         private EventMetadata eventMetadata;
         private Object data;
         private String eventType;
