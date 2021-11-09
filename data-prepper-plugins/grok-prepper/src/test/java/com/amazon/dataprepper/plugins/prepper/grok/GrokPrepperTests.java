@@ -14,6 +14,8 @@ package com.amazon.dataprepper.plugins.prepper.grok;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
+import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +34,7 @@ import org.mockito.Mock;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -42,7 +45,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -159,21 +162,23 @@ public class GrokPrepperTests {
         capture.put("key_capture_2", "value_capture_2");
         capture.put("key_capture_3", "value_capture_3");
 
-        String testData = "{\"message\":" + "\"" + messageInput + "\"}";
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                                .concat("\"key_capture_1\":\"value_capture_1\",")
-                                .concat("\"key_capture_2\":\"value_capture_2\",")
-                                .concat("\"key_capture_3\":\"value_capture_3\"}");
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", messageInput);
+        resultData.put("key_capture_1", "value_capture_1");
+        resultData.put("key_capture_2", "value_capture_2");
+        resultData.put("key_capture_3", "value_capture_3");;
 
-        Record<String> resultRecord = new Record<>(resultData);
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
         verify(grokProcessingMatchSuccessCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
         verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
@@ -184,27 +189,30 @@ public class GrokPrepperTests {
         pluginSetting.getSettings().put(GrokPrepperConfig.TARGET_KEY, "test_target");
         grokPrepper = createObjectUnderTest();
 
-
         capture.put("key_capture_1", "value_capture_1");
         capture.put("key_capture_2", "value_capture_2");
         capture.put("key_capture_3", "value_capture_3");
 
-        String testData = "{\"message\":" + "\"" + messageInput + "\"}";
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"test_target\":{")
-                .concat("\"key_capture_1\":\"value_capture_1\",")
-                .concat("\"key_capture_2\":\"value_capture_2\",")
-                .concat("\"key_capture_3\":\"value_capture_3\"}}");
+        final Map<String, Object> testTarget = new HashMap<>();
+        testTarget.put("key_capture_1", "value_capture_1");
+        testTarget.put("key_capture_2", "value_capture_2");
+        testTarget.put("key_capture_3", "value_capture_3");
 
-        Record<String> resultRecord = new Record<>(resultData);
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", messageInput);
+        resultData.put("test_target", testTarget);
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
+
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
         verify(grokProcessingMatchSuccessCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
         verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
@@ -220,21 +228,23 @@ public class GrokPrepperTests {
         capture.put("key_capture_3", "value_capture_3");
         capture.put("message", "overwrite_the_original_message");
 
-        String testData = "{\"message\":" + "\"" + messageInput + "\"}";
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        String resultData = "{\"message\":\"overwrite_the_original_message\","
-                .concat("\"key_capture_1\":\"value_capture_1\",")
-                .concat("\"key_capture_2\":\"value_capture_2\",")
-                .concat("\"key_capture_3\":\"value_capture_3\"}");
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", "overwrite_the_original_message");
+        resultData.put("key_capture_1", "value_capture_1");
+        resultData.put("key_capture_2", "value_capture_2");
+        resultData.put("key_capture_3", "value_capture_3");
 
-        Record<String> resultRecord = new Record<>(resultData);
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
         verify(grokProcessingMatchSuccessCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
         verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
@@ -248,24 +258,24 @@ public class GrokPrepperTests {
         capture.put("key_capture_2", "value_capture_2");
         capture.put("key_capture_3", "value_capture_3");
 
-        String testData =  "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"key_capture_1\":\"value_capture_collision\"}");
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
+        testData.put("key_capture_1", "value_capture_collision");
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", messageInput);
+        resultData.put("key_capture_1", Arrays.asList("value_capture_collision", "value_capture_1"));
+        resultData.put("key_capture_2", "value_capture_2");
+        resultData.put("key_capture_3", "value_capture_3");
 
-        String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"key_capture_1\":[\"value_capture_collision\",")
-                .concat("\"value_capture_1\"],")
-                .concat("\"key_capture_2\":\"value_capture_2\",")
-                .concat("\"key_capture_3\":\"value_capture_3\"}");
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        Record<String> resultRecord = new Record<>(resultData);
-
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
         verify(grokProcessingMatchSuccessCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
         verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
@@ -279,24 +289,24 @@ public class GrokPrepperTests {
         capture.put("key_capture_2", "value_capture_2");
         capture.put("key_capture_3", "value_capture_3");
 
-        String testData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"key_capture_1\": 10}");
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
+        testData.put("key_capture_1", 10);
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", messageInput);
+        resultData.put("key_capture_1", Arrays.asList(10, 20));
+        resultData.put("key_capture_2", "value_capture_2");
+        resultData.put("key_capture_3", "value_capture_3");
 
-        String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"key_capture_1\":[ 10,")
-                .concat("20 ],")
-                .concat("\"key_capture_2\":\"value_capture_2\",")
-                .concat("\"key_capture_3\":\"value_capture_3\"}");
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        Record<String> resultRecord = new Record<>(resultData);
-
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
         verify(grokProcessingMatchSuccessCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
         verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
@@ -315,24 +325,24 @@ public class GrokPrepperTests {
         capture.put("key_capture_2", "value_capture_2");
         capture.put("key_capture_3", "value_capture_3");
 
-        String testData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"key_capture_1\":[10,\"20\"]}");
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
+        testData.put("key_capture_1", Arrays.asList(10, 20));
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", messageInput);
+        resultData.put("key_capture_1", Arrays.asList(10, 20, "30", 40, null));
+        resultData.put("key_capture_2", "value_capture_2");
+        resultData.put("key_capture_3", "value_capture_3");
 
-        String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"key_capture_1\":[10,")
-                .concat("\"20\",\"30\",40,null],")
-                .concat("\"key_capture_2\":\"value_capture_2\",")
-                .concat("\"key_capture_3\":\"value_capture_3\"}");
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        Record<String> resultRecord = new Record<>(resultData);
-
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
         verify(grokProcessingMatchSuccessCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
         verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
@@ -346,24 +356,24 @@ public class GrokPrepperTests {
         capture.put("key_capture_2", "value_capture_2");
         capture.put("key_capture_3", "value_capture_3");
 
-        String testData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"key_capture_1\":null}");
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
+        testData.put("key_capture_1", null);
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", messageInput);
+        resultData.put("key_capture_1", Arrays.asList(null, "value_capture_1"));
+        resultData.put("key_capture_2", "value_capture_2");
+        resultData.put("key_capture_3", "value_capture_3");
 
-        String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"key_capture_1\":[null,")
-                .concat("\"value_capture_1\"],")
-                .concat("\"key_capture_2\":\"value_capture_2\",")
-                .concat("\"key_capture_3\":\"value_capture_3\"}");
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        Record<String> resultRecord = new Record<>(resultData);
-
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
         verify(grokProcessingMatchSuccessCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
         verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
@@ -379,14 +389,15 @@ public class GrokPrepperTests {
         capture.put("key_capture_2", "value_capture_2");
         capture.put("key_capture_3", "value_capture_3");
 
-        String testData = "{\"message\":" + "\"" + messageInput + "\"}";
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), record), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), record);
         verify(grokProcessingTimeoutsCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
     }
@@ -400,22 +411,24 @@ public class GrokPrepperTests {
         capture.put("key_capture_2", "value_capture_2");
         capture.put("key_capture_3", "value_capture_3");
 
-        String testData = "{\"message\":" + "\"" + messageInput + "\"}";
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
 
-        Record<String> record = new Record<>(testData);
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                .concat("\"key_capture_1\":\"value_capture_1\",")
-                .concat("\"key_capture_2\":\"value_capture_2\",")
-                .concat("\"key_capture_3\":\"value_capture_3\"}");
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", messageInput);
+        resultData.put("key_capture_1", "value_capture_1");
+        resultData.put("key_capture_2", "value_capture_2");
+        resultData.put("key_capture_3", "value_capture_3");
 
-        Record<String> resultRecord = new Record<>(resultData);
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
         verifyNoInteractions(executorService);
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
         verify(grokProcessingMatchSuccessCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
         verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
@@ -455,14 +468,15 @@ public class GrokPrepperTests {
             lenient().when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
             lenient().when(secondMatch.capture()).thenReturn(secondCapture);
 
-            String testData = "{\"message\":" + "\"" + messageInput + "\"}";
-            Record<String> record = new Record<>(testData);
+            final Map<String, Object> testData = new HashMap();
+            testData.put("message", messageInput);
+            final Record<Event> record = buildRecordWithEvent(testData);
 
-            List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+            final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
             assertThat(grokkedRecords.size(), equalTo(1));
             assertThat(grokkedRecords.get(0), notNullValue());
-            assertThat(equalRecords(grokkedRecords.get(0), record), equalTo(true));
+            assertRecordsAreEqual(grokkedRecords.get(0), record);
             verify(grokProcessingMatchFailureCounter, times(1)).increment();
             verify(grokProcessingTime, times(1)).record(any(Runnable.class));
             verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchSuccessCounter, grokProcessingTimeoutsCounter);
@@ -481,22 +495,24 @@ public class GrokPrepperTests {
 
             secondCapture.put("key_secondCapture", "value_capture2");
 
-            String testData = "{\"message\":" + "\"" + messageInput + "\"}";
-            Record<String> record = new Record<>(testData);
+            final Map<String, Object> testData = new HashMap();
+            testData.put("message", messageInput);
+            final Record<Event> record = buildRecordWithEvent(testData);
 
-            String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                    .concat("\"key_capture_1\":\"value_capture_1\",")
-                    .concat("\"key_capture_2\":\"value_capture_2\",")
-                    .concat("\"key_capture_3\":\"value_capture_3\"}");
+            final Map<String, Object> resultData = new HashMap<>();
+            resultData.put("message", messageInput);
+            resultData.put("key_capture_1", "value_capture_1");
+            resultData.put("key_capture_2", "value_capture_2");
+            resultData.put("key_capture_3", "value_capture_3");
 
-            Record<String> resultRecord = new Record<>(resultData);
+            final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-            List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+            final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
             verifyNoInteractions(grokSecondMatch, secondMatch);
             assertThat(grokkedRecords.size(), equalTo(1));
             assertThat(grokkedRecords.get(0), notNullValue());
-            assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+            assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
             verify(grokProcessingMatchSuccessCounter, times(1)).increment();
             verify(grokProcessingTime, times(1)).record(any(Runnable.class));
             verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
@@ -516,22 +532,24 @@ public class GrokPrepperTests {
 
             secondCapture.put("key_secondCapture", "value_secondCapture");
 
-            String testData = "{\"message\":" + "\"" + messageInput + "\"}";
-            Record<String> record = new Record<>(testData);
+            final Map<String, Object> testData = new HashMap();
+            testData.put("message", messageInput);
+            final Record<Event> record = buildRecordWithEvent(testData);
 
-            String resultData = "{\"message\":" + "\"" + messageInput + "\","
-                    .concat("\"key_capture_1\":\"value_capture_1\",")
-                    .concat("\"key_capture_2\":\"value_capture_2\",")
-                    .concat("\"key_secondCapture\":\"value_secondCapture\",")
-                    .concat("\"key_capture_3\":\"value_capture_3\"}");
+            final Map<String, Object> resultData = new HashMap<>();
+            resultData.put("message", messageInput);
+            resultData.put("key_capture_1", "value_capture_1");
+            resultData.put("key_capture_2", "value_capture_2");
+            resultData.put("key_secondCapture", "value_secondCapture");
+            resultData.put("key_capture_3", "value_capture_3");
 
-            Record<String> resultRecord = new Record<>(resultData);
+            final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-            List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+            final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
             assertThat(grokkedRecords.size(), equalTo(1));
             assertThat(grokkedRecords.get(0), notNullValue());
-            assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+            assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
             verify(grokProcessingMatchSuccessCounter, times(1)).increment();
             verify(grokProcessingTime, times(1)).record(any(Runnable.class));
             verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
@@ -578,10 +596,17 @@ public class GrokPrepperTests {
         return new PluginSetting(PLUGIN_NAME, settings);
     }
 
-    private boolean equalRecords(final Record<String> first, final Record<String> second) throws JsonProcessingException {
-        final Map<String, Object> recordMapFirst = OBJECT_MAPPER.readValue(first.getData(), MAP_TYPE_REFERENCE);
-        final Map<String, Object> recordMapSecond = OBJECT_MAPPER.readValue(second.getData(), MAP_TYPE_REFERENCE);
+    static void assertRecordsAreEqual(final Record<Event> first, final Record<Event> second) throws JsonProcessingException {
+        final Map<String, Object> recordMapFirst = OBJECT_MAPPER.readValue(first.getData().toJsonString(), MAP_TYPE_REFERENCE);
+        final Map<String, Object> recordMapSecond = OBJECT_MAPPER.readValue(second.getData().toJsonString(), MAP_TYPE_REFERENCE);
 
-        return recordMapFirst.equals(recordMapSecond);
+        assertThat(recordMapFirst, is(equalTo(recordMapSecond)));
+    }
+
+    static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
+        return new Record<>(JacksonEvent.builder()
+                .withData(data)
+                .withEventType("event")
+                .build());
     }
 }

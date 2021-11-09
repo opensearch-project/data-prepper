@@ -1,6 +1,7 @@
 package com.amazon.dataprepper.plugins.prepper.grok;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -15,6 +16,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperTests.assertRecordsAreEqual;
+import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperTests.buildRecordWithEvent;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -48,7 +51,7 @@ public class GrokPrepperIT {
         // This is a COMMONAPACHELOG pattern with the following format
         // COMMONAPACHELOG %{IPORHOST:clientip} %{USER:ident} %{USER:auth} \[%{HTTPDATE:timestamp}\] "(?:%{WORD:verb} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})" %{NUMBER:response} (?:%{NUMBER:bytes}|-)
         // Note that rawrequest is missing from the log below, which means that it will not be captured unless keep_empty_captures is true
-        messageInput = "\"127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] \\\"GET /apache_pb.gif HTTP/1.0\\\" 200 2326\"";
+        messageInput = "127.0.0.1 user-identifier frank [10/Oct/2000:13:55:36 -0700] \"GET /apache_pb.gif HTTP/1.0\" 200 2326";
     }
 
     @AfterEach
@@ -90,14 +93,16 @@ public class GrokPrepperIT {
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        String testData = "{\"message\":" + messageInput + "}";
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final Record<Event> record = buildRecordWithEvent(testData);
+
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), record), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), record);
     }
 
     @Test
@@ -108,27 +113,29 @@ public class GrokPrepperIT {
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        String testData = "{\"message\":" + messageInput + "}";
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        String resultData = "{\"message\":" + messageInput + ","
-                .concat("\"clientip\":\"127.0.0.1\",")
-                .concat("\"ident\":\"user-identifier\",")
-                .concat("\"auth\":\"frank\",")
-                .concat("\"timestamp\":\"10/Oct/2000:13:55:36 -0700\",")
-                .concat("\"verb\":\"GET\",")
-                .concat("\"request\":\"/apache_pb.gif\",")
-                .concat("\"httpversion\":\"1.0\",")
-                .concat("\"response\":\"200\",")
-                .concat("\"bytes\":\"2326\"}");
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", messageInput);
+        resultData.put("clientip", "127.0.0.1");
+        resultData.put("ident", "user-identifier");
+        resultData.put("auth", "frank");
+        resultData.put("timestamp", "10/Oct/2000:13:55:36 -0700");
+        resultData.put("verb", "GET");
+        resultData.put("request", "/apache_pb.gif");
+        resultData.put("httpversion", "1.0");
+        resultData.put("response", "200");
+        resultData.put("bytes", "2326");
 
-        Record<String> resultRecord = new Record<>(resultData);
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
     }
 
     @Test
@@ -144,28 +151,31 @@ public class GrokPrepperIT {
         pluginSetting.getSettings().put(GrokPrepperConfig.BREAK_ON_MATCH, false);
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        String testData = "{\"message\":" + messageInput + "}";
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
 
-        String resultData = "{\"message\":" + messageInput + ","
-                .concat("\"clientip\":\"127.0.0.1\",")
-                .concat("\"ident\":\"user-identifier\",")
-                .concat("\"auth\":\"frank\",")
-                .concat("\"timestamp\":\"10/Oct/2000:13:55:36 -0700\",")
-                .concat("\"verb\":\"GET\",")
-                .concat("\"request\":\"/apache_pb.gif\",")
-                .concat("\"httpversion\":\"1.0\",")
-                .concat("\"response\":\"200\",")
-                .concat("\"custom_client_field\":\"127.0.0.1\",")
-                .concat("\"bytes\":\"2326\"}");
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        Record<String> resultRecord = new Record<>(resultData);
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", messageInput);
+        resultData.put("clientip", "127.0.0.1");
+        resultData.put("ident", "user-identifier");
+        resultData.put("auth", "frank");
+        resultData.put("timestamp", "10/Oct/2000:13:55:36 -0700");
+        resultData.put("verb", "GET");
+        resultData.put("request", "/apache_pb.gif");
+        resultData.put("httpversion", "1.0");
+        resultData.put("response", "200");
+        resultData.put("custom_client_field", "127.0.0.1");
+        resultData.put("bytes", "2326");
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
+
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
     }
 
     @Test
@@ -176,23 +186,26 @@ public class GrokPrepperIT {
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        String testData = "{\"message\":" + messageInput + "}";
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
 
-        String resultData = "{\"message\":" + messageInput + ","
-                .concat("\"verb\":\"GET\",")
-                .concat("\"request\":\"/apache_pb.gif\",")
-                .concat("\"httpversion\":\"1.0\",")
-                .concat("\"response\":200,")
-                .concat("\"bytes\":2326.0}");
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        Record<String> resultRecord = new Record<>(resultData);
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", messageInput);
+        resultData.put("verb", "GET");
+        resultData.put("request", "/apache_pb.gif");
+        resultData.put("httpversion", "1.0");
+        resultData.put("response", 200);
+        resultData.put("bytes", 2326.0);
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
+
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
     }
 
     @Test
@@ -205,31 +218,33 @@ public class GrokPrepperIT {
         pluginSetting.getSettings().put(GrokPrepperConfig.BREAK_ON_MATCH, false);
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        String testData = "{\"message\":" + messageInput + ","
-                .concat("\"extra_field\":\"My host IP is 192.0.2.1\"}");
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
+        testData.put("extra_field", "My host IP is 192.0.2.1");
 
-        Record<String> record = new Record<>(testData);
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        String resultData = "{\"message\":" + messageInput + ","
-                .concat("\"extra_field\":\"My host IP is 192.0.2.1\",")
-                .concat("\"clientip\":\"127.0.0.1\",")
-                .concat("\"ident\":\"user-identifier\",")
-                .concat("\"auth\":\"frank\",")
-                .concat("\"timestamp\":\"10/Oct/2000:13:55:36 -0700\",")
-                .concat("\"verb\":\"GET\",")
-                .concat("\"request\":\"/apache_pb.gif\",")
-                .concat("\"httpversion\":\"1.0\",")
-                .concat("\"response\":\"200\",")
-                .concat("\"bytes\":\"2326\",")
-                .concat("\"host\":\"192.0.2.1\"}");
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", messageInput);
+        resultData.put("extra_field", "My host IP is 192.0.2.1");
+        resultData.put("clientip", "127.0.0.1");
+        resultData.put("ident", "user-identifier");
+        resultData.put("auth", "frank");
+        resultData.put("timestamp", "10/Oct/2000:13:55:36 -0700");
+        resultData.put("verb", "GET");
+        resultData.put("request", "/apache_pb.gif");
+        resultData.put("httpversion", "1.0");
+        resultData.put("response", "200");
+        resultData.put("bytes", "2326");
+        resultData.put("host", "192.0.2.1");
 
-        Record<String> resultRecord = new Record<>(resultData);
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
     }
 
     @Test
@@ -241,28 +256,31 @@ public class GrokPrepperIT {
         pluginSetting.getSettings().put(GrokPrepperConfig.KEEP_EMPTY_CAPTURES, true);
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        String testData = "{\"message\":" + messageInput + "}";
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
 
-        String resultData = "{\"message\":" + messageInput + ","
-                .concat("\"clientip\":\"127.0.0.1\",")
-                .concat("\"ident\":\"user-identifier\",")
-                .concat("\"auth\":\"frank\",")
-                .concat("\"timestamp\":\"10/Oct/2000:13:55:36 -0700\",")
-                .concat("\"verb\":\"GET\",")
-                .concat("\"request\":\"/apache_pb.gif\",")
-                .concat("\"rawrequest\":null,")
-                .concat("\"httpversion\":\"1.0\",")
-                .concat("\"response\":\"200\",")
-                .concat("\"bytes\":\"2326\"}");
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        Record<String> resultRecord = new Record<>(resultData);
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", messageInput);
+        resultData.put("clientip", "127.0.0.1");
+        resultData.put("ident", "user-identifier");
+        resultData.put("auth", "frank");
+        resultData.put("timestamp", "10/Oct/2000:13:55:36 -0700");
+        resultData.put("verb", "GET");
+        resultData.put("request", "/apache_pb.gif");
+        resultData.put("rawrequest", null);
+        resultData.put("httpversion", "1.0");
+        resultData.put("response", "200");
+        resultData.put("bytes", "2326");
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
+
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
     }
 
     @Test
@@ -274,21 +292,24 @@ public class GrokPrepperIT {
         pluginSetting.getSettings().put(GrokPrepperConfig.NAMED_CAPTURES_ONLY, false);
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        String testData = "{\"message\":\"This is my greedy data before matching 192.0.2.1 123456\"}";
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", "This is my greedy data before matching 192.0.2.1 123456");
 
-        String resultData = "{\"message\":\"This is my greedy data before matching 192.0.2.1 123456\","
-                .concat("\"NUMBER\":\"123456\",")
-                .concat("\"GREEDYDATA\":\"This is my greedy data before matching\",")
-                .concat("\"host\":\"192.0.2.1\"}");
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        Record<String> resultRecord = new Record<>(resultData);
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", "This is my greedy data before matching 192.0.2.1 123456");
+        resultData.put("NUMBER", "123456");
+        resultData.put("GREEDYDATA", "This is my greedy data before matching");
+        resultData.put("host", "192.0.2.1");
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
+
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
     }
 
     @Test
@@ -303,20 +324,23 @@ public class GrokPrepperIT {
         pluginSetting.getSettings().put(GrokPrepperConfig.PATTERN_DEFINITIONS, patternDefinitions);
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        String testData = "{\"message\":\"This is my greedy data before matching with my phone number 123-456-789\"}";
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", "This is my greedy data before matching with my phone number 123-456-789");
 
-        String resultData = "{\"message\":\"This is my greedy data before matching with my phone number 123-456-789\","
-                .concat("\"greedy_data\":\"This is my greedy data before matching with my phone number\",")
-                .concat("\"my_number\":\"123-456-789\"}");
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        Record<String> resultRecord = new Record<>(resultData);
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", "This is my greedy data before matching with my phone number 123-456-789");
+        resultData.put("greedy_data", "This is my greedy data before matching with my phone number");
+        resultData.put("my_number", "123-456-789");
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
+
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
     }
 
     @Test
@@ -329,24 +353,27 @@ public class GrokPrepperIT {
         final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList("My birthday is %{CUSTOMBIRTHDAYPATTERN:my_birthday} and my phone number is %{CUSTOMPHONENUMBERPATTERN:my_number}"));
 
-        String testData = "{\"message\":\"My birthday is April 15, 1991 and my phone number is 123-456-789\"}";
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", "My birthday is April 15, 1991 and my phone number is 123-456-789");
 
-        String resultData = "{\"message\":\"My birthday is April 15, 1991 and my phone number is 123-456-789\","
-                .concat("\"my_birthday\":\"April 15, 1991\",")
-                .concat("\"my_number\":\"123-456-789\"}");
+        final Record<Event> record = buildRecordWithEvent(testData);
+
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", "My birthday is April 15, 1991 and my phone number is 123-456-789");
+        resultData.put("my_birthday", "April 15, 1991");
+        resultData.put("my_number", "123-456-789");
 
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
         pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_DIRECTORIES, patternsDirectories);
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        Record<String> resultRecord = new Record<>(resultData);
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
     }
 
     @Test
@@ -359,24 +386,27 @@ public class GrokPrepperIT {
         final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList("My phone number is %{CUSTOMPHONENUMBERPATTERN:my_number}"));
 
-        String testData = "{\"message\":\"My phone number is 123-456-789\"}";
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", "My phone number is 123-456-789");
 
-        String resultData = "{\"message\":\"My phone number is 123-456-789\","
-                .concat("\"my_number\":\"123-456-789\"}");
+        final Record<Event> record = buildRecordWithEvent(testData);
+
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", "My phone number is 123-456-789");
+        resultData.put("my_number", "123-456-789");
 
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
         pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_DIRECTORIES, patternsDirectories);
         pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_FILES_GLOB, "*1.txt");
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        Record<String> resultRecord = new Record<>(resultData);
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
 
         final Map<String, List<String>> matchConfigWithPatterns2Pattern = new HashMap<>();
         matchConfigWithPatterns2Pattern.put("message", Collections.singletonList("My birthday is %{CUSTOMBIRTHDAYPATTERN:my_birthday}"));
@@ -395,20 +425,23 @@ public class GrokPrepperIT {
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
         grokPrepper = new GrokPrepper(pluginSetting);
 
-        String testData = "{\"message\":\"This is my greedy data before matching with my phone number 123-456-789\"}";
-        Record<String> record = new Record<>(testData);
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", "This is my greedy data before matching with my phone number 123-456-789");
 
-        String resultData = "{\"message\":\"This is my greedy data before matching with my phone number 123-456-789\","
-                .concat("\"greedy_data\":\"This is my greedy data before matching with my phone number\",")
-                .concat("\"mynumber\":\"123-456-789\"}");
+        final Record<Event> record = buildRecordWithEvent(testData);
 
-        Record<String> resultRecord = new Record<>(resultData);
+        final Map<String, Object> resultData = new HashMap<>();
+        resultData.put("message", "This is my greedy data before matching with my phone number 123-456-789");
+        resultData.put("greedy_data", "This is my greedy data before matching with my phone number");
+        resultData.put("mynumber", "123-456-789");
 
-        List<Record<String>> grokkedRecords = (List<Record<String>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final Record<Event> resultRecord = buildRecordWithEvent(resultData);
+
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
-        assertThat(equalRecords(grokkedRecords.get(0), resultRecord), equalTo(true));
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
     }
 
     @Test
@@ -424,10 +457,4 @@ public class GrokPrepperIT {
         assertThrows(IllegalArgumentException.class, () -> new GrokPrepper(pluginSetting));
     }
 
-    private boolean equalRecords(final Record<String> first, final Record<String> second) throws JsonProcessingException {
-        final Map<String, Object> recordMapFirst = OBJECT_MAPPER.readValue(first.getData(), MAP_TYPE_REFERENCE);
-        final Map<String, Object> recordMapSecond = OBJECT_MAPPER.readValue(second.getData(), MAP_TYPE_REFERENCE);
-
-        return recordMapFirst.equals(recordMapSecond);
-    }
 }
