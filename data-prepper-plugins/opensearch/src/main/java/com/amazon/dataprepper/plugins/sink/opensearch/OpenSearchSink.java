@@ -13,6 +13,7 @@ package com.amazon.dataprepper.plugins.sink.opensearch;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.AbstractSink;
 import com.amazon.dataprepper.model.sink.Sink;
@@ -46,7 +47,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 @DataPrepperPlugin(name = "opensearch", pluginType = Sink.class)
-public class OpenSearchSink extends AbstractSink<Record<String>> {
+public class OpenSearchSink extends AbstractSink<Record<Object>> {
   public static final String BULKREQUEST_LATENCY = "bulkRequestLatency";
   public static final String BULKREQUEST_ERRORS = "bulkRequestErrors";
 
@@ -111,13 +112,13 @@ public class OpenSearchSink extends AbstractSink<Record<String>> {
   }
 
   @Override
-  public void doOutput(final Collection<Record<String>> records) {
+  public void doOutput(final Collection<Record<Object>> records) {
     if (records.isEmpty()) {
       return;
     }
     BulkRequest bulkRequest = bulkRequestSupplier.get();
-    for (final Record<String> record : records) {
-      final String document = record.getData();
+    for (final Record<Object> record : records) {
+      final String document = getDocument(record.getData());
       final IndexRequest indexRequest = new IndexRequest().source(document, XContentType.JSON);
       try {
         final Map<String, Object> source = getMapFromJson(document);
@@ -139,6 +140,19 @@ public class OpenSearchSink extends AbstractSink<Record<String>> {
     // Flush the remaining requests
     if (bulkRequest.numberOfActions() > 0) {
       flushBatch(bulkRequest);
+    }
+  }
+
+
+  // Temporary function to support both trace and log ingestion pipelines.
+  // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
+  private String getDocument(final Object object) {
+    if (object instanceof String) {
+      return (String) object;
+    } else if (object instanceof Event) {
+      return ((Event) object).toJsonString();
+    } else {
+      throw new RuntimeException("Invalid record type. OpenSearch sink only supports String and Events");
     }
   }
 
