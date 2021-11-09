@@ -3,6 +3,8 @@ package org.opensearch.dataprepper.logstash.mapping;
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
 
+import java.io.IOException;
+
 public interface LogstashPluginMapper {
 
     /**
@@ -12,5 +14,5 @@ public interface LogstashPluginMapper {
      * @param logstashPlugin A Logstash plugin with its attributes
      * @return A Data Prepper plugin with its attributes
      */
-    PluginModel mapPlugin(LogstashPlugin logstashPlugin);
+    PluginModel mapPlugin(LogstashPlugin logstashPlugin) throws IOException;
 }
