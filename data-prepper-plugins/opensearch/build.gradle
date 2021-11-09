@@ -55,7 +55,7 @@ dependencies {
     implementation 'software.amazon.awssdk:utils:2.17.15'
     implementation 'software.amazon.awssdk:sts:2.17.15'
     implementation 'software.amazon.awssdk:url-connection-client:2.17.15'
-    implementation 'software.amazon.awssdk:arns:2.17.15'
+    implementation 'software.amazon.awssdk:arns:2.17.77'
     implementation 'io.micrometer:micrometer-core:1.7.5'
     // The OpenSearch build-tools plugin appears to be preventing Gradle's platform
     // support from working correctly, so we have to specify the JUnit versions here.
@@ -132,6 +132,9 @@ integTest {
 
 jacocoTestReport {
     dependsOn test
+    reports {
+        xml.enabled true
+    }
     afterEvaluate {
         classDirectories.from = files(classDirectories.files.collect {
             fileTree(dir: it, exclude: [
