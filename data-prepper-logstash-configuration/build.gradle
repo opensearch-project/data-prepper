@@ -10,6 +10,7 @@ repositories {
 
 dependencies {
     antlr "org.antlr:antlr4:4.9.2"
+    implementation project(':data-prepper-api')
     testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
     testImplementation platform("org.junit:junit-bom:${versionMap.junitJupiter}")
