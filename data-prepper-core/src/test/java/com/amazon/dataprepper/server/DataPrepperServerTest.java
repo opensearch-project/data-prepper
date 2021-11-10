@@ -13,7 +13,9 @@ package com.amazon.dataprepper.server;
 
 import com.amazon.dataprepper.DataPrepper;
 import com.amazon.dataprepper.TestDataProvider;
+import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
+import com.amazon.dataprepper.pipeline.server.DataPrepperCoreAuthenticationProvider;
 import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
@@ -23,10 +25,10 @@ import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.hamcrest.Matchers;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
@@ -52,7 +54,11 @@ import java.util.UUID;
 import static com.amazon.dataprepper.TestDataProvider.VALID_DATA_PREPPER_CLOUDWATCH_METRICS_CONFIG_FILE;
 import static com.amazon.dataprepper.TestDataProvider.VALID_DATA_PREPPER_MULTIPLE_METRICS_CONFIG_FILE;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 
 public class DataPrepperServerTest {
@@ -61,6 +67,7 @@ public class DataPrepperServerTest {
     private DataPrepperServer dataPrepperServer;
     private DataPrepper dataPrepper;
     private final int port = 1234;
+    private PluginFactory pluginFactory;
 
     private void setRegistry(PrometheusMeterRegistry prometheusMeterRegistry) {
         final Set<MeterRegistry> meterRegistries = Metrics.globalRegistry.getRegistries();
@@ -75,18 +82,25 @@ public class DataPrepperServerTest {
     private void setupDataPrepper() {
         dataPrepper = mock(DataPrepper.class);
         DataPrepper.configure(TestDataProvider.VALID_DATA_PREPPER_DEFAULT_LOG4J_CONFIG_FILE);
+        when(dataPrepper.getPluginFactory()).thenReturn(pluginFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setup() {
         // Required to trust any self-signed certs, used in https tests
         Properties props = System.getProperties();
         props.setProperty("jdk.internal.httpclient.disableHostnameVerification", Boolean.TRUE.toString());
 
         setRegistry(new PrometheusRegistryMockScrape(PrometheusConfig.DEFAULT, ""));
+        pluginFactory = mock(PluginFactory.class);
+
+        final DataPrepperCoreAuthenticationProvider unauthenticatedProvider = mock(DataPrepperCoreAuthenticationProvider.class);
+        when(pluginFactory.loadPlugin(eq(DataPrepperCoreAuthenticationProvider.class),
+                argThat(a -> a.getName().equals(DataPrepperCoreAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME))))
+                .thenReturn(unauthenticatedProvider);
     }
 
-    @After
+    @AfterEach
     public void stopServer() {
         if (dataPrepperServer != null) {
             dataPrepperServer.stop();
@@ -315,12 +329,12 @@ public class DataPrepperServerTest {
         dataPrepperServer.stop();
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void testTlsWithInvalidPassword() {
         setupDataPrepper();
         DataPrepper.configure(TestDataProvider.INVALID_KEYSTORE_PASSWORD_DATA_PREPPER_CONFIG_FILE);
 
-        new DataPrepperServer(dataPrepper);
+        assertThrows(IllegalStateException.class, () -> new DataPrepperServer(dataPrepper));
     }
 
     private SSLContext getSslContextTrustingInsecure() throws Exception {
