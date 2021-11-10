@@ -46,6 +46,7 @@ public class DataPrepper {
 
     private static final CompositeMeterRegistry systemMeterRegistry = new CompositeMeterRegistry();
 
+    private final PluginFactory pluginFactory = new DefaultPluginFactory();
     private Map<String, Pipeline> transformationPipelines;
 
     private static volatile DataPrepper dataPrepper;
@@ -130,7 +131,6 @@ public class DataPrepper {
      */
     public boolean execute(final String configurationFileLocation) {
         LOG.info("Using {} configuration file", configurationFileLocation);
-        final PluginFactory pluginFactory = new DefaultPluginFactory();
         final PipelineParser pipelineParser = new PipelineParser(configurationFileLocation, pluginFactory);
         transformationPipelines = pipelineParser.parseConfiguration();
         if (transformationPipelines.size() == 0) {
@@ -166,6 +166,9 @@ public class DataPrepper {
         if (transformationPipelines.containsKey(pipeline)) {
             transformationPipelines.get(pipeline).shutdown();
         }
+    }
+    public PluginFactory getPluginFactory() {
+        return pluginFactory;
     }
 
     public Map<String, Pipeline> getTransformationPipelines() {

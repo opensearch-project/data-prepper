@@ -11,6 +11,7 @@
 
 package com.amazon.dataprepper.parser.model;
 
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +33,7 @@ public class DataPrepperConfiguration {
     private String keyStorePassword = "";
     private String privateKeyPassword = "";
     private List<MetricRegistryType> metricRegistries = DEFAULT_METRIC_REGISTRY_TYPE;
+    private PluginModel authentication;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
 
@@ -59,8 +61,10 @@ public class DataPrepperConfiguration {
             @JsonProperty("keyStorePassword") final String keyStorePassword,
             @JsonProperty("privateKeyPassword") final String privateKeyPassword,
             @JsonProperty("serverPort") final String serverPort,
-            @JsonProperty("metricRegistries") final List<MetricRegistryType> metricRegistries
-    ) {
+            @JsonProperty("metricRegistries") final List<MetricRegistryType> metricRegistries,
+            @JsonProperty("authentication") final PluginModel authentication
+            ) {
+        this.authentication = authentication;
         setSsl(ssl);
         this.keyStoreFilePath = keyStoreFilePath != null ? keyStoreFilePath : "";
         this.keyStorePassword = keyStorePassword != null ? keyStorePassword : "";
@@ -97,6 +101,10 @@ public class DataPrepperConfiguration {
         if (ssl != null) {
             this.ssl = ssl;
         }
+    }
+
+    public PluginModel getAuthentication() {
+        return authentication;
     }
 
     private void setServerPort(final String serverPort) {

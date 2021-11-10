@@ -1,0 +1,9 @@
+serverPort: 1234
+ssl: true
+keyStoreFilePath: "src/test/resources/test.p12"
+keyStorePassword: "store"
+privateKeyPassword: "key"
+authentication:
+  http_basic:
+    username: testuser
+    password: testpass
