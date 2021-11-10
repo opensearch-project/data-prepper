@@ -86,7 +86,8 @@ For the most part, we use common Java conventions. Here are a few things to keep
     1. They are fine in test code
     2. They are fine if package protected
 8. Use Optional for return values if the value may not be present. This should be preferred to returning null.
-9. Do not create checked exceptions, and do not throw checked exceptions whenever possible. In general, if you call a method with a checked exception, you should wrap that exception into an unchecked exception.
+9. Do not create checked exceptions, and do not throw checked exceptions from public methods whenever possible. In general, if you call a method with a checked exception, you should wrap that exception into an unchecked exception.
+    1. Throwing checked exceptions from private methods is acceptable.
 
 ### Formatting
 
