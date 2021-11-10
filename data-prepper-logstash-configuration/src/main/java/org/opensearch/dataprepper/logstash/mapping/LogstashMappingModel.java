@@ -9,23 +9,25 @@ import java.util.Map;
  */
 public class LogstashMappingModel {
 
-    private final String pluginName;
-    private final Map<String, Object> mappedAttributes;
-    private final Map<String, Object> additionalAttributes;
+    private String pluginName;
+    private Map<String, String> mappedAttributeNames;
+    private Map<String, Object> additionalAttributes;
 
-    public LogstashMappingModel(final String pluginName, final Map<String, Object> mappedAttributes,
+    public LogstashMappingModel(final String pluginName, final Map<String, String> mappedAttributeNames,
                                 final Map<String, Object> additionalAttributes) {
         this.pluginName = pluginName;
-        this.mappedAttributes = mappedAttributes;
+        this.mappedAttributeNames = mappedAttributeNames;
         this.additionalAttributes = additionalAttributes;
     }
+
+    public LogstashMappingModel() {}
 
     public String getPluginName() {
         return pluginName;
     }
 
-    public Map<String, Object> getMappedAttributes() {
-        return mappedAttributes;
+    public Map<String, String> getMappedAttributeNames() {
+        return mappedAttributeNames;
     }
 
     public Map<String, Object> getAdditionalAttributes() {

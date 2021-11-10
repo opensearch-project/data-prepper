@@ -10,4 +10,9 @@ public class LogstashMappingException extends LogstashConfigurationException{
     public LogstashMappingException(String errorMessage) {
         super(errorMessage);
     }
+
+    public LogstashMappingException(String errorMessage, Exception inner) {
+        super(errorMessage, inner);
+    }
+
 }
