@@ -78,45 +78,48 @@ Default is null.
 
 - `password`(optional): A String of password used in the [internal users](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles) of ODFE cluster. Default is null.
 
-- `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:<port>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
+- `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:\<port\>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
 
-- `trace_analytics_raw`(optional): A boolean flag indicates APM trace analytics raw span data type. e.g.
+- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`], which represents an index type. Defaults to `custom`. This index_type instructs Sink plugin what type of data it is handling. 
+
 ```
-{
-  "traceId":"bQ/2NNEmtuwsGAOR5ntCNw==",
-  "spanId":"mnO/qUT5ye4=",
-  "name":"io.opentelemetry.auto.servlet-3.0",
-  "kind":"SERVER",
-  "status":{},
-  "startTime":"2020-08-20T05:40:46.041011600Z",
-  "endTime":"2020-08-20T05:40:46.089556800Z",
-  ...
-}
+    APM trace analytics raw span data type example:
+    {
+    "traceId":"bQ/2NNEmtuwsGAOR5ntCNw==",
+    "spanId":"mnO/qUT5ye4=",
+    "name":"io.opentelemetry.auto.servlet-3.0",
+    "kind":"SERVER",
+    "status":{},
+    "startTime":"2020-08-20T05:40:46.041011600Z",
+    "endTime":"2020-08-20T05:40:46.089556800Z",
+    ...
+    }
+
+    APM trace analytics service map data type example:
+    {
+      "hashId": "aQ/2NNEmtuwsGAOR5ntCNwk=",
+      "serviceName": "Payment",
+      "kind": "Client",
+      "target":
+      {
+        "domain": "Purchase",
+        "resource": "Buy"
+      },
+      "destination":
+      {
+        "domain": "Purchase",
+        "resource": "Buy"
+      },
+      "traceGroupName": "MakePayement.auto"
+    }
 ```
+- `trace_analytics_raw`(optional, deprecated in favor of `index_type`): A boolean flag indicates APM trace analytics raw span data type.
 Default value is false. Set it to true for [Raw span trace analytics](#raw_span_trace_analytics). Set it to false for [Service map trace analytics](#service_map_trace_analytics).
 
-- `trace_analytics_service_map`(optional): A boolean flag indicates APM trace analytics service map data type. e.g.
-```
-{
-  "hashId": "aQ/2NNEmtuwsGAOR5ntCNwk=",
-  "serviceName": "Payment",
-  "kind": "Client",
-  "target":
-  {
-    "domain": "Purchase",
-    "resource": "Buy"
-  },
-  "destination":
-  {
-    "domain": "Purchase",
-    "resource": "Buy"
-  },
-  "traceGroupName": "MakePayement.auto"
-}
-```
+- `trace_analytics_service_map`(optional, deprecated in favor of `index_type`): A boolean flag indicates APM trace analytics service map data type.
 Default value is false. Set it to true for [Service map trace analytics](#service_map_trace_analytics). Set it to false for [Raw span trace analytics](#raw_span_trace_analytics).
 
-- <a name="index"></a>`index`: A String used as index name for custom data type. Applicable and required only If both `trace_analytics_raw` and `trace_analytics_service_map` are set to false.
+- <a name="index"></a>`index`: A String used as index name for custom data type. Applicable and required only If index_type is explicitly `custom` or defaults to be `custom` while both `trace_analytics_raw` and `trace_analytics_service_map` are set to false.
 
 - <a name="template_file"></a>`template_file`(optional): A json file path to be read as index template for custom data ingestion. The json file content should be the json value of
 `"template"` key in the json content of elasticsearch [Index templates API](https://www.elastic.co/guide/en/elasticsearch/reference/7.8/index-templates.html), 
