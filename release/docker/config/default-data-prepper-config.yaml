@@ -4,3 +4,7 @@ keyStorePassword: "password"
 privateKeyPassword: "password"
 serverPort: 4900
 metricRegistries: [Prometheus]
+authentication:
+  http_basic:
+    username: admin
+    password: admin
