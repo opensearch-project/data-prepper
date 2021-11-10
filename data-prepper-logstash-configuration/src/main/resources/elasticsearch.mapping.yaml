@@ -1,5 +1,5 @@
 pluginName: opensearch
-mappedAttributes:
+mappedAttributeNames:
   hosts: hosts
   cacert: cert
   user: username

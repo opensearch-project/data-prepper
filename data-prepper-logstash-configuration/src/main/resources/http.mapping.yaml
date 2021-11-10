@@ -1,5 +1,5 @@
 pluginName: http
-mappedAttributes:
+mappedAttributeNames:
   port: port
   max_pending_requests: max_pending_requests
   threads: thread_count

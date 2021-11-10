@@ -1,5 +1,5 @@
 pluginName: grok
-mappedAttributes:
+mappedAttributeNames:
   match: match
   break_on_match: break_on_match
   keep_empty_captures: keep_empty_captures
