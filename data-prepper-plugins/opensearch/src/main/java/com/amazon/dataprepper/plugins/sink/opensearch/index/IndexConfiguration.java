@@ -90,8 +90,8 @@ public class IndexConfiguration {
     private void determineIndexType(Builder builder) {
         if(builder.indexType != null) {
             Optional<IndexType> mappedIndexType = IndexType.getByValue(builder.indexType);
-            mappedIndexType.ifPresent(type -> {indexType = type;});
-            mappedIndexType.orElseThrow(() -> new IllegalArgumentException("Value of the parameter, index_type, must be from the list: "
+            indexType = mappedIndexType.orElseThrow(
+                    () -> new IllegalArgumentException("Value of the parameter, index_type, must be from the list: "
                     + IndexType.getIndexTypeValues()));
         } else if (builder.isTraceAnalyticsRaw && builder.isTraceAnalyticsServiceMap) {
             throw new IllegalStateException("trace_analytics_raw and trace_analytics_service_map cannot be both true.");
