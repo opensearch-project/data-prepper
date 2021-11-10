@@ -1,0 +1,157 @@
+apply plugin: DockerRemoteApiPlugin
+
+
+import com.bmuschko.gradle.docker.DockerRemoteApiPlugin
+import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerStopContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
+import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
+import com.bmuschko.gradle.docker.tasks.image.DockerPullImage
+import com.bmuschko.gradle.docker.tasks.image.Dockerfile
+import com.bmuschko.gradle.docker.tasks.network.DockerCreateNetwork
+import com.bmuschko.gradle.docker.tasks.network.DockerRemoveNetwork
+
+/**
+ * End-to-end test docker network
+ */
+task createDataPrepperNetwork(type: DockerCreateNetwork) {
+    networkName = "data_prepper_network"
+}
+
+task removeDataPrepperNetwork(type: DockerRemoveNetwork) {
+    dependsOn createDataPrepperNetwork
+    networkId = createDataPrepperNetwork.getNetworkId()
+}
+
+def BASIC_GROK_PIPELINE_YAML = "basic-grok-e2e-pipeline.yml"
+
+/**
+ * DataPrepper Docker tasks
+ */
+task createDataPrepperDockerFile(type: Dockerfile) {
+    dependsOn copyDataPrepperJar
+    destFile = project.file('build/docker/Dockerfile')
+    from("adoptopenjdk/openjdk14:jre-14.0.1_7-alpine")
+    workingDir("/app")
+    copyFile("${dataPrepperJarFilepath}", "/app/data-prepper.jar")
+    copyFile("src/integrationTest/resources/${BASIC_GROK_PIPELINE_YAML}", "/app/${BASIC_GROK_PIPELINE_YAML}")
+    copyFile("src/integrationTest/resources/data_prepper.yml", "/app/data_prepper.yml")
+    defaultCommand("java", "-jar", "data-prepper.jar", "/app/${BASIC_GROK_PIPELINE_YAML}", "/app/data_prepper.yml")
+}
+
+task buildDataPrepperDockerImage(type: DockerBuildImage) {
+    dependsOn createDataPrepperDockerFile
+    inputDir  = file(".")
+    dockerFile  = file("build/docker/Dockerfile")
+    images.add("e2e-test-log-pipeline-image")
+}
+
+def createDataPrepperDockerContainer(final String taskBaseName, final String dataPrepperName, final int sourcePort,
+                                     final int serverPort, final String pipelineConfigYAML) {
+    return tasks.create("create${taskBaseName}", DockerCreateContainer) {
+        dependsOn buildDataPrepperDockerImage
+        dependsOn createDataPrepperNetwork
+        containerName = dataPrepperName
+        exposePorts("tcp", [2021, 4900])
+        hostConfig.portBindings = [String.format('%d:2021', sourcePort), String.format('%d:4900', serverPort)]
+        hostConfig.network = createDataPrepperNetwork.getNetworkName()
+        cmd = ["java", "-jar", "data-prepper.jar", pipelineConfigYAML, "/app/data_prepper.yml"]
+        targetImageId buildDataPrepperDockerImage.getImageId()
+    }
+}
+
+def startDataPrepperDockerContainer(final DockerCreateContainer createDataPrepperDockerContainerTask) {
+    return tasks.create("start${createDataPrepperDockerContainerTask.getName()}", DockerStartContainer) {
+        dependsOn createDataPrepperDockerContainerTask
+        targetContainerId createDataPrepperDockerContainerTask.getContainerId()
+    }
+}
+
+def stopDataPrepperDockerContainer(final DockerStartContainer startDataPrepperDockerContainerTask) {
+    return tasks.create("stop${startDataPrepperDockerContainerTask.getName()}", DockerStopContainer) {
+        targetContainerId startDataPrepperDockerContainerTask.getContainerId()
+    }
+}
+
+def removeDataPrepperDockerContainer(final DockerStopContainer stopDataPrepperDockerContainerTask) {
+    return tasks.create("remove${stopDataPrepperDockerContainerTask.getName()}", DockerRemoveContainer) {
+        targetContainerId stopDataPrepperDockerContainerTask.getContainerId()
+    }
+}
+
+/**
+ * OpenSearch Docker tasks
+ */
+task pullOpenSearchDockerImage(type: DockerPullImage) {
+    image = "opensearchproject/opensearch:${versionMap.opensearchVersion}"
+}
+
+task createOpenSearchDockerContainer(type: DockerCreateContainer) {
+    dependsOn createDataPrepperNetwork
+    dependsOn pullOpenSearchDockerImage
+    targetImageId pullOpenSearchDockerImage.image
+    containerName = "node-0.example.com"
+    hostConfig.portBindings = ['9200:9200', '9600:9600']
+    hostConfig.autoRemove = true
+    hostConfig.network = createDataPrepperNetwork.getNetworkName()
+    envVars = ['discovery.type':'single-node']
+}
+
+task startOpenSearchDockerContainer(type: DockerStartContainer) {
+    dependsOn createOpenSearchDockerContainer
+    targetContainerId createOpenSearchDockerContainer.getContainerId()
+
+    doLast {
+        sleep(90*1000)
+    }
+}
+
+task stopOpenSearchDockerContainer(type: DockerStopContainer) {
+    targetContainerId createOpenSearchDockerContainer.getContainerId()
+
+    doLast {
+        sleep(5*1000)
+    }
+}
+
+/**
+ * End to end test. Spins up OpenSearch and DataPrepper docker containers, then runs the integ test
+ * Stops the docker containers when finished
+ */
+task basicLogEndToEndTest(type: Test) {
+    dependsOn build
+    dependsOn startOpenSearchDockerContainer
+    def createDataPrepperTask = createDataPrepperDockerContainer(
+            "basicLogDataPrepper", "dataprepper", 2021, 4900, "/app/${BASIC_GROK_PIPELINE_YAML}")
+    def startDataPrepperTask = startDataPrepperDockerContainer(createDataPrepperTask as DockerCreateContainer)
+    dependsOn startDataPrepperTask
+    startDataPrepperTask.mustRunAfter 'startOpenSearchDockerContainer'
+    // wait for data-preppers to be ready
+    doFirst {
+        sleep(10*1000)
+    }
+
+    description = 'Runs the basic grok end-to-end test.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    filter {
+        includeTestsMatching "com.amazon.dataprepper.integration.log.EndToEndBasicLogTest.testPipelineEndToEnd*"
+    }
+
+    finalizedBy stopOpenSearchDockerContainer
+    def stopDataPrepperTask = stopDataPrepperDockerContainer(startDataPrepperTask as DockerStartContainer)
+    finalizedBy stopDataPrepperTask
+    finalizedBy removeDataPrepperDockerContainer(stopDataPrepperTask as DockerStopContainer)
+    finalizedBy removeDataPrepperNetwork
+}
+
+dependencies {
+    implementation "com.github.javafaker:javafaker:1.0.2"
+    integrationTestCompile project(':data-prepper-plugins:opensearch')
+    integrationTestImplementation "com.linecorp.armeria:armeria:1.0.0"
+    integrationTestImplementation "org.awaitility:awaitility:4.0.3"
+    integrationTestImplementation "org.opensearch.client:opensearch-rest-high-level-client:${versionMap.opensearchVersion}"
+}
