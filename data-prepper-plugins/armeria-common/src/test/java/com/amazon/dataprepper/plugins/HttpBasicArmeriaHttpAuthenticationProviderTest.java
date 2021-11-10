@@ -1,3 +1,14 @@
+/*
+ *  SPDX-License-Identifier: Apache-2.0
+ *
+ *  The OpenSearch Contributors require contributions made to
+ *  this file be licensed under the Apache-2.0 license or a
+ *  compatible open source license.
+ *
+ *  Modifications Copyright OpenSearch Contributors. See
+ *  GitHub history for details.
+ */
+
 package com.amazon.dataprepper.plugins;
 
 import com.amazon.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
@@ -22,7 +33,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
-class HttpBasicArmeriaAuthenticationProviderTest {
+class HttpBasicArmeriaHttpAuthenticationProviderTest {
 
     private static final String USERNAME = UUID.randomUUID().toString();
     private static final String PASSWORD = UUID.randomUUID().toString();
@@ -36,7 +47,7 @@ class HttpBasicArmeriaAuthenticationProviderTest {
             final HttpBasicAuthenticationConfig config = mock(HttpBasicAuthenticationConfig.class);
             when(config.getUsername()).thenReturn(USERNAME);
             when(config.getPassword()).thenReturn(PASSWORD);
-            new HttpBasicArmeriaAuthenticationProvider(config).addAuthenticationDecorator(sb);
+            new HttpBasicArmeriaHttpAuthenticationProvider(config).addAuthenticationDecorator(sb);
         }
     };
 
@@ -50,8 +61,8 @@ class HttpBasicArmeriaAuthenticationProviderTest {
 
         }
 
-        private HttpBasicArmeriaAuthenticationProvider createObjectUnderTest() {
-            return new HttpBasicArmeriaAuthenticationProvider(config);
+        private HttpBasicArmeriaHttpAuthenticationProvider createObjectUnderTest() {
+            return new HttpBasicArmeriaHttpAuthenticationProvider(config);
         }
 
         @Test

@@ -11,10 +11,14 @@
 
 package com.amazon.dataprepper.plugins.source.oteltrace;
 
+import com.amazon.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
+import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import com.amazon.dataprepper.model.buffer.Buffer;
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
@@ -25,6 +29,8 @@ import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
+import io.grpc.ServerInterceptor;
+import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import org.slf4j.Logger;
@@ -32,28 +38,36 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
-@DataPrepperPlugin(name = "otel_trace_source", pluginType = Source.class)
+@DataPrepperPlugin(name = "otel_trace_source", pluginType = Source.class, pluginConfigurationType = OTelTraceSourceConfig.class)
 public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceSource.class);
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
     private Server server;
     private final PluginMetrics pluginMetrics;
+    private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
 
-    public OTelTraceSource(final PluginSetting pluginSetting) {
-        oTelTraceSourceConfig = OTelTraceSourceConfig.buildConfig(pluginSetting);
-        pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
-        certificateProviderFactory = new CertificateProviderFactory(oTelTraceSourceConfig);
+    @DataPrepperPluginConstructor
+    public OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
+        oTelTraceSourceConfig.validateAndInitializeCertAndKeyFileInS3();
+        this.oTelTraceSourceConfig = oTelTraceSourceConfig;
+        this.pluginMetrics = pluginMetrics;
+        this.certificateProviderFactory = new CertificateProviderFactory(oTelTraceSourceConfig);
+        this.authenticationProvider = createAuthenticationProvider(pluginFactory);
     }
 
     // accessible only in the same package for unit test
-    OTelTraceSource(final PluginSetting pluginSetting, final CertificateProviderFactory certificateProviderFactory) {
-        oTelTraceSourceConfig = OTelTraceSourceConfig.buildConfig(pluginSetting);
-        pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
+    OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final CertificateProviderFactory certificateProviderFactory) {
+        oTelTraceSourceConfig.validateAndInitializeCertAndKeyFileInS3();
+        this.oTelTraceSourceConfig = oTelTraceSourceConfig;
+        this.pluginMetrics = pluginMetrics;
         this.certificateProviderFactory = certificateProviderFactory;
+        this.authenticationProvider = createAuthenticationProvider(pluginFactory);
     }
 
     @Override
@@ -63,13 +77,18 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
         }
 
         if (server == null) {
+
+            final OTelTraceGrpcService oTelTraceGrpcService = new OTelTraceGrpcService(
+                    oTelTraceSourceConfig.getRequestTimeoutInMillis(),
+                    buffer,
+                    pluginMetrics
+            );
+
+            final List<ServerInterceptor> serverInterceptors = getAuthenticationInterceptor();
+
             final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                     .builder()
-                    .addService(new OTelTraceGrpcService(
-                            oTelTraceSourceConfig.getRequestTimeoutInMillis(),
-                            buffer,
-                            pluginMetrics
-                    ))
+                    .addService(ServerInterceptors.intercept(oTelTraceGrpcService, serverInterceptors))
                     .useClientTimeoutHeader(false);
 
             if (oTelTraceSourceConfig.hasHealthCheck()) {
@@ -145,7 +164,22 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
         LOG.info("Stopped otel_trace_source.");
     }
 
-    public OTelTraceSourceConfig getoTelTraceSourceConfig() {
-        return oTelTraceSourceConfig;
+    private List<ServerInterceptor> getAuthenticationInterceptor() {
+        final ServerInterceptor authenticationInterceptor = authenticationProvider.getAuthenticationInterceptor();
+        if (authenticationInterceptor == null) {
+            return Collections.emptyList();
+        }
+        return Collections.singletonList(authenticationInterceptor);
+    }
+
+    private GrpcAuthenticationProvider createAuthenticationProvider(final PluginFactory pluginFactory) {
+        final PluginModel authenticationConfiguration = oTelTraceSourceConfig.getAuthentication();
+        final PluginSetting authenticationPluginSetting;
+        if (authenticationConfiguration != null) {
+            authenticationPluginSetting = new PluginSetting(authenticationConfiguration.getPluginName(), authenticationConfiguration.getPluginSettings());
+        } else {
+            authenticationPluginSetting = new PluginSetting(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
+        }
+        return pluginFactory.loadPlugin(GrpcAuthenticationProvider.class, authenticationPluginSetting);
     }
 }

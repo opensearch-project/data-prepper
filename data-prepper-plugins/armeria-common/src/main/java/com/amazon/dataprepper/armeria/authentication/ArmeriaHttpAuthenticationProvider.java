@@ -10,7 +10,7 @@ import com.linecorp.armeria.server.ServerBuilder;
  *
  * @since 1.2
  */
-public interface ArmeriaAuthenticationProvider {
+public interface ArmeriaHttpAuthenticationProvider {
     /**
      * The plugin name for the plugin which allows unauthenticated
      * requests. This plugin will disable authentication.

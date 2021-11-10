@@ -17,6 +17,7 @@ import com.amazon.dataprepper.plugins.certificate.acm.ACMCertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.file.FileCertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.s3.S3CertificateProvider;
 import com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.hamcrest.core.IsInstanceOf;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +32,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class CertificateProviderFactoryTest {
     private OTelTraceSourceConfig oTelTraceSourceConfig;
     private CertificateProviderFactory certificateProviderFactory;
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Test
     public void getCertificateProviderAcmProviderSuccess() {
@@ -43,7 +45,7 @@ public class CertificateProviderFactoryTest {
 
         final PluginSetting pluginSetting = new PluginSetting(null, settingsMap);
         pluginSetting.setPipelineName("pipeline");
-        oTelTraceSourceConfig = OTelTraceSourceConfig.buildConfig(pluginSetting);
+        oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class);
 
         certificateProviderFactory = new CertificateProviderFactory(oTelTraceSourceConfig);
         final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
@@ -61,7 +63,8 @@ public class CertificateProviderFactoryTest {
 
         final PluginSetting pluginSetting = new PluginSetting(null, settingsMap);
         pluginSetting.setPipelineName("pipeline");
-        oTelTraceSourceConfig = OTelTraceSourceConfig.buildConfig(pluginSetting);
+        oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class);
+        oTelTraceSourceConfig.validateAndInitializeCertAndKeyFileInS3();
 
         certificateProviderFactory = new CertificateProviderFactory(oTelTraceSourceConfig);
         final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
@@ -78,7 +81,7 @@ public class CertificateProviderFactoryTest {
 
         final PluginSetting pluginSetting = new PluginSetting(null, settingsMap);
         pluginSetting.setPipelineName("pipeline");
-        oTelTraceSourceConfig = OTelTraceSourceConfig.buildConfig(pluginSetting);
+        oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class);
 
         certificateProviderFactory = new CertificateProviderFactory(oTelTraceSourceConfig);
         final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
