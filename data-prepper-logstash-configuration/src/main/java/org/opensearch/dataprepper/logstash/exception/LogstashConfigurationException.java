@@ -10,4 +10,9 @@ public class LogstashConfigurationException extends RuntimeException {
     public LogstashConfigurationException(String errorMessage) {
         super(errorMessage);
     }
+
+    public LogstashConfigurationException(String errorMessage, Exception inner) {
+        super(errorMessage, inner);
+    }
+
 }
