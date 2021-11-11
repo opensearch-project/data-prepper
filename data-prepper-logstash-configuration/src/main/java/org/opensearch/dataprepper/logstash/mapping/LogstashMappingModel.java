@@ -7,15 +7,19 @@ import java.util.Map;
  *
  * @since 1.2
  */
-public class LogstashMappingModel {
+class LogstashMappingModel implements LogstashAttributesMappings {
 
     private String pluginName;
+    private String attributesMapperClass;
     private Map<String, String> mappedAttributeNames;
     private Map<String, Object> additionalAttributes;
 
-    public LogstashMappingModel(final String pluginName, final Map<String, String> mappedAttributeNames,
+    public LogstashMappingModel(final String pluginName,
+                                final String attributesMapperClass,
+                                final Map<String, String> mappedAttributeNames,
                                 final Map<String, Object> additionalAttributes) {
         this.pluginName = pluginName;
+        this.attributesMapperClass = attributesMapperClass;
         this.mappedAttributeNames = mappedAttributeNames;
         this.additionalAttributes = additionalAttributes;
     }
@@ -24,6 +28,10 @@ public class LogstashMappingModel {
 
     public String getPluginName() {
         return pluginName;
+    }
+
+    public String getAttributesMapperClass() {
+        return attributesMapperClass;
     }
 
     public Map<String, String> getMappedAttributeNames() {
