@@ -27,7 +27,7 @@ public class DefaultPluginMapper implements LogstashPluginMapper {
 
         String mappingResourceName = logstashPlugin.getPluginName() + ".mapping.yaml";
 
-        InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream(mappingResourceName);
+        final InputStream inputStream = this.getClass().getResourceAsStream(mappingResourceName);
         if (inputStream == null) {
             throw new LogstashMappingException("Unable to find mapping resource " + mappingResourceName);
         }
