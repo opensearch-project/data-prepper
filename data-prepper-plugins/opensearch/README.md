@@ -129,7 +129,7 @@ If not provided, failed records will be written into the default data-prepper lo
 all the records received from the upstream prepper at a time will be sent as a single bulk request.
 If a single record turns out to be larger than the set bulk size, it will be sent as a bulk request of a single document.
 
-- `ism_policy_file` (optional): A String of absolute file path to an ISM (Index State Management) policy file in JSON format. This policy file is effective only when there is no built-in policy file for the index type. For example, `custom` index type is currently the only one without a built-in policy file, thus it would use the policy file here if it's provided through this parameter. OpenSearch documentation has more about [ISM policies.](https://opensearch.org/docs/latest/im-plugin/ism/policies/)
+- `ism_policy_file` (optional): A String of absolute file path for an ISM (Index State Management) policy JSON file. This policy file is effective only when there is no built-in policy file for the index type. For example, `custom` index type is currently the only one without a built-in policy file, thus it would use the policy file here if it's provided through this parameter. OpenSearch documentation has more about [ISM policies.](https://opensearch.org/docs/latest/im-plugin/ism/policies/)
 
 ## Metrics
 
