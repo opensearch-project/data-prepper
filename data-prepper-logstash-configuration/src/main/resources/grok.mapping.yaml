@@ -1,0 +1,11 @@
+pluginName: grok
+mappedAttributeNames:
+  match: match
+  break_on_match: break_on_match
+  keep_empty_captures: keep_empty_captures
+  patterns_dir: patterns_directories
+  pattern_definitions: pattern_definitions
+  patterns_files_glob: patterns_files_glob
+  timeout_millis: timeout_millis
+  overwrite: keys_to_overwrite
+  named_captures_only: named_captures_only
