@@ -1,0 +1,7 @@
+mappedAttributeNames:
+  hosts: hosts
+  index: index
+  region: aws_region
+additionalAttributes:
+  aws_sigv4: true
+  insecure: false
