@@ -15,7 +15,7 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.KeyStore;
 
 public class SslUtil {
@@ -27,7 +27,7 @@ public class SslUtil {
 
         try {
             final KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
-            keyStore.load(Files.newInputStream(Path.of(keyStoreFilePath)), keyStorePassword.toCharArray());
+            keyStore.load(Files.newInputStream(Paths.get(keyStoreFilePath)), keyStorePassword.toCharArray());
 
             final KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
             keyManagerFactory.init(keyStore, privateKeyPassword.toCharArray());
