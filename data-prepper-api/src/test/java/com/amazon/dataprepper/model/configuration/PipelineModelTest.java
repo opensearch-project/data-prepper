@@ -31,19 +31,19 @@ public class PipelineModelTest {
                 TEST_WORKERS,
                 TEST_READ_BATCH_DELAY
         );
-        final PluginModel originalSourcePluginModel = pipelineModel.getSourcePluginModel();
-        final List<PluginModel> originalPreppersPluginModel = pipelineModel.getPrepperPluginModel();
-        final List<PluginModel> originalSinksPluginModel = pipelineModel.getSinkPluginModel();
+        final PluginModel originalSource = pipelineModel.getSource();
+        final List<PluginModel> originalPreppers = pipelineModel.getPreppers();
+        final List<PluginModel> originalSinks = pipelineModel.getSinks();
 
-        assertThat(originalSourcePluginModel, notNullValue());
-        assertThat(originalPreppersPluginModel, notNullValue());
-        assertThat(originalSinksPluginModel, notNullValue());
-        assertThat(originalSourcePluginModel.getPluginName(), is(equalTo(TEST_VALID_SOURCE_PLUGIN_MODEL.getPluginName())));
-        assertThat(originalSourcePluginModel.getPluginSettings(), is(equalTo(TEST_VALID_SOURCE_PLUGIN_MODEL.getPluginSettings())));
-        assertThat(originalPreppersPluginModel.get(0).getPluginName(), is(equalTo(TEST_VALID_PREPPERS_PLUGIN_MODEL.getPluginName())));
-        assertThat(originalPreppersPluginModel.get(0).getPluginSettings(), is(equalTo(TEST_VALID_PREPPERS_PLUGIN_MODEL.getPluginSettings())));
-        assertThat(originalSinksPluginModel.get(0).getPluginName(), is(equalTo(TEST_VALID_SINKS_PLUGIN_MODEL.getPluginName())));
-        assertThat(originalSinksPluginModel.get(0).getPluginSettings(), is(equalTo(TEST_VALID_SINKS_PLUGIN_MODEL.getPluginSettings())));
+        assertThat(originalSource, notNullValue());
+        assertThat(originalPreppers, notNullValue());
+        assertThat(originalSinks, notNullValue());
+        assertThat(originalSource.getPluginName(), is(equalTo(TEST_VALID_SOURCE_PLUGIN_MODEL.getPluginName())));
+        assertThat(originalSource.getPluginSettings(), is(equalTo(TEST_VALID_SOURCE_PLUGIN_MODEL.getPluginSettings())));
+        assertThat(originalPreppers.get(0).getPluginName(), is(equalTo(TEST_VALID_PREPPERS_PLUGIN_MODEL.getPluginName())));
+        assertThat(originalPreppers.get(0).getPluginSettings(), is(equalTo(TEST_VALID_PREPPERS_PLUGIN_MODEL.getPluginSettings())));
+        assertThat(originalSinks.get(0).getPluginName(), is(equalTo(TEST_VALID_SINKS_PLUGIN_MODEL.getPluginName())));
+        assertThat(originalSinks.get(0).getPluginSettings(), is(equalTo(TEST_VALID_SINKS_PLUGIN_MODEL.getPluginSettings())));
         assertThat(pipelineModel.getWorkers(), is(TEST_WORKERS));
         assertThat(pipelineModel.getReadBatchDelay(), is(TEST_READ_BATCH_DELAY));
     }
