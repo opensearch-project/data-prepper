@@ -17,7 +17,7 @@ import com.google.common.base.Preconditions;
 import io.micrometer.core.instrument.util.StringUtils;
 
 import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class HTTPSourceConfig {
     static final String DEFAULT_LOG_INGEST_URI = "/log/ingest";
@@ -74,7 +74,7 @@ public class HTTPSourceConfig {
     }
 
     private void validateFilePath(final String typeMessage, final String argument, final String argumentName) {
-        if (StringUtils.isEmpty(argument) || !Files.exists(Path.of(argument))) {
+        if (StringUtils.isEmpty(argument) || !Files.exists(Paths.get(argument))) {
             throw new IllegalArgumentException(String.format("%s, %s needs to be a valid file path.", typeMessage, argumentName));
         }
     }
