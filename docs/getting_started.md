@@ -35,6 +35,7 @@ You will configure two files:
 Depending on what you want to do, we have a few different guides to configuring Data Prepper.
 
 * [Trace Analytics](trace_analytics.md) - Learn how to setup Data Prepper for trace observability
+* [Log Ingestion](log_analytics.md) - Learn how to setup Data Prepper for log observability
 * [Simple Pipeline](simple_pipelines.md) - Learn the basics of Data Prepper pipelines with some simple configurations.
 
 ## Running
@@ -66,6 +67,8 @@ how to configure the server.
 
 Trace Analytics is an important Data Prepper use case. If you haven't yet configure it,
 please visit the [Trace Analytics documentation](trace_analytics.md).
+
+Log Ingestion is also an important Data Prepper use case. To learn more, visit the [Log Ingestion Documentation](log_analytics.md).
 
 To monitor Data Prepper, please read the [Monitoring](monitoring.md) page.
 

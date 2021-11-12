@@ -1,0 +1,15 @@
+log-pipeline:
+  source:
+    http:
+      ssl: false
+  prepper:
+    - grok:
+        match:
+          log: [ "%{COMMONAPACHELOG}" ]
+  sink:
+    - opensearch:
+        hosts: [ "https://opensearch-node1:9200" ]
+        insecure: true
+        username: admin
+        password: admin
+        index: apache_logs

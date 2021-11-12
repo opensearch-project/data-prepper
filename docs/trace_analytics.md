@@ -10,10 +10,10 @@ The transformed trace data is the visualized using the
 [Trace Analytics OpenSearch Dashboards plugin](https://opensearch.org/docs/monitoring-plugins/trace/ta-dashboards/),
 which provides at-a-glance visibility into your application performance, along with the ability to drill down on individual traces.
 
-Here is how all the components work in trace analytics,
+Here is how all the components work in trace analytics:
 <br />
 <br />
-![Trace Analytics Pipeline](images/Components.jpg)
+![Trace Analytics Pipeline](images/TraceAnalyticsComponents.png)
 <br />
 <br />
 
