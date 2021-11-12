@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.logstash.mapping;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 
 import java.util.Map;
 
@@ -23,9 +25,11 @@ class LogstashMappingModel implements LogstashAttributesMappings {
     private String attributesMapperClass;
 
     @JsonProperty
+    @JsonSetter(nulls = Nulls.AS_EMPTY)
     private Map<String, String> mappedAttributeNames;
 
     @JsonProperty
+    @JsonSetter(nulls = Nulls.AS_EMPTY)
     private Map<String, Object> additionalAttributes;
 
     public String getPluginName() {
