@@ -9,6 +9,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 
@@ -42,10 +44,15 @@ class LogstashMappingModelTest {
         assertThat(logstashMappingModel.getAdditionalAttributes().get("addB"), equalTo("staticValueB"));
     }
 
-    @Test
-    void deserialize_from_JSON_with_null_values_has_empty_lists() throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "sample-with-nulls.mapping.yaml",
+            "sample-with-empty-maps.mapping.yaml"
+    })
+    void deserialize_from_JSON_with_null_values_has_empty_maps(final String mappingResource) throws IOException {
 
-        final LogstashMappingModel logstashMappingModel = objectMapper.readValue(this.getClass().getResourceAsStream("sample-with-nulls.mapping.yaml"), LogstashMappingModel.class);
+        final LogstashMappingModel logstashMappingModel =
+                objectMapper.readValue(this.getClass().getResourceAsStream(mappingResource), LogstashMappingModel.class);
 
         assertThat(logstashMappingModel.getPluginName(), equalTo("samplePlugin"));
         assertThat(logstashMappingModel.getAttributesMapperClass(), equalTo("org.opensearch.dataprepper.Placeholder"));
