@@ -11,7 +11,7 @@
 
 package com.amazon.dataprepper.plugins.source.loghttp;
 
-import com.amazon.dataprepper.armeria.authentication.ArmeriaAuthenticationProvider;
+import com.amazon.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.metrics.PluginMetrics;
@@ -171,8 +171,8 @@ class HTTPSourceTest {
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
 
         pluginFactory = mock(PluginFactory.class);
-        final ArmeriaAuthenticationProvider authenticationProvider = mock(ArmeriaAuthenticationProvider.class);
-        when(pluginFactory.loadPlugin(eq(ArmeriaAuthenticationProvider.class), any(PluginSetting.class)))
+        final ArmeriaHttpAuthenticationProvider authenticationProvider = mock(ArmeriaHttpAuthenticationProvider.class);
+        when(pluginFactory.loadPlugin(eq(ArmeriaHttpAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
 
         testBuffer = getBuffer();

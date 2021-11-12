@@ -1,3 +1,14 @@
+/*
+ *  SPDX-License-Identifier: Apache-2.0
+ *
+ *  The OpenSearch Contributors require contributions made to
+ *  this file be licensed under the Apache-2.0 license or a
+ *  compatible open source license.
+ *
+ *  Modifications Copyright OpenSearch Contributors. See
+ *  GitHub history for details.
+ */
+
 package com.amazon.dataprepper.plugins;
 
 import com.linecorp.armeria.client.WebClient;
@@ -15,13 +26,13 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-class UnauthenticatedArmeriaAuthenticationProviderTest {
+class UnauthenticatedArmeriaHttpAuthenticationProviderTest {
     @RegisterExtension
     static ServerExtension server = new ServerExtension() {
         @Override
         protected void configure(final ServerBuilder sb) {
             sb.service("/test", (ctx, req) -> HttpResponse.of(200));
-            new UnauthenticatedArmeriaAuthenticationProvider().addAuthenticationDecorator(sb);
+            new UnauthenticatedArmeriaHttpAuthenticationProvider().addAuthenticationDecorator(sb);
         }
     };
 

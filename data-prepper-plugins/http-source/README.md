@@ -52,8 +52,8 @@ source:
       unauthenticated:
 ```
 
-This plugin uses pluggable authentication. To provide custom authentication,
-create a plugin which implements [`ArmeriaAuthenticationProvider`](../armeria-common/src/main/java/com/amazon/dataprepper/armeria/authentication/ArmeriaAuthenticationProvider.java)
+This plugin uses pluggable authentication for HTTP servers. To provide custom authentication,
+create a plugin which implements [`ArmeriaHttpAuthenticationProvider`](../armeria-common/src/main/java/com/amazon/dataprepper/armeria/authentication/ArmeriaHttpAuthenticationProvider.java)
 
 
 ### SSL

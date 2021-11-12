@@ -18,7 +18,35 @@ source:
 * proto_reflection_service(Optional) => A boolean enables a reflection service for Protobuf services (see [ProtoReflectionService](https://grpc.github.io/grpc-java/javadoc/io/grpc/protobuf/services/ProtoReflectionService.html) and [gRPC reflection](https://github.com/grpc/grpc-java/blob/master/documentation/server-reflection-tutorial.md) docs). Default is ```false```.
 * unframed_requests(Optional) => A boolean to enable requests not framed using the gRPC wire protocol. 
 * thread_count(Optional) => the number of threads to keep in the ScheduledThreadPool. Default is `200`.
-* max_connection_count(Optional) => the maximum allowed number of open connections. Default is `500`.
+* max_connection_count(Optional) => the maximum allowed number of open connections. Default is `500`. 
+* authentication(Optional) => An authentication configuration. By default, this runs an unauthenticated server. See below for more information.
+
+### Authentication Configurations
+
+By default, the otel-trace-source input is unauthenticated.
+
+The following is an example of how to run the server with HTTP Basic authentication:
+
+```yaml
+source:
+  otel_trace_source:
+    authentication:
+      http_basic:
+        username: my-user
+        password: my_s3cr3t
+```
+
+You can also explicitly disable authentication with:
+
+```yaml
+source:
+  otel_trace_source:
+    authentication:
+      unauthenticated:
+```
+
+This plugin uses pluggable authentication for GRPC servers. To provide custom authentication,
+create a plugin which implements [`GrpcAuthenticationProvider`](../armeria-common/src/main/java/com/amazon/dataprepper/armeria/authentication/GrpcAuthenticationProvider.java)
 
 ### SSL
 

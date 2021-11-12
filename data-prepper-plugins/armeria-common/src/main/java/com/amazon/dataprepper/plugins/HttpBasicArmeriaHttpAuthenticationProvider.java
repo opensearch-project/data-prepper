@@ -1,6 +1,11 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package com.amazon.dataprepper.plugins;
 
-import com.amazon.dataprepper.armeria.authentication.ArmeriaAuthenticationProvider;
+import com.amazon.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import com.amazon.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -18,14 +23,14 @@ import java.util.function.Function;
  * @since 1.2
  */
 @DataPrepperPlugin(name = "http_basic",
-        pluginType = ArmeriaAuthenticationProvider.class,
+        pluginType = ArmeriaHttpAuthenticationProvider.class,
         pluginConfigurationType = HttpBasicAuthenticationConfig.class)
-public class HttpBasicArmeriaAuthenticationProvider implements ArmeriaAuthenticationProvider {
+public class HttpBasicArmeriaHttpAuthenticationProvider implements ArmeriaHttpAuthenticationProvider {
 
     private final HttpBasicAuthenticationConfig httpBasicAuthenticationConfig;
 
     @DataPrepperPluginConstructor
-    public HttpBasicArmeriaAuthenticationProvider(final HttpBasicAuthenticationConfig httpBasicAuthenticationConfig) {
+    public HttpBasicArmeriaHttpAuthenticationProvider(final HttpBasicAuthenticationConfig httpBasicAuthenticationConfig) {
         Objects.requireNonNull(httpBasicAuthenticationConfig);
         Objects.requireNonNull(httpBasicAuthenticationConfig.getUsername());
         Objects.requireNonNull(httpBasicAuthenticationConfig.getPassword());
