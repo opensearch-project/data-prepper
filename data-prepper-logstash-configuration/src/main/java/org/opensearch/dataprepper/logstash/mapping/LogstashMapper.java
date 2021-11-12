@@ -17,26 +17,29 @@ import java.util.List;
  */
 public class LogstashMapper {
     public PipelineModel mapPipeline(LogstashConfiguration logstashConfiguration) {
-        LogstashPluginMapper pluginMapper = new DefaultPluginMapper();
 
-        List<PluginModel> sourcePluginModels = new LinkedList<>();
-        List<PluginModel> prepperPluginModels = new LinkedList<>();
-        List<PluginModel> sinkPluginModels = new LinkedList<>();
-
-        List<LogstashPlugin> inputLogstashPluginList = logstashConfiguration.getPluginSection(LogstashPluginType.INPUT);
-        if (inputLogstashPluginList != null)
-            inputLogstashPluginList.forEach(logstashPlugin -> sourcePluginModels.add(pluginMapper.mapPlugin(logstashPlugin)));
+        List<PluginModel> sourcePluginModels = mapPluginSection(logstashConfiguration, LogstashPluginType.INPUT);
+        PluginModel sourcePlugin = null;
         if (sourcePluginModels.size() > 1)
             throw new LogstashMappingException("More than 1 source plugins are not supported");
+        else if (sourcePluginModels.size() == 1)
+            sourcePlugin = sourcePluginModels.get(0);
 
-        List<LogstashPlugin> filterLogstashPluginList = logstashConfiguration.getPluginSection(LogstashPluginType.FILTER);
-        if (filterLogstashPluginList != null)
-            filterLogstashPluginList.forEach(logstashPlugin -> prepperPluginModels.add(pluginMapper.mapPlugin(logstashPlugin)));
+        List<PluginModel> prepperPluginModels = mapPluginSection(logstashConfiguration, LogstashPluginType.FILTER);
 
-        List<LogstashPlugin> outputLogstashPluginList = logstashConfiguration.getPluginSection(LogstashPluginType.OUTPUT);
-        if (outputLogstashPluginList != null)
-            outputLogstashPluginList.forEach(logstashPlugin -> sinkPluginModels.add(pluginMapper.mapPlugin(logstashPlugin)));
+        List<PluginModel> sinkPluginModels = mapPluginSection(logstashConfiguration, LogstashPluginType.OUTPUT);
 
-        return new PipelineModel(sourcePluginModels.get(0), prepperPluginModels, sinkPluginModels, 1, 3_000);
+        return new PipelineModel(sourcePlugin, prepperPluginModels, sinkPluginModels, null, null);
+    }
+
+    private List<PluginModel> mapPluginSection(LogstashConfiguration logstashConfiguration, LogstashPluginType logstashPluginType) {
+        LogstashPluginMapper pluginMapper = new DefaultPluginMapper();
+        List<PluginModel> pluginModels = new LinkedList<>();
+
+        List<LogstashPlugin> logstashPluginList = logstashConfiguration.getPluginSection(logstashPluginType);
+        if (logstashPluginList != null)
+            logstashPluginList.forEach(logstashPlugin -> pluginModels.add(pluginMapper.mapPlugin(logstashPlugin)));
+
+        return pluginModels;
     }
 }

@@ -64,15 +64,6 @@ public class TestDataProvider {
                 .attributes(Arrays.asList(getArrayTypeAttribute(), getStringTypeAttribute())).build();
     }
 
-//    public static PluginModel getSamplePluginModel() {
-//        Map<String, Object> attributes = new LinkedHashMap<>();
-//        attributes.put("aws_sigv4", true);
-//        attributes.put("insecure", false);
-//        attributes.put("aws_region", "us-west-2");
-//        attributes.put("hosts", Collections.singletonList("https://localhost:9200"));
-//        return new PluginModel("opensearch", attributes);
-//    }
-
     private static LogstashAttribute getArrayTypeAttribute() {
         LogstashAttributeValue logstashAttributeValue = LogstashAttributeValue.builder()
                 .attributeValueType(LogstashValueType.ARRAY)
