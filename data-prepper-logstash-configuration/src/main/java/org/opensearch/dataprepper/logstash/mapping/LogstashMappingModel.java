@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -26,11 +27,11 @@ class LogstashMappingModel implements LogstashAttributesMappings {
 
     @JsonProperty
     @JsonSetter(nulls = Nulls.AS_EMPTY)
-    private Map<String, String> mappedAttributeNames;
+    private Map<String, String> mappedAttributeNames = new HashMap<>();
 
     @JsonProperty
     @JsonSetter(nulls = Nulls.AS_EMPTY)
-    private Map<String, Object> additionalAttributes;
+    private Map<String, Object> additionalAttributes = new HashMap<>();
 
     public String getPluginName() {
         return pluginName;
