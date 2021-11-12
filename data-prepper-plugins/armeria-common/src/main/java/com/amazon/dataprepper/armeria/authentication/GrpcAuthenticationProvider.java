@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package com.amazon.dataprepper.armeria.authentication;
 
 import io.grpc.ServerInterceptor;
@@ -18,7 +23,7 @@ public interface GrpcAuthenticationProvider {
     String UNAUTHENTICATED_PLUGIN_NAME = "unauthenticated";
 
     /**
-     * Returns a { @linkServerInterceptor } that does authentication
+     * Returns a {@link ServerInterceptor} that does authentication
      * @since 1.2
      */
     ServerInterceptor getAuthenticationInterceptor();

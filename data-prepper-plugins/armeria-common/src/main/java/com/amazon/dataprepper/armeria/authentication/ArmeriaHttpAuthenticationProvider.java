@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package com.amazon.dataprepper.armeria.authentication;
 
 import com.linecorp.armeria.server.ServerBuilder;
