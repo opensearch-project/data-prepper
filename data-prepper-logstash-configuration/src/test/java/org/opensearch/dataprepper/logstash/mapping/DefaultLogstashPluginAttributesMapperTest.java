@@ -66,6 +66,26 @@ class DefaultLogstashPluginAttributesMapperTest {
     }
 
     @Test
+    void mapAttributes_throws_with_null_Mappings_mappedAttributeNames() {
+        final DefaultLogstashPluginAttributesMapper objectUnderTest = createObjectUnderTest();
+
+        when(mappings.getMappedAttributeNames()).thenReturn(null);
+
+        assertThrows(NullPointerException.class,
+                () -> objectUnderTest.mapAttributes(logstashAttributes, mappings));
+    }
+
+    @Test
+    void mapAttributes_throws_with_null_Mappings_additionalAttributes() {
+        final DefaultLogstashPluginAttributesMapper objectUnderTest = createObjectUnderTest();
+
+        when(mappings.getAdditionalAttributes()).thenReturn(null);
+
+        assertThrows(NullPointerException.class,
+                () -> objectUnderTest.mapAttributes(logstashAttributes, mappings));
+    }
+
+    @Test
     void mapAttributes_sets_mapped_attributes() {
         final String dataPrepperAttribute = UUID.randomUUID().toString();
 
@@ -93,17 +113,5 @@ class DefaultLogstashPluginAttributesMapperTest {
         assertThat(actualPluginSettings.size(), equalTo(1));
         assertThat(actualPluginSettings, hasKey(additionalAttributeName));
         assertThat(actualPluginSettings.get(additionalAttributeName), equalTo(additionalAttributeValue));
-    }
-
-    @Test
-    void mapAttributes_with_null_mappings_and_attributes() {
-        when(mappings.getMappedAttributeNames()).thenReturn(null);
-        when(mappings.getAdditionalAttributes()).thenReturn(null);
-
-        final Map<String, Object> actualPluginSettings =
-                createObjectUnderTest().mapAttributes(logstashAttributes, mappings);
-
-        assertThat(actualPluginSettings, notNullValue());
-        assertThat(actualPluginSettings.size(), equalTo(0));
     }
 }

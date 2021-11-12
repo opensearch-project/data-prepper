@@ -22,16 +22,14 @@ class DefaultLogstashPluginAttributesMapper implements LogstashPluginAttributesM
 
         Objects.requireNonNull(logstashAttributes);
         Objects.requireNonNull(logstashAttributesMappings);
+        Objects.requireNonNull(logstashAttributesMappings.getMappedAttributeNames());
+        Objects.requireNonNull(logstashAttributesMappings.getAdditionalAttributes());
 
-        final Map<String, Object> pluginSettings = new LinkedHashMap<>();
-
-        if(logstashAttributesMappings.getAdditionalAttributes() != null) {
-            pluginSettings.putAll(logstashAttributesMappings.getAdditionalAttributes());
-        }
+        final Map<String, Object> pluginSettings = new LinkedHashMap<>(logstashAttributesMappings.getAdditionalAttributes());
 
         final Map<String, String> mappedAttributeNames = logstashAttributesMappings.getMappedAttributeNames();
         logstashAttributes.forEach(logstashAttribute -> {
-            if (mappedAttributeNames != null && mappedAttributeNames.containsKey(logstashAttribute.getAttributeName())) {
+            if (mappedAttributeNames.containsKey(logstashAttribute.getAttributeName())) {
                 pluginSettings.put(
                         mappedAttributeNames.get(logstashAttribute.getAttributeName()),
                         logstashAttribute.getAttributeValue().getValue()
