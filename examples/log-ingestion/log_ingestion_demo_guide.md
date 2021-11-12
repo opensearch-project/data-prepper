@@ -1,6 +1,6 @@
 # Data Prepper Log Ingestion Demo Guide
 
-This is a guide that will walk users through setting up a sample Data Prepper for log ingestion. 
+This is a guide that will walk users through setting up a sample Data Prepper pipeline for log ingestion. 
 This guide will go through the steps required to create a simple log ingestion pipeline from \
 Fluent Bit → Data Prepper → OpenSearch. This log ingestion flow is shown in the diagram below.
 
@@ -22,8 +22,9 @@ Fluent Bit → Data Prepper → OpenSearch. This log ingestion flow is shown in 
 is mounted as a Docker volume through the `docker-compose.yaml`.
 
 
-3. Create an empty file named `test.log`. This file can be named whatever you like, but the `docker-compose.yaml` will need to be updated accordingly.
-
+3. An empty file named `test.log` has been created. This file is also mounted through the  `docker-compose.yaml`, and will be the file
+FluentBit is tailing to collect logs from.
+   
 
 4. Now that you understand a bit more about how FluentBit and OpenSearch are set up, run them with:
 
@@ -33,17 +34,16 @@ docker-compose up
 
 ### Data Prepper Setup
 
-1. Pull down the Data Prepper Docker image
+1. Build the Data Prepper 1.2 SNAPSHOT Docker image by following the instructions found [here](../../release/docker/README.md).
 
-```
-docker pull opensearchproject/data-prepper:latest
-```
-   
+ 
 2. Take a look at [log_pipeline.yaml](log_pipeline.yaml). This configuration will take logs sent to the [http source](../../data-prepper-plugins/http-source), 
 process them with the [Grok Prepper](../../data-prepper-plugins/grok-prepper) by matching against the `COMMONAPACHELOG` pattern, 
 and send the processed logs to a local [OpenSearch sink](../../data-prepper-plugins/opensearch) to an index named `apache_logs`.
 
-3. Run the Data Prepper docker image with `log_pipeline.yaml` from step 2 passed in.
+
+3. Run the Data Prepper docker image with the `log_pipeline.yaml` from step 2 passed in. This command attaches the Data Prepper Docker image to the Docker network `log-ingestion_opensearch_net` so that 
+FluentBit is able to send logs to the http source of Data Prepper.
 
 ```
 docker run --name data-prepper -v /full/path/to/log_pipeline.yaml:/usr/share/data-prepper/pipelines.yaml --network "log-ingestion_opensearch-net" opensearch-data-prepper:1.2.0-SNAPSHOT
@@ -57,7 +57,26 @@ INFO  com.amazon.dataprepper.pipeline.ProcessWorker - log-pipeline Worker: No re
 
 ### Apache Log Generator
 
-Note that if you just want to see the log ingestion workflow in action, you can simply copy and paste some logs into the `test.log` file yourself. 
+Note that if you just want to see the log ingestion workflow in action, you can simply copy and paste some logs into the `test.log` file yourself without using the Python [Fake Apache Log Generator](https://github.com/graytaylor0/Fake-Apache-Log-Generator). 
+Here is a sample batch of randomly generated Apache Logs if you choose to take this route.
+
+```
+63.173.168.120 - - [04/Nov/2021:15:07:25 -0500] "GET /search/tag/list HTTP/1.0" 200 5003
+71.52.186.114 - - [04/Nov/2021:15:07:27 -0500] "GET /search/tag/list HTTP/1.0" 200 5015
+223.195.133.151 - - [04/Nov/2021:15:07:29 -0500] "GET /posts/posts/explore HTTP/1.0" 200 5049
+249.189.38.1 - - [04/Nov/2021:15:07:31 -0500] "GET /app/main/posts HTTP/1.0" 200 5005
+36.155.45.2 - - [04/Nov/2021:15:07:33 -0500] "GET /search/tag/list HTTP/1.0" 200 5001
+4.54.90.166 - - [04/Nov/2021:15:07:35 -0500] "DELETE /wp-content HTTP/1.0" 200 4965
+214.246.93.195 - - [04/Nov/2021:15:07:37 -0500] "GET /apps/cart.jsp?appID=4401 HTTP/1.0" 200 5008
+72.108.181.108 - - [04/Nov/2021:15:07:39 -0500] "GET /wp-content HTTP/1.0" 200 5020
+194.43.128.202 - - [04/Nov/2021:15:07:41 -0500] "GET /app/main/posts HTTP/1.0" 404 4943
+14.169.135.206 - - [04/Nov/2021:15:07:43 -0500] "DELETE /wp-content HTTP/1.0" 200 4985
+208.0.179.237 - - [04/Nov/2021:15:07:45 -0500] "GET /explore HTTP/1.0" 200 4953
+134.29.61.53 - - [04/Nov/2021:15:07:47 -0500] "GET /explore HTTP/1.0" 200 4937
+213.229.161.38 - - [04/Nov/2021:15:07:49 -0500] "PUT /posts/posts/explore HTTP/1.0" 200 5092
+82.41.77.121 - - [04/Nov/2021:15:07:51 -0500] "GET /app/main/posts HTTP/1.0" 200 5016
+```
+
 In order to simulate an application generating logs, a simple python script will be used. This script only runs with python 2. You can download this script by running
 
 ```
