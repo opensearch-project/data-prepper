@@ -16,7 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-@SuppressWarnings("unchecked")
 public class GrokLogstashPluginAttributesMapper implements LogstashPluginAttributesMapper {
     protected static final String LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME = "match";
     private static final Logger LOG = LoggerFactory.getLogger(GrokLogstashPluginAttributesMapper.class);
@@ -53,6 +52,7 @@ public class GrokLogstashPluginAttributesMapper implements LogstashPluginAttribu
         return pluginSettings;
     }
 
+    @SuppressWarnings("unchecked")
     private Map<String, List<String>> mergeMatchAttributes(final List<LogstashAttribute> matchLogstashAttributes) {
         final Map<String, List<String>> dataPrepperGrokMatch = new HashMap<>();
         matchLogstashAttributes.forEach(matchLogstashAttribute -> {

@@ -61,16 +61,13 @@ class GrokLogstashPluginAttributesMapperTest {
                 Arrays.asList(Map.entry("message", "fake message regex 1"), Map.entry("other", "fake other regex")));
         final LogstashAttribute matchMessageLogstashAttribute2 = prepareArrayTypeMatchLogstashAttribute("message", "fake message regex 2");
         final List<LogstashAttribute> matchLogstashAttributes = Arrays.asList(matchMultiKeysLogstashAttribute, matchMessageLogstashAttribute2);
-        final Map<String, Object> expectedPluginSettings = new HashMap<String, Object>() {{
-            put("message", Arrays.asList("fake message regex 1", "fake message regex 2"));
-            put("other", Collections.singletonList("fake other regex"));
-        }};
+        final Map<String, Object> expectedMatchSettings = Map.of("message", Arrays.asList("fake message regex 1", "fake message regex 2"),
+                        "other", Collections.singletonList("fake other regex"));
 
         final String dataPrepperMatchAttribute = "match";
         final LogstashAttributesMappings mappings = mock(LogstashAttributesMappings.class);
-        when(mappings.getMappedAttributeNames()).thenReturn(new HashMap<String, String>() {{
-            put(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME, dataPrepperMatchAttribute);
-        }});
+        when(mappings.getMappedAttributeNames()).thenReturn(
+                Collections.singletonMap(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME, dataPrepperMatchAttribute));
 
         final Map<String, Object> actualPluginSettings =
                 createObjectUnderTest().mapAttributes(matchLogstashAttributes, mappings);
@@ -78,7 +75,7 @@ class GrokLogstashPluginAttributesMapperTest {
         assertThat(actualPluginSettings, notNullValue());
         assertThat(actualPluginSettings.size(), equalTo(1));
         assertThat(actualPluginSettings, hasKey(dataPrepperMatchAttribute));
-        assertThat(actualPluginSettings.get(dataPrepperMatchAttribute), equalTo(expectedPluginSettings));
+        assertThat(actualPluginSettings.get(dataPrepperMatchAttribute), equalTo(expectedMatchSettings));
     }
 
     private LogstashAttribute prepareArrayTypeMatchLogstashAttribute(final String matchKey, final String matchValue) {
