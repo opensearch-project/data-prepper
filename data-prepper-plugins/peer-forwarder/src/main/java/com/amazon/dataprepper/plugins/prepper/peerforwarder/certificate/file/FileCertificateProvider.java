@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Objects;
 
 public class FileCertificateProvider implements CertificateProvider {
@@ -20,9 +21,11 @@ public class FileCertificateProvider implements CertificateProvider {
 
     public Certificate getCertificate() {
         try {
-            final Path certFilePath = Path.of(certificateFilePath);
+            final Path certFilePath = Paths.get(certificateFilePath);
 
-            final String certAsString = Files.readString(certFilePath);
+            final byte[] bytes = Files.readAllBytes(certFilePath);
+
+            final String certAsString = new String(bytes);
 
             return new Certificate(certAsString);
         } catch (final Exception ex) {
