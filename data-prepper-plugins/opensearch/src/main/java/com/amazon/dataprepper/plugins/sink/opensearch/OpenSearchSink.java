@@ -44,12 +44,14 @@ import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 @DataPrepperPlugin(name = "opensearch", pluginType = Sink.class)
 public class OpenSearchSink extends AbstractSink<Record<Object>> {
   public static final String BULKREQUEST_LATENCY = "bulkRequestLatency";
   public static final String BULKREQUEST_ERRORS = "bulkRequestErrors";
+  public static final String BULKREQUEST_SIZE_BYTES = "bulkRequestSizeBytes";
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
   // Pulled from BulkRequest to make estimation of bytes consistent
@@ -68,10 +70,13 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
 
   private final Timer bulkRequestTimer;
   private final Counter bulkRequestErrorsCounter;
+  private final AtomicLong bulkRequestSizeBytes;
+
   public OpenSearchSink(final PluginSetting pluginSetting) {
     super(pluginSetting);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
+    bulkRequestSizeBytes = pluginMetrics.gauge(BULKREQUEST_SIZE_BYTES, new AtomicLong());
 
     this.openSearchSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting);
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
@@ -165,6 +170,7 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
     bulkRequestTimer.record(() -> {
       try {
         bulkRetryStrategy.execute(bulkRequest);
+        bulkRequestSizeBytes.addAndGet(bulkRequest.estimatedSizeInBytes());
       } catch (final InterruptedException e) {
         LOG.error("Unexpected Interrupt:", e);
         bulkRequestErrorsCounter.increment();

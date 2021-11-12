@@ -191,6 +191,15 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
                     .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
     assertEquals(1, documentErrorsMeasurements.size());
     assertEquals(0.0, documentErrorsMeasurements.get(0).getValue(), 0);
+
+    /**
+     * Metrics: Bulk Request Size in Bytes
+     */
+    final List<Measurement> bulkRequestSizeBytesMetrics = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
+    assertEquals(1, bulkRequestSizeBytesMetrics.size());
+    assertEquals(2188.0, bulkRequestSizeBytesMetrics.get(0).getValue(), 0);
   }
 
   public void testOutputRawSpanWithDLQ() throws IOException, InterruptedException {
@@ -233,6 +242,15 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
                     .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
     assertEquals(1, documentErrorsMeasurements.size());
     assertEquals(1.0, documentErrorsMeasurements.get(0).getValue(), 0);
+
+    /**
+     * Metrics: Bulk Request Size in Bytes
+     */
+    final List<Measurement> bulkRequestSizeBytesMetrics = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
+    assertEquals(1, bulkRequestSizeBytesMetrics.size());
+    assertEquals(2181.0, bulkRequestSizeBytesMetrics.get(0).getValue(), 0);
   }
 
   public void testInstantiateSinkServiceMapDefault() throws IOException {
@@ -276,6 +294,15 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     assertEquals(3, bulkRequestLatencies.size());
     // COUNT
     Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+
+    /**
+     * Metrics: Bulk Request Size in Bytes
+     */
+    final List<Measurement> bulkRequestSizeBytesMetrics = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
+    assertEquals(1, bulkRequestSizeBytesMetrics.size());
+    assertEquals(309.0, bulkRequestSizeBytesMetrics.get(0).getValue(), 0);
 
     // Check restart for index already exists
     sink = new OpenSearchSink(pluginSetting);
