@@ -61,6 +61,49 @@ java -jar data-prepper-core-$VERSION.jar pipelines.yaml data-prepper-config.yaml
 
 Optionally add `"-Dlog4j.configurationFile=config/log4j2.properties"` to the command if you would like to pass a custom log4j2 properties file. If no properties file is provided, Data Prepper will default to the log4j2.properties file in the *shared-config* directory.
 
+## Building & Running the Docker Image
+
+In some cases, you may wish to build a local Docker image and run it. This is useful if you are making a change to the
+Docker image, are looking to run a bleeding-edge Docker image, or are needing a custom-built Docker image of Data Prepper.
+
+### Building the Docker Image
+
+To build the Docker image, run:
+
+```
+./gradlew clean :release:docker:docker -Prelease
+```
+
+If successful, the Docker image will be available locally.
+The repository is `opensearch-data-prepper` and the tag is
+the current version as defined in [gradle.properties](../gradle.properties).
+
+You can run the following command in Linux environments to see
+your Data Prepper Docker images:
+
+```
+docker images | grep opensearch-data-prepper
+```
+
+The results will look somewhat like the following:
+```
+opensearch-data-prepper   1.2.0-SNAPSHOT   3e81ef26250c   23 hours ago   566MB
+```
+
+### Running from a Local Docker Image
+
+If you build a local Docker image, you can run it using a variation on the following command. You
+may wish to change the ports you map depending on your specific pipeline configuration.
+
+```
+docker run \
+-p 21890:21890 \
+-v ${PWD}/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml \
+-v ${PWD}/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml \
+opensearch-data-prepper:1.2.0-SNAPSHOT
+```
+
+
 ## Coding Guidance
 
 ### Documentation
