@@ -12,9 +12,9 @@ import java.util.List;
  */
 public class PipelineModel {
 
-    private final PluginModel sourcePluginModel;
-    private final List<PluginModel> prepperPluginModel;
-    private final List<PluginModel> sinkPluginModel;
+    private final PluginModel source;
+    private final List<PluginModel> preppers;
+    private final List<PluginModel> sinks;
     private final Integer workers;
     private final Integer readBatchDelay;
 
@@ -25,23 +25,23 @@ public class PipelineModel {
             @JsonProperty("sink") final List<PluginModel> sinks,
             @JsonProperty("workers") final Integer workers,
             @JsonProperty("delay") final Integer delay) {
-        this.sourcePluginModel = source;
-        this.prepperPluginModel = preppers;
-        this.sinkPluginModel = sinks;
+        this.source = source;
+        this.preppers = preppers;
+        this.sinks = sinks;
         this.workers = workers;
         this.readBatchDelay = delay;
     }
 
-    public PluginModel getSourcePluginModel() {
-        return sourcePluginModel;
+    public PluginModel getSource() {
+        return source;
     }
 
-    public List<PluginModel> getPrepperPluginModel() {
-        return prepperPluginModel;
+    public List<PluginModel> getPreppers() {
+        return preppers;
     }
 
-    public List<PluginModel> getSinkPluginModel() {
-        return sinkPluginModel;
+    public List<PluginModel> getSinks() {
+        return sinks;
     }
 
     public Integer getWorkers() {
