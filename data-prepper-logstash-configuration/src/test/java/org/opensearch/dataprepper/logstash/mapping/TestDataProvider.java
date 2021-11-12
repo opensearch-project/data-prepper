@@ -1,17 +1,44 @@
 package org.opensearch.dataprepper.logstash.mapping;
 
 import com.amazon.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.logstash.model.LogstashConfiguration;
+import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
+import org.opensearch.dataprepper.logstash.model.LogstashPluginType;
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 import org.opensearch.dataprepper.logstash.model.LogstashAttributeValue;
-import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
 import org.opensearch.dataprepper.logstash.model.LogstashValueType;
 
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
+
 
 public class TestDataProvider {
+
+    public static LogstashConfiguration sampleConfiguration() {
+        return LogstashConfiguration.builder()
+                .pluginSections(Collections.singletonMap(LogstashPluginType.INPUT, Collections.singletonList(pluginData())))
+                .build();
+    }
+
+    public static PluginModel samplePluginModel() {
+        Map<String, Object> pluginSettings = new LinkedHashMap<>();
+        pluginSettings.put("hosts", Collections.singletonList("https://localhost:9200"));
+        pluginSettings.put("aws_region", "us-west-2");
+        pluginSettings.put("aws_sigv4", true);
+        pluginSettings.put("insecure", false);
+
+        return new PluginModel("opensearch", pluginSettings);
+    }
+
+    public static LogstashConfiguration sampleConfigurationWithMoreThanOnePlugin() {
+        List<LogstashPlugin> logstashPluginList = Arrays.asList(pluginData(), pluginData());
+        return LogstashConfiguration.builder()
+                .pluginSections(Collections.singletonMap(LogstashPluginType.INPUT, logstashPluginList))
+                .build();
+    }
 
     public static LogstashPlugin invalidMappingResourceNameData() {
         return LogstashPlugin.builder()
@@ -35,15 +62,6 @@ public class TestDataProvider {
         return LogstashPlugin.builder()
                 .pluginName("amazon_es")
                 .attributes(Arrays.asList(getArrayTypeAttribute(), getStringTypeAttribute())).build();
-    }
-
-    public static PluginModel getSamplePluginModel() {
-        Map<String, Object> attributes = new LinkedHashMap<>();
-        attributes.put("aws_sigv4", true);
-        attributes.put("insecure", false);
-        attributes.put("aws_region", "us-west-2");
-        attributes.put("hosts", Collections.singletonList("https://localhost:9200"));
-        return new PluginModel("opensearch", attributes);
     }
 
     private static LogstashAttribute getArrayTypeAttribute() {
