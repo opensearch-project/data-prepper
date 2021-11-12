@@ -1,4 +1,11 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.logstash.mapping;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.Map;
 
@@ -7,23 +14,26 @@ import java.util.Map;
  *
  * @since 1.2
  */
-public class LogstashMappingModel {
+class LogstashMappingModel implements LogstashAttributesMappings {
 
+    @JsonProperty
     private String pluginName;
+
+    @JsonProperty
+    private String attributesMapperClass;
+
+    @JsonProperty
     private Map<String, String> mappedAttributeNames;
+
+    @JsonProperty
     private Map<String, Object> additionalAttributes;
-
-    public LogstashMappingModel(final String pluginName, final Map<String, String> mappedAttributeNames,
-                                final Map<String, Object> additionalAttributes) {
-        this.pluginName = pluginName;
-        this.mappedAttributeNames = mappedAttributeNames;
-        this.additionalAttributes = additionalAttributes;
-    }
-
-    public LogstashMappingModel() {}
 
     public String getPluginName() {
         return pluginName;
+    }
+
+    public String getAttributesMapperClass() {
+        return attributesMapperClass;
     }
 
     public Map<String, String> getMappedAttributeNames() {
