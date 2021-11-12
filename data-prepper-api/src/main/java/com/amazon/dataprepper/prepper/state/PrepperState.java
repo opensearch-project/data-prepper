@@ -17,8 +17,10 @@ import java.util.function.BiFunction;
 
 /**
  * Holds state for preppers as a key/value mapping
- * @param <T>
- *     Type parameter for the value type. Keys will be Strings.
+ * @param <K>
+ *     Type parameter for the key type.
+ * @param <V>
+ *     Type parameter for the value type.
  */
 public interface PrepperState<K, V> {
 
