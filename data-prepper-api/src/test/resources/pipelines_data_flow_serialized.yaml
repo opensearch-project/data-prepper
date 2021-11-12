@@ -1,0 +1,7 @@
+test-pipeline:
+  source:
+    testSource: null
+  prepper:
+  - testPrepper: null
+  sink:
+  - testSink: null
