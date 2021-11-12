@@ -4,11 +4,14 @@ import org.antlr.v4.runtime.tree.TerminalNodeImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -186,6 +189,24 @@ class LogstashVisitorTest {
     }
 
     @Test
+    void visit_plugin_with_null_attribute() {
+        given(pluginContextMock.name()).willReturn(nameContextMock);
+        given(nameContextMock.getText()).willReturn(TestDataProvider.RANDOM_STRING_1);
+
+        final LogstashParser.AttributeContext attributeContext = mock(LogstashParser.AttributeContext.class);
+        given(pluginContextMock.attributes()).willReturn(attributesContextMock);
+        when(attributesContextMock.attribute()).thenReturn(Collections.singletonList(attributeContext));
+
+        when(logstashVisitor.visitAttribute(attributeContext))
+                .thenReturn(null);
+
+        final LogstashPlugin actualLogstashPlugin = (LogstashPlugin) logstashVisitor.visitPlugin(pluginContextMock);
+        assertThat(actualLogstashPlugin, notNullValue());
+        assertThat(actualLogstashPlugin.getAttributes(), notNullValue());
+        assertThat(actualLogstashPlugin.getAttributes().size(), equalTo(0));
+    }
+
+    @Test
     void visit_plugin_with_one_array_context_attribute_test() {
         given(pluginContextMock.name()).willReturn(nameContextMock);
         given(nameContextMock.getText()).willReturn(TestDataProvider.RANDOM_STRING_1);
@@ -253,6 +274,12 @@ class LogstashVisitorTest {
             assertThat(actualLogstashPlugin.getAttributes().get(i).getAttributeValue().getAttributeValueType(),
                     equalTo(expectedLogstashPlugin.getAttributes().get(i).getAttributeValue().getAttributeValueType()));
         }
+    }
+
+    @Test
+    void visit_attribute_without_a_value_returns_null() {
+        assertThat(logstashVisitor.visitAttribute(attributeContextMock),
+            nullValue());
     }
 
     @Test
