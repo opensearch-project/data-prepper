@@ -5,40 +5,17 @@
 
 package com.amazon.dataprepper.model.prepper;
 
+import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
 /**
+ * @deprecated as of 1.2, replace by {@link Processor}
  * Prepper interface. These are intermediary processing units using which users can filter,
  * transform and enrich the records into desired format before publishing to the sink.
+ *
  */
-public interface Prepper<InputRecord extends Record<?>, OutputRecord extends Record<?>> {
-
-    /**
-     * execute the prepper logic which could potentially modify the incoming record. The level to which the record has
-     * been modified depends on the implementation
-     *
-     * @param records Input records that will be modified/processed
-     * @return Record  modified output records
-     */
-    Collection<OutputRecord> execute(Collection<InputRecord> records);
-
-    /**
-     * Indicates to the Prepper that shutdown is imminent and any data currently held by the Prepper
-     * should be flushed downstream.
-     */
-    void prepareForShutdown();
-
-    /**
-     * Returns true if the Prepper's internal state is safe to be shutdown.
-     *
-     * @return shutdown readiness status
-     */
-    boolean isReadyForShutdown();
-
-    /**
-     * Final shutdown call to clean up any resources that need to be closed.
-     */
-    void shutdown();
+@Deprecated
+public interface Prepper<InputRecord extends Record<?>, OutputRecord extends Record<?>> extends Processor<InputRecord, OutputRecord> {
 }
