@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -23,7 +24,7 @@ import java.util.stream.Collectors;
  * @since 1.2
  */
 @SuppressWarnings("rawtypes")
-class LogstashVisitor extends LogstashBaseVisitor {
+public class LogstashVisitor extends LogstashBaseVisitor {
 
     @Override
     public Object visitConfig(final LogstashParser.ConfigContext configContext) {
@@ -65,6 +66,7 @@ class LogstashVisitor extends LogstashBaseVisitor {
         final String pluginName = pluginContext.name().getText();
         final List<LogstashAttribute> logstashAttributeList = pluginContext.attributes().attribute().stream()
                 .map(attribute -> (LogstashAttribute) visitAttribute(attribute))
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
         return LogstashPlugin.builder()
@@ -77,6 +79,9 @@ class LogstashVisitor extends LogstashBaseVisitor {
     public Object visitAttribute(final LogstashParser.AttributeContext attributeContext) {
         LogstashValueType logstashValueType = null;
         Object value = null;
+
+        if(attributeContext.value() == null)
+            return null;
 
         if (attributeContext.value().getChild(0) instanceof LogstashParser.ArrayContext) {
             logstashValueType = LogstashValueType.ARRAY;
