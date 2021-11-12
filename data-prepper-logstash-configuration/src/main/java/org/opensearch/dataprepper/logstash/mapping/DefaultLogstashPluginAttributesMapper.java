@@ -12,18 +12,28 @@ import org.slf4j.LoggerFactory;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 class DefaultLogstashPluginAttributesMapper implements LogstashPluginAttributesMapper {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultLogstashPluginAttributesMapper.class);
 
     @Override
     public Map<String, Object> mapAttributes(final List<LogstashAttribute> logstashAttributes, final LogstashAttributesMappings logstashAttributesMappings) {
-        final Map<String, Object> pluginSettings = new LinkedHashMap<>(logstashAttributesMappings.getAdditionalAttributes());
 
+        Objects.requireNonNull(logstashAttributes);
+        Objects.requireNonNull(logstashAttributesMappings);
+
+        final Map<String, Object> pluginSettings = new LinkedHashMap<>();
+
+        if(logstashAttributesMappings.getAdditionalAttributes() != null) {
+            pluginSettings.putAll(logstashAttributesMappings.getAdditionalAttributes());
+        }
+
+        final Map<String, String> mappedAttributeNames = logstashAttributesMappings.getMappedAttributeNames();
         logstashAttributes.forEach(logstashAttribute -> {
-            if (logstashAttributesMappings.getMappedAttributeNames().containsKey(logstashAttribute.getAttributeName())) {
+            if (mappedAttributeNames != null && mappedAttributeNames.containsKey(logstashAttribute.getAttributeName())) {
                 pluginSettings.put(
-                        logstashAttributesMappings.getMappedAttributeNames().get(logstashAttribute.getAttributeName()),
+                        mappedAttributeNames.get(logstashAttribute.getAttributeName()),
                         logstashAttribute.getAttributeValue().getValue()
                 );
             }
