@@ -1,0 +1,8 @@
+pluginName: samplePlugin
+attributesMapperClass: org.opensearch.dataprepper.Placeholder
+mappedAttributeNames:
+  valueA: keyA
+  valueB: keyB
+additionalAttributes:
+  addA: true
+  addB: staticValueB

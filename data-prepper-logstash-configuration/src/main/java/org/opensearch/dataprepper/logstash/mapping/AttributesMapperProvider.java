@@ -9,10 +9,13 @@ class AttributesMapperProvider {
     private final AttributesMapperCreator attributesMapperCreator;
     private final DefaultLogstashPluginAttributesMapper defaultLogstashPluginAttributesMapper;
 
-    protected AttributesMapperProvider() {
-        attributesMapperCreator = new AttributesMapperCreator();
-        defaultLogstashPluginAttributesMapper = new DefaultLogstashPluginAttributesMapper();
+    AttributesMapperProvider() {
+        this(new AttributesMapperCreator());
+    }
 
+    AttributesMapperProvider(final AttributesMapperCreator attributesMapperCreator) {
+        this.attributesMapperCreator = attributesMapperCreator;
+        defaultLogstashPluginAttributesMapper = new DefaultLogstashPluginAttributesMapper();
     }
 
     LogstashPluginAttributesMapper getAttributesMapper(final LogstashMappingModel mappingModel) {
