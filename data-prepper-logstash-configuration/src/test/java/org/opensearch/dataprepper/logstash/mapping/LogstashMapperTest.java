@@ -34,10 +34,10 @@ class LogstashMapperTest {
         PipelineModel expectedPipelineModel = new PipelineModel(TestDataProvider.samplePluginModel(),
                 null, null, null, null);
 
-        assertThat(actualPipelineModel.getSourcePluginModel().getPluginName(),
-                equalTo(expectedPipelineModel.getSourcePluginModel().getPluginName()));
-        assertThat(actualPipelineModel.getSourcePluginModel().getPluginSettings(),
-                equalTo(expectedPipelineModel.getSourcePluginModel().getPluginSettings()));
+        assertThat(actualPipelineModel.getSource().getPluginName(),
+                equalTo(expectedPipelineModel.getSource().getPluginName()));
+        assertThat(actualPipelineModel.getSource().getPluginSettings(),
+                equalTo(expectedPipelineModel.getSource().getPluginSettings()));
         assertThat(actualPipelineModel.getReadBatchDelay(), equalTo(expectedPipelineModel.getReadBatchDelay()));
         assertThat(actualPipelineModel.getWorkers(), equalTo(expectedPipelineModel.getWorkers()));
     }
@@ -67,9 +67,9 @@ class LogstashMapperTest {
 
         PipelineModel actualPipelineModel =  logstashMapper.mapPipeline(logstashConfiguration);
 
-        assertThat(actualPipelineModel.getSourcePluginModel(), equalTo(null));
-        assertThat(actualPipelineModel.getPrepperPluginModel(), equalTo(Collections.emptyList()));
-        assertThat(actualPipelineModel.getSinkPluginModel(), equalTo(Collections.emptyList()));
+        assertThat(actualPipelineModel.getSource(), equalTo(null));
+        assertThat(actualPipelineModel.getPreppers(), equalTo(Collections.emptyList()));
+        assertThat(actualPipelineModel.getSinks(), equalTo(Collections.emptyList()));
         assertThat(actualPipelineModel.getReadBatchDelay(), equalTo(null));
         assertThat(actualPipelineModel.getWorkers(), equalTo(null));
     }
