@@ -1,4 +1,5 @@
 pluginName: grok
+attributesMapperClass: org.opensearch.dataprepper.logstash.mapping.GrokLogstashPluginAttributesMapper
 mappedAttributeNames:
   match: match
   break_on_match: break_on_match
