@@ -77,6 +77,12 @@ Here is a sample batch of randomly generated Apache Logs if you choose to take t
 82.41.77.121 - - [04/Nov/2021:15:07:51 -0500] "GET /app/main/posts HTTP/1.0" 200 5016
 ```
 
+Additionally, if you just want to test a single log, you can send it to `test.log` directly with:
+
+```
+echo '63.173.168.120 - - [04/Nov/2021:15:07:25 -0500] "GET /search/tag/list HTTP/1.0" 200 5003' >> test.log
+```
+
 In order to simulate an application generating logs, a simple python script will be used. This script only runs with python 2. You can download this script by running
 
 ```
