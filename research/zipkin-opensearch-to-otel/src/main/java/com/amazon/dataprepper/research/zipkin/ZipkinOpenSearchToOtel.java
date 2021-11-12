@@ -87,7 +87,7 @@ public class ZipkinOpenSearchToOtel {
     public static OTelTraceSource setUpOtelTraceSource() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("request_timeout", 1);
-        final OTelTraceSource SOURCE = new OTelTraceSource(new PluginSetting("otel_trace_source", integerHashMap));
+        final OTelTraceSource SOURCE = new OTelTraceSource(null, null, null);
         SOURCE.start(getBuffer());
         return SOURCE;
     }

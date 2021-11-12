@@ -11,7 +11,7 @@
 
 package com.amazon.dataprepper.plugins.source.loghttp;
 
-import com.amazon.dataprepper.armeria.authentication.ArmeriaAuthenticationProvider;
+import com.amazon.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -44,7 +44,7 @@ public class HTTPSource implements Source<Record<Log>> {
 
     private final HTTPSourceConfig sourceConfig;
     private final CertificateProviderFactory certificateProviderFactory;
-    private final ArmeriaAuthenticationProvider authenticationProvider;
+    private final ArmeriaHttpAuthenticationProvider authenticationProvider;
     private Server server;
     private final PluginMetrics pluginMetrics;
 
@@ -62,9 +62,9 @@ public class HTTPSource implements Source<Record<Log>> {
                     new PluginSetting(authenticationConfiguration.getPluginName(), authenticationConfiguration.getPluginSettings());
         } else {
             authenticationPluginSetting =
-                    new PluginSetting(ArmeriaAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
+                    new PluginSetting(ArmeriaHttpAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
         }
-        authenticationProvider = pluginFactory.loadPlugin(ArmeriaAuthenticationProvider.class, authenticationPluginSetting);
+        authenticationProvider = pluginFactory.loadPlugin(ArmeriaHttpAuthenticationProvider.class, authenticationPluginSetting);
     }
 
     @Override
