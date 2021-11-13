@@ -63,7 +63,7 @@ public class PluginModelTests {
 
         final String serialized = mapper.writeValueAsString(pluginModel);
 
-        InputStream inputStream = PluginModelTests.class.getResourceAsStream("/empty_plugin_serialized.yml");
+        InputStream inputStream = PluginModelTests.class.getResourceAsStream("/empty_plugin_serialized.yaml");
 
         assertThat(serialized, notNullValue());
         assertThat(serialized, equalTo(convertInputStreamToString(inputStream)));
@@ -77,14 +77,14 @@ public class PluginModelTests {
 
         final String serialized = mapper.writeValueAsString(pluginModel);
 
-        InputStream inputStream = PluginModelTests.class.getResourceAsStream("/serialized_with_plugin_settings.yml");
+        InputStream inputStream = PluginModelTests.class.getResourceAsStream("/serialized_with_plugin_settings.yaml");
         assertThat(serialized, notNullValue());
         assertThat(serialized, equalTo(convertInputStreamToString(inputStream)));
     }
 
     @Test
     public final void testUsingCustomDeserializer_noExceptions() throws JsonParseException, JsonMappingException, IOException {
-        InputStream inputStream = PluginModelTests.class.getResourceAsStream("/single_plugin.yml");
+        InputStream inputStream = PluginModelTests.class.getResourceAsStream("/single_plugin.yaml");
 
         final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 
@@ -98,7 +98,7 @@ public class PluginModelTests {
 
     @Test
     public final void testUsingCustomDeserializer_with_array() throws JsonParseException, JsonMappingException, IOException {
-        InputStream inputStream = PluginModelTests.class.getResourceAsStream("/list_of_plugins.yml");
+        InputStream inputStream = PluginModelTests.class.getResourceAsStream("/list_of_plugins.yaml");
 
         final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
 
