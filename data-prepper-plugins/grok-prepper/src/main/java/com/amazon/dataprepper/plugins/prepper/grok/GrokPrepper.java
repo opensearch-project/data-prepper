@@ -216,7 +216,7 @@ public class GrokPrepper extends AbstractPrepper<Record<Event>, Record<Event>> {
         for (final Map.Entry<String, List<Grok>> entry : fieldToGrok.entrySet()) {
             for (final Grok grok : entry.getValue()) {
                 final String value = event.get(entry.getKey(), String.class);
-                if (!value.isEmpty()) {
+                if (value != null && !value.isEmpty()) {
                     final Match match = grok.match(value);
                     match.setKeepEmptyCaptures(grokPrepperConfig.isKeepEmptyCaptures());
 
