@@ -15,19 +15,25 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class GrokLogstashPluginAttributesMapper implements LogstashPluginAttributesMapper {
     protected static final String LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME = "match";
+    protected static final String LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME = "pattern_definitions";
     private static final Logger LOG = LoggerFactory.getLogger(GrokLogstashPluginAttributesMapper.class);
 
+    @SuppressWarnings("unchecked")
     @Override
     public Map<String, Object> mapAttributes(final List<LogstashAttribute> logstashAttributes, final LogstashAttributesMappings logstashAttributesMappings) {
         final Map<String, Object> pluginSettings = new LinkedHashMap<>(logstashAttributesMappings.getAdditionalAttributes());
 
         final List<LogstashAttribute> matchAttributes = new ArrayList<>();
+        final Map<String, String> patternDefinitions = new HashMap<>();
         logstashAttributes.forEach(logstashAttribute -> {
             if (logstashAttribute.getAttributeName().equals(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME)) {
                 matchAttributes.add(logstashAttribute);
+            } else if (logstashAttribute.getAttributeName().equals(LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME)) {
+                patternDefinitions.putAll((Map<String, String>) logstashAttribute.getAttributeValue().getValue());
             } else if (logstashAttributesMappings.getMappedAttributeNames().containsKey(logstashAttribute.getAttributeName())) {
                 pluginSettings.put(
                         logstashAttributesMappings.getMappedAttributeNames().get(logstashAttribute.getAttributeName()),
@@ -40,14 +46,19 @@ public class GrokLogstashPluginAttributesMapper implements LogstashPluginAttribu
         });
 
         final Map<String, List<String>> matchAttributeConvertedValue = mergeMatchAttributes(matchAttributes);
+        fixNamedCaptures(matchAttributeConvertedValue, patternDefinitions);
         if (!matchAttributeConvertedValue.isEmpty()) {
             pluginSettings.put(
                     logstashAttributesMappings.getMappedAttributeNames().get(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME),
                     matchAttributeConvertedValue
             );
         }
-
-        // TODO: fix named capture in the values of matchAttributeConvertedValue and populate pattern_definitions
+        if (!patternDefinitions.isEmpty()) {
+            pluginSettings.put(
+                    logstashAttributesMappings.getMappedAttributeNames().get(LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME),
+                    patternDefinitions
+            );
+        }
 
         return pluginSettings;
     }
@@ -83,5 +94,19 @@ public class GrokLogstashPluginAttributesMapper implements LogstashPluginAttribu
             }
         });
         return dataPrepperGrokMatch;
+    }
+
+    private void fixNamedCaptures(final Map<String, List<String>> match, final Map<String, String> patternDefinitions) {
+        for (Map.Entry<String, List<String>> entry : match.entrySet()) {
+            final List<GrokNamedCapturesUtil.GrokNamedCapturesPair> grokNamedCapturesPairs = entry.getValue()
+                    .stream().map(GrokNamedCapturesUtil::convertRegexNamedCapturesToGrokPatternDefinitions)
+                    .collect(Collectors.toList());
+            grokNamedCapturesPairs.forEach(grokNamedCapturesPair -> {
+                patternDefinitions.putAll(grokNamedCapturesPair.getMappedPatternDefinitions());
+            });
+            final List<String> fixedNameCapturesPatterns = grokNamedCapturesPairs.stream().map(
+                    GrokNamedCapturesUtil.GrokNamedCapturesPair::getMappedRegex).collect(Collectors.toList());
+            entry.setValue(fixedNameCapturesPatterns);
+        }
     }
 }
