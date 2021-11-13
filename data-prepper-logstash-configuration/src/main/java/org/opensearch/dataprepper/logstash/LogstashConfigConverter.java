@@ -33,7 +33,8 @@ public class LogstashConfigConverter {
         LogstashParser parser = new LogstashParser(tokens);
         final ParseTree tree = parser.config();
 
-        org.opensearch.dataprepper.logstash.parser.LogstashVisitor visitor = new org.opensearch.dataprepper.logstash.parser.LogstashVisitor();
+        org.opensearch.dataprepper.logstash.parser.ModelConvertingLogstashVisitor visitor =
+                new org.opensearch.dataprepper.logstash.parser.ModelConvertingLogstashVisitor();
         LogstashConfiguration logstashConfiguration = (LogstashConfiguration) visitor.visit(tree);
 
         LogstashMapper logstashMapper = new LogstashMapper();
