@@ -63,7 +63,7 @@ public class LogstashVisitor extends LogstashBaseVisitor {
 
     @Override
     public Object visitPlugin(final LogstashParser.PluginContext pluginContext) {
-        final String pluginName = pluginContext.name().getText();
+        final String pluginName = normalizeText(pluginContext.name().getText());
         final List<LogstashAttribute> logstashAttributeList = pluginContext.attributes().attribute().stream()
                 .map(attribute -> (LogstashAttribute) visitAttribute(attribute))
                 .filter(Objects::nonNull)
@@ -104,7 +104,7 @@ public class LogstashVisitor extends LogstashBaseVisitor {
         }
         else if (attributeContext.value().STRING() != null && attributeContext.value().getText().equals(attributeContext.value().STRING().toString())) {
             logstashValueType = LogstashValueType.STRING;
-            value = attributeContext.value().getText().replaceAll("^\"|\"$|^'|'$", "");
+            value = normalizeText(attributeContext.value().getText());
         }
 
         final LogstashAttributeValue logstashAttributeValue =  LogstashAttributeValue.builder()
@@ -113,7 +113,7 @@ public class LogstashVisitor extends LogstashBaseVisitor {
                 .build();
 
         return LogstashAttribute.builder()
-                .attributeName(attributeContext.name().getText())
+                .attributeName(normalizeText(attributeContext.name().getText()))
                 .attributeValue(logstashAttributeValue)
                 .build();
     }
@@ -122,6 +122,7 @@ public class LogstashVisitor extends LogstashBaseVisitor {
     public Object visitArray(final LogstashParser.ArrayContext arrayContext) {
         return arrayContext.value().stream()
                 .map(RuleContext::getText)
+                .map(this::normalizeText)
                 .collect(Collectors.toList());
     }
 
@@ -135,7 +136,7 @@ public class LogstashVisitor extends LogstashBaseVisitor {
         final Map<String, Object> hashEntries = new LinkedHashMap<>();
 
         hashentriesContext.hashentry().forEach(hashentryContext -> {
-            final String key = hashentryContext.hashname().getText();
+            final String key = normalizeText(hashentryContext.hashname().getText());
             final Object value = visitHashentry(hashentryContext);
             hashEntries.put(key, value);
         });
@@ -148,6 +149,10 @@ public class LogstashVisitor extends LogstashBaseVisitor {
         if (hashentryContext.value().getChild(0) instanceof LogstashParser.ArrayContext)
             return visitArray(hashentryContext.value().array());
 
-        return hashentryContext.value().getText();
+        return normalizeText(hashentryContext.value().getText());
+    }
+
+    private String normalizeText(final String unNormalizedLogstashText) {
+        return unNormalizedLogstashText.replaceAll("^\"|\"$|^'|'$", "");
     }
 }
