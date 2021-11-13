@@ -28,6 +28,19 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
 
+/**
+ * Integration tests for the Logstash Configuration Converter.
+ * <p>
+ * These tests use all the <code>.conf</code> files from the
+ * <code>src/test/resources/org/opensearch/dataprepper/logstash</code> directory.
+ * Each file will be tested by converting and then validating that it can deserialize
+ * into a {@link PipelinesDataFlowModel} instance. Additionally, any files with a
+ * matching <code>.expected.yaml</code> file will be compared against that YAML file.
+ * <p>
+ * You can add more test cases by adding both a <code>.conf</code> file and a
+ * <code>.expected.yaml</code> file. If the mapping is non-deterministic, you can forego
+ * adding the <code>.expected.yaml</code> file.
+ */
 public class LogstashConfigConverterIT {
 
     private static final String OUTPUT_DIRECTORY = "build/resources/test/org/opensearch/dataprepper/logstash/";
