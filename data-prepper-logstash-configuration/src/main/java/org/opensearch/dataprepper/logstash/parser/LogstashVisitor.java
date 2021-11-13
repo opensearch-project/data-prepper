@@ -63,7 +63,7 @@ public class LogstashVisitor extends LogstashBaseVisitor {
 
     @Override
     public Object visitPlugin(final LogstashParser.PluginContext pluginContext) {
-        final String pluginName = pluginContext.name().getText();
+        final String pluginName = normalizeText(pluginContext.name().getText());
         final List<LogstashAttribute> logstashAttributeList = pluginContext.attributes().attribute().stream()
                 .map(attribute -> (LogstashAttribute) visitAttribute(attribute))
                 .filter(Objects::nonNull)
@@ -113,7 +113,7 @@ public class LogstashVisitor extends LogstashBaseVisitor {
                 .build();
 
         return LogstashAttribute.builder()
-                .attributeName(attributeContext.name().getText())
+                .attributeName(normalizeText(attributeContext.name().getText()))
                 .attributeValue(logstashAttributeValue)
                 .build();
     }

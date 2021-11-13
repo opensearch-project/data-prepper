@@ -280,6 +280,17 @@ class LogstashVisitorTest {
     }
 
     @Test
+    void visit_plugin_with_quoted_pluginName_returns_it_unquoted() {
+        given(pluginContextMock.name()).willReturn(nameContextMock);
+        given(nameContextMock.getText()).willReturn(wrapInQuotes(TestDataProvider.RANDOM_STRING_1));
+        given(pluginContextMock.attributes()).willReturn(attributesContextMock);
+
+        final LogstashPlugin actualLogstashPlugin = (LogstashPlugin) logstashVisitor.visitPlugin(pluginContextMock);
+
+        assertThat(actualLogstashPlugin.getPluginName(), equalTo(TestDataProvider.RANDOM_STRING_1));
+    }
+
+    @Test
     void visit_attribute_without_a_value_returns_null() {
         assertThat(logstashVisitor.visitAttribute(attributeContextMock),
             nullValue());
@@ -408,6 +419,21 @@ class LogstashVisitorTest {
     }
 
     @Test
+    void visitAttribute_with_quoted_attribute_name_returns_unquoted() {
+        given(attributeContextMock.name()).willReturn(nameContextMock);
+        given(nameContextMock.getText()).willReturn(wrapInQuotes(TestDataProvider.RANDOM_STRING_1));
+        given(attributeContextMock.value()).willReturn(valueContextMock);
+        given(valueContextMock.STRING()).willReturn(terminalNodeMock);
+        given(valueContextMock.getText()).willReturn(TestDataProvider.RANDOM_STRING_2);
+        given(valueContextMock.STRING().toString()).willReturn(TestDataProvider.RANDOM_STRING_2);
+
+        final LogstashAttribute actualLogstashAttribute = (LogstashAttribute) logstashVisitor.visitAttribute(attributeContextMock);
+
+        assertThat(actualLogstashAttribute.getAttributeName(),
+                equalTo(TestDataProvider.RANDOM_STRING_1));
+    }
+
+    @Test
     void visit_array_with_empty_array_returns_empty_list_test() {
         given(arrayContextMock.value()).willReturn(Collections.emptyList());
         Object actualList = logstashVisitor.visitArray(arrayContextMock);
@@ -439,7 +465,7 @@ class LogstashVisitorTest {
     }
 
     @Test
-    void visit_array_with_array_of_with_quoted_strings_returns_them_unquoted() {
+    void visitArray_with_with_quoted_strings_returns_them_unquoted() {
         List<LogstashParser.ValueContext> valueContextList = new LinkedList<>(Arrays.asList(arrayValueContextMock1, arrayValueContextMock2));
 
         given(arrayContextMock.value()).willReturn(valueContextList);
