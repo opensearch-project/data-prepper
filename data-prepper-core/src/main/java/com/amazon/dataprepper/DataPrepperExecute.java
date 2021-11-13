@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
@@ -34,20 +35,26 @@ public class DataPrepperExecute {
         }
         final DataPrepper dataPrepper = DataPrepper.getInstance();
         if (args.length > 0) {
-            String configurationFileLocation = args[0];
-            if (args[0].endsWith(".conf")) {
-                LogstashConfigConverter logstashConfigConverter = new LogstashConfigConverter();
-                try {
-                    configurationFileLocation = logstashConfigConverter.convertLogstashConfigurationToPipeline(
-                            args[0], String.valueOf(Paths.get("data-prepper-core/build/libs/")));
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+            String configurationFileLocation = checkForLogstashConfigurationAndConvert(args[0]);
             dataPrepper.execute(configurationFileLocation);
         } else {
             LOG.error("Configuration file is required");
             System.exit(1);
         }
+    }
+
+    private static String checkForLogstashConfigurationAndConvert(String configurationFileLocation) {
+        if (configurationFileLocation.endsWith(".conf")) {
+            final LogstashConfigConverter logstashConfigConverter = new LogstashConfigConverter();
+            final Path configurationDirectory = Paths.get(configurationFileLocation).toAbsolutePath().getParent();
+
+            try {
+                configurationFileLocation = logstashConfigConverter.convertLogstashConfigurationToPipeline(
+                        configurationFileLocation, String.valueOf(configurationDirectory));
+            } catch (IOException e) {
+                LOG.error("Unable to read the Logstash configuration file", e);
+            }
+        }
+        return configurationFileLocation;
     }
 }
