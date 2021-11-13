@@ -1,6 +1,7 @@
 package com.amazon.dataprepper.model.configuration;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
@@ -12,10 +13,19 @@ import java.util.List;
  */
 public class PipelineModel {
 
+    @JsonProperty("source")
     private final PluginModel source;
+
+    @JsonProperty("prepper")
     private final List<PluginModel> preppers;
+
+    @JsonProperty("sink")
     private final List<PluginModel> sinks;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private final Integer workers;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private final Integer readBatchDelay;
 
     @JsonCreator
