@@ -85,10 +85,11 @@ public class GrokPrepperIT {
     }
 
     @Test
-    public void testMatchNoCaptures() throws JsonProcessingException {
+    public void testMatchNoCapturesWithExistingAndNonExistingKey() throws JsonProcessingException {
         final String nonMatchingPattern = "%{SYSLOGBASE}";
         final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList(nonMatchingPattern));
+        matchConfig.put("bad_key", Collections.singletonList(nonMatchingPattern));
 
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
         grokPrepper = new GrokPrepper(pluginSetting);
