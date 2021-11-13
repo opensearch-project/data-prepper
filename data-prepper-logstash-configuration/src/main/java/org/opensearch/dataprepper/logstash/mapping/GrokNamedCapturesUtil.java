@@ -4,6 +4,7 @@ package org.opensearch.dataprepper.logstash.mapping;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -49,7 +50,7 @@ class GrokNamedCapturesUtil {
         }
 
         public Map<String, String> getMappedPatternDefinitions() {
-            return mappedPatternDefinitions;
+            return Collections.unmodifiableMap(mappedPatternDefinitions);
         }
     }
 }

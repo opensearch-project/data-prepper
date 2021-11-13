@@ -21,9 +21,12 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.hasValue;
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.logstash.mapping.GrokLogstashPluginAttributesMapper.LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME;
+import static org.opensearch.dataprepper.logstash.mapping.GrokLogstashPluginAttributesMapper.LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.logstash.model.LogstashValueType.ARRAY;
 import static org.opensearch.dataprepper.logstash.model.LogstashValueType.HASH;
 
@@ -78,6 +81,45 @@ class GrokLogstashPluginAttributesMapperTest {
         assertThat(actualPluginSettings.get(dataPrepperMatchAttribute), equalTo(expectedMatchSettings));
     }
 
+    @SuppressWarnings("unchecked")
+    @Test
+    void mapAttributes_sets_mapped_attributes_match_with_named_captures_and_pattern_definitions() {
+        final String testNamedCapture = "test_named_capture";
+        final String testRegex = "fake_regex";
+        final String handWrittenPatternName = "handwritten_pattern_name";
+        final String handWrittenPatternValue = "handwritten_pattern_value";
+        final LogstashAttribute matchMessageLogstashAttributeWithNamedCaptures = prepareArrayTypeMatchLogstashAttribute(
+                "message", String.format("(?<%s>%s)", testNamedCapture, testRegex));
+        final LogstashAttribute patternDefinitionsLogstashAttribute = preparePatternDefinitionsLogstashAttribute(
+                Map.of(handWrittenPatternName, handWrittenPatternValue)
+        );
+
+        final String dataPrepperMatchAttribute = "match";
+        final String dataPrepperPatternDefinitionsAttribute = "pattern_definitions";
+        final LogstashAttributesMappings mappings = mock(LogstashAttributesMappings.class);
+        when(mappings.getMappedAttributeNames()).thenReturn(
+                Map.of(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME, dataPrepperMatchAttribute,
+                        LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME, dataPrepperPatternDefinitionsAttribute
+                ));
+
+        final Map<String, Object> actualPluginSettings =
+                createObjectUnderTest().mapAttributes(
+                        Arrays.asList(matchMessageLogstashAttributeWithNamedCaptures, patternDefinitionsLogstashAttribute),
+                        mappings);
+
+        assertThat(actualPluginSettings, notNullValue());
+        assertThat(actualPluginSettings.size(), equalTo(2));
+        assertThat(actualPluginSettings, hasKey(dataPrepperMatchAttribute));
+        assertThat(actualPluginSettings, hasKey(dataPrepperPatternDefinitionsAttribute));
+        final Map<String, String> actualPatternDefinitions = (Map<String, String>) actualPluginSettings.get(
+                dataPrepperPatternDefinitionsAttribute);
+        assertThat(actualPatternDefinitions, hasKey(handWrittenPatternName));
+        assertThat(actualPatternDefinitions, hasValue(handWrittenPatternValue));
+        assertThat(actualPatternDefinitions, hasValue(testRegex));
+        final Map<String, List<String>> actualMatch = (Map<String, List<String>>) actualPluginSettings.get(dataPrepperMatchAttribute);
+        assertThat(actualMatch.get("message").get(0), matchesPattern(String.format("%%\\{(.*?):%s\\}", testNamedCapture)));
+    }
+
     private LogstashAttribute prepareArrayTypeMatchLogstashAttribute(final String matchKey, final String matchValue) {
         final LogstashAttribute logstashAttribute = mock(LogstashAttribute.class);
         final LogstashAttributeValue logstashAttributeValue = mock(LogstashAttributeValue.class);
@@ -99,6 +141,16 @@ class GrokLogstashPluginAttributesMapperTest {
         when(logstashAttributeValue.getAttributeValueType()).thenReturn(HASH);
         when(logstashAttributeValue.getValue()).thenReturn(value);
         when(logstashAttribute.getAttributeName()).thenReturn(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME);
+        when(logstashAttribute.getAttributeValue()).thenReturn(logstashAttributeValue);
+        return logstashAttribute;
+    }
+
+    private LogstashAttribute preparePatternDefinitionsLogstashAttribute(final Map<String, String> patternDefinitions) {
+        final LogstashAttribute logstashAttribute = mock(LogstashAttribute.class);
+        final LogstashAttributeValue logstashAttributeValue = mock(LogstashAttributeValue.class);
+        when(logstashAttributeValue.getAttributeValueType()).thenReturn(HASH);
+        when(logstashAttributeValue.getValue()).thenReturn(patternDefinitions);
+        when(logstashAttribute.getAttributeName()).thenReturn(LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME);
         when(logstashAttribute.getAttributeValue()).thenReturn(logstashAttributeValue);
         return logstashAttribute;
     }
