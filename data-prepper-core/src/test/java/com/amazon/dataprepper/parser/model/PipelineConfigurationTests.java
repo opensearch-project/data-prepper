@@ -42,7 +42,6 @@ public class PipelineConfigurationTests {
     public void testPipelineConfigurationCreation() {
         final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(validSingleConfiguration(),
                 null,
-                null,
                 validMultipleConfigurationOfSizeOne(),
                 validMultipleConfiguration(),
                 TEST_WORKERS, TEST_DELAY);
@@ -148,7 +147,6 @@ public class PipelineConfigurationTests {
         final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(validSingleConfiguration(),
                 null,
                 null,
-                null,
                 validMultipleConfigurationOfSizeOne(),
                 null, null);
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
@@ -173,7 +171,6 @@ public class PipelineConfigurationTests {
             new PipelineConfiguration(
                     null,
                     validSingleConfiguration(),
-                    null,
                     validMultipleConfiguration(),
                     validMultipleConfiguration(),
                     TEST_WORKERS, TEST_DELAY);
@@ -188,7 +185,6 @@ public class PipelineConfigurationTests {
                 validSingleConfiguration(),
                 validSingleConfiguration(),
                 null,
-                null,
                 validMultipleConfiguration(),
                 TEST_WORKERS, TEST_DELAY);
         assertThat(nullPreppersConfiguration.getPrepperPluginSettings(), isA(Iterable.class));
@@ -197,7 +193,6 @@ public class PipelineConfigurationTests {
         final PipelineConfiguration emptyPreppersConfiguration = new PipelineConfiguration(
                 validSingleConfiguration(),
                 validSingleConfiguration(),
-                null,
                 new ArrayList<>(),
                 validMultipleConfiguration(),
                 TEST_WORKERS, TEST_DELAY);
@@ -211,7 +206,6 @@ public class PipelineConfigurationTests {
             new PipelineConfiguration(
                     validSingleConfiguration(),
                     validSingleConfiguration(),
-                    null,
                     validMultipleConfiguration(),
                     null,
                     TEST_WORKERS, TEST_DELAY);
@@ -223,7 +217,6 @@ public class PipelineConfigurationTests {
             new PipelineConfiguration(
                     validSingleConfiguration(),
                     validSingleConfiguration(),
-                    null,
                     validMultipleConfiguration(),
                     new ArrayList<>(),
                     TEST_WORKERS, TEST_DELAY);
@@ -238,7 +231,6 @@ public class PipelineConfigurationTests {
             new PipelineConfiguration(
                     validSingleConfiguration(),
                     validSingleConfiguration(),
-                    null,
                     validMultipleConfiguration(),
                     validMultipleConfiguration(),
                     0, TEST_DELAY);
