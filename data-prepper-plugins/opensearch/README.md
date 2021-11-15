@@ -147,6 +147,9 @@ Besides common metrics in [AbstractSink](https://github.com/opensearch-project/d
 - `documentsSuccessFirstAttempt`: measures number of documents successfully sent to ES by bulk requests on first attempt.
 - `documentErrors`: measures number of documents failed to be sent by bulk requests.
 
+### Distribution Summary
+- `bulkRequestSizeBytes`: measures the distribution of bulk request's payload sizes in bytes.
+
 ## Developer Guide
 
 This plugin is compatible with Java 8. See

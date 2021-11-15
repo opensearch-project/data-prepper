@@ -21,6 +21,7 @@ import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
 import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexType;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.action.DocWriteRequest;
 import org.opensearch.action.bulk.BulkRequest;
@@ -44,7 +45,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 @DataPrepperPlugin(name = "opensearch", pluginType = Sink.class)
@@ -70,13 +70,13 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
 
   private final Timer bulkRequestTimer;
   private final Counter bulkRequestErrorsCounter;
-  private final AtomicLong bulkRequestSizeBytes;
+  private final DistributionSummary bulkRequestSizeBytesSummary;
 
   public OpenSearchSink(final PluginSetting pluginSetting) {
     super(pluginSetting);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
-    bulkRequestSizeBytes = pluginMetrics.gauge(BULKREQUEST_SIZE_BYTES, new AtomicLong());
+    bulkRequestSizeBytesSummary = pluginMetrics.summary(BULKREQUEST_SIZE_BYTES);
 
     this.openSearchSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting);
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
@@ -170,7 +170,7 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
     bulkRequestTimer.record(() -> {
       try {
         bulkRetryStrategy.execute(bulkRequest);
-        bulkRequestSizeBytes.addAndGet(bulkRequest.estimatedSizeInBytes());
+        bulkRequestSizeBytesSummary.record(bulkRequest.estimatedSizeInBytes());
       } catch (final InterruptedException e) {
         LOG.error("Unexpected Interrupt:", e);
         bulkRequestErrorsCounter.increment();
