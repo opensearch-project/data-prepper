@@ -9,7 +9,7 @@ raw-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  prepper:
+  processor:
     - otel_trace_raw_prepper:
         root_span_flush_delay: 1 # TODO: remove after 1.1 release
         trace_flush_interval: 5
