@@ -165,6 +165,24 @@ public class PipelineConfiguration {
                 .collect(Collectors.toList());
     }
 
+    @Deprecated
+    private List<PluginSetting> getPreppersFromConfigurations(
+            final List<Map.Entry<String, Map<String, Object>>> prepperConfigurations,
+            final List<Map.Entry<String, Map<String, Object>>> processorConfigurations) {
+        if (prepperConfigurations != null && processorConfigurations != null) {
+            String message = "Pipeline configuration cannot specify a prepper and processor configuration. It is " +
+                    "recommended to move prepper configurations to the processor section to maintain compatibility " +
+                    "with DataPrepper version 1.2 and above.";
+            throw new IllegalArgumentException(message);
+        }
+        else if (prepperConfigurations != null) {
+            return getPreppersFromConfiguration(prepperConfigurations);
+        }
+        else {
+            return getPreppersFromConfiguration(processorConfigurations);
+        }
+    }
+
     private List<PluginSetting> getPreppersFromConfiguration(
             final List<Map.Entry<String, Map<String, Object>>> prepperConfigurations) {
         if (prepperConfigurations == null || prepperConfigurations.isEmpty()) {
