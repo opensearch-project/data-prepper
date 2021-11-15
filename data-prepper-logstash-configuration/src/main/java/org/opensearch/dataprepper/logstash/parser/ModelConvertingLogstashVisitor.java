@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  * @since 1.2
  */
 @SuppressWarnings("rawtypes")
-public class LogstashVisitor extends LogstashBaseVisitor {
+public class ModelConvertingLogstashVisitor extends LogstashBaseVisitor {
 
     @Override
     public Object visitConfig(final LogstashParser.ConfigContext configContext) {
@@ -32,7 +32,7 @@ public class LogstashVisitor extends LogstashBaseVisitor {
 
         configContext.plugin_section().forEach(pluginSection -> {
             final String pluginType = pluginSection.plugin_type().getText();
-            if (!Arrays.asList(new String[]{"input", "filter", "output"}).contains(pluginType))
+            if (!Arrays.asList("input", "filter", "output").contains(pluginType))
                 throw new LogstashParsingException("only input, filter and output plugin sections are supported.");
             final LogstashPluginType logstashPluginType = LogstashPluginType.getByValue(pluginType);
             final List<LogstashPlugin> logstashPluginList = (List<LogstashPlugin>) visitPlugin_section(pluginSection);
