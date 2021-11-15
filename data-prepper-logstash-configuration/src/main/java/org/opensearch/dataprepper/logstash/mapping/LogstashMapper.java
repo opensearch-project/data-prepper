@@ -33,7 +33,7 @@ public class LogstashMapper {
     }
 
     private List<PluginModel> mapPluginSection(LogstashConfiguration logstashConfiguration, LogstashPluginType logstashPluginType) {
-        LogstashPluginMapper pluginMapper = new DefaultPluginMapper();
+        LogstashPluginMapper pluginMapper = new LogstashPluginMapper();
         List<PluginModel> pluginModels = new LinkedList<>();
 
         List<LogstashPlugin> logstashPluginList = logstashConfiguration.getPluginSection(logstashPluginType);

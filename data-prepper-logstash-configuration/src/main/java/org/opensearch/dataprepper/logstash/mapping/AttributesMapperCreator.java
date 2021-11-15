@@ -24,7 +24,7 @@ class AttributesMapperCreator {
         }
 
         try {
-            final Constructor<?> defaultConstructor = attributesMapperClass.getConstructor();
+            final Constructor<?> defaultConstructor = attributesMapperClass.getDeclaredConstructor();
             final Object instance = defaultConstructor.newInstance();
             return  (LogstashPluginAttributesMapper) instance;
         } catch (final Exception ex) {
