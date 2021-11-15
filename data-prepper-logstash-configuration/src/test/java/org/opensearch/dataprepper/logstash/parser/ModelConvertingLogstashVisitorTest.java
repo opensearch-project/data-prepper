@@ -27,13 +27,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.LinkedList;
 
-class LogstashVisitorTest {
+class ModelConvertingLogstashVisitorTest {
 
-    private static LogstashVisitor logstashVisitor;
+    private static ModelConvertingLogstashVisitor logstashVisitor;
 
     @BeforeEach
     void createObjectUnderTest() {
-        logstashVisitor = spy(new LogstashVisitor());
+        logstashVisitor = spy(new ModelConvertingLogstashVisitor());
     }
 
     @Mock
