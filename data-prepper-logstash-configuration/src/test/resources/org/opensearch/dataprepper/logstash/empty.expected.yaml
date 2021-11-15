@@ -1,0 +1,4 @@
+logstash-converted-pipeline:
+  source: null
+  prepper: []
+  sink: []
