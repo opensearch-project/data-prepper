@@ -35,13 +35,14 @@ public class PipelineConfiguration {
     public PipelineConfiguration(
             @JsonProperty("source") final Map.Entry<String, Map<String, Object>> source,
             @JsonProperty("buffer") final Map.Entry<String, Map<String, Object>> buffer,
-            @JsonProperty("prepper") final List<Map.Entry<String, Map<String, Object>>> preppers,
+            @Deprecated @JsonProperty("prepper") final List<Map.Entry<String, Map<String, Object>>> preppers,
+            @JsonProperty("processor") final List<Map.Entry<String, Map<String, Object>>> processors,
             @JsonProperty("sink") final List<Map.Entry<String, Map<String, Object>>> sinks,
             @JsonProperty("workers") final Integer workers,
             @JsonProperty("delay") final Integer delay) {
         this.sourcePluginSetting = getSourceFromConfiguration(source);
         this.bufferPluginSetting = getBufferFromConfigurationOrDefault(buffer);
-        this.prepperPluginSettings = getPreppersFromConfiguration(preppers);
+        this.prepperPluginSettings = getPreppersFromConfigurations(preppers, processors);
         this.sinkPluginSettings = getSinksFromConfiguration(sinks);
         this.workers = getWorkersFromConfiguration(workers);
         this.readBatchDelay = getReadBatchDelayFromConfiguration(delay);
@@ -108,6 +109,24 @@ public class PipelineConfiguration {
         }
         return sinkConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration)
                 .collect(Collectors.toList());
+    }
+
+    @Deprecated
+    private List<PluginSetting> getPreppersFromConfigurations(
+            final List<Map.Entry<String, Map<String, Object>>> prepperConfigurations,
+            final List<Map.Entry<String, Map<String, Object>>> processorConfigurations) {
+        if (prepperConfigurations != null && processorConfigurations != null) {
+            String message = "Pipeline configuration cannot specify a prepper and processor configuration. It is " +
+                    "recommended to move prepper configurations to the processor section to maintain compatibility " +
+                    "with DataPrepper version 1.2 and above.";
+            throw new IllegalArgumentException(message);
+        }
+        else if (prepperConfigurations != null) {
+            return getPreppersFromConfiguration(prepperConfigurations);
+        }
+        else {
+            return getPreppersFromConfiguration(processorConfigurations);
+        }
     }
 
     private List<PluginSetting> getPreppersFromConfiguration(
