@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package com.amazon.dataprepper.plugins;
 
 import org.junit.jupiter.api.Test;
