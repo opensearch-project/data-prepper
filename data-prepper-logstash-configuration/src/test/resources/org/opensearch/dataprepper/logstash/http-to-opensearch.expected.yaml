@@ -1,0 +1,13 @@
+logstash-converted-pipeline:
+  source:
+    http:
+      max_connection_count: 500
+      request_timeout: 10000
+  prepper: []
+  sink:
+    - opensearch:
+        hosts:
+          - "https://localhost:19000"
+        username: "myuser"
+        password: "mypassword"
+        index: "simple-pipeline"
