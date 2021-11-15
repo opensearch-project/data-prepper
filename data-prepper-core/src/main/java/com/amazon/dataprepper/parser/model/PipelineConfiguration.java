@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.parser.model;
 
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -19,6 +20,23 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 
 public class PipelineConfiguration {
+    private static List<Map.Entry<String, Map<String, Object>>> validateProcessor(
+            final List<Map.Entry<String, Map<String, Object>>> preppers,
+            final List<Map.Entry<String, Map<String, Object>>> processors) {
+        if (preppers != null && processors != null) {
+            String message = "Pipeline configuration cannot specify a prepper and processor configuration. It is " +
+                    "recommended to move prepper configurations to the processor section to maintain compatibility " +
+                    "with DataPrepper version 1.2 and above.";
+            throw new IllegalArgumentException(message);
+        }
+        else if (preppers != null) {
+            return preppers;
+        }
+        else {
+            return processors;
+        }
+    }
+
     private static final String WORKERS_COMPONENT = "workers";
     private static final String DELAY_COMPONENT = "delay";
     private static final int DEFAULT_READ_BATCH_DELAY = 3_000;
@@ -31,7 +49,23 @@ public class PipelineConfiguration {
     private final Integer workers;
     private final Integer readBatchDelay;
 
+    public PipelineConfiguration(
+            final Map.Entry<String, Map<String, Object>> source,
+            final Map.Entry<String, Map<String, Object>> buffer,
+            final List<Map.Entry<String, Map<String, Object>>> processors,
+            final List<Map.Entry<String, Map<String, Object>>> sinks,
+            final Integer workers,
+            final Integer delay) {
+        this.sourcePluginSetting = getSourceFromConfiguration(source);
+        this.bufferPluginSetting = getBufferFromConfigurationOrDefault(buffer);
+        this.prepperPluginSettings = getPreppersFromConfiguration(processors);
+        this.sinkPluginSettings = getSinksFromConfiguration(sinks);
+        this.workers = getWorkersFromConfiguration(workers);
+        this.readBatchDelay = getReadBatchDelayFromConfiguration(delay);
+    }
+
     @JsonCreator
+    @Deprecated
     public PipelineConfiguration(
             @JsonProperty("source") final Map.Entry<String, Map<String, Object>> source,
             @JsonProperty("buffer") final Map.Entry<String, Map<String, Object>> buffer,
@@ -40,12 +74,7 @@ public class PipelineConfiguration {
             @JsonProperty("sink") final List<Map.Entry<String, Map<String, Object>>> sinks,
             @JsonProperty("workers") final Integer workers,
             @JsonProperty("delay") final Integer delay) {
-        this.sourcePluginSetting = getSourceFromConfiguration(source);
-        this.bufferPluginSetting = getBufferFromConfigurationOrDefault(buffer);
-        this.prepperPluginSettings = getPreppersFromConfigurations(preppers, processors);
-        this.sinkPluginSettings = getSinksFromConfiguration(sinks);
-        this.workers = getWorkersFromConfiguration(workers);
-        this.readBatchDelay = getReadBatchDelayFromConfiguration(delay);
+        this(source, buffer, validateProcessor(preppers, processors), sinks, workers, delay);
     }
 
     public PluginSetting getSourcePluginSetting() {
@@ -109,24 +138,6 @@ public class PipelineConfiguration {
         }
         return sinkConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromConfiguration)
                 .collect(Collectors.toList());
-    }
-
-    @Deprecated
-    private List<PluginSetting> getPreppersFromConfigurations(
-            final List<Map.Entry<String, Map<String, Object>>> prepperConfigurations,
-            final List<Map.Entry<String, Map<String, Object>>> processorConfigurations) {
-        if (prepperConfigurations != null && processorConfigurations != null) {
-            String message = "Pipeline configuration cannot specify a prepper and processor configuration. It is " +
-                    "recommended to move prepper configurations to the processor section to maintain compatibility " +
-                    "with DataPrepper version 1.2 and above.";
-            throw new IllegalArgumentException(message);
-        }
-        else if (prepperConfigurations != null) {
-            return getPreppersFromConfiguration(prepperConfigurations);
-        }
-        else {
-            return getPreppersFromConfiguration(processorConfigurations);
-        }
     }
 
     private List<PluginSetting> getPreppersFromConfiguration(

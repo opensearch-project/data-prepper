@@ -37,7 +37,7 @@ public class PipelineModelTest {
                 TEST_READ_BATCH_DELAY
         );
         final PluginModel originalSource = pipelineModel.getSource();
-        final List<PluginModel> originalPreppers = pipelineModel.getPreppers();
+        final List<PluginModel> originalPreppers = pipelineModel.getProcessors();
         final List<PluginModel> originalSinks = pipelineModel.getSinks();
 
         assertThat(originalSource, notNullValue());
