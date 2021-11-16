@@ -43,6 +43,7 @@ public class PipelineModel {
             throw new IllegalArgumentException(message);
         }
         else if (preppers != null) {
+            LOG.warn("prepper configurations are deprecated, processor configurations will be required in 1.2");
             return preppers;
         }
         else {
