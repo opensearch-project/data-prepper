@@ -12,4 +12,4 @@ ext.versionMap = [
 ]
 
 ext.coreProjects = [project(':data-prepper-api'), project(':data-prepper-core'), project('data-prepper-plugins:common')]
-ext.mavenArtifactProjects = [project(':data-prepper-api'), project('data-prepper-plugins:common')]
+ext.mavenArtifactProjects = [project(':data-prepper-api')]

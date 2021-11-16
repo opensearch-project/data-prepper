@@ -98,8 +98,7 @@ configure(subprojects.findAll {it.name != 'data-prepper-api'}) {
 
 configure(mavenArtifactProjects) {
     java {
-        // TODO: Add once Javadocs are working
-        //withJavadocJar()
+        withJavadocJar()
         withSourcesJar()
     }
 
