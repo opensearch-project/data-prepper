@@ -47,6 +47,12 @@ public class DataPrepperServer {
 
         final PluginModel authenticationConfiguration = dataPrepperConfiguration.getAuthentication();
         final PluginSetting authenticationPluginSetting;
+
+        if (authenticationConfiguration == null || authenticationConfiguration.getPluginName().equals(DataPrepperCoreAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME)) {
+            LOG.warn("Creating data prepper server without authentication. This is not secure.");
+            LOG.warn("In order to set up Http Basic authentication for the data prepper server, go here: https://github.com/opensearch-project/data-prepper/blob/main/docs/core_apis.md#authentication");
+        }
+
         if(authenticationConfiguration != null) {
             authenticationPluginSetting =
                     new PluginSetting(authenticationConfiguration.getPluginName(), authenticationConfiguration.getPluginSettings());

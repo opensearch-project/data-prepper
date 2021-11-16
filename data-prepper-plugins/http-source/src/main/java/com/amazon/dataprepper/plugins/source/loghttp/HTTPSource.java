@@ -57,6 +57,12 @@ public class HTTPSource implements Source<Record<Log>> {
         certificateProviderFactory = new CertificateProviderFactory(sourceConfig);
         final PluginModel authenticationConfiguration = sourceConfig.getAuthentication();
         final PluginSetting authenticationPluginSetting;
+
+        if (authenticationConfiguration == null || authenticationConfiguration.getPluginName().equals(ArmeriaHttpAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME)) {
+            LOG.warn("Creating http source without authentication. This is not secure.");
+            LOG.warn("In order to set up Http Basic authentication for the http source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/http-source#authentication-configurations");
+        }
+
         if(authenticationConfiguration != null) {
             authenticationPluginSetting =
                     new PluginSetting(authenticationConfiguration.getPluginName(), authenticationConfiguration.getPluginSettings());

@@ -174,6 +174,12 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
 
     private GrpcAuthenticationProvider createAuthenticationProvider(final PluginFactory pluginFactory) {
         final PluginModel authenticationConfiguration = oTelTraceSourceConfig.getAuthentication();
+
+        if (authenticationConfiguration == null || authenticationConfiguration.getPluginName().equals(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME)) {
+            LOG.warn("Creating otel-trace-source without authentication. This is not secure.");
+            LOG.warn("In order to set up Http Basic authentication for the otel-trace-source, go here: https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-plugins/otel-trace-source#authentication-configurations");
+        }
+
         final PluginSetting authenticationPluginSetting;
         if (authenticationConfiguration != null) {
             authenticationPluginSetting = new PluginSetting(authenticationConfiguration.getPluginName(), authenticationConfiguration.getPluginSettings());
