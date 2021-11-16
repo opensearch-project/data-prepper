@@ -54,6 +54,9 @@ public class FileSource implements Source<Record<Event>> {
     @DataPrepperPluginConstructor
     public FileSource(final FileSourceConfig fileSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
         Objects.requireNonNull(fileSourceConfig.getFilePathToRead(), "File path is required");
+        if (!Files.exists(Paths.get(fileSourceConfig.getFilePathToRead()))) {
+            throw new IllegalArgumentException("File path does not exist.");
+        }
         Objects.requireNonNull(fileSourceConfig.getFormat(), "Invalid file format. Options are [json] and [plain]");
         this.fileSourceConfig = fileSourceConfig;
         this.isStopRequested = false;

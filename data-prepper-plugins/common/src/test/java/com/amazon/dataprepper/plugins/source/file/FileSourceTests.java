@@ -140,8 +140,7 @@ public class FileSourceTests {
     @Test
     public void testFileSourceWithNonexistentFilePathThrowsRuntimeException() {
         pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, FILE_DOES_NOT_EXIST);
-        fileSource = createObjectUnderTest();
-        assertThrows(RuntimeException.class, () -> fileSource.start(buffer));
+        assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
     }
 
     @Test
