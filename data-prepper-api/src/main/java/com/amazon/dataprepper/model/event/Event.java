@@ -13,7 +13,7 @@ import java.util.List;
  * <p>
  * Data Prepper will be migrating away from the original use of {@link com.amazon.dataprepper.model.record.Record}s.
  * Internal interfaces for {@link com.amazon.dataprepper.model.prepper.Prepper}, {@link com.amazon.dataprepper.model.buffer.Buffer},
- * {@link com.amazon.dataprepper.model.sink.Sink}, & {@link com.amazon.dataprepper.model.source.Source}. will be extended to support
+ * {@link com.amazon.dataprepper.model.sink.Sink} and {@link com.amazon.dataprepper.model.source.Source} will be extended to support
  * the new internal model. The use of {@link com.amazon.dataprepper.model.record.Record}s will be deprecated in 2.0.
  * <p>
  * @since 1.2
@@ -44,7 +44,7 @@ public interface Event {
      *
      * @param key the value to retrieve from
      * @param clazz the return type of elements in the list
-     * @return List<T> a list of clazz elements
+     * @return {@literal List<T>} a list of clazz elements
      * @since 1.2
      */
     <T> List<T> getList(String key, Class<T> clazz);
