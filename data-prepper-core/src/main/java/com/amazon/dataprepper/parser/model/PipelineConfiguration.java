@@ -5,7 +5,6 @@
 
 package com.amazon.dataprepper.parser.model;
 
-import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.fasterxml.jackson.annotation.JsonCreator;
