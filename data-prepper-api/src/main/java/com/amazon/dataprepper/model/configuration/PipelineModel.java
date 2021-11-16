@@ -25,6 +25,10 @@ public class PipelineModel {
     private static List<PluginModel> validateProcessor(
             final List<PluginModel> preppers,
             final List<PluginModel> processors) {
+        if (preppers != null) {
+            LOG.warn("prepper configurations are deprecated, processor configurations will be required in 1.2");
+        }
+
         if (preppers != null && processors != null) {
             final String message = "Pipeline model cannot specify a prepper and processor configuration. It is " +
                     "recommended to move prepper configurations to the processor section to maintain compatibility " +
@@ -32,7 +36,6 @@ public class PipelineModel {
             throw new IllegalArgumentException(message);
         }
         else if (preppers != null) {
-            LOG.warn("prepper configurations are deprecated, processor configurations will be required in 1.2");
             return preppers;
         }
         else {

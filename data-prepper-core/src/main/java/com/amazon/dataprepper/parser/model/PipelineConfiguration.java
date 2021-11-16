@@ -26,6 +26,10 @@ public class PipelineConfiguration {
     private static List<Map.Entry<String, Map<String, Object>>> validateProcessor(
             final List<Map.Entry<String, Map<String, Object>>> preppers,
             final List<Map.Entry<String, Map<String, Object>>> processors) {
+        if (preppers != null) {
+            LOG.warn("prepper configurations are deprecated, processor configurations will be required in 1.2");
+        }
+
         if (preppers != null && processors != null) {
             final String message = "Pipeline configuration cannot specify a prepper and processor configuration. " +
                     "It is recommended to move prepper configurations to the processor section to maintain " +
@@ -33,7 +37,6 @@ public class PipelineConfiguration {
             throw new IllegalArgumentException(message);
         }
         else if (preppers != null) {
-            LOG.warn("prepper configurations are deprecated, processor configurations will be required in 1.2");
             return preppers;
         }
         else {
