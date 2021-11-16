@@ -2,7 +2,7 @@ entry-pipeline:
   source:
     otel_trace_source:
       ssl: false
-  processor:
+  prepper:
     - peer_forwarder:
         discovery_mode: "static"
         static_endpoints: ["dataprepper1", "dataprepper2"]
@@ -14,7 +14,7 @@ raw-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  processor:
+  prepper:
     - otel_trace_raw_prepper:
         root_span_flush_delay: 3 # TODO: remove after 1.1 release
         trace_flush_interval: 5
