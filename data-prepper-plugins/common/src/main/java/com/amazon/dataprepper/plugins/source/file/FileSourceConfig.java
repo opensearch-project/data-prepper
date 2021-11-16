@@ -1,5 +1,6 @@
 package com.amazon.dataprepper.plugins.source.file;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class FileSourceConfig {
@@ -9,6 +10,7 @@ public class FileSourceConfig {
     static final String ATTRIBUTE_FORMAT = "format";
     static final int DEFAULT_TIMEOUT = 5_000;
     static final String DEFAULT_TYPE = "event";
+    static final String DEFAULT_FORMAT = "plain";
 
 
 
@@ -19,7 +21,7 @@ public class FileSourceConfig {
     private int writeTimeout = DEFAULT_TIMEOUT;
 
     @JsonProperty(ATTRIBUTE_FORMAT)
-    private FileFormat format = FileFormat.PLAIN;
+    private String format = DEFAULT_FORMAT;
 
     @JsonProperty(ATTRIBUTE_TYPE)
     private String type = DEFAULT_TYPE;
@@ -32,8 +34,9 @@ public class FileSourceConfig {
         return writeTimeout;
     }
 
+    @JsonIgnore
     public FileFormat getFormat() {
-        return format;
+        return FileFormat.getByName(format);
     }
 
     public String getType() {

@@ -163,7 +163,7 @@ public class FileSourceTests {
     @Test
     public void testFileWithJSONAddsEventsToBufferCorrectly() {
         pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, TEST_FILE_PATH_JSON);
-        pluginSettings.put(FileSourceConfig.ATTRIBUTE_FORMAT, FileFormat.getByName("json"));
+        pluginSettings.put(FileSourceConfig.ATTRIBUTE_FORMAT, "json");
         fileSource = createObjectUnderTest();
         fileSource.start(buffer);
 
@@ -176,7 +176,7 @@ public class FileSourceTests {
     @Test
     public void testFileWithInvalidJSONAddsEventsToBufferAsPlainText() {
         pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, TEST_FILE_PATH_INVALID_JSON);
-        pluginSettings.put(FileSourceConfig.ATTRIBUTE_FORMAT, FileFormat.getByName("json"));
+        pluginSettings.put(FileSourceConfig.ATTRIBUTE_FORMAT, "json");
         fileSource = createObjectUnderTest();
         fileSource.start(buffer);
 
@@ -188,7 +188,7 @@ public class FileSourceTests {
 
     @Test
     public void testNonSupportedFileFormatThrowsNullPointerException() {
-        pluginSettings.put(FileSourceConfig.ATTRIBUTE_FORMAT, FileFormat.getByName("unsupported"));
+        pluginSettings.put(FileSourceConfig.ATTRIBUTE_FORMAT, "unsupported");
         assertThrows(NullPointerException.class, this::createObjectUnderTest);
     }
 
