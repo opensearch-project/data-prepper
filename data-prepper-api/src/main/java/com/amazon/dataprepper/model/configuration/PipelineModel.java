@@ -9,6 +9,8 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -18,14 +20,19 @@ import java.util.List;
  * @since 1.2
  */
 public class PipelineModel {
-    private static List<PluginModel> validateProcessor(final List<PluginModel> preppers, final List<PluginModel> processors) {
+    private static final Logger LOG = LoggerFactory.getLogger(PipelineModel.class);
+
+    private static List<PluginModel> validateProcessor(
+            final List<PluginModel> preppers,
+            final List<PluginModel> processors) {
         if (preppers != null && processors != null) {
-            String message = "Pipeline model cannot specify a prepper and processor configuration. It is " +
+            final String message = "Pipeline model cannot specify a prepper and processor configuration. It is " +
                     "recommended to move prepper configurations to the processor section to maintain compatibility " +
                     "with DataPrepper version 1.2 and above.";
             throw new IllegalArgumentException(message);
         }
         else if (preppers != null) {
+            LOG.warn("prepper configurations are deprecated, processor configurations will be required in 1.2");
             return preppers;
         }
         else {

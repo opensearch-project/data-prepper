@@ -9,6 +9,8 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -19,16 +21,19 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 
 public class PipelineConfiguration {
+    private static final Logger LOG = LoggerFactory.getLogger(PipelineConfiguration.class);
+
     private static List<Map.Entry<String, Map<String, Object>>> validateProcessor(
             final List<Map.Entry<String, Map<String, Object>>> preppers,
             final List<Map.Entry<String, Map<String, Object>>> processors) {
         if (preppers != null && processors != null) {
-            final String message = "Pipeline configuration cannot specify a prepper and processor configuration. It is " +
-                    "recommended to move prepper configurations to the processor section to maintain compatibility " +
-                    "with DataPrepper version 1.2 and above.";
+            final String message = "Pipeline configuration cannot specify a prepper and processor configuration. " +
+                    "It is recommended to move prepper configurations to the processor section to maintain " +
+                    "compatibility with DataPrepper version 1.2 and above.";
             throw new IllegalArgumentException(message);
         }
         else if (preppers != null) {
+            LOG.warn("prepper configurations are deprecated, processor configurations will be required in 1.2");
             return preppers;
         }
         else {
