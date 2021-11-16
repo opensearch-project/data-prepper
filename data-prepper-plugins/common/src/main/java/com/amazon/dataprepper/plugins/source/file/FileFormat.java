@@ -4,14 +4,11 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * An enumm to represent the file data types supported in Data Prepper.
+ * An enumm to represent the file formats supported in Data Prepper's file source.
  * @since 1.2
  */
-@JsonFormat(shape = JsonFormat.Shape.STRING)
 public enum FileFormat {
 
     PLAIN("plain"),
@@ -30,7 +27,6 @@ public enum FileFormat {
         return this.name;
     }
 
-    @JsonValue
     public static FileFormat getByName(final String name) {
         return NAMES_MAP.get(name.toLowerCase());
     }
