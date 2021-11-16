@@ -14,6 +14,7 @@ package com.amazon.dataprepper.model.processor;
 import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
@@ -25,7 +26,7 @@ import java.util.Collection;
  * some basic metrics. Logic of the execute function is handled by extensions of this class in the doExecute function.
  */
 public abstract class AbstractProcessor<InputRecord extends Record<?>, OutputRecord extends Record<?>> implements
-        Processor<InputRecord, OutputRecord> {
+        Prepper<InputRecord, OutputRecord> {
 
     protected final PluginMetrics pluginMetrics;
     private final Counter recordsInCounter;
@@ -46,7 +47,7 @@ public abstract class AbstractProcessor<InputRecord extends Record<?>, OutputRec
      * @return Records as processed by the doExecute function
      */
     @Override
-    public Collection<OutputRecord> execute(Collection<InputRecord> records) {
+    public Collection<OutputRecord> execute(final Collection<InputRecord> records) {
         recordsInCounter.increment(records.size());
         final Collection<OutputRecord> result = timeElapsedTimer.record(() -> doExecute(records));
         recordsOutCounter.increment(result.size());

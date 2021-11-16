@@ -8,8 +8,6 @@ package com.amazon.dataprepper.model.prepper;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 
-import java.util.Collection;
-
 /**
  * @deprecated as of 1.2, replace by {@link Processor}
  * Prepper interface. These are intermediary processing units using which users can filter,

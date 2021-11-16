@@ -5,7 +5,6 @@
 
 package com.amazon.dataprepper.parser.model;
 
-import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -24,7 +23,7 @@ public class PipelineConfiguration {
             final List<Map.Entry<String, Map<String, Object>>> preppers,
             final List<Map.Entry<String, Map<String, Object>>> processors) {
         if (preppers != null && processors != null) {
-            String message = "Pipeline configuration cannot specify a prepper and processor configuration. It is " +
+            final String message = "Pipeline configuration cannot specify a prepper and processor configuration. It is " +
                     "recommended to move prepper configurations to the processor section to maintain compatibility " +
                     "with DataPrepper version 1.2 and above.";
             throw new IllegalArgumentException(message);

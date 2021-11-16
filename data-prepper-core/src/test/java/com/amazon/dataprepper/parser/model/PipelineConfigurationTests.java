@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 import static com.amazon.dataprepper.TestDataProvider.DEFAULT_READ_BATCH_DELAY;

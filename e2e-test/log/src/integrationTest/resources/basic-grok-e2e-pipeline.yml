@@ -1,7 +1,7 @@
 grok-pipeline:
   source:
     http:
-  processor:
+  prepper:
     - grok:
         match:
           log: [ "%{COMMONAPACHELOG}" ]
