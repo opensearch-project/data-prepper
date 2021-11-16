@@ -47,9 +47,24 @@ For the trace analytics feature, the sink has specific configurations which enab
 
 ### Pipeline Configuration
 
-Create a file, `pipeline.yaml`. Paste the following data in there.
+Example `otel-trace-source` with SSL and Basic Authentication enabled. Note that you will have to change your `otel-collector-config.yaml` accordingly:
 
+```yaml
+source:
+  otel_trace_source:
+    ssl: true
+    sslKeyCertChainFile: "/full/path/to/certfile.crt"
+    sslKeyFile: "/full/path/to/keyfile.key"
+    authentication:
+      http_basic:
+        username: "my-user"
+        password: "my_s3cr3t"
 ```
+
+
+Example `pipeline.yaml` without SSL and Basic Authentication for the `otel-trace-source`:
+
+```yaml
 otel-trace-pipeline:
   # workers is the number of threads processing data in each pipeline. 
   # We recommend same value for all pipelines.
@@ -62,6 +77,8 @@ otel-trace-pipeline:
   source:
     otel_trace_source:
       ssl: false # Change this to enable encryption in transit
+      authentication:
+        unauthenticated:
   buffer:
     bounded_blocking:
        # buffer_size is the number of ExportTraceRequest from otel-collector the data prepper should hold in memeory. 
@@ -164,19 +181,9 @@ The main changes you will need to make are:
 The the [Data Prepper OpenSearch Sink](../data-prepper-plugins/opensearch/README.md#Configuration) documents
 other configurations available for OpenSearch.
 
-### Data Prepper Configuration
-
-Create a file, `data-prepper-config.yaml`. Paste the following data in there.
-
-```
-ssl: false
-```
-
-See the [API documentation](core_apis.md) if you wish to configure your Data Prepper server with TLS/SSL.
-
 ## OpenTelemetry Collector
 
-You will have to run OpenTelemetry collector in your service environment. You can find the installation guide of OpenTelemetry collector [here](https://opentelemetry.io/docs/collector/getting-started/#getting-started).  Please ensure you that you configure the collector with an exporter configured to your Data Prepper. Below is an example otel-collector-config.yaml that receives data from various instrumentations and export it to Data Prepper.
+You will have to run OpenTelemetry collector in your service environment. You can find the installation guide of OpenTelemetry collector [here](https://opentelemetry.io/docs/collector/getting-started/#getting-started).  Please ensure you that you configure the collector with an exporter configured to your Data Prepper. Below is an example `otel-collector-config.yaml` that receives data from various instrumentations and export it to Data Prepper.
 
 ```
 receivers:

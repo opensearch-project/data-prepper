@@ -62,11 +62,11 @@ The Data Prepper Core APIs support HTTP Basic authentication.
 You can set the username and password with the following
 configuration in `data-prepper-config.yaml`:
 
-```
+```yaml
 authentication:
   http_basic:
-    username: myuser
-    password: mys3cr3t
+    username: "myuser"
+    password: "mys3cr3t"
 ```
 
 You can disable authentication of core endpoints using the following
@@ -74,7 +74,7 @@ configuration. Use this with caution because the shutdown API and
 others will be accessible to anybody with network access to
 your Data Prepper instance.
 
-```
+```yaml
 authentication:
   unauthenticated:
 ```
