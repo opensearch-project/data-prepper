@@ -1,6 +1,6 @@
 package com.amazon.dataprepper.plugins.source.file;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import :wqcom.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class FileSourceConfig {
@@ -11,7 +11,7 @@ public class FileSourceConfig {
     static final int DEFAULT_TIMEOUT = 5_000;
     static final String DEFAULT_TYPE = "event";
     static final String DEFAULT_FORMAT = "plain";
-
+    static final String STRING_TYPE = "string";
 
 
     @JsonProperty(ATTRIBUTE_PATH)

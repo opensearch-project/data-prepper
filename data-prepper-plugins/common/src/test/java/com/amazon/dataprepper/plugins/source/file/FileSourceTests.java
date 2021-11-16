@@ -63,19 +63,18 @@ public class FileSourceTests {
     @Mock
     private PluginFactory pluginFactory;
 
-    private Buffer<Record<Event>> buffer;
+    private Buffer<Record<Object>> buffer;
 
     final Map<String, Object> pluginSettings = new HashMap<>();
 
-    final List<Record<Event>> expectedEventsPlain = new ArrayList<>();
-    final List<Record<Event>> expectedEventsJson = new ArrayList<>();
-    final List<Record<Event>> expectedEventsInvalidJson = new ArrayList<>();
+    final List<Record<Object>> expectedEventsPlain = new ArrayList<>();
+    final List<Record<Object>> expectedEventsJson = new ArrayList<>();
+    final List<Record<Object>> expectedEventsInvalidJson = new ArrayList<>();
 
 
     @BeforeEach
     public void setup() {
         pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, TEST_FILE_PATH_PLAIN);
-        pluginSettings.put(FileSourceConfig.ATTRIBUTE_TYPE, "new_type");
         pluginSettings.put(FileSourceConfig.ATTRIBUTE_TIMEOUT, TEST_WRITE_TIMEOUT);
 
         // plain
@@ -83,8 +82,8 @@ public class FileSourceTests {
         final String expectedPlainSecondLine = "THIS IS ANOTHER PLAINTEXT LINE";
 
 
-        final Record<Event> firstEventPlain = createRecordEventWithKeyValuePair(FileSource.MESSAGE_KEY, expectedPlainFirstLine);
-        final Record<Event> secondEventPlain = createRecordEventWithKeyValuePair(FileSource.MESSAGE_KEY, expectedPlainSecondLine);
+        final Record<Object> firstEventPlain = createRecordEventWithKeyValuePair(FileSource.MESSAGE_KEY, expectedPlainFirstLine);
+        final Record<Object> secondEventPlain = createRecordEventWithKeyValuePair(FileSource.MESSAGE_KEY, expectedPlainSecondLine);
 
         expectedEventsPlain.add(firstEventPlain);
         expectedEventsPlain.add(secondEventPlain);
@@ -93,8 +92,8 @@ public class FileSourceTests {
         final String expectedJsonFirstLine = "{\"test_key: \"test_value\"}";
         final String expectedJsonSecondLine = "{\"second_test_key\": \"second_test_value\"}";
 
-        final Record<Event> firstEventJson = createRecordEventWithKeyValuePair("test_key", "test_value");
-        final Record<Event> secondEventJson = createRecordEventWithKeyValuePair("second_test_key", "second_test_value");
+        final Record<Object> firstEventJson = createRecordEventWithKeyValuePair("test_key", "test_value");
+        final Record<Object> secondEventJson = createRecordEventWithKeyValuePair("second_test_key", "second_test_value");
 
         expectedEventsJson.add(firstEventJson);
         expectedEventsJson.add(secondEventJson);
@@ -104,8 +103,8 @@ public class FileSourceTests {
         final String expectedInvalidJsonSecondLine = "{\"second_test_key\": \"second_test_value\"";
 
 
-        final Record<Event> firstEventInvalidJson = createRecordEventWithKeyValuePair(FileSource.MESSAGE_KEY, expectedInvalidJsonFirstLine);
-        final Record<Event> secondEventInvalidJson = createRecordEventWithKeyValuePair(FileSource.MESSAGE_KEY, expectedInvalidJsonSecondLine);
+        final Record<Object> firstEventInvalidJson = createRecordEventWithKeyValuePair(FileSource.MESSAGE_KEY, expectedInvalidJsonFirstLine);
+        final Record<Object> secondEventInvalidJson = createRecordEventWithKeyValuePair(FileSource.MESSAGE_KEY, expectedInvalidJsonSecondLine);
 
         expectedEventsInvalidJson.add(firstEventInvalidJson);
         expectedEventsInvalidJson.add(secondEventInvalidJson);
@@ -120,7 +119,7 @@ public class FileSourceTests {
         return new FileSource(fileSourceConfig, pluginMetrics, pluginFactory);
     }
 
-    private BlockingBuffer<Record<Event>> getBuffer() {
+    private BlockingBuffer<Record<Object>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 2);
         integerHashMap.put("batch_size", 2);
@@ -140,7 +139,8 @@ public class FileSourceTests {
     @Test
     public void testFileSourceWithNonexistentFilePathThrowsRuntimeException() {
         pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, FILE_DOES_NOT_EXIST);
-        assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
+        fileSource = createObjectUnderTest();
+        assertThrows(RuntimeException.class, () -> fileSource.start(buffer));
     }
 
     @Test
@@ -154,7 +154,7 @@ public class FileSourceTests {
         fileSource = createObjectUnderTest();
         fileSource.start(buffer);
 
-        final List<Record<Event>> bufferEvents = new ArrayList<>(buffer.read(1000).getKey());
+        final List<Record<Object>> bufferEvents = new ArrayList<>(buffer.read(1000).getKey());
 
         assertThat(bufferEvents.size(), equalTo(expectedEventsPlain.size()));
         assertExpectedRecordsAreEqual(expectedEventsPlain, bufferEvents);
@@ -167,7 +167,7 @@ public class FileSourceTests {
         fileSource = createObjectUnderTest();
         fileSource.start(buffer);
 
-        final List<Record<Event>> bufferEvents = new ArrayList<>(buffer.read(1000).getKey());
+        final List<Record<Object>> bufferEvents = new ArrayList<>(buffer.read(1000).getKey());
 
         assertThat(bufferEvents.size(), equalTo(expectedEventsJson.size()));
         assertExpectedRecordsAreEqual(expectedEventsJson, bufferEvents);
@@ -180,10 +180,24 @@ public class FileSourceTests {
         fileSource = createObjectUnderTest();
         fileSource.start(buffer);
 
-        final List<Record<Event>> bufferEvents = new ArrayList<>(buffer.read(1000).getKey());
+        final List<Record<Object>> bufferEvents = new ArrayList<>(buffer.read(1000).getKey());
 
         assertThat(bufferEvents.size(), equalTo(expectedEventsInvalidJson.size()));
         assertExpectedRecordsAreEqual(expectedEventsInvalidJson, bufferEvents);
+    }
+
+    @Test
+    public void testStringTypeAddsStringsToBufferCorrectly() {
+        pluginSettings.put(FileSourceConfig.ATTRIBUTE_TYPE, FileSourceConfig.STRING_TYPE);
+        fileSource = createObjectUnderTest();
+        fileSource.start(buffer);
+
+        final List<Record<Object>> bufferEvents = new ArrayList<>(buffer.read(1000).getKey());
+
+        assertThat(bufferEvents.size(), equalTo(expectedEventsPlain.size()));
+        assertThat(bufferEvents.get(0).getData(), equalTo("THIS IS A PLAINTEXT LINE"));
+        assertThat(bufferEvents.get(1).getData(), equalTo("THIS IS ANOTHER PLAINTEXT LINE"));
+
     }
 
     @Test
@@ -192,25 +206,34 @@ public class FileSourceTests {
         assertThrows(NullPointerException.class, this::createObjectUnderTest);
     }
 
-    static void assertExpectedRecordsAreEqual(final List<Record<Event>> expectedEvents, final List<Record<Event>> actualEvents) {
+    @Test
+    public void testNonSupportedFileTypeThrowsRuntimeException() {
+        pluginSettings.put(FileSourceConfig.ATTRIBUTE_TYPE, "bad_type");
+        fileSource = createObjectUnderTest();
+        assertThrows(RuntimeException.class, () -> { fileSource.start(buffer); });
+    }
+
+    static void assertExpectedRecordsAreEqual(final List<Record<Object>> expectedEvents, final List<Record<Object>> actualEvents) {
         for (int i = 0; i < expectedEvents.size(); i++) {
             assertThat(actualEvents.get(i), notNullValue());
             assertThat(actualEvents.get(i).getData(), notNullValue());
-            assertRecordsAreEqual(actualEvents.get(i), expectedEvents.get(i));
+            assertEventRecordsAreEqual(actualEvents.get(i), expectedEvents.get(i));
         }
     }
 
-    static void assertRecordsAreEqual(final Record<Event> first, final Record<Event> second) {
+    static void assertEventRecordsAreEqual(final Record<Object> first, final Record<Object> second) {
         try {
-            final Map<String, Object> recordMapFirst = OBJECT_MAPPER.readValue(first.getData().toJsonString(), MAP_TYPE_REFERENCE);
-            final Map<String, Object> recordMapSecond = OBJECT_MAPPER.readValue(second.getData().toJsonString(), MAP_TYPE_REFERENCE);
+            final Event firstEvent = (Event) first.getData();
+            final Event secondEvent = (Event) second.getData();
+            final Map<String, Object> recordMapFirst = OBJECT_MAPPER.readValue(firstEvent.toJsonString(), MAP_TYPE_REFERENCE);
+            final Map<String, Object> recordMapSecond = OBJECT_MAPPER.readValue(secondEvent.toJsonString(), MAP_TYPE_REFERENCE);
             assertThat(recordMapFirst, is(equalTo(recordMapSecond)));
         } catch (JsonProcessingException e) {
             LOG.error("Unable to parse Event as JSON");
         }
     }
 
-    private Record<Event> createRecordEventWithKeyValuePair(final String key, final String value) {
+    private Record<Object> createRecordEventWithKeyValuePair(final String key, final String value) {
         final Map<String, Object> eventData = new HashMap<>();
         eventData.put(key, value);
 
