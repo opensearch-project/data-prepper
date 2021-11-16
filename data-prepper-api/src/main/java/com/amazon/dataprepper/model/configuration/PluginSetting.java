@@ -133,7 +133,7 @@ public class PluginSetting {
     }
 
     /**
-     * Returns the value of the specified List<String>, or {@code defaultValue} if this settings contains no value for
+     * Returns the value of the specified {@literal List<String>}, or {@code defaultValue} if this settings contains no value for
      * the attribute.
      *
      * @param attribute    name of the attribute
@@ -153,7 +153,7 @@ public class PluginSetting {
     }
 
     /**
-     * Returns the value of the specified Map<String, String> object, or {@code defaultValue} if this settings contains no value for
+     * Returns the value of the specified {@literal Map<String, String> object}, or {@code defaultValue} if this settings contains no value for
      * the attribute.
      *
      * @param attribute    name of the attribute
@@ -179,7 +179,7 @@ public class PluginSetting {
     }
 
     /**
-     * Returns the value of the specified Map<String, List<String>>, or {@code defaultValue} if this settings contains no value for
+     * Returns the value of the specified {@literal Map<String, List<String>>}, or {@code defaultValue} if this settings contains no value for
      * the attribute.
      *
      * @param attribute    name of the attribute
