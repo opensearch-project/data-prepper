@@ -13,14 +13,14 @@ package com.amazon.dataprepper.plugins.sink;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
 
 import java.util.Collection;
-import java.util.Iterator;
 
 @DataPrepperPlugin(name = "stdout", pluginType = Sink.class)
-public class StdOutSink implements Sink<Record<String>> {
+public class StdOutSink implements Sink<Record<Event>> {
 
     /**
      * Mandatory constructor for Data Prepper Component - This constructor is used by Data Prepper
@@ -38,11 +38,9 @@ public class StdOutSink implements Sink<Record<String>> {
     }
 
     @Override
-    public void output(final Collection<Record<String>> records) {
-        final Iterator<Record<String>> iterator = records.iterator();
-        while (iterator.hasNext()) {
-            final Record<String> record = iterator.next();
-            System.out.println(record.getData());
+    public void output(final Collection<Record<Event>> records) {
+        for (Record<Event> record : records) {
+            System.out.println(record.getData().toJsonString());
         }
     }
 
