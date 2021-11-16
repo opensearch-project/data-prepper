@@ -19,7 +19,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class DefaultPluginMapperTest {
+class LogstashPluginMapperTest {
 
     private AttributesMapperProvider attributesMapperProvider;
     private LogstashPluginAttributesMapper logstashPluginAttributesMapper;
@@ -34,8 +34,8 @@ class DefaultPluginMapperTest {
 
     }
 
-    DefaultPluginMapper createObjectUnderTest() {
-        return new DefaultPluginMapper(attributesMapperProvider);
+    LogstashPluginMapper createObjectUnderTest() {
+        return new LogstashPluginMapper(attributesMapperProvider);
     }
 
     @Test
@@ -43,7 +43,7 @@ class DefaultPluginMapperTest {
         LogstashPlugin logstashPlugin = TestDataProvider.invalidMappingResourceNameData();
         String mappingResourceName = logstashPlugin.getPluginName() + ".mapping.yaml";
 
-        final DefaultPluginMapper objectUnderTest = createObjectUnderTest();
+        final LogstashPluginMapper objectUnderTest = createObjectUnderTest();
         Exception exception = assertThrows(LogstashMappingException.class, () ->
                 objectUnderTest.mapPlugin(logstashPlugin));
 
@@ -58,7 +58,7 @@ class DefaultPluginMapperTest {
         LogstashPlugin logstashPlugin = TestDataProvider.invalidMappingResourceData();
         String mappingResourceName = logstashPlugin.getPluginName() + ".mapping.yaml";
 
-        final DefaultPluginMapper objectUnderTest = createObjectUnderTest();
+        final LogstashPluginMapper objectUnderTest = createObjectUnderTest();
         Exception exception = assertThrows(LogstashMappingException.class, () ->
                 objectUnderTest.mapPlugin(logstashPlugin));
 
@@ -73,7 +73,7 @@ class DefaultPluginMapperTest {
         LogstashPlugin logstashPlugin = TestDataProvider.noPluginNameMappingResourceData();
         String mappingResourceName = logstashPlugin.getPluginName() + ".mapping.yaml";
 
-        final DefaultPluginMapper objectUnderTest = createObjectUnderTest();
+        final LogstashPluginMapper objectUnderTest = createObjectUnderTest();
         Exception exception = assertThrows(LogstashMappingException.class, () ->
                 objectUnderTest.mapPlugin(logstashPlugin));
 

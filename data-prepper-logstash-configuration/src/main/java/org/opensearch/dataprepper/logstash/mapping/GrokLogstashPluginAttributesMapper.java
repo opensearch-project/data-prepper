@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class GrokLogstashPluginAttributesMapper implements LogstashPluginAttributesMapper {
+class GrokLogstashPluginAttributesMapper implements LogstashPluginAttributesMapper {
     protected static final String LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME = "match";
     protected static final String LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME = "pattern_definitions";
     private static final Logger LOG = LoggerFactory.getLogger(GrokLogstashPluginAttributesMapper.class);
@@ -101,9 +101,8 @@ public class GrokLogstashPluginAttributesMapper implements LogstashPluginAttribu
             final List<GrokNamedCapturesUtil.GrokNamedCapturesPair> grokNamedCapturesPairs = entry.getValue()
                     .stream().map(GrokNamedCapturesUtil::convertRegexNamedCapturesToGrokPatternDefinitions)
                     .collect(Collectors.toList());
-            grokNamedCapturesPairs.forEach(grokNamedCapturesPair -> {
-                patternDefinitions.putAll(grokNamedCapturesPair.getMappedPatternDefinitions());
-            });
+            grokNamedCapturesPairs.forEach(grokNamedCapturesPair ->
+                    patternDefinitions.putAll(grokNamedCapturesPair.getMappedPatternDefinitions()));
             final List<String> fixedNameCapturesPatterns = grokNamedCapturesPairs.stream().map(
                     GrokNamedCapturesUtil.GrokNamedCapturesPair::getMappedRegex).collect(Collectors.toList());
             entry.setValue(fixedNameCapturesPatterns);

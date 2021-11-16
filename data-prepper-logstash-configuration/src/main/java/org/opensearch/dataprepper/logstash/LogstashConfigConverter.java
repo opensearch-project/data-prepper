@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.logstash;
 
 import com.amazon.dataprepper.model.configuration.PipelineModel;
+import com.amazon.dataprepper.model.configuration.PipelinesDataFlowModel;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
@@ -17,7 +18,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
-import java.util.Map;
 
 /**
  * Converts Logstash configuration file and returns YAML file location
@@ -39,7 +39,9 @@ public class LogstashConfigConverter {
 
         LogstashMapper logstashMapper = new LogstashMapper();
         PipelineModel pipelineModel = logstashMapper.mapPipeline(logstashConfiguration);
-        final Map<String, Object> pipeline = Collections.singletonMap("logstash-converted-pipeline", pipelineModel);
+        PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
+                Collections.singletonMap("logstash-converted-pipeline", pipelineModel)
+        );
 
         ObjectMapper mapper = new ObjectMapper(YAMLFactory.builder()
                 .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
@@ -53,7 +55,7 @@ public class LogstashConfigConverter {
 
         final Path yamlFilePath = Paths.get(outputDirectory , yamlFileName + ".yaml");
 
-        mapper.writeValue(new File(String.valueOf(yamlFilePath)), pipeline);
+        mapper.writeValue(new File(String.valueOf(yamlFilePath)), pipelinesDataFlowModel);
 
         return String.valueOf(yamlFilePath);
     }
