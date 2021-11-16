@@ -15,7 +15,6 @@ import java.util.concurrent.TimeoutException;
 /**
  * Buffer queues the records between TI components and acts as a layer between source and prepper/sink. Buffer can
  * be in-memory, disk based or other a standalone implementation.
- * <p>
  */
 public interface Buffer<T extends Record<?>> {
     /**
