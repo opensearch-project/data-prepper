@@ -8,7 +8,7 @@ A prepper plugin to generate new string records with upper or lower case convers
 
 ## `file` (source)
 
-A source plugin to read input data from the specified file path. The file source creates a new Record for eadh line of data in the file.
+A source plugin to read input data from the specified file path. The file source creates a new Record for each line of data in the file.
 
 * `path` (String): absolute input data file path. It is required
   
@@ -26,9 +26,16 @@ A source plugin to read input data from the specified file path. The file source
     ```
   
     * `json`: Reads data that is in the form of a JSON string from a file. If the json string is unable to be parsed, the file source will treat it as a plaintext line.
+  Expects json lines as follows:
+      ```
+      { "key1": "val1" }
+      { "key2": "val2" }
+      { "key3": "val3" }
+      ```
+            
   
   
-* type (String): The Event type that will be stored in the metadata of the Event. Default is `event`. 
+* `type` (String): The Event type that will be stored in the metadata of the Event. Default is `event`. 
 
 ## `file` (sink)
 
