@@ -28,14 +28,14 @@ import java.util.UUID;
 public class StdOutSinkTests {
     private static String PLUGIN_NAME = "stdout";
 
-    private final Map<String, Object> TEST_DATA_1 = new HashMap<>();
-    private final Map<String, Object> TEST_DATA_2 = new HashMap<>();
-
     private final List<Record<Event>> TEST_RECORDS = new ArrayList<>();
 
 
     @BeforeEach
     public void setup() {
+        Map<String, Object> TEST_DATA_1 = new HashMap<>();
+        Map<String, Object> TEST_DATA_2 = new HashMap<>();
+
         TEST_DATA_1.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         TEST_DATA_2.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
