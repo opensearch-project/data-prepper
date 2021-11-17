@@ -28,3 +28,17 @@ If your plugin requires no arguments, it can use a default constructor which wil
 
 Additionally, the plugin framework can create a plugin using a single parameter constructor with
 a single parameter of type `PluginSetting`. This behavior is deprecated and planned for removal.
+
+## Deploying Maven Artifacts
+
+If you are developing a plugin in another Gradle project your project will depend on at least the `data-prepper-api` project.
+You can deploy this artifact locally so that you can add it as a dependency in your other project.
+
+Run the following command:
+
+```
+./gradlew publishToMavenLocal
+```
+
+The Maven artifacts will then be available in your local Maven repository. In standard environments
+they will be available at `${USER}/.m2/repository/org/opensearch/dataprepper/`.
