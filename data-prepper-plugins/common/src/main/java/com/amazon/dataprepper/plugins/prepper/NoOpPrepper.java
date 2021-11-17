@@ -12,20 +12,21 @@
 package com.amazon.dataprepper.plugins.prepper;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
 @DataPrepperPlugin(name = "no-op", pluginType = Prepper.class)
-public class NoOpPrepper<InputT extends Record<?>> implements Prepper<InputT, InputT> {
+public class NoOpPrepper implements Prepper<Record<Event>, Record<Event>> {
 
     public NoOpPrepper() {
 
     }
 
     @Override
-    public Collection<InputT> execute(final Collection<InputT> records) {
+    public Collection<Record<Event>> execute(final Collection<Record<Event>> records) {
         return records;
     }
 
