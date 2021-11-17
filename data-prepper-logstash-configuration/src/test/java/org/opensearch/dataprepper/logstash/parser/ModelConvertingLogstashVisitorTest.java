@@ -111,9 +111,6 @@ class ModelConvertingLogstashVisitorTest {
         List<LogstashPlugin> actualPluginSections = (List<LogstashPlugin>) logstashVisitor.visitPlugin_section(pluginSectionMock);
         List<LogstashPlugin> expectedPluginSections = TestDataProvider.pluginSectionData();
 
-        System.out.println(actualPluginSections);
-        System.out.println(expectedPluginSections);
-
         assertThat(actualPluginSections.size(), equalTo(expectedPluginSections.size()));
         for (int i = 0; i < expectedPluginSections.size(); i++)
             assertThat(actualPluginSections.get(i).getPluginName(), equalTo(expectedPluginSections.get(i).getPluginName()));
