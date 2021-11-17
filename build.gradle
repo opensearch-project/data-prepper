@@ -160,14 +160,16 @@ configure(coreProjects) {
 }
 
 licenseReport {
-    configurations = ALL
     excludeOwnGroup = true
     excludeBoms = false
     renderers = new TextReportRenderer()
 }
 
-task copyThirdParyReport(type: Copy) {
+task generateThirdPartyReport(type: Copy) {
     from 'build/reports/dependency-license/'
     into '.'
-    include '*.txt'
+    include 'THIRD-PARTY-NOTICES.txt'
+    rename 'THIRD-PARTY-NOTICES.txt', 'THIRD-PARTY'
+    generateThirdPartyReport.dependsOn(generateLicenseReport)
 }
+
