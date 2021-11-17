@@ -1,0 +1,54 @@
+package org.opensearch.dataprepper.logstash.mapping;
+
+import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Collection;
+import java.util.Objects;
+import java.util.List;
+import java.util.Map;
+import java.util.LinkedHashMap;
+
+abstract class AbstractLogstashPluginAttributesMapper implements LogstashPluginAttributesMapper {
+    private static final Logger LOG = LoggerFactory.getLogger(AbstractLogstashPluginAttributesMapper.class);
+
+    @Override
+    public Map<String, Object> mapAttributes(final List<LogstashAttribute> logstashAttributes, final LogstashAttributesMappings logstashAttributesMappings) {
+
+        Objects.requireNonNull(logstashAttributes);
+        Objects.requireNonNull(logstashAttributesMappings);
+        Objects.requireNonNull(logstashAttributesMappings.getMappedAttributeNames());
+        Objects.requireNonNull(logstashAttributesMappings.getAdditionalAttributes());
+
+        final Map<String, Object> pluginSettings = new LinkedHashMap<>(logstashAttributesMappings.getAdditionalAttributes());
+        final Map<String, String> mappedAttributeNames = logstashAttributesMappings.getMappedAttributeNames();
+
+        Collection<String> customMappedAttributeNames = getCustomMappedAttributeNames();
+
+        logstashAttributes
+                .stream()
+                .filter(logstashAttribute -> !customMappedAttributeNames.contains(logstashAttribute.getAttributeName()))
+                .forEach(logstashAttribute -> {
+            if (mappedAttributeNames.containsKey(logstashAttribute.getAttributeName())) {
+                pluginSettings.put(
+                        mappedAttributeNames.get(logstashAttribute.getAttributeName()),
+                        logstashAttribute.getAttributeValue().getValue()
+                );
+            }
+            else {
+                LOG.warn("Attribute name {} is not found in mapping file.", logstashAttribute.getAttributeName());
+            }
+        });
+
+        if (!customMappedAttributeNames.isEmpty()) {
+            mapCustomAttributes(logstashAttributes, logstashAttributesMappings, pluginSettings);
+        }
+
+        return pluginSettings;
+    }
+
+    abstract void mapCustomAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings, Map<String, Object> pluginSettings);
+
+    abstract Collection<String> getCustomMappedAttributeNames();
+}

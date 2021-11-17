@@ -10,23 +10,22 @@ import org.opensearch.dataprepper.logstash.model.LogstashValueType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.Collection;
+import java.util.Arrays;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
-class GrokLogstashPluginAttributesMapper implements LogstashPluginAttributesMapper {
+class GrokLogstashPluginAttributesMapper extends AbstractLogstashPluginAttributesMapper {
     protected static final String LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME = "match";
     protected static final String LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME = "pattern_definitions";
     private static final Logger LOG = LoggerFactory.getLogger(GrokLogstashPluginAttributesMapper.class);
 
     @SuppressWarnings("unchecked")
     @Override
-    public Map<String, Object> mapAttributes(final List<LogstashAttribute> logstashAttributes, final LogstashAttributesMappings logstashAttributesMappings) {
-        final Map<String, Object> pluginSettings = new LinkedHashMap<>(logstashAttributesMappings.getAdditionalAttributes());
-
+    void mapCustomAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings, Map<String, Object> pluginSettings) {
         final List<LogstashAttribute> matchAttributes = new ArrayList<>();
         final Map<String, String> patternDefinitions = new HashMap<>();
         logstashAttributes.forEach(logstashAttribute -> {
@@ -34,14 +33,6 @@ class GrokLogstashPluginAttributesMapper implements LogstashPluginAttributesMapp
                 matchAttributes.add(logstashAttribute);
             } else if (logstashAttribute.getAttributeName().equals(LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME)) {
                 patternDefinitions.putAll((Map<String, String>) logstashAttribute.getAttributeValue().getValue());
-            } else if (logstashAttributesMappings.getMappedAttributeNames().containsKey(logstashAttribute.getAttributeName())) {
-                pluginSettings.put(
-                        logstashAttributesMappings.getMappedAttributeNames().get(logstashAttribute.getAttributeName()),
-                        logstashAttribute.getAttributeValue().getValue()
-                );
-            }
-            else {
-                LOG.warn("Attribute name {} is not found in mapping file.", logstashAttribute.getAttributeName());
             }
         });
 
@@ -59,8 +50,11 @@ class GrokLogstashPluginAttributesMapper implements LogstashPluginAttributesMapp
                     patternDefinitions
             );
         }
+    }
 
-        return pluginSettings;
+    @Override
+    Collection<String> getCustomMappedAttributeNames() {
+        return Arrays.asList(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME, LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME);
     }
 
     @SuppressWarnings("unchecked")
