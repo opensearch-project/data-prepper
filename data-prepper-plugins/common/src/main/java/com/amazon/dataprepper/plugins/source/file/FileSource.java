@@ -32,7 +32,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.TimeoutException;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -49,13 +48,14 @@ public class FileSource implements Source<Record<Object>> {
     private final FileSourceConfig fileSourceConfig;
 
     private boolean isStopRequested;
+    private final int writeTimeout;
 
     @DataPrepperPluginConstructor
     public FileSource(final FileSourceConfig fileSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
-        Objects.requireNonNull(fileSourceConfig.getFilePathToRead(), "File path is required");
-        Objects.requireNonNull(fileSourceConfig.getFormat(), "Invalid file format. Options are [json] and [plain]");
+        fileSourceConfig.validate();
         this.fileSourceConfig = fileSourceConfig;
         this.isStopRequested = false;
+        this.writeTimeout = FileSourceConfig.DEFAULT_TIMEOUT;
     }
 
 
@@ -89,8 +89,6 @@ public class FileSource implements Source<Record<Object>> {
             case PLAIN:
                 structuredLine.put(MESSAGE_KEY, line);
                 break;
-            default:
-                LOG.error("The file source type is [{}]. It must be \"json\" or \"plain\"", fileSourceConfig.getType().toString());
         }
 
         return new Record<>(JacksonEvent
@@ -115,11 +113,9 @@ public class FileSource implements Source<Record<Object>> {
     // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
     private void writeLineAsEventOrString(final String line, final Buffer<Record<Object>> buffer) throws TimeoutException, IllegalArgumentException {
         if (fileSourceConfig.getType().equals(FileSourceConfig.DEFAULT_TYPE)) {
-            buffer.write(getEventRecordFromLine(line), fileSourceConfig.getWriteTimeout());
+            buffer.write(getEventRecordFromLine(line), writeTimeout);
         } else if (fileSourceConfig.getType().equals(FileSourceConfig.STRING_TYPE)) {
-            buffer.write(new Record<>(line), fileSourceConfig.getWriteTimeout());
-        } else {
-            throw new IllegalArgumentException("Invalid type: must be either [event] or [string]");
+            buffer.write(new Record<>(line), writeTimeout);
         }
     }
 }

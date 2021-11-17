@@ -48,7 +48,6 @@ public class FileSourceTests {
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
 
     private static final String TEST_PIPELINE_NAME = "pipeline";
-    private static final int TEST_WRITE_TIMEOUT = 100;
     private static final String TEST_FILE_PATH_PLAIN = "src/test/resources/test-file-source-plain.tst";
     private static final String TEST_FILE_PATH_JSON = "src/test/resources/test-file-source-json.tst";
     private static final String TEST_FILE_PATH_INVALID_JSON = "src/test/resources/test-file-source-invalid-json.tst";
@@ -65,17 +64,21 @@ public class FileSourceTests {
 
     private Buffer<Record<Object>> buffer;
 
-    final Map<String, Object> pluginSettings = new HashMap<>();
+    private Map<String, Object> pluginSettings;
 
-    final List<Record<Object>> expectedEventsPlain = new ArrayList<>();
-    final List<Record<Object>> expectedEventsJson = new ArrayList<>();
-    final List<Record<Object>> expectedEventsInvalidJson = new ArrayList<>();
+    private List<Record<Object>> expectedEventsPlain;
+    private List<Record<Object>> expectedEventsJson;
+    private List<Record<Object>> expectedEventsInvalidJson;
 
 
     @BeforeEach
     public void setup() {
+        pluginSettings = new HashMap<>();
+        expectedEventsPlain = new ArrayList<>();
+        expectedEventsJson = new ArrayList<>();
+        expectedEventsInvalidJson = new ArrayList<>();
+
         pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, TEST_FILE_PATH_PLAIN);
-        pluginSettings.put(FileSourceConfig.ATTRIBUTE_TIMEOUT, TEST_WRITE_TIMEOUT);
 
         // plain
         final String expectedPlainFirstLine = "THIS IS A PLAINTEXT LINE";
@@ -201,16 +204,15 @@ public class FileSourceTests {
     }
 
     @Test
-    public void testNonSupportedFileFormatThrowsNullPointerException() {
+    public void testNonSupportedFileFormatThrowsIllegalArgumentException() {
         pluginSettings.put(FileSourceConfig.ATTRIBUTE_FORMAT, "unsupported");
-        assertThrows(NullPointerException.class, this::createObjectUnderTest);
+        assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
     }
 
     @Test
-    public void testNonSupportedFileTypeThrowsRuntimeException() {
+    public void testNonSupportedFileTypeThrowsIllegalArgumentException() {
         pluginSettings.put(FileSourceConfig.ATTRIBUTE_TYPE, "bad_type");
-        fileSource = createObjectUnderTest();
-        assertThrows(RuntimeException.class, () -> { fileSource.start(buffer); });
+        assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
     }
 
     static void assertExpectedRecordsAreEqual(final List<Record<Object>> expectedEvents, final List<Record<Object>> actualEvents) {
