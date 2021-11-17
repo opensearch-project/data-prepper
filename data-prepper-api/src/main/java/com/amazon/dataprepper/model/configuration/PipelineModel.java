@@ -22,6 +22,13 @@ import java.util.List;
 public class PipelineModel {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineModel.class);
 
+    /**
+     * @throws IllegalArgumentException If a non-null value is provided to both parameters.
+     * Guarantees only a prepper, processor, or neither is provided, not both.
+     * @param preppers Deserialized preppers plugin configuration, cannot be used in combination with the processors parameter, nullable
+     * @param processors Deserialized processors plugin configuration, cannot be used in combination with the preppers parameter, nullable
+     * @return the non-null parameter passed or null if both parameters are null.
+     */
     private static List<PluginModel> validateProcessor(
             final List<PluginModel> preppers,
             final List<PluginModel> processors) {
@@ -71,6 +78,15 @@ public class PipelineModel {
         this.readBatchDelay = delay;
     }
 
+    /**
+     * @since 1.2
+     * @param source Deserialized source plugin configuration
+     * @param preppers Deserialized preppers plugin configuration, cannot be used in combination with the processors parameter, nullable
+     * @param processors Deserialized processors plugin configuration, cannot be used in combination with the preppers parameter, nullable
+     * @param sinks Deserialized sinks plugin configuration
+     * @param workers Deserialized workers plugin configuration, nullable
+     * @param delay Deserialized delay plugin configuration, nullable
+     */
     @JsonCreator
     @Deprecated
     public PipelineModel(

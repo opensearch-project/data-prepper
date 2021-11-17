@@ -23,6 +23,13 @@ import static java.lang.String.format;
 public class PipelineConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineConfiguration.class);
 
+    /**
+     * @throws IllegalArgumentException If a non-null value is provided to both parameters.
+     * Guarantees only a prepper, processor, or neither is provided, not both.
+     * @param preppers Deserialized preppers plugin configuration, cannot be used in combination with the processors parameter, nullable
+     * @param processors Deserialized processors plugin configuration, cannot be used in combination with the preppers parameter, nullable
+     * @return the non-null parameter passed or null if both parameters are null.
+     */
     private static List<Map.Entry<String, Map<String, Object>>> validateProcessor(
             final List<Map.Entry<String, Map<String, Object>>> preppers,
             final List<Map.Entry<String, Map<String, Object>>> processors) {
@@ -71,6 +78,17 @@ public class PipelineConfiguration {
         this.readBatchDelay = getReadBatchDelayFromConfiguration(delay);
     }
 
+    /**
+     * @since 1.2
+     * Constructor for deserialized Json data.
+     * @param source Deserialized source plugin configuration
+     * @param buffer Deserialized buffer plugin configuration, nullable
+     * @param preppers Deserialized preppers plugin configuration, cannot be used in combination with the processors parameter, nullable
+     * @param processors Deserialized processors plugin configuration, cannot be used in combination with the preppers parameter, nullable
+     * @param sinks Deserialized sinks plugin configuration
+     * @param workers Deserialized workers plugin configuration, nullable
+     * @param delay Deserialized delay plugin configuration, nullable
+     */
     @JsonCreator
     @Deprecated
     public PipelineConfiguration(

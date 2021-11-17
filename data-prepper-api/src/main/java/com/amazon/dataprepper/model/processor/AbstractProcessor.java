@@ -42,6 +42,7 @@ public abstract class AbstractProcessor<InputRecord extends Record<?>, OutputRec
     }
 
     /**
+     * @since 1.2
      * This execute function calls the {@link AbstractProcessor#doExecute(Collection)} function of the implementation,
      * and records metrics for records in, records out, and elapsed time.
      * @param records Input records that will be modified/processed
@@ -56,6 +57,7 @@ public abstract class AbstractProcessor<InputRecord extends Record<?>, OutputRec
     }
 
     /**
+     * @since 1.2
      * This function should implement the processing logic of the processor
      * @param records Input records
      * @return Processed records
