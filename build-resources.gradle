@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-//preferably try to main the alphabetical order
+//preferably try to maintain the alphabetical order
 ext.versionMap = [
         junitJupiter : '5.7.2',
         mockito : '3.11.2',
@@ -12,3 +12,4 @@ ext.versionMap = [
 ]
 
 ext.coreProjects = [project(':data-prepper-api'), project(':data-prepper-core'), project('data-prepper-plugins:common')]
+ext.mavenArtifactProjects = [project(':data-prepper-api')]
