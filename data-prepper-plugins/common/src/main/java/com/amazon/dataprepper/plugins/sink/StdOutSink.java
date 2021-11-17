@@ -20,7 +20,7 @@ import com.amazon.dataprepper.model.sink.Sink;
 import java.util.Collection;
 
 @DataPrepperPlugin(name = "stdout", pluginType = Sink.class)
-public class StdOutSink implements Sink<Record<Event>> {
+public class StdOutSink implements Sink<Record<Object>> {
 
     /**
      * Mandatory constructor for Data Prepper Component - This constructor is used by Data Prepper
@@ -38,9 +38,21 @@ public class StdOutSink implements Sink<Record<Event>> {
     }
 
     @Override
-    public void output(final Collection<Record<Event>> records) {
-        for (Record<Event> record : records) {
-            System.out.println(record.getData().toJsonString());
+    public void output(final Collection<Record<Object>> records) {
+        for (final Record<Object> record : records) {
+            checkTypeAndPrintObject(record.getData());
+        }
+    }
+
+    // Temporary function to support both trace and log ingestion pipelines.
+    // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
+    private void checkTypeAndPrintObject(final Object object) {
+        if (object instanceof String) {
+            System.out.println(object);
+        } else if (object instanceof Event) {
+            System.out.println(((Event) object).toJsonString());
+        } else {
+            throw new RuntimeException("Invalid record type. StdOutSink only supports String and Events");
         }
     }
 
