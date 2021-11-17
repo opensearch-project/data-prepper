@@ -2,9 +2,11 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
+import com.github.jk1.license.render.TextReportRenderer
 
 plugins {
     id 'com.diffplug.spotless' version '5.17.0'
+    id 'com.github.jk1.dependency-license-report' version '1.17'
 }
 
 apply from: file("${rootDir}/build-resources.gradle")
@@ -155,4 +157,17 @@ configure(coreProjects) {
         }
     }
     check.dependsOn jacocoTestCoverageVerification
+}
+
+licenseReport {
+    configurations = ALL
+    excludeOwnGroup = true
+    excludeBoms = false
+    renderers = new TextReportRenderer()
+}
+
+task copyThirdParyReport(type: Copy) {
+    from 'build/reports/dependency-license/'
+    into '.'
+    include '*.txt'
 }
