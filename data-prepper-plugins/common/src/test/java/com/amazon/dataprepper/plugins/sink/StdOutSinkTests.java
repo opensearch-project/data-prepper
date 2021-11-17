@@ -34,26 +34,26 @@ public class StdOutSinkTests {
     @BeforeEach
     public void setup() {
         TEST_RECORDS = new ArrayList<>();
-        Map<String, Object> TEST_DATA_1 = new HashMap<>();
-        Map<String, Object> TEST_DATA_2 = new HashMap<>();
+        Map<String, Object> firstTestData = new HashMap<>();
+        Map<String, Object> secondTestData = new HashMap<>();
 
-        TEST_DATA_1.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
-        TEST_DATA_2.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        firstTestData.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        secondTestData.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
-        final Record<Object> TEST_RECORD_1 = new Record<>(JacksonEvent
+        final Record<Object> firstTestRecord = new Record<>(JacksonEvent
                 .builder()
                 .withEventType("event")
-                .withData(TEST_DATA_1)
+                .withData(firstTestData)
                 .build());
 
-        final Record<Object> TEST_RECORD_2 = new Record<>(JacksonEvent
+        final Record<Object> secondTestRecord = new Record<>(JacksonEvent
                 .builder()
                 .withEventType("event")
-                .withData(TEST_DATA_2)
+                .withData(secondTestData)
                 .build());
 
-        TEST_RECORDS.add(TEST_RECORD_1);
-        TEST_RECORDS.add(TEST_RECORD_2);
+        TEST_RECORDS.add(firstTestRecord);
+        TEST_RECORDS.add(secondTestRecord);
     }
 
     @Test
