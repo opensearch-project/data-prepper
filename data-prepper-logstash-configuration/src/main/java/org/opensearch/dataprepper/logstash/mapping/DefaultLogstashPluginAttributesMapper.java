@@ -7,22 +7,20 @@ package org.opensearch.dataprepper.logstash.mapping;
 
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
 
 class DefaultLogstashPluginAttributesMapper extends AbstractLogstashPluginAttributesMapper {
 
     @Override
-    void mapCustomAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings, Map<String, Object> pluginSettings) {
+    protected void mapCustomAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings, Map<String, Object> pluginSettings) {
         // No custom attributes to map
     }
 
     @Override
-    Collection<String> getCustomMappedAttributeNames() {
-        return Collections.emptyList();
+    protected HashSet<String> getCustomMappedAttributeNames() {
+        return new HashSet<>();
     }
-
 
 }

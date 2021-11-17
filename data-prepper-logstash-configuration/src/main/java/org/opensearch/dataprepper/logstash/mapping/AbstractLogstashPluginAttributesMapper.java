@@ -9,8 +9,14 @@ import java.util.Objects;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import java.util.HashSet;
 
-abstract class AbstractLogstashPluginAttributesMapper implements LogstashPluginAttributesMapper {
+/**
+ * An abstract class which is responsible for mapping basic attributes
+ *
+ * @since 1.2
+ */
+public abstract class AbstractLogstashPluginAttributesMapper implements LogstashPluginAttributesMapper {
     private static final Logger LOG = LoggerFactory.getLogger(AbstractLogstashPluginAttributesMapper.class);
 
     @Override
@@ -48,7 +54,22 @@ abstract class AbstractLogstashPluginAttributesMapper implements LogstashPluginA
         return pluginSettings;
     }
 
-    abstract void mapCustomAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings, Map<String, Object> pluginSettings);
+    /**
+     * Map custom logstashAttributes from a Logstash plugin.
+     *
+     * @param logstashAttributes All the Logstash logstashAttributes for the plugin
+     * @param logstashAttributesMappings The mappings for this Logstash plugin
+     * @param pluginSettings A map of Data Prepper basic plugin settings.
+     *
+     * @since 1.2
+     */
+    protected abstract void mapCustomAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings, Map<String, Object> pluginSettings);
 
-    abstract Collection<String> getCustomMappedAttributeNames();
+    /**
+     * Get custom logstashAttributes names from a Logstash plugin.
+     *
+     * @return A set of custom attributes
+     * @since 1.2
+     */
+    protected abstract HashSet<String> getCustomMappedAttributeNames();
 }

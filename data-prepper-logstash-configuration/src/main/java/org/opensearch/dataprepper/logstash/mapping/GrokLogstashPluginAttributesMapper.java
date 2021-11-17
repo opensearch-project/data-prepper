@@ -10,13 +10,13 @@ import org.opensearch.dataprepper.logstash.model.LogstashValueType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
+import java.util.stream.Collectors;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.stream.Collectors;
+import java.util.HashSet;
 
 class GrokLogstashPluginAttributesMapper extends AbstractLogstashPluginAttributesMapper {
     protected static final String LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME = "match";
@@ -25,7 +25,7 @@ class GrokLogstashPluginAttributesMapper extends AbstractLogstashPluginAttribute
 
     @SuppressWarnings("unchecked")
     @Override
-    void mapCustomAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings, Map<String, Object> pluginSettings) {
+    protected void mapCustomAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings, Map<String, Object> pluginSettings) {
         final List<LogstashAttribute> matchAttributes = new ArrayList<>();
         final Map<String, String> patternDefinitions = new HashMap<>();
         logstashAttributes.forEach(logstashAttribute -> {
@@ -53,8 +53,8 @@ class GrokLogstashPluginAttributesMapper extends AbstractLogstashPluginAttribute
     }
 
     @Override
-    Collection<String> getCustomMappedAttributeNames() {
-        return Arrays.asList(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME, LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME);
+    protected HashSet<String> getCustomMappedAttributeNames() {
+        return new HashSet<>(Arrays.asList(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME, LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME));
     }
 
     @SuppressWarnings("unchecked")
