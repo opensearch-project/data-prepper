@@ -22,6 +22,7 @@ import io.micrometer.core.instrument.Timer;
 import java.util.Collection;
 
 /**
+ * @since 1.2
  * Abstract implementation of the {@link Processor} interface. This class implements an execute function which records
  * some basic metrics. Logic of the execute function is handled by extensions of this class in the doExecute function.
  */
