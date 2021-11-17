@@ -25,7 +25,7 @@ Sink in the output component of pipeline, it defines the one or more destination
 Processor component of the pipeline, these are intermediary processing units using which users can filter, transform and enrich the records into desired format before publishing to the sink. The processor is an optional component of the pipeline, if not defined the records will be published in the format as defined in the source. You can have more than one processor, and they are executed in the order they are defined in the pipeline spec.
 
 ### Prepper
-Preppers were renamed to Processors and are deprecated as of the DataPrepper 1.2 release. Status of removal for Prepper name support is track with [GitHub issue 619](https://github.com/opensearch-project/data-prepper/issues/619).
+Preppers were renamed to Processors and are deprecated as of the DataPrepper 1.2 release. See the [GitHub issue](https://github.com/opensearch-project/data-prepper/issues/619) for the latest status.
 
 ### Sample Pipeline configuration
 
