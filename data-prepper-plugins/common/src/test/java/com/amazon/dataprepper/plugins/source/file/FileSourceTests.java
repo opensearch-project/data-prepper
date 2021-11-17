@@ -78,6 +78,7 @@ public class FileSourceTests {
         expectedEventsJson = new ArrayList<>();
         expectedEventsInvalidJson = new ArrayList<>();
 
+        pluginSettings.put(FileSourceConfig.ATTRIBUTE_TYPE, FileSourceConfig.EVENT_TYPE);
         pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, TEST_FILE_PATH_PLAIN);
 
         // plain
@@ -126,9 +127,8 @@ public class FileSourceTests {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 2);
         integerHashMap.put("batch_size", 2);
-        final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap) {{
-            setPipelineName(TEST_PIPELINE_NAME);
-        }};
+        final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap);
+        pluginSetting.setPipelineName(TEST_PIPELINE_NAME);
         return new BlockingBuffer<>(pluginSetting);
     }
 
@@ -167,6 +167,7 @@ public class FileSourceTests {
     public void testFileWithJSONAddsEventsToBufferCorrectly() {
         pluginSettings.put(FileSourceConfig.ATTRIBUTE_PATH, TEST_FILE_PATH_JSON);
         pluginSettings.put(FileSourceConfig.ATTRIBUTE_FORMAT, "json");
+
         fileSource = createObjectUnderTest();
         fileSource.start(buffer);
 
@@ -191,7 +192,7 @@ public class FileSourceTests {
 
     @Test
     public void testStringTypeAddsStringsToBufferCorrectly() {
-        pluginSettings.put(FileSourceConfig.ATTRIBUTE_TYPE, FileSourceConfig.STRING_TYPE);
+        pluginSettings.put(FileSourceConfig.ATTRIBUTE_TYPE, FileSourceConfig.DEFAULT_TYPE);
         fileSource = createObjectUnderTest();
         fileSource.start(buffer);
 

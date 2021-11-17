@@ -17,6 +17,8 @@ grok-pipeline:
   source:
     file:
       path: "/full/path/to/grok_logs_json.log"
+      record_type: "event"
+      format: "json"
   prepper:
     - grok:
         match:

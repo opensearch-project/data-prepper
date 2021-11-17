@@ -93,7 +93,7 @@ public class FileSource implements Source<Record<Object>> {
 
         return new Record<>(JacksonEvent
                 .builder()
-                .withEventType(fileSourceConfig.getType())
+                .withEventType(fileSourceConfig.getRecordType())
                 .withData(structuredLine)
                 .build());
     }
@@ -112,9 +112,9 @@ public class FileSource implements Source<Record<Object>> {
     // Temporary function to support both trace and log ingestion pipelines.
     // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
     private void writeLineAsEventOrString(final String line, final Buffer<Record<Object>> buffer) throws TimeoutException, IllegalArgumentException {
-        if (fileSourceConfig.getType().equals(FileSourceConfig.DEFAULT_TYPE)) {
+        if (fileSourceConfig.getRecordType().equals(FileSourceConfig.EVENT_TYPE)) {
             buffer.write(getEventRecordFromLine(line), writeTimeout);
-        } else if (fileSourceConfig.getType().equals(FileSourceConfig.STRING_TYPE)) {
+        } else if (fileSourceConfig.getRecordType().equals(FileSourceConfig.DEFAULT_TYPE)) {
             buffer.write(new Record<>(line), writeTimeout);
         }
     }

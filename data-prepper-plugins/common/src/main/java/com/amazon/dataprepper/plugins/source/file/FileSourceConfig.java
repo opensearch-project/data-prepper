@@ -11,9 +11,9 @@ public class FileSourceConfig {
     static final String ATTRIBUTE_TYPE = "record_type";
     static final String ATTRIBUTE_FORMAT = "format";
     static final int DEFAULT_TIMEOUT = 5_000;
-    static final String DEFAULT_TYPE = "event";
+    static final String DEFAULT_TYPE = "string";
     static final String DEFAULT_FORMAT = "plain";
-    static final String STRING_TYPE = "string";
+    static final String EVENT_TYPE = "event";
 
 
     @JsonProperty(ATTRIBUTE_PATH)
@@ -23,7 +23,7 @@ public class FileSourceConfig {
     private String format = DEFAULT_FORMAT;
 
     @JsonProperty(ATTRIBUTE_TYPE)
-    private String type = DEFAULT_TYPE;
+    private String recordType = DEFAULT_TYPE;
 
     public String getFilePathToRead() {
         return filePathToRead;
@@ -34,13 +34,13 @@ public class FileSourceConfig {
         return FileFormat.getByName(format);
     }
 
-    public String getType() {
-        return type;
+    public String getRecordType() {
+        return recordType;
     }
 
     void validate() {
         Objects.requireNonNull(filePathToRead, "File path is required");
-        Preconditions.checkArgument(type.equals(STRING_TYPE) || type.equals(DEFAULT_TYPE), "Invalid type: must be either [event] or [string]");
+        Preconditions.checkArgument(recordType.equals(EVENT_TYPE) || recordType.equals(DEFAULT_TYPE), "Invalid type: must be either [event] or [string]");
         Preconditions.checkArgument(format.equals(DEFAULT_FORMAT) || format.equals("json"), "Invalid file format. Options are [json] and [plain]");
     }
 }

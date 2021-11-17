@@ -32,9 +32,9 @@ A source plugin to read input data from the specified file path. The file source
       ```
             
   
-* `record_type` (String): The Event type that will be stored in the metadata of the Event. Default is `event`. 
-Temporarily, `type` can either be `event` or `string`. If you would like to use the file source for trace analytics use cases, 
-  change this to `string`.
+* `record_type` (String): The Event type that will be stored in the metadata of the Event. Default is `string`. 
+Temporarily, `type` can either be `event` or `string`. If you would like to use the file source for log analytics use cases like grok, 
+  change this to `event`.
 
 ## `file` (sink)
 
