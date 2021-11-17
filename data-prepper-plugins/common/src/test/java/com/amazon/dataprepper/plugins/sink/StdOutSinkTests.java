@@ -28,12 +28,12 @@ import java.util.UUID;
 public class StdOutSinkTests {
     private static String PLUGIN_NAME = "stdout";
 
-    List<Record<Object>> TEST_RECORDS;
+    List<Record<Object>> testRecords;
 
 
     @BeforeEach
     public void setup() {
-        TEST_RECORDS = new ArrayList<>();
+        testRecords = new ArrayList<>();
         Map<String, Object> firstTestData = new HashMap<>();
         Map<String, Object> secondTestData = new HashMap<>();
 
@@ -52,14 +52,14 @@ public class StdOutSinkTests {
                 .withData(secondTestData)
                 .build());
 
-        TEST_RECORDS.add(firstTestRecord);
-        TEST_RECORDS.add(secondTestRecord);
+        testRecords.add(firstTestRecord);
+        testRecords.add(secondTestRecord);
     }
 
     @Test
     public void testSinkWithEvents() {
         final StdOutSink stdOutSink = new StdOutSink(new PluginSetting(PLUGIN_NAME, new HashMap<>()));
-        stdOutSink.output(TEST_RECORDS);
+        stdOutSink.output(testRecords);
         stdOutSink.shutdown();
     }
 
