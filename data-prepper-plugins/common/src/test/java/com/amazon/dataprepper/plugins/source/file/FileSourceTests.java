@@ -92,10 +92,6 @@ public class FileSourceTests {
         expectedEventsPlain.add(secondEventPlain);
 
         //json
-        final String expectedJsonFirstLine = "{\"test_key: \"test_value\"}";
-        final String expectedJsonSecondLine = "{\"second_test_key\": \"second_test_value\"}";
-
-
         final Record<Object> firstEventJson = createRecordEventWithKeyValuePair("test_key", "test_value");
         final Record<Object> secondEventJson = createRecordEventWithKeyValuePair("second_test_key", "second_test_value");
 
