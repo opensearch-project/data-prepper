@@ -11,8 +11,6 @@ A prepper plugin to generate new string records with upper or lower case convers
 A source plugin to read input data from the specified file path. The file source creates a new Record for each line of data in the file.
 
 * `path` (String): absolute input data file path. It is required
-  
-* `write_timeout` (int): The amount of time to attempt writing a Record to the Buffer before timing out. Unit is milliseconds and default is `5,000`  
 
 * `format` (String): The format of each line of the file. Valid options are `json` or `plain`. Default is `plain`.
   <br></br>
