@@ -47,6 +47,8 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
     public static final String ERRORS = "errors";
     public static final String DESTINATION = "destination";
 
+    private static final TraceServiceGrpc.TraceServiceBlockingStub LOCAL_CLIENT = null;
+
     public static final int ASYNC_REQUEST_THREAD_COUNT = 200;
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarder.class);
@@ -110,12 +112,7 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
         final List<CompletableFuture<Record>> forwardedRequestFutures = new ArrayList<>();
 
         for (final Map.Entry<String, List<ResourceSpans>> entry : groupedRS.entrySet()) {
-            final TraceServiceGrpc.TraceServiceBlockingStub client;
-            if (isAddressDefinedLocally(entry.getKey())) {
-                client = null;
-            } else {
-                client = peerClientPool.getClient(entry.getKey());
-            }
+            final TraceServiceGrpc.TraceServiceBlockingStub client = getClient(entry.getKey());
 
             // Create ExportTraceRequest for storing single batch of spans
             ExportTraceServiceRequest.Builder currRequestBuilder = ExportTraceServiceRequest.newBuilder();
@@ -124,7 +121,7 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
                 final int rsSize = PeerForwarderUtils.getResourceSpansSize(rs);
                 if (currSpansCount >= maxNumSpansPerRequest) {
                     final ExportTraceServiceRequest currRequest = currRequestBuilder.build();
-                    if (client == null) {
+                    if (isLocalClient(client)) {
                         recordsToProcessLocally.add(new Record<>(currRequest));
                     } else {
                         forwardedRequestFutures.add(processRequest(client, currRequest));
@@ -189,6 +186,14 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
         }, executorService);
 
         return callFuture;
+    }
+
+    private TraceServiceGrpc.TraceServiceBlockingStub getClient(final String address) {
+        return isAddressDefinedLocally(address) ? LOCAL_CLIENT : peerClientPool.getClient(address);
+    }
+
+    private boolean isLocalClient(final TraceServiceGrpc.TraceServiceBlockingStub client) {
+        return client == LOCAL_CLIENT;
     }
 
     private boolean isAddressDefinedLocally(final String address) {
