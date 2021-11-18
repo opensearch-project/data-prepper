@@ -61,7 +61,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
      *
      * @param record          the Record to add
      * @param timeoutInMillis how long to wait before giving up
-     * @throws TimeoutException
+     * @throws TimeoutException Exception thrown when the operation times out
      */
     @Override
     public void write(T record, int timeoutInMillis) throws TimeoutException {
@@ -135,20 +135,20 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     }
 
     /**
-     * This method should implement the logic for writing to the  buffer
+     * This method should implement the logic for writing to the buffer
      *
      * @param record          Record to write to buffer
      * @param timeoutInMillis Timeout for write operation in millis
-     * @throws TimeoutException
+     * @throws TimeoutException Exception thrown when the operation times out
      */
     public abstract void doWrite(T record, int timeoutInMillis) throws TimeoutException;
 
     /**
-     * This method should implement the logic for writing to the  buffer
+     * This method should implement the logic for writing to the buffer
      *
      * @param records          Collection of records to write to buffer
      * @param timeoutInMillis Timeout for write operation in millis
-     * @throws Exception
+     * @throws Exception Exception thrown when the operation times out
      */
     public abstract void doWriteAll(Collection<T> records, int timeoutInMillis) throws Exception;
 
