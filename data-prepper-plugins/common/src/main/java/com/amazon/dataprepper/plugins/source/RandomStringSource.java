@@ -39,7 +39,7 @@ public class RandomStringSource implements Source<Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(RandomStringSource.class);
 
     private ExecutorService executorService;
-    private boolean stop = false;
+    private volatile boolean stop = false;
 
     private void setExecutorService() {
         if(executorService == null || executorService.isShutdown()) {
