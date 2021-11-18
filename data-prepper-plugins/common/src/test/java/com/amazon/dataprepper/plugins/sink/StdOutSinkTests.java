@@ -1,3 +1,4 @@
+
 /*
  *  SPDX-License-Identifier: Apache-2.0
  *
@@ -12,26 +13,59 @@
 package com.amazon.dataprepper.plugins.sink;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class StdOutSinkTests {
     private static String PLUGIN_NAME = "stdout";
 
-    private final String TEST_DATA_1 = "data_prepper";
-    private final String TEST_DATA_2 = "stdout_sink";
-    private final Record<String> TEST_RECORD_1 = new Record<>(TEST_DATA_1);
-    private final Record<String> TEST_RECORD_2 = new Record<>(TEST_DATA_2);
-    private final List<Record<String>> TEST_RECORDS = Arrays.asList(TEST_RECORD_1, TEST_RECORD_2);
+    List<Record<Object>> testRecords;
+
+
+    @BeforeEach
+    public void setup() {
+        testRecords = new ArrayList<>();
+        Map<String, Object> firstTestData = new HashMap<>();
+        Map<String, Object> secondTestData = new HashMap<>();
+
+        firstTestData.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        secondTestData.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+
+        final Record<Object> firstTestRecord = new Record<>(JacksonEvent
+                .builder()
+                .withEventType("event")
+                .withData(firstTestData)
+                .build());
+
+        final Record<Object> secondTestRecord = new Record<>(JacksonEvent
+                .builder()
+                .withEventType("event")
+                .withData(secondTestData)
+                .build());
+
+        testRecords.add(firstTestRecord);
+        testRecords.add(secondTestRecord);
+    }
 
     @Test
-    public void testSimple() {
+    public void testSinkWithEvents() {
         final StdOutSink stdOutSink = new StdOutSink(new PluginSetting(PLUGIN_NAME, new HashMap<>()));
-        stdOutSink.output(TEST_RECORDS);
+        stdOutSink.output(testRecords);
         stdOutSink.shutdown();
+    }
+
+    @Test
+    public void testSinkWithString() {
+        final StdOutSink stdOutSink = new StdOutSink(new PluginSetting(PLUGIN_NAME, new HashMap<>()));
+        stdOutSink.output(Collections.singletonList(new Record<Object>(UUID.randomUUID().toString())));
     }
 }

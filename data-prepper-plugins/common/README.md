@@ -13,7 +13,7 @@ A source plugin to read input data from the specified file path. The file source
 * `path` (String): absolute input data file path. It is required
   
 * `write_timeout` (int): The amount of time to attempt writing a Record to the Buffer before timing out. Unit is milliseconds and default is `5,000`  
-  
+
 * `format` (String): The format of each line of the file. Valid options are `json` or `plain`. Default is `plain`.
   <br></br>
     * `plain`: Reads plaintext data from files. Internally, a plain text line from a file will be given a key of `message` as shown below.
@@ -32,10 +32,10 @@ A source plugin to read input data from the specified file path. The file source
       { "key2": "val2" }
       { "key3": "val3" }
       ```
-            
-  
-  
-* `type` (String): The Event type that will be stored in the metadata of the Event. Default is `event`. 
+      
+* `record_type` (String): The Event type that will be stored in the metadata of the Event. Default is `string`. 
+Temporarily, `type` can either be `event` or `string`. If you would like to use the file source for log analytics use cases like grok, 
+  change this to `event`.
 
 ## `file` (sink)
 

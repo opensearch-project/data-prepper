@@ -15,7 +15,6 @@ import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
@@ -33,14 +32,13 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.TimeoutException;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
 
 @DataPrepperPlugin(name = "file", pluginType = Source.class, pluginConfigurationType = FileSourceConfig.class)
-public class FileSource implements Source<Record<Event>> {
+public class FileSource implements Source<Record<Object>> {
 
     static final String MESSAGE_KEY = "message";
     private static final Logger LOG = LoggerFactory.getLogger(FileSource.class);
@@ -50,28 +48,26 @@ public class FileSource implements Source<Record<Event>> {
     private final FileSourceConfig fileSourceConfig;
 
     private boolean isStopRequested;
+    private final int writeTimeout;
 
     @DataPrepperPluginConstructor
     public FileSource(final FileSourceConfig fileSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
-        Objects.requireNonNull(fileSourceConfig.getFilePathToRead(), "File path is required");
-        if (!Files.exists(Paths.get(fileSourceConfig.getFilePathToRead()))) {
-            throw new IllegalArgumentException("File path does not exist.");
-        }
-        Objects.requireNonNull(fileSourceConfig.getFormat(), "Invalid file format. Options are [json] and [plain]");
+        fileSourceConfig.validate();
         this.fileSourceConfig = fileSourceConfig;
         this.isStopRequested = false;
+        this.writeTimeout = FileSourceConfig.DEFAULT_TIMEOUT;
     }
 
 
     @Override
-    public void start(final Buffer<Record<Event>> buffer) {
+    public void start(final Buffer<Record<Object>> buffer) {
         checkNotNull(buffer, "Buffer cannot be null for file source to start");
         try (BufferedReader reader = Files.newBufferedReader(Paths.get(fileSourceConfig.getFilePathToRead()), StandardCharsets.UTF_8)) {
             String line;
             while ((line = reader.readLine()) != null && !isStopRequested) {
-                buffer.write(getEventRecordFromLine(line), fileSourceConfig.getWriteTimeout());
+                writeLineAsEventOrString(line, buffer);
             }
-        } catch (IOException | TimeoutException ex) {
+        } catch (IOException | TimeoutException | IllegalArgumentException ex) {
             LOG.error("Error processing the input file path [{}]", fileSourceConfig.getFilePathToRead(), ex);
             throw new RuntimeException(format("Error processing the input file %s",
                     fileSourceConfig.getFilePathToRead()), ex);
@@ -83,7 +79,7 @@ public class FileSource implements Source<Record<Event>> {
         isStopRequested = true;
     }
 
-    private Record<Event> getEventRecordFromLine(final String line) {
+    private Record<Object> getEventRecordFromLine(final String line) {
         Map<String, Object> structuredLine = new HashMap<>();
 
         switch(fileSourceConfig.getFormat()) {
@@ -93,13 +89,11 @@ public class FileSource implements Source<Record<Event>> {
             case PLAIN:
                 structuredLine.put(MESSAGE_KEY, line);
                 break;
-            default:
-                LOG.error("The file source type is [{}]. It must be \"json\" or \"plain\"", fileSourceConfig.getType().toString());
         }
 
         return new Record<>(JacksonEvent
                 .builder()
-                .withEventType(fileSourceConfig.getType())
+                .withEventType(fileSourceConfig.getRecordType())
                 .withData(structuredLine)
                 .build());
     }
@@ -112,6 +106,16 @@ public class FileSource implements Source<Record<Event>> {
             final Map<String, Object> plainMap = new HashMap<>();
             plainMap.put(MESSAGE_KEY, jsonString);
             return plainMap;
+        }
+    }
+
+    // Temporary function to support both trace and log ingestion pipelines.
+    // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
+    private void writeLineAsEventOrString(final String line, final Buffer<Record<Object>> buffer) throws TimeoutException, IllegalArgumentException {
+        if (fileSourceConfig.getRecordType().equals(FileSourceConfig.EVENT_TYPE)) {
+            buffer.write(getEventRecordFromLine(line), writeTimeout);
+        } else if (fileSourceConfig.getRecordType().equals(FileSourceConfig.DEFAULT_TYPE)) {
+            buffer.write(new Record<>(line), writeTimeout);
         }
     }
 }
