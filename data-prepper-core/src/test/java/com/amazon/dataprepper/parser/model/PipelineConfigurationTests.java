@@ -87,11 +87,11 @@ public class PipelineConfigurationTests {
                 TEST_WORKERS,
                 TEST_DELAY));
 
-        String exptected = "Pipeline configuration cannot specify a prepper and processor configuration. It is " +
+        final String expected = "Pipeline configuration cannot specify a prepper and processor configuration. It is " +
                 "recommended to move prepper configurations to the processor section to maintain compatibility with " +
                 "DataPrepper version 1.2 and above.";
 
-        assertTrue(exception.getMessage().contains(exptected));
+        assertTrue(exception.getMessage().contains(expected));
     }
 
     private void assertEqualProcessorPluginSettings(

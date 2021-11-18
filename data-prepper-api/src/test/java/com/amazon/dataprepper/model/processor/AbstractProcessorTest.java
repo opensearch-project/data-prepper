@@ -32,7 +32,7 @@ class AbstractProcessorTest {
     @Test
     public void testMetrics() {
         final String processorName = "testProcessor";
-        final String pipelineName = "pipelineName";
+        final String pipelineName = "testPipeline";
         MetricsTestUtil.initMetrics();
 
         PluginSetting pluginSetting = new PluginSetting(processorName, Collections.emptyMap());

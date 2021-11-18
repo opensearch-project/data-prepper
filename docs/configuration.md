@@ -111,7 +111,7 @@ To do so, add the argument below to the `docker run` command.
 
 ## Deprecated Pipeline Configuration Support
 
-As of DataPrepper 1.2 Prepper plugins were renamed to Processors. The use of the prepper or processor name in pipeline configuration files is still supported. However, the use both processor and prepper in the same configuration file is **not** supported. Configuration of Processor plugins in pipelines using the Prepper name is deprecated and will be removed in a future release. See the [GitHub issue](https://github.com/opensearch-project/data-prepper/issues/619) for the latest status.
+As of DataPrepper 1.2 Prepper plugins were renamed to Processors. The use of the prepper or processor name in pipeline configuration files is still supported. However, the use of both processor and prepper in the same configuration file is **not** supported. Configuration of Processor plugins in pipelines using the Prepper name is deprecated and will be removed in a future release. See the [GitHub issue](https://github.com/opensearch-project/data-prepper/issues/619) for the latest status.
 
 Example of deprecated prepper pipeline configuration file (pipelines.yaml):
 ```yaml
