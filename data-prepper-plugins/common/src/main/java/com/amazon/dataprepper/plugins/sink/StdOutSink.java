@@ -13,14 +13,14 @@ package com.amazon.dataprepper.plugins.sink;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
 
 import java.util.Collection;
-import java.util.Iterator;
 
 @DataPrepperPlugin(name = "stdout", pluginType = Sink.class)
-public class StdOutSink implements Sink<Record<String>> {
+public class StdOutSink implements Sink<Record<Object>> {
 
     /**
      * Mandatory constructor for Data Prepper Component - This constructor is used by Data Prepper
@@ -38,11 +38,21 @@ public class StdOutSink implements Sink<Record<String>> {
     }
 
     @Override
-    public void output(final Collection<Record<String>> records) {
-        final Iterator<Record<String>> iterator = records.iterator();
-        while (iterator.hasNext()) {
-            final Record<String> record = iterator.next();
-            System.out.println(record.getData());
+    public void output(final Collection<Record<Object>> records) {
+        for (final Record<Object> record : records) {
+            checkTypeAndPrintObject(record.getData());
+        }
+    }
+
+    // Temporary function to support both trace and log ingestion pipelines.
+    // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
+    private void checkTypeAndPrintObject(final Object object) {
+        if (object instanceof String) {
+            System.out.println(object);
+        } else if (object instanceof Event) {
+            System.out.println(((Event) object).toJsonString());
+        } else {
+            throw new RuntimeException("Invalid record type. StdOutSink only supports String and Events");
         }
     }
 
