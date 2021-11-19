@@ -161,7 +161,8 @@ configure(coreProjects) {
 
 licenseReport {
     excludeOwnGroup = true
-    excludeBoms = false
+    excludeBoms = true
+    excludes = ['software.amazon.awssdk:bom']
     renderers = new TextReportRenderer()
 }
 
@@ -172,4 +173,3 @@ task generateThirdPartyReport(type: Copy) {
     rename 'THIRD-PARTY-NOTICES.txt', 'THIRD-PARTY'
     generateThirdPartyReport.dependsOn(generateLicenseReport)
 }
-
