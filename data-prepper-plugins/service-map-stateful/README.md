@@ -5,7 +5,7 @@ This is a special prepper that consumes Opentelemetry traces, stores them in a M
 # Usages
 Example `.yaml` configuration:
 ```
-prepper:
+processor:
     service-map-stateful:
 ```
 

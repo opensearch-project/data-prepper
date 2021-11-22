@@ -36,7 +36,7 @@ class PipelinesDataFlowModelTest {
         final PluginModel source = new PluginModel("testSource", null);
         final List<PluginModel> preppers = Collections.singletonList(new PluginModel("testPrepper", null));
         final List<PluginModel> sinks = Collections.singletonList(new PluginModel("testSink", null));
-        final PipelineModel pipelineModel = new PipelineModel(source, preppers, sinks, null, null);
+        final PipelineModel pipelineModel = new PipelineModel(source, null, preppers, sinks, null, null);
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(Collections.singletonMap(pipelineName, pipelineModel));
 

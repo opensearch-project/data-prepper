@@ -10,8 +10,10 @@ import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static com.amazon.dataprepper.TestDataProvider.DEFAULT_READ_BATCH_DELAY;
 import static com.amazon.dataprepper.TestDataProvider.DEFAULT_WORKERS;
@@ -30,6 +32,9 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PipelineConfigurationTests {
 
@@ -69,6 +74,72 @@ public class PipelineConfigurationTests {
             assertThat(sinkPluginSetting.getPipelineName(), is(equalTo(TEST_PIPELINE_NAME)));
             assertThat(sinkPluginSetting.getNumberOfProcessWorkers(), is(equalTo(TEST_WORKERS)));
         });
+    }
+
+    @Test
+    public void testExceptionThrownWhenPrepperAndProcessorAreConfigured() {
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(
+                validSingleConfiguration(),
+                null,
+                validMultipleConfigurationOfSizeOne(),
+                validMultipleConfigurationOfSizeOne(),
+                validMultipleConfiguration(),
+                TEST_WORKERS,
+                TEST_DELAY));
+
+        final String expected = "Pipeline configuration cannot specify a prepper and processor configuration. It is " +
+                "recommended to move prepper configurations to the processor section to maintain compatibility with " +
+                "DataPrepper version 1.2 and above.";
+
+        assertTrue(exception.getMessage().contains(expected));
+    }
+
+    private void assertEqualProcessorPluginSettings(
+            final List<Map.Entry<String, Map<String, Object>>> expectedPluginSettings,
+            final List<PluginSetting> actualPluginSettings) {
+        assertEquals(expectedPluginSettings.size(), actualPluginSettings.size());
+
+        expectedPluginSettings.forEach(expectedSetting -> {
+            final PluginSetting actualSetting = actualPluginSettings.stream()
+                    .filter(plugin -> expectedSetting.getKey().equals(plugin.getName()))
+                    .findFirst()
+                    .orElseThrow(() -> new InputMismatchException("Expected setting named " + expectedSetting.getKey()));
+
+            final Map<String, Object> expectedSettingValue = expectedSetting.getValue();
+            final Set<String> expectedKeySet = expectedSettingValue.keySet();
+            final Map<String, Object> settings = actualSetting.getSettings();
+            assertEquals(expectedKeySet.size(), settings.size());
+
+            expectedKeySet.forEach(key -> {
+                assertEquals(expectedSettingValue.get(key), settings.get(key));
+            });
+        });
+    }
+
+    @Test
+    public void testPipelineConfigurationWithPrepperOrProcessorAreEquivalent() {
+        Map.Entry<String, Map<String, Object>> sourcePluginSettings = validSingleConfiguration();
+        List<Map.Entry<String, Map<String, Object>>> expectedPluginSettings = validMultipleConfigurationOfSizeOne();
+
+        PipelineConfiguration prepperConfig = new PipelineConfiguration(
+                sourcePluginSettings,
+                null,
+                expectedPluginSettings,
+                null,
+                validMultipleConfiguration(),
+                TEST_WORKERS,
+                TEST_DELAY);
+        PipelineConfiguration processorConfig = new PipelineConfiguration(
+                sourcePluginSettings,
+                null,
+                null,
+                expectedPluginSettings,
+                validMultipleConfiguration(),
+                TEST_WORKERS,
+                TEST_DELAY);
+
+        assertEqualProcessorPluginSettings(expectedPluginSettings, prepperConfig.getPrepperPluginSettings());
+        assertEqualProcessorPluginSettings(expectedPluginSettings, processorConfig.getPrepperPluginSettings());
     }
 
     @Test
@@ -174,6 +245,7 @@ public class PipelineConfigurationTests {
             new PipelineConfiguration(
                     validSingleConfiguration(),
                     validSingleConfiguration(),
+                    null,
                     validMultipleConfiguration(),
                     validMultipleConfiguration(),
                     TEST_WORKERS, 0);

@@ -2,7 +2,7 @@ log-pipeline:
   source:
     http:
       ssl: false
-  prepper:
+  processor:
     - grok:
         match:
           log: [ "%{COMMONAPACHELOG}" ]

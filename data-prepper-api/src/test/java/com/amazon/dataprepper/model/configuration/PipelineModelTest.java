@@ -17,6 +17,9 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PipelineModelTest {
 
@@ -37,7 +40,7 @@ public class PipelineModelTest {
                 TEST_READ_BATCH_DELAY
         );
         final PluginModel originalSource = pipelineModel.getSource();
-        final List<PluginModel> originalPreppers = pipelineModel.getPreppers();
+        final List<PluginModel> originalPreppers = pipelineModel.getProcessors();
         final List<PluginModel> originalSinks = pipelineModel.getSinks();
 
         assertThat(originalSource, notNullValue());
@@ -69,5 +72,56 @@ public class PipelineModelTest {
 
     public static List<PluginModel> validSinksPluginModel() {
         return Collections.singletonList(new PluginModel("sink", validPluginSettings()));
+    }
+
+    @Test
+    public void testPipelineModelWithPrepperAndProcessorConfigThrowsException() {
+
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
+                validSourcePluginModel(),
+                validPreppersPluginModel(),
+                validPreppersPluginModel(),
+                validSinksPluginModel(),
+                TEST_WORKERS,
+                TEST_READ_BATCH_DELAY
+        ));
+
+        final String expected = "Pipeline model cannot specify a prepper and processor configuration. It is " +
+                "recommended to move prepper configurations to the processor section to maintain compatibility with " +
+                "DataPrepper version 1.2 and above.";
+
+        assertTrue(exception.getMessage().contains(expected));
+    }
+
+    @Test
+    public void testPipelineModelWithValidPrepperConfig() {
+        List<PluginModel> expectedPreppersPluginModel = validPreppersPluginModel();
+        PipelineModel pipelineModel = new PipelineModel(
+                validSourcePluginModel(),
+                expectedPreppersPluginModel,
+                null,
+                validSinksPluginModel(),
+                TEST_WORKERS,
+                TEST_READ_BATCH_DELAY
+        );
+
+        assertEquals(expectedPreppersPluginModel, pipelineModel.getPreppers());
+        assertEquals(expectedPreppersPluginModel, pipelineModel.getProcessors());
+    }
+
+    @Test
+    public void testPipelineModelWithValidProcessorConfig() {
+        List<PluginModel> expectedPreppersPluginModel = validPreppersPluginModel();
+        PipelineModel pipelineModel = new PipelineModel(
+                validSourcePluginModel(),
+                null,
+                expectedPreppersPluginModel,
+                validSinksPluginModel(),
+                TEST_WORKERS,
+                TEST_READ_BATCH_DELAY
+        );
+
+        assertEquals(expectedPreppersPluginModel, pipelineModel.getPreppers());
+        assertEquals(expectedPreppersPluginModel, pipelineModel.getProcessors());
     }
 }
