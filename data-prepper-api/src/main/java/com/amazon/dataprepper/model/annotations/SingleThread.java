@@ -12,7 +12,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotates a Prepper plugin class of which an instance is required to be confined to a single thread.
+ * Annotates a Processor plugin class of which an instance is required to be confined to a single thread.
  */
 
 @Documented

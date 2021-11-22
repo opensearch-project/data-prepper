@@ -18,7 +18,8 @@ import java.lang.annotation.RetentionPolicy;
  * Annotates a Data Prepper plugin. This can be a pipeline component such
  * as {@link com.amazon.dataprepper.model.source.Source},
  * {@link com.amazon.dataprepper.model.buffer.Buffer},
- * {@link com.amazon.dataprepper.model.prepper.Prepper}, or
+ * {@link com.amazon.dataprepper.model.prepper.Prepper},
+ * {@link com.amazon.dataprepper.model.processor.Processor}, or
  * {@link com.amazon.dataprepper.model.sink.Sink}. It can also be another
  * plugin-supported class.
  * <p>
