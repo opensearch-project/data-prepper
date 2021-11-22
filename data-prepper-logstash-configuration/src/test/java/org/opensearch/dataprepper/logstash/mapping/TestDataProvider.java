@@ -13,15 +13,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import java.util.UUID;
 
 
 public class TestDataProvider {
-
-    public static LogstashConfiguration sampleConfiguration() {
-        return LogstashConfiguration.builder()
-                .pluginSections(Collections.singletonMap(LogstashPluginType.INPUT, Collections.singletonList(pluginData())))
-                .build();
-    }
 
     public static PluginModel samplePluginModel() {
         Map<String, Object> pluginSettings = new LinkedHashMap<>();
@@ -42,7 +37,7 @@ public class TestDataProvider {
 
     public static LogstashPlugin invalidMappingResourceNameData() {
         return LogstashPlugin.builder()
-                .pluginName("amazon_elasticsearch")
+                .pluginName(UUID.randomUUID().toString())
                 .attributes(Collections.singletonList(getArrayTypeAttribute())).build();
     }
 
