@@ -9,6 +9,8 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -19,6 +21,36 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 
 public class PipelineConfiguration {
+    private static final Logger LOG = LoggerFactory.getLogger(PipelineConfiguration.class);
+
+    /**
+     * @throws IllegalArgumentException If a non-null value is provided to both parameters.
+     * Guarantees only a prepper, processor, or neither is provided, not both.
+     * @param preppers Deserialized preppers plugin configuration, cannot be used in combination with the processors parameter, nullable
+     * @param processors Deserialized processors plugin configuration, cannot be used in combination with the preppers parameter, nullable
+     * @return the non-null parameter passed or null if both parameters are null.
+     */
+    private static List<Map.Entry<String, Map<String, Object>>> validateProcessor(
+            final List<Map.Entry<String, Map<String, Object>>> preppers,
+            final List<Map.Entry<String, Map<String, Object>>> processors) {
+        if (preppers != null) {
+            LOG.warn("prepper configurations are deprecated, processor configurations will be required in 1.2");
+        }
+
+        if (preppers != null && processors != null) {
+            final String message = "Pipeline configuration cannot specify a prepper and processor configuration. " +
+                    "It is recommended to move prepper configurations to the processor section to maintain " +
+                    "compatibility with DataPrepper version 1.2 and above.";
+            throw new IllegalArgumentException(message);
+        }
+        else if (preppers != null) {
+            return preppers;
+        }
+        else {
+            return processors;
+        }
+    }
+
     private static final String WORKERS_COMPONENT = "workers";
     private static final String DELAY_COMPONENT = "delay";
     private static final int DEFAULT_READ_BATCH_DELAY = 3_000;
@@ -31,20 +63,43 @@ public class PipelineConfiguration {
     private final Integer workers;
     private final Integer readBatchDelay;
 
-    @JsonCreator
     public PipelineConfiguration(
-            @JsonProperty("source") final Map.Entry<String, Map<String, Object>> source,
-            @JsonProperty("buffer") final Map.Entry<String, Map<String, Object>> buffer,
-            @JsonProperty("prepper") final List<Map.Entry<String, Map<String, Object>>> preppers,
-            @JsonProperty("sink") final List<Map.Entry<String, Map<String, Object>>> sinks,
-            @JsonProperty("workers") final Integer workers,
-            @JsonProperty("delay") final Integer delay) {
+            final Map.Entry<String, Map<String, Object>> source,
+            final Map.Entry<String, Map<String, Object>> buffer,
+            final List<Map.Entry<String, Map<String, Object>>> processors,
+            final List<Map.Entry<String, Map<String, Object>>> sinks,
+            final Integer workers,
+            final Integer delay) {
         this.sourcePluginSetting = getSourceFromConfiguration(source);
         this.bufferPluginSetting = getBufferFromConfigurationOrDefault(buffer);
-        this.prepperPluginSettings = getPreppersFromConfiguration(preppers);
+        this.prepperPluginSettings = getPreppersFromConfiguration(processors);
         this.sinkPluginSettings = getSinksFromConfiguration(sinks);
         this.workers = getWorkersFromConfiguration(workers);
         this.readBatchDelay = getReadBatchDelayFromConfiguration(delay);
+    }
+
+    /**
+     * @since 1.2
+     * Constructor for deserialized Json data.
+     * @param source Deserialized source plugin configuration
+     * @param buffer Deserialized buffer plugin configuration, nullable
+     * @param preppers Deserialized preppers plugin configuration, cannot be used in combination with the processors parameter, nullable
+     * @param processors Deserialized processors plugin configuration, cannot be used in combination with the preppers parameter, nullable
+     * @param sinks Deserialized sinks plugin configuration
+     * @param workers Deserialized workers plugin configuration, nullable
+     * @param delay Deserialized delay plugin configuration, nullable
+     */
+    @JsonCreator
+    @Deprecated
+    public PipelineConfiguration(
+            @JsonProperty("source") final Map.Entry<String, Map<String, Object>> source,
+            @JsonProperty("buffer") final Map.Entry<String, Map<String, Object>> buffer,
+            @Deprecated @JsonProperty("prepper") final List<Map.Entry<String, Map<String, Object>>> preppers,
+            @JsonProperty("processor") final List<Map.Entry<String, Map<String, Object>>> processors,
+            @JsonProperty("sink") final List<Map.Entry<String, Map<String, Object>>> sinks,
+            @JsonProperty("workers") final Integer workers,
+            @JsonProperty("delay") final Integer delay) {
+        this(source, buffer, validateProcessor(preppers, processors), sinks, workers, delay);
     }
 
     public PluginSetting getSourcePluginSetting() {

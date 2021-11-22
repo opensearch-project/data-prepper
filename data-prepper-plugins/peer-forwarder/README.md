@@ -8,7 +8,7 @@ Presently peer discovery is provided by either a static list (configured in yaml
 
 Static list example:
 ```
-prepper:
+processor:
     - peer_forwarder:
         time_out: 300
         span_agg_count: 48
@@ -19,7 +19,7 @@ prepper:
 ```
 DNS lookup example:
 ```
-prepper:
+processor:
     - peer_forwarder:
         time_out: 300
         span_agg_count: 48
@@ -62,7 +62,7 @@ Your pipeline configuration needs to include:
 Example configuration:
 
 ```
-  prepper:
+  processor:
     - peer_forwarder:
         discovery_mode: aws_cloud_map
         awsCloudMapNamespaceName: my-namespace
@@ -110,7 +110,7 @@ The SSL configuration for setting up trust manager for peer forwarding client to
 
 ## Metrics
 
-Besides common metrics in [AbstractPrepper](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/prepper/AbstractPrepper.java), peer-forwarder introduces the following custom metrics.
+Besides common metrics in [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/processor/AbstractProcessor.java), peer-forwarder introduces the following custom metrics.
 
 ### Timer
 

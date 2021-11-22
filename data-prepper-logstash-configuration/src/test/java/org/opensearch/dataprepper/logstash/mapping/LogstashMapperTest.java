@@ -68,7 +68,7 @@ class LogstashMapperTest {
         PipelineModel actualPipelineModel =  logstashMapper.mapPipeline(logstashConfiguration);
 
         assertThat(actualPipelineModel.getSource(), equalTo(null));
-        assertThat(actualPipelineModel.getPreppers(), equalTo(Collections.emptyList()));
+        assertThat(actualPipelineModel.getProcessors(), equalTo(Collections.emptyList()));
         assertThat(actualPipelineModel.getSinks(), equalTo(Collections.emptyList()));
         assertThat(actualPipelineModel.getReadBatchDelay(), equalTo(null));
         assertThat(actualPipelineModel.getWorkers(), equalTo(null));
