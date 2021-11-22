@@ -70,6 +70,8 @@ please visit the [Trace Analytics documentation](trace_analytics.md).
 
 Log Ingestion is also an important Data Prepper use case. To learn more, visit the [Log Ingestion Documentation](log_analytics.md).
 
+To run Data Prepper with a Logstash configuration, please visit the [Logstash Migration Guide](logstash_migration_guide.md).
+
 To monitor Data Prepper, please read the [Monitoring](monitoring.md) page.
 
 ## Other Examples
