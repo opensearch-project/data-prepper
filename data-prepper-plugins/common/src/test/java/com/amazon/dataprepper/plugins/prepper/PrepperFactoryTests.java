@@ -43,7 +43,7 @@ public class PrepperFactoryTests {
      */
     @Test
     public void testNewSingletonPrepperClassByNameThatExists() {
-        PrepperFactory.dangerousMethod_setPluginFunction((s, c) -> new NoOpPrepper<>());
+        PrepperFactory.dangerousMethod_setPluginFunction((s, c) -> new NoOpPrepper());
 
         final PluginSetting noOpPrepperConfiguration = new PluginSetting("no-op", new HashMap<>());
         noOpPrepperConfiguration.setPipelineName(TEST_PIPELINE);
