@@ -8,8 +8,10 @@ package com.amazon.dataprepper.parser;
 import com.amazon.dataprepper.model.annotations.SingleThread;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.plugin.NoPluginFoundException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.prepper.Prepper;
+import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.parser.model.PipelineConfiguration;
@@ -92,10 +94,10 @@ public class PipelineParser {
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
             final Buffer buffer = pluginFactory.loadPlugin(Buffer.class, pipelineConfiguration.getBufferPluginSetting());
 
-            LOG.info("Building preppers for the pipeline [{}]", pipelineName);
-            final int prepperThreads = pipelineConfiguration.getWorkers();
-            final List<List<Prepper>> prepperSets = pipelineConfiguration.getPrepperPluginSettings().stream()
-                    .map(this::newPreppers)
+            LOG.info("Building processors for the pipeline [{}]", pipelineName);
+            final int processorThreads = pipelineConfiguration.getWorkers();
+            final List<List<Processor>> processorSets = pipelineConfiguration.getProcessorPluginSettings().stream()
+                    .map(this::newProcessor)
                     .collect(Collectors.toList());
             final int readBatchDelay = pipelineConfiguration.getReadBatchDelay();
 
@@ -104,7 +106,7 @@ public class PipelineParser {
                     .map(this::buildSinkOrConnector)
                     .collect(Collectors.toList());
 
-            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, prepperSets, sinks, prepperThreads, readBatchDelay);
+            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, processorSets, sinks, processorThreads, readBatchDelay);
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
             //If pipeline construction errors out, we will skip that pipeline and proceed
@@ -115,11 +117,26 @@ public class PipelineParser {
 
     }
 
-    private List<Prepper> newPreppers(final PluginSetting pluginSetting) {
-        return pluginFactory.loadPlugins(Prepper.class, pluginSetting,
+    private List<Processor> newProcessor(final PluginSetting pluginSetting) {
+        try {
+            return newProcessor(pluginSetting, Processor.class);
+        } catch (NoPluginFoundException ex) {
+            LOG.warn(
+                    "No plugin of type Processor found for plugin setting: {}, attempting to find comparable Prepper plugin.",
+                    pluginSetting.getName());
+            return newProcessor(pluginSetting, Prepper.class)
+                    .stream()
+                    .map(prepper -> (Processor) prepper)
+                    .collect(Collectors.toList());
+        }
+    }
+    private <T extends Processor> List<T> newProcessor(final PluginSetting pluginSetting, final Class<T> baseClass) {
+        return pluginFactory.loadPlugins(
+                baseClass,
+                pluginSetting,
                 actualClass -> actualClass.isAnnotationPresent(SingleThread.class) ?
-                pluginSetting.getNumberOfProcessWorkers() :
-                1);
+                        pluginSetting.getNumberOfProcessWorkers() :
+                        1);
     }
 
     private Optional<Source> getSourceIfPipelineType(

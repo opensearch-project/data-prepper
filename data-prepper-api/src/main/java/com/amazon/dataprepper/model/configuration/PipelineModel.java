@@ -33,7 +33,7 @@ public class PipelineModel {
             final List<PluginModel> preppers,
             final List<PluginModel> processors) {
         if (preppers != null) {
-            LOG.warn("prepper configurations are deprecated, processor configurations will be required in 1.2");
+            LOG.warn("Prepper configurations are deprecated, processor configurations will be required in a future version");
         }
 
         if (preppers != null && processors != null) {

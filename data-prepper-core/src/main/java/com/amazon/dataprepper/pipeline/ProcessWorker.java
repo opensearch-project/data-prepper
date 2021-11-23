@@ -7,7 +7,7 @@ package com.amazon.dataprepper.pipeline;
 
 import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.prepper.Prepper;
+import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.pipeline.common.FutureHelper;
@@ -25,18 +25,18 @@ public class ProcessWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessWorker.class);
 
     private final Buffer readBuffer;
-    private final List<Prepper> preppers;
+    private final List<Processor> processors;
     private final Collection<Sink> sinks;
     private final Pipeline pipeline;
     private boolean isEmptyRecordsLogged = false;
 
     public ProcessWorker(
             final Buffer readBuffer,
-            final List<Prepper> preppers,
+            final List<Processor> processors,
             final Collection<Sink> sinks,
             final Pipeline pipeline) {
         this.readBuffer = readBuffer;
-        this.preppers = preppers;
+        this.processors = processors;
         this.sinks = sinks;
         this.pipeline = pipeline;
     }
@@ -57,14 +57,14 @@ public class ProcessWorker implements Runnable {
                 } else {
                     LOG.info(" {} Worker: Processing {} records from buffer", pipeline.getName(), records.size());
                 }
-                //Should Empty list from buffer should be sent to the preppers? For now sending as the Stateful preppers expects it.
-                for (final Prepper prepper : preppers) {
-                    records = prepper.execute(records);
+                //Should Empty list from buffer should be sent to the processors? For now sending as the Stateful processors expects it.
+                for (final Processor processor : processors) {
+                    records = processor.execute(records);
                 }
                 if (!records.isEmpty()) {
                     postToSink(records);
                 }
-                // Checkpoint the current batch read from the buffer after being processed by prepper and sinks.
+                // Checkpoint the current batch read from the buffer after being processed by processors and sinks.
                 readBuffer.checkpoint(checkpointState);
             } while (!shouldStop());
         } catch (final Exception e) {
@@ -82,8 +82,8 @@ public class ProcessWorker implements Runnable {
     }
 
     private boolean areComponentsReadyForShutdown() {
-        return readBuffer.isEmpty() && preppers.stream()
-                .map(Prepper::isReadyForShutdown)
+        return readBuffer.isEmpty() && processors.stream()
+                .map(Processor::isReadyForShutdown)
                 .allMatch(result -> result == true);
     }
 
