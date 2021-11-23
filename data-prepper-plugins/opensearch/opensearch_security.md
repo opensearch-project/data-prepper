@@ -1,7 +1,7 @@
-## Open Distro For Elasticsearch
+## OpenSearch
 
 
-The OpenSearch sink can send trace data to opendistro-for-elasticsearch (ODFE) cluster by administrative credentials as follows:
+The OpenSearch sink can send trace data to an OpenSearch cluster by administrative credentials as follows:
 
 ```
 sink:
@@ -31,4 +31,4 @@ Note that `indices:admin/template/*` need to be in cluster permissions.
 
 ---------------
 
-With administrative privilege, one can create an internal user, a role and map the user to the role by following the ODFE [instructions](https://opendistro.github.io/for-elasticsearch-docs/docs/security/access-control/users-roles/).
+With administrative privilege, one can create an internal user, a role and map the user to the role by following the OpenSearch [Users and roles documentation](https://opensearch.org/docs/latest/security-plugin/access-control/users-roles/).

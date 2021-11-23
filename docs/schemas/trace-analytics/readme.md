@@ -1,6 +1,6 @@
 # Trace Analytics Schema Versioning
 
-The purpose of this document is to outline the structure and versioning formats followed by Data Prepper (DP) the Trace Analytics (TA) plugin for Kibana and OpenSearch Dashboards. Each individual schema shall have its own supporting document explaining its structure, fields, and purpose.
+The purpose of this document is to outline the structure and versioning formats followed by Data Prepper (DP) the Trace Analytics (TA) plugin for OpenSearch Dashboards. Each individual schema shall have its own supporting document explaining its structure, fields, and purpose.
 
 ## Tenets
 
@@ -9,7 +9,7 @@ The purpose of this document is to outline the structure and versioning formats 
 3. Index and index template names shall only include the major version (e.g. "otel-v1-apm-span"). The minor version shall be included within the actual schema as a field.
 4. Forward and backward-compatibility promises shall only apply to schemas of the same major version.
 5. A major version increase shall require Data Prepper (writer) artifacts to be made available before Trace Analytics plugin (reader) updates are made available.
-6. A major version increase shall result in a new index template and indexes being created in an Elasticsearch/OpenSearch cluster.
+6. A major version increase shall result in a new index template and indexes being created in an OpenSearch cluster.
 
 ## Versioning Format
 
@@ -100,4 +100,4 @@ To avoid usability downtime of the Trace Analytics plugin, run two versions of D
 Upgrading the Trace Analytics plugin from v1 to v2 will result in no usability downtime, as both plugin versions will have populated indexes to read from. This approach is more complex in that it requires additional Data Prepper instances and results in duplicate data being written (until the old DP instances are shut down).
 
 #### Mitigating data loss
-Upgrading Data Prepper and the Trace Analytics plugin to a new major version schema will result in data written to old indexes being unusable. If users wish to avoid this data loss, the [reindexing APIs](https://opendistro.github.io/for-elasticsearch-docs/docs/elasticsearch/reindex-data/) must be used. Additionally, transforms might required depending on the differences between the two major schema versions.
+Upgrading Data Prepper and the Trace Analytics plugin to a new major version schema will result in data written to old indexes being unusable. If users wish to avoid this data loss, the [reindexing APIs](https://opensearch.org/docs/latest/opensearch/reindex-data/) must be used. Additionally, transforms might required depending on the differences between the two major schema versions.
