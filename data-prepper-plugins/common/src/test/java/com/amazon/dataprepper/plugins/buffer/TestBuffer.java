@@ -15,6 +15,7 @@ import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 
 import java.util.AbstractMap;
@@ -27,13 +28,13 @@ import java.util.Queue;
 import java.util.concurrent.TimeoutException;
 
 @DataPrepperPlugin(name = "test_buffer", pluginType = Buffer.class)
-public class TestBuffer implements Buffer<Record<String>> {
+public class TestBuffer implements Buffer<Record<Event>> {
     private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
     private static final String ATTRIBUTE_IMITATE_TIMEOUT = "imitate_timeout";
     private static final int DEFAULT_BATCH_SIZE = 8;
     private static final boolean DEFAULT_IMITATE_TIMEOUT = false;
 
-    private Queue<Record<String>> buffer;
+    private Queue<Record<Event>> buffer;
     private int batchSize;
     private boolean imitateTimeout;
 
@@ -44,13 +45,13 @@ public class TestBuffer implements Buffer<Record<String>> {
                 pluginSetting.getBooleanOrDefault(ATTRIBUTE_IMITATE_TIMEOUT, DEFAULT_IMITATE_TIMEOUT));
     }
 
-    public TestBuffer(final Queue<Record<String>> buffer, final int batchSize) {
+    public TestBuffer(final Queue<Record<Event>> buffer, final int batchSize) {
         this.buffer = buffer;
         this.batchSize = batchSize;
         this.imitateTimeout = false;
     }
 
-    public TestBuffer(final Queue<Record<String>> buffer, final int batchSize, final boolean imitateTimeout) {
+    public TestBuffer(final Queue<Record<Event>> buffer, final int batchSize, final boolean imitateTimeout) {
         this.buffer = buffer;
         this.batchSize = batchSize;
         this.imitateTimeout = imitateTimeout;
@@ -58,7 +59,7 @@ public class TestBuffer implements Buffer<Record<String>> {
 
 
     @Override
-    public void write(Record<String> record, int timeoutInMillis) throws TimeoutException {
+    public void write(Record<Event> record, int timeoutInMillis) throws TimeoutException {
         if (imitateTimeout) {
             throw new TimeoutException();
         }
@@ -66,15 +67,15 @@ public class TestBuffer implements Buffer<Record<String>> {
     }
 
     @Override
-    public void writeAll(final Collection<Record<String>> records, final int timeoutInMillis) throws Exception {
+    public void writeAll(final Collection<Record<Event>> records, final int timeoutInMillis) throws Exception {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public Map.Entry<Collection<Record<String>>, CheckpointState> read(int timeoutInMillis) {
-        final List<Record<String>> records = new ArrayList<>();
+    public Map.Entry<Collection<Record<Event>>, CheckpointState> read(int timeoutInMillis) {
+        final List<Record<Event>> records = new ArrayList<>();
         int index = 0;
-        Record<String> record;
+        Record<Event> record;
         while (index < batchSize && (record = buffer.poll()) != null) {
             records.add(record);
             index++;

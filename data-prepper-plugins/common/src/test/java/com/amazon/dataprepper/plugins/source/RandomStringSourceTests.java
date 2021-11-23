@@ -11,13 +11,14 @@
 
 package com.amazon.dataprepper.plugins.source;
 
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.buffer.TestBuffer;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class RandomStringSourceTests {
 
@@ -25,11 +26,11 @@ public class RandomStringSourceTests {
     public void testPutRecord() throws InterruptedException {
         final RandomStringSource randomStringSource =
                 new RandomStringSource();
-        final Queue<Record<String>> bufferQueue = new LinkedList<>();
+        final Queue<Record<Event>> bufferQueue = new ConcurrentLinkedQueue<>();
         final TestBuffer buffer = new TestBuffer(bufferQueue, 1);
         //Start source, and sleep for 100 millis
         randomStringSource.start(buffer);
-        Thread.sleep(100);
+        Thread.sleep(500);
         //Make sure that 1 record is in buffer
         Assert.assertEquals(1, buffer.size());
         //Stop the source, and wait long enough that another message would be sent

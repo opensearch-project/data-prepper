@@ -13,12 +13,15 @@ package com.amazon.dataprepper.plugins.source;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
+import com.amazon.dataprepper.model.event.Event;
+import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -29,12 +32,14 @@ import java.util.concurrent.TimeoutException;
  * Generates a random string every 500 milliseconds. Intended to be used for testing setups
  */
 @DataPrepperPlugin(name = "random", pluginType = Source.class)
-public class RandomStringSource implements Source<Record<String>> {
+public class RandomStringSource implements Source<Record<Event>> {
 
+    static final String MESSAGE_KEY = "message";
+    static final String EVENT_TYPE = "event";
     private static final Logger LOG = LoggerFactory.getLogger(RandomStringSource.class);
 
     private ExecutorService executorService;
-    private boolean stop = false;
+    private volatile boolean stop = false;
 
     private void setExecutorService() {
         if(executorService == null || executorService.isShutdown()) {
@@ -45,13 +50,14 @@ public class RandomStringSource implements Source<Record<String>> {
     }
 
     @Override
-    public void start(final Buffer<Record<String>> buffer) {
+    public void start(final Buffer<Record<Event>> buffer) {
         setExecutorService();
         executorService.execute(() -> {
             while (!stop) {
                 try {
                     LOG.info("Writing to buffer");
-                    buffer.write(new Record<>(UUID.randomUUID().toString()), 500);
+                    final Record<Event> record = generateRandomStringEventRecord();
+                    buffer.write(record, 500);
                     Thread.sleep(500);
                 } catch (final InterruptedException e) {
                     break;
@@ -73,5 +79,15 @@ public class RandomStringSource implements Source<Record<String>> {
         } catch (final InterruptedException ex) {
             executorService.shutdownNow();
         }
+    }
+
+    private Record<Event> generateRandomStringEventRecord() {
+        final Map<String, String> structuredLine = Map.of(MESSAGE_KEY, UUID.randomUUID().toString());
+        final Event event = JacksonEvent
+                .builder()
+                .withEventType(EVENT_TYPE)
+                .withData(structuredLine)
+                .build();
+        return new Record<>(event);
     }
 }
