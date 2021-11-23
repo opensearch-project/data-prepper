@@ -13,6 +13,7 @@ package com.amazon.dataprepper.plugins.source;
 
 import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.buffer.TestBuffer;
 import org.junit.After;
@@ -27,6 +28,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 
+import static com.amazon.dataprepper.plugins.source.StdInSource.MESSAGE_KEY;
 import static java.lang.String.format;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -99,21 +101,22 @@ public class StdInSourceTests {
 
     @Test
     public void testStdInSourceSuccessfulWriteToBuffer() {
-        final Queue<Record<String>> bufferQueue = new LinkedList<>();
+        final Queue<Record<Event>> bufferQueue = new LinkedList<>();
         final TestBuffer buffer = new TestBuffer(bufferQueue, 1);
         final StdInSource stdInSource = new StdInSource(TEST_WRITE_TIMEOUT, TEST_PIPELINE_NAME);
         assertThat(buffer.size(), is(equalTo(0)));
         stdInSource.start(buffer);
         assertThat(buffer.size(), is(equalTo(1)));
-        final Map.Entry<Collection<Record<String>>, CheckpointState> readResult = buffer.read(TEST_WRITE_TIMEOUT);
-        final Collection<Record<String>> recordsFromBuffer = readResult.getKey();
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = buffer.read(TEST_WRITE_TIMEOUT);
+        final Collection<Record<Event>> recordsFromBuffer = readResult.getKey();
         assertThat(recordsFromBuffer.size(), is(equalTo(1)));
-        recordsFromBuffer.forEach(actualRecord -> assertThat(actualRecord.getData(), is(equalTo(READ_CONTENT))));
+        recordsFromBuffer.forEach(actualRecord -> assertThat(
+                actualRecord.getData().get(MESSAGE_KEY, String.class), is(equalTo(READ_CONTENT))));
     }
 
     @Test
     public void testStdInSourceWhenStopped() {
-        final Queue<Record<String>> bufferQueue = new LinkedList<>();
+        final Queue<Record<Event>> bufferQueue = new LinkedList<>();
         final TestBuffer buffer = new TestBuffer(bufferQueue, 1);
         final StdInSource stdInSource = new StdInSource(TEST_WRITE_TIMEOUT, TEST_PIPELINE_NAME);
         assertThat(buffer.size(), is(equalTo(0)));
@@ -124,7 +127,7 @@ public class StdInSourceTests {
 
     @Test
     public void testStdInSourceWhenBufferTimesout() {
-        final Queue<Record<String>> bufferQueue = new LinkedList<>();
+        final Queue<Record<Event>> bufferQueue = new LinkedList<>();
         final TestBuffer buffer = new TestBuffer(bufferQueue, 1, true);
         final StdInSource stdInSource = new StdInSource(TEST_WRITE_TIMEOUT, TEST_PIPELINE_NAME);
         assertThat(buffer.size(), is(equalTo(0)));

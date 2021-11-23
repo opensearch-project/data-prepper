@@ -14,11 +14,14 @@ package com.amazon.dataprepper.plugins.source;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
+import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.TimeoutException;
 
@@ -30,7 +33,9 @@ import static java.lang.String.format;
  * from console or if Pipeline notifies to stop.
  */
 @DataPrepperPlugin(name = "stdin", pluginType = Source.class)
-public class StdInSource implements Source<Record<String>> {
+public class StdInSource implements Source<Record<Event>> {
+    static final String MESSAGE_KEY = "message";
+    static final String EVENT_TYPE = "event";
     private static final Logger LOG = LoggerFactory.getLogger(StdInSource.class);
     private static final String ATTRIBUTE_TIMEOUT = "write_timeout";
     private static final int WRITE_TIMEOUT = 5_000;
@@ -61,11 +66,11 @@ public class StdInSource implements Source<Record<String>> {
     }
 
     @Override
-    public void start(final Buffer<Record<String>> buffer) {
+    public void start(final Buffer<Record<Event>> buffer) {
         checkNotNull(buffer, format("Pipeline [%s] - buffer cannot be null for source to start", pipelineName));
         String line = reader.nextLine();
         while (!"exit".equalsIgnoreCase(line) && !isStopRequested) {
-            final Record<String> record = new Record<>(line);
+            final Record<Event> record = convertLineIntoEventRecord(line);
             try {
                 buffer.write(record, writeTimeout);
             } catch (TimeoutException ex) {
@@ -80,5 +85,14 @@ public class StdInSource implements Source<Record<String>> {
     @Override
     public void stop() {
         isStopRequested = true;
+    }
+
+    private Record<Event> convertLineIntoEventRecord(final String line) {
+        final Map<String, String> structuredLine = Map.of(MESSAGE_KEY, line);
+        return new Record<>(JacksonEvent
+                .builder()
+                .withEventType(EVENT_TYPE)
+                .withData(structuredLine)
+                .build());
     }
 }

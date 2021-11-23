@@ -85,7 +85,6 @@ public class FileSourceTests {
         final String expectedPlainFirstLine = "THIS IS A PLAINTEXT LINE";
         final String expectedPlainSecondLine = "THIS IS ANOTHER PLAINTEXT LINE";
 
-
         final Record<Object> firstEventPlain = createRecordEventWithKeyValuePair(FileSource.MESSAGE_KEY, expectedPlainFirstLine);
         final Record<Object> secondEventPlain = createRecordEventWithKeyValuePair(FileSource.MESSAGE_KEY, expectedPlainSecondLine);
 
@@ -93,9 +92,6 @@ public class FileSourceTests {
         expectedEventsPlain.add(secondEventPlain);
 
         //json
-        final String expectedJsonFirstLine = "{\"test_key: \"test_value\"}";
-        final String expectedJsonSecondLine = "{\"second_test_key\": \"second_test_value\"}";
-
         final Record<Object> firstEventJson = createRecordEventWithKeyValuePair("test_key", "test_value");
         final Record<Object> secondEventJson = createRecordEventWithKeyValuePair("second_test_key", "second_test_value");
 
