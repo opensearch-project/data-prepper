@@ -2,7 +2,7 @@
 
 This set of Kubernetes config files recreates the same sample app under the /examples directory, but within a minikube environment.
 * _data-prepper.yaml_ contains a deployment, service, headless service, and configmap required to run Data Prepper with Kubernetes
-* _sample-project-applications.yaml_ contains configuration required to setup the remaining elements of the sample project (Kibana, Elasticsearch, etc.)
+* _sample-project-applications.yaml_ contains configuration required to setup the remaining elements of the sample project (OpenSearch, OpenSearch Dashboards, etc.)
 
 1. Setup kubectl and minikube locally
    1. https://kubernetes.io/docs/tasks/tools/install-kubectl/
