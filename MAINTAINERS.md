@@ -9,3 +9,4 @@
 | Asif Sohail Mohammed | [asifsmohammed](https://github.com/asifsmohammed) | Amazon |
 | Shivani Shukla | [sshivanii](https://github.com/sshivanii) | Amazon |
 | David Venable | [dlvenable](https://github.com/dlvenable) | Amazon |
+| David Powers | [dapowers87](https://github.com/dapowers87) | Amazon |
