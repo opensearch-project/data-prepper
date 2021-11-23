@@ -56,7 +56,7 @@ You should see log output and after a few seconds some UUIDs in the output. It s
 2021-09-30T20:19:48,207 [random-source-pool-0] INFO  com.amazon.dataprepper.plugins.source.RandomStringSource - Writing to buffer
 2021-09-30T20:19:48,677 [random-source-pool-0] INFO  com.amazon.dataprepper.plugins.source.RandomStringSource - Writing to buffer
 2021-09-30T20:19:49,179 [random-source-pool-0] INFO  com.amazon.dataprepper.plugins.source.RandomStringSource - Writing to buffer
-2021-09-30T20:19:49,181 [simple-test-pipeline-prepper-worker-1-thread-1] INFO  com.amazon.dataprepper.pipeline.ProcessWorker -  simple-test-pipeline Worker: Processing 6 records from buffer
+2021-09-30T20:19:49,181 [simple-test-pipeline-processor-worker-1-thread-1] INFO  com.amazon.dataprepper.pipeline.ProcessWorker -  simple-test-pipeline Worker: Processing 6 records from buffer
 07dc0d37-da2c-447e-a8df-64792095fb72
 5ac9b10a-1d21-4306-851a-6fb12f797010
 99040c79-e97b-4f1d-a70b-409286f2a671
@@ -86,10 +86,10 @@ You can shutdown Data Prepper either by using the shutdown API, or killing the D
 curl -X POST http://localhost:4900/shutdown
 ```
 
-## Adding a Prepper
+## Adding a Processor
 
 The sample above just demonstrates the bare minimum a pipeline can have: A source sending data to a sink.
-The example below adds a string converter Prepper. This simple Prepper will transform the string by making it
+The example below adds a string converter Processor. This simple Processor will transform the string by making it
 upper case.
 
 ```
@@ -98,7 +98,7 @@ simple-sample-pipeline:
   delay: "5000"
   source:
     random:
-  prepper:
+  processor:
     - string_converter:
         upper_case: true
   sink:
@@ -115,7 +115,7 @@ You will see output like the following.
 
 ```
 2021-10-01T09:58:19,907 [random-source-pool-0] INFO  com.amazon.dataprepper.plugins.source.RandomStringSource - Writing to buffer
-2021-10-01T09:58:19,908 [simple-sample-pipeline-prepper-worker-1-thread-1] INFO  com.amazon.dataprepper.pipeline.ProcessWorker -  simple-sample-pipeline Worker: Processing 6 records from buffer
+2021-10-01T09:58:19,908 [simple-sample-pipeline-processor-worker-1-thread-1] INFO  com.amazon.dataprepper.pipeline.ProcessWorker -  simple-sample-pipeline Worker: Processing 6 records from buffer
 B77D726E-2B92-458B-8C14-E5F8C403F1B0
 6B8FCC48-ED40-462C-8C43-AB218C1DA478
 3D0054FB-5D93-444F-A1AC-51827BD4FF37
