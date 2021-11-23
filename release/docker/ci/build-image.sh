@@ -12,15 +12,14 @@ function usage() {
     echo "Usage: $0 [args]"
     echo ""
     echo "Required arguments:"
-    echo -e "-v TAG_NAME\tSpecify the image tag name such as 'centos7-x64-arm64-jdkmulti-node10.24.1-cypress6.9.1-20211019'"
-    echo -e "-f DOCKERFILE\tSpecify the dockerfile full path, e.g. dockerfile/opensearch.al2.dockerfile."
+    echo -e "-v TAG_NAME\tSpecify the image tag name such as '1.2'"
     echo ""
     echo "Optional arguments:"
     echo -e "-h\t\tPrint this message."
     echo "--------------------------------------------------------------------------"
 }
 
-while getopts ":hv:f:" arg; do
+while getopts ":hv:" arg; do
     case $arg in
         h)
             usage
