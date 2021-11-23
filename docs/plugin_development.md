@@ -1,6 +1,6 @@
 # Plugin Development
 
-Data Prepper supports plugins. All sources, buffers, preppers, and processors
+Data Prepper supports plugins. All sources, buffers, and processors
 are created as Data Prepper plugins.
 
 ## Plugin Requirements
