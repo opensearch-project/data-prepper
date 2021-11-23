@@ -1,16 +1,13 @@
 #!/bin/bash
 
+# Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
-#
-# The OpenSearch Contributors require contributions made to
-# this file be licensed under the Apache-2.0 license or a
-# compatible open source license.
 
 set -e
 
 function usage() {
     echo ""
-    echo "This script is used to build the Docker image with multi architecture (x64 + arm64). It prepares the files required by the Dockerfile in a temporary directory, then builds and tags the Docker image."
+    echo "This script is used to build the Docker image. It prepares the files required by the Dockerfile in a temporary directory, then builds and tags the Docker image. Script expects to be run from the project root directory."
     echo "--------------------------------------------------------------------------"
     echo "Usage: $0 [args]"
     echo ""
@@ -47,8 +44,15 @@ if [ -z "$TAG_NAME" ]; then
 fi
 
 # Warning docker desktop
-if (! docker version); then
-    echo -e "\n* You MUST have Docker Desktop to use buildx for multi-arch images."
+docker version > /dev/null
+if [ $? -ne 0 ]; then
+    echo -e "Could not run 'docker version'. You MUST have Docker Desktop."
+    exit 1
+fi
+
+if [ ! -f "./gradlew" ]; then
+    echo "Could not find ./gradlew"
+    usage
     exit 1
 fi
 
