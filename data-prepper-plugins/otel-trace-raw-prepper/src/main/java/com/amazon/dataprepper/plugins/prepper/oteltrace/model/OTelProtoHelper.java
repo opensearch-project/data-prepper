@@ -43,7 +43,7 @@ public final class OTelProtoHelper {
     private static final String AT = "@";
     public static final Function<String, String> REPLACE_DOT_WITH_AT = i -> i.replace(DOT, AT);
     /**
-     * Span and Resource attributes are essential for kibana so they should not be nested. SO we will prefix them with "span.attributes"
+     * Span and Resource attributes are essential for OpenSearch so they should not be nested. SO we will prefix them with "span.attributes"
      * and "resource.attributes".
      *
      */
@@ -105,13 +105,13 @@ public final class OTelProtoHelper {
 
     /**
      * Trace group represent root span i.e the span which triggers the trace event with the microservice architecture. This field is not part of the OpenTelemetry Spec.
-     * This field is something specific to Trace Analytics feature that Kibana will be supporting. This field is derived from the opentelemetry spec and set as below,
+     * This field is something specific to Trace Analytics feature that OpenSearch Dashboards will be supporting. This field is derived from the opentelemetry spec and set as below,
      * <p>
      * if (this.parentSpanId.isEmpty()) {
      * traceGroup = this.name;
      * }
      * <p>
-     * Note: The reason this method is part of the helper class is because the trace group definition will be expanded in the future when we support Links in Kibana Trace Analytics.
+     * Note: The reason this method is part of the helper class is because the trace group definition will be expanded in the future when we support Links in OpenSearch Dashboards Trace Analytics.
      */
     public static TraceGroup getTraceGroup(final Span span) {
         final TraceGroup.TraceGroupBuilder traceGroupBuilder = new TraceGroup.TraceGroupBuilder();
