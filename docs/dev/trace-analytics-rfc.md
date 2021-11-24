@@ -10,7 +10,7 @@ The Trace Analytics feature will embrace the Open Telemetry standard and provide
 Adoption to the OpenTelemetry ecosystem will benefit users of existing tracing standards like Zipkin and OpenTracing to use the Trace Analytics feature.
 To support the trace analytics feature we will build a new service called Data Prepper, which receives trace data from the OpenTelemetry collector, process them to OpenSearch friendly docs, and stores them in users' OpenSearch cluster. The trace analytics will also provide an OpenSearch Dashboards plugin that will provide user-friendly dashboards on the stored trace data. 
 
-![Kibana Notebooks Architecture](images/HighLevelDesign.jpg)
+![Architecture](images/HighLevelDesign.jpg)
 
 
 ## 3. Data Prepper
@@ -76,11 +76,11 @@ For the trace analytics feature, the sink will have specific configurations whic
 
 These two indices mentioned above will be used by the OpenSearch Dashboards plugin to provide the following instant dashboards,
 
-![Kibana Notebooks Architecture](images/DashboardView.png)
+![Dashboard View](images/DashboardView.png)
 
-![Kibana Notebooks Architecture](images/TraceView.png)
+![Trace View](images/TraceView.png)
 
-![Kibana Notebooks Architecture](images/ServiceView.png)
+![Service View](images/ServiceView.png)
 
 
 NOTE: The above OpenSearch Dashboards dashboards are mockup UIs, they are subject to changes.
