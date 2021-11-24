@@ -46,7 +46,7 @@ import static org.mockito.Mockito.mock;
 
 class AwsCloudMapPeerListProviderTest {
 
-    public static final int WAIT_TIME_MULTIPLIER_MILLIS = 1200;
+    public static final int WAIT_TIME_MULTIPLIER_MILLIS = 120000;
     private ServiceDiscoveryAsyncClient awsServiceDiscovery;
     private String namespaceName;
     private String serviceName;
