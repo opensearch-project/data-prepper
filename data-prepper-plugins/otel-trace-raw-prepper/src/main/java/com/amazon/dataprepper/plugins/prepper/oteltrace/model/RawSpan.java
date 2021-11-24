@@ -57,7 +57,7 @@ public final class RawSpan {
      */
     private final String endTime;
     /**
-     * Duration is calculated from startTime and endTime in nanos. This is a  friendly field to make trace analytics kibana UI.
+     * Duration is calculated from startTime and endTime in nanos. This is a  friendly field to make trace analytics OpenSearch Dashboards UI.
      */
     private final long durationInNanos;
     /**
@@ -66,7 +66,7 @@ public final class RawSpan {
     private final String serviceName;
     /**
      * Collection of key-value pairs related to the span.attributes, resource.attributes, span.status and instrumentationLibrary
-     * This is done to avoid nested objects and support kibana query and aggregations.
+     * This is done to avoid nested objects and support OpenSearch Dashboards query and aggregations.
      */
     private final Map<String, Object> attributes;
     /**
@@ -97,7 +97,7 @@ public final class RawSpan {
 
     /**
      * Trace group represent root span i.e the span which triggers the trace event with the microservice architecture. This field is not part of the OpenTelemetry Spec.
-     * This field is something specific to Trace Analytics feature that Kibana will be supporting. This field is derived from the opentelemetry spec and set as below,
+     * This field is something specific to Trace Analytics feature that OpenSearch Dashboards will be supporting. This field is derived from the opentelemetry spec and set as below,
      * <p>
      * if (this.parentSpanId.isEmpty()) {
      * traceGroup = this.name;
