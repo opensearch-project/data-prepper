@@ -117,6 +117,9 @@ configure(mavenArtifactProjects) {
     }
 
     publishing {
+        repositories {
+            mavenLocal()
+        }
         publications {
             maven(MavenPublication) {
                 from components.java
