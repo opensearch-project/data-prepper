@@ -1,6 +1,6 @@
 # OpenSearch sink
 
-This is the Data Prepper OpenSearch sink plugin that sends records to Elasticsearch cluster via REST client. You can use the sink to send data to Amazon Elasticsearch Service or Opendistro for Elasticsearch.
+This is the Data Prepper OpenSearch sink plugin that sends records to OpenSearch cluster via REST client. You can use the sink to send data to Amazon OpenSearch Service or Opendistro for Elasticsearch.
 
 ## Usages
 
@@ -42,16 +42,16 @@ pipeline:
 
 The OpenSearch sink will reserve `otel-v1-apm-service-map` as index for record ingestion.
 
-### Amazon Elasticsearch Service
+### Amazon OpenSearch Service
 
-The OpenSearch sink can also be configured for Amazon Elasticsearch Service domain. See [security](security.md) for details.
+The OpenSearch sink can also be configured for Amazon OpenSearch Service domain. See [security](security.md) for details.
 
 ```
 pipeline:
   ...
   sink:
     opensearch:
-      hosts: ["https://your-amazon-elasticssearch-service-endpoint"]
+      hosts: ["https://your-amazon-opensearch-service-endpoint"]
       aws_sigv4: true
       cert: path/to/cert
       insecure: false
@@ -61,16 +61,16 @@ pipeline:
 
 ## Configuration
 
-- `hosts`: A list of IP addresses of elasticsearch nodes.
+- `hosts`: A list of IP addresses of OpenSearch nodes.
 
 - `cert`(optional): CA certificate that is pem encoded. Accepts both .pem or .crt. This enables the client to trust the CA that has signed the certificate that ODFE is using.
 Default is null.
 
-- `aws_sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Only applies to Amazon Elasticsearch Service. See [security](security.md) for details. Default to `false`.
+- `aws_sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Only applies to Amazon OpenSearch Service. See [security](security.md) for details. Default to `false`.
 
-- `aws_region`: A String represents the region of Amazon Elasticsearch Service domain, e.g. us-west-2. Only applies to Amazon Elasticsearch Service. Defaults to `us-east-1`.
+- `aws_region`: A String represents the region of Amazon OpenSearch Service domain, e.g. us-west-2. Only applies to Amazon OpenSearch Service. Defaults to `us-east-1`.
 
-- `aws_sts_role_arn`: A IAM role arn which the sink plugin will assume to sign request to Amazon Elasticsearch. If not provided the plugin will use the default credentials.
+- `aws_sts_role_arn`: A IAM role arn which the sink plugin will assume to sign request to Amazon OpenSearch. If not provided the plugin will use the default credentials.
 
 - `insecure`: A boolean flag to turn off SSL certificate verification. If set to true, CA certificate verification will be turned off and insecure HTTP requests will be sent. Default to `false`.
 
@@ -126,7 +126,7 @@ Default value is false. Set it to true for [Service map trace analytics](#servic
 - <a name="index"></a>`index`: A String used as index name for custom data type. Applicable and required only If index_type is explicitly `custom` or defaults to be `custom` while both `trace_analytics_raw` and `trace_analytics_service_map` are set to false.
 
 - <a name="template_file"></a>`template_file`(optional): A json file path to be read as index template for custom data ingestion. The json file content should be the json value of
-`"template"` key in the json content of elasticsearch [Index templates API](https://www.elastic.co/guide/en/elasticsearch/reference/7.8/index-templates.html), 
+`"template"` key in the json content of OpenSearch [Index templates API](https://www.elastic.co/guide/en/elasticsearch/reference/7.8/index-templates.html), 
 e.g. [otel-v1-apm-span-index-template.json](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/opensearch/src/main/resources/otel-v1-apm-span-index-template.json)
 
 - `number_of_shards` (optional): The number of primary shards that an index should have on the destination OpenSearch server. This parameter is effective only when `template_file` is either explicitly provided in Sink configuration or built-in. If this parameter is set, it would override the value in index template file. OpenSearch documentation has [more about this parameter](https://opensearch.org/docs/latest/opensearch/rest-api/index-apis/create-index/).
