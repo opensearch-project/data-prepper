@@ -4322,7 +4322,7 @@ package in the Spring Framework library, distributed by VMware, Inc:
 
 --------------------------------------------------------------------------------
 
-61. Group: io.netty  Name: netty-buffer  Version: 4.1.61.Final
+61. Group: io.netty  Name: netty-buffer  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -4330,7 +4330,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-62. Group: io.netty  Name: netty-codec  Version: 4.1.61.Final
+62. Group: io.netty  Name: netty-codec  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -4338,7 +4338,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-63. Group: io.netty  Name: netty-codec-dns  Version: 4.1.61.Final
+63. Group: io.netty  Name: netty-codec-dns  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -4346,7 +4346,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-64. Group: io.netty  Name: netty-codec-haproxy  Version: 4.1.61.Final
+64. Group: io.netty  Name: netty-codec-haproxy  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -4354,7 +4354,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-65. Group: io.netty  Name: netty-codec-http  Version: 4.1.61.Final
+65. Group: io.netty  Name: netty-codec-http  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -4362,7 +4362,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-66. Group: io.netty  Name: netty-codec-http2  Version: 4.1.61.Final
+66. Group: io.netty  Name: netty-codec-http2  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -4370,7 +4370,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-67. Group: io.netty  Name: netty-codec-socks  Version: 4.1.61.Final
+67. Group: io.netty  Name: netty-codec-socks  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -4378,7 +4378,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-68. Group: io.netty  Name: netty-common  Version: 4.1.61.Final
+68. Group: io.netty  Name: netty-common  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -4386,7 +4386,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-69. Group: io.netty  Name: netty-handler  Version: 4.1.61.Final
+69. Group: io.netty  Name: netty-handler  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -4394,7 +4394,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-70. Group: io.netty  Name: netty-handler-proxy  Version: 4.1.61.Final
+70. Group: io.netty  Name: netty-handler-proxy  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -4402,7 +4402,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-71. Group: io.netty  Name: netty-resolver  Version: 4.1.61.Final
+71. Group: io.netty  Name: netty-resolver  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -4410,7 +4410,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-72. Group: io.netty  Name: netty-resolver-dns  Version: 4.1.61.Final
+72. Group: io.netty  Name: netty-resolver-dns  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -4418,7 +4418,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-73. Group: io.netty  Name: netty-resolver-dns-native-macos  Version: 4.1.61.Final
+73. Group: io.netty  Name: netty-resolver-dns-native-macos  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -4426,7 +4426,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-74. Group: io.netty  Name: netty-tcnative-boringssl-static  Version: 2.0.39.Final
+74. Group: io.netty  Name: netty-tcnative-boringssl-static  Version: 2.0.42.Final
 
 Embedded license: 
 
@@ -4690,7 +4690,7 @@ This product contains code from boringssl.
 
 --------------------------------------------------------------------------------
 
-75. Group: io.netty  Name: netty-transport  Version: 4.1.61.Final
+75. Group: io.netty  Name: netty-transport  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -4698,7 +4698,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-76. Group: io.netty  Name: netty-transport-native-epoll  Version: 4.1.61.Final
+76. Group: io.netty  Name: netty-transport-native-epoll  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -4706,7 +4706,7 @@ POM License: Apache License, Version 2.0 - https://www.apache.org/licenses/LICEN
 
 --------------------------------------------------------------------------------
 
-77. Group: io.netty  Name: netty-transport-native-unix-common  Version: 4.1.61.Final
+77. Group: io.netty  Name: netty-transport-native-unix-common  Version: 4.1.68.Final
 
 Manifest Project URL: https://netty.io/
 
@@ -19636,7 +19636,7 @@ POM License: MIT License - https://opensource.org/licenses/MIT
 
 --------------------------------------------------------------------------------
 
-129. Group: org.eclipse.collections  Name: eclipse-collections  Version: 11.0.0.M6
+129. Group: org.eclipse.collections  Name: eclipse-collections  Version: 11.0.0
 
 Manifest Project URL: https://github.com/eclipse/eclipse-collections/eclipse-collections
 
@@ -19648,7 +19648,7 @@ POM License: Eclipse Public License - v 1.0 - https://www.eclipse.org/legal/epl-
 
 --------------------------------------------------------------------------------
 
-130. Group: org.eclipse.collections  Name: eclipse-collections-api  Version: 11.0.0.M6
+130. Group: org.eclipse.collections  Name: eclipse-collections-api  Version: 11.0.0
 
 Manifest Project URL: https://github.com/eclipse/eclipse-collections/eclipse-collections-api
 
@@ -19660,7 +19660,7 @@ POM License: Eclipse Public License - v 1.0 - https://www.eclipse.org/legal/epl-
 
 --------------------------------------------------------------------------------
 
-131. Group: org.eclipse.collections  Name: eclipse-collections-forkjoin  Version: 11.0.0.M6
+131. Group: org.eclipse.collections  Name: eclipse-collections-forkjoin  Version: 11.0.0
 
 POM License: Eclipse Distribution License - v 1.0 - https://www.eclipse.org/licenses/edl-v10.html
 
@@ -28237,5 +28237,5 @@ POM License: The Apache License, Version 2.0 - http://www.apache.org/licenses/LI
 --------------------------------------------------------------------------------
 
 
-This report was generated at Fri Nov 19 13:08:30 CST 2021.
+This report was generated at Mon Nov 29 09:27:26 CST 2021.
 
