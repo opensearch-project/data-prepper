@@ -34,7 +34,7 @@ public class PipelineConfiguration {
             final List<Map.Entry<String, Map<String, Object>>> preppers,
             final List<Map.Entry<String, Map<String, Object>>> processors) {
         if (preppers != null) {
-            LOG.warn("Prepper configurations are deprecated, processor configurations will be required in a future version");
+            LOG.warn("Prepper configurations are deprecated, processor configurations will be required in Data Prepper 2.0");
         }
 
         if (preppers != null && processors != null) {
