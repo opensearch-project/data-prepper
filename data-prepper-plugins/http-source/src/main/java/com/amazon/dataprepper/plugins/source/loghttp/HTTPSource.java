@@ -80,6 +80,9 @@ public class HTTPSource implements Source<Record<Log>> {
         }
         if (server == null) {
             final ServerBuilder sb = Server.builder();
+
+            sb.disableServerHeader();
+
             if (sourceConfig.isSsl()) {
                 LOG.info("Creating http source with SSL/TLS enabled.");
                 final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();

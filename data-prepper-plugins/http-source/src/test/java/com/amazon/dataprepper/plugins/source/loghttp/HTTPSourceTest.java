@@ -17,13 +17,14 @@ import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.log.Log;
+import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.ResponseTimeoutException;
 import com.linecorp.armeria.client.WebClient;
+import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpStatus;
@@ -34,6 +35,7 @@ import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.Statistic;
+import io.netty.util.AsciiString;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -186,6 +188,16 @@ class HTTPSourceTest {
         }
     }
 
+    private void assertSecureResponseWithStatusCode(final AggregatedHttpResponse response, final HttpStatus status) {
+        Assertions.assertEquals(status, response.status());
+        Assertions.assertTrue(response.headers()
+                .stream()
+                .map(Map.Entry::getKey)
+                .map(AsciiString::toString)
+                .noneMatch("server"::equalsIgnoreCase),
+                "Assert HTTP response headers does not contain Armeria server header");
+    }
+
     @Test
     public void testHTTPJsonResponse200() {
         // Prepare
@@ -204,7 +216,7 @@ class HTTPSourceTest {
                         .build(),
                 HttpData.ofUtf8(testData))
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status()).isEqualTo(HttpStatus.OK)).join();
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
 
         // Then
         Assertions.assertFalse(testBuffer.isEmpty());
@@ -250,7 +262,7 @@ class HTTPSourceTest {
                         .build(),
                 HttpData.ofUtf8(testBadData))
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status()).isEqualTo(HttpStatus.BAD_REQUEST)).join();
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.BAD_REQUEST)).join();
 
         // Then
         Assertions.assertTrue(testBuffer.isEmpty());
@@ -281,7 +293,7 @@ class HTTPSourceTest {
                         .build(),
                 HttpData.ofUtf8(testData))
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status()).isEqualTo(HttpStatus.REQUEST_ENTITY_TOO_LARGE)).join();
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.REQUEST_ENTITY_TOO_LARGE)).join();
 
         // Then
         Assertions.assertTrue(testBuffer.isEmpty());
@@ -328,8 +340,8 @@ class HTTPSourceTest {
         final HttpData testHttpData = HttpData.ofUtf8("[{\"log\": \"somelog\"}]");
 
         // Fill in the buffer
-        WebClient.of().execute(testRequestHeaders, testHttpData).aggregate().whenComplete(
-                (response, ex) -> assertThat(response.status()).isEqualTo(HttpStatus.OK)).join();
+        WebClient.of().execute(testRequestHeaders, testHttpData).aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
 
         // Disable client timeout
         WebClient testWebClient = WebClient.builder().responseTimeoutMillis(0).build();
@@ -337,8 +349,7 @@ class HTTPSourceTest {
         // When/Then
         testWebClient.execute(testRequestHeaders, testHttpData)
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status()).isEqualTo(HttpStatus.REQUEST_TIMEOUT))
-                .join();
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.REQUEST_TIMEOUT)).join();
         // verify metrics
         final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
                 requestsReceivedMeasurements, Statistic.COUNT);
@@ -379,8 +390,8 @@ class HTTPSourceTest {
         final HttpData testHttpData = HttpData.ofUtf8("[{\"log\": \"somelog\"}]");
 
         // Fill in the buffer
-        WebClient.of().execute(testRequestHeaders, testHttpData).aggregate().whenComplete(
-                (response, ex) -> assertThat(response.status()).isEqualTo(HttpStatus.OK)).join();
+        WebClient.of().execute(testRequestHeaders, testHttpData).aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
 
         // Send requests to throttle the server when buffer is full
         // Set the client timeout to be less than source serverTimeoutInMillis / (testMaxPendingRequests + testThreadCount)
@@ -392,8 +403,8 @@ class HTTPSourceTest {
         }
 
         // When/Then
-        testWebClient.execute(testRequestHeaders, testHttpData).aggregate().whenComplete(
-                (response, ex) -> assertThat(response.status()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS)).join();
+        testWebClient.execute(testRequestHeaders, testHttpData).aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.TOO_MANY_REQUESTS)).join();
 
         // Wait until source server timeout a request processing thread
         Thread.sleep(serverTimeoutInMillis);
@@ -466,7 +477,7 @@ class HTTPSourceTest {
                         .build(),
                 HttpData.ofUtf8("[{\"log\": \"somelog\"}]"))
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status().code()).isEqualTo(200)).join();
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
     }
 
     @Test

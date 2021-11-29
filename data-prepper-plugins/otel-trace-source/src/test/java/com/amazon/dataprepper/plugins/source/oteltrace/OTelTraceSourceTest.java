@@ -19,14 +19,15 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
-import com.amazon.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.amazon.dataprepper.plugins.health.HealthGrpcService;
+import com.amazon.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.WebClient;
+import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.MediaType;
@@ -38,6 +39,7 @@ import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import io.grpc.BindableService;
 import io.grpc.ServerServiceDefinition;
+import io.netty.util.AsciiString;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
@@ -70,7 +72,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -130,6 +131,18 @@ public class OTelTraceSourceTest {
             .addResourceSpans(ResourceSpans.newBuilder()
                     .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
                             .addSpans(Span.newBuilder().setTraceState("FAILURE").build())).build()).build();
+
+    private static void assertStatusCode415AndNoServerHeaders(final AggregatedHttpResponse response, final Throwable throwable) {
+        assertEquals(415, response.status().code(),
+                "HTTP Response code should be 415 (Unsupported Media Type client error response)");
+        assertTrue(response.headers()
+                .stream()
+                .map(Map.Entry::getKey)
+                .map(AsciiString::toString)
+                .noneMatch("server"::equalsIgnoreCase),
+                "Assert HTTP response headers does not contain Armeria server header");
+    }
+
     private BlockingBuffer<Record<ExportTraceServiceRequest>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 1);
@@ -183,7 +196,8 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(JsonFormat.printer().print(SUCCESS_REQUEST).getBytes()))
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status().code()).isEqualTo(415)).join();
+                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .join();
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
                         .authority("127.0.0.1:21890")
@@ -193,9 +207,8 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(JsonFormat.printer().print(FAILURE_REQUEST).getBytes()))
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status().code()).isEqualTo(415)
-                    //validateBuffer();
-                ).join();
+                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .join();
     }
 
     @Test
@@ -225,7 +238,8 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(JsonFormat.printer().print(SUCCESS_REQUEST).getBytes()))
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status().code()).isEqualTo(415)).join();
+                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .join();
         WebClient.builder().factory(ClientFactory.insecure()).build().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTPS)
                         .authority("127.0.0.1:21890")
@@ -235,9 +249,8 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(JsonFormat.printer().print(FAILURE_REQUEST).getBytes()))
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status().code()).isEqualTo(415)
-                    //validateBuffer();
-                ).join();
+                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .join();
     }
 
     @Test
@@ -252,7 +265,8 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(SUCCESS_REQUEST.toByteArray()))
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status().code()).isEqualTo(415)).join();
+                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .join();
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
                         .authority("127.0.0.1:21890")
@@ -262,10 +276,8 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(FAILURE_REQUEST.toByteArray()))
                 .aggregate()
-                .whenComplete((i, ex) -> {
-                    assertThat(i.status().code()).isEqualTo(415);
-                    //validateBuffer();
-                }).join();
+                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .join();
     }
 
     @Test

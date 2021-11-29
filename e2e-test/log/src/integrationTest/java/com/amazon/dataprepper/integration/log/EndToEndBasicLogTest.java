@@ -21,6 +21,7 @@ import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
+import io.netty.util.AsciiString;
 import org.junit.Assert;
 import org.junit.Test;
 import org.opensearch.action.admin.indices.refresh.RefreshRequest;
@@ -103,7 +104,16 @@ public class EndToEndBasicLogTest {
                         .build(),
                 httpData)
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status(), is(HttpStatus.OK))).join();
+                .whenComplete((i, ex) -> {
+                    assertThat(i.status(), is(HttpStatus.OK));
+                    assertThat(
+                            "Server information should not be send in reply header",
+                            i.headers()
+                                    .stream()
+                                    .map(Map.Entry::getKey)
+                                    .map(AsciiString::toString)
+                                    .noneMatch("server"::equalsIgnoreCase));
+                }).join();
     }
 
     private List<Map<String, Object>> getSourcesFromSearchHits(final SearchHits searchHits) {
