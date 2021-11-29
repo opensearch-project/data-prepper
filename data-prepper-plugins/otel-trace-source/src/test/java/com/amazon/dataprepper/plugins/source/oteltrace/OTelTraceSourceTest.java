@@ -30,6 +30,7 @@ import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpMethod;
+import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
@@ -45,6 +46,7 @@ import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 import org.apache.commons.io.IOUtils;
+import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -63,12 +65,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import static com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.SSL;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -133,14 +140,14 @@ public class OTelTraceSourceTest {
                             .addSpans(Span.newBuilder().setTraceState("FAILURE").build())).build()).build();
 
     private static void assertStatusCode415AndNoServerHeaders(final AggregatedHttpResponse response, final Throwable throwable) {
-        assertEquals(415, response.status().code(),
-                "HTTP Response code should be 415 (Unsupported Media Type client error response)");
-        assertTrue(response.headers()
+        MatcherAssert.assertThat("Http Status", response.status(), is(HttpStatus.UNSUPPORTED_MEDIA_TYPE));
+
+        final List<String> headerKeys = response.headers()
                 .stream()
                 .map(Map.Entry::getKey)
                 .map(AsciiString::toString)
-                .noneMatch("server"::equalsIgnoreCase),
-                "Assert HTTP response headers does not contain Armeria server header");
+                .collect(Collectors.toList());
+        MatcherAssert.assertThat("Response Header Keys", headerKeys, not(contains("server")));
     }
 
     private BlockingBuffer<Record<ExportTraceServiceRequest>> getBuffer() {

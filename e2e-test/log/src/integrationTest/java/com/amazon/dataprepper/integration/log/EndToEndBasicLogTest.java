@@ -40,11 +40,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.not;
 
 public class EndToEndBasicLogTest {
     private static final int HTTP_SOURCE_PORT = 2021;
@@ -106,13 +109,12 @@ public class EndToEndBasicLogTest {
                 .aggregate()
                 .whenComplete((i, ex) -> {
                     assertThat(i.status(), is(HttpStatus.OK));
-                    assertThat(
-                            "Server information should not be send in reply header",
-                            i.headers()
-                                    .stream()
-                                    .map(Map.Entry::getKey)
-                                    .map(AsciiString::toString)
-                                    .noneMatch("server"::equalsIgnoreCase));
+                    final List<String> headerKeys = i.headers()
+                            .stream()
+                            .map(Map.Entry::getKey)
+                            .map(AsciiString::toString)
+                            .collect(Collectors.toList());
+                    assertThat("Response Header Keys", headerKeys, not(contains("server")));
                 }).join();
     }
 

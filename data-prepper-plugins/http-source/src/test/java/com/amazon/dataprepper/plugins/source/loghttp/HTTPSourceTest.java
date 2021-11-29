@@ -62,8 +62,14 @@ import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -188,14 +194,15 @@ class HTTPSourceTest {
         }
     }
 
-    private void assertSecureResponseWithStatusCode(final AggregatedHttpResponse response, final HttpStatus status) {
-        Assertions.assertEquals(status, response.status());
-        Assertions.assertTrue(response.headers()
+    private void assertSecureResponseWithStatusCode(final AggregatedHttpResponse response, final HttpStatus expectedStatus) {
+        assertThat("Http Status", response.status(), equalTo(expectedStatus));
+
+        final List<String> headerKeys = response.headers()
                 .stream()
                 .map(Map.Entry::getKey)
                 .map(AsciiString::toString)
-                .noneMatch("server"::equalsIgnoreCase),
-                "Assert HTTP response headers does not contain Armeria server header");
+                .collect(Collectors.toList());
+        assertThat("Response Header Keys", headerKeys, not(contains("server")));
     }
 
     @Test
@@ -399,7 +406,7 @@ class HTTPSourceTest {
         for (int i = 0; i < testMaxPendingRequests + testThreadCount; i++) {
             CompletionException actualException = Assertions.assertThrows(
                     CompletionException.class, () -> testWebClient.execute(testRequestHeaders, testHttpData).aggregate().join());
-            assertThat(actualException.getCause()).isInstanceOf(ResponseTimeoutException.class);
+            assertThat(actualException.getCause(), instanceOf(ResponseTimeoutException.class));
         }
 
         // When/Then
@@ -411,7 +418,7 @@ class HTTPSourceTest {
         // New request should timeout instead of being rejected
         CompletionException actualException = Assertions.assertThrows(
                 CompletionException.class, () -> testWebClient.execute(testRequestHeaders, testHttpData).aggregate().join());
-        assertThat(actualException.getCause()).isInstanceOf(ResponseTimeoutException.class);
+        assertThat(actualException.getCause(), instanceOf(ResponseTimeoutException.class));
         // verify metrics
         final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
                 requestsReceivedMeasurements, Statistic.COUNT);
@@ -447,8 +454,8 @@ class HTTPSourceTest {
             verify(serverBuilder).tls(certificateIs.capture(), privateKeyIs.capture());
             final String actualCertificate = IOUtils.toString(certificateIs.getValue(), StandardCharsets.UTF_8.name());
             final String actualPrivateKey = IOUtils.toString(privateKeyIs.getValue(), StandardCharsets.UTF_8.name());
-            assertThat(actualCertificate).isEqualTo(certAsString);
-            assertThat(actualPrivateKey).isEqualTo(keyAsString);
+            assertThat(actualCertificate, is(certAsString));
+            assertThat(actualPrivateKey, is(keyAsString));
         }
     }
 
