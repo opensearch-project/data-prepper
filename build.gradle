@@ -65,6 +65,14 @@ subprojects {
                 because 'We want the newest version of httpclient.'
             }
         }
+        constraints {
+            implementation('io.netty:netty-tcnative-boringssl-static') {
+                version {
+                    require '2.0.42.Final'
+                }
+                because 'Netty 4.1.66+ requires new classes and methods in this version.'
+            }
+        }
     }
     test {
         useJUnitPlatform()
@@ -73,8 +81,8 @@ subprojects {
     configurations.all {
         resolutionStrategy.eachDependency { def details ->
             if (details.requested.group == 'io.netty' && !details.requested.name.startsWith('netty-tcnative')) {
-                details.useVersion '4.1.61.Final'
-                details.because 'includes CVE fix'
+                details.useVersion '4.1.68.Final'
+                details.because 'Fixes CVE-2021-37136 and CVE-2021-37137. See https://netty.io/news/2021/09/09/4-1-68-Final.html'
             }
         }
     }
