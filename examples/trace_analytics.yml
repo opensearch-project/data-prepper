@@ -14,7 +14,7 @@ raw-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  processor:
+  prepper:
     - otel_trace_raw_prepper:
   sink:
     - opensearch:
@@ -28,7 +28,7 @@ service-map-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  processor:
+  prepper:
     - service_map_stateful:
   sink:
     - opensearch:
