@@ -15,7 +15,7 @@ data:
       source:
         otel_trace_source:
           ssl: false
-      processor:
+      prepper:
         - peer_forwarder:
             discovery_mode: "dns"
             domain_name: "data-prepper-headless"
@@ -29,7 +29,7 @@ data:
       source:
         pipeline:
           name: "entry-pipeline"
-      processor:
+      prepper:
         - otel_trace_raw_prepper:
       sink:
         - opensearch:
@@ -43,7 +43,7 @@ data:
       source:
         pipeline:
           name: "entry-pipeline"
-      processor:
+      prepper:
         - service_map_stateful:
       sink:
         - opensearch:
