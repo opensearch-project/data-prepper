@@ -5,7 +5,7 @@ entry-pipeline:
       ssl: true
       sslKeyFile: /usr/share/data-prepper/demo-data-prepper.key
       sslKeyCertChainFile: /usr/share/data-prepper/demo-data-prepper.crt
-  processor:
+  prepper:
     - peer_forwarder:
         discovery_mode: "dns"
         domain_name: "prepper-cluster"
@@ -19,7 +19,7 @@ raw-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  processor:
+  prepper:
     - otel_trace_raw_prepper:
   sink:
     - opensearch:
@@ -33,7 +33,7 @@ service-map-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  processor:
+  prepper:
     - service_map_stateful:
   sink:
     - opensearch:
