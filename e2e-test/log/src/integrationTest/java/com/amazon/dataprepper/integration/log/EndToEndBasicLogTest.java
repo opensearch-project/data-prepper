@@ -21,6 +21,7 @@ import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
+import io.netty.util.AsciiString;
 import org.junit.Assert;
 import org.junit.Test;
 import org.opensearch.action.admin.indices.refresh.RefreshRequest;
@@ -39,11 +40,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.not;
 
 public class EndToEndBasicLogTest {
     private static final int HTTP_SOURCE_PORT = 2021;
@@ -103,7 +107,15 @@ public class EndToEndBasicLogTest {
                         .build(),
                 httpData)
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status(), is(HttpStatus.OK))).join();
+                .whenComplete((i, ex) -> {
+                    assertThat(i.status(), is(HttpStatus.OK));
+                    final List<String> headerKeys = i.headers()
+                            .stream()
+                            .map(Map.Entry::getKey)
+                            .map(AsciiString::toString)
+                            .collect(Collectors.toList());
+                    assertThat("Response Header Keys", headerKeys, not(contains("server")));
+                }).join();
     }
 
     private List<Map<String, Object>> getSourcesFromSearchHits(final SearchHits searchHits) {
