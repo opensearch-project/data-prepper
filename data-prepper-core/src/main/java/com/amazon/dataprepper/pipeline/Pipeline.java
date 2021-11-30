@@ -6,7 +6,7 @@
 package com.amazon.dataprepper.pipeline;
 
 import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.prepper.Prepper;
+import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
@@ -30,62 +30,62 @@ import static java.lang.String.format;
 
 /**
  * Pipeline is a data transformation flow which reads data from {@link Source}, optionally transforms the data using
- * {@link Prepper} and outputs the transformed (or original) data to {@link Sink}.
+ * {@link Processor} and outputs the transformed (or original) data to {@link Sink}.
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class Pipeline {
     private static final Logger LOG = LoggerFactory.getLogger(Pipeline.class);
-    private static final int PREPPER_DEFAULT_TERMINATION_IN_MILLISECONDS = 10_000;
+    private static final int PROCESSOR_DEFAULT_TERMINATION_IN_MILLISECONDS = 10_000;
     private volatile boolean stopRequested;
 
     private final String name;
     private final Source source;
     private final Buffer buffer;
-    private final List<List<Prepper>> prepperSets;
+    private final List<List<Processor>> processorSets;
     private final List<Sink> sinks;
-    private final int prepperThreads;
+    private final int processorThreads;
     private final int readBatchTimeoutInMillis;
-    private final ExecutorService prepperExecutorService;
+    private final ExecutorService processorExecutorService;
     private final ExecutorService sinkExecutorService;
 
     /**
      * Constructs a {@link Pipeline} object with provided {@link Source}, {@link #name}, {@link Collection} of
-     * {@link Sink}, {@link Buffer} and list of {@link Prepper}. On {@link #execute()} the engine will read records
+     * {@link Sink}, {@link Buffer} and list of {@link Processor}. On {@link #execute()} the engine will read records
      * {@link Record} from provided {@link Source}, buffers the records in {@link Buffer}, applies List of
-     * {@link Prepper} sequentially (in the given order) and outputs the processed records to collection of
+     * {@link Processor} sequentially (in the given order) and outputs the processed records to collection of
      * {@link Sink}
      *
      * @param name                     name of the pipeline
      * @param source                   source from where the pipeline reads the records
      * @param buffer                   buffer for the source to queue records
-     * @param prepperSets               prepper sets that will be applied to records. Each set includes either a single shared prepper instance
+     * @param processorSets               processor sets that will be applied to records. Each set includes either a single shared processor instance
      *                                  or multiple instances with each to be accessed only by a single {@link ProcessWorker}.
      * @param sinks                    sink to which the transformed records are posted
-     * @param prepperThreads         configured or default threads to parallelize prepper work
+     * @param processorThreads         configured or default threads to parallelize processor work
      * @param readBatchTimeoutInMillis configured or default timeout for reading batch of records from buffer
      */
     public Pipeline(
             @Nonnull final String name,
             @Nonnull final Source source,
             @Nonnull final Buffer buffer,
-            @Nonnull final List<List<Prepper>> prepperSets,
+            @Nonnull final List<List<Processor>> processorSets,
             @Nonnull final List<Sink> sinks,
-            final int prepperThreads,
+            final int processorThreads,
             final int readBatchTimeoutInMillis) {
-        Preconditions.checkArgument(prepperSets.stream().allMatch(
-                prepperSet -> Objects.nonNull(prepperSet) && (prepperSet.size() == 1 || prepperSet.size() == prepperThreads)));
+        Preconditions.checkArgument(processorSets.stream().allMatch(
+                processorSet -> Objects.nonNull(processorSet) && (processorSet.size() == 1 || processorSet.size() == processorThreads)));
         this.name = name;
         this.source = source;
         this.buffer = buffer;
-        this.prepperSets = prepperSets;
+        this.processorSets = processorSets;
         this.sinks = sinks;
-        this.prepperThreads = prepperThreads;
+        this.processorThreads = processorThreads;
         this.readBatchTimeoutInMillis = readBatchTimeoutInMillis;
-        this.prepperExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(prepperThreads,
-                new PipelineThreadFactory(format("%s-prepper-worker", name)), this);
+        this.processorExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(processorThreads,
+                new PipelineThreadFactory(format("%s-processor-worker", name)), this);
 
         // TODO: allow this to be configurable as well?
-        this.sinkExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(prepperThreads,
+        this.sinkExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(processorThreads,
                 new PipelineThreadFactory(format("%s-sink-worker", name)), this);
 
         stopRequested = false;
@@ -124,10 +124,10 @@ public class Pipeline {
     }
 
     /**
-     * @return a list of {@link Prepper} of this pipeline or an empty list .
+     * @return a list of {@link Processor} of this pipeline or an empty list .
      */
-    List<List<Prepper>> getPrepperSets() {
-        return prepperSets;
+    List<List<Processor>> getProcessorSets() {
+        return processorSets;
     }
 
     public int getReadBatchTimeoutInMillis() {
@@ -135,7 +135,7 @@ public class Pipeline {
     }
 
     /**
-     * Executes the current pipeline i.e. reads the data from {@link Source}, executes optional {@link Prepper} on the
+     * Executes the current pipeline i.e. reads the data from {@link Source}, executes optional {@link Processor} on the
      * read data and outputs to {@link Sink}.
      */
     public void execute() {
@@ -143,18 +143,18 @@ public class Pipeline {
         try {
             source.start(buffer);
             LOG.info("Pipeline [{}] - Submitting request to initiate the pipeline processing", name);
-            for (int i = 0; i < prepperThreads; i++) {
+            for (int i = 0; i < processorThreads; i++) {
                 final int finalI = i;
-                final List<Prepper> preppers = prepperSets.stream().map(
-                        prepperSet -> {
-                            if (prepperSet.size() == 1) {
-                                return prepperSet.get(0);
+                final List<Processor> processors = processorSets.stream().map(
+                        processorSet -> {
+                            if (processorSet.size() == 1) {
+                                return processorSet.get(0);
                             } else {
-                                return prepperSet.get(finalI);
+                                return processorSet.get(finalI);
                             }
                         }
                 ).collect(Collectors.toList());
-                prepperExecutorService.submit(new ProcessWorker(buffer, preppers, sinks, this));
+                processorExecutorService.submit(new ProcessWorker(buffer, processors, sinks, this));
             }
         } catch (Exception ex) {
             //source failed to start - Cannot proceed further with the current pipeline, skipping further execution
@@ -166,38 +166,38 @@ public class Pipeline {
      * Initiates shutdown of the pipeline.
      */
     public void shutdown() {
-        shutdown(PREPPER_DEFAULT_TERMINATION_IN_MILLISECONDS);
+        shutdown(PROCESSOR_DEFAULT_TERMINATION_IN_MILLISECONDS);
     }
 
     /**
      * Initiates shutdown of the pipeline by:
      * 1. Stopping the source to prevent new items from being consumed
-     * 2. Notifying preppers to prepare for shutdown (e.g. flushing batched items)
-     * 3. Waiting for ProcessWorkers to exit their run loop (only after buffer/preppers are empty)
+     * 2. Notifying processors to prepare for shutdown (e.g. flushing batched items)
+     * 3. Waiting for ProcessWorkers to exit their run loop (only after buffer/processors are empty)
      * 4. Stopping the ProcessWorkers if they are unable to exit gracefully
-     * 5. Shutting down preppers and sinks
+     * 5. Shutting down processors and sinks
      * 6. Stopping the sink ExecutorService
      *
-     * @param prepperTimeout the maximum time to wait after initiating shutdown to forcefully shutdown process worker
+     * @param processorTimeout the maximum time to wait after initiating shutdown to forcefully shutdown process worker
      */
-    public void shutdown(int prepperTimeout) {
+    public void shutdown(int processorTimeout) {
         LOG.info("Pipeline [{}] - Received shutdown signal with timeout {}, will initiate the shutdown process",
-                name, prepperTimeout);
+                name, processorTimeout);
         try {
             source.stop();
             stopRequested = true;
-            prepperSets.forEach(prepperSet -> prepperSet.forEach(Prepper::prepareForShutdown));
+            processorSets.forEach(processorSet -> processorSet.forEach(Processor::prepareForShutdown));
         } catch (Exception ex) {
             LOG.error("Pipeline [{}] - Encountered exception while stopping the source, " +
                     "proceeding with termination of process workers", name);
         }
 
-        shutdownExecutorService(prepperExecutorService, prepperTimeout);
+        shutdownExecutorService(processorExecutorService, processorTimeout);
 
-        prepperSets.forEach(prepperSet -> prepperSet.forEach(Prepper::shutdown));
+        processorSets.forEach(processorSet -> processorSet.forEach(Processor::shutdown));
         sinks.forEach(Sink::shutdown);
 
-        shutdownExecutorService(sinkExecutorService, prepperTimeout);
+        shutdownExecutorService(sinkExecutorService, processorTimeout);
     }
 
     private void shutdownExecutorService(final ExecutorService executorService, int timeoutForTerminationInMillis) {

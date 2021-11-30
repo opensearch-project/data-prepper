@@ -33,7 +33,7 @@ The [Http Source](https://github.com/opensearch-project/data-prepper/blob/main/d
 More specifically, this source accepts log data in a JSON array format. 
 This source supports industry-standard encryption in the form of TLS/HTTPS and HTTP basic authentication.
 
-## Preppers
+## Processor
 
 The Data Prepper 1.2 release will come with a [Grok Prepper](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/grok-prepper/README.md).
 The Grok Prepper can be an invaluable tool to structure and extract important fields from your logs in order to make them more queryable.
@@ -65,7 +65,7 @@ log-pipeline:
         http_basic:
           username: "myuser"
           password: "mys3cret"
-  prepper:
+  processor:
     - grok:
         match:
           # This will match logs with a "log" key against the COMMONAPACHELOG pattern (ex: { "log": "actual apache log..." } )
@@ -102,7 +102,7 @@ log-pipeline:
         unauthenticated:
       # The default port that will listen for incoming logs
       port: 2021
-  prepper:
+  processor:
     - grok:
         match:
           # This will match logs with a "log" key against the COMMONAPACHELOG pattern (ex: { "log": "actual apache log..." } )
@@ -192,7 +192,7 @@ Example `fluent-bit.conf` with SSL and Basic Authentication enabled on the http 
 
 Follow the [Log Ingestion Demo Guide](../examples/log-ingestion/log_ingestion_demo_guide.md) to go through a specific example of Apache log ingestion from `FluentBit -> Data Prepper -> OpenSearch` running through Docker.
 
-In the future, Data Prepper will contain additional sources and preppers which will make more complex log analytic pipelines available. Check out our [Roadmap](https://github.com/opensearch-project/data-prepper/projects/1) to see what is coming.  
+In the future, Data Prepper will contain additional sources and processors which will make more complex log analytic pipelines available. Check out our [Roadmap](https://github.com/opensearch-project/data-prepper/projects/1) to see what is coming.  
 
-If there is a specifc source, prepper, or sink that you would like to include in your log analytic workflow, and it is not currently on the Roadmap, please bring it to our attention by making a Github issue. Additionally, if you
+If there is a specifc source, processor, or sink that you would like to include in your log analytic workflow, and it is not currently on the Roadmap, please bring it to our attention by making a Github issue. Additionally, if you
 are interested in contributing, see our [Contribuing Guidelines](../CONTRIBUTING.md) as well as our [Developer Guide](developer_guide.md) and [Plugin Development Guide](plugin_development.md).
