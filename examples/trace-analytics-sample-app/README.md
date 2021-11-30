@@ -41,7 +41,7 @@ The following are the backend services running on different ports:
 
 The following are the database/storage we run on different ports.
 - mysql -> 3306
-- OpenSearch -> 9200,9300
+- opensearch -> 9200,9300
 
 The client makes API calls that produces the APM data that falls into the following trace groups:
 
