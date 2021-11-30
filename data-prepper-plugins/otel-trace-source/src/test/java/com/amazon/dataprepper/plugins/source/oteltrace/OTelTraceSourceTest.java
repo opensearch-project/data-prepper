@@ -46,7 +46,6 @@ import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 import org.apache.commons.io.IOUtils;
-import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -72,10 +71,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import static com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.SSL;
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -140,14 +140,15 @@ public class OTelTraceSourceTest {
                             .addSpans(Span.newBuilder().setTraceState("FAILURE").build())).build()).build();
 
     private static void assertStatusCode415AndNoServerHeaders(final AggregatedHttpResponse response, final Throwable throwable) {
-        MatcherAssert.assertThat("Http Status", response.status(), is(HttpStatus.UNSUPPORTED_MEDIA_TYPE));
+        assertThat("Http Status", response.status(), is(HttpStatus.UNSUPPORTED_MEDIA_TYPE));
+        assertThat("Http Response Throwable", throwable, is(nullValue()));
 
         final List<String> headerKeys = response.headers()
                 .stream()
                 .map(Map.Entry::getKey)
                 .map(AsciiString::toString)
                 .collect(Collectors.toList());
-        MatcherAssert.assertThat("Response Header Keys", headerKeys, not(contains("server")));
+        assertThat("Response Header Keys", headerKeys, not(contains("server")));
     }
 
     private BlockingBuffer<Record<ExportTraceServiceRequest>> getBuffer() {
@@ -316,8 +317,8 @@ public class OTelTraceSourceTest {
             verify(serverBuilder).tls(certificateIs.capture(), privateKeyIs.capture());
             final String actualCertificate = IOUtils.toString(certificateIs.getValue(), StandardCharsets.UTF_8.name());
             final String actualPrivateKey = IOUtils.toString(privateKeyIs.getValue(), StandardCharsets.UTF_8.name());
-            assertThat(actualCertificate).isEqualTo(certAsString);
-            assertThat(actualPrivateKey).isEqualTo(keyAsString);
+            assertThat(actualCertificate, is(certAsString));
+            assertThat(actualPrivateKey, is(keyAsString));
         }
     }
 
@@ -354,8 +355,8 @@ public class OTelTraceSourceTest {
             verify(serverBuilder).tls(certificateIs.capture(), privateKeyIs.capture());
             final String actualCertificate = IOUtils.toString(certificateIs.getValue(), StandardCharsets.UTF_8.name());
             final String actualPrivateKey = IOUtils.toString(privateKeyIs.getValue(), StandardCharsets.UTF_8.name());
-            assertThat(actualCertificate).isEqualTo(certAsString);
-            assertThat(actualPrivateKey).isEqualTo(keyAsString);
+            assertThat(actualCertificate, is(certAsString));
+            assertThat(actualPrivateKey, is(keyAsString));
         }
     }
 
