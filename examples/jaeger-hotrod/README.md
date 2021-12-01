@@ -15,5 +15,5 @@ The above command will start the Jaeger HotROD sample, Jaeger Agent, OpenTelemet
 After the Docker image is running, do the following.
 
 * Open the HotROD app at [http://localhost:8080](http://localhost:8080). Press the buttons in the UI to simulate requests. 
-* Load the OpenSearch Dashboards trace analytics dashboard at [http://localhost:5601/app/observability-dashboards#/trace_analytics/home](http://localhost:5601/app/observability-dashboards#/trace_analytics/home). You can view traces and the service map here.
+* Load the OpenSearch Dashboards trace analytics dashboard at [http://localhost:5601/app/observability-dashboards#/trace_analytics/home](http://localhost:5601/app/observability-dashboards#/trace_analytics/home). If that link does not work, you may still be using On OpenSearch 1.1.0 or below. You will need to use [http://localhost:5601/app/trace-analytics-dashboards#/](http://localhost:5601/app/trace-analytics-dashboards#/) instead. You can view traces and the service map here.
 
