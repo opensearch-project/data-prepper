@@ -10,7 +10,7 @@
  */
 
 plugins {
-    id "com.palantir.docker" version "0.25.0"
+    id "com.palantir.docker" version "0.31.0"
 }
 
 docker {
