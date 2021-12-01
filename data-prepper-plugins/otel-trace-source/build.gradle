@@ -25,7 +25,7 @@ dependencies {
     implementation 'com.amazonaws:aws-java-sdk-s3'
     implementation 'com.amazonaws:aws-java-sdk-acm'
     implementation 'com.google.protobuf:protobuf-java-util:3.19.1'
-    implementation "com.linecorp.armeria:armeria:1.9.2"
+    implementation "com.linecorp.armeria:armeria:1.13.3"
     implementation "com.linecorp.armeria:armeria-grpc:1.9.2"
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
