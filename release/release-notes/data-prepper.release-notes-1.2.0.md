@@ -63,6 +63,30 @@
 ---
 ### Raw Notes
 
+* __Set the version to Data Prepper 1.2.0. (#669)__
+
+  [David Venable](mailto:dlv@amazon.com) - Tue, 30 Nov 2021 14:58:47 -0600
+
+  efs/remotes/origin/1.2, refs/heads/1.2
+  Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Update data prepper build script with more setups (#671)__
+
+  [Peter Zhu](mailto:zhujiaxi@amazon.com) - Tue, 30 Nov 2021 15:55:51 -0500
+
+
+    Signed-off-by: Peter Zhu &lt;zhujiaxi@amazon.com&gt;
+
+* __Disable armeria headers (#663)__
+
+  [Steven Bayer](mailto:sbayer55@gmail.com) - Tue, 30 Nov 2021 11:52:31 -0600
+
+
+    * Disable Armeria server header
+    * Converted related tests to assert using Hamcrest testing framework
+     Signed-off-by: Steven Bayer &lt;smbayer@amazon.com&gt;
+     Co-authored-by: Steven Bayer &lt;smbayer@amazon.com&gt;
+
 * __Use Netty 4.1.68 which fixes two CVEs: CVE-2021-37136 and CVE-2021-37137. See https://netty.io/news/2021/09/09/4-1-68-Final.html (#661)__
 
   [David Venable](mailto:dlv@amazon.com) - Mon, 29 Nov 2021 09:49:36 -0600
