@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  data-prepper:
+    restart: unless-stopped
+    image: opensearchstaging/data-prepper:1.2.0
+    working_dir: /usr/share/data-prepper/
+    volumes:
+      - ./data-prepper/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
+      - ./data-prepper/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml
+#      - ./data-prepper/keystore.p12:/usr/share/data-prepper/keystore.p12
+      - ../../shared-config/log4j2.properties:/usr/share/data-prepper/log4j.properties
+    depends_on:
+      - opensearch
+    ports:
+      - "2021:2021"
+
+  opensearch:
+    image: opensearchproject/opensearch:1.0.0
+    container_name: node-0.example.com
+    environment:
+      - discovery.type=single-node
+    ports:
+      - "9200:9200"
+
+  http-log-generation:
+    image: alpine
+    volumes:
+      - ./http-log-generation/entrypoint.sh:/entrypoint.sh
+    command: /bin/sh -c 'set -x; apk --no-cache add curl && /bin/sh -f /entrypoint.sh'
+
+
+#  otel-collector:
+#    restart: unless-stopped
+#    dns: 10.10.1.1
+#    image: otel/opentelemetry-collector:0.24.0
+#    command: ["--config=/etc/otel-collector-config.yml"]
+#    volumes:
+#      - ./opentelemetry-collector/otel-collector-config.yml:/etc/otel-collector-config.yml
+#      - ../../demo/demo-data-prepper.crt:/etc/demo-data-prepper.crt
+#    ports:
+#      - "55680:55680"
+#    depends_on:
+#      - data-prepper
+#    networks:
+#      - data-prepper-smoke-test-network

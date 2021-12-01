@@ -1,0 +1,13 @@
+grok-pipeline:
+  source:
+    http:
+  prepper:
+    - grok:
+        match:
+          log: [ "%{COMMONAPACHELOG}" ]
+  sink:
+    - opensearch:
+        hosts: [ "https://node-0.example.com:9200" ]
+        username: "admin"
+        password: "admin"
+        index: "test-grok-index"
