@@ -92,7 +92,7 @@ subprojects {
 
 configure(subprojects.findAll {it.name != 'data-prepper-api'}) {
     dependencies {
-        implementation platform('com.fasterxml.jackson:jackson-bom:2.12.5')
+        implementation platform('com.fasterxml.jackson:jackson-bom:2.13.0')
         implementation platform('software.amazon.awssdk:bom:2.17.15')
         implementation platform('com.amazonaws:aws-java-sdk-bom:1.12.67')
     }
