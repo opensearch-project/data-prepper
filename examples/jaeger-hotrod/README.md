@@ -1,6 +1,6 @@
-## Jaeger Hot Rod
+## Jaeger HotROD
 
-This demo will use the revered Jaeger Hotrod app. The purpose of this demo is to experience the Trace Analytics feature using an existing Jaeger based application. For this demo we use the Jager Hotrod App, Jaeger Agent, OpenTelemetry collector, OpenSearch and Data Prepper.
+This demo will use the revered [Jaeger HotROD](https://github.com/jaegertracing/jaeger/tree/main/examples/hotrod) app. The purpose of this demo is to experience the Trace Analytics feature using an existing Jaeger based application. For this demo we use the Jaeger HotROD App, Jaeger Agent, OpenTelemetry collector, OpenSearch and Data Prepper.
 
 #### Required:
 * Docker - we recommend allowing Docker to use at least 4 GB of RAM in Preferences > Resources.
@@ -10,10 +10,10 @@ This demo will use the revered Jaeger Hotrod app. The purpose of this demo is to
 docker-compose up -d --build
 ``` 
 
-The above command will start the Jaeger Hotrod sample, Jaeger Agent, OpenTelemetry Collector, Data Prepper, OpenSearch and OpenSearch Dashboards. Wait for few minutes for all the containers to come up, the DataPrepper will restart until OpenSearch becomes available.
+The above command will start the Jaeger HotROD sample, Jaeger Agent, OpenTelemetry Collector, Data Prepper, OpenSearch and OpenSearch Dashboards. Wait for few minutes for all the containers to come up, the DataPrepper container will restart until OpenSearch becomes available.
 
-After successful start, 
+After the Docker image is running, do the following.
 
-* use the hot rod app at localhost:8080 
-* check the traces in OpenSearch Dashboards trace analytics dashboards at localhost:5601/app/trace-analytics-dashboards#/
+* Open the HotROD app at [http://localhost:8080](http://localhost:8080). Press the buttons in the UI to simulate requests. 
+* Load the OpenSearch Dashboards trace analytics dashboard at [http://localhost:5601/app/observability-dashboards#/trace_analytics/home](http://localhost:5601/app/observability-dashboards#/trace_analytics/home). If that link does not work, you may still be using On OpenSearch 1.1.0 or below. You will need to use [http://localhost:5601/app/trace-analytics-dashboards#/](http://localhost:5601/app/trace-analytics-dashboards#/) instead. You can view traces and the service map here.
 
