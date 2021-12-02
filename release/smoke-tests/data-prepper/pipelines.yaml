@@ -12,17 +12,39 @@ grok-pipeline:
         password: "admin"
         index: "test-grok-index"
 
-otel-pipeline:
+entry-pipeline:
   source:
     otel_trace_source:
       ssl: false
-      authentication:
-        unauthenticated:
+  sink:
+    - pipeline:
+        name: "raw-pipeline"
+    - pipeline:
+        name: "service-map-pipeline"
+
+raw-pipeline:
+  source:
+    pipeline:
+      name: "entry-pipeline"
   prepper:
     - otel_trace_raw_prepper:
   sink:
     - opensearch:
         hosts: [ "https://node-0.example.com:9200" ]
-        username: admin
-        password: admin
-        index: otel-data
+        username: "admin"
+        password: "admin"
+        trace_analytics_raw: true
+
+service-map-pipeline:
+  delay: "100"
+  source:
+    pipeline:
+      name: "entry-pipeline"
+  prepper:
+    - service_map_stateful:
+  sink:
+    - opensearch:
+        hosts: ["https://node-0.example.com:9200"]
+        username: "admin"
+        password: "admin"
+        trace_analytics_service_map: true
