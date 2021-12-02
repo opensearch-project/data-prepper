@@ -5,12 +5,44 @@ OPENSEARCH_INDEX="test-grok-index"
 
 docker-compose up --detach
 
+#WORKER="data-prepper" \
+#    && docker-compose stop ${WORKER} \
+#    && docker-compose build ${WORKER} \
+#    && docker-compose up --no-start ${WORKER} \
+#    && docker-compose start ${WORKER}
+
 #curl -k -u 'admin:admin' 'https://localhost:9200/_cat/indices'
-#curl -k -u 'admin:admin' 'https://localhost:9200/_search?q=apple'
 #curl -s -k -u 'admin:admin' 'https://localhost:9200/test-grok-index/_stats' | jq
 #curl -s -k -u 'admin:admin' 'https://localhost:9200/test-grok-index/_search' | jq '.hits.total.value'
+#curl -s -k -u 'admin:admin' 'https://localhost:9200/otel-data/_search' | jq '.hits.total.value'
 
 #curl -k -H "Content-Type: application/json" -d '[{"log": "smoke test log "}]' 'https://localhost:2021/log/ingest'
+
+curl -k -H 'Content-Type: application/json; charset=utf-8'  -d '{"resourceSpans":[{"instrumentationLibrarySpans":[{"spans":[{"spanId":"AAAAAAAAAAM=","name":"test-span"}]}]}]}' https://localhost:21890/opentelemetry.proto.collector.trace.v1.TraceService/Export
+
+curl -X POST \
+    -H 'Content-Type: application/json' \
+    -d '[
+        {
+            "traceId": "5982fe77008310cc80f1da5e10147519",
+            "parentId": "90394f6bcffb5d13",
+            "id": "67fae42571535f60",
+            "kind": "SERVER",
+            "name": "/m/n/2.6.1",
+            "timestamp": 1516781775726000,
+            "duration": 26000,
+            "localEndpoint": {
+                "serviceName": "api"
+            },
+            "remoteEndpoint": {
+                "serviceName": "apip"
+            },
+            "tags": {
+                "data.http_response_code": "201"
+            }
+          }
+    ]' \
+    'http://localhost:4318'
 
 WAITING_FOR_OPENSEARCH=true
 

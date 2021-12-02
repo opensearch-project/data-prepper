@@ -10,16 +10,16 @@ WAITING_FOR_OPENSEARCH=true
 
 while ${WAITING_FOR_OPENSEARCH}
 do
-    if curl -s -k -u 'admin:admin' "https://${OPENSEARCH_HOST}/_cat/indices" > /dev/null
+    if curl -s -k -H "Content-Type: application/json" -d '[{"log": "test log"}]' "http://${DATA_PREPPER_HOST}:${DATA_PREPPER_PORT}/log/ingest" > /dev/null
     then
         WAITING_FOR_OPENSEARCH=false
     else
-        echo "Waiting for opensearch to start"
+        echo "Waiting for Data Prepper to start at http://${DATA_PREPPER_HOST}:${DATA_PREPPER_PORT}"
     fi
     sleep 1s
 done
 
-echo "Opensearch started!"
+echo "Data Prepper started!"
 
 set -x
 

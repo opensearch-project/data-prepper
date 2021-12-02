@@ -11,3 +11,18 @@ grok-pipeline:
         username: "admin"
         password: "admin"
         index: "test-grok-index"
+
+otel-pipeline:
+  source:
+    otel_trace_source:
+      ssl: false
+      authentication:
+        unauthenticated:
+  prepper:
+    - otel_trace_raw_prepper:
+  sink:
+    - opensearch:
+        hosts: [ "https://node-0.example.com:9200" ]
+        username: admin
+        password: admin
+        index: otel-data
