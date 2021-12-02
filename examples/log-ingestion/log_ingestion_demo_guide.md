@@ -29,7 +29,7 @@ FluentBit is tailing to collect logs from.
 4. Now that you understand a bit more about how FluentBit and OpenSearch are set up, run them with:
 
 ```
-docker-compose up
+docker-compose up -d
 ```
 
 ### Data Prepper Setup
