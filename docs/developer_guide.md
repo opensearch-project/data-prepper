@@ -90,6 +90,18 @@ The results will look somewhat like the following:
 opensearch-data-prepper   1.2.0-SNAPSHOT   3e81ef26250c   23 hours ago   566MB
 ```
 
+### Running smoke tests on a Docker Image
+
+To run automated smoke test on an image you can use the following command
+
+./release/smoke-tests/run-smoke-tests.sh -v _image_tag_ -r _image_repository_
+
+To run smoke tests on the latest published docker image you would run the following command:
+
+```
+./release/smoke-tests/run-smoke-tests.sh -v latest -r opensearchproject
+```
+
 ### Running from a Local Docker Image
 
 If you build a local Docker image, you can run it using a variation on the following command. You

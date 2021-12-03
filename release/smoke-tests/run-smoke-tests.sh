@@ -10,6 +10,8 @@ OPENSEARCH_HOST="localhost:9200"
 OPENSEARCH_GROK_INDEX="test-grok-index"
 OPENSEARCH_OTEL_INDEX="otel-v1-apm-span-000001"
 
+cd ${REPO_ROOT}/release/smoke-tests
+
 function usage() {
     echo ""
     echo "This script is used to build the Docker image. It prepares the files required by the Dockerfile in a temporary directory, then builds and tags the Docker image. Script expects to be run from the project root directory."
@@ -91,3 +93,7 @@ echo "Open Search successfully received logs from Data Prepper!"
 
 query_hits_gt_zero "https://${OPENSEARCH_HOST}/${OPENSEARCH_OTEL_INDEX}/_search?q=PythonService"
 echo "Open Search successfully received OTel spans from Data Prepper!"
+
+docker-compose down
+
+cd ${REPO_ROOT}
