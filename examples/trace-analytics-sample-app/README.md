@@ -1,6 +1,6 @@
 # Trace Analytics Sample App
 
-This is a demo that is built to demonstrate the Trace Analytics feature that is supported by Open Distro For Elasticsearch. For the demo we have mock e-commerce app which consists of a group of microservices. This demo uses OpenTelemetry libraries to produce trace data and uses Data Prepper to ingest data into ODFE. 
+This is a demo that is built to demonstrate the Trace Analytics feature that is supported by OpenSearch. For the demo we have mock e-commerce app which consists of a group of microservices. This demo uses OpenTelemetry libraries to produce trace data and uses Data Prepper to ingest data into OpenSearch. 
  
 ## Run
 
@@ -14,8 +14,7 @@ This is a demo that is built to demonstrate the Trace Analytics feature that is 
 docker-compose up -d
 ```
 
-
-* Wait for 5 mins, this is because we spin up multiple python services, elasticsearch and kibana. The DataPrepper will restart till elasticsearch becomes available.
+* Wait for 5 mins, this is because we spin up multiple python services, OpenSearch and OpenSearch Dashboards. The DataPrepper will restart till OpenSearch becomes available.
 
 * Navigate to localhost:8089
 
@@ -42,7 +41,7 @@ The following are the backend services running on different ports:
 
 The following are the database/storage we run on different ports.
 - mysql -> 3306
-- elasticsearch -> 9200,9300
+- opensearch -> 9200,9300
 
 The client makes API calls that produces the APM data that falls into the following trace groups:
 
@@ -70,9 +69,3 @@ To run this application together with client:
 ```
 docker-compose up --build -d
 ```
-
-
-
-
-
-
