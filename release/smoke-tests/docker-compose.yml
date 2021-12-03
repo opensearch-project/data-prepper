@@ -11,6 +11,8 @@ services:
       - ../../shared-config/log4j2.properties:/usr/share/data-prepper/log4j.properties
     depends_on:
       - opensearch
+    ports:
+      - "2021:2021"
 
   opensearch:
     image: opensearchproject/opensearch:1.0.0

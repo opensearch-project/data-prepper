@@ -87,26 +87,7 @@ done
 echo "Data Prepper started!"
 
 query_hits_gt_zero "https://${OPENSEARCH_HOST}/${OPENSEARCH_GROK_INDEX}/_search"
+echo "Open Search successfully received logs from Data Prepper!"
+
 query_hits_gt_zero "https://${OPENSEARCH_HOST}/${OPENSEARCH_OTEL_INDEX}/_search?q=PythonService"
-
-#SEARCH_RESPONSE=$(curl -s -k -u 'admin:admin' "https://${OPENSEARCH_HOST}/${OPENSEARCH_INDEX}/_search")
-#
-##Parse response for number of hits, if jq not installed will use docker container
-#if command -v jq &> /dev/null
-#then
-#    LOG_COUNT=$(jq '.hits.total.value' <<< "${SEARCH_RESPONSE}")
-#else
-#    LOG_COUNT=$(docker run alpine /bin/sh -c "apk -q --no-cache add jq && echo '${SEARCH_RESPONSE}' | jq '.hits.total.value'")
-#fi
-#
-#if [ $LOG_COUNT -gt 0 ]
-#then
-#    echo "Open Search is receiving logs from Data Prepper"
-#    echo "Open Search has received at least ${LOG_COUNT} logs"
-#else
-#    echo "No logs found in opensearch node ${OPENSEARCH_HOST} for index ${OPENSEARCH_INDEX}"
-#fi
-#
-## To get Python OTel documents:
-#SEARCH_RESPONSE=$(curl -s -k -u 'admin:admin' 'https://localhost:9200/otel-v1-apm-span-000001/_search?q=PythonService')
-
+echo "Open Search successfully received OTel spans from Data Prepper!"
