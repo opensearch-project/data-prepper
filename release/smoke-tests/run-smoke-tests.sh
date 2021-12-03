@@ -45,6 +45,7 @@ function query_hits_gt_zero () {
         echo "Found at least ${LOG_COUNT} hits"
     else
         echo "No hits found with query url ${}"
+        echo "Smoke test failed"
         exit 1
     fi
 }
