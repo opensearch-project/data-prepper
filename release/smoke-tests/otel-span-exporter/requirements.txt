@@ -1,6 +1,6 @@
 backoff==1.10.0
 certifi==2021.10.8
-charset-normalizer==2.0.8
+charset-normalizer==2.0.9
 Deprecated==1.2.13
 googleapis-common-protos==1.53.0
 grpcio==1.42.0
@@ -9,14 +9,11 @@ opentelemetry-api==1.7.1
 opentelemetry-exporter-otlp==1.7.1
 opentelemetry-exporter-otlp-proto-grpc==1.7.1
 opentelemetry-exporter-otlp-proto-http==1.7.1
-opentelemetry-instrumentation==0.26b1
-opentelemetry-instrumentation-grpc==0.26b1
 opentelemetry-proto==1.7.1
 opentelemetry-sdk==1.7.1
 opentelemetry-semantic-conventions==0.26b1
 protobuf==3.19.1
 requests==2.26.0
 six==1.16.0
-thrift==0.15.0
 urllib3==1.26.7
 wrapt==1.13.3

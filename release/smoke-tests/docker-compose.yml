@@ -15,7 +15,7 @@ services:
       - "2021:2021"
 
   opensearch:
-    image: opensearchproject/opensearch:1.0.0
+    image: opensearchproject/opensearch:${OPENSEARCH_VERSION}
     container_name: node-0.example.com
     environment:
       - discovery.type=single-node
