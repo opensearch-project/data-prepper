@@ -1,7 +1,8 @@
 receivers:
-  jaeger:
+  otlp:
     protocols:
       grpc:
+      http:
   prometheus:
     config:
       scrape_configs:
@@ -13,6 +14,9 @@ receivers:
             - source_labels: [ __name__ ]
               regex: '.*grpc_io.*'
               action: drop
+
+processors:
+  batch:
 
 exporters:
   logging:
@@ -28,7 +32,8 @@ service:
       level: "debug"
   pipelines:
     traces:
-      receivers: [jaeger]
+      receivers: [otlp]
+      processors: [batch]
       exporters: [logging, otlp]
     metrics:
       receivers: [prometheus]

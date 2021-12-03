@@ -3,12 +3,11 @@ version: "3.9"
 services:
   data-prepper:
     restart: unless-stopped
-    image: opensearchstaging/data-prepper:1.2.0
+    image: ${REPOSITORY}/data-prepper:${TAG_NAME}
     working_dir: /usr/share/data-prepper/
     volumes:
       - ./data-prepper/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
       - ./data-prepper/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml
-#      - ./data-prepper/trace_analytics.yaml:/usr/share/data-prepper/pipelines.yaml
       - ../../shared-config/log4j2.properties:/usr/share/data-prepper/log4j.properties
     depends_on:
       - opensearch
@@ -22,6 +21,7 @@ services:
       - "9200:9200"
 
   http-log-generation:
+    restart: unless-stopped
     image: alpine
     volumes:
       - ./http-log-generation/entrypoint.sh:/entrypoint.sh
@@ -35,3 +35,11 @@ services:
       - ./opentelemetry-collector/otel-collector-config.yml:/etc/otel-collector-config.yml
     depends_on:
       - data-prepper
+    ports:
+      - "4317:4317"
+
+  otel-span-exporter:
+    restart: unless-stopped
+    build: ./otel-span-exporter
+    depends_on:
+      - otel-collector

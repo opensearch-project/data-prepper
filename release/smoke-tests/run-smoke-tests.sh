@@ -1,101 +1,112 @@
 #!/bin/bash
 
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+set -e --trace
+
+REPO_ROOT=`git rev-parse --show-toplevel`
 OPENSEARCH_HOST="localhost:9200"
-OPENSEARCH_INDEX="test-grok-index"
+OPENSEARCH_GROK_INDEX="test-grok-index"
+OPENSEARCH_OTEL_INDEX="otel-v1-apm-span-000001"
+
+function usage() {
+    echo ""
+    echo "This script is used to build the Docker image. It prepares the files required by the Dockerfile in a temporary directory, then builds and tags the Docker image. Script expects to be run from the project root directory."
+    echo "--------------------------------------------------------------------------"
+    echo "Usage: $0 [args]"
+    echo ""
+    echo "Required arguments:"
+    echo -e "-v TAG_NAME\tSpecify the image tag name such as '1.2'"
+    echo -e "-r REPOSITORY\tSpecify the docker repository name (ex: opensearchstaging or opensearchproject). The tag name will be pointed to '-v' value and 'latest'"
+    echo ""
+    echo "Optional arguments:"
+    echo -e "-h\t\tPrint this message."
+    echo "--------------------------------------------------------------------------"
+}
+
+function query_hits_gt_zero () {
+    local URL=$1
+    local SEARCH_RESPONSE=$(curl -s -k -u 'admin:admin' "${URL}")
+    local LOG_COUNT=0
+
+    if command -v jq &> /dev/null
+    then
+        LOG_COUNT=$(jq '.hits.total.value' <<< "${SEARCH_RESPONSE}")
+    else
+        LOG_COUNT=$(docker run alpine /bin/sh -c "apk -q --no-cache add jq && echo '${SEARCH_RESPONSE}' | jq '.hits.total.value'")
+    fi
+
+    if [ $LOG_COUNT -gt 0 ]
+    then
+        echo "Open Search is receiving logs from Data Prepper"
+        echo "Found at least ${LOG_COUNT} hits"
+    else
+        echo "No hits found with query url ${}"
+        exit 1
+    fi
+}
+
+while getopts "hv:r:" arg; do
+    case $arg in
+        h)
+            usage
+            exit 1
+            ;;
+        v)
+            export TAG_NAME=$OPTARG
+            ;;
+        r)
+            export REPOSITORY=$OPTARG
+            ;;
+        ?)
+            echo "Invalid option: -${arg}"
+            exit 1
+            ;;
+    esac
+done
+
+echo "Will smoke test image \"${REPOSITORY}/data-prepper:${TAG_NAME}\""
 
 docker-compose up --detach
 
-#WORKER="data-prepper" \
-#    && docker-compose stop ${WORKER} \
-#    && docker-compose build ${WORKER} \
-#    && docker-compose up --no-start ${WORKER} \
-#    && docker-compose start ${WORKER}
 
-#curl -k -u 'admin:admin' 'https://localhost:9200/_cat/indices'
-#curl -s -k -u 'admin:admin' 'https://localhost:9200/test-grok-index/_stats' | jq
-#curl -s -k -u 'admin:admin' 'https://localhost:9200/test-grok-index/_search' | jq '.hits.total.value'
-#curl -s -k -u 'admin:admin' 'https://localhost:9200/otel-data/_search' | jq '.hits.total.value'
-
-#curl -k -H "Content-Type: application/json" -d '[{"log": "smoke test log "}]' 'https://localhost:2021/log/ingest'
-
-curl -k -H 'Content-Type: application/json; charset=utf-8'  -d '{"resourceSpans":[{"instrumentationLibrarySpans":[{"spans":[{"spanId":"AAAAAAAAAAM=","name":"test-span"}]}]}]}' https://localhost:21890/opentelemetry.proto.collector.trace.v1.TraceService/Export
-
-curl -X POST \
-    -H 'Content-Type: application/json' \
-    -d '[
-        {
-            "traceId": "5982fe77008310cc80f1da5e10147519",
-            "parentId": "90394f6bcffb5d13",
-            "id": "67fae42571535f60",
-            "kind": "SERVER",
-            "name": "/m/n/2.6.1",
-            "timestamp": 1516781775726000,
-            "duration": 26000,
-            "localEndpoint": {
-                "serviceName": "api"
-            },
-            "remoteEndpoint": {
-                "serviceName": "apip"
-            },
-            "tags": {
-                "data.http_response_code": "201"
-            }
-          }
-    ]' \
-    'http://localhost:4318'
-
+#Ping Data Prepper until response:
 WAITING_FOR_OPENSEARCH=true
-
 while ${WAITING_FOR_OPENSEARCH}
 do
     if curl -s -k -u 'admin:admin' 'https://localhost:9200/_cat/indices' > /dev/null && curl -s -k -H "Content-Type: application/json" -d '[{"log": "smoke test log "}]' 'http://localhost:2021/log/ingest' > /dev/null
     then
         WAITING_FOR_OPENSEARCH=false
     else
-        echo "Waiting for opensearch to start"
+        echo "Waiting for Data Prepper to start"
     fi
     sleep 1s
 done
 
-echo "Opensearch started!"
+echo "Data Prepper started!"
 
-SEARCH_RESPONSE=$(curl -s -k -u 'admin:admin' "https://${OPENSEARCH_HOST}/${OPENSEARCH_INDEX}/_search")
+query_hits_gt_zero "https://${OPENSEARCH_HOST}/${OPENSEARCH_GROK_INDEX}/_search"
+query_hits_gt_zero "https://${OPENSEARCH_HOST}/${OPENSEARCH_OTEL_INDEX}/_search?q=PythonService"
 
-if command -v jq &> /dev/null
-then
-    LOG_COUNT=$(jq '.hits.total.value' <<< "${SEARCH_RESPONSE}")
-else
-    LOG_COUNT=$(docker run alpine /bin/sh -c "apk -q --no-cache add jq && echo '${SEARCH_RESPONSE}' | jq '.hits.total.value'")
-fi
-
-if [ $LOG_COUNT -gt 0 ]
-then
-    echo "Open Search is receiving logs from Data Prepper"
-    echo "Open Search has received at least ${LOG_COUNT} logs"
-else
-    echo "No logs found in opensearch node ${OPENSEARCH_HOST} for index ${OPENSEARCH_INDEX}"
-fi
-
-#COMPOSE_FILE="docker-compose.yml"
-#if test -f ${COMPOSE_FILE}; then
-#    rm -f ${COMPOSE_FILE}
+#SEARCH_RESPONSE=$(curl -s -k -u 'admin:admin' "https://${OPENSEARCH_HOST}/${OPENSEARCH_INDEX}/_search")
+#
+##Parse response for number of hits, if jq not installed will use docker container
+#if command -v jq &> /dev/null
+#then
+#    LOG_COUNT=$(jq '.hits.total.value' <<< "${SEARCH_RESPONSE}")
+#else
+#    LOG_COUNT=$(docker run alpine /bin/sh -c "apk -q --no-cache add jq && echo '${SEARCH_RESPONSE}' | jq '.hits.total.value'")
 #fi
 #
-#cat << EOF > ${COMPOSE_FILE}
-#version: "3.7"
-#services:
-#  data-prepper:
-#    restart: unless-stopped
-#    container_name: data-prepper
-#    image: opensearchproject/data-prepper:latest
-#    volumes:
-#      - ../trace_analytics_no_ssl.yml:/usr/share/data-prepper/pipelines.yaml
-#      - ../data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
-#      - ../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
-#    ports:
-#      - "21890:21890"
-#    networks:
-#      - my_network
-#    depends_on:
-#      - "opensearch"
-#EOF
+#if [ $LOG_COUNT -gt 0 ]
+#then
+#    echo "Open Search is receiving logs from Data Prepper"
+#    echo "Open Search has received at least ${LOG_COUNT} logs"
+#else
+#    echo "No logs found in opensearch node ${OPENSEARCH_HOST} for index ${OPENSEARCH_INDEX}"
+#fi
+#
+## To get Python OTel documents:
+#SEARCH_RESPONSE=$(curl -s -k -u 'admin:admin' 'https://localhost:9200/otel-v1-apm-span-000001/_search?q=PythonService')
+
