@@ -1,8 +1,8 @@
 ## Example: Sending Logs through ECS Firelens to hosted Data-Prepper with AWS Fluent Bit
 
-[FireLens](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_firelens.html) is a container log router for Amazon ECS and AWS Fargate that gives you extensibility to use the breadth of services at AWS or partner solutions for log analytics and storage. FireLens works with Fluent Bit. This means one can use Fluent Bit's [HTTP output plugin](https://docs.fluentbit.io/manual/pipeline/outputs/http) to send your container's log to external or aws hosted data-prepper.
+[FireLens](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_firelens.html) is a container log router for Amazon ECS and AWS Fargate that gives you extensibility to use the breadth of services at AWS or partner solutions for log analytics and storage. FireLens works with Fluent Bit. This means you can use Fluent Bit's [HTTP output plugin](https://docs.fluentbit.io/manual/pipeline/outputs/http) to send your container's log to external or aws hosted data-prepper.
 
-To route application logs from ECS container to [AWS for Fluent Bit](https://github.com/aws/aws-for-fluent-bit), one needs to specify `awsfirelens` as the `logDriver` in the logConfiguration object. Also, the key-value pairs specified as `options` in the logConfiguration object are used to generate the Fluent Bit output configuration to hosted Data-Prepper:
+To route application logs from ECS container to [AWS for Fluent Bit](https://github.com/aws/aws-for-fluent-bit), specify `awsfirelens` as the `logDriver` in the `logConfiguration` object. Also, the key-value pairs specified as `options` in the `logConfiguration` object are used to generate the Fluent Bit output configuration to hosted Data-Prepper:
 
 ```
 "logConfiguration": {
@@ -32,9 +32,10 @@ ataprepper/f4b6c7a71bbf49aea7b1c5c6a6bd9aa9","ecs_task_definition":"firelens-exa
 clientip":"70.113.36.5","verb":"GET","httpversion":"1.1","timestamp":"06/Dec/2021:15:50:48 +0000"}
 ```
 ### References:
-* To create a task definition using the classic ECS console, please refer [here](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/create-task-definition-classic.html). 
+* To create a task definition using ECS console, please refer to [Creating a task definition using the classic console](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/create-task-definition-classic.html) 
+that allows configure task definition via JSON or [Creating a task definition using the new console](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/create-task-definition.html).
 
-* For more details on ECS log routing, one could refer to the documentation [here](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_firelens.html).
+* For more details on ECS log routing, please refer to [Custom log routing](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_firelens.html).
 
-* For more example task definitions demonstrating common custom log routing options, please see Amazon ECS documentation [here](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/firelens-example-taskdefs.html) or 
+* For more example task definitions demonstrating common custom log routing options, please see Amazon ECS documentation [Example task definitions](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/firelens-example-taskdefs.html) or 
 [Amazon ECS FireLens examples on GitHub](https://github.com/aws-samples/amazon-ecs-firelens-examples).
