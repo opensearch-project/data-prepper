@@ -17,13 +17,7 @@ import com.amazon.dataprepper.plugins.buffer.TestBuffer;
 import org.junit.Test;
 
 import java.util.Queue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
@@ -35,8 +29,9 @@ public class RandomStringSourceTests {
 
     @Test
     public void testPutRecord() throws InterruptedException {
-        final RandomStringSource randomStringSource = new RandomStringSource();
-        final Queue<Record<Event>> bufferQueue = new LinkedBlockingQueue<>();
+        final RandomStringSource randomStringSource =
+                new RandomStringSource();
+        final Queue<Record<Event>> bufferQueue = new ConcurrentLinkedQueue<>();
         final TestBuffer buffer = new TestBuffer(bufferQueue, 1);
         //Start source, and sleep for 100 millis
         randomStringSource.start(buffer);
