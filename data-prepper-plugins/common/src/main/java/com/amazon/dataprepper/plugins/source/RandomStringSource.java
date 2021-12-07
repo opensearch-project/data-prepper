@@ -17,15 +17,11 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -38,56 +34,35 @@ public class RandomStringSource implements Source<Record<Event>> {
     static final String EVENT_TYPE = "event";
     private static final Logger LOG = LoggerFactory.getLogger(RandomStringSource.class);
 
-    private ExecutorService executorService;
     private volatile boolean stop = false;
-
-    private void setExecutorService() {
-        if(executorService == null || executorService.isShutdown()) {
-            executorService = Executors.newSingleThreadExecutor(
-                    new ThreadFactoryBuilder().setDaemon(false).setNameFormat("random-source-pool-%d").build()
-            );
-        }
-    }
 
     @Override
     public void start(final Buffer<Record<Event>> buffer) {
-        setExecutorService();
-        executorService.execute(() -> {
-            while (!stop) {
-                try {
-                    LOG.info("Writing to buffer");
-                    final Record<Event> record = generateRandomStringEventRecord();
-                    buffer.write(record, 500);
-                    Thread.sleep(500);
-                } catch (final InterruptedException e) {
-                    break;
-                } catch (final TimeoutException e) {
-                    // Do nothing
-                }
+        while (!stop) {
+            try {
+                LOG.info("Writing to buffer");
+                final Record<Event> record = generateRandomStringEventRecord();
+                buffer.write(record, 500);
+                Thread.sleep(500);
+            } catch (final InterruptedException e) {
+                LOG.error("Writing random string to buffer interrupted", e);
+            } catch (final TimeoutException e) {
+                LOG.error("Writing timed out", e);
             }
-        });
+        }
     }
 
     @Override
     public void stop() {
         stop = true;
-        executorService.shutdown();
-        try {
-            if (!executorService.awaitTermination(500, TimeUnit.MILLISECONDS)) {
-                executorService.shutdownNow();
-            }
-        } catch (final InterruptedException ex) {
-            executorService.shutdownNow();
-        }
     }
 
     private Record<Event> generateRandomStringEventRecord() {
-        final Map<String, String> structuredLine = Map.of(MESSAGE_KEY, UUID.randomUUID().toString());
-        final Event event = JacksonEvent
+        final Map<String, Object> structuredLine = Map.of(MESSAGE_KEY, UUID.randomUUID().toString());
+        return new Record<>(JacksonEvent
                 .builder()
                 .withEventType(EVENT_TYPE)
                 .withData(structuredLine)
-                .build();
-        return new Record<>(event);
+                .build());
     }
 }
