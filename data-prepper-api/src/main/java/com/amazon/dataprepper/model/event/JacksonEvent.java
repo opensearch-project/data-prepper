@@ -268,7 +268,7 @@ public class JacksonEvent implements Event {
     private void checkKey(final String key) {
         checkNotNull(key, "key cannot be null");
         checkArgument(!key.isEmpty(), "key cannot be an empty string");
-        checkArgument((KEY_CHARACTERS_PATTERN.matcher(key).matches()), String.format("key %s must contain only alphanumeric chars with .-_ and must follow JsonPointer (ie. 'field/to/key')", key));
+        checkArgument((KEY_CHARACTERS_PATTERN.matcher(key).matches()), "keys must contain only alphanumeric chars with .-_ and must follow JsonPointer (ie. 'field/to/key')");
     }
 
     private String trimKey(final String key) {
