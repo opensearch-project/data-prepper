@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -55,6 +56,8 @@ public class JacksonEvent implements Event {
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
 
     private final EventMetadata eventMetadata;
+
+    private static final Pattern KEY_CHARACTERS_PATTERN = Pattern.compile("^/?((([a-zA-Z][a-zA-Z0-9-_.]+[a-zA-Z0-9])|\\d)/?)+$");
 
     private final JsonNode jsonNode;
 
@@ -265,9 +268,9 @@ public class JacksonEvent implements Event {
     private void checkKey(final String key) {
         checkNotNull(key, "key cannot be null");
         checkArgument(!key.isEmpty(), "key cannot be an empty string");
-        checkArgument(key.matches(
-                        "^/?((([a-zA-Z][a-zA-Z0-9-_.]+[a-zA-Z0-9])|\\d)/?)+$"),
-                String.format("key %s must contain only alphanumeric chars with .-_ and must follow JsonPointer (ie. 'field/to/key')", key));
+        if (!KEY_CHARACTERS_PATTERN.matcher(key).matches()) {
+            throw new IllegalArgumentException("key " + key + " must contain only alphanumeric chars with .-_ and must follow JsonPointer (ie. 'field/to/key')");
+        }
     }
 
     private String trimKey(final String key) {
