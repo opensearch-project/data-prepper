@@ -271,14 +271,14 @@ public class JacksonEventTest {
     @ParameterizedTest
     @ValueSource(strings = {"", "withSpecialChars*$%", "-withPrefixDash", "\\-withEscapeChars", "\\\\/withMultipleEscapeChars",
             "withDashSuffix-", "withDashSuffix-/nestedKey", "withDashPrefix/-nestedKey", "_withUnderscorePrefix", "withUnderscoreSuffix_",
-            ".withDotPrefix", "withDotSuffix."})
+            ".withDotPrefix", "withDotSuffix.", "with,Comma", "with:Colon", "with[Bracket", "with|Brace"})
     void testKey_withInvalidKey_throwsIllegalArgumentException(final String invalidKey) {
         assertThrowsForKeyCheck(IllegalArgumentException.class, invalidKey);
     }
 
     @Test
     public void testKey_withLengthGreaterThanMaxLength_throwsIllegalArgumentException() {
-        final String invalidLengthKey = RandomStringUtils.random(251);
+        final String invalidLengthKey = RandomStringUtils.random(JacksonEvent.MAX_KEY_LENGTH + 1);
         assertThrowsForKeyCheck(IllegalArgumentException.class, invalidLengthKey);
     }
 

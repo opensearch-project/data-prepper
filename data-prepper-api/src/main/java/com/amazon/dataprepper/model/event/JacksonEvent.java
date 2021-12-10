@@ -53,13 +53,13 @@ public class JacksonEvent implements Event {
 
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    private static final int MAX_KEY_LENGTH = 250;
-
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
 
     private final EventMetadata eventMetadata;
 
     private final JsonNode jsonNode;
+
+    static final int MAX_KEY_LENGTH = 250;
 
     protected JacksonEvent(final Builder builder) {
 
