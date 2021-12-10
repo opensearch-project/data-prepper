@@ -85,8 +85,8 @@ configurations.all {
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-smile:2.12.3'
         force 'junit:junit:4.13'
         force "org.slf4j:slf4j-api:1.7.30"
-        force "org.apache.logging.log4j:log4j-api:2.14.1"
-        force "org.apache.logging.log4j:log4j-core:2.14.1"
+        force "org.apache.logging.log4j:log4j-api:2.15.0"
+        force "org.apache.logging.log4j:log4j-core:2.15.0"
     }
 }
 
