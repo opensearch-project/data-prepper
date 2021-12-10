@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -54,11 +53,11 @@ public class JacksonEvent implements Event {
 
     private static final ObjectMapper mapper = new ObjectMapper();
 
+    private static final int MAX_KEY_LENGTH = 250;
+
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
 
     private final EventMetadata eventMetadata;
-
-    private static final Pattern KEY_CHARACTERS_PATTERN = Pattern.compile("^/?((([a-zA-Z][a-zA-Z0-9-_.]+[a-zA-Z0-9])|\\d)/?)+$");
 
     private final JsonNode jsonNode;
 
@@ -269,7 +268,10 @@ public class JacksonEvent implements Event {
     private void checkKey(final String key) {
         checkNotNull(key, "key cannot be null");
         checkArgument(!key.isEmpty(), "key cannot be an empty string");
-        if (!KEY_CHARACTERS_PATTERN.matcher(key).matches()) {
+        if (key.length() > MAX_KEY_LENGTH) {
+            throw new IllegalArgumentException("key cannot be longer than " + MAX_KEY_LENGTH + " characters");
+        }
+        if (!isValidKey(key)) {
             throw new IllegalArgumentException("key " + key + " must contain only alphanumeric chars with .-_ and must follow JsonPointer (ie. 'field/to/key')");
         }
     }
@@ -278,6 +280,35 @@ public class JacksonEvent implements Event {
 
         final String trimmedLeadingSlash = key.startsWith(SEPARATOR) ? key.substring(1) : key;
         return trimmedLeadingSlash.endsWith(SEPARATOR) ? trimmedLeadingSlash.substring(0, trimmedLeadingSlash.length() - 2) : trimmedLeadingSlash;
+    }
+
+    private boolean isValidKey(final String key) {
+        char previous = ' ';
+        char next = ' ';
+        for (int i = 0; i < key.length(); i++) {
+            char c = key.charAt(i);
+
+            if (i < key.length() - 1) {
+                next = key.charAt(i + 1);
+            }
+
+            if ((i == 0 || i == key.length() - 1 || previous == '/' || next == '/') && (c == '_' || c == '.' || c == '-')) {
+                return false;
+            }
+
+            if (!(c >= 48 && c <= 57
+                    || c >= 65 && c <= 90
+                    || c >= 97 && c <= 122
+                    || c == '.'
+                    || c == '-'
+                    || c == '_'
+                    || c == '/')) {
+
+                return false;
+            }
+            previous = c;
+        }
+        return true;
     }
 
     /**
