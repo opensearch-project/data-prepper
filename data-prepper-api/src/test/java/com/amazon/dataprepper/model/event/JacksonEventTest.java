@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.model.event;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -54,7 +55,7 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"foo", "foo-bar", "foo_bar", "foo.bar", "/foo", "/foo/"})
+    @ValueSource(strings = {"foo", "foo-bar", "foo_bar", "foo.bar", "/foo", "/foo/", "a1K.k3-01_02"})
     void testPutAndGet_withStrings(final String key) {
         final UUID value = UUID.randomUUID();
 
@@ -273,6 +274,12 @@ public class JacksonEventTest {
             ".withDotPrefix", "withDotSuffix."})
     void testKey_withInvalidKey_throwsIllegalArgumentException(final String invalidKey) {
         assertThrowsForKeyCheck(IllegalArgumentException.class, invalidKey);
+    }
+
+    @Test
+    public void testKey_withLengthGreaterThanMaxLength_throwsIllegalArgumentException() {
+        final String invalidLengthKey = RandomStringUtils.random(251);
+        assertThrowsForKeyCheck(IllegalArgumentException.class, invalidLengthKey);
     }
 
     @Test
