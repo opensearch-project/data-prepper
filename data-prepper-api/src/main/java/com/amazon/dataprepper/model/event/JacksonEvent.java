@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,7 +120,7 @@ public class JacksonEvent implements Event {
 
     private void setNode(final JsonNode parentNode, final String leafKey, final Object value) {
         final JsonNode valueNode = mapper.valueToTree(value);
-        if (isNumeric(leafKey)) {
+        if (StringUtils.isNumeric(leafKey)) {
             ((ArrayNode) parentNode).set(Integer.parseInt(leafKey), valueNode);
         } else {
             ((ObjectNode) parentNode).set(leafKey, valueNode);
@@ -277,15 +278,6 @@ public class JacksonEvent implements Event {
 
         final String trimmedLeadingSlash = key.startsWith(SEPARATOR) ? key.substring(1) : key;
         return trimmedLeadingSlash.endsWith(SEPARATOR) ? trimmedLeadingSlash.substring(0, trimmedLeadingSlash.length() - 2) : trimmedLeadingSlash;
-    }
-
-    private boolean isNumeric(final String str) {
-        try {
-            Integer.parseInt(str);
-            return true;
-        } catch(final NumberFormatException e){
-            return false;
-        }
     }
 
     /**
