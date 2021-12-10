@@ -34,8 +34,8 @@
 ** gRPC; version 1.38.1 -- https://github.com/grpc/grpc
 ** aws-java-sdk-core; version 1.12.43 -- https://aws.amazon.com/sdk-for-java/
 ** guava; version 31.0.1-jre -- https://github.com/google/guava
-** log4j-slf4j-impl; version 2.14.1 -- https://logging.apache.org/log4j/2.x/
-**  Log4j-core; version 2.14.1 -- https://logging.apache.org/log4j/2.x/
+** log4j-slf4j-impl; version 2.15.0 -- https://logging.apache.org/log4j/2.x/
+**  Log4j-core; version 2.15.0 -- https://logging.apache.org/log4j/2.x/
 ** armeria-grpc; version 1.9.2 -- https://github.com/line/armeria
 ** Kotlin; version 1.5.30 -- https://github.com/JetBrains/kotlin
 ** micrometer; version 1.7.2 -- https://github.com/micrometer-metrics/micrometer 
