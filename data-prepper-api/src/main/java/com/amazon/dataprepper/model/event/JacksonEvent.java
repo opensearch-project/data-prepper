@@ -59,7 +59,7 @@ public class JacksonEvent implements Event {
 
     private final JsonNode jsonNode;
 
-    static final int MAX_KEY_LENGTH = 250;
+    static final int MAX_KEY_LENGTH = 2048;
 
     protected JacksonEvent(final Builder builder) {
 
