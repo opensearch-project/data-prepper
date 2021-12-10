@@ -64,6 +64,18 @@ subprojects {
                 }
                 because 'We want the newest version of httpclient.'
             }
+            implementation('org.apache.logging.log4j:log4j-core') {
+                version {
+                    require '2.15.0'
+                }
+                because 'Log4j 2.15.0 fixes CVE-2021-44228'
+            }
+            implementation('org.apache.logging.log4j:log4j-api') {
+                version {
+                    require '2.15.0'
+                }
+                because 'the build fails if the Log4j API is not update along with log4j-core'
+            }
         }
     }
     test {
