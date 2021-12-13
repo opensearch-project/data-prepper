@@ -84,7 +84,6 @@ subprojects {
                 }
                 because 'Log4j 2.15.0 fixes CVE-2021-44228'
             }
-        }
     }
 
     configurations.all {
