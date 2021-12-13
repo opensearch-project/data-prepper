@@ -51,7 +51,9 @@ subprojects {
     dependencies {
         implementation 'com.google.guava:guava:31.0.1-jre'
         implementation platform('io.micrometer:micrometer-bom:1.7.5')
+        implementation 'org.apache.logging.log4j:log4j-core:2.15.0'
         implementation 'org.slf4j:slf4j-api:1.7.32'
+        implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.15.0'
         testImplementation platform("org.junit:junit-bom:${versionMap.junitJupiter}")
         testImplementation 'org.junit.jupiter:junit-jupiter'
         testImplementation 'org.junit.vintage:junit-vintage-engine'
@@ -76,6 +78,13 @@ subprojects {
     }
     test {
         useJUnitPlatform()
+            implementation('org.apache.logging.log4j:log4j-core') {
+                version {
+                    require '2.15.0'
+                }
+                because 'Log4j 2.15.0 fixes CVE-2021-44228'
+            }
+        }
     }
 
     configurations.all {

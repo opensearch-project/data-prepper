@@ -1,3 +1,50 @@
+** MustacheJava; version 0.9.6 -- https://github.com/spullara/mustache.java
+** t-digest; version 3.2 -- https://github.com/tdunning/t-digest/tree/t-digest-3.2
+** Findbugs Jsr305; version 3.0.2 -- https://search.maven.org/artifact/com.google.code.findbugs/jsr305/3.0.2/jar
+** byte-buddy; version 1.10.9 -- http://bytebuddy.net
+** lz4-java; version 1.3.0 -- https://github.com/lz4/lz4-java/tree/1.3.0
+** joda-time; version 2.10.4 -- http://www.joda.org/joda-time/
+** Google Gson; version 2.8.6 -- https://github.com/google/gson
+** jnr constants; version 0.9.15 -- https://github.com/jnr/jnr-constants/tree/jnr-constants-0.9.15
+** jffi; version 1.2.23 -- https://github.com/jnr/jffi/blob/jffi-1.2.23
+** jnr a64asm; version 1.0.0 -- https://github.com/jnr/jnr-a64asm/tree/jnr-a64asm-1.0.0
+** aws-request-signing-apache-interceptor; version b3772780da -- https://github.com/awslabs/aws-request-signing-apache-interceptor
+** commons-codec; version 1.15 -- https://github.com/apache/commons-codec
+** MapDB; version 3.0.8 -- http://www.mapdb.org/
+** bval; version 2.0.4 -- https://github.com/apache/bval
+** JavaxValidationApi; version 2.0.1.Final -- http://beanvalidation.org
+** android annotations; version 4.1.1.4 -- https://github.com/androidannotations/androidannotations 
+** Hppc; version 0.8.1 -- https://github.com/carrotsearch/hppc/blob/master/LICENSE.txt
+** perfmark-api; version 0.23.0 -- https://github.com/perfmark/perfmark
+** JavaAssist; version 3.26.0-GA -- https://github.com/jboss-javassist/javassist
+** commons-logging; version 1.2 -- https://commons.apache.org/proper/commons-logging/
+** jetbrains-annotations; version 13.0 -- https://github.com/JetBrains/java-annotations/blob/master/LICENSE.txt
+** J2ObjC; version 1.3 -- https://developers.google.com/j2objc/
+** Amazon ION Java; version 1.0.2 -- https://github.com/amzn/ion-java
+** jna; version 5.5.0 -- https://github.com/java-native-access/jna/tree/5.5.0
+** Apache Lucene; version 8.7.0 -- http://lucene.apache.org/
+** Elasticsearch; version 7.10.2 -- https://github.com/elastic/elasticsearch
+** OpenTelemetry 0.10.0; version 1.0.1-alpha -- https://github.com/open-telemetry/opentelemetry-java
+** micrometer-registry-prometheus; version 1.6.5 -- https://github.com/micrometer-metrics/micrometer
+** OpenSearch Java High Level Rest Client; version 1.0.0.0-beta -- https://github.com/opensearch-project/OpenSearch
+** netty-reactive-streams; version 2.0.5 -- https://github.com/playframework/netty-reactive-streams
+** snakeyaml; version 1.29 -- https://bitbucket.org/asomov/snakeyaml/src/snakeyaml-1.29/
+** Jackson; version 2.12.4 -- http://github.com/FasterXML/jackson
+** Error Prone; version 2.7.1 -- https://github.com/google/error-prone
+** gRPC; version 1.38.1 -- https://github.com/grpc/grpc
+** aws-java-sdk-core; version 1.12.43 -- https://aws.amazon.com/sdk-for-java/
+** guava; version 31.0.1-jre -- https://github.com/google/guava
+** log4j-slf4j-impl; version 2.15.0 -- https://logging.apache.org/log4j/2.x/
+**  Log4j-core; version 2.15.0 -- https://logging.apache.org/log4j/2.x/
+** armeria-grpc; version 1.9.2 -- https://github.com/line/armeria
+** Kotlin; version 1.5.30 -- https://github.com/JetBrains/kotlin
+** micrometer; version 1.7.2 -- https://github.com/micrometer-metrics/micrometer 
+** aws-java-sdk; version 2.17.15 -- https://github.com/aws/aws-sdk-java-v2
+** netty 4.1.51; version 4.1.61.Final -- https://github.com/netty/netty/tree/netty-4.1.50.Final
+** commons-io; version 2.11.0 -- http://commons.apache.org/proper/commons-io/
+** httpcomponents-core; version 4.5.13 -- https://github.com/apache/httpcomponents-core/blob/rel/v4.4.1
+** apache/commons-lang; version 3.x -- https://github.com/apache/commons-lang
+** aws-eventstream; version 1.0.1 -- https://github.com/awslabs/aws-eventstream-java
 
 Dependency License Report for opensearch-data-prepper 1.2.0-SNAPSHOT
 
