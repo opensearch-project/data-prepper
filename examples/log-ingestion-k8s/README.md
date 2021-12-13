@@ -4,8 +4,7 @@
 
 * Read Kubernetes/Docker log files from the file system or through systemd Journal
 * Enrich logs with Kubernetes metadata
-* Deliver logs to third party services like Elasticsearch, Splunk, Datadog, InfluxDB, HTTP, etc.
-This repository contains a set of Yaml files to deploy Fluent Bit which consider namespace, RBAC, Service Account, etc.
+* Deliver logs to third party services.
 
 This example uses [minikube](https://minikube.sigs.k8s.io/docs/) to demo Fluent Bit to Data-Prepper pipeline that collects and ingest logs from `my-app` [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/). 
 The service architecture is illustrated as follows:
