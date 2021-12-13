@@ -75,15 +75,17 @@ subprojects {
                 because 'Netty 4.1.66+ requires new classes and methods in this version.'
             }
         }
-    }
-    test {
-        useJUnitPlatform()
+        constraints {
             implementation('org.apache.logging.log4j:log4j-core') {
                 version {
                     require '2.15.0'
                 }
                 because 'Log4j 2.15.0 fixes CVE-2021-44228'
             }
+        }
+    }
+    test {
+        useJUnitPlatform()
     }
 
     configurations.all {
