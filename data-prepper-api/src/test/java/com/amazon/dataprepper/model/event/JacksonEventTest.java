@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.model.event;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -54,7 +55,7 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"foo", "foo-bar", "foo_bar", "foo.bar", "/foo", "/foo/"})
+    @ValueSource(strings = {"foo", "foo-bar", "foo_bar", "foo.bar", "/foo", "/foo/", "a1K.k3-01_02"})
     void testPutAndGet_withStrings(final String key) {
         final UUID value = UUID.randomUUID();
 
@@ -270,9 +271,15 @@ public class JacksonEventTest {
     @ParameterizedTest
     @ValueSource(strings = {"", "withSpecialChars*$%", "-withPrefixDash", "\\-withEscapeChars", "\\\\/withMultipleEscapeChars",
             "withDashSuffix-", "withDashSuffix-/nestedKey", "withDashPrefix/-nestedKey", "_withUnderscorePrefix", "withUnderscoreSuffix_",
-            ".withDotPrefix", "withDotSuffix."})
+            ".withDotPrefix", "withDotSuffix.", "with,Comma", "with:Colon", "with[Bracket", "with|Brace"})
     void testKey_withInvalidKey_throwsIllegalArgumentException(final String invalidKey) {
         assertThrowsForKeyCheck(IllegalArgumentException.class, invalidKey);
+    }
+
+    @Test
+    public void testKey_withLengthGreaterThanMaxLength_throwsIllegalArgumentException() {
+        final String invalidLengthKey = RandomStringUtils.random(JacksonEvent.MAX_KEY_LENGTH + 1);
+        assertThrowsForKeyCheck(IllegalArgumentException.class, invalidLengthKey);
     }
 
     @Test
