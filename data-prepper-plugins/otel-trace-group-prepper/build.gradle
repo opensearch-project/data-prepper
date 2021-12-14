@@ -20,9 +20,9 @@ ext {
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:opensearch')
-    testImplementation project(':data-prepper-api').sourceSets.test.output
     implementation "org.opensearch.client:opensearch-rest-high-level-client:${opensearch_version}"
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'io.micrometer:micrometer-core'
+    testImplementation project(':data-prepper-api').sourceSets.test.output
 }
