@@ -55,7 +55,7 @@
 ### Refactoring
 * Created a new internal data model, Events, to capture data as it flows through the pipeline. This was introduced to eliminate the excessive de/serialization of the current implementation. Currently, integrated with only log ingestion and sample plugins ([#](https://github.com/opensearch-project/data-prepper/pull/412)), ([#435](https://github.com/opensearch-project/data-prepper/pull/435)), ([#463](https://github.com/opensearch-project/data-prepper/pull/463)), ([#468](https://github.com/opensearch-project/data-prepper/pull/468)), ([#477](https://github.com/opensearch-project/data-prepper/pull/477)), & ([#539](https://github.com/opensearch-project/data-prepper/pull/539))
 * The StdOutSink supports Objects instead of Strings as part of the migration to support the new event model ([#599](https://github.com/opensearch-project/data-prepper/pull/599))
-* The FileSource supports the new event model ([#](https://github.com/opensearch-project/data-prepper/pull/601))
+* The FileSource uses Objects to support the new event model ([#](https://github.com/opensearch-project/data-prepper/pull/601))
 * Small refactoring of PeerForwarder to improve readability of the code ([#626](https://github.com/opensearch-project/data-prepper/pull/626))
 * Plugin class redesign leveraging new plugin framework ([#363](https://github.com/opensearch-project/data-prepper/pull/363)), ([#451](https://github.com/opensearch-project/data-prepper/pull/451)), ([#478](https://github.com/opensearch-project/data-prepper/pull/478))
 * Consistent usage of OpenSearch, OpenSearch Dashboards and Amazon OpenSearch. ([#637](https://github.com/opensearch-project/data-prepper/pull/637))
