@@ -2,6 +2,42 @@
 
 ---
 
+* __Log4j 2.16.0 backport to Data Prepper 1.2.0 (#742)__
+
+  [David Venable](mailto:dlv@amazon.com) - Tue, 14 Dec 2021 09:15:43 -0600
+
+  efs/remotes/origin/1.2, refs/heads/1.2
+  * Updated to log4j-core 2.15.0. Require this version from transitive
+    dependencies. (#731)
+    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+
+  * Updated to log4j-core 2.16.0 (#740)
+    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Performance improvements for custom key validation in Event, and replacement with StringUtils.isNumeric (#728)__
+
+  [Taylor Gray](mailto:33740195+graytaylor0@users.noreply.github.com) - Mon, 13 Dec 2021 20:13:14 -0600
+
+
+    Remove regex validation for JacksonEvent checkKey and replace with custom
+    validation. Replace isNumeric with StrungUtils.isNumeric. Added max key length
+    of 2048 (#725)
+     Signed-off-by: Taylor Gray &lt;33740195+graytaylor0@users.noreply.github.com&gt;
+
+* __[1.2] Add yum update to data prepper to consume all pkg updates (#715)__
+
+  [Peter Zhu](mailto:zhujiaxi@amazon.com) - Fri, 10 Dec 2021 13:56:16 -0500
+
+
+    Signed-off-by: Peter Zhu &lt;zhujiaxi@amazon.com&gt;
+
+* __Create a new GrokPrepper instance for each worker thread by annotating it with @SingleThread. Each GrokPrepper needs a single thread for timeouts. Now, each processor thread will have its own extra thread for these timeouts. This should prevent contention when running with a timeout. (#708)__
+
+  [David Venable](mailto:dlv@amazon.com) - Tue, 7 Dec 2021 12:57:14 -0600
+
+
+    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+
 * __Set the version to Data Prepper 1.2.0. (#669)__
 
   [David Venable](mailto:dlv@amazon.com) - Tue, 30 Nov 2021 14:58:47 -0600
