@@ -22,6 +22,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThan;
+
 public class RandomStringSourceTests {
 
     @Test
@@ -30,7 +33,7 @@ public class RandomStringSourceTests {
                 new RandomStringSource();
         final Queue<Record<Event>> bufferQueue = new ConcurrentLinkedQueue<>();
         final TestBuffer buffer = new TestBuffer(bufferQueue, 1);
-        //Start source, and sleep for 100 millis
+        //Start source, and sleep for 1000 millis
         randomStringSource.start(buffer);
         Thread.sleep(1000);
         //Stop the source, and wait long enough that another message would be sent
