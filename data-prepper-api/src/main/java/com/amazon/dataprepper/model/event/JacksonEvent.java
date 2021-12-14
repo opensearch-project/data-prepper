@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +58,8 @@ public class JacksonEvent implements Event {
     private final EventMetadata eventMetadata;
 
     private final JsonNode jsonNode;
+
+    static final int MAX_KEY_LENGTH = 2048;
 
     protected JacksonEvent(final Builder builder) {
 
@@ -116,7 +119,7 @@ public class JacksonEvent implements Event {
 
     private void setNode(final JsonNode parentNode, final String leafKey, final Object value) {
         final JsonNode valueNode = mapper.valueToTree(value);
-        if (isNumeric(leafKey)) {
+        if (StringUtils.isNumeric(leafKey)) {
             ((ArrayNode) parentNode).set(Integer.parseInt(leafKey), valueNode);
         } else {
             ((ObjectNode) parentNode).set(leafKey, valueNode);
@@ -265,9 +268,12 @@ public class JacksonEvent implements Event {
     private void checkKey(final String key) {
         checkNotNull(key, "key cannot be null");
         checkArgument(!key.isEmpty(), "key cannot be an empty string");
-        checkArgument(key.matches(
-                        "^/?((([a-zA-Z][a-zA-Z0-9-_.]+[a-zA-Z0-9])|\\d)/?)+$"),
-                String.format("key %s must contain only alphanumeric chars with .-_ and must follow JsonPointer (ie. 'field/to/key')", key));
+        if (key.length() > MAX_KEY_LENGTH) {
+            throw new IllegalArgumentException("key cannot be longer than " + MAX_KEY_LENGTH + " characters");
+        }
+        if (!isValidKey(key)) {
+            throw new IllegalArgumentException("key " + key + " must contain only alphanumeric chars with .-_ and must follow JsonPointer (ie. 'field/to/key')");
+        }
     }
 
     private String trimKey(final String key) {
@@ -276,13 +282,33 @@ public class JacksonEvent implements Event {
         return trimmedLeadingSlash.endsWith(SEPARATOR) ? trimmedLeadingSlash.substring(0, trimmedLeadingSlash.length() - 2) : trimmedLeadingSlash;
     }
 
-    private boolean isNumeric(final String str) {
-        try {
-            Integer.parseInt(str);
-            return true;
-        } catch(final NumberFormatException e){
-            return false;
+    private boolean isValidKey(final String key) {
+        char previous = ' ';
+        char next = ' ';
+        for (int i = 0; i < key.length(); i++) {
+            char c = key.charAt(i);
+
+            if (i < key.length() - 1) {
+                next = key.charAt(i + 1);
+            }
+
+            if ((i == 0 || i == key.length() - 1 || previous == '/' || next == '/') && (c == '_' || c == '.' || c == '-')) {
+                return false;
+            }
+
+            if (!(c >= 48 && c <= 57
+                    || c >= 65 && c <= 90
+                    || c >= 97 && c <= 122
+                    || c == '.'
+                    || c == '-'
+                    || c == '_'
+                    || c == '/')) {
+
+                return false;
+            }
+            previous = c;
         }
+        return true;
     }
 
     /**
