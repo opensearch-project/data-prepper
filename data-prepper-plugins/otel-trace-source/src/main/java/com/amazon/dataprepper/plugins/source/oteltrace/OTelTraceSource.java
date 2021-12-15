@@ -89,7 +89,8 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
             final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                     .builder()
                     .addService(ServerInterceptors.intercept(oTelTraceGrpcService, serverInterceptors))
-                    .useClientTimeoutHeader(false);
+                    .useClientTimeoutHeader(false)
+                    .useBlockingTaskExecutor(true);
 
             if (oTelTraceSourceConfig.hasHealthCheck()) {
                 LOG.info("Health check is enabled");
