@@ -78,7 +78,7 @@ public class FileSink implements Sink<Record<Object>> {
             writer.write(((Event) object).toJsonString());
             writer.newLine();
         } else {
-            throw new RuntimeException("Invalid record type. StdOutSink only supports String and Events");
+            throw new RuntimeException("Invalid record type. FileSink only supports String and Events");
         }
     }
 
