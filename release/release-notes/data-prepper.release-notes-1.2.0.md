@@ -50,7 +50,7 @@
 * The OpenSearch REST client and the build plugins used by the OpenSearch plugin are now at 1.1.0 ([#384](https://github.com/opensearch-project/data-prepper/pull/384))
 * Use OpenSearch instead of Elasticsearch in builds ([#438](https://github.com/opensearch-project/data-prepper/pull/438))
 * Use Netty 4.1.68 which fixes CVE-2021-37136 and CVE-2021-37137 ([#661](https://github.com/opensearch-project/data-prepper/pull/661))
-* Uses Log4j 2.16.0 which fixes CVE-2021-44228 ([#742](https://github.com/opensearch-project/data-prepper/pull/742))
+* Uses Log4j 2.16.0 which fixes CVE-2021-44228 and CVE-2021-45046 ([#742](https://github.com/opensearch-project/data-prepper/pull/742))
 
 ### Refactoring
 * Created a new internal data model, Events, to capture data as it flows through the pipeline. This was introduced to eliminate the excessive de/serialization of the current implementation. Currently, integrated with only log ingestion and sample plugins ([#](https://github.com/opensearch-project/data-prepper/pull/412)), ([#435](https://github.com/opensearch-project/data-prepper/pull/435)), ([#463](https://github.com/opensearch-project/data-prepper/pull/463)), ([#468](https://github.com/opensearch-project/data-prepper/pull/468)), ([#477](https://github.com/opensearch-project/data-prepper/pull/477)), & ([#539](https://github.com/opensearch-project/data-prepper/pull/539))
