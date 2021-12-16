@@ -28,6 +28,7 @@ class DefaultLogstashPluginAttributesMapperTest {
     private String logstashAttributeName;
     private String value;
     private List<LogstashAttribute> logstashAttributes;
+    private LogstashAttributeValue logstashAttributeValue;
     private LogstashAttributesMappings mappings;
 
     @BeforeEach
@@ -35,7 +36,7 @@ class DefaultLogstashPluginAttributesMapperTest {
         value = UUID.randomUUID().toString();
         logstashAttributeName = UUID.randomUUID().toString();
         final LogstashAttribute logstashAttribute = mock(LogstashAttribute.class);
-        final LogstashAttributeValue logstashAttributeValue = mock(LogstashAttributeValue.class);
+        logstashAttributeValue = mock(LogstashAttributeValue.class);
         when(logstashAttributeValue.getValue()).thenReturn(value);
         when(logstashAttribute.getAttributeName()).thenReturn(logstashAttributeName);
         when(logstashAttribute.getAttributeValue()).thenReturn(logstashAttributeValue);
@@ -113,5 +114,21 @@ class DefaultLogstashPluginAttributesMapperTest {
         assertThat(actualPluginSettings.size(), equalTo(1));
         assertThat(actualPluginSettings, hasKey(additionalAttributeName));
         assertThat(actualPluginSettings.get(additionalAttributeName), equalTo(additionalAttributeValue));
+    }
+
+    @Test
+    void mapAttributes_with_negation_expression_negates_boolean_value() {
+        final String dataPrepperAttribute = "!".concat(UUID.randomUUID().toString());
+        boolean value = true;
+
+        when(logstashAttributeValue.getValue()).thenReturn(value);
+        when(mappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(logstashAttributeName, dataPrepperAttribute));
+
+        final Map<String, Object> actualPluginSettings =
+                createObjectUnderTest().mapAttributes(logstashAttributes, mappings);
+
+        assertThat(actualPluginSettings, notNullValue());
+        assertThat(actualPluginSettings.size(), equalTo(1));
+        assertThat(actualPluginSettings.get(dataPrepperAttribute.substring(1)), equalTo(!value));
     }
 }
