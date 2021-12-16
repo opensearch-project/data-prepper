@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
 public class StringPrepper implements Prepper<Record<Event>, Record<Event>> {
     private static Logger LOG = LoggerFactory.getLogger(StringPrepper.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final TypeReference<Map<String, Object>> mapTypeReference = new TypeReference<Map<String, Object>>() {};
+    private final TypeReference<Map<String, Object>> mapTypeReference = new TypeReference<>() {};
 
     public static final String UPPER_CASE = "upper_case";
 
