@@ -14,6 +14,8 @@ package com.amazon.dataprepper.plugins.prepper;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
+import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 
@@ -25,7 +27,7 @@ import java.util.Collection;
  * simpler implementation does not handle errors (if any).
  */
 @DataPrepperPlugin(name = "string_converter", pluginType = Prepper.class, pluginConfigurationType = StringPrepper.Configuration.class)
-public class StringPrepper implements Prepper<Record<String>, Record<String>> {
+public class StringPrepper implements Prepper<Record<Event>, Record<Event>> {
 
     public static final String UPPER_CASE = "upper_case";
 
@@ -57,12 +59,17 @@ public class StringPrepper implements Prepper<Record<String>, Record<String>> {
     }
 
     @Override
-    public Collection<Record<String>> execute(final Collection<Record<String>> records) {
-        final Collection<Record<String>> modifiedRecords = new ArrayList<>(records.size());
-        for (Record<String> record : records) {
-            final String recordData = record.getData();
+    public Collection<Record<Event>> execute(final Collection<Record<Event>> records) {
+        final Collection<Record<Event>> modifiedRecords = new ArrayList<>(records.size());
+        for (Record<Event> record : records) {
+            final Event recordEvent = record.getData();
+            final String recordData = recordEvent.toJsonString();
             final String newData = upperCase? recordData.toUpperCase() : recordData.toLowerCase();
-            modifiedRecords.add(new Record<>(newData));
+            final Event newRecordEvent = JacksonEvent.builder()
+                    .withEventMetadata(recordEvent.getMetadata())
+                    .withData(newData)
+                    .build();
+            modifiedRecords.add(new Record<>(newRecordEvent));
         }
         return modifiedRecords;
     }
