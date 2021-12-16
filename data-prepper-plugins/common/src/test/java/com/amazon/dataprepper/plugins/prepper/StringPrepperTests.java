@@ -29,20 +29,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class StringPrepperTests {
 
     private final String TEST_EVENT_TYPE = "test_event_type";
-    private final String UPPERCASE_TEST_KEY = "test_key";
-    private final String LOWERCASE_TEST_KEY = "TEST_KEY";
+    private final String TEST_KEY = "test_key";
     private final String UPPERCASE_TEST_STRING = "data_prepper";
     private final String LOWERCASE_TEST_STRING = "STRING_CONVERTER";
     private final Record<Event> TEST_RECORD_1 = new Record<>(
             JacksonEvent.builder()
                     .withEventType(TEST_EVENT_TYPE)
-                    .withData(Map.of(UPPERCASE_TEST_KEY, UPPERCASE_TEST_STRING))
+                    .withData(Map.of(TEST_KEY, UPPERCASE_TEST_STRING))
                     .build()
     );
     private final Record<Event> TEST_RECORD_2 = new Record<>(
             JacksonEvent.builder()
                     .withEventType(TEST_EVENT_TYPE)
-                    .withData(Map.of(LOWERCASE_TEST_KEY, LOWERCASE_TEST_STRING))
+                    .withData(Map.of(TEST_KEY, LOWERCASE_TEST_STRING))
                     .build()
     );
     private final List<Record<Event>> TEST_RECORDS = Arrays.asList(TEST_RECORD_1, TEST_RECORD_2);
@@ -69,12 +68,12 @@ public class StringPrepperTests {
         assertThat(modifiedRecordEvents.size(), equalTo(2));
         final Event firstEvent = modifiedRecordEvents.get(0);
         final Event secondEvent = modifiedRecordEvents.get(1);
-        assertTrue(firstEvent.containsKey(UPPERCASE_TEST_KEY.toUpperCase()));
+        assertTrue(firstEvent.containsKey(TEST_KEY));
         assertThat(firstEvent.getMetadata().getEventType(), equalTo(TEST_EVENT_TYPE));
-        assertThat(firstEvent.get(UPPERCASE_TEST_KEY.toUpperCase(), String.class), equalTo(UPPERCASE_TEST_STRING.toUpperCase()));
-        assertTrue(secondEvent.containsKey(LOWERCASE_TEST_KEY));
+        assertThat(firstEvent.get(TEST_KEY, String.class), equalTo(UPPERCASE_TEST_STRING.toUpperCase()));
+        assertTrue(secondEvent.containsKey(TEST_KEY));
         assertThat(secondEvent.getMetadata().getEventType(), equalTo(TEST_EVENT_TYPE));
-        assertThat(secondEvent.get(LOWERCASE_TEST_KEY, String.class), equalTo(LOWERCASE_TEST_STRING));
+        assertThat(secondEvent.get(TEST_KEY, String.class), equalTo(LOWERCASE_TEST_STRING));
     }
 
     @Test
@@ -89,12 +88,12 @@ public class StringPrepperTests {
         assertThat(modifiedRecordEvents.size(), equalTo(2));
         final Event firstEvent = modifiedRecordEvents.get(0);
         final Event secondEvent = modifiedRecordEvents.get(1);
-        assertTrue(firstEvent.containsKey(UPPERCASE_TEST_KEY));
+        assertTrue(firstEvent.containsKey(TEST_KEY));
         assertThat(firstEvent.getMetadata().getEventType(), equalTo(TEST_EVENT_TYPE));
-        assertThat(firstEvent.get(UPPERCASE_TEST_KEY, String.class), equalTo(UPPERCASE_TEST_STRING));
-        assertTrue(secondEvent.containsKey(LOWERCASE_TEST_KEY.toLowerCase()));
+        assertThat(firstEvent.get(TEST_KEY, String.class), equalTo(UPPERCASE_TEST_STRING));
+        assertTrue(secondEvent.containsKey(TEST_KEY));
         assertThat(secondEvent.getMetadata().getEventType(), equalTo(TEST_EVENT_TYPE));
-        assertThat(secondEvent.get(LOWERCASE_TEST_KEY.toLowerCase(), String.class), equalTo(LOWERCASE_TEST_STRING.toLowerCase()));
+        assertThat(secondEvent.get(TEST_KEY, String.class), equalTo(LOWERCASE_TEST_STRING.toLowerCase()));
     }
 
     @Test
@@ -109,12 +108,12 @@ public class StringPrepperTests {
         assertThat(modifiedRecordEvents.size(), equalTo(2));
         final Event firstEvent = modifiedRecordEvents.get(0);
         final Event secondEvent = modifiedRecordEvents.get(1);
-        assertTrue(firstEvent.containsKey(UPPERCASE_TEST_KEY.toUpperCase()));
+        assertTrue(firstEvent.containsKey(TEST_KEY));
         assertThat(firstEvent.getMetadata().getEventType(), equalTo(TEST_EVENT_TYPE));
-        assertThat(firstEvent.get(UPPERCASE_TEST_KEY.toUpperCase(), String.class), equalTo(UPPERCASE_TEST_STRING.toUpperCase()));
-        assertTrue(secondEvent.containsKey(LOWERCASE_TEST_KEY));
+        assertThat(firstEvent.get(TEST_KEY, String.class), equalTo(UPPERCASE_TEST_STRING.toUpperCase()));
+        assertTrue(secondEvent.containsKey(TEST_KEY));
         assertThat(secondEvent.getMetadata().getEventType(), equalTo(TEST_EVENT_TYPE));
-        assertThat(secondEvent.get(LOWERCASE_TEST_KEY, String.class), equalTo(LOWERCASE_TEST_STRING));
+        assertThat(secondEvent.get(TEST_KEY, String.class), equalTo(LOWERCASE_TEST_STRING));
     }
 
     @Test
