@@ -16,6 +16,8 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -28,6 +30,7 @@ import static java.lang.String.format;
 
 @DataPrepperPlugin(name = "file", pluginType = Sink.class)
 public class FileSink implements Sink<Record<Object>> {
+    private static final Logger LOG = LoggerFactory.getLogger(FileSink.class);
     private static final String SAMPLE_FILE_PATH = "src/resources/file-test-sample-output.txt";
 
     public static final String FILE_PATH = "path";
@@ -78,7 +81,7 @@ public class FileSink implements Sink<Record<Object>> {
             writer.write(((Event) object).toJsonString());
             writer.newLine();
         } else {
-            throw new RuntimeException("Invalid record type. FileSink only supports String and Events");
+            LOG.error("Invalid record type. FileSink only supports String and Events");
         }
     }
 
