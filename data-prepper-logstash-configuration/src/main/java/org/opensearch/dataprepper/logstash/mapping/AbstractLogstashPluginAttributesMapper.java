@@ -36,15 +36,24 @@ public abstract class AbstractLogstashPluginAttributesMapper implements Logstash
                 .stream()
                 .filter(logstashAttribute -> !customMappedAttributeNames.contains(logstashAttribute.getAttributeName()))
                 .forEach(logstashAttribute -> {
-            if (mappedAttributeNames.containsKey(logstashAttribute.getAttributeName())) {
-                pluginSettings.put(
-                        mappedAttributeNames.get(logstashAttribute.getAttributeName()),
-                        logstashAttribute.getAttributeValue().getValue()
-                );
-            }
-            else {
-                LOG.warn("Attribute name {} is not found in mapping file.", logstashAttribute.getAttributeName());
-            }
+                    final String logstashAttributeName = logstashAttribute.getAttributeName();
+
+                    if (mappedAttributeNames.containsKey(logstashAttributeName)) {
+                        if (mappedAttributeNames.get(logstashAttributeName).startsWith("!")) {
+                            pluginSettings.put(
+                                    mappedAttributeNames.get(logstashAttributeName).substring(1),
+                                    !(Boolean) logstashAttribute.getAttributeValue().getValue()
+                            );
+                        }
+                        else {
+                            pluginSettings.put(
+                                    mappedAttributeNames.get(logstashAttributeName),
+                                    logstashAttribute.getAttributeValue().getValue());
+                        }
+                    }
+                    else {
+                        LOG.warn("Attribute name {} is not found in mapping file.", logstashAttributeName);
+                    }
         });
 
         if (!customMappedAttributeNames.isEmpty()) {
