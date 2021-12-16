@@ -51,6 +51,7 @@ public class PeerClientPoolTest {
     public void testGetClientWithSSL() throws IOException {
         // Set up test server with SSL
         ServerBuilder sb = Server.builder();
+        sb.disableServerHeader();
         sb.service(GrpcService.builder()
                 .addService(new TestPeerService())
                 .build());

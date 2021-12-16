@@ -105,6 +105,7 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
             grpcServiceBuilder.enableUnframedRequests(oTelTraceSourceConfig.enableUnframedRequests());
 
             final ServerBuilder sb = Server.builder();
+            sb.disableServerHeader();
             sb.service(grpcServiceBuilder.build());
             sb.requestTimeoutMillis(oTelTraceSourceConfig.getRequestTimeoutInMillis());
 

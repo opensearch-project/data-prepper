@@ -66,15 +66,23 @@ subprojects {
             }
             implementation('org.apache.logging.log4j:log4j-core') {
                 version {
-                    require '2.15.0'
+                    require '2.16.0'
                 }
-                because 'Log4j 2.15.0 fixes CVE-2021-44228'
+                because 'Log4j 2.16.0 fixes CVE-2021-44228 and CVE-2021-45046'
             }
             implementation('org.apache.logging.log4j:log4j-api') {
                 version {
-                    require '2.15.0'
+                    require '2.16.0'
                 }
                 because 'the build fails if the Log4j API is not update along with log4j-core'
+            }
+        }
+        constraints {
+            implementation('io.netty:netty-tcnative-boringssl-static') {
+                version {
+                    require '2.0.42.Final'
+                }
+                because 'Netty 4.1.66+ requires new classes and methods in this version.'
             }
         }
     }
@@ -85,8 +93,8 @@ subprojects {
     configurations.all {
         resolutionStrategy.eachDependency { def details ->
             if (details.requested.group == 'io.netty' && !details.requested.name.startsWith('netty-tcnative')) {
-                details.useVersion '4.1.61.Final'
-                details.because 'includes CVE fix'
+                details.useVersion '4.1.68.Final'
+                details.because 'Fixes CVE-2021-37136 and CVE-2021-37137. See https://netty.io/news/2021/09/09/4-1-68-Final.html'
             }
         }
     }
@@ -117,6 +125,9 @@ configure(mavenArtifactProjects) {
     }
 
     publishing {
+        repositories {
+            mavenLocal()
+        }
         publications {
             maven(MavenPublication) {
                 from components.java
@@ -173,7 +184,8 @@ configure(coreProjects) {
 
 licenseReport {
     excludeOwnGroup = true
-    excludeBoms = false
+    excludeBoms = true
+    excludes = ['software.amazon.awssdk:bom']
     renderers = new TextReportRenderer()
 }
 
@@ -184,4 +196,3 @@ task generateThirdPartyReport(type: Copy) {
     rename 'THIRD-PARTY-NOTICES.txt', 'THIRD-PARTY'
     generateThirdPartyReport.dependsOn(generateLicenseReport)
 }
-

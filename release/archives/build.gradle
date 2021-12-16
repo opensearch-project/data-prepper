@@ -142,7 +142,7 @@ subprojects {
                 dependsOn tarTask.name
                 file file(tarTask.archiveFile.get().asFile.absolutePath)
                 bucketName awsS3Bucket
-                key tarTask.archiveName
+                key "${project.rootProject.version}/${tarTask.archiveName}"
 
                 def m = new ObjectMetadata()
                 m.setCacheControl("no-cache, no-store")
@@ -153,7 +153,7 @@ subprojects {
                 dependsOn zipTask.name
                 file file(zipTask.archiveFile.get().asFile.absolutePath)
                 bucketName awsS3Bucket
-                key zipTask.archiveName
+                key "${project.rootProject.version}/${zipTask.archiveName}"
 
                 def m = new ObjectMetadata()
                 m.setCacheControl("no-cache, no-store")
@@ -164,7 +164,7 @@ subprojects {
                 dependsOn tarWithJDKTask.name
                 file file(tarWithJDKTask.archiveFile.get().asFile.absolutePath)
                 bucketName awsS3Bucket
-                key tarWithJDKTask.archiveName
+                key "${project.rootProject.version}/${tarWithJDKTask.archiveName}"
 
                 def m = new ObjectMetadata()
                 m.setCacheControl("no-cache, no-store")
@@ -175,7 +175,7 @@ subprojects {
                 dependsOn zipWithJDKTask.name
                 file file(zipWithJDKTask.archiveFile.get().asFile.absolutePath)
                 bucketName awsS3Bucket
-                key zipWithJDKTask.archiveName
+                key "${project.rootProject.version}/${zipWithJDKTask.archiveName}"
 
                 def m = new ObjectMetadata()
                 m.setCacheControl("no-cache, no-store")

@@ -1,6 +1,6 @@
 # RFC - Trace Analytics
 ## 1. Overview
-Open Distro for Elasticsearch (ODFE) users already store their log data which allows them to access log events in their services. However, with the log data alone, the user can not pinpoint where the error occurred or what caused the poor performance. This means they need another datastore or going into a different codebase to determine the context of the log event. The overall result is that the user has to rely on multiple products, software, log data, and human ingenuity to track down problems with their systems. The goal is to reduce the number of contexts switches a 
+OpenSearch users already store their log data which allows them to access log events in their services. However, with the log data alone, the user can not pinpoint where the error occurred or what caused the poor performance. This means they need another datastore or going into a different codebase to determine the context of the log event. The overall result is that the user has to rely on multiple products, software, log data, and human ingenuity to track down problems with their systems. The goal is to reduce the number of contexts switches a 
 user must do in order to solve a problem in production, we will achieve this through a set of Application Performance Management (APM) features. 
 As the first step, in 2020 we will offer Trace Analytics, which will allow users to store trace information and provide them a holistic view of their
  service under observation.
@@ -8,14 +8,14 @@ As the first step, in 2020 we will offer Trace Analytics, which will allow users
 ## 2. Approach
 The Trace Analytics feature will embrace the Open Telemetry standard and provide the required plugins and adapters to integrate with the ecosystem. 
 Adoption to the OpenTelemetry ecosystem will benefit users of existing tracing standards like Zipkin and OpenTracing to use the Trace Analytics feature.
-To support the trace analytics feature we will build a new service called Data Prepper, which receives trace data from the OpenTelemetry collector, process them to Elasticsearch friendly docs, and stores them in users' elasticsearch cluster. The trace analytics will also provide a Kibana plugin that will provide user-friendly dashboards on the stored trace data. 
+To support the trace analytics feature we will build a new service called Data Prepper, which receives trace data from the OpenTelemetry collector, process them to OpenSearch friendly docs, and stores them in users' OpenSearch cluster. The trace analytics will also provide an OpenSearch Dashboards plugin that will provide user-friendly dashboards on the stored trace data. 
 
-![Kibana Notebooks Architecture](images/HighLevelDesign.jpg)
+![Architecture](images/HighLevelDesign.jpg)
 
 
 ## 3. Data Prepper
 
-Data Prepper is an ingestion service which provides users to ingest and transform data before stored in elasticsearch. 
+Data Prepper is an ingestion service which provides users to ingest and transform data before stored in OpenSearch. 
 
 ### 3.1 General Data Prepper design
 
@@ -35,7 +35,7 @@ The source is the input component of a pipeline, it defines the mechanism throug
 The buffer component will act as the layer between the source and sink. The buffer could either be in-memory or disk-based. The default buffer will be in-memory queue bounded by the number of records/size of records.
 
 *Sink:*
-Sink in the output component of the pipeline, it defines the one or more destinations to which a Data Prepper pipeline will publish the records. A sink destination could be either service like elastic search, s3. The sink will have its own configuration options based on the destination type like security, request batching, etc. A sink can be another Data Prepper pipeline, this would provide users the benefit chain multiple Data Prepper pipelines.
+Sink in the output component of the pipeline, it defines the one or more destinations to which a Data Prepper pipeline will publish the records. A sink destination could be either service like OpenSearch, Amazon OpenSearch Service, or S3. The sink will have its own configuration options based on the destination type like security, request batching, etc. A sink can be another Data Prepper pipeline, this would provide users the benefit chain multiple Data Prepper pipelines.
 
 *Processor:*
 Processor component of the pipeline, these are intermediary processing units using which users can filter, transform, and enrich the records into the desired format before publishing to the sink. The processor is an optional component of the pipeline, if not defined the records will be published in the format as defined in the source. You can have more than one processor and they are executed in the order they are defined in the pipeline spec.
@@ -66,24 +66,24 @@ We are building two processors for the Trace Analytics feature,
 
 ##### OpenSearch sink
 
-We will build a generic sink that will write the data to Elasticsearch as the destination. The OpenSearch sink will have configuration options related to elasticsearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc. 
-For the trace analytics feature, the sink will have specific configurations which will make the sink to use indices and index templates specific to the feature. Trace analytics specific Elasticsearch indices are,
+We will build a generic sink that will write the data to OpenSearch as the destination. The OpenSearch sink will have configuration options related to OpenSearch cluster like endpoint, SSL/Username, index name, index template, index state management, etc. 
+For the trace analytics feature, the sink will have specific configurations which will make the sink to use indices and index templates specific to the feature. Trace analytics specific OpenSearch indices are,
                                                                                                                                                                  
 * *apm-trace-raw-v1* -  This index will store the output from otel-trace-raw-prepper. 
 * *apm-service-map-v1* - This index will store the output from the service-map-prepper.
 
-## 4. Kibana
+## 4. OpenSearch Dashboards
 
-These two indices mentioned above will be used by the Kibana plugin to provide the following instant dashboards,
+These two indices mentioned above will be used by the OpenSearch Dashboards plugin to provide the following instant dashboards,
 
-![Kibana Notebooks Architecture](images/DashboardView.png)
+![Dashboard View](images/DashboardView.png)
 
-![Kibana Notebooks Architecture](images/TraceView.png)
+![Trace View](images/TraceView.png)
 
-![Kibana Notebooks Architecture](images/ServiceView.png)
+![Service View](images/ServiceView.png)
 
 
-NOTE: The above Kibana dashboards are mockup UIs, they are subject to changes.
+NOTE: The above OpenSearch Dashboards dashboards are mockup UIs, they are subject to changes.
 
 
 ## Providing Feedback
