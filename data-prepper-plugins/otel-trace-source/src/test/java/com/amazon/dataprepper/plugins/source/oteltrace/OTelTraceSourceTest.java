@@ -19,16 +19,18 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
-import com.amazon.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.amazon.dataprepper.plugins.health.HealthGrpcService;
+import com.amazon.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.WebClient;
+import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpMethod;
+import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
@@ -38,6 +40,7 @@ import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import io.grpc.BindableService;
 import io.grpc.ServerServiceDefinition;
+import io.netty.util.AsciiString;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
@@ -61,16 +64,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import static com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.SSL;
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -131,6 +139,19 @@ public class OTelTraceSourceTest {
             .addResourceSpans(ResourceSpans.newBuilder()
                     .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
                             .addSpans(Span.newBuilder().setTraceState("FAILURE").build())).build()).build();
+
+    private static void assertStatusCode415AndNoServerHeaders(final AggregatedHttpResponse response, final Throwable throwable) {
+        assertThat("Http Status", response.status(), is(HttpStatus.UNSUPPORTED_MEDIA_TYPE));
+        assertThat("Http Response Throwable", throwable, is(nullValue()));
+
+        final List<String> headerKeys = response.headers()
+                .stream()
+                .map(Map.Entry::getKey)
+                .map(AsciiString::toString)
+                .collect(Collectors.toList());
+        assertThat("Response Header Keys", headerKeys, not(contains("server")));
+    }
+
     private BlockingBuffer<Record<ExportTraceServiceRequest>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 1);
@@ -185,7 +206,8 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(JsonFormat.printer().print(SUCCESS_REQUEST).getBytes()))
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status().code()).isEqualTo(415)).join();
+                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .join();
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
                         .authority("127.0.0.1:21890")
@@ -195,9 +217,8 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(JsonFormat.printer().print(FAILURE_REQUEST).getBytes()))
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status().code()).isEqualTo(415)
-                    //validateBuffer();
-                ).join();
+                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .join();
     }
 
     @Test
@@ -227,7 +248,8 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(JsonFormat.printer().print(SUCCESS_REQUEST).getBytes()))
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status().code()).isEqualTo(415)).join();
+                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .join();
         WebClient.builder().factory(ClientFactory.insecure()).build().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTPS)
                         .authority("127.0.0.1:21890")
@@ -237,9 +259,8 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(JsonFormat.printer().print(FAILURE_REQUEST).getBytes()))
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status().code()).isEqualTo(415)
-                    //validateBuffer();
-                ).join();
+                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .join();
     }
 
     @Test
@@ -254,7 +275,8 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(SUCCESS_REQUEST.toByteArray()))
                 .aggregate()
-                .whenComplete((i, ex) -> assertThat(i.status().code()).isEqualTo(415)).join();
+                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .join();
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
                         .authority("127.0.0.1:21890")
@@ -264,10 +286,8 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(FAILURE_REQUEST.toByteArray()))
                 .aggregate()
-                .whenComplete((i, ex) -> {
-                    assertThat(i.status().code()).isEqualTo(415);
-                    //validateBuffer();
-                }).join();
+                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .join();
     }
 
     @Test
@@ -299,8 +319,8 @@ public class OTelTraceSourceTest {
             verify(serverBuilder).tls(certificateIs.capture(), privateKeyIs.capture());
             final String actualCertificate = IOUtils.toString(certificateIs.getValue(), StandardCharsets.UTF_8.name());
             final String actualPrivateKey = IOUtils.toString(privateKeyIs.getValue(), StandardCharsets.UTF_8.name());
-            assertThat(actualCertificate).isEqualTo(certAsString);
-            assertThat(actualPrivateKey).isEqualTo(keyAsString);
+            assertThat(actualCertificate, is(certAsString));
+            assertThat(actualPrivateKey, is(keyAsString));
         }
     }
 
@@ -337,8 +357,8 @@ public class OTelTraceSourceTest {
             verify(serverBuilder).tls(certificateIs.capture(), privateKeyIs.capture());
             final String actualCertificate = IOUtils.toString(certificateIs.getValue(), StandardCharsets.UTF_8.name());
             final String actualPrivateKey = IOUtils.toString(privateKeyIs.getValue(), StandardCharsets.UTF_8.name());
-            assertThat(actualCertificate).isEqualTo(certAsString);
-            assertThat(actualPrivateKey).isEqualTo(keyAsString);
+            assertThat(actualCertificate, is(certAsString));
+            assertThat(actualPrivateKey, is(keyAsString));
         }
     }
 

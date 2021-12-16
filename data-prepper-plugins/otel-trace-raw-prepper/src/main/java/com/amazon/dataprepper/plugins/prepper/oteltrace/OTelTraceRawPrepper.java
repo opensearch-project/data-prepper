@@ -71,7 +71,6 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServi
 
     private volatile boolean isShuttingDown = false;
 
-    //TODO: https://github.com/opendistro-for-elasticsearch/simple-ingest-transformation-utility-pipeline/issues/66
     public OTelTraceRawPrepper(final PluginSetting pluginSetting) {
         super(pluginSetting);
         traceFlushInterval = SEC_TO_MILLIS * pluginSetting.getLongOrDefault(
