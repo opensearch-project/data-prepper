@@ -22,9 +22,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.greaterThan;
-
 public class RandomStringSourceTests {
 
     @Test
