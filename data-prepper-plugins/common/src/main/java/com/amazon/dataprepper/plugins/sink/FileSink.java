@@ -13,8 +13,11 @@ package com.amazon.dataprepper.plugins.sink;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -26,7 +29,8 @@ import java.util.Collection;
 import static java.lang.String.format;
 
 @DataPrepperPlugin(name = "file", pluginType = Sink.class)
-public class FileSink implements Sink<Record<String>> {
+public class FileSink implements Sink<Record<Object>> {
+    private static final Logger LOG = LoggerFactory.getLogger(FileSink.class);
     private static final String SAMPLE_FILE_PATH = "src/resources/file-test-sample-output.txt";
 
     public static final String FILE_PATH = "path";
@@ -56,15 +60,28 @@ public class FileSink implements Sink<Record<String>> {
     }
 
     @Override
-    public void output(Collection<Record<String>> records) {
+    public void output(Collection<Record<Object>> records) {
         try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(outputFilePath),
                 StandardCharsets.UTF_8)) {
-            for (final Record<String> record : records) {
-                writer.write(record.getData());
-                writer.newLine();
+            for (final Record<Object> record : records) {
+                checkTypeAndWriteObject(record.getData(), writer);
             }
         } catch (IOException ex) {
             throw new RuntimeException(format("Encountered exception opening/creating file %s", outputFilePath), ex);
+        }
+    }
+
+    // Temporary function to support both trace and log ingestion pipelines.
+    // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
+    private void checkTypeAndWriteObject(final Object object, final BufferedWriter writer) throws IOException {
+        if (object instanceof String) {
+            writer.write((String) object);
+            writer.newLine();
+        } else if (object instanceof Event) {
+            writer.write(((Event) object).toJsonString());
+            writer.newLine();
+        } else {
+            LOG.error("Invalid record type. FileSink only supports String and Events");
         }
     }
 
