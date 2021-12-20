@@ -46,7 +46,7 @@ public class DataPrepperConfiguration {
         }
     }
 
-    private DataPrepperConfiguration() {}
+    public DataPrepperConfiguration() {}
 
     @JsonCreator
     public DataPrepperConfiguration(

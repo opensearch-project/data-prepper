@@ -8,6 +8,9 @@ package com.amazon.dataprepper;
 import org.opensearch.dataprepper.logstash.LogstashConfigConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.core.env.SimpleCommandLinePropertySource;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -21,6 +24,13 @@ public class DataPrepperExecute {
 
     public static void main(String[] args) {
         java.security.Security.setProperty("networkaddress.cache.ttl", "60");
+
+
+        //TODO: Load this into context
+        SimpleCommandLinePropertySource commandLinePropertySource = new SimpleCommandLinePropertySource(args);
+
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(DataPrepperExecute.class);
+        context.getEnvironment().getPropertySources().addFirst();
 
         if(args.length > 1) {
             DataPrepper.configure(args[1]);
