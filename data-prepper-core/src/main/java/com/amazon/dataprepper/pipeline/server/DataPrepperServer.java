@@ -17,13 +17,13 @@ import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
+import javax.inject.Singleton;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import java.io.IOException;
@@ -39,17 +39,13 @@ import java.util.Set;
  * Currently, only serves metrics in prometheus format.
  */
 @Named
+@Singleton
 public class DataPrepperServer {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperServer.class);
     private final HttpServer server;
 
     @Inject
-    public DataPrepperServer(
-            final DataPrepperConfiguration dataPrepperConfiguration,
-            final PluginFactory pluginFactory,
-            final DataPrepper dataPrepper,
-            final CompositeMeterRegistry systemMeterRegistry
-    ) {
+    public DataPrepperServer(final DataPrepperConfiguration dataPrepperConfiguration, final DataPrepper dataPrepper) {
         final int port = dataPrepperConfiguration.getServerPort();
         final boolean ssl = dataPrepperConfiguration.ssl();
         final String keyStoreFilePath = dataPrepperConfiguration.getKeyStoreFilePath();
@@ -72,6 +68,7 @@ public class DataPrepperServer {
                     new PluginSetting(DataPrepperCoreAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
         }
 
+        final PluginFactory pluginFactory = dataPrepper.getPluginFactory();
         final DataPrepperCoreAuthenticationProvider authenticationProvider = pluginFactory.loadPlugin(DataPrepperCoreAuthenticationProvider.class, authenticationPluginSetting);
         final Authenticator authenticator = authenticationProvider.getAuthenticator();
 
@@ -94,7 +91,7 @@ public class DataPrepperServer {
                     .setAuthenticator(authenticator);
         });
 
-        getPrometheusMeterRegistryFromRegistries(systemMeterRegistry.getRegistries()).ifPresent(
+        getPrometheusMeterRegistryFromRegistries(DataPrepper.getSystemMeterRegistry().getRegistries()).ifPresent(
                 meterRegistry -> {
                     final PrometheusMeterRegistry prometheusMeterRegistryForSystem = (PrometheusMeterRegistry) meterRegistry;
                     server.createContext("/metrics/sys", new PrometheusMetricsHandler(prometheusMeterRegistryForSystem))

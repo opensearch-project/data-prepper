@@ -7,15 +7,17 @@ package com.amazon.dataprepper;
 
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.parser.PipelineParser;
+import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Lazy;
 
 import javax.inject.Inject;
 import javax.inject.Named;
+import javax.inject.Singleton;
 import java.util.Map;
 
 /**
@@ -25,17 +27,19 @@ import java.util.Map;
  * execution.
  */
 @Named
+@Singleton
 public class DataPrepper {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepper.class);
     private static final String DATAPREPPER_SERVICE_NAME = "DATAPREPPER_SERVICE_NAME";
     private static final String DEFAULT_SERVICE_NAME = "dataprepper";
 
+    private static final CompositeMeterRegistry systemMeterRegistry = new CompositeMeterRegistry();
+
+    private final DataPrepperConfiguration configuration;
     private final PluginFactory pluginFactory;
     private Map<String, Pipeline> transformationPipelines;
 
-    // TODO: Remove DataPrepperServer dependency on DataPrepper
     @Inject
-    @Lazy
     private DataPrepperServer dataPrepperServer;
 
     /**
@@ -49,15 +53,22 @@ public class DataPrepper {
 
     @Inject
     public DataPrepper(
+            final DataPrepperConfiguration configuration,
             final PipelineParser pipelineParser,
             final PluginFactory pluginFactory
     ) {
+        this.configuration = configuration;
         this.pluginFactory = pluginFactory;
 
         transformationPipelines = pipelineParser.parseConfiguration();
         if (transformationPipelines.size() == 0) {
-            throw new RuntimeException("No valid pipeline is available for execution, exiting");
+            LOG.error("No valid pipeline is available for execution, exiting");
+            System.exit(1);
         }
+    }
+
+    public static CompositeMeterRegistry getSystemMeterRegistry() {
+        return systemMeterRegistry;
     }
 
     /**
