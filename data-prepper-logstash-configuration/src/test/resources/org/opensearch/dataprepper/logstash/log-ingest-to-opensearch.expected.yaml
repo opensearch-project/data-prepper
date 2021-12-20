@@ -3,8 +3,12 @@ logstash-converted-pipeline:
     http:
       max_connection_count: 500
       request_timeout: 10000
+      port: 3000
+      thread_count: 10.0
+      ssl: true
   prepper:
     - grok:
+        break_on_match: false
         match:
           log:
             - "%{COMBINEDAPACHELOG}"

@@ -1,20 +1,20 @@
 package org.opensearch.dataprepper.logstash.parser;
 
 import org.antlr.v4.runtime.RuleContext;
-import org.opensearch.dataprepper.logstash.exception.LogstashParsingException;
 import org.opensearch.dataprepper.logstash.LogstashBaseVisitor;
 import org.opensearch.dataprepper.logstash.LogstashParser;
-import org.opensearch.dataprepper.logstash.model.LogstashConfiguration;
-import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
+import org.opensearch.dataprepper.logstash.exception.LogstashParsingException;
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 import org.opensearch.dataprepper.logstash.model.LogstashAttributeValue;
+import org.opensearch.dataprepper.logstash.model.LogstashConfiguration;
+import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
 import org.opensearch.dataprepper.logstash.model.LogstashPluginType;
 import org.opensearch.dataprepper.logstash.model.LogstashValueType;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -96,11 +96,22 @@ public class ModelConvertingLogstashVisitor extends LogstashBaseVisitor {
         }
         else if (attributeContext.value().NUMBER() != null && attributeContext.value().getText().equals(attributeContext.value().NUMBER().toString())) {
             logstashValueType = LogstashValueType.NUMBER;
-            value = Double.valueOf(attributeContext.value().getText());
+            try {
+                value = Integer.parseInt(attributeContext.value().getText());
+            } catch (NumberFormatException e) {
+                try {
+                    value = Double.parseDouble(attributeContext.value().getText());
+                } catch (NumberFormatException exception) {
+
+                }
+            }
         }
         else if (attributeContext.value().BAREWORD() != null && attributeContext.value().getText().equals(attributeContext.value().BAREWORD().toString())) {
             logstashValueType = LogstashValueType.BAREWORD;
             value = attributeContext.value().getText();
+            if (value.toString().equals("true") || value.toString().equals("false")) {
+                value = Boolean.parseBoolean(value.toString());
+            }
         }
         else if (attributeContext.value().STRING() != null && attributeContext.value().getText().equals(attributeContext.value().STRING().toString())) {
             logstashValueType = LogstashValueType.STRING;

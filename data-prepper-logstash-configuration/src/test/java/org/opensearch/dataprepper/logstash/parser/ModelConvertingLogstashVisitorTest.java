@@ -353,16 +353,36 @@ class ModelConvertingLogstashVisitorTest {
     }
 
     @Test
-    void visit_attribute_with_value_type_number_returns_correct_logstash_attribute_test() {
+    void visit_attribute_with_value_type_integer_returns_correct_logstash_attribute_test() {
         given(attributeContextMock.name()).willReturn(nameContextMock);
         given(nameContextMock.getText()).willReturn(TestDataProvider.RANDOM_STRING_1);
         given(attributeContextMock.value()).willReturn(valueContextMock);
         given(valueContextMock.NUMBER()).willReturn(terminalNodeMock);
-        given(valueContextMock.getText()).willReturn(TestDataProvider.RANDOM_VALUE);
-        given(valueContextMock.NUMBER().toString()).willReturn(TestDataProvider.RANDOM_VALUE);
+        given(valueContextMock.getText()).willReturn(TestDataProvider.RANDOM_INTEGER);
+        given(valueContextMock.NUMBER().toString()).willReturn(TestDataProvider.RANDOM_INTEGER);
 
         LogstashAttribute actualLogstashAttribute = (LogstashAttribute) logstashVisitor.visitAttribute(attributeContextMock);
-        LogstashAttribute expectedLogstashAttribute = TestDataProvider.attributeWithNumberTypeValueData();
+        LogstashAttribute expectedLogstashAttribute = TestDataProvider.attributeWithIntegerTypeValueData();
+
+        assertThat(actualLogstashAttribute.getAttributeName(),
+                equalTo(expectedLogstashAttribute.getAttributeName()));
+        assertThat(actualLogstashAttribute.getAttributeValue().getValue(),
+                equalTo(expectedLogstashAttribute.getAttributeValue().getValue()));
+        assertThat(actualLogstashAttribute.getAttributeValue().getAttributeValueType(),
+                equalTo(expectedLogstashAttribute.getAttributeValue().getAttributeValueType()));
+    }
+
+    @Test
+    void visit_attribute_with_value_type_double_returns_correct_logstash_attribute_test() {
+        given(attributeContextMock.name()).willReturn(nameContextMock);
+        given(nameContextMock.getText()).willReturn(TestDataProvider.RANDOM_STRING_1);
+        given(attributeContextMock.value()).willReturn(valueContextMock);
+        given(valueContextMock.NUMBER()).willReturn(terminalNodeMock);
+        given(valueContextMock.getText()).willReturn(TestDataProvider.RANDOM_DOUBLE);
+        given(valueContextMock.NUMBER().toString()).willReturn(TestDataProvider.RANDOM_DOUBLE);
+
+        LogstashAttribute actualLogstashAttribute = (LogstashAttribute) logstashVisitor.visitAttribute(attributeContextMock);
+        LogstashAttribute expectedLogstashAttribute = TestDataProvider.attributeWithDoubleTypeValueData();
 
         assertThat(actualLogstashAttribute.getAttributeName(),
                 equalTo(expectedLogstashAttribute.getAttributeName()));
