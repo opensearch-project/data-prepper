@@ -30,11 +30,11 @@ To achieve trace analytics in Data Prepper we have three pipelines `otel-trace-p
 
 The [OpenTelemetry source](../data-prepper-plugins/otel-trace-source/README.md) accepts trace data from the OpenTelemetry collector. The source depends on [OpenTelemetry Protocol](https://github.com/open-telemetry/opentelemetry-specification/tree/master/specification/protocol). The source officially support transport over gRPC. The source also supports industry-standard encryption (TLS/HTTPS).
 
-### Preppers
+### Processor
 
-We have two preppers for the Trace Analytics feature,
-* *otel_trace_raw_prepper* -  This prepper is responsible for converting the trace data in [OpenTelemetry specification](https://github.com/open-telemetry/opentelemetry-proto/tree/master/opentelemetry/proto/trace/v1) to OpenSearch-friendly (JSON) docs. These OpenSearch-friendly docs have certain additional fields like duration which are not part of the original OpenTelemetry specification. These additional fields are to make the instant OpenSearch Dashboards dashboards user-friendly.
-* *service_map_stateful* -  This prepper performs the required preprocessing on the trace data and build metadata to display the service-map OpenSearch Dashboards dashboards.
+We have two processor for the Trace Analytics feature,
+* *otel_trace_raw_prepper* -  This processor is responsible for converting the trace data in [OpenTelemetry specification](https://github.com/open-telemetry/opentelemetry-proto/tree/master/opentelemetry/proto/trace/v1) to OpenSearch-friendly (JSON) docs. These OpenSearch-friendly docs have certain additional fields like duration which are not part of the original OpenTelemetry specification. These additional fields are to make the instant OpenSearch Dashboards dashboards user-friendly.
+* *service_map_stateful* -  This processor performs the required preprocessing on the trace data and build metadata to display the service-map OpenSearch Dashboards dashboards.
 
 
 ### OpenSearch sink
@@ -109,11 +109,11 @@ raw-pipeline:
          # Make sure you configure sufficient heap
          # default value is 512
          buffer_size: 512
-         # The raw prepper does bulk request to your OpenSearch sink, so configure the batch_size higher.
+         # The raw processor does bulk request to your OpenSearch sink, so configure the batch_size higher.
          # If you use the recommended otel-collector setup each ExportTraceRequest could contain max 50 spans. https://github.com/opensearch-project/data-prepper/tree/v0.7.x/deployment/aws
          # With 64 as batch size each worker thread could process upto 3200 spans (64 * 50)
          batch_size: 64
-  prepper:
+  processor:
     - otel_trace_raw_prepper:
   sink:
     - opensearch:
@@ -135,7 +135,7 @@ service-map-pipeline:
   source:
     pipeline:
       name: "otel-trace-pipeline"
-  prepper:
+  processor:
     - service_map_stateful:
         # The window duration is the maximum length of time the data prepper stores the most recent trace data to evaluvate service-map relationships. 
         # The default is 3 minutes, this means we can detect relationships between services from spans reported in last 3 minutes.

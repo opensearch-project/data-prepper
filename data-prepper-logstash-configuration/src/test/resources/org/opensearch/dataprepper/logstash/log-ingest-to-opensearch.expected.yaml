@@ -6,7 +6,7 @@ logstash-converted-pipeline:
       port: 3000
       thread_count: 10.0
       ssl: true
-  prepper:
+  processor:
     - grok:
         break_on_match: false
         match:

@@ -2,13 +2,13 @@ log-pipeline:
   source:
     http:
       ssl: false
-  prepper:
+  processor:
     - grok:
         match:
           log: [ "%{COMMONAPACHELOG}" ]
   sink:
     - opensearch:
-        hosts: [ "https://opensearch-node1:9200" ]
+        hosts: [ "https://opensearch:9200" ]
         insecure: true
         username: admin
         password: admin

@@ -81,8 +81,8 @@ configurations.all {
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.0'
         force 'com.fasterxml.jackson.core:jackson-annotations:2.13.0'
         force 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
-        force 'com.fasterxml.jackson.core:jackson-core:2.12.5'
-        force 'com.fasterxml.jackson:jackson-bom:2.12.5'
+        force 'com.fasterxml.jackson.core:jackson-core:2.13.0'
+        force 'com.fasterxml.jackson:jackson-bom:2.13.0'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.13.0'
         force 'commons-codec:commons-codec:1.15'
         force 'commons-logging:commons-logging:1.2'
@@ -95,8 +95,8 @@ configurations.all {
         force 'com.google.guava:guava:31.0.1-jre'
         force 'junit:junit:4.13.2'
         force "org.slf4j:slf4j-api:1.7.32"
-        force "org.apache.logging.log4j:log4j-api:2.14.1"
-        force "org.apache.logging.log4j:log4j-core:2.14.1"
+        force 'org.apache.logging.log4j:log4j-api:2.17.0'
+        force 'org.apache.logging.log4j:log4j-core:2.17.0'
         force 'commons-beanutils:commons-beanutils:1.9.4'
     }
     // The OpenSearch plugins appear to provide their own version of Mockito

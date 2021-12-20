@@ -30,8 +30,7 @@ A source plugin to read input data from the specified file path. The file source
       { "key2": "val2" }
       { "key3": "val3" }
       ```
-            
-  
+      
 * `record_type` (String): The Event type that will be stored in the metadata of the Event. Default is `string`. 
 Temporarily, `type` can either be `event` or `string`. If you would like to use the file source for log analytics use cases like grok, 
   change this to `event`.
@@ -44,7 +43,27 @@ A sink plugin to write output data to the specified file path.
 
 ## `stdin`
 
-A source plugin to read input data from console.
+A source plugin to read input data from console. The `stdin` source creates a new Record for each input line from console 
+until `exit` line. Internally, each input line before `exit` line will be given a key of
+`message` as shown below.
+```
+Example log line 1 from console
+Example log line 2 from console
+exit
+```
+becomes 
+```
+{ "message": "Example log line 1 from console" }
+{ "message": "Example log line 2 from console" }
+```
+
+## `random`
+
+A source plugin that auto-generate new line of random UUID string data until stop. The `random` source creates a new 
+Record for each generated line of UUID. Internally, each line will be given a key of `message` as shown below.
+```
+{ "message": "<UUID>" }
+```
 
 ## `stdout`
 

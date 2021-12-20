@@ -1,7 +1,7 @@
 # Configuration
 A Data Prepper instance requires 2 configuration files to run, and allows an optional 3rd Log4j 2 configuration file (see [Logging](logs.md)).
 
-1. A YAML file which describes the data pipelines to run (including sources, preppers, and sinks)
+1. A YAML file which describes the data pipelines to run (including sources, processors, and sinks)
 2. A YAML file containing Data Prepper server settings, primarily for interacting with the exposed Data Prepper server APIs
 3. An optional Log4j 2 configuration file (can be JSON, YAML, XML, or .properties)
 
@@ -33,7 +33,7 @@ raw-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  prepper:
+  processor:
     - otel_trace_raw_prepper:
   sink:
     - stdout:
@@ -43,7 +43,7 @@ service-map-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  prepper:
+  processor:
     - service_map_stateful:
   sink:
     - stdout:
@@ -107,4 +107,21 @@ To do so, add the argument below to the `docker run` command.
 
 ```
  -v /full/path/to/keystore.p12:/usr/share/data-prepper/keystore.p12
+```
+
+## Deprecated Pipeline Configuration Support
+
+Starting in DataPrepper 1.3.0, Prepper plugins were renamed to Processors. The use of the prepper or processor name in pipeline configuration files is still supported. However, the use of both processor and prepper in the same configuration file is **not** supported. Configuration of Processor plugins in pipelines using the Prepper name is deprecated and will be removed in a future release. See the [GitHub issue](https://github.com/opensearch-project/data-prepper/issues/619) for the latest status.
+
+Example of deprecated prepper pipeline configuration file (pipelines.yaml):
+```yaml
+grok-pipeline:
+  source:
+    http:
+  prepper:
+    - grok:
+        match:
+          log: [ "%{COMMONAPACHELOG}" ]
+  sink:
+    - stdout:
 ```

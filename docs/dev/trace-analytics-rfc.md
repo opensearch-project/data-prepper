@@ -26,7 +26,7 @@ Data Prepper is an ingestion service which provides users to ingest and transfor
 Below are the fundamental concepts of Data Prepper,
 
 *Pipeline:*
-A Data Prepper pipeline has four key components source, buffer, prepper, and sink. A single instance of Data Prepper can have one or more pipelines. A pipeline definition contains two required components source and sink. By default, the Data Prepper pipeline will use the default buffer and no prepper. All the components are pluggable and enable a user to plugin their custom implementations. Please note that custom implementations will have implications on guarantees however the basic interfaces will remain the same.
+A Data Prepper pipeline has four key components source, buffer, processor, and sink. A single instance of Data Prepper can have one or more pipelines. A pipeline definition contains two required components source and sink. By default, the Data Prepper pipeline will use the default buffer and no processor. All the components are pluggable and enable a user to plugin their custom implementations. Please note that custom implementations will have implications on guarantees however the basic interfaces will remain the same.
 
 *Source:*
 The source is the input component of a pipeline, it defines the mechanism through which a Data Prepper pipeline will consume records. The source component could consume records either by receiving over http/s or reading from external endpoints like Kafka, SQS, Cloudwatch, etc.  The source will have its own configuration options based on the type like the format of the records (string/JSON/cloudwatch logs/open telemetry trace), security, concurrency threads, etc. The source component will consume records and write them to the buffer component. 
@@ -37,11 +37,11 @@ The buffer component will act as the layer between the source and sink. The buff
 *Sink:*
 Sink in the output component of the pipeline, it defines the one or more destinations to which a Data Prepper pipeline will publish the records. A sink destination could be either service like OpenSearch, Amazon OpenSearch Service, or S3. The sink will have its own configuration options based on the destination type like security, request batching, etc. A sink can be another Data Prepper pipeline, this would provide users the benefit chain multiple Data Prepper pipelines.
 
-*Prepper:*
-Prepper component of the pipeline, these are intermediary processing units using which users can filter, transform, and enrich the records into the desired format before publishing to the sink. The prepper is an optional component of the pipeline, if not defined the records will be published in the format as defined in the source. You can have more than one prepper and they are executed in the order they are defined in the pipeline spec.
+*Processor:*
+Processor component of the pipeline, these are intermediary processing units using which users can filter, transform, and enrich the records into the desired format before publishing to the sink. The processor is an optional component of the pipeline, if not defined the records will be published in the format as defined in the source. You can have more than one processor and they are executed in the order they are defined in the pipeline spec.
 
 
-Data Prepper will be an OpenSearch community-driven project, the end goal is to make multiple Source, Sink, and Prepper plugins available.
+Data Prepper will be an OpenSearch community-driven project, the end goal is to make multiple Source, Sink, and Processor plugins available.
 
 #### 3.1.2 Trace Analytics
 
@@ -57,11 +57,11 @@ In the first release of Data Prepper, we will support only one Data Prepper pipe
 The OpenTelemetry source will be accepting trace data from the OpenTelemetry collector. The source will depend on [OpenTelemetry Protocol](https://github.com/open-telemetry/opentelemetry-specification/tree/master/specification/protocol). This would
 mean we will support transport over gRPC, HTTP/Proto and HTTP/JSON. The source will support industry-standard encryption (TLS/HTTPS). 
 
-##### Preppers
+##### Processors
 
-We are building two preppers for the Trace Analytics feature,
-* *otel-trace-raw-prepper* -  This prepper will be responsible for converting the trace data in [OpenTelemetry specification](https://github.com/open-telemetry/opentelemetry-proto/tree/master/opentelemetry/proto/trace/v1) to OpenSearch friendly (JSON) docs. These OpenSearch friendly docs will have minimal additional fields like duration which are not part of the original specification. These additional fields are to make the instant OpenSearch Dashboards dashboards user-friendly.
-* *service-map-prepper* -  This prepper will perform the required preprocessing on the trace data and build metadata to display the service-map OpenSearch Dashboards dashboards.
+We are building two processors for the Trace Analytics feature,
+* *otel-trace-raw-prepper* -  This processor will be responsible for converting the trace data in [OpenTelemetry specification](https://github.com/open-telemetry/opentelemetry-proto/tree/master/opentelemetry/proto/trace/v1) to OpenSearch friendly (JSON) docs. These OpenSearch friendly docs will have minimal additional fields like duration which are not part of the original specification. These additional fields are to make the instant OpenSearch Dashboards dashboards user-friendly.
+* *service-map-prepper* -  This processor will perform the required preprocessing on the trace data and build metadata to display the service-map OpenSearch Dashboards dashboards.
 
 
 ##### OpenSearch sink

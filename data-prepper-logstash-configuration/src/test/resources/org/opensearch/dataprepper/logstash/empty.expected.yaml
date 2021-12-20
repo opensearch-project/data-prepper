@@ -1,4 +1,4 @@
 logstash-converted-pipeline:
   source: null
-  prepper: []
+  processor: []
   sink: []

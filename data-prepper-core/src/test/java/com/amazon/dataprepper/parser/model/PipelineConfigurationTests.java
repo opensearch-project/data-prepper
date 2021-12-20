@@ -10,8 +10,10 @@ import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static com.amazon.dataprepper.TestDataProvider.DEFAULT_READ_BATCH_DELAY;
 import static com.amazon.dataprepper.TestDataProvider.DEFAULT_WORKERS;
@@ -30,6 +32,9 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class PipelineConfigurationTests {
 
@@ -42,14 +47,14 @@ public class PipelineConfigurationTests {
                 TEST_WORKERS, TEST_DELAY);
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
         final PluginSetting actualBufferPluginSetting = pipelineConfiguration.getBufferPluginSetting();
-        final List<PluginSetting> actualPrepperPluginSettings = pipelineConfiguration.getPrepperPluginSettings();
+        final List<PluginSetting> actualProcesserPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
         final List<PluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         comparePluginSettings(actualSourcePluginSetting, VALID_PLUGIN_SETTING_1);
         assertThat(pipelineConfiguration.getBufferPluginSetting(), notNullValue());
         comparePluginSettings(actualBufferPluginSetting, BlockingBuffer.getDefaultPluginSettings());
-        assertThat(actualPrepperPluginSettings.size(), is(1));
-        actualPrepperPluginSettings.forEach(prepperSettings -> comparePluginSettings(prepperSettings, VALID_PLUGIN_SETTING_1));
+        assertThat(actualProcesserPluginSettings.size(), is(1));
+        actualProcesserPluginSettings.forEach(processorSettings -> comparePluginSettings(processorSettings, VALID_PLUGIN_SETTING_1));
         assertThat(actualSinkPluginSettings.size(), is(2));
         comparePluginSettings(actualSinkPluginSettings.get(0), VALID_PLUGIN_SETTING_1);
         comparePluginSettings(actualSinkPluginSettings.get(1), VALID_PLUGIN_SETTING_2);
@@ -61,14 +66,80 @@ public class PipelineConfigurationTests {
         assertThat(actualSourcePluginSetting.getNumberOfProcessWorkers(), is(equalTo(TEST_WORKERS)));
         assertThat(actualBufferPluginSetting.getPipelineName(), is(equalTo(TEST_PIPELINE_NAME)));
         assertThat(actualBufferPluginSetting.getNumberOfProcessWorkers(), is(equalTo(TEST_WORKERS)));
-        actualPrepperPluginSettings.forEach(prepperPluginSetting -> {
-            assertThat(prepperPluginSetting.getPipelineName(), is(equalTo(TEST_PIPELINE_NAME)));
-            assertThat(prepperPluginSetting.getNumberOfProcessWorkers(), is(equalTo(TEST_WORKERS)));
+        actualProcesserPluginSettings.forEach(processorPluginSetting -> {
+            assertThat(processorPluginSetting.getPipelineName(), is(equalTo(TEST_PIPELINE_NAME)));
+            assertThat(processorPluginSetting.getNumberOfProcessWorkers(), is(equalTo(TEST_WORKERS)));
         });
         actualSinkPluginSettings.forEach(sinkPluginSetting -> {
             assertThat(sinkPluginSetting.getPipelineName(), is(equalTo(TEST_PIPELINE_NAME)));
             assertThat(sinkPluginSetting.getNumberOfProcessWorkers(), is(equalTo(TEST_WORKERS)));
         });
+    }
+
+    @Test
+    public void testExceptionThrownWhenPrepperAndProcessorAreConfigured() {
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(
+                validSingleConfiguration(),
+                null,
+                validMultipleConfigurationOfSizeOne(),
+                validMultipleConfigurationOfSizeOne(),
+                validMultipleConfiguration(),
+                TEST_WORKERS,
+                TEST_DELAY));
+
+        final String expected = "Pipeline configuration cannot specify a prepper and processor configuration. It is " +
+                "recommended to move prepper configurations to the processor section to maintain compatibility with " +
+                "DataPrepper version 1.2 and above.";
+
+        assertTrue(exception.getMessage().contains(expected));
+    }
+
+    private void assertEqualProcessorPluginSettings(
+            final List<Map.Entry<String, Map<String, Object>>> expectedPluginSettings,
+            final List<PluginSetting> actualPluginSettings) {
+        assertEquals(expectedPluginSettings.size(), actualPluginSettings.size());
+
+        expectedPluginSettings.forEach(expectedSetting -> {
+            final PluginSetting actualSetting = actualPluginSettings.stream()
+                    .filter(plugin -> expectedSetting.getKey().equals(plugin.getName()))
+                    .findFirst()
+                    .orElseThrow(() -> new InputMismatchException("Expected setting named " + expectedSetting.getKey()));
+
+            final Map<String, Object> expectedSettingValue = expectedSetting.getValue();
+            final Set<String> expectedKeySet = expectedSettingValue.keySet();
+            final Map<String, Object> settings = actualSetting.getSettings();
+            assertEquals(expectedKeySet.size(), settings.size());
+
+            expectedKeySet.forEach(key -> {
+                assertEquals(expectedSettingValue.get(key), settings.get(key));
+            });
+        });
+    }
+
+    @Test
+    public void testPipelineConfigurationWithPrepperOrProcessorAreEquivalent() {
+        Map.Entry<String, Map<String, Object>> sourcePluginSettings = validSingleConfiguration();
+        List<Map.Entry<String, Map<String, Object>>> expectedPluginSettings = validMultipleConfigurationOfSizeOne();
+
+        PipelineConfiguration prepperConfig = new PipelineConfiguration(
+                sourcePluginSettings,
+                null,
+                expectedPluginSettings,
+                null,
+                validMultipleConfiguration(),
+                TEST_WORKERS,
+                TEST_DELAY);
+        PipelineConfiguration processorConfig = new PipelineConfiguration(
+                sourcePluginSettings,
+                null,
+                null,
+                expectedPluginSettings,
+                validMultipleConfiguration(),
+                TEST_WORKERS,
+                TEST_DELAY);
+
+        assertEqualProcessorPluginSettings(expectedPluginSettings, prepperConfig.getProcessorPluginSettings());
+        assertEqualProcessorPluginSettings(expectedPluginSettings, processorConfig.getProcessorPluginSettings());
     }
 
     @Test
@@ -80,14 +151,14 @@ public class PipelineConfigurationTests {
                 null, null);
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
         final PluginSetting actualBufferPluginSetting = pipelineConfiguration.getBufferPluginSetting();
-        final List<PluginSetting> actualPrepperPluginSettings = pipelineConfiguration.getPrepperPluginSettings();
+        final List<PluginSetting> actualProcessorPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
         final List<PluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         comparePluginSettings(actualSourcePluginSetting, VALID_PLUGIN_SETTING_1);
         assertThat(pipelineConfiguration.getBufferPluginSetting(), notNullValue());
         comparePluginSettings(actualBufferPluginSetting, BlockingBuffer.getDefaultPluginSettings());
-        assertThat(actualPrepperPluginSettings, isA(Iterable.class));
-        assertThat(actualPrepperPluginSettings.size(), is(0));
+        assertThat(actualProcessorPluginSettings, isA(Iterable.class));
+        assertThat(actualProcessorPluginSettings.size(), is(0));
         assertThat(actualSinkPluginSettings.size(), is(1));
         comparePluginSettings(actualSinkPluginSettings.get(0), VALID_PLUGIN_SETTING_1);
         assertThat(pipelineConfiguration.getWorkers(), is(DEFAULT_WORKERS));
@@ -109,24 +180,24 @@ public class PipelineConfigurationTests {
     }
 
     @Test
-    public void testNoPrepperConfiguration() {
-        final PipelineConfiguration nullPreppersConfiguration = new PipelineConfiguration(
+    public void testNoProcessorAndNoPrepperConfiguration() {
+        final PipelineConfiguration nullProcessorConfiguration = new PipelineConfiguration(
                 validSingleConfiguration(),
                 validSingleConfiguration(),
                 null,
                 validMultipleConfiguration(),
                 TEST_WORKERS, TEST_DELAY);
-        assertThat(nullPreppersConfiguration.getPrepperPluginSettings(), isA(Iterable.class));
-        assertThat(nullPreppersConfiguration.getPrepperPluginSettings().size(), is(0));
+        assertThat(nullProcessorConfiguration.getProcessorPluginSettings(), isA(Iterable.class));
+        assertThat(nullProcessorConfiguration.getProcessorPluginSettings().size(), is(0));
 
-        final PipelineConfiguration emptyPreppersConfiguration = new PipelineConfiguration(
+        final PipelineConfiguration emptyProcessorsConfiguration = new PipelineConfiguration(
                 validSingleConfiguration(),
                 validSingleConfiguration(),
                 new ArrayList<>(),
                 validMultipleConfiguration(),
                 TEST_WORKERS, TEST_DELAY);
-        assertThat(emptyPreppersConfiguration.getPrepperPluginSettings(), isA(Iterable.class));
-        assertThat(emptyPreppersConfiguration.getPrepperPluginSettings().size(), is(0));
+        assertThat(emptyProcessorsConfiguration.getProcessorPluginSettings(), isA(Iterable.class));
+        assertThat(emptyProcessorsConfiguration.getProcessorPluginSettings().size(), is(0));
     }
 
     @Test //not using expected to assert the message
@@ -174,6 +245,7 @@ public class PipelineConfigurationTests {
             new PipelineConfiguration(
                     validSingleConfiguration(),
                     validSingleConfiguration(),
+                    null,
                     validMultipleConfiguration(),
                     validMultipleConfiguration(),
                     TEST_WORKERS, 0);
@@ -191,8 +263,8 @@ public class PipelineConfigurationTests {
         assertThat(actualPipelineConfiguration, notNullValue());
         assertThat(actualPipelineConfiguration.getSourcePluginSetting(), notNullValue());
         assertThat(actualPipelineConfiguration.getBufferPluginSetting(), notNullValue());
-        assertThat(actualPipelineConfiguration.getPrepperPluginSettings(), notNullValue());
-        assertThat(actualPipelineConfiguration.getPrepperPluginSettings().size(), is(equalTo(0)));
+        assertThat(actualPipelineConfiguration.getProcessorPluginSettings(), notNullValue());
+        assertThat(actualPipelineConfiguration.getProcessorPluginSettings().size(), is(equalTo(0)));
         assertThat(actualPipelineConfiguration.getSinkPluginSettings(), notNullValue());
         assertThat(actualPipelineConfiguration.getSinkPluginSettings().size(), is(equalTo(1)));
     }

@@ -87,6 +87,7 @@ import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -168,6 +169,7 @@ public class OTelTraceSourceTest {
 
         lenient().when(grpcServiceBuilder.addService(any(BindableService.class))).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
+        lenient().when(grpcServiceBuilder.useBlockingTaskExecutor(anyBoolean())).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.build()).thenReturn(grpcService);
 
         final Map<String, Object> settingsMap = new HashMap<>();
@@ -396,6 +398,8 @@ public class OTelTraceSourceTest {
             source.stop();
         }
 
+        verify(grpcServiceBuilder, times(1)).useClientTimeoutHeader(false);
+        verify(grpcServiceBuilder, times(1)).useBlockingTaskExecutor(true);
         verify(grpcServiceBuilder).addService(isA(HealthGrpcService.class));
     }
 
@@ -434,6 +438,8 @@ public class OTelTraceSourceTest {
             source.stop();
         }
 
+        verify(grpcServiceBuilder, times(1)).useClientTimeoutHeader(false);
+        verify(grpcServiceBuilder, times(1)).useBlockingTaskExecutor(true);
         verify(grpcServiceBuilder, never()).addService(isA(HealthGrpcService.class));
     }
 

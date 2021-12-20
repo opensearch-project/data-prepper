@@ -20,6 +20,7 @@ import io.micrometer.core.instrument.Statistic;
 import org.junit.Assert;
 import org.junit.Test;
 
+@Deprecated
 public class AbstractPrepperTest {
 
     @Test
