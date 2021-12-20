@@ -29,8 +29,10 @@ public class DataPrepperExecute {
         //TODO: Load this into context
         SimpleCommandLinePropertySource commandLinePropertySource = new SimpleCommandLinePropertySource(args);
 
-        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(DataPrepperExecute.class);
-        context.getEnvironment().getPropertySources().addFirst();
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+        context.getEnvironment().getPropertySources().addFirst(commandLinePropertySource);
+        context.register(DataPrepperExecute.class);
+        context.refresh();
 
         if(args.length > 1) {
             DataPrepper.configure(args[1]);

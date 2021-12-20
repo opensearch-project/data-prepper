@@ -23,6 +23,8 @@ import io.micrometer.core.instrument.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.io.File;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +35,7 @@ import java.util.Map;
  * {@link Pipeline} with default configuration or {@link #execute(String)} to provide custom configuration file. Also,
  * the same instance reference can be further used to {@link #shutdown()} the execution.
  */
+@Singleton
 public class DataPrepper {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepper.class);
     private static final String DATAPREPPER_SERVICE_NAME = "DATAPREPPER_SERVICE_NAME";
@@ -46,25 +49,7 @@ public class DataPrepper {
     private static volatile DataPrepper dataPrepper;
 
     private static DataPrepperServer dataPrepperServer;
-    private static DataPrepperConfiguration configuration;
-
-    /**
-     * Set the DataPrepperConfiguration from file
-     *
-     * @param configurationFile File containing DataPrepperConfiguration yaml
-     */
-    public static void configure(final String configurationFile) {
-        configuration = DataPrepperConfiguration.fromFile(new File(configurationFile));
-        configureMeterRegistry();
-    }
-
-    /**
-     * Set the DataPrepperConfiguration with defaults
-     */
-    public static void configureWithDefaults() {
-        configuration = DataPrepperConfiguration.DEFAULT_CONFIG;
-        configureMeterRegistry();
-    }
+    private final DataPrepperConfiguration configuration;
 
     /**
      * returns serviceName if exists or default serviceName
@@ -85,6 +70,11 @@ public class DataPrepper {
         return dataPrepper;
     }
 
+    @Inject
+    public DataPrepper(final DataPrepperConfiguration configuration) {
+        this.configuration = configuration;
+    }
+
     private DataPrepper() {
         if (dataPrepper != null) {
             throw new RuntimeException("Please use getInstance() for an instance of this Data Prepper");
@@ -101,16 +91,6 @@ public class DataPrepper {
         final List<MetricRegistryType> configuredMetricRegistryTypes = configuration.getMetricRegistryTypes();
         configuredMetricRegistryTypes.forEach(metricRegistryType -> Metrics.addRegistry(MetricRegistryType
                 .getDefaultMeterRegistryForType(metricRegistryType)));
-    }
-
-    private static void configureMeterRegistry() {
-        configuration.getMetricRegistryTypes().forEach(metricRegistryType ->
-                systemMeterRegistry.add(MetricRegistryType.getDefaultMeterRegistryForType(metricRegistryType)));
-        new ClassLoaderMetrics().bindTo(systemMeterRegistry);
-        new JvmMemoryMetrics().bindTo(systemMeterRegistry);
-        new JvmGcMetrics().bindTo(systemMeterRegistry);
-        new ProcessorMetrics().bindTo(systemMeterRegistry);
-        new JvmThreadMetrics().bindTo(systemMeterRegistry);
     }
 
     public static CompositeMeterRegistry getSystemMeterRegistry() {
