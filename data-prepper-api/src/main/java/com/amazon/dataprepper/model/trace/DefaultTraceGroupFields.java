@@ -5,8 +5,6 @@
 
 package com.amazon.dataprepper.model.trace;
 
-import java.util.Objects;
-
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -52,16 +50,12 @@ public class DefaultTraceGroupFields implements TraceGroupFields {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DefaultTraceGroupFields that = (DefaultTraceGroupFields) o;
-        return Objects.equals(endTime, that.endTime) && Objects.equals(durationInNanos, that.durationInNanos) && Objects.equals(statusCode, that.statusCode);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(endTime, durationInNanos, statusCode);
+    public boolean equals(Object other) {
+        if (other instanceof DefaultTraceGroupFields) {
+            final DefaultTraceGroupFields o = (DefaultTraceGroupFields) other;
+            return (endTime.equals(o.endTime) && durationInNanos.equals(o.durationInNanos) && statusCode.equals(o.statusCode));
+        }
+        return false;
     }
 
     public static Builder builder() {
