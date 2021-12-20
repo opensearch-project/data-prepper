@@ -41,6 +41,7 @@ public class JacksonSpanTest {
     private static final Integer TEST_DROPPED_LINKS_COUNT =  21;
     private static final String TEST_TRACE_GROUP =  UUID.randomUUID().toString();
     private static final Long TEST_DURATION_IN_NANOS =  537L;
+    private static final String TEST_SERVICE_NAME = UUID.randomUUID().toString();
 
     private JacksonSpan.Builder builder;
     
@@ -80,6 +81,7 @@ public class JacksonSpanTest {
                 .withTraceState(TEST_TRACE_STATE)
                 .withParentSpanId(TEST_PARENT_SPAN_ID)
                 .withName(TEST_NAME)
+                .withServiceName(TEST_SERVICE_NAME)
                 .withKind(TEST_KIND)
                 .withStartTime(TEST_START_TIME)
                 .withEndTime(TEST_END_TIME)
@@ -124,6 +126,12 @@ public class JacksonSpanTest {
     public void testGetName() {
         final String name = jacksonSpan.getName();
         assertThat(name, is(equalTo(TEST_NAME)));
+    }
+
+    @Test
+    public void testGetServiceName() {
+        final String name = jacksonSpan.getServiceName();
+        assertThat(name, is(equalTo(TEST_SERVICE_NAME)));
     }
 
     @Test
@@ -212,6 +220,7 @@ public class JacksonSpanTest {
                 .withTraceState(TEST_TRACE_STATE)
                 .withParentSpanId(TEST_PARENT_SPAN_ID)
                 .withName(TEST_NAME)
+                .withServiceName(TEST_SERVICE_NAME)
                 .withKind(TEST_KIND)
                 .withStartTime(TEST_START_TIME)
                 .withEndTime(TEST_END_TIME)
@@ -352,6 +361,7 @@ public class JacksonSpanTest {
                 .withTraceState(TEST_TRACE_STATE)
                 .withParentSpanId(TEST_PARENT_SPAN_ID)
                 .withName(TEST_NAME)
+                .withServiceName(TEST_SERVICE_NAME)
                 .withKind(TEST_KIND)
                 .withStartTime(TEST_START_TIME)
                 .withEndTime(TEST_END_TIME)
@@ -415,6 +425,7 @@ public class JacksonSpanTest {
                 .withTraceState(TEST_TRACE_STATE)
                 .withParentSpanId(TEST_PARENT_SPAN_ID)
                 .withName(TEST_NAME)
+                .withServiceName(TEST_SERVICE_NAME)
                 .withStartTime(TEST_START_TIME)
                 .withEndTime(TEST_END_TIME)
                 .withTraceGroup(TEST_TRACE_GROUP)

@@ -38,6 +38,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
     private static final String DROPPED_EVENTS_COUNT_KEY = "droppedEventsCount";
     private static final String LINKS_KEY = "links";
     private static final String DROPPED_LINKS_COUNT_KEY = "droppedLinksCount";
+    private static final String SERVICE_NAME_KEY = "serviceName";
     private static final String TRACE_GROUP_KEY = "traceGroup";
     private static final String DURATION_IN_NANOS_KEY = "durationInNanos";
     private static final String TRACE_GROUP_FIELDS_KEY = "traceGroupFields";
@@ -138,6 +139,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
     @Override
     public TraceGroupFields getTraceGroupFields() {
         return this.get(TRACE_GROUP_FIELDS_KEY, DefaultTraceGroupFields.class);
+    }
+
+    @Override
+    public String getServiceName() {
+        return this.get(SERVICE_NAME_KEY, String.class);
     }
 
     private void checkAndSetDefaultValues() {
@@ -354,6 +360,16 @@ public class JacksonSpan extends JacksonEvent implements Span {
          */
         public Builder withTraceGroupFields(final TraceGroupFields traceGroupFields) {
             data.put(TRACE_GROUP_FIELDS_KEY, traceGroupFields);
+            return this;
+        }
+
+        /**
+         * Sets the service name of the span
+         * @param serviceName
+         * @since 1.2
+         */
+        public Builder withServiceName(final String serviceName) {
+            data.put(SERVICE_NAME_KEY, serviceName);
             return this;
         }
 

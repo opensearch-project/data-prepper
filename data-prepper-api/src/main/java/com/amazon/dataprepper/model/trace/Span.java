@@ -132,4 +132,11 @@ public interface Span extends Event {
      * @since 1.2
      */
     TraceGroupFields getTraceGroupFields();
+
+    /**
+     * Gets the serviceName of this span.
+     * @return the ServiceName
+     * @since 1.2
+     */
+    String getServiceName();
 }
