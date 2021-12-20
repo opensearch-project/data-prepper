@@ -104,6 +104,13 @@ class TestDataProvider {
                 .attributeName(RANDOM_STRING_1).attributeValue(logstashAttributeValue).build();
     }
 
+    public static LogstashAttribute attributeWithBareWordBooleanTypeValueData(boolean input) {
+        LogstashAttributeValue logstashAttributeValue = LogstashAttributeValue.builder().
+                attributeValueType(LogstashValueType.BAREWORD).value(input).build();
+        return LogstashAttribute.builder()
+                .attributeName(RANDOM_STRING_1).attributeValue(logstashAttributeValue).build();
+    }
+
     public static LogstashAttribute attributeWithStringTypeValueData() {
         LogstashAttributeValue logstashAttributeValue = LogstashAttributeValue.builder().
                 attributeValueType(LogstashValueType.STRING).value(RANDOM_STRING_2).build();

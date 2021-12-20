@@ -13,6 +13,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.opensearch.dataprepper.logstash.LogstashParser;
@@ -404,6 +406,28 @@ class ModelConvertingLogstashVisitorTest {
         LogstashAttribute actualLogstashAttribute = (LogstashAttribute) logstashVisitor.visitAttribute(attributeContextMock);
         LogstashAttribute expectedLogstashAttribute = TestDataProvider.attributeWithBareWordTypeValueData();
 
+
+        assertThat(actualLogstashAttribute.getAttributeName(),
+                equalTo(expectedLogstashAttribute.getAttributeName()));
+        assertThat(actualLogstashAttribute.getAttributeValue().getValue(),
+                equalTo(expectedLogstashAttribute.getAttributeValue().getValue()));
+        assertThat(actualLogstashAttribute.getAttributeValue().getAttributeValueType(),
+                equalTo(expectedLogstashAttribute.getAttributeValue().getAttributeValueType()));
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { true, false } )
+    void visit_attribute_with_value_type_bare_word_boolean_returns_correct_logstash_attribute_test(boolean input) {
+        given(attributeContextMock.name()).willReturn(nameContextMock);
+        given(nameContextMock.getText()).willReturn(TestDataProvider.RANDOM_STRING_1);
+        given(attributeContextMock.value()).willReturn(valueContextMock);
+        given(valueContextMock.BAREWORD()).willReturn(terminalNodeMock);
+        given(valueContextMock.getText()).willReturn(String.valueOf(input));
+        given(valueContextMock.BAREWORD().toString()).willReturn(String.valueOf(input));
+
+        LogstashAttribute actualLogstashAttribute = (LogstashAttribute) logstashVisitor.visitAttribute(attributeContextMock);
+        LogstashAttribute expectedLogstashAttribute = TestDataProvider.attributeWithBareWordBooleanTypeValueData(input);
 
         assertThat(actualLogstashAttribute.getAttributeName(),
                 equalTo(expectedLogstashAttribute.getAttributeName()));
