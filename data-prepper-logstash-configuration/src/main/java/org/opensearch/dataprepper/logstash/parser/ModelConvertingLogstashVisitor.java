@@ -102,7 +102,7 @@ public class ModelConvertingLogstashVisitor extends LogstashBaseVisitor {
                 try {
                     value = Double.parseDouble(attributeContext.value().getText());
                 } catch (NumberFormatException exception) {
-
+                    throw new LogstashParsingException("NUMBER types must be either Integer or Double");
                 }
             }
         }
