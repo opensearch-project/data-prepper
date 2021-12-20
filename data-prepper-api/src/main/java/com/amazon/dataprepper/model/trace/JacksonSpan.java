@@ -366,7 +366,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
         /**
          * Sets the service name of the span
          * @param serviceName
-         * @since 1.2
+         * @since 1.3
          */
         public Builder withServiceName(final String serviceName) {
             data.put(SERVICE_NAME_KEY, serviceName);
@@ -376,7 +376,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
         /**
          * Sets all attributes by copying over those from another span
          * @param span
-         * @since 1.2
+         * @since 1.3
          */
         public Builder fromSpan(final Span span) {
             this.withSpanId(span.getSpanId())

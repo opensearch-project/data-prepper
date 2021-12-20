@@ -136,7 +136,7 @@ public interface Span extends Event {
     /**
      * Gets the serviceName of this span.
      * @return the ServiceName
-     * @since 1.2
+     * @since 1.3
      */
     String getServiceName();
 }
