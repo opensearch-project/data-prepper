@@ -10,8 +10,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.ObjectReader;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import org.apache.commons.lang3.StringUtils;
@@ -66,6 +66,7 @@ public class JacksonEvent implements Event {
         if (builder.eventMetadata == null) {
             this.eventMetadata = new DefaultEventMetadata.Builder()
                     .withEventType(builder.eventType)
+                    .withMessageKey(builder.messageKey)
                     .withTimeReceived(builder.timeReceived)
                     .withAttributes(builder.eventMetadataAttributes)
                     .build();
@@ -333,6 +334,7 @@ public class JacksonEvent implements Event {
         private EventMetadata eventMetadata;
         private Object data;
         private String eventType;
+        private String messageKey;
         private Instant timeReceived;
         private Map<String, Object> eventMetadataAttributes;
 
@@ -345,6 +347,11 @@ public class JacksonEvent implements Event {
          */
         public Builder<T> withEventType(final String eventType) {
             this.eventType = eventType;
+            return this;
+        }
+
+        public Builder<T> withMessageKey(final String messageKey) {
+            this.messageKey = messageKey;
             return this;
         }
 
