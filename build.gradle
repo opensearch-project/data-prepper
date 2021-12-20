@@ -66,13 +66,13 @@ subprojects {
             }
             implementation('org.apache.logging.log4j:log4j-core') {
                 version {
-                    require '2.16.0'
+                    require '2.17.0'
                 }
-                because 'Log4j 2.16.0 fixes CVE-2021-44228 and CVE-2021-45046'
+                because 'Log4j 2.17.0 fixes CVE-2021-45105, CVE-2021-44228 and CVE-2021-45046'
             }
             implementation('org.apache.logging.log4j:log4j-api') {
                 version {
-                    require '2.16.0'
+                    require '2.17.0'
                 }
                 because 'the build fails if the Log4j API is not update along with log4j-core'
             }
