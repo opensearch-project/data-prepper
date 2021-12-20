@@ -10,6 +10,9 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.NoPluginFoundException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -22,12 +25,15 @@ import java.util.function.Function;
  *
  * @since 1.2
  */
+@Named
+@Singleton
 public class DefaultPluginFactory implements PluginFactory {
 
     private final Collection<PluginProvider> pluginProviders;
     private final PluginCreator pluginCreator;
     private final PluginConfigurationConverter pluginConfigurationConverter;
 
+    @Inject
     public DefaultPluginFactory() {
         this(new PluginProviderLoader(), new PluginCreator(), new PluginConfigurationConverter());
         // TODO: Remove this along with the removal of com.amazon.dataprepper.plugins.PluginFactory
@@ -40,6 +46,7 @@ public class DefaultPluginFactory implements PluginFactory {
      * For testing only.
      * TODO: Correct the constructors once we have dependency injection.
      */
+    @Deprecated
     DefaultPluginFactory(
             final PluginProviderLoader pluginProviderLoader,
             final PluginCreator pluginCreator,

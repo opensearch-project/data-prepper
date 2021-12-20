@@ -8,33 +8,25 @@ package com.amazon.dataprepper;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.parser.PipelineParser;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
-import com.amazon.dataprepper.parser.model.MetricRegistryType;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
-import com.amazon.dataprepper.plugin.DefaultPluginFactory;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
-import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import javax.inject.Named;
 import javax.inject.Singleton;
-import java.io.File;
-import java.util.List;
 import java.util.Map;
 
 /**
- * DataPrepper is the entry point into the execution engine. An instance of this class is provided by
- * {@link #getInstance()} method and the same can eb used to trigger execution via {@link #execute(String)} ()} of the
- * {@link Pipeline} with default configuration or {@link #execute(String)} to provide custom configuration file. Also,
- * the same instance reference can be further used to {@link #shutdown()} the execution.
+ * DataPrepper is the entry point into the execution engine. The instance can be used to trigger execution via
+ * {@link #execute()} of the {@link Pipeline} with default configuration or {@link #execute()} to
+ * provide custom configuration file. Also, the same instance reference can be further used to {@link #shutdown()} the
+ * execution.
  */
+@Named
 @Singleton
 public class DataPrepper {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepper.class);
@@ -43,13 +35,12 @@ public class DataPrepper {
 
     private static final CompositeMeterRegistry systemMeterRegistry = new CompositeMeterRegistry();
 
-    private final PluginFactory pluginFactory = new DefaultPluginFactory();
+    private final DataPrepperConfiguration configuration;
+    private final PluginFactory pluginFactory;
     private Map<String, Pipeline> transformationPipelines;
 
-    private static volatile DataPrepper dataPrepper;
-
-    private static DataPrepperServer dataPrepperServer;
-    private final DataPrepperConfiguration configuration;
+    @Inject
+    private DataPrepperServer dataPrepperServer;
 
     /**
      * returns serviceName if exists or default serviceName
@@ -60,37 +51,20 @@ public class DataPrepper {
         return StringUtils.isNotBlank(serviceName) ? serviceName : DEFAULT_SERVICE_NAME;
     }
 
-    public static DataPrepper getInstance() {
-        if (dataPrepper == null) {
-            synchronized (DataPrepper.class) {
-                if (dataPrepper == null)
-                    dataPrepper = new DataPrepper();
-            }
-        }
-        return dataPrepper;
-    }
-
     @Inject
-    public DataPrepper(final DataPrepperConfiguration configuration) {
+    public DataPrepper(
+            final DataPrepperConfiguration configuration,
+            final PipelineParser pipelineParser,
+            final PluginFactory pluginFactory
+    ) {
         this.configuration = configuration;
-    }
+        this.pluginFactory = pluginFactory;
 
-    private DataPrepper() {
-        if (dataPrepper != null) {
-            throw new RuntimeException("Please use getInstance() for an instance of this Data Prepper");
+        transformationPipelines = pipelineParser.parseConfiguration();
+        if (transformationPipelines.size() == 0) {
+            LOG.error("No valid pipeline is available for execution, exiting");
+            System.exit(1);
         }
-        startMeterRegistryForDataPrepper();
-        dataPrepperServer = new DataPrepperServer(this);
-    }
-
-    /**
-     * Creates instances of configured MeterRegistry and registers to {@link Metrics} globalRegistry to be used by
-     * Meters.
-     */
-    private static void startMeterRegistryForDataPrepper() {
-        final List<MetricRegistryType> configuredMetricRegistryTypes = configuration.getMetricRegistryTypes();
-        configuredMetricRegistryTypes.forEach(metricRegistryType -> Metrics.addRegistry(MetricRegistryType
-                .getDefaultMeterRegistryForType(metricRegistryType)));
     }
 
     public static CompositeMeterRegistry getSystemMeterRegistry() {
@@ -98,20 +72,16 @@ public class DataPrepper {
     }
 
     /**
-     * Executes Data Prepper engine using the default configuration file/
+     * Executes Data Prepper engine using the default configuration file
      *
-     * @param configurationFileLocation the location of the configuration file
-     * @return true if the execute successfully initiates the Data Prepper
+     * @return true if execute successfully initiates the Data Prepper
      */
-    public boolean execute(final String configurationFileLocation) {
-        LOG.info("Using {} configuration file", configurationFileLocation);
-        final PipelineParser pipelineParser = new PipelineParser(configurationFileLocation, pluginFactory);
-        transformationPipelines = pipelineParser.parseConfiguration();
-        if (transformationPipelines.size() == 0) {
-            LOG.error("No valid pipeline is available for execution, exiting");
-            System.exit(1);
-        }
-        return initiateExecution();
+    public boolean execute() {
+        transformationPipelines.forEach((name, pipeline) -> {
+            pipeline.execute();
+        });
+        dataPrepperServer.start();
+        return true;
     }
 
     /**
@@ -147,17 +117,5 @@ public class DataPrepper {
 
     public Map<String, Pipeline> getTransformationPipelines() {
         return transformationPipelines;
-    }
-
-    public static DataPrepperConfiguration getConfiguration() {
-        return configuration;
-    }
-
-    private boolean initiateExecution() {
-        transformationPipelines.forEach((name, pipeline) -> {
-            pipeline.execute();
-        });
-        dataPrepperServer.start();
-        return true;
     }
 }

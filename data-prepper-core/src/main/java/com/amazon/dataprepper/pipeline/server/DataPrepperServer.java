@@ -21,6 +21,9 @@ import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import java.io.IOException;
@@ -29,16 +32,20 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 
+
+
 /**
  * Class to handle any serving that the data prepper instance needs to do.
  * Currently, only serves metrics in prometheus format.
  */
+@Named
+@Singleton
 public class DataPrepperServer {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperServer.class);
     private final HttpServer server;
 
-    public DataPrepperServer(final DataPrepper dataPrepper) {
-        final DataPrepperConfiguration dataPrepperConfiguration = DataPrepper.getConfiguration();
+    @Inject
+    public DataPrepperServer(final DataPrepperConfiguration dataPrepperConfiguration, final DataPrepper dataPrepper) {
         final int port = dataPrepperConfiguration.getServerPort();
         final boolean ssl = dataPrepperConfiguration.ssl();
         final String keyStoreFilePath = dataPrepperConfiguration.getKeyStoreFilePath();

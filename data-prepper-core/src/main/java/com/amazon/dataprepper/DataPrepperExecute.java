@@ -5,10 +5,10 @@
 
 package com.amazon.dataprepper;
 
+import com.amazon.dataprepper.parser.config.DataPrepperConfigurationConfiguration;
 import org.opensearch.dataprepper.logstash.LogstashConfigConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.core.env.SimpleCommandLinePropertySource;
 
@@ -25,28 +25,24 @@ public class DataPrepperExecute {
     public static void main(String[] args) {
         java.security.Security.setProperty("networkaddress.cache.ttl", "60");
 
+        for (String arg : args) {
+            LOG.info("Arg: {}", arg);
+        }
 
         //TODO: Load this into context
         SimpleCommandLinePropertySource commandLinePropertySource = new SimpleCommandLinePropertySource(args);
 
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
         context.getEnvironment().getPropertySources().addFirst(commandLinePropertySource);
-        context.register(DataPrepperExecute.class);
+        context.register(DataPrepperConfigurationConfiguration.class);
         context.refresh();
 
-        if(args.length > 1) {
-            DataPrepper.configure(args[1]);
-        } else {
-            DataPrepper.configureWithDefaults();
+        for (String name : context.getBeanDefinitionNames()) {
+            LOG.info("Bean Found: {}", name);
         }
-        final DataPrepper dataPrepper = DataPrepper.getInstance();
-        if (args.length > 0) {
-            String configurationFileLocation = checkForLogstashConfigurationAndConvert(args[0]);
-            dataPrepper.execute(configurationFileLocation);
-        } else {
-            LOG.error("Configuration file is required");
-            System.exit(1);
-        }
+
+        DataPrepper dataPrepper = context.getBean(DataPrepper.class);
+        dataPrepper.execute();
     }
 
     private static String checkForLogstashConfigurationAndConvert(String configurationFileLocation) {
