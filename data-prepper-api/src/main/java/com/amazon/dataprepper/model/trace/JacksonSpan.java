@@ -298,7 +298,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @param events the events to associate.
          * @since 1.2
          */
-        public Builder withEvents(final List<SpanEvent> events) {
+        public Builder withEvents(final List<? extends SpanEvent> events) {
             data.put(EVENTS_KEY, events);
             return this;
         }
@@ -318,7 +318,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @param links the links to associate.
          * @since 1.2
          */
-        public Builder withLinks(final List<Link> links) {
+        public Builder withLinks(final List<? extends Link> links) {
             data.put(LINKS_KEY, links);
             return this;
         }
@@ -370,6 +370,33 @@ public class JacksonSpan extends JacksonEvent implements Span {
          */
         public Builder withServiceName(final String serviceName) {
             data.put(SERVICE_NAME_KEY, serviceName);
+            return this;
+        }
+
+        /**
+         * Sets all attributes by copying over those from another span
+         * @param span
+         * @since 1.2
+         */
+        public Builder fromSpan(final Span span) {
+            this.withSpanId(span.getSpanId())
+                    .withTraceId(span.getTraceId())
+                    .withTraceState(span.getTraceState())
+                    .withParentSpanId(span.getParentSpanId())
+                    .withName(span.getName())
+                    .withServiceName(span.getServiceName())
+                    .withKind(span.getKind())
+                    .withStartTime(span.getStartTime())
+                    .withEndTime(span.getEndTime())
+                    .withAttributes(span.getAttributes())
+                    .withDroppedAttributesCount(span.getDroppedAttributesCount())
+                    .withEvents(span.getEvents())
+                    .withDroppedEventsCount(span.getDroppedEventsCount())
+                    .withLinks(span.getLinks())
+                    .withDroppedLinksCount(span.getDroppedLinksCount())
+                    .withTraceGroup(span.getTraceGroup())
+                    .withDurationInNanos(span.getDurationInNanos())
+                    .withTraceGroupFields(span.getTraceGroupFields());
             return this;
         }
 

@@ -239,6 +239,51 @@ public class JacksonSpanTest {
     }
 
     @Test
+    public void testBuilder_fromSpan_createsSpan() {
+        final JacksonSpan referenceSpan = JacksonSpan.builder()
+                .withSpanId(TEST_SPAN_ID)
+                .withTraceId(TEST_TRACE_ID)
+                .withTraceState(TEST_TRACE_STATE)
+                .withParentSpanId(TEST_PARENT_SPAN_ID)
+                .withName(TEST_NAME)
+                .withServiceName(TEST_SERVICE_NAME)
+                .withKind(TEST_KIND)
+                .withStartTime(TEST_START_TIME)
+                .withEndTime(TEST_END_TIME)
+                .withAttributes(TEST_ATTRIBUTES)
+                .withDroppedAttributesCount(TEST_DROPPED_ATTRIBUTES_COUNT)
+                .withEvents(Arrays.asList(defaultSpanEvent))
+                .withDroppedEventsCount(TEST_DROPPED_EVENTS_COUNT)
+                .withLinks(Arrays.asList(defaultLink))
+                .withDroppedLinksCount(TEST_DROPPED_LINKS_COUNT)
+                .withTraceGroup(TEST_TRACE_GROUP)
+                .withDurationInNanos(TEST_DURATION_IN_NANOS)
+                .withTraceGroupFields(defaultTraceGroupFields)
+                .build();
+        final JacksonSpan result = JacksonSpan.builder().fromSpan(referenceSpan).build();
+
+        assertThat(result, is(notNullValue()));
+        assertThat(result.getSpanId(), is(equalTo(referenceSpan.getSpanId())));
+        assertThat(result.getTraceId(), is(equalTo(referenceSpan.getTraceId())));
+        assertThat(result.getTraceState(), is(equalTo(referenceSpan.getTraceState())));
+        assertThat(result.getParentSpanId(), is(equalTo(referenceSpan.getParentSpanId())));
+        assertThat(result.getName(), is(equalTo(referenceSpan.getName())));
+        assertThat(result.getDurationInNanos(), is(equalTo(referenceSpan.getDurationInNanos())));
+        assertThat(result.getServiceName(), is(equalTo(referenceSpan.getServiceName())));
+        assertThat(result.getKind(), is(equalTo(referenceSpan.getKind())));
+        assertThat(result.getStartTime(), is(equalTo(referenceSpan.getStartTime())));
+        assertThat(result.getEndTime(), is(equalTo(referenceSpan.getEndTime())));
+        assertThat(result.getAttributes(), is(equalTo(referenceSpan.getAttributes())));
+        assertThat(result.getDroppedAttributesCount(), is(equalTo(referenceSpan.getDroppedAttributesCount())));
+        assertThat(result.getDroppedEventsCount(), is(equalTo(referenceSpan.getDroppedEventsCount())));
+        assertThat(result.getDroppedLinksCount(), is(equalTo(referenceSpan.getDroppedLinksCount())));
+        assertThat(result.getTraceGroup(), is(equalTo(referenceSpan.getTraceGroup())));
+        assertThat(result.getTraceGroupFields(), is(equalTo(referenceSpan.getTraceGroupFields())));
+        assertThat(result.getEvents(), is(equalTo(referenceSpan.getEvents())));
+        assertThat(result.getLinks(), is(equalTo(referenceSpan.getLinks())));
+    }
+
+    @Test
     public void testBuilder_withoutParameters_throwsNullPointerException() {
         final JacksonEvent.Builder builder = JacksonSpan.builder();
         assertThrows(NullPointerException.class, builder::build);
