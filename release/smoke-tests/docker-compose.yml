@@ -3,7 +3,7 @@ version: "3.9"
 services:
   data-prepper:
     restart: unless-stopped
-    image: ${REPOSITORY}/data-prepper:${TAG_NAME}
+    image: ${DOCKER_IMAGE}
     working_dir: /usr/share/data-prepper/
     volumes:
       - ./data-prepper/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml

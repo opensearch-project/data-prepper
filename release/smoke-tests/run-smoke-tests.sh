@@ -5,11 +5,17 @@
 
 set -e
 
+export IMAGE_NAME="opensearch-data-prepper"
 REPO_ROOT=`git rev-parse --show-toplevel`
 export OPENSEARCH_VERSION="1.0.1"
 OPENSEARCH_HOST="localhost:9200"
 OPENSEARCH_GROK_INDEX="test-grok-index"
 OPENSEARCH_OTEL_INDEX="otel-v1-apm-span-000001"
+
+spin[0]="-"
+spin[1]="\\"
+spin[2]="|"
+spin[3]="/"
 
 cd ${REPO_ROOT}/release/smoke-tests
 
@@ -35,10 +41,11 @@ function usage() {
     echo ""
     echo "Required arguments:"
     echo -e "-v TAG_NAME\tSpecify the image tag name such as '1.2'"
-    echo -e "-r REPOSITORY\tSpecify the docker repository name (ex: opensearchstaging or opensearchproject). The tag name will be pointed to '-v' value and 'latest'"
     echo ""
     echo "Optional arguments:"
     echo -e "-h\t\tPrint this message."
+    echo -e "-r REPOSITORY\tSpecify the docker repository name (ex: opensearchstaging or opensearchproject). The tag name will be pointed to '-v' value and 'latest'"
+    echo -e "-i IMAGE_NAME\tOverride the docker image name name (ex: opensearch-data-prepper or data-prepper)."
     echo -e "-o OPENSEARCH_VERSION\tOverride the default Open Search version used in smoke tests"
     echo "--------------------------------------------------------------------------"
 }
@@ -67,7 +74,7 @@ function query_hits_gt_zero () {
     fi
 }
 
-while getopts "hv:r:o::" arg; do
+while getopts "hv:r::o::i::" arg; do
     case $arg in
         h)
             usage
@@ -82,6 +89,9 @@ while getopts "hv:r:o::" arg; do
         o)
             export OPENSEARCH_VERSION=$OPTARG
             ;;
+        i)
+            export IMAGE_NAME=$OPTARG
+            ;;
         ?)
             echo "Invalid option: -${arg}"
             end_tests 1
@@ -89,14 +99,24 @@ while getopts "hv:r:o::" arg; do
     esac
 done
 
-if ! docker pull "${REPOSITORY}/data-prepper:${TAG_NAME}" > /dev/null
+if [ -z ${REPOSITORY+x} ]
+then
+    # REPOSITORY not defined
+    export DOCKER_IMAGE="${IMAGE_NAME}:${TAG_NAME}"
+else
+    # REPOSITORY is defined
+    export DOCKER_IMAGE="${REPOSITORY}/${IMAGE_NAME}:${TAG_NAME}"
+    docker pull "${DOCKER_IMAGE}" > /dev/null 2> /dev/null
+fi
+
+if ! docker inspect --type=image "${DOCKER_IMAGE}" > /dev/null
 then
     echo "--------------------------------------------------------------------------"
-    echo "Unable to pull image \"${REPOSITORY}/data-prepper:${TAG_NAME}\" are you sure it exists?"
+    echo "Unable to pull image \"${DOCKER_IMAGE}\" are you sure it exists?"
     end_tests 1
 fi
 
-echo "Will smoke test image \"${REPOSITORY}/data-prepper:${TAG_NAME}\""
+echo "Will smoke test image \"${DOCKER_IMAGE}\""
 
 docker-compose down > /dev/null 2> /dev/null
 
@@ -109,14 +129,18 @@ fi
 
 #Ping Data Prepper until response:
 WAITING_FOR_DATAPREPPER=true
+echo -n "Waiting for Data Prepper to start  "
 while ${WAITING_FOR_DATAPREPPER}
 do
     if curl -s -k -u 'admin:admin' 'https://localhost:9200/_cat/indices' > /dev/null && curl -s -k -H "Content-Type: application/json" -d '[{"log": "smoke test log "}]' 'http://localhost:2021/log/ingest' > /dev/null
     then
         WAITING_FOR_DATAPREPPER=false
     else
-        echo "Waiting for Data Prepper to start"
-        sleep 5s
+        for i in "${spin[@]}"
+        do
+            echo -ne "\b$i"
+            sleep 0.1
+        done
     fi
 done
 
