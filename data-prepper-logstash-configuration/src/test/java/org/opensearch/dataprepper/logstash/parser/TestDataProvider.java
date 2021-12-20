@@ -21,7 +21,8 @@ import java.util.LinkedHashMap;
 class TestDataProvider {
     static final String RANDOM_STRING_1 = UUID.randomUUID().toString();
     static final String RANDOM_STRING_2 = UUID.randomUUID().toString();
-    static final String RANDOM_VALUE = String.valueOf(new Random().nextInt(1000));
+    static final String RANDOM_INTEGER = String.valueOf(new Random().nextInt(1000));
+    static final String RANDOM_DOUBLE = String.valueOf(new Random().nextDouble());
 
     public static LogstashConfiguration configData() {
         List<LogstashPlugin> pluginContextList = new LinkedList<>(Collections.singletonList(pluginWithOneArrayContextAttributeData()));
@@ -82,9 +83,16 @@ class TestDataProvider {
                 .attributeName(TestDataProvider.RANDOM_STRING_1).attributeValue(logstashAttributeValue).build();
     }
 
-    public static LogstashAttribute attributeWithNumberTypeValueData() {
+    public static LogstashAttribute attributeWithIntegerTypeValueData() {
         LogstashAttributeValue logstashAttributeValue = LogstashAttributeValue.builder().
-                attributeValueType(LogstashValueType.NUMBER).value(Double.valueOf(TestDataProvider.RANDOM_VALUE)).build();
+                attributeValueType(LogstashValueType.NUMBER).value(Integer.valueOf(TestDataProvider.RANDOM_INTEGER)).build();
+        return LogstashAttribute.builder()
+                .attributeName(TestDataProvider.RANDOM_STRING_1).attributeValue(logstashAttributeValue).build();
+    }
+
+    public static LogstashAttribute attributeWithDoubleTypeValueData() {
+        LogstashAttributeValue logstashAttributeValue = LogstashAttributeValue.builder().
+                attributeValueType(LogstashValueType.NUMBER).value(Double.valueOf(TestDataProvider.RANDOM_DOUBLE)).build();
         return LogstashAttribute.builder()
                 .attributeName(TestDataProvider.RANDOM_STRING_1).attributeValue(logstashAttributeValue).build();
     }
@@ -92,6 +100,13 @@ class TestDataProvider {
     public static LogstashAttribute attributeWithBareWordTypeValueData() {
         LogstashAttributeValue logstashAttributeValue = LogstashAttributeValue.builder().
                 attributeValueType(LogstashValueType.BAREWORD).value(RANDOM_STRING_2).build();
+        return LogstashAttribute.builder()
+                .attributeName(RANDOM_STRING_1).attributeValue(logstashAttributeValue).build();
+    }
+
+    public static LogstashAttribute attributeWithBareWordBooleanTypeValueData(boolean input) {
+        LogstashAttributeValue logstashAttributeValue = LogstashAttributeValue.builder().
+                attributeValueType(LogstashValueType.BAREWORD).value(input).build();
         return LogstashAttribute.builder()
                 .attributeName(RANDOM_STRING_1).attributeValue(logstashAttributeValue).build();
     }
