@@ -37,6 +37,7 @@ dependencies {
     implementation('org.springframework:spring-context:5.3.13') {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
+    testImplementation 'org.springframework:spring-test:5.3.14'
     testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
 }

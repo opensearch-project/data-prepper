@@ -119,12 +119,4 @@ public class DataPrepperConfigurationConfiguration {
         }
         return configurationFileLocation;
     }
-
-    @Bean
-    public PipelineParser pipelineParser(
-            final DataPrepperArgs dataPrepperArgs,
-            final PluginFactory pluginFactory
-    ) {
-        return new PipelineParser(dataPrepperArgs.getPipelineConfigFileLocation(), pluginFactory);
-    }
 }
