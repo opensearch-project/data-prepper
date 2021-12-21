@@ -21,6 +21,7 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
+import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.amazon.dataprepper.plugins.health.HealthGrpcService;
@@ -32,7 +33,6 @@ import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +44,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
 @DataPrepperPlugin(name = "otel_trace_source", pluginType = Source.class, pluginConfigurationType = OTelTraceSourceConfig.class)
-public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>> {
+public class OTelTraceSource implements Source<Record<Span>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceSource.class);
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
     private Server server;
@@ -71,7 +71,7 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
     }
 
     @Override
-    public void start(Buffer<Record<ExportTraceServiceRequest>> buffer) {
+    public void start(Buffer<Record<Span>> buffer) {
         if (buffer == null) {
             throw new IllegalStateException("Buffer provided is null");
         }
