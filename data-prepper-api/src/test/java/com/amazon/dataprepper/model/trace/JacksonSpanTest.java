@@ -326,18 +326,6 @@ public class JacksonSpanTest {
     }
 
     @Test
-    public void testBuilder_withoutParentSpanId_throwsNullPointerException() {
-        builder.withParentSpanId(null);
-        assertThrows(NullPointerException.class, builder::build);
-    }
-
-    @Test
-    public void testBuilder_withEmptyParentSpanId_throwsIllegalArgumentException() {
-        builder.withParentSpanId("");
-        assertThrows(IllegalArgumentException.class, builder::build);
-    }
-
-    @Test
     public void testBuilder_withoutName_throwsNullPointerException() {
         builder.withName(null);
         assertThrows(NullPointerException.class, builder::build);
