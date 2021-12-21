@@ -106,13 +106,18 @@ then
 else
     # REPOSITORY is defined
     export DOCKER_IMAGE="${REPOSITORY}/${IMAGE_NAME}:${TAG_NAME}"
-    docker pull "${DOCKER_IMAGE}" > /dev/null 2> /dev/null
+    if ! docker pull "${DOCKER_IMAGE}" > /dev/null 2> /dev/null
+    then
+        echo "--------------------------------------------------------------------------"
+        echo "Unable to pull image \"${DOCKER_IMAGE}\" are you sure it exists?"
+        end_tests 1
+    fi
 fi
 
 if ! docker inspect --type=image "${DOCKER_IMAGE}" > /dev/null
 then
     echo "--------------------------------------------------------------------------"
-    echo "Unable to pull image \"${DOCKER_IMAGE}\" are you sure it exists?"
+    echo "Unable to find image \"${DOCKER_IMAGE}\" are you sure it exists?"
     end_tests 1
 fi
 
