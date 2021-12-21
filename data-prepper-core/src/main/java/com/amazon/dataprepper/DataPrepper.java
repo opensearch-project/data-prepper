@@ -39,6 +39,7 @@ public class DataPrepper {
     private final PluginFactory pluginFactory;
     private Map<String, Pipeline> transformationPipelines;
 
+    //TODO: decouple this so I can not inject
     @Inject
     private DataPrepperServer dataPrepperServer;
 
@@ -62,8 +63,7 @@ public class DataPrepper {
 
         transformationPipelines = pipelineParser.parseConfiguration();
         if (transformationPipelines.size() == 0) {
-            LOG.error("No valid pipeline is available for execution, exiting");
-            System.exit(1);
+            throw new RuntimeException("No valid pipeline is available for execution, exiting");
         }
     }
 

@@ -14,6 +14,7 @@ import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
+import com.amazon.dataprepper.parser.config.DataPrepperArgs;
 import com.amazon.dataprepper.parser.model.PipelineConfiguration;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.PipelineConnector;
@@ -24,6 +25,8 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
+import javax.inject.Named;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -37,18 +40,20 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 
 @SuppressWarnings("rawtypes")
+@Named
 public class PipelineParser {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineParser.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory())
             .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
     private static final String PIPELINE_TYPE = "pipeline";
     private static final String ATTRIBUTE_NAME = "name";
-    private final String pipelineConfigurationFileLocation;
+    private final String configurationFileLocation;
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
     private final PluginFactory pluginFactory;
 
-    public PipelineParser(final String pipelineConfigurationFileLocation, final PluginFactory pluginFactory) {
-        this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
+    @Inject
+    public PipelineParser(final DataPrepperArgs dataPrepperArgs, final PluginFactory pluginFactory) {
+        this.configurationFileLocation = dataPrepperArgs.getDataPrepperConfigFileLocation();
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
     }
 
@@ -58,7 +63,7 @@ public class PipelineParser {
     public Map<String, Pipeline> parseConfiguration() {
         try {
             final Map<String, PipelineConfiguration> pipelineConfigurationMap = OBJECT_MAPPER.readValue(
-                    new File(pipelineConfigurationFileLocation),
+                    new File(configurationFileLocation),
                     new TypeReference<Map<String, PipelineConfiguration>>() {
                     });
             final List<String> allPipelineNames = PipelineConfigurationValidator.validateAndGetPipelineNames(pipelineConfigurationMap);
@@ -74,7 +79,7 @@ public class PipelineParser {
             }
             return pipelineMap;
         } catch (IOException e) {
-            throw new ParseException(format("Failed to parse the configuration file %s", pipelineConfigurationFileLocation), e);
+            throw new ParseException(format("Failed to parse the configuration file %s", configurationFileLocation), e);
         }
     }
 
