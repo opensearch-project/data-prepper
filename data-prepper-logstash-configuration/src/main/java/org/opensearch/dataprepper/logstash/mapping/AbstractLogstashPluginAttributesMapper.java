@@ -37,18 +37,16 @@ public abstract class AbstractLogstashPluginAttributesMapper implements Logstash
                 .filter(logstashAttribute -> !customMappedAttributeNames.contains(logstashAttribute.getAttributeName()))
                 .forEach(logstashAttribute -> {
                     final String logstashAttributeName = logstashAttribute.getAttributeName();
+                    final String dataPrepperAttributeName = mappedAttributeNames.get(logstashAttributeName);
 
                     if (mappedAttributeNames.containsKey(logstashAttributeName)) {
-                        if (mappedAttributeNames.get(logstashAttributeName).startsWith("!")) {
+                        if (dataPrepperAttributeName.startsWith("!") && logstashAttribute.getAttributeValue().getValue() instanceof Boolean) {
                             pluginSettings.put(
-                                    mappedAttributeNames.get(logstashAttributeName).substring(1),
-                                    !(Boolean) logstashAttribute.getAttributeValue().getValue()
+                                    dataPrepperAttributeName.substring(1), !(Boolean) logstashAttribute.getAttributeValue().getValue()
                             );
                         }
                         else {
-                            pluginSettings.put(
-                                    mappedAttributeNames.get(logstashAttributeName),
-                                    logstashAttribute.getAttributeValue().getValue());
+                            pluginSettings.put(dataPrepperAttributeName, logstashAttribute.getAttributeValue().getValue());
                         }
                     }
                     else {

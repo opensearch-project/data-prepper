@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.logstash.mapping;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 import org.opensearch.dataprepper.logstash.model.LogstashAttributeValue;
 
@@ -116,19 +118,18 @@ class DefaultLogstashPluginAttributesMapperTest {
         assertThat(actualPluginSettings.get(additionalAttributeName), equalTo(additionalAttributeValue));
     }
 
-    @Test
-    void mapAttributes_with_negation_expression_negates_boolean_value() {
+    @ParameterizedTest
+    @ValueSource(booleans = { true, false } )
+    void mapAttributes_with_negation_expression_negates_boolean_value(boolean inputValue) {
         final String dataPrepperAttribute = "!".concat(UUID.randomUUID().toString());
-        boolean value = true;
 
-        when(logstashAttributeValue.getValue()).thenReturn(value);
+        when(logstashAttributeValue.getValue()).thenReturn(inputValue);
         when(mappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(logstashAttributeName, dataPrepperAttribute));
 
-        final Map<String, Object> actualPluginSettings =
-                createObjectUnderTest().mapAttributes(logstashAttributes, mappings);
+        final Map<String, Object> actualPluginSettings = createObjectUnderTest().mapAttributes(logstashAttributes, mappings);
 
         assertThat(actualPluginSettings, notNullValue());
         assertThat(actualPluginSettings.size(), equalTo(1));
-        assertThat(actualPluginSettings.get(dataPrepperAttribute.substring(1)), equalTo(!value));
+        assertThat(actualPluginSettings.get(dataPrepperAttribute.substring(1)), equalTo(!inputValue));
     }
 }

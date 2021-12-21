@@ -4,4 +4,4 @@ mappedAttributeNames:
   user: username
   password: password
   index: index
-  ssl_certificate_verification: !insecure
+  ssl_certificate_verification: "!insecure"
