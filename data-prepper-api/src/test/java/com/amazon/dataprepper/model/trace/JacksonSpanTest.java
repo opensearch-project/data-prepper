@@ -386,18 +386,6 @@ public class JacksonSpanTest {
     }
 
     @Test
-    public void testBuilder_withoutTraceGroup_throwsNullPointerException() {
-        builder.withTraceGroup(null);
-        assertThrows(NullPointerException.class, builder::build);
-    }
-
-    @Test
-    public void testBuilder_withEmptyTraceGroup_throwsIllegalArgumentException() {
-        builder.withTraceGroup("");
-        assertThrows(IllegalArgumentException.class, builder::build);
-    }
-
-    @Test
     public void testBuilder_allRequiredParameters_createsSpanWithDefaultValues() {
 
         final JacksonSpan span = JacksonSpan.builder()
