@@ -5,13 +5,16 @@
 
 package com.amazon.dataprepper.model.trace;
 
+import com.amazon.dataprepper.model.event.TestObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -51,6 +54,51 @@ public class DefaultTraceGroupFieldsTest {
         final String endTime = defaultTraceGroupFields.getEndTime();
 
         assertThat(endTime, is(TEST_END_TIME));
+    }
+
+    @Test
+    public void testEquals_withDifferentObject() {
+        assertThat(defaultTraceGroupFields, is(not(equalTo(new TestObject()))));
+    }
+
+    @Test
+    public void testEquals_withDifferentDurationInNanos() {
+        final DefaultTraceGroupFields traceGroupFields = DefaultTraceGroupFields.builder()
+                .withDurationInNanos(TEST_DURATION - 1)
+                .withStatusCode(TEST_STATUS_CODE)
+                .withEndTime(TEST_END_TIME)
+                .build();
+        assertThat(defaultTraceGroupFields, is(not(equalTo(traceGroupFields))));
+    }
+
+    @Test
+    public void testEquals_withDifferentStatusCode() {
+        final DefaultTraceGroupFields traceGroupFields = DefaultTraceGroupFields.builder()
+                .withDurationInNanos(TEST_DURATION)
+                .withStatusCode(404)
+                .withEndTime(TEST_END_TIME)
+                .build();
+        assertThat(defaultTraceGroupFields, is(not(equalTo(traceGroupFields))));
+    }
+
+    @Test
+    public void testEquals_withDifferentEndTime() {
+        final DefaultTraceGroupFields traceGroupFields = DefaultTraceGroupFields.builder()
+                .withDurationInNanos(TEST_DURATION)
+                .withStatusCode(TEST_STATUS_CODE)
+                .withEndTime("Different from TEST_END_TIME")
+                .build();
+        assertThat(defaultTraceGroupFields, is(not(equalTo(traceGroupFields))));
+    }
+
+    @Test
+    public void testEquals() {
+        final DefaultTraceGroupFields traceGroupFields = DefaultTraceGroupFields.builder()
+                .withDurationInNanos(TEST_DURATION)
+                .withStatusCode(TEST_STATUS_CODE)
+                .withEndTime(TEST_END_TIME)
+                .build();
+        assertThat(defaultTraceGroupFields, is(equalTo(traceGroupFields)));
     }
 
     @Test

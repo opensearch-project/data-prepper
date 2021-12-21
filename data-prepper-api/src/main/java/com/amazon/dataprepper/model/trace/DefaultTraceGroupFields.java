@@ -49,6 +49,15 @@ public class DefaultTraceGroupFields implements TraceGroupFields {
         return statusCode;
     }
 
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof DefaultTraceGroupFields) {
+            final DefaultTraceGroupFields o = (DefaultTraceGroupFields) other;
+            return (endTime.equals(o.endTime) && durationInNanos.equals(o.durationInNanos) && statusCode.equals(o.statusCode));
+        }
+        return false;
+    }
+
     public static Builder builder() {
         return new Builder();
     }
