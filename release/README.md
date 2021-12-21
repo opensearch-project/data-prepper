@@ -8,12 +8,19 @@ image of the data prepper, and the instructions to build the image.
 
 To run automated smoke test on an image you can use the following command
 
-./release/smoke-tests/run-smoke-tests.sh -v _image_tag_ -r _image_repository_
+```shell
+./release/smoke-tests/run-smoke-tests.sh -v <image_tag> -r <image_repository>
+```
 
 To run smoke tests on the latest published docker image you would run the following command:
 
-```
+```shell
 ./release/smoke-tests/run-smoke-tests.sh -v latest -r opensearchproject
+```
+
+It is also possible to run smoke tests on a locally built image. Here is an example of targeting a local image `customImageName:myTag`. The image name (-i) is optional, the default value is `opensearch-data-prepper`.
+```shell
+./release/smoke-tests/run-smoke-tests.sh -v myTag -i customImageName
 ```
 
 If all smoke tests complete successfully the last message printed will be "All smoke tests passed". Failing tests will result in a non-zero exit code.
