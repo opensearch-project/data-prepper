@@ -41,7 +41,7 @@ public abstract class AbstractProcessor<InputRecord extends Record<?>, OutputRec
         timeElapsedTimer = pluginMetrics.timer(MetricNames.TIME_ELAPSED);
     }
 
-    public AbstractProcessor(final PluginMetrics pluginMetrics) {
+    protected AbstractProcessor(final PluginMetrics pluginMetrics) {
         this.pluginMetrics = pluginMetrics;
         recordsInCounter = pluginMetrics.counter(MetricNames.RECORDS_IN);
         recordsOutCounter = pluginMetrics.counter(MetricNames.RECORDS_OUT);
