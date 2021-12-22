@@ -1,0 +1,7 @@
+pluginName: opensearch
+mappedAttributeNames:
+  hosts: hosts
+  user: username
+  password: password
+  index: index
+  ssl_certificate_verification: "!insecure"
