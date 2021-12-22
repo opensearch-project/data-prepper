@@ -27,7 +27,6 @@ import java.util.Map;
  * execution.
  */
 @Named
-@Singleton
 public class DataPrepper {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepper.class);
     private static final String DATAPREPPER_SERVICE_NAME = "DATAPREPPER_SERVICE_NAME";
@@ -39,7 +38,7 @@ public class DataPrepper {
     private final PluginFactory pluginFactory;
     private Map<String, Pipeline> transformationPipelines;
 
-    //TODO: decouple this so I can not inject
+    // TODO: Remove DataPrepperServer dependency on DataPrepper
     @Inject
     private DataPrepperServer dataPrepperServer;
 

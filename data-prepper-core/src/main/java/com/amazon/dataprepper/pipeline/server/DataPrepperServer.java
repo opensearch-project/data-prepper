@@ -45,7 +45,11 @@ public class DataPrepperServer {
     private final HttpServer server;
 
     @Inject
-    public DataPrepperServer(final DataPrepperConfiguration dataPrepperConfiguration, final DataPrepper dataPrepper) {
+    public DataPrepperServer(
+            final DataPrepperConfiguration dataPrepperConfiguration,
+            final PluginFactory pluginFactory,
+            final DataPrepper dataPrepper
+    ) {
         final int port = dataPrepperConfiguration.getServerPort();
         final boolean ssl = dataPrepperConfiguration.ssl();
         final String keyStoreFilePath = dataPrepperConfiguration.getKeyStoreFilePath();
@@ -68,7 +72,6 @@ public class DataPrepperServer {
                     new PluginSetting(DataPrepperCoreAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
         }
 
-        final PluginFactory pluginFactory = dataPrepper.getPluginFactory();
         final DataPrepperCoreAuthenticationProvider authenticationProvider = pluginFactory.loadPlugin(DataPrepperCoreAuthenticationProvider.class, authenticationPluginSetting);
         final Authenticator authenticator = authenticationProvider.getAuthenticator();
 
