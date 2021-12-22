@@ -5,6 +5,8 @@ import com.amazon.dataprepper.parser.PipelineParser;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.parser.model.MetricRegistryType;
 import com.amazon.dataprepper.plugin.DefaultPluginFactory;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.binder.MeterBinder;
@@ -34,6 +36,16 @@ public class DataPrepperConfigurationConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperConfigurationConfiguration.class);
     private static final String POSITIONAL_COMMAND_LINE_ARGUMENTS = "nonOptionArgs";
     private static final String COMMAND_LINE_ARG_DELIMITER = ",";
+
+    @Bean
+    public YAMLFactory yamlFactory() {
+        return new YAMLFactory();
+    }
+
+    @Bean
+    public ObjectMapper objectMapper(final YAMLFactory yamlFactory) {
+        return new ObjectMapper(yamlFactory);
+    }
 
     @Bean
     public ClassLoaderMetrics classLoaderMetrics() {
@@ -94,11 +106,18 @@ public class DataPrepperConfigurationConfiguration {
     }
 
     @Bean
-    public DataPrepperConfiguration dataPrepperConfiguration(final DataPrepperArgs dataPrepperArgs) {
+    public DataPrepperConfiguration dataPrepperConfiguration(
+            final DataPrepperArgs dataPrepperArgs,
+            final ObjectMapper objectMapper
+    ) {
         final String dataPrepperConfigFileLocation = dataPrepperArgs.getDataPrepperConfigFileLocation();
         if (dataPrepperConfigFileLocation != null) {
             final File configurationFile = new File(dataPrepperConfigFileLocation);
-            return DataPrepperConfiguration.fromFile(configurationFile);
+            try {
+                return objectMapper.readValue(configurationFile, DataPrepperConfiguration.class);
+            } catch (final IOException e) {
+                throw new IllegalArgumentException("Invalid DataPrepper configuration file.", e);
+            }
         }
         else {
             return new DataPrepperConfiguration();

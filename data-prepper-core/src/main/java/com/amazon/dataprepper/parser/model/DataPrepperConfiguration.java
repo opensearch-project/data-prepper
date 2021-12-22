@@ -33,19 +33,6 @@ public class DataPrepperConfiguration {
 
     public static final DataPrepperConfiguration DEFAULT_CONFIG = new DataPrepperConfiguration();
 
-    /**
-     * Construct a DataPrepperConfiguration from a yaml file
-     * @param file
-     * @return
-     */
-    public static DataPrepperConfiguration fromFile(File file) {
-        try {
-            return OBJECT_MAPPER.readValue(file, DataPrepperConfiguration.class);
-        } catch (IOException e) {
-            throw new IllegalArgumentException("Invalid DataPrepper configuration file.", e);
-        }
-    }
-
     public DataPrepperConfiguration() {}
 
     @JsonCreator
