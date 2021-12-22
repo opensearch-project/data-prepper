@@ -1,4 +1,9 @@
 #!/bin/bash
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+
 # Script to install and run the Jaeger Hot R.O.D. sample application.
 # Installs docker, docker-compose, writes configuration files, then runs 'docker-compose up'
 

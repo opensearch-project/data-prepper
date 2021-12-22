@@ -1,5 +1,10 @@
 #!/bin/bash
 
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+
 DATA_PREPPER_HOST="data-prepper"
 DATA_PREPPER_PORT="2021"
 OPENSEARCH_HOST="node-0.example.com:9200"
