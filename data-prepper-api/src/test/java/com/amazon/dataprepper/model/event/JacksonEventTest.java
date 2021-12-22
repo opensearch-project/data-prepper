@@ -335,13 +335,14 @@ public class JacksonEventTest {
     }
 
     @Test
-    public void testBuild_withMessageKey() {
+    public void testBuild_withMessageValue() {
 
-        String messageKey = UUID.randomUUID().toString();
+        String message = UUID.randomUUID().toString();
 
-        event = JacksonEvent.fromMessage(messageKey);
+        event = JacksonEvent.fromMessage(message);
 
-        assertThat(event.getMetadata().getEventType(), is(equalTo(messageKey)));
+        assertThat(event, is(notNullValue()));
+        assertThat(event.get("message", String.class), is(equalTo(message)));
     }
 
     @Test

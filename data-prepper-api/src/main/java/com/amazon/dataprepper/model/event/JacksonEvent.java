@@ -21,10 +21,12 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -78,7 +80,8 @@ public class JacksonEvent implements Event {
 
     static Event fromMessage(String message) {
         return JacksonEvent.builder()
-                .withEventType(message)
+                .withEventType(UUID.randomUUID().toString())
+                .withData(Collections.singletonMap("message", message))
                 .build();
     }
 
