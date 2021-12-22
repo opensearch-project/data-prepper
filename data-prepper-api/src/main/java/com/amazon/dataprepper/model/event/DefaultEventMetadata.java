@@ -22,8 +22,6 @@ public class DefaultEventMetadata implements EventMetadata {
 
     private final String eventType;
 
-    private final String messageKey;
-
     private final Instant timeReceived;
 
     private final ImmutableMap<String, Object> attributes;
@@ -35,8 +33,6 @@ public class DefaultEventMetadata implements EventMetadata {
 
         this.eventType = builder.eventType;
 
-        this.messageKey = builder.messageKey;
-
         this.timeReceived = builder.timeReceived == null ? Instant.now() : builder.timeReceived;
 
         this.attributes = builder.attributes == null ? new ImmutableMap.Builder<String, Object>().build() : ImmutableMap.copyOf(builder.attributes);
@@ -45,10 +41,6 @@ public class DefaultEventMetadata implements EventMetadata {
     @Override
     public String getEventType() {
         return eventType;
-    }
-
-    @Override
-    public String getMessageKey() { return messageKey;
     }
 
     @Override
@@ -77,7 +69,6 @@ public class DefaultEventMetadata implements EventMetadata {
      */
     public static class Builder {
         private String eventType;
-        private String messageKey;
         private Instant timeReceived;
         private Map<String, Object> attributes;
 
@@ -88,11 +79,6 @@ public class DefaultEventMetadata implements EventMetadata {
          */
         public Builder withEventType(final String eventType) {
             this.eventType = eventType;
-            return this;
-        }
-
-        public Builder withMessageKey(final String messageKey) {
-            this.messageKey = messageKey;
             return this;
         }
 

@@ -21,8 +21,6 @@ public interface EventMetadata {
      */
     String getEventType();
 
-    String getMessageKey();
-
     /**
      * Returns the time the event was received in as an {@link Instant}
      * @return the time received

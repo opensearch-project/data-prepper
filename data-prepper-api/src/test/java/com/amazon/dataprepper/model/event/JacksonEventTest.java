@@ -32,18 +32,13 @@ public class JacksonEventTest {
 
     private String eventType;
 
-    private String messageKey;
-
     @BeforeEach
     public void setup() {
 
         eventType = UUID.randomUUID().toString();
 
-        messageKey = UUID.randomUUID().toString();
-
         event = JacksonEvent.builder()
                 .withEventType(eventType)
-                .withMessageKey(messageKey)
                 .build();
 
     }
@@ -341,12 +336,12 @@ public class JacksonEventTest {
 
     @Test
     public void testBuild_withMessageKey() {
-        event = JacksonEvent.builder()
-                .withEventType(eventType)
-                .withMessageKey(messageKey)
-                .build();
 
-        assertThat(event.getMetadata().getMessageKey(), is(equalTo(messageKey)));
+        String messageKey = UUID.randomUUID().toString();
+
+        event = JacksonEvent.fromMessage(messageKey);
+
+        assertThat(event.getMetadata().getEventType(), is(equalTo(messageKey)));
     }
 
     @Test
@@ -372,16 +367,13 @@ public class JacksonEventTest {
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID());
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         final String emEventType = UUID.randomUUID().toString();
-        final String testMessageKey = UUID.randomUUID().toString();
 
         final EventMetadata metadata = DefaultEventMetadata.builder()
                 .withEventType(emEventType)
-                .withMessageKey(testMessageKey)
                 .build();
 
         event = JacksonEvent.builder()
                 .withEventType(eventType)
-                .withMessageKey(messageKey)
                 .withTimeReceived(now)
                 .withEventMetadataAttributes(testAttributes)
                 .withEventMetadata(metadata)
@@ -390,7 +382,6 @@ public class JacksonEventTest {
         assertThat(event.getMetadata().getAttributes(), is(not(equalTo(testAttributes))));
         assertThat(event.getMetadata().getTimeReceived(), is(not(equalTo(now))));
         assertThat(event.getMetadata().getEventType(), is(equalTo(emEventType)));
-        assertThat(event.getMetadata().getMessageKey(), is(equalTo(testMessageKey)));
     }
 
     @Test
@@ -449,6 +440,5 @@ public class JacksonEventTest {
 
         assertThrows(IllegalArgumentException.class, () -> builder.build());
     }
-
 
 }

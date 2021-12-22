@@ -66,7 +66,6 @@ public class JacksonEvent implements Event {
         if (builder.eventMetadata == null) {
             this.eventMetadata = new DefaultEventMetadata.Builder()
                     .withEventType(builder.eventType)
-                    .withMessageKey(builder.messageKey)
                     .withTimeReceived(builder.timeReceived)
                     .withAttributes(builder.eventMetadataAttributes)
                     .build();
@@ -75,6 +74,12 @@ public class JacksonEvent implements Event {
         }
 
         this.jsonNode = getInitialJsonNode(builder.data);
+    }
+
+    static Event fromMessage(String message) {
+        return JacksonEvent.builder()
+                .withEventType(message)
+                .build();
     }
 
     private JsonNode getInitialJsonNode(final Object data) {
@@ -334,7 +339,6 @@ public class JacksonEvent implements Event {
         private EventMetadata eventMetadata;
         private Object data;
         private String eventType;
-        private String messageKey;
         private Instant timeReceived;
         private Map<String, Object> eventMetadataAttributes;
 
@@ -347,11 +351,6 @@ public class JacksonEvent implements Event {
          */
         public Builder<T> withEventType(final String eventType) {
             this.eventType = eventType;
-            return this;
-        }
-
-        public Builder<T> withMessageKey(final String messageKey) {
-            this.messageKey = messageKey;
             return this;
         }
 
