@@ -17,6 +17,7 @@ import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpsServer;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +49,8 @@ public class DataPrepperServer {
     public DataPrepperServer(
             final DataPrepperConfiguration dataPrepperConfiguration,
             final PluginFactory pluginFactory,
-            final DataPrepper dataPrepper
+            final DataPrepper dataPrepper,
+            final CompositeMeterRegistry systemMeterRegistry
     ) {
         final int port = dataPrepperConfiguration.getServerPort();
         final boolean ssl = dataPrepperConfiguration.ssl();
@@ -94,7 +96,7 @@ public class DataPrepperServer {
                     .setAuthenticator(authenticator);
         });
 
-        getPrometheusMeterRegistryFromRegistries(DataPrepper.getSystemMeterRegistry().getRegistries()).ifPresent(
+        getPrometheusMeterRegistryFromRegistries(systemMeterRegistry.getRegistries()).ifPresent(
                 meterRegistry -> {
                     final PrometheusMeterRegistry prometheusMeterRegistryForSystem = (PrometheusMeterRegistry) meterRegistry;
                     server.createContext("/metrics/sys", new PrometheusMetricsHandler(prometheusMeterRegistryForSystem))

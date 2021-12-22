@@ -7,7 +7,6 @@ package com.amazon.dataprepper;
 
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.parser.PipelineParser;
-import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
@@ -17,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
-import javax.inject.Singleton;
 import java.util.Map;
 
 /**
@@ -32,9 +30,6 @@ public class DataPrepper {
     private static final String DATAPREPPER_SERVICE_NAME = "DATAPREPPER_SERVICE_NAME";
     private static final String DEFAULT_SERVICE_NAME = "dataprepper";
 
-    private static final CompositeMeterRegistry systemMeterRegistry = new CompositeMeterRegistry();
-
-    private final DataPrepperConfiguration configuration;
     private final PluginFactory pluginFactory;
     private Map<String, Pipeline> transformationPipelines;
 
@@ -53,21 +48,15 @@ public class DataPrepper {
 
     @Inject
     public DataPrepper(
-            final DataPrepperConfiguration configuration,
             final PipelineParser pipelineParser,
             final PluginFactory pluginFactory
     ) {
-        this.configuration = configuration;
         this.pluginFactory = pluginFactory;
 
         transformationPipelines = pipelineParser.parseConfiguration();
         if (transformationPipelines.size() == 0) {
             throw new RuntimeException("No valid pipeline is available for execution, exiting");
         }
-    }
-
-    public static CompositeMeterRegistry getSystemMeterRegistry() {
-        return systemMeterRegistry;
     }
 
     /**
