@@ -31,9 +31,9 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class DataPrepperTests {
+    private static final PipelineParser pipelineParser = mock(PipelineParser.class);
+    private static final Pipeline pipeline = mock(Pipeline.class);
     private static Map<String, Pipeline> parseConfigurationFixture;
-    private static PipelineParser pipelineParser;
-    private static Pipeline pipeline;
 
     @Mock
     private PluginFactory pluginFactory;
@@ -43,10 +43,7 @@ public class DataPrepperTests {
     private DataPrepper dataPrepper;
 
     @BeforeAll
-    public static void beforeAll() throws NoSuchFieldException {
-        pipelineParser = mock(PipelineParser.class);
-        pipeline = mock(Pipeline.class);
-
+    public static void beforeAll() {
         parseConfigurationFixture = new HashMap<>();
         parseConfigurationFixture.put("testKey", pipeline);
 
@@ -66,7 +63,7 @@ public class DataPrepperTests {
     @Test
     public void testGivenValidInputThenInstanceCreation() {
         assertThat(
-                "Given injected with valid beans a Data Prepper bean should be available",
+                "Given injected with valid beans a DataPrepper bean should be available",
                 dataPrepper,
                 Matchers.is(Matchers.notNullValue()));
     }
