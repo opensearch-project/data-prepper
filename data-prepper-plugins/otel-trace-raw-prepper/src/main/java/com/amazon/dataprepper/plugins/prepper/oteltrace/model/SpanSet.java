@@ -11,29 +11,30 @@
 
 package com.amazon.dataprepper.plugins.prepper.oteltrace.model;
 
+import com.amazon.dataprepper.model.trace.Span;
 import com.google.common.collect.Sets;
 
 import java.util.Set;
 
-public class RawSpanSet {
+public class SpanSet {
 
-    private final Set<RawSpan> rawSpans;
+    private final Set<Span> spans;
     private final long timeSeen;
 
-    public RawSpanSet() {
-        this.rawSpans = Sets.newConcurrentHashSet();
+    public SpanSet() {
+        this.spans = Sets.newConcurrentHashSet();
         this.timeSeen = System.currentTimeMillis();
     }
 
-    public Set<RawSpan> getRawSpans() {
-        return rawSpans;
+    public Set<Span> getSpans() {
+        return spans;
     }
 
     public long getTimeSeen() {
         return timeSeen;
     }
 
-    public void addRawSpan(final RawSpan rawSpan) {
-        rawSpans.add(rawSpan);
+    public void addSpan(final Span span) {
+        spans.add(span);
     }
 }
