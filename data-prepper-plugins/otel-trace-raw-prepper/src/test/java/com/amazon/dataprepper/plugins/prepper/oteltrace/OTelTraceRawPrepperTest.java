@@ -18,10 +18,8 @@ import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
 import com.amazon.dataprepper.model.trace.JacksonSpan;
 import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.model.trace.TraceGroupFields;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.protobuf.util.JsonFormat;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
-import io.opentelemetry.proto.trace.v1.Status;
 import org.assertj.core.api.Assertions;
 import org.junit.After;
 import org.junit.Test;
@@ -31,16 +29,14 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -58,35 +54,19 @@ public class OTelTraceRawPrepperTest {
     private static final long TEST_TRACE_FLUSH_INTERVAL = 3L;
     private static final int TEST_CONCURRENCY_SCALE = 2;
 
-    private static final long TEST_ROOT_START_TIME_NANOS = 1597902043168010200L;
-    private static final long TEST_ROOT_END_TIME_NANOS = 1597902043217170200L;
-    private static final long TEST_CHILD_START_TIME_NANOS = 1597902043178010200L;
-    private static final long TEST_CHILD_END_TIME_NANOS = 1597902043207170200L;
+    private static final String TEST_TRACE_GROUP_1_ROOT_SPAN_JSON_FILE = "trace-group-1-root-span.json";
+    private static final String TEST_TRACE_GROUP_1_CHILD_SPAN_1_JSON_FILE = "trace-group-1-child-span-1.json";
+    private static final String TEST_TRACE_GROUP_1_CHILD_SPAN_2_JSON_FILE = "trace-group-1-child-span-2.json";
+    private static final String TEST_TRACE_GROUP_2_ROOT_SPAN_JSON_FILE = "trace-group-2-root-span.json";
+    private static final String TEST_TRACE_GROUP_2_CHILD_SPAN_1_JSON_FILE = "trace-group-2-child-span-1.json";
+    private static final String TEST_TRACE_GROUP_2_CHILD_SPAN_2_JSON_FILE = "trace-group-2-child-span-2.json";
 
-    private static final Span TEST_TRACE_GROUP_1_ROOT_SPAN = buildSpan("TRACE_ID_1", "TRACE_ID_1_ROOT_SPAN_ID",
-            "", "TRACE_STATE_1", "TRACE_1_ROOT_SPAN", "SPAN_KIND_CLIENT",
-            convertUnixNanosToISO8601(TEST_ROOT_START_TIME_NANOS), convertUnixNanosToISO8601(TEST_ROOT_END_TIME_NANOS),
-            TEST_ROOT_END_TIME_NANOS - TEST_ROOT_START_TIME_NANOS, Status.StatusCode.STATUS_CODE_OK_VALUE);
-    private static final Span TEST_TRACE_GROUP_1_CHILD_SPAN_1 = buildSpan("TRACE_ID_1", "TRACE_ID_1_CHILD_SPAN_ID_1",
-            "TRACE_ID_1_ROOT_SPAN_ID", "TRACE_STATE_1", "TRACE_1_CHILD_SPAN_1", "SPAN_KIND_SERVER",
-            convertUnixNanosToISO8601(TEST_CHILD_START_TIME_NANOS), convertUnixNanosToISO8601(TEST_CHILD_END_TIME_NANOS),
-            TEST_CHILD_END_TIME_NANOS - TEST_CHILD_START_TIME_NANOS, Status.StatusCode.STATUS_CODE_OK_VALUE);
-    private static final Span TEST_TRACE_GROUP_1_CHILD_SPAN_2 = buildSpan("TRACE_ID_1", "TRACE_ID_1_CHILD_SPAN_ID_2",
-            "TRACE_ID_1_CHILD_SPAN_ID_1", "TRACE_STATE_1", "TRACE_1_CHILD_SPAN_2", "SPAN_KIND_SERVER",
-            convertUnixNanosToISO8601(TEST_CHILD_START_TIME_NANOS), convertUnixNanosToISO8601(TEST_CHILD_END_TIME_NANOS),
-            TEST_CHILD_END_TIME_NANOS - TEST_CHILD_START_TIME_NANOS, Status.StatusCode.STATUS_CODE_OK_VALUE);
-    private static final Span TEST_TRACE_GROUP_2_ROOT_SPAN = buildSpan("TRACE_ID_2", "TRACE_ID_2_ROOT_SPAN_ID",
-            "", "TRACE_STATE_2", "TRACE_2_ROOT_SPAN", "SPAN_KIND_CLIENT",
-            convertUnixNanosToISO8601(TEST_ROOT_START_TIME_NANOS), convertUnixNanosToISO8601(TEST_ROOT_END_TIME_NANOS),
-            TEST_ROOT_END_TIME_NANOS - TEST_ROOT_START_TIME_NANOS, Status.StatusCode.STATUS_CODE_ERROR_VALUE);
-    private static final Span TEST_TRACE_GROUP_2_CHILD_SPAN_1 = buildSpan("TRACE_ID_2", "TRACE_ID_2_CHILD_SPAN_ID_1",
-            "TRACE_ID_2_ROOT_SPAN_ID", "TRACE_STATE_2", "TRACE_2_CHILD_SPAN_1", "SPAN_KIND_SERVER",
-            convertUnixNanosToISO8601(TEST_CHILD_START_TIME_NANOS), convertUnixNanosToISO8601(TEST_CHILD_END_TIME_NANOS),
-            TEST_CHILD_END_TIME_NANOS - TEST_CHILD_START_TIME_NANOS, Status.StatusCode.STATUS_CODE_ERROR_VALUE);
-    private static final Span TEST_TRACE_GROUP_2_CHILD_SPAN_2 = buildSpan("TRACE_ID_2", "TRACE_ID_2_CHILD_SPAN_ID_2",
-            "TRACE_ID_2_ROOT_SPAN_ID", "TRACE_STATE_2", "TRACE_2_CHILD_SPAN_2", "SPAN_KIND_SERVER",
-            convertUnixNanosToISO8601(TEST_CHILD_START_TIME_NANOS), convertUnixNanosToISO8601(TEST_CHILD_END_TIME_NANOS),
-            TEST_CHILD_END_TIME_NANOS - TEST_CHILD_START_TIME_NANOS, Status.StatusCode.STATUS_CODE_ERROR_VALUE);
+    private static final Span TEST_TRACE_GROUP_1_ROOT_SPAN = buildSpanFromJsonFile(TEST_TRACE_GROUP_1_ROOT_SPAN_JSON_FILE);
+    private static final Span TEST_TRACE_GROUP_1_CHILD_SPAN_1 = buildSpanFromJsonFile(TEST_TRACE_GROUP_1_CHILD_SPAN_1_JSON_FILE);
+    private static final Span TEST_TRACE_GROUP_1_CHILD_SPAN_2 = buildSpanFromJsonFile(TEST_TRACE_GROUP_1_CHILD_SPAN_2_JSON_FILE);
+    private static final Span TEST_TRACE_GROUP_2_ROOT_SPAN = buildSpanFromJsonFile(TEST_TRACE_GROUP_2_ROOT_SPAN_JSON_FILE);
+    private static final Span TEST_TRACE_GROUP_2_CHILD_SPAN_1 = buildSpanFromJsonFile(TEST_TRACE_GROUP_2_CHILD_SPAN_1_JSON_FILE);
+    private static final Span TEST_TRACE_GROUP_2_CHILD_SPAN_2 = buildSpanFromJsonFile(TEST_TRACE_GROUP_2_CHILD_SPAN_2_JSON_FILE);;
 
     private static final List<Record<Span>> TEST_ONE_FULL_TRACE_GROUP_RECORDS = Stream.of(
             TEST_TRACE_GROUP_1_ROOT_SPAN, TEST_TRACE_GROUP_1_CHILD_SPAN_1, TEST_TRACE_GROUP_1_CHILD_SPAN_2)
@@ -108,13 +88,6 @@ public class OTelTraceRawPrepperTest {
                     TEST_TRACE_GROUP_1_CHILD_SPAN_1, TEST_TRACE_GROUP_1_CHILD_SPAN_2,
                     TEST_TRACE_GROUP_2_CHILD_SPAN_1, TEST_TRACE_GROUP_2_CHILD_SPAN_2)
             .map(Record::new).collect(Collectors.toList());
-
-    private static final String TEST_REQUEST_ONE_FULL_TRACE_GROUP_JSON_FILE = "sample-request-one-full-trace-group.json";
-    private static final String TEST_REQUEST_ONE_TRACE_GROUP_MISSING_ROOT_JSON_FILE = "sample-request-one-trace-group-missing-root.json";
-    private static final String TEST_REQUEST_TWO_FULL_TRACE_GROUP_JSON_FILE = "sample-request-two-full-trace-group.json";
-    private static final String TEST_REQUEST_TWO_TRACE_GROUP_INTERLEAVED_JSON_FILE_1 = "sample-request-two-trace-group-interleaved-1.json";
-    private static final String TEST_REQUEST_TWO_TRACE_GROUP_INTERLEAVED_JSON_FILE_2 = "sample-request-two-trace-group-interleaved-2.json";
-    private static final String TEST_REQUEST_TWO_TRACE_GROUP_MISSING_ROOTS_JSON_FILE = "sample-request-two-trace-group-missing-roots.json";
 
     PluginSetting pluginSetting;
     public OTelTraceRawPrepper oTelTraceRawPrepper;
@@ -220,54 +193,45 @@ public class OTelTraceRawPrepperTest {
         assertTrue(oTelTraceRawPrepper.isReadyForShutdown());
     }
 
-    private ExportTraceServiceRequest buildExportTraceServiceRequestFromJsonFile(String requestJsonFileName) throws IOException {
-        final StringBuilder jsonBuilder = new StringBuilder();
+    private static Span buildSpanFromJsonFile(final String jsonFileName) {
+        JacksonSpan.Builder spanBuilder = JacksonSpan.builder();
         try (final InputStream inputStream = Objects.requireNonNull(
-                getClass().getClassLoader().getResourceAsStream(requestJsonFileName))){
-            final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-            bufferedReader.lines().forEach(jsonBuilder::append);
-        }
-        final String requestJson = jsonBuilder.toString();
-        final ExportTraceServiceRequest.Builder builder = ExportTraceServiceRequest.newBuilder();
-        JsonFormat.parser().merge(requestJson, builder);
-        return builder.build();
-    }
-
-    private static Span buildSpan(
-            final String traceId,
-            final String spanId,
-            final String parentSpanId,
-            final String traceState,
-            final String name,
-            final String kind,
-            final String startTime,
-            final String endTime,
-            final Long durationInNanos,
-            final Integer statusCode) {
-        JacksonSpan.Builder spanBuilder = JacksonSpan.builder()
-                .withTraceId(traceId)
-                .withSpanId(spanId)
-                .withParentSpanId(parentSpanId)
-                .withTraceState(traceState)
-                .withName(name)
-                .withKind(kind)
-                .withDurationInNanos(durationInNanos)
-                .withStartTime(startTime)
-                .withEndTime(endTime);
-        if (parentSpanId.isEmpty()) {
-            final DefaultTraceGroupFields traceGroupFields = DefaultTraceGroupFields.builder()
-                    .withStatusCode(statusCode)
-                    .withEndTime(endTime)
-                    .withDurationInNanos(durationInNanos).build();
+                OTelTraceRawPrepperTest.class.getClassLoader().getResourceAsStream(jsonFileName))){
+            final Map<String, Object> spanMap = OBJECT_MAPPER.readValue(inputStream, new TypeReference<Map<String, Object>>() {});
+            final String traceId = (String) spanMap.get("traceId");
+            final String spanId = (String) spanMap.get("spanId");
+            final String parentSpanId = (String) spanMap.get("parentSpanId");
+            final String traceState = (String) spanMap.get("traceState");
+            final String name = (String) spanMap.get("name");
+            final String kind = (String) spanMap.get("kind");
+            final Long durationInNanos = ((Number) spanMap.get("durationInNanos")).longValue();
+            final String startTime = (String) spanMap.get("startTime");
+            final String endTime = (String) spanMap.get("endTime");
             spanBuilder = spanBuilder
-                    .withTraceGroup(name)
-                    .withTraceGroupFields(traceGroupFields);
+                    .withTraceId(traceId)
+                    .withSpanId(spanId)
+                    .withParentSpanId(parentSpanId)
+                    .withTraceState(traceState)
+                    .withName(name)
+                    .withKind(kind)
+                    .withDurationInNanos(durationInNanos)
+                    .withStartTime(startTime)
+                    .withEndTime(endTime);
+            if (parentSpanId.isEmpty()) {
+                final Integer statusCode = (Integer) ((Map<String, Object>) spanMap.get("traceGroupFields")).get("statusCode");
+                final DefaultTraceGroupFields traceGroupFields = DefaultTraceGroupFields.builder()
+                        .withStatusCode(statusCode)
+                        .withEndTime(endTime)
+                        .withDurationInNanos(durationInNanos).build();
+                final String traceGroup = (String) spanMap.get("traceGroup");
+                spanBuilder = spanBuilder
+                        .withTraceGroup(traceGroup)
+                        .withTraceGroupFields(traceGroupFields);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
         return spanBuilder.build();
-    }
-
-    private static String convertUnixNanosToISO8601(final long unixNano) {
-        return Instant.ofEpochSecond(0L, unixNano).toString();
     }
 
     private List<Future<Collection<Record<Span>>>> submitRecords(Collection<Record<Span>> records) {
