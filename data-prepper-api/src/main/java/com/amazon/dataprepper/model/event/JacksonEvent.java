@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -63,6 +62,10 @@ public class JacksonEvent implements Event {
 
     static final int MAX_KEY_LENGTH = 2048;
 
+    static final String MESSAGE_KEY = "messageKey";
+
+    static final String EVENT_TYPE = "event";
+
     protected JacksonEvent(final Builder builder) {
 
         if (builder.eventMetadata == null) {
@@ -80,8 +83,8 @@ public class JacksonEvent implements Event {
 
     static Event fromMessage(String message) {
         return JacksonEvent.builder()
-                .withEventType(UUID.randomUUID().toString())
-                .withData(Collections.singletonMap("message", message))
+                .withEventType(EVENT_TYPE)
+                .withData(Collections.singletonMap(MESSAGE_KEY, message))
                 .build();
     }
 
