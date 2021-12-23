@@ -209,7 +209,10 @@ public class OTelProtoCodecTest {
     @Test
     public void testTraceGroupFields() {
         final Span span1 = Span.newBuilder().setParentSpanId(ByteString.copyFrom("PArentIdExists", StandardCharsets.UTF_8)).build();
-        assertThat(OTelProtoCodec.getTraceGroupFields(span1)).isNull();
+        final TraceGroupFields traceGroupFields1 = OTelProtoCodec.getTraceGroupFields(span1);
+        assertThat(traceGroupFields1.getEndTime()).isNull();
+        assertThat(traceGroupFields1.getDurationInNanos()).isNull();
+        assertThat(traceGroupFields1.getStatusCode()).isNull();
         final long testStartTimeUnixNano = 100;
         final long testEndTimeUnixNano = 100;
         final int testStatusCode = Status.StatusCode.STATUS_CODE_OK.getNumber();

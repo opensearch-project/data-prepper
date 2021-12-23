@@ -210,15 +210,14 @@ public class OTelProtoCodec {
      * Note: The reason this method is part of the codec class is because the trace group definition will be expanded in the future when we support Links in OpenSearch Dashboards Trace Analytics.
      */
     public static TraceGroupFields getTraceGroupFields(final io.opentelemetry.proto.trace.v1.Span span) {
-        final DefaultTraceGroupFields.Builder traceGroupFieldsBuilder = DefaultTraceGroupFields.builder();
+        DefaultTraceGroupFields.Builder traceGroupFieldsBuilder = DefaultTraceGroupFields.builder();
         if (span.getParentSpanId().isEmpty()) {
-            traceGroupFieldsBuilder
+            traceGroupFieldsBuilder = traceGroupFieldsBuilder
                     .withDurationInNanos(span.getEndTimeUnixNano() - span.getStartTimeUnixNano())
                     .withEndTime(getEndTimeISO8601(span))
                     .withStatusCode(span.getStatus().getCodeValue());
-            return traceGroupFieldsBuilder.build();
         }
-        return null;
+        return traceGroupFieldsBuilder.build();
     }
 
     public static Map<String, Object> getInstrumentationLibraryAttributes(final InstrumentationLibrary instrumentationLibrary) {
