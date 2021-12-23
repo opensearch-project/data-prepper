@@ -5,7 +5,7 @@
 
 package com.amazon.dataprepper;
 
-import com.amazon.dataprepper.parser.config.DataPrepperConfigurationConfiguration;
+import com.amazon.dataprepper.parser.config.DataPrepperAppConfiguration;
 import org.opensearch.dataprepper.logstash.LogstashConfigConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +34,7 @@ public class DataPrepperExecute {
 
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
         context.getEnvironment().getPropertySources().addFirst(commandLinePropertySource);
-        context.register(DataPrepperConfigurationConfiguration.class);
+        context.register(DataPrepperAppConfiguration.class);
         context.refresh();
 
         for (String name : context.getBeanDefinitionNames()) {

@@ -17,8 +17,8 @@ import java.nio.file.Paths;
 
 @Configuration
 @ComponentScan(basePackageClasses = com.amazon.dataprepper.DataPrepper.class)
-public class DataPrepperConfigurationConfiguration {
-    private static final Logger LOG = LoggerFactory.getLogger(DataPrepperConfigurationConfiguration.class);
+public class DataPrepperAppConfiguration {
+    private static final Logger LOG = LoggerFactory.getLogger(DataPrepperAppConfiguration.class);
     private static final String POSITIONAL_COMMAND_LINE_ARGUMENTS = "nonOptionArgs";
     private static final String COMMAND_LINE_ARG_DELIMITER = ",";
 
