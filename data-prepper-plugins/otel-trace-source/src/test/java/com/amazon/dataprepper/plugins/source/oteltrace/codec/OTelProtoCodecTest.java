@@ -12,26 +12,33 @@
 package com.amazon.dataprepper.plugins.source.oteltrace.codec;
 
 import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
+import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.model.trace.TraceGroupFields;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.util.JsonFormat;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.ArrayValue;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.common.v1.KeyValueList;
 import io.opentelemetry.proto.resource.v1.Resource;
-import io.opentelemetry.proto.trace.v1.Span;
 import io.opentelemetry.proto.trace.v1.Status;
 import org.junit.Test;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,6 +47,7 @@ public class OTelProtoCodecTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    private static final String TEST_REQUEST_JSON_FILE = "test-request.json";
 
     private Map<String, Object> returnMap(final String jsonStr) throws JsonProcessingException {
         return (Map<String, Object>) OBJECT_MAPPER.readValue(jsonStr, Map.class);
@@ -47,6 +55,25 @@ public class OTelProtoCodecTest {
 
     private List<Object> returnList(final String jsonStr) throws JsonProcessingException {
         return (List<Object>) OBJECT_MAPPER.readValue(jsonStr, List.class);
+    }
+
+    private static ExportTraceServiceRequest buildExportTraceServiceRequestFromJsonFile(String requestJsonFileName) throws IOException {
+        final StringBuilder jsonBuilder = new StringBuilder();
+        try (final InputStream inputStream = Objects.requireNonNull(
+                OTelProtoCodecTest.class.getClassLoader().getResourceAsStream(requestJsonFileName))){
+            final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+            bufferedReader.lines().forEach(jsonBuilder::append);
+        }
+        final String requestJson = jsonBuilder.toString();
+        final ExportTraceServiceRequest.Builder builder = ExportTraceServiceRequest.newBuilder();
+        JsonFormat.parser().merge(requestJson, builder);
+        return builder.build();
+    }
+
+    public static void main(String[] args) throws IOException {
+        final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_JSON_FILE);
+        List<Span> spans = (List<Span>) OTelProtoCodec.parseExportTraceServiceRequest(exportTraceServiceRequest);
+        System.out.println(spans);
     }
 
     /**
@@ -66,7 +93,7 @@ public class OTelProtoCodecTest {
         final KeyValue spanAttribute2 = KeyValue.newBuilder().setKey("http.status").setValue(AnyValue.newBuilder()
                 .setStringValue("4xx").build()).build();
 
-        final Map<String, Object> actual = OTelProtoCodec.getSpanAttributes(Span.newBuilder()
+        final Map<String, Object> actual = OTelProtoCodec.getSpanAttributes(io.opentelemetry.proto.trace.v1.Span.newBuilder()
                 .addAllAttributes(Arrays.asList(spanAttribute1, spanAttribute2)).build());
         assertThat(actual.get(OTelProtoCodec.SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(spanAttribute2.getKey()))
                 .equals(spanAttribute2.getValue().getStringValue())).isTrue();
@@ -184,9 +211,11 @@ public class OTelProtoCodecTest {
     @Test
     public void testISO8601() {
         final long NANO_MULTIPLIER = 1_000 * 1_000 * 1_000;
-        final Span startTimeUnixNano = Span.newBuilder().setStartTimeUnixNano(651242400000000321L).build();
-        final Span endTimeUnixNano = Span.newBuilder().setEndTimeUnixNano(1598013600000000321L).build();
-        final Span emptyTimeSpan = Span.newBuilder().build();
+        final io.opentelemetry.proto.trace.v1.Span startTimeUnixNano = io.opentelemetry.proto.trace.v1.Span.newBuilder()
+                .setStartTimeUnixNano(651242400000000321L).build();
+        final io.opentelemetry.proto.trace.v1.Span endTimeUnixNano = io.opentelemetry.proto.trace.v1.Span.newBuilder()
+                .setEndTimeUnixNano(1598013600000000321L).build();
+        final io.opentelemetry.proto.trace.v1.Span emptyTimeSpan = io.opentelemetry.proto.trace.v1.Span.newBuilder().build();
 
         final String startTime = OTelProtoCodec.getStartTimeISO8601(startTimeUnixNano);
         assertThat(Instant.parse(startTime).getEpochSecond() * NANO_MULTIPLIER + Instant.parse(startTime).getNano() == startTimeUnixNano.getStartTimeUnixNano()).isTrue();
@@ -199,16 +228,19 @@ public class OTelProtoCodecTest {
 
     @Test
     public void testTraceGroup() {
-        final Span span1 = Span.newBuilder().setParentSpanId(ByteString.copyFrom("PArentIdExists", StandardCharsets.UTF_8)).build();
+        final io.opentelemetry.proto.trace.v1.Span span1 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
+                .setParentSpanId(ByteString.copyFrom("PArentIdExists", StandardCharsets.UTF_8)).build();
         assertThat(OTelProtoCodec.getTraceGroup(span1)).isNull();
         final String testTraceGroup = "testTraceGroup";
-        final Span span2 = Span.newBuilder().setName(testTraceGroup).build();
+        final io.opentelemetry.proto.trace.v1.Span span2 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
+                .setName(testTraceGroup).build();
         assertThat(OTelProtoCodec.getTraceGroup(span2)).isEqualTo(testTraceGroup);
     }
 
     @Test
     public void testTraceGroupFields() {
-        final Span span1 = Span.newBuilder().setParentSpanId(ByteString.copyFrom("PArentIdExists", StandardCharsets.UTF_8)).build();
+        final io.opentelemetry.proto.trace.v1.Span span1 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
+                .setParentSpanId(ByteString.copyFrom("PArentIdExists", StandardCharsets.UTF_8)).build();
         final TraceGroupFields traceGroupFields1 = OTelProtoCodec.getTraceGroupFields(span1);
         assertThat(traceGroupFields1.getEndTime()).isNull();
         assertThat(traceGroupFields1.getDurationInNanos()).isNull();
@@ -216,7 +248,7 @@ public class OTelProtoCodecTest {
         final long testStartTimeUnixNano = 100;
         final long testEndTimeUnixNano = 100;
         final int testStatusCode = Status.StatusCode.STATUS_CODE_OK.getNumber();
-        final Span span2 = Span.newBuilder()
+        final io.opentelemetry.proto.trace.v1.Span span2 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
                 .setStartTimeUnixNano(testStartTimeUnixNano)
                 .setEndTimeUnixNano(testEndTimeUnixNano)
                 .setStatus(Status.newBuilder().setCodeValue(testStatusCode))
