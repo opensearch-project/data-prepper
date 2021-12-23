@@ -172,9 +172,10 @@ public class EndToEndRawSpanTest {
         searchHits.forEach(hit -> {
             Map<String, Object> source = hit.getSourceAsMap();
             // OpenSearch API identifies Number type by range, need to convert to Long
-            if (source.containsKey(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)) {
-                final Long durationInNanos = ((Number) source.get(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)).longValue();
-                source.put(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD, durationInNanos);
+            if (source.containsKey(TraceGroup.TRACE_GROUP_NAME_FIELD)) {
+                final Map<String, Object> traceGroupFields = (Map<String, Object>) source.get("traceGroupFields");
+                final Long durationInNanos = ((Number) traceGroupFields.get("durationInNanos")).longValue();
+                traceGroupFields.put("durationInNanos", durationInNanos);
             }
             sources.add(source);
         });
