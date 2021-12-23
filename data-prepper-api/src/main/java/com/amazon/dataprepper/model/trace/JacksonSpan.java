@@ -7,9 +7,12 @@ package com.amazon.dataprepper.model.trace;
 
 import com.amazon.dataprepper.model.event.EventType;
 import com.amazon.dataprepper.model.event.JacksonEvent;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -175,6 +178,23 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    @Override
+    public String toJsonString() {
+        final ObjectNode attributesNode = (ObjectNode) jsonNode.get("attributes");
+        final ObjectNode flattenedJsonNode = jsonNode.deepCopy();
+        if (attributesNode != null) {
+            flattenedJsonNode.remove("attributes");
+            for (Iterator<Map.Entry<String, JsonNode>> it = attributesNode.fields(); it.hasNext(); ) {
+                Map.Entry<String, JsonNode> entry = it.next();
+                String field = entry.getKey();
+                if (!flattenedJsonNode.has(field)) {
+                    flattenedJsonNode.set(field, entry.getValue());
+                }
+            }
+        }
+        return flattenedJsonNode.toString();
     }
 
     /**

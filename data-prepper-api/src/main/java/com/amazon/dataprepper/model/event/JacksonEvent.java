@@ -57,7 +57,7 @@ public class JacksonEvent implements Event {
 
     private final EventMetadata eventMetadata;
 
-    private final JsonNode jsonNode;
+    protected final JsonNode jsonNode;
 
     static final int MAX_KEY_LENGTH = 2048;
 

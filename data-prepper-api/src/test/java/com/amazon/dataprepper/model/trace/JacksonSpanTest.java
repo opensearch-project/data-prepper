@@ -6,6 +6,9 @@
 package com.amazon.dataprepper.model.trace;
 
 import com.amazon.dataprepper.model.event.JacksonEvent;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class JacksonSpanTest {
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     private static final String TEST_TRACE_ID =  UUID.randomUUID().toString();
     private static final String TEST_SPAN_ID =  UUID.randomUUID().toString();
@@ -210,6 +214,27 @@ public class JacksonSpanTest {
     public void testGetTraceGroupFields() {
         final TraceGroupFields traceGroupFields = jacksonSpan.getTraceGroupFields();
         assertThat(traceGroupFields, is(equalTo(traceGroupFields)));
+    }
+
+    @Test
+    public void testToJsonStringAllParameters() throws JsonProcessingException {
+        final String jsonResult = jacksonSpan.toJsonString();
+        final Map<String, Object> resultMap = mapper.readValue(jsonResult, new TypeReference<Map<String, Object>>() {});
+
+        assertThat(resultMap.containsKey("key1"), is(true));
+        assertThat(resultMap.containsKey("key2"), is(true));
+        assertThat(resultMap.containsKey("attributes"), is(false));
+    }
+
+    @Test
+    public void testToJsonStringWithoutAttributes() throws JsonProcessingException {
+        builder.withAttributes(null);
+        final String jsonResult = builder.build().toJsonString();
+        final Map<String, Object> resultMap = mapper.readValue(jsonResult, new TypeReference<Map<String, Object>>() {});
+
+        assertThat(resultMap.containsKey("key1"), is(false));
+        assertThat(resultMap.containsKey("key2"), is(false));
+        assertThat(resultMap.containsKey("attributes"), is(false));
     }
     
     @Test
