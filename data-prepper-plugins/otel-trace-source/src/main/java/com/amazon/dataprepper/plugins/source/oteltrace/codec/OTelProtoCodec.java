@@ -57,12 +57,12 @@ public class OTelProtoCodec {
     public static final Function<String, String> SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> SPAN_ATTRIBUTES + DOT + i.replace(DOT, AT);
     public static final Function<String, String> RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> RESOURCE_ATTRIBUTES + DOT + i.replace(DOT, AT);
 
-    public static Collection<Span> parseExportTraceServiceRequest(final ExportTraceServiceRequest exportTraceServiceRequest) {
+    public static List<Span> parseExportTraceServiceRequest(final ExportTraceServiceRequest exportTraceServiceRequest) {
         return exportTraceServiceRequest.getResourceSpansList().stream()
                 .flatMap(rs -> parseResourceSpans(rs).stream()).collect(Collectors.toList());
     }
 
-    public static Collection<Span> parseResourceSpans(final ResourceSpans resourceSpans) {
+    public static List<Span> parseResourceSpans(final ResourceSpans resourceSpans) {
         final List<Span> spans = new LinkedList<>();
 
         final String serviceName = getServiceName(resourceSpans.getResource()).orElse(null);

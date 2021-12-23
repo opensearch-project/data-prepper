@@ -25,6 +25,7 @@ import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.common.v1.KeyValueList;
 import io.opentelemetry.proto.resource.v1.Resource;
+import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Status;
 import org.junit.Test;
 
@@ -70,10 +71,28 @@ public class OTelProtoCodecTest {
         return builder.build();
     }
 
-    public static void main(String[] args) throws IOException {
+    @Test
+    public void testParseExportTraceServiceRequest() throws IOException {
         final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_JSON_FILE);
-        List<Span> spans = (List<Span>) OTelProtoCodec.parseExportTraceServiceRequest(exportTraceServiceRequest);
-        System.out.println(spans);
+        final List<Span> spans = OTelProtoCodec.parseExportTraceServiceRequest(exportTraceServiceRequest);
+        assertThat(spans.size()).isEqualTo(3);
+        for (final Span span: spans) {
+            if (span.getParentSpanId().isEmpty()) {
+                assertThat(span.getTraceGroup()).isNotNull();
+                assertThat(span.getTraceGroupFields().getEndTime()).isNotNull();
+                assertThat(span.getTraceGroupFields().getDurationInNanos()).isNotNull();
+                assertThat(span.getTraceGroupFields().getStatusCode()).isNotNull();
+            } else {
+                assertThat(span.getTraceGroup()).isNull();
+                assertThat(span.getTraceGroupFields().getEndTime()).isNull();
+                assertThat(span.getTraceGroupFields().getDurationInNanos()).isNull();
+                assertThat(span.getTraceGroupFields().getStatusCode()).isNull();
+            }
+            Map<String, Object> attributes = span.getAttributes();
+            assertThat(attributes.containsKey(OTelProtoCodec.RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("service.name"))).isTrue();
+            assertThat(attributes.containsKey(OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME)).isTrue();
+            assertThat(attributes.containsKey(OTelProtoCodec.STATUS_CODE)).isTrue();
+        }
     }
 
     /**
