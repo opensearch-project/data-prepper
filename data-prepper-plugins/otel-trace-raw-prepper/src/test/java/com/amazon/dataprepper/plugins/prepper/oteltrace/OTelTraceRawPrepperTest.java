@@ -216,18 +216,19 @@ public class OTelTraceRawPrepperTest {
                     .withKind(kind)
                     .withDurationInNanos(durationInNanos)
                     .withStartTime(startTime)
-                    .withEndTime(endTime);
+                    .withEndTime(endTime)
+                    .withTraceGroup(null);
+            DefaultTraceGroupFields.Builder traceGroupFieldsBuilder = DefaultTraceGroupFields.builder();
             if (parentSpanId.isEmpty()) {
                 final Integer statusCode = (Integer) ((Map<String, Object>) spanMap.get("traceGroupFields")).get("statusCode");
-                final DefaultTraceGroupFields traceGroupFields = DefaultTraceGroupFields.builder()
+                traceGroupFieldsBuilder = traceGroupFieldsBuilder
                         .withStatusCode(statusCode)
                         .withEndTime(endTime)
-                        .withDurationInNanos(durationInNanos).build();
+                        .withDurationInNanos(durationInNanos);
                 final String traceGroup = (String) spanMap.get("traceGroup");
-                spanBuilder = spanBuilder
-                        .withTraceGroup(traceGroup)
-                        .withTraceGroupFields(traceGroupFields);
+                spanBuilder = spanBuilder.withTraceGroup(traceGroup);
             }
+            spanBuilder.withTraceGroupFields(traceGroupFieldsBuilder.build());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -246,7 +247,11 @@ public class OTelTraceRawPrepperTest {
             final Span span = record.getData();
             final String traceGroup = span.getTraceGroup();
             final TraceGroupFields traceGroupFields = span.getTraceGroupFields();
-            if (Stream.of(traceGroup, traceGroupFields).allMatch(Objects::isNull)) {
+            if (Stream.of(
+                    traceGroup,
+                    traceGroupFields.getEndTime(),
+                    traceGroupFields.getDurationInNanos(),
+                    traceGroupFields.getStatusCode()).allMatch(Objects::isNull)) {
                 count += 1;
             }
         }

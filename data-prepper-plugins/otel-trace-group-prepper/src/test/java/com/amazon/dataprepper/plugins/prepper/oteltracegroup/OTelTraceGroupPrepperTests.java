@@ -304,6 +304,7 @@ public class OTelTraceGroupPrepperTests {
             final Long durationInNanos = ((Number) spanMap.get("durationInNanos")).longValue();
             final String startTime = (String) spanMap.get("startTime");
             final String endTime = (String) spanMap.get("endTime");
+            final String traceGroup = (String) spanMap.get(TraceGroup.TRACE_GROUP_NAME_FIELD);
             spanBuilder = spanBuilder
                     .withTraceId(traceId)
                     .withSpanId(spanId)
@@ -313,20 +314,21 @@ public class OTelTraceGroupPrepperTests {
                     .withKind(kind)
                     .withDurationInNanos(durationInNanos)
                     .withStartTime(startTime)
-                    .withEndTime(endTime);
-            final String traceGroup = (String) spanMap.get(TraceGroup.TRACE_GROUP_NAME_FIELD);
+                    .withEndTime(endTime)
+                    .withTraceGroup(traceGroup);
+            DefaultTraceGroupFields.Builder traceGroupFieldsBuilder = DefaultTraceGroupFields.builder();
             if (traceGroup != null) {
                 final Integer traceGroupFieldsStatusCode = ((Number) spanMap.get(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD)).intValue();
                 final String traceGroupFieldsEndTime = (String) spanMap.get(TraceGroup.TRACE_GROUP_END_TIME_FIELD);
                 final Long traceGroupFieldsDurationInNanos = ((Number) spanMap.get(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)).longValue();
-                final DefaultTraceGroupFields traceGroupFields = DefaultTraceGroupFields.builder()
+                traceGroupFieldsBuilder = traceGroupFieldsBuilder
                         .withStatusCode(traceGroupFieldsStatusCode)
                         .withEndTime(traceGroupFieldsEndTime)
-                        .withDurationInNanos(traceGroupFieldsDurationInNanos).build();
-                spanBuilder = spanBuilder
-                        .withTraceGroup(traceGroup)
-                        .withTraceGroupFields(traceGroupFields);
+                        .withDurationInNanos(traceGroupFieldsDurationInNanos);
             }
+            spanBuilder = spanBuilder
+                    .withTraceGroup(traceGroup)
+                    .withTraceGroupFields(traceGroupFieldsBuilder.build());
         }
         return new Record<>(spanBuilder.build());
     }

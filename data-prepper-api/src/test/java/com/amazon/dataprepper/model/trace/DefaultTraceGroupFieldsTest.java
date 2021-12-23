@@ -16,7 +16,6 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class DefaultTraceGroupFieldsTest {
 
@@ -111,52 +110,5 @@ public class DefaultTraceGroupFieldsTest {
                 .build();
 
         assertThat(result, is(notNullValue()));
-    }
-
-    @Test
-    public void testBuilder_withoutParameters_throws_nullPointerException() {
-        final DefaultTraceGroupFields.Builder builder = DefaultTraceGroupFields.builder();
-        assertThrows(NullPointerException.class, builder::build);
-    }
-
-    @Test
-    public void testBuilder_throwsNullPointerException_whenEndTimeIsMissing() {
-
-        final DefaultTraceGroupFields.Builder builder = DefaultTraceGroupFields.builder()
-                .withDurationInNanos(TEST_DURATION)
-                .withStatusCode(TEST_STATUS_CODE);
-
-        assertThrows(NullPointerException.class, builder::build);
-    }
-
-    @Test
-    public void testBuilder_throwsIllegalArgumentException_whenEndTimeIsEmptyString() {
-
-        final DefaultTraceGroupFields.Builder builder = DefaultTraceGroupFields.builder()
-                .withDurationInNanos(TEST_DURATION)
-                .withStatusCode(TEST_STATUS_CODE)
-                .withEndTime("");
-
-        assertThrows(IllegalArgumentException.class, builder::build);
-    }
-
-    @Test
-    public void testBuilder_throwsNullPointerException_whenStatusCodeIsMissing() {
-
-        final DefaultTraceGroupFields.Builder builder = DefaultTraceGroupFields.builder()
-                .withDurationInNanos(123L)
-                .withEndTime(TEST_END_TIME);
-
-        assertThrows(NullPointerException.class, builder::build);
-    }
-
-    @Test
-    public void testBuilder_throwsNullPointerException_whenDurationIsMissing() {
-
-        final DefaultTraceGroupFields.Builder builder = DefaultTraceGroupFields.builder()
-                .withStatusCode(200)
-                .withEndTime(TEST_END_TIME);
-
-        assertThrows(NullPointerException.class, builder::build);
     }
 }

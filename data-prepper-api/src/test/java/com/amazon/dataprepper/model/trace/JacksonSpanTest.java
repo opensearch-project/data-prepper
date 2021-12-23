@@ -285,7 +285,8 @@ public class JacksonSpanTest {
 
     @Test
     public void testBuilder_withoutParameters_throwsNullPointerException() {
-        final JacksonEvent.Builder builder = JacksonSpan.builder();
+        final JacksonSpan.Builder builder = JacksonSpan.builder();
+        builder.withTraceGroup(null);
         assertThrows(NullPointerException.class, builder::build);
     }
     
@@ -359,6 +360,35 @@ public class JacksonSpanTest {
     public void testBuilder_withEmptyEndTime_throwsIllegalArgumentException() {
         builder.withEndTime("");
         assertThrows(IllegalArgumentException.class, builder::build);
+    }
+
+    @Test
+    public void testBuilder_missingTraceGroupKey_throwsIllegalStateException() {
+        builder = JacksonSpan.builder()
+                .withSpanId(TEST_SPAN_ID)
+                .withTraceId(TEST_TRACE_ID)
+                .withTraceState(TEST_TRACE_STATE)
+                .withParentSpanId(TEST_PARENT_SPAN_ID)
+                .withName(TEST_NAME)
+                .withServiceName(TEST_SERVICE_NAME)
+                .withKind(TEST_KIND)
+                .withStartTime(TEST_START_TIME)
+                .withEndTime(TEST_END_TIME)
+                .withAttributes(TEST_ATTRIBUTES)
+                .withDroppedAttributesCount(TEST_DROPPED_ATTRIBUTES_COUNT)
+                .withEvents(Arrays.asList(defaultSpanEvent))
+                .withDroppedEventsCount(TEST_DROPPED_EVENTS_COUNT)
+                .withLinks(Arrays.asList(defaultLink))
+                .withDroppedLinksCount(TEST_DROPPED_LINKS_COUNT)
+                .withDurationInNanos(TEST_DURATION_IN_NANOS)
+                .withTraceGroupFields(defaultTraceGroupFields);
+        assertThrows(IllegalStateException.class, builder::build);
+    }
+
+    @Test
+    public void testBuilder_withoutTraceGroupFields_throwsNullPointerException() {
+        builder.withTraceGroupFields(null);
+        assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test

@@ -16,6 +16,7 @@ import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 
 /**
  * A Jackson implementation for {@link Span}. This class extends the {@link JacksonEvent}.
@@ -43,9 +44,10 @@ public class JacksonSpan extends JacksonEvent implements Span {
     private static final String DURATION_IN_NANOS_KEY = "durationInNanos";
     private static final String TRACE_GROUP_FIELDS_KEY = "traceGroupFields";
 
+    private static final List<String> REQUIRED_KEYS = Arrays.asList(TRACE_GROUP_KEY);
     private static final List<String>
             REQUIRED_NON_EMPTY_KEYS = Arrays.asList(TRACE_ID_KEY, SPAN_ID_KEY, NAME_KEY, KIND_KEY, START_TIME_KEY, END_TIME_KEY);
-    private static final List<String> REQUIRED_NON_NULL_KEYS = Arrays.asList(DURATION_IN_NANOS_KEY);
+    private static final List<String> REQUIRED_NON_NULL_KEYS = Arrays.asList(DURATION_IN_NANOS_KEY, TRACE_GROUP_FIELDS_KEY);
 
     protected JacksonSpan(final Builder builder) {
         super(builder);
@@ -412,6 +414,10 @@ public class JacksonSpan extends JacksonEvent implements Span {
         }
 
         private void validateParameters() {
+            REQUIRED_KEYS.forEach(key -> {
+                checkState(data.containsKey(key), String.format("%s need to be assigned", key));
+            });
+
             REQUIRED_NON_EMPTY_KEYS.forEach(key -> {
                 final String value = (String) data.get(key);
                 checkNotNull(value, String.format("%s cannot be null", key));
