@@ -15,9 +15,11 @@ import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
+import com.amazon.dataprepper.model.trace.JacksonSpan;
+import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.plugins.prepper.oteltracegroup.model.TraceGroup;
 import com.amazon.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Measurement;
@@ -38,10 +40,8 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -72,11 +72,23 @@ public class OTelTraceGroupPrepperTests {
     private static final String TEST_PIPELINE_NAME = "testPipelineName";
     private static final String PLUGIN_NAME = "otel_trace_group_prepper";
     private static final String TEST_TRACE_ID_1 = "6d0ff634d126b6ec2c180391e67b4237";
-    private static final TraceGroup TEST_TRACE_GROUP_1 = new TraceGroup("/test_trace_group_1",
-            "2020-08-19T05:30:46.089556800Z", 48545100L, 1);
+    private static final TraceGroup TEST_TRACE_GROUP_1 = new TraceGroup.TraceGroupBuilder()
+            .setTraceGroup("/test_trace_group_1")
+            .setTraceGroupFields(DefaultTraceGroupFields.builder()
+                    .withEndTime("2020-08-19T05:30:46.089556800Z")
+                    .withStatusCode(1)
+                    .withDurationInNanos(48545100L)
+            .build())
+            .build();
     private static final String TEST_TRACE_ID_2 = "ffa576d321173ac6cef3601c8f4bde75";
-    private static final TraceGroup TEST_TRACE_GROUP_2 = new TraceGroup("/test_trace_group_2",
-            "2020-08-20T05:30:46.089556800Z", 48545300L, 0);
+    private static final TraceGroup TEST_TRACE_GROUP_2 = new TraceGroup.TraceGroupBuilder()
+            .setTraceGroup("/test_trace_group_2")
+            .setTraceGroupFields(DefaultTraceGroupFields.builder()
+                    .withEndTime("2020-08-20T05:30:46.089556800Z")
+                    .withStatusCode(0)
+                    .withDurationInNanos(48545300L)
+                    .build())
+            .build();
     private static final String TEST_RAW_SPAN_COMPLETE_JSON_FILE_1 = "raw-span-complete-1.json";
     private static final String TEST_RAW_SPAN_COMPLETE_JSON_FILE_2 = "raw-span-complete-2.json";
     private static final String TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1 = "raw-span-missing-trace-group-1.json";
@@ -119,22 +131,29 @@ public class OTelTraceGroupPrepperTests {
         when(testSearchHits.getHits()).thenReturn(new SearchHit[] {testSearchHit1});
         when(testSearchHit1.field("traceId")).thenReturn(new DocumentField("traceId", Collections.singletonList(TEST_TRACE_ID_1)));
         when(testSearchHit1.field(TraceGroup.TRACE_GROUP_NAME_FIELD))
-                .thenReturn(new DocumentField(TraceGroup.TRACE_GROUP_NAME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getName())));
+                .thenReturn(new DocumentField(TraceGroup.TRACE_GROUP_NAME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getTraceGroup())));
         when(testSearchHit1.field(TraceGroup.TRACE_GROUP_END_TIME_FIELD))
-                .thenReturn(new DocumentField(TraceGroup.TRACE_GROUP_END_TIME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getEndTime())));
+                .thenReturn(new DocumentField(
+                        TraceGroup.TRACE_GROUP_END_TIME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getTraceGroupFields().getEndTime())));
         when(testSearchHit1.field(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD))
-                .thenReturn(new DocumentField(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getDurationInNanos())));
+                .thenReturn(new DocumentField(
+                        TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getTraceGroupFields().getDurationInNanos())));
         when(testSearchHit1.field(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD))
-                .thenReturn(new DocumentField(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getStatusCode())));
+                .thenReturn(new DocumentField(
+                        TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD, Collections.singletonList(TEST_TRACE_GROUP_1.getTraceGroupFields().getStatusCode())));
         when(testSearchHit2.field("traceId")).thenReturn(new DocumentField("traceId", Collections.singletonList(TEST_TRACE_ID_2)));
         when(testSearchHit2.field(TraceGroup.TRACE_GROUP_NAME_FIELD))
-                .thenReturn(new DocumentField(TraceGroup.TRACE_GROUP_NAME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getName())));
+                .thenReturn(new DocumentField(
+                        TraceGroup.TRACE_GROUP_NAME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getTraceGroup())));
         when(testSearchHit2.field(TraceGroup.TRACE_GROUP_END_TIME_FIELD))
-                .thenReturn(new DocumentField(TraceGroup.TRACE_GROUP_END_TIME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getEndTime())));
+                .thenReturn(new DocumentField(
+                        TraceGroup.TRACE_GROUP_END_TIME_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getTraceGroupFields().getEndTime())));
         when(testSearchHit2.field(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD))
-                .thenReturn(new DocumentField(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getDurationInNanos())));
+                .thenReturn(new DocumentField(
+                        TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getTraceGroupFields().getDurationInNanos())));
         when(testSearchHit2.field(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD))
-                .thenReturn(new DocumentField(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getStatusCode())));
+                .thenReturn(new DocumentField(
+                        TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getTraceGroupFields().getStatusCode())));
         final PluginSetting testPluginSetting = new PluginSetting("otel_trace_group_prepper", new HashMap<>()) {{
             setPipelineName(TEST_PIPELINE_NAME);
         }};
@@ -161,15 +180,15 @@ public class OTelTraceGroupPrepperTests {
     @Test
     public void testTraceGroupFillSuccess() throws IOException {
         // Arrange
-        Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
-        List<Record<String>> testRecords = Collections.singletonList(testRecord);
+        Record<Span> testRecord = buildSpanRecordFromJsonFile(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
+        List<Record<Span>> testRecords = Collections.singletonList(testRecord);
 
         // Act
-        List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
+        List<Record<Span>> recordsOut = (List<Record<Span>>) otelTraceGroupPrepper.doExecute(testRecords);
 
         // Assert
         assertEquals(1, recordsOut.size());
-        Record<String> recordOut = recordsOut.get(0);
+        Record<Span> recordOut = recordsOut.get(0);
         assertEquals(TEST_TRACE_GROUP_1, extractTraceGroupFromRecord(recordOut));
         checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_IN_MISSING_TRACE_GROUP, 1.0);
         checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_FIXED_TRACE_GROUP, 1.0);
@@ -179,17 +198,17 @@ public class OTelTraceGroupPrepperTests {
     @Test
     public void testTraceGroupFillFailDueToFailedRequest() throws IOException {
         // Arrange
-        Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
-        List<Record<String>> testRecords = Collections.singletonList(testRecord);
+        Record<Span> testRecord = buildSpanRecordFromJsonFile(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
+        List<Record<Span>> testRecords = Collections.singletonList(testRecord);
         when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class)))
                 .thenThrow(new OpenSearchException("Failure due to search request"));
 
         // Act
-        List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
+        List<Record<Span>> recordsOut = (List<Record<Span>>) otelTraceGroupPrepper.doExecute(testRecords);
 
         // Assert
         assertEquals(1, recordsOut.size());
-        Record<String> recordOut = recordsOut.get(0);
+        Record<Span> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
         checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_IN_MISSING_TRACE_GROUP, 1.0);
         checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_FIXED_TRACE_GROUP, 0.0);
@@ -199,18 +218,18 @@ public class OTelTraceGroupPrepperTests {
     @Test
     public void testTraceGroupFillFailDueToNoHits() throws IOException {
         // Arrange
-        Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
-        List<Record<String>> testRecords = Collections.singletonList(testRecord);
+        Record<Span> testRecord = buildSpanRecordFromJsonFile(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
+        List<Record<Span>> testRecords = Collections.singletonList(testRecord);
         when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class))).thenReturn(testSearchResponse);
         when(testSearchResponse.getHits()).thenReturn(testSearchHits);
         when(testSearchHits.getHits()).thenReturn(new SearchHit[] {});
 
         // Act
-        List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
+        List<Record<Span>> recordsOut = (List<Record<Span>>) otelTraceGroupPrepper.doExecute(testRecords);
 
         // Assert
         assertEquals(1, recordsOut.size());
-        Record<String> recordOut = recordsOut.get(0);
+        Record<Span> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
         checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_IN_MISSING_TRACE_GROUP, 1.0);
         checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_FIXED_TRACE_GROUP, 0.0);
@@ -220,15 +239,15 @@ public class OTelTraceGroupPrepperTests {
     @Test
     public void testTraceGroupFieldAlreadyPopulated() throws IOException {
         // Arrange
-        Record<String> testRecord = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE_1);
-        List<Record<String>> testRecords = Collections.singletonList(testRecord);
+        Record<Span> testRecord = buildSpanRecordFromJsonFile(TEST_RAW_SPAN_COMPLETE_JSON_FILE_1);
+        List<Record<Span>> testRecords = Collections.singletonList(testRecord);
 
         // Act
-        List<Record<String>> recordsOut = (List<Record<String>>) otelTraceGroupPrepper.doExecute(testRecords);
+        List<Record<Span>> recordsOut = (List<Record<Span>>) otelTraceGroupPrepper.doExecute(testRecords);
 
         // Assert
         assertEquals(1, recordsOut.size());
-        Record<String> recordOut = recordsOut.get(0);
+        Record<Span> recordOut = recordsOut.get(0);
         assertEquals(testRecord, recordOut);
         checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_IN_MISSING_TRACE_GROUP, 0.0);
         checkMeasurementValue(OTelTraceGroupPrepper.RECORDS_OUT_FIXED_TRACE_GROUP, 0.0);
@@ -243,23 +262,23 @@ public class OTelTraceGroupPrepperTests {
          */
         // Arrange
         when(testSearchHits.getHits()).thenReturn(new SearchHit[] {testSearchHit1, testSearchHit2});
-        Record<String> testCompleteRecord1 = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE_1);
-        Record<String> testMissingRecord1 = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
-        Record<String> testCompleteRecord2 = buildRawSpanRecord(TEST_RAW_SPAN_COMPLETE_JSON_FILE_2);
-        Record<String> testMissingRecord2 = buildRawSpanRecord(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_2);
-        final List<Record<String>> processedRecords = new ArrayList<>();
-        List<Future<Collection<Record<String>>>> futures = new ArrayList<>();
+        Record<Span> testCompleteRecord1 = buildSpanRecordFromJsonFile(TEST_RAW_SPAN_COMPLETE_JSON_FILE_1);
+        Record<Span> testMissingRecord1 = buildSpanRecordFromJsonFile(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_1);
+        Record<Span> testCompleteRecord2 = buildSpanRecordFromJsonFile(TEST_RAW_SPAN_COMPLETE_JSON_FILE_2);
+        Record<Span> testMissingRecord2 = buildSpanRecordFromJsonFile(TEST_RAW_SPAN_MISSING_TRACE_GROUP_JSON_FILE_2);
+        final List<Record<Span>> processedRecords = new ArrayList<>();
+        List<Future<Collection<Record<Span>>>> futures = new ArrayList<>();
 
         // Act
         futures.addAll(submitBatchRecords(Arrays.asList(testCompleteRecord1, testMissingRecord1)));
         futures.addAll(submitBatchRecords(Arrays.asList(testCompleteRecord2, testMissingRecord2)));
-        for (Future<Collection<Record<String>>> future : futures) {
+        for (Future<Collection<Record<Span>>> future : futures) {
             processedRecords.addAll(future.get());
         }
 
         // Assert
         assertEquals(4, processedRecords.size());
-        for (Record<String> record: processedRecords) {
+        for (Record<Span> record: processedRecords) {
             assertNotNull(extractTraceGroupFromRecord(record));
         }
     }
@@ -271,27 +290,61 @@ public class OTelTraceGroupPrepperTests {
         assertTrue(otelTraceGroupPrepper.isReadyForShutdown());
     }
 
-    private Record<String> buildRawSpanRecord(String rawSpanJsonFileName) throws IOException {
-        final StringBuilder jsonBuilder = new StringBuilder();
+    private Record<Span> buildSpanRecordFromJsonFile(final String jsonFileName) throws IOException {
+        JacksonSpan.Builder spanBuilder = JacksonSpan.builder();
         try (final InputStream inputStream = Objects.requireNonNull(
-                getClass().getClassLoader().getResourceAsStream(rawSpanJsonFileName))){
-            final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-            bufferedReader.lines().forEach(jsonBuilder::append);
+                OTelTraceGroupPrepperTests.class.getClassLoader().getResourceAsStream(jsonFileName))){
+            final Map<String, Object> spanMap = OBJECT_MAPPER.readValue(inputStream, new TypeReference<Map<String, Object>>() {});
+            final String traceId = (String) spanMap.get("traceId");
+            final String spanId = (String) spanMap.get("spanId");
+            final String parentSpanId = (String) spanMap.get("parentSpanId");
+            final String traceState = (String) spanMap.get("traceState");
+            final String name = (String) spanMap.get("name");
+            final String kind = (String) spanMap.get("kind");
+            final Long durationInNanos = ((Number) spanMap.get("durationInNanos")).longValue();
+            final String startTime = (String) spanMap.get("startTime");
+            final String endTime = (String) spanMap.get("endTime");
+            spanBuilder = spanBuilder
+                    .withTraceId(traceId)
+                    .withSpanId(spanId)
+                    .withParentSpanId(parentSpanId)
+                    .withTraceState(traceState)
+                    .withName(name)
+                    .withKind(kind)
+                    .withDurationInNanos(durationInNanos)
+                    .withStartTime(startTime)
+                    .withEndTime(endTime);
+            final String traceGroup = (String) spanMap.get(TraceGroup.TRACE_GROUP_NAME_FIELD);
+            if (traceGroup != null) {
+                final Integer traceGroupFieldsStatusCode = ((Number) spanMap.get(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD)).intValue();
+                final String traceGroupFieldsEndTime = (String) spanMap.get(TraceGroup.TRACE_GROUP_END_TIME_FIELD);
+                final Long traceGroupFieldsDurationInNanos = ((Number) spanMap.get(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)).longValue();
+                final DefaultTraceGroupFields traceGroupFields = DefaultTraceGroupFields.builder()
+                        .withStatusCode(traceGroupFieldsStatusCode)
+                        .withEndTime(traceGroupFieldsEndTime)
+                        .withDurationInNanos(traceGroupFieldsDurationInNanos).build();
+                spanBuilder = spanBuilder
+                        .withTraceGroup(traceGroup)
+                        .withTraceGroupFields(traceGroupFields);
+            }
         }
-        return new Record<>(jsonBuilder.toString());
+        return new Record<>(spanBuilder.build());
     }
 
-    private TraceGroup extractTraceGroupFromRecord(final Record<String> record) throws JsonProcessingException {
-        Map<String, Object> rawSpanMap = OBJECT_MAPPER.readValue(record.getData(), new TypeReference<Map<String, Object>>() {});
-        final String traceGroupName = (String) rawSpanMap.get(TraceGroup.TRACE_GROUP_NAME_FIELD);
-        final String traceGroupEndTime = (String) rawSpanMap.get(TraceGroup.TRACE_GROUP_END_TIME_FIELD);
-        final Long traceGroupDurationInNanos = ((Number) rawSpanMap.get(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)).longValue();
-        final Integer traceGroupStatusCode = ((Number) rawSpanMap.get(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD)).intValue();
-        return new TraceGroup(traceGroupName, traceGroupEndTime, traceGroupDurationInNanos, traceGroupStatusCode);
+    private TraceGroup extractTraceGroupFromRecord(final Record<Span> record) {
+        final Span span = record.getData();
+        return new TraceGroup.TraceGroupBuilder()
+                .setTraceGroup(span.getTraceGroup())
+                .setTraceGroupFields(DefaultTraceGroupFields.builder()
+                        .withEndTime(span.getTraceGroupFields().getEndTime())
+                        .withStatusCode(span.getTraceGroupFields().getStatusCode())
+                        .withDurationInNanos(span.getTraceGroupFields().getDurationInNanos())
+                        .build())
+                .build();
     }
 
-    private List<Future<Collection<Record<String>>>> submitBatchRecords(List<Record<String>> records) {
-        final List<Future<Collection<Record<String>>>> futures = new ArrayList<>();
+    private List<Future<Collection<Record<Span>>>> submitBatchRecords(List<Record<Span>> records) {
+        final List<Future<Collection<Record<Span>>>> futures = new ArrayList<>();
         futures.add(executorService.submit(() -> otelTraceGroupPrepper.doExecute(records)));
         return futures;
     }

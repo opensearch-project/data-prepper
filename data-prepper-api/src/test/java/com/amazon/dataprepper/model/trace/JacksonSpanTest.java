@@ -314,18 +314,6 @@ public class JacksonSpanTest {
     }
 
     @Test
-    public void testBuilder_withoutTraceState_throwsNullPointerException() {
-        builder.withTraceState(null);
-        assertThrows(NullPointerException.class, builder::build);
-    }
-
-    @Test
-    public void testBuilder_withEmptyTraceState_throwsIllegalArgumentException() {
-        builder.withTraceState("");
-        assertThrows(IllegalArgumentException.class, builder::build);
-    }
-
-    @Test
     public void testBuilder_withoutName_throwsNullPointerException() {
         builder.withName(null);
         assertThrows(NullPointerException.class, builder::build);

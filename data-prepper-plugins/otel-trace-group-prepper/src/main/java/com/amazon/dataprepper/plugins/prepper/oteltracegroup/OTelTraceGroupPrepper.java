@@ -16,8 +16,11 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
+import com.amazon.dataprepper.model.trace.JacksonSpan;
+import com.amazon.dataprepper.model.trace.Span;
+import com.amazon.dataprepper.model.trace.TraceGroupFields;
 import com.amazon.dataprepper.plugins.prepper.oteltracegroup.model.TraceGroup;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
@@ -49,7 +52,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 @DataPrepperPlugin(name = "otel_trace_group_prepper", pluginType = Prepper.class)
-public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Record<String>> {
+public class OTelTraceGroupPrepper extends AbstractPrepper<Record<Span>, Record<Span>> {
 
     public static final String RECORDS_IN_MISSING_TRACE_GROUP = "recordsInMissingTraceGroup";
     public static final String RECORDS_OUT_FIXED_TRACE_GROUP = "recordsOutFixedTraceGroup";
@@ -77,39 +80,34 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
     }
 
     @Override
-    public Collection<Record<String>> doExecute(final Collection<Record<String>> rawSpanStringRecords) {
-        final List<Record<String>> recordsOut = new LinkedList<>();
-        final Map<Record<String>, Map<String, Object>> recordMissingTraceGroupToRawSpanMap = new HashMap<>();
+    public Collection<Record<Span>> doExecute(final Collection<Record<Span>> rawSpanRecords) {
+        final List<Record<Span>> recordsOut = new LinkedList<>();
+        final Set<Record<Span>> recordsMissingTraceGroupInfo = new HashSet<>();
         final Set<String> traceIdsToLookUp = new HashSet<>();
-        for (Record<String> record: rawSpanStringRecords) {
-            try {
-                final Map<String, Object> rawSpanMap = OBJECT_MAPPER.readValue(record.getData(), MAP_TYPE_REFERENCE);
-                final String traceGroupName = (String) rawSpanMap.get(TraceGroup.TRACE_GROUP_NAME_FIELD);
-                final String traceId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
-                if (Strings.isNullOrEmpty(traceGroupName)) {
-                    traceIdsToLookUp.add(traceId);
-                    recordMissingTraceGroupToRawSpanMap.put(record, rawSpanMap);
-                    recordsInMissingTraceGroupCounter.increment();
-                } else {
-                    recordsOut.add(record);
-                }
-            } catch (JsonProcessingException e) {
-                LOG.error("Failed to parse the record: [{}]", record.getData());
+        for (Record<Span> record: rawSpanRecords) {
+            final Span span = record.getData();
+            final String traceGroup = span.getTraceGroup();
+            final String traceId = span.getTraceId();
+            if (Strings.isNullOrEmpty(traceGroup)) {
+                traceIdsToLookUp.add(traceId);
+                recordsMissingTraceGroupInfo.add(record);
+                recordsInMissingTraceGroupCounter.increment();
+            } else {
+                recordsOut.add(record);
             }
         }
 
         final Map<String, TraceGroup> traceIdToTraceGroup = searchTraceGroupByTraceIds(traceIdsToLookUp);
-        for (final Map.Entry<Record<String>, Map<String, Object>> entry: recordMissingTraceGroupToRawSpanMap.entrySet()) {
-            final Record<String> record = entry.getKey();
-            final Map<String, Object> rawSpanMap = entry.getValue();
-            final String traceId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.TRACE_ID_FIELD);
+        for (final Record<Span> record: recordsMissingTraceGroupInfo) {
+            final Span span = record.getData();
+            final String traceId = span.getTraceId();
             final TraceGroup traceGroup = traceIdToTraceGroup.get(traceId);
             if (traceGroup != null) {
                 try {
-                    Map<String, Object> traceGroupMap = OBJECT_MAPPER.convertValue(traceGroup, MAP_TYPE_REFERENCE);
-                    rawSpanMap.putAll(traceGroupMap);
-                    final String newData = OBJECT_MAPPER.writeValueAsString(rawSpanMap);
-                    recordsOut.add(new Record<>(newData, record.getMetadata()));
+                    final JacksonSpan newSpan = JacksonSpan.builder().fromSpan(span)
+                            .withTraceGroup(traceGroup.getTraceGroup())
+                            .withTraceGroupFields(traceGroup.getTraceGroupFields()).build();
+                    recordsOut.add(new Record<>(newSpan, record.getMetadata()));
                     recordsOutFixedTraceGroupCounter.increment();
                 } catch (Exception e) {
                     recordsOut.add(record);
@@ -119,7 +117,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             } else {
                 recordsOut.add(record);
                 recordsOutMissingTraceGroupCounter.increment();
-                final String spanId = (String) rawSpanMap.get(OTelTraceGroupPrepperConfig.SPAN_ID_FIELD);
+                final String spanId = span.getSpanId();
                 LOG.warn("Failed to find traceGroup for spanId: {} due to traceGroup missing for traceId: {}", spanId, traceId);
             }
         }
@@ -179,8 +177,16 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<String>, Recor
             final String traceGroupEndTime = Instant.parse(traceGroupEndTimeDocField.getValue()).toString();
             final Number traceGroupDurationInNanos = traceGroupDurationInNanosDocField.getValue();
             final Number traceGroupStatusCode = traceGroupStatusCodeDocField.getValue();
-            return Optional.of(new AbstractMap.SimpleEntry<>(traceId, new TraceGroup(traceGroupName, traceGroupEndTime,
-                    traceGroupDurationInNanos.longValue(), traceGroupStatusCode.intValue())));
+            final TraceGroupFields traceGroupFields = DefaultTraceGroupFields.builder()
+                    .withEndTime(traceGroupEndTime)
+                    .withDurationInNanos(traceGroupDurationInNanos.longValue())
+                    .withStatusCode(traceGroupStatusCode.intValue())
+                    .build();
+            final TraceGroup traceGroup = new TraceGroup.TraceGroupBuilder()
+                    .setTraceGroup(traceGroupName)
+                    .setTraceGroupFields(traceGroupFields)
+                    .build();
+            return Optional.of(new AbstractMap.SimpleEntry<>(traceId, traceGroup));
         }
         return Optional.empty();
     }

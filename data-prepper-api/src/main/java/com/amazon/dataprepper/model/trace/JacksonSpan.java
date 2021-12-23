@@ -44,8 +44,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
     private static final String TRACE_GROUP_FIELDS_KEY = "traceGroupFields";
 
     private static final List<String>
-            REQUIRED_NON_EMPTY_KEYS = Arrays.asList(TRACE_ID_KEY, SPAN_ID_KEY, TRACE_STATE_KEY,
-            NAME_KEY, KIND_KEY, START_TIME_KEY, END_TIME_KEY);
+            REQUIRED_NON_EMPTY_KEYS = Arrays.asList(TRACE_ID_KEY, SPAN_ID_KEY, NAME_KEY, KIND_KEY, START_TIME_KEY, END_TIME_KEY);
     private static final List<String> REQUIRED_NON_NULL_KEYS = Arrays.asList(DURATION_IN_NANOS_KEY);
 
     protected JacksonSpan(final Builder builder) {
