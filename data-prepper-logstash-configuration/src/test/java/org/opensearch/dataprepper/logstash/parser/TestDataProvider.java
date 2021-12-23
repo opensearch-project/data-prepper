@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.logstash.parser;
 
 import org.opensearch.dataprepper.logstash.model.LogstashConfiguration;
