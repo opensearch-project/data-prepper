@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery;
 
 import com.google.common.net.InternetDomainName;

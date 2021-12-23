@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate.file;
 
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate.CertificateProvider;

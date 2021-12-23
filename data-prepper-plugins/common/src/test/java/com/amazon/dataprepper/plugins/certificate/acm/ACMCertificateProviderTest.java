@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package com.amazon.dataprepper.plugins.certificate.acm;
 
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
