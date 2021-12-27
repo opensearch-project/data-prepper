@@ -38,14 +38,15 @@ public class JacksonSpan extends JacksonEvent implements Span {
     private static final String DROPPED_EVENTS_COUNT_KEY = "droppedEventsCount";
     private static final String LINKS_KEY = "links";
     private static final String DROPPED_LINKS_COUNT_KEY = "droppedLinksCount";
+    private static final String SERVICE_NAME_KEY = "serviceName";
     private static final String TRACE_GROUP_KEY = "traceGroup";
     private static final String DURATION_IN_NANOS_KEY = "durationInNanos";
     private static final String TRACE_GROUP_FIELDS_KEY = "traceGroupFields";
 
     private static final List<String>
             REQUIRED_NON_EMPTY_KEYS = Arrays.asList(TRACE_ID_KEY, SPAN_ID_KEY, TRACE_STATE_KEY, PARENT_SPAN_ID_KEY, PARENT_SPAN_ID_KEY,
-            NAME_KEY, KIND_KEY, START_TIME_KEY, END_TIME_KEY, TRACE_GROUP_KEY);
-    private static final List<String> REQUIRED_NON_NULL_KEYS = Arrays.asList(DURATION_IN_NANOS_KEY, TRACE_GROUP_FIELDS_KEY);
+            NAME_KEY, KIND_KEY, START_TIME_KEY, END_TIME_KEY);
+    private static final List<String> REQUIRED_NON_NULL_KEYS = Arrays.asList(DURATION_IN_NANOS_KEY);
 
     protected JacksonSpan(final Builder builder) {
         super(builder);
@@ -138,6 +139,11 @@ public class JacksonSpan extends JacksonEvent implements Span {
     @Override
     public TraceGroupFields getTraceGroupFields() {
         return this.get(TRACE_GROUP_FIELDS_KEY, DefaultTraceGroupFields.class);
+    }
+
+    @Override
+    public String getServiceName() {
+        return this.get(SERVICE_NAME_KEY, String.class);
     }
 
     private void checkAndSetDefaultValues() {
@@ -292,7 +298,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @param events the events to associate.
          * @since 1.2
          */
-        public Builder withEvents(final List<SpanEvent> events) {
+        public Builder withEvents(final List<? extends SpanEvent> events) {
             data.put(EVENTS_KEY, events);
             return this;
         }
@@ -312,7 +318,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @param links the links to associate.
          * @since 1.2
          */
-        public Builder withLinks(final List<Link> links) {
+        public Builder withLinks(final List<? extends Link> links) {
             data.put(LINKS_KEY, links);
             return this;
         }
@@ -354,6 +360,43 @@ public class JacksonSpan extends JacksonEvent implements Span {
          */
         public Builder withTraceGroupFields(final TraceGroupFields traceGroupFields) {
             data.put(TRACE_GROUP_FIELDS_KEY, traceGroupFields);
+            return this;
+        }
+
+        /**
+         * Sets the service name of the span
+         * @param serviceName
+         * @since 1.3
+         */
+        public Builder withServiceName(final String serviceName) {
+            data.put(SERVICE_NAME_KEY, serviceName);
+            return this;
+        }
+
+        /**
+         * Sets all attributes by copying over those from another span
+         * @param span
+         * @since 1.3
+         */
+        public Builder fromSpan(final Span span) {
+            this.withSpanId(span.getSpanId())
+                    .withTraceId(span.getTraceId())
+                    .withTraceState(span.getTraceState())
+                    .withParentSpanId(span.getParentSpanId())
+                    .withName(span.getName())
+                    .withServiceName(span.getServiceName())
+                    .withKind(span.getKind())
+                    .withStartTime(span.getStartTime())
+                    .withEndTime(span.getEndTime())
+                    .withAttributes(span.getAttributes())
+                    .withDroppedAttributesCount(span.getDroppedAttributesCount())
+                    .withEvents(span.getEvents())
+                    .withDroppedEventsCount(span.getDroppedEventsCount())
+                    .withLinks(span.getLinks())
+                    .withDroppedLinksCount(span.getDroppedLinksCount())
+                    .withTraceGroup(span.getTraceGroup())
+                    .withDurationInNanos(span.getDurationInNanos())
+                    .withTraceGroupFields(span.getTraceGroupFields());
             return this;
         }
 

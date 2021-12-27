@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package com.amazon.dataprepper.pipeline.common;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;

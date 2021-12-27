@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.logstash.parser;
 
 import org.antlr.v4.runtime.tree.TerminalNodeImpl;
@@ -13,6 +18,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.opensearch.dataprepper.logstash.LogstashParser;
@@ -353,16 +360,36 @@ class ModelConvertingLogstashVisitorTest {
     }
 
     @Test
-    void visit_attribute_with_value_type_number_returns_correct_logstash_attribute_test() {
+    void visit_attribute_with_value_type_integer_returns_correct_logstash_attribute_test() {
         given(attributeContextMock.name()).willReturn(nameContextMock);
         given(nameContextMock.getText()).willReturn(TestDataProvider.RANDOM_STRING_1);
         given(attributeContextMock.value()).willReturn(valueContextMock);
         given(valueContextMock.NUMBER()).willReturn(terminalNodeMock);
-        given(valueContextMock.getText()).willReturn(TestDataProvider.RANDOM_VALUE);
-        given(valueContextMock.NUMBER().toString()).willReturn(TestDataProvider.RANDOM_VALUE);
+        given(valueContextMock.getText()).willReturn(TestDataProvider.RANDOM_INTEGER);
+        given(valueContextMock.NUMBER().toString()).willReturn(TestDataProvider.RANDOM_INTEGER);
 
         LogstashAttribute actualLogstashAttribute = (LogstashAttribute) logstashVisitor.visitAttribute(attributeContextMock);
-        LogstashAttribute expectedLogstashAttribute = TestDataProvider.attributeWithNumberTypeValueData();
+        LogstashAttribute expectedLogstashAttribute = TestDataProvider.attributeWithIntegerTypeValueData();
+
+        assertThat(actualLogstashAttribute.getAttributeName(),
+                equalTo(expectedLogstashAttribute.getAttributeName()));
+        assertThat(actualLogstashAttribute.getAttributeValue().getValue(),
+                equalTo(expectedLogstashAttribute.getAttributeValue().getValue()));
+        assertThat(actualLogstashAttribute.getAttributeValue().getAttributeValueType(),
+                equalTo(expectedLogstashAttribute.getAttributeValue().getAttributeValueType()));
+    }
+
+    @Test
+    void visit_attribute_with_value_type_double_returns_correct_logstash_attribute_test() {
+        given(attributeContextMock.name()).willReturn(nameContextMock);
+        given(nameContextMock.getText()).willReturn(TestDataProvider.RANDOM_STRING_1);
+        given(attributeContextMock.value()).willReturn(valueContextMock);
+        given(valueContextMock.NUMBER()).willReturn(terminalNodeMock);
+        given(valueContextMock.getText()).willReturn(TestDataProvider.RANDOM_DOUBLE);
+        given(valueContextMock.NUMBER().toString()).willReturn(TestDataProvider.RANDOM_DOUBLE);
+
+        LogstashAttribute actualLogstashAttribute = (LogstashAttribute) logstashVisitor.visitAttribute(attributeContextMock);
+        LogstashAttribute expectedLogstashAttribute = TestDataProvider.attributeWithDoubleTypeValueData();
 
         assertThat(actualLogstashAttribute.getAttributeName(),
                 equalTo(expectedLogstashAttribute.getAttributeName()));
@@ -384,6 +411,28 @@ class ModelConvertingLogstashVisitorTest {
         LogstashAttribute actualLogstashAttribute = (LogstashAttribute) logstashVisitor.visitAttribute(attributeContextMock);
         LogstashAttribute expectedLogstashAttribute = TestDataProvider.attributeWithBareWordTypeValueData();
 
+
+        assertThat(actualLogstashAttribute.getAttributeName(),
+                equalTo(expectedLogstashAttribute.getAttributeName()));
+        assertThat(actualLogstashAttribute.getAttributeValue().getValue(),
+                equalTo(expectedLogstashAttribute.getAttributeValue().getValue()));
+        assertThat(actualLogstashAttribute.getAttributeValue().getAttributeValueType(),
+                equalTo(expectedLogstashAttribute.getAttributeValue().getAttributeValueType()));
+
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { true, false } )
+    void visit_attribute_with_value_type_bare_word_boolean_returns_correct_logstash_attribute_test(boolean input) {
+        given(attributeContextMock.name()).willReturn(nameContextMock);
+        given(nameContextMock.getText()).willReturn(TestDataProvider.RANDOM_STRING_1);
+        given(attributeContextMock.value()).willReturn(valueContextMock);
+        given(valueContextMock.BAREWORD()).willReturn(terminalNodeMock);
+        given(valueContextMock.getText()).willReturn(String.valueOf(input));
+        given(valueContextMock.BAREWORD().toString()).willReturn(String.valueOf(input));
+
+        LogstashAttribute actualLogstashAttribute = (LogstashAttribute) logstashVisitor.visitAttribute(attributeContextMock);
+        LogstashAttribute expectedLogstashAttribute = TestDataProvider.attributeWithBareWordBooleanTypeValueData(input);
 
         assertThat(actualLogstashAttribute.getAttributeName(),
                 equalTo(expectedLogstashAttribute.getAttributeName()));
