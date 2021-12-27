@@ -21,9 +21,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -34,14 +41,55 @@ public abstract class IndexManager {
     protected RestHighLevelClient restHighLevelClient;
     protected OpenSearchSinkConfiguration openSearchSinkConfiguration;
     protected IsmPolicyManagementStrategy ismPolicyManagementStrategy;
+    protected String indexPrefix;
 
     private static final Logger LOG = LoggerFactory.getLogger(IndexManager.class);
+
+    //For matching a string that begins with a "%{" and ends with a "}".
+    //For a string like "data-prepper-%{yyyy-MM}", "%{yyyy-MM}" is matched.
+    private final static String TIME_PATTERN_REGULAR_EXPRESSION  = "%\\{.*?\\}";
+
+    //For matching a string enclosed by "%{" and "}".
+    //For a string like "data-prepper-%{yyyy-MM}", "yyyy-MM" is matched.
+    private final static String TIME_PATTERN_INTERNAL_EXTRACTOR_REGULAR_EXPRESSION  = "%\\{(.*?)\\}";
+
+    private Optional<DateTimeFormatter> indexTimeSuffixFormatter;
+    private final static ZoneId UTC_ZONE_ID = ZoneId.of(TimeZone.getTimeZone("UTC").getID());
 
     protected IndexManager(final RestHighLevelClient restHighLevelClient, final OpenSearchSinkConfiguration openSearchSinkConfiguration){
         checkNotNull(restHighLevelClient);
         checkNotNull(openSearchSinkConfiguration);
         this.restHighLevelClient = restHighLevelClient;
         this.openSearchSinkConfiguration = openSearchSinkConfiguration;
+        initializeIndexPrefixAndSuffix();
+    }
+
+    private void initializeIndexPrefixAndSuffix(){
+        String indexAliasFromConfig = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
+        indexPrefix = indexAliasFromConfig.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "");
+
+        final Pattern pattern = Pattern.compile(TIME_PATTERN_INTERNAL_EXTRACTOR_REGULAR_EXPRESSION);
+        final Matcher matcher = pattern.matcher(indexAliasFromConfig);
+        if (matcher.find()) {
+            String timePattern = matcher.group(1);
+            indexTimeSuffixFormatter = Optional.of(DateTimeFormatter.ofPattern(timePattern));
+        }else{
+            indexTimeSuffixFormatter = Optional.empty();
+        }
+    }
+
+    public final String getIndexAlias() {
+        if (indexTimeSuffixFormatter.isPresent()) {
+            String formattedTimeString = indexTimeSuffixFormatter.get()
+                    .format(getCurrentUtcTime());
+            return indexPrefix + formattedTimeString;
+        } else {
+            return indexPrefix;
+        }
+    }
+
+    private ZonedDateTime getCurrentUtcTime() {
+        return LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(UTC_ZONE_ID);
     }
 
     public final boolean checkISMEnabled() throws IOException {
@@ -53,8 +101,9 @@ public abstract class IndexManager {
     }
 
     public final void checkAndCreateIndexTemplate(final boolean isISMEnabled, final String ismPolicyId) throws IOException {
-        final String indexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
-        final String indexTemplateName = indexAlias + "-index-template";
+        //If index prefix has a ending dash, then remove it to avoid two consecutive dashes.
+        final String indexPrefixWithoutTrailingDash = indexPrefix.replaceAll("-$", "");
+        final String indexTemplateName = indexPrefixWithoutTrailingDash  + "-index-template";
 
         // Check existing index template version - only overwrite if version is less than or does not exist
         if (!shouldCreateIndexTemplate(indexTemplateName)) {
@@ -63,10 +112,10 @@ public abstract class IndexManager {
 
         final PutIndexTemplateRequest putIndexTemplateRequest = new PutIndexTemplateRequest(indexTemplateName);
 
-        putIndexTemplateRequest.patterns(ismPolicyManagementStrategy.getIndexPatterns(indexAlias));
+        putIndexTemplateRequest.patterns(ismPolicyManagementStrategy.getIndexPatterns(indexPrefixWithoutTrailingDash));
 
         if (isISMEnabled) {
-            attachPolicy(openSearchSinkConfiguration.getIndexConfiguration(), ismPolicyId, indexAlias);
+            attachPolicy(openSearchSinkConfiguration.getIndexConfiguration(), ismPolicyId, indexPrefixWithoutTrailingDash);
         }
 
         putIndexTemplateRequest.source(openSearchSinkConfiguration.getIndexConfiguration().getIndexTemplate());
@@ -78,8 +127,8 @@ public abstract class IndexManager {
     }
 
     public void checkAndCreateIndex() throws IOException {
-        // Check alias exists
-        final String indexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
+        // Check if index name exists
+        final String indexAlias = getIndexAlias();
         final boolean indexExists = ismPolicyManagementStrategy.checkIfIndexExistsOnServer(indexAlias);
 
         if (!indexExists) {

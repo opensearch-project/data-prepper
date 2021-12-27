@@ -79,7 +79,8 @@ public class TraceAnalyticsRawIndexManagerTests {
         initMocks(this);
 
         indexManagerFactory = new IndexManagerFactory();
-
+        when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
+        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
         traceAnalyticsRawIndexManager = indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_RAW,
                 restHighLevelClient, openSearchSinkConfiguration);
 
@@ -87,8 +88,6 @@ public class TraceAnalyticsRawIndexManagerTests {
         when(cluster.getSettings(any(ClusterGetSettingsRequest.class), any(RequestOptions.class)))
                 .thenReturn(clusterGetSettingsResponse);
 
-        when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
-        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
         when(restHighLevelClient.indices()).thenReturn(indicesClient);
     }
 
@@ -96,18 +95,24 @@ public class TraceAnalyticsRawIndexManagerTests {
     public void constructor_NullRestClient() {
         assertThrows(NullPointerException.class, () ->
                 indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_RAW,null, openSearchSinkConfiguration));
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
     }
 
     @Test
     public void constructor_NullConfiguration() {
         assertThrows(NullPointerException.class, () ->
                 indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_RAW, restHighLevelClient, null));
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
     }
 
     @Test
     public void checkISMEnabled_True() throws IOException {
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
         assertEquals(true, traceAnalyticsRawIndexManager.checkISMEnabled());
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
         verify(restHighLevelClient).cluster();
         verify(cluster).getSettings(any(), any());
         verify(clusterGetSettingsResponse).getSetting(any());
@@ -117,6 +122,8 @@ public class TraceAnalyticsRawIndexManagerTests {
     public void checkISMEnabled_False() throws IOException {
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
         assertEquals(false, traceAnalyticsRawIndexManager.checkISMEnabled());
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
         verify(restHighLevelClient).cluster();
         verify(cluster).getSettings(any(), any());
         verify(clusterGetSettingsResponse).getSetting(any());
@@ -126,6 +133,8 @@ public class TraceAnalyticsRawIndexManagerTests {
     public void checkAndCreatePolicy_Normal() throws IOException {
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
         assertEquals(Optional.empty(), traceAnalyticsRawIndexManager.checkAndCreatePolicy());
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
         verify(restHighLevelClient).getLowLevelClient();
         verify(restClient).performRequest(any());
     }
@@ -138,6 +147,8 @@ public class TraceAnalyticsRawIndexManagerTests {
         assertEquals(Optional.of("raw-span-policy"), traceAnalyticsRawIndexManager.checkAndCreatePolicy());
         verify(restHighLevelClient, times(2)).getLowLevelClient();
         verify(restClient, times(2)).performRequest(any());
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
     }
 
     @Test

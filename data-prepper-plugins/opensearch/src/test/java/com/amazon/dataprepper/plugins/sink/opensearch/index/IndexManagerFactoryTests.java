@@ -18,6 +18,7 @@ import static org.mockito.MockitoAnnotations.initMocks;
 
 public class IndexManagerFactoryTests {
 
+    private static final String INDEX_ALIAS = "test-index-alias";
     private IndexManagerFactory indexManagerFactory;
 
     @Mock
@@ -32,6 +33,8 @@ public class IndexManagerFactoryTests {
     @Before
     public void setup() {
         initMocks(this);
+        when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
+        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
         indexManagerFactory = new IndexManagerFactory();
     }
 
@@ -51,7 +54,6 @@ public class IndexManagerFactoryTests {
 
     @Test
     public void getIndexManager_Default() {
-        when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
         final IndexManager indexManager =
                 indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
         assertThat(indexManager, instanceOf(IndexManager.class));

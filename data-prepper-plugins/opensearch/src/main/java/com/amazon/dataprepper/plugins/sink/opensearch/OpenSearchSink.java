@@ -107,7 +107,7 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
       dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
     indexManager.checkAndCreateIndex();
-    bulkRequestSupplier = () -> new BulkRequest(openSearchSinkConfig.getIndexConfiguration().getIndexAlias());
+    bulkRequestSupplier = () -> new BulkRequest(indexManager.getIndexAlias());
     bulkRetryStrategy = new BulkRetryStrategy(
             bulkRequest -> restHighLevelClient.bulk(bulkRequest, RequestOptions.DEFAULT),
             this::logFailure,
