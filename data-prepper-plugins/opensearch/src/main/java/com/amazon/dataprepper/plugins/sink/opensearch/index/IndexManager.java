@@ -6,6 +6,7 @@
 package com.amazon.dataprepper.plugins.sink.opensearch.index;
 
 import com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
+import com.google.common.collect.ImmutableSet;
 import org.opensearch.OpenSearchException;
 import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
 import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
@@ -28,6 +29,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,7 +48,7 @@ public abstract class IndexManager {
     private static final Logger LOG = LoggerFactory.getLogger(IndexManager.class);
 
     //For matching a string that begins with a "%{" and ends with a "}".
-    //For a string like "data-prepper-%{yyyy-MM}", "%{yyyy-MM}" is matched.
+    //For a string like "data-prepper-%{yyyy-MM-dd}", "%{yyyy-MM-dd}" is matched.
     private final static String TIME_PATTERN_REGULAR_EXPRESSION  = "%\\{.*?\\}";
 
     //For matching a string enclosed by "%{" and "}".
@@ -72,9 +74,52 @@ public abstract class IndexManager {
         final Matcher matcher = pattern.matcher(indexAliasFromConfig);
         if (matcher.find()) {
             String timePattern = matcher.group(1);
+            validateTimePatternIsAtTheEnd(indexAliasFromConfig, timePattern);
+            validateNoSpecialCharsInTimePattern(timePattern);
+            validateTimePatternNotTooGranular(timePattern);
             indexTimeSuffixFormatter = Optional.of(DateTimeFormatter.ofPattern(timePattern));
         }else{
             indexTimeSuffixFormatter = Optional.empty();
+        }
+    }
+
+    /*
+      Data Prepper only allows time pattern as a suffix.
+     */
+    private void validateTimePatternIsAtTheEnd(final String indexAliasFromConfig, final String timePattern) {
+        if (!indexAliasFromConfig.endsWith(timePattern + "}")) {
+            throw new IllegalArgumentException("Time pattern can only be a suffix of a index.");
+        }
+    }
+
+    /*
+     * Special characters can cause failures in creating indexes.
+     * */
+    private static final Set<Character> INVALID_CHARS = ImmutableSet.of('#', '\\', '/', '*', '?', '"', '<', '>', '|', ',', ':');
+
+    private void validateNoSpecialCharsInTimePattern(final String timePattern) {
+        final boolean containsInvalidCharacter = timePattern.chars()
+                .mapToObj(c -> (char) c)
+                .anyMatch(character -> INVALID_CHARS.contains(character));
+        if (containsInvalidCharacter) {
+            throw new IllegalArgumentException("Index time pattern contains one or multiple special characters: " + INVALID_CHARS);
+        }
+    }
+
+    /*
+     * Data Prepper doesn't support creating indexes with time patterns that are too granular, e.g. minute, second, millisecond, nanosecond.
+     * https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html
+     * */
+    private static final Set<Character> UNSUPPORTED_TIME_GRANULARITY_CHARS = ImmutableSet.of('m', 's', 'S', 'A', 'n', 'N');
+
+    private void validateTimePatternNotTooGranular(final String timePattern) {
+        final boolean containsUnsupportedTimeSymbol = timePattern.chars()
+                .mapToObj(c -> (char) c)
+                .anyMatch(character -> UNSUPPORTED_TIME_GRANULARITY_CHARS.contains(character));
+        if (containsUnsupportedTimeSymbol) {
+            throw new IllegalArgumentException("To avoid creating a new index in less than one hour, " +
+                    "index time pattern should not contain a time symbol that are too granular: "
+                    + UNSUPPORTED_TIME_GRANULARITY_CHARS);
         }
     }
 

@@ -27,7 +27,9 @@ import org.opensearch.client.indices.GetIndexTemplatesResponse;
 import org.opensearch.client.indices.PutIndexTemplateRequest;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -103,6 +105,43 @@ public class DefaultIndexManagerTests {
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIsmPolicyFile();
+    }
+
+    @Test
+    public void getIndexAlias_IndexWithTimePattern_Exceptional_NotAsSuffix() {
+        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS_WITH_TIME_PATTERN + "randomtext");
+        assertThrows(IllegalArgumentException.class,
+                () -> indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration));
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
+    }
+
+    private static final List<Character> INVALID_CHARS = Arrays.asList('#', '\\', '/', '*', '?', '"', '<', '>', '|', ',', ':');
+    @Test
+    public void getIndexAlias_IndexWithTimePattern_Exceptional_WithSpecialChars() {
+        INVALID_CHARS.stream().forEach(this::testIndexTimePattern_Exceptional_WithSpecialChars);
+        verify(openSearchSinkConfiguration, times(INVALID_CHARS.size())).getIndexConfiguration();
+        verify(indexConfiguration, times(INVALID_CHARS.size())).getIndexAlias();
+    }
+
+    private void testIndexTimePattern_Exceptional_WithSpecialChars(final Character character){
+        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS + "-%{yyyy" + character + ".MM.dd.HH}");
+        assertThrows(IllegalArgumentException.class,
+                () -> indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration));
+    }
+
+    private static final List<Character> UNSUPPORTED_TIME_GRANULARITY_CHARS = Arrays.asList('m', 's', 'S', 'A', 'n', 'N');
+    @Test
+    public void getIndexAlias_IndexWithTimePattern_TooGranular() {
+        UNSUPPORTED_TIME_GRANULARITY_CHARS.stream().forEach(this::testIndexTimePattern_Exceptional_TooGranular);
+        verify(openSearchSinkConfiguration, times(UNSUPPORTED_TIME_GRANULARITY_CHARS.size())).getIndexConfiguration();
+        verify(indexConfiguration, times(UNSUPPORTED_TIME_GRANULARITY_CHARS.size())).getIndexAlias();
+    }
+
+    private void testIndexTimePattern_Exceptional_TooGranular(final Character character){
+        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS + "-%{yyyy.MM.dd.HH."+ character + "}");
+        assertThrows(IllegalArgumentException.class,
+                () -> indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration));
     }
 
     @Test
