@@ -22,7 +22,6 @@ import com.amazon.dataprepper.plugins.prepper.oteltrace.model.SpanSet;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.TraceGroup;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,15 +44,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<Span>, Record<Sp
     private static final long SEC_TO_MILLIS = 1_000L;
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceRawPrepper.class);
 
-    public static final String SPAN_PROCESSING_ERRORS = "spanProcessingErrors";
-    public static final String RESOURCE_SPANS_PROCESSING_ERRORS = "resourceSpansProcessingErrors";
-    public static final String TOTAL_PROCESSING_ERRORS = "totalProcessingErrors";
-
     private final long traceFlushInterval;
-
-    private final Counter spanErrorsCounter;
-    private final Counter resourceSpanErrorsCounter;
-    private final Counter totalProcessingErrorsCounter;
 
     private final Map<String, SpanSet> traceIdSpanSetMap = new ConcurrentHashMap<>();
 
@@ -76,9 +67,6 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<Span>, Record<Sp
                 .maximumSize(OtelTraceRawPrepperConfig.MAX_TRACE_ID_CACHE_SIZE)
                 .expireAfterWrite(OtelTraceRawPrepperConfig.DEFAULT_TRACE_ID_TTL_SEC, TimeUnit.SECONDS)
                 .build();
-        spanErrorsCounter = pluginMetrics.counter(SPAN_PROCESSING_ERRORS);
-        resourceSpanErrorsCounter = pluginMetrics.counter(RESOURCE_SPANS_PROCESSING_ERRORS);
-        totalProcessingErrorsCounter = pluginMetrics.counter(TOTAL_PROCESSING_ERRORS);
     }
 
     /**
