@@ -13,6 +13,7 @@ package com.amazon.dataprepper.research.zipkin;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.amazon.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSource;
@@ -96,7 +97,7 @@ public class ZipkinOpenSearchToOtel {
         oTelTraceSource.stop();
     }
 
-    private static BlockingBuffer<Record<ExportTraceServiceRequest>> getBuffer() {
+    private static BlockingBuffer<Record<Span>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 5);
         return new BlockingBuffer<>(new PluginSetting("blocking_buffer", integerHashMap));
