@@ -1,21 +1,29 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package com.amazon.dataprepper.plugins.processor.drop;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
-import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.Collections;
 
-public class DropProcessorTests {
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+public class DropEventsProcessorTests {
     private String messageInput;
-    private DropProcessor dropProcessor;
+    private DropEventsProcessor dropProcessor;
     private PluginSetting pluginSetting;
     private final String PLUGIN_NAME = "drop_events";
 
@@ -23,7 +31,7 @@ public class DropProcessorTests {
     void doExecute() {
         pluginSetting = getDefaultPluginSetting();
         pluginSetting.setPipelineName("dropProcessorPipeline");
-        dropProcessor = new DropProcessor(pluginSetting);
+        dropProcessor = new DropEventsProcessor(pluginSetting);
 
         final Map<String, Object> testData = new HashMap();
         messageInput = UUID.randomUUID().toString();
@@ -32,7 +40,31 @@ public class DropProcessorTests {
 
         final List<Record<Event>> droppedRecords = (List<Record<Event>>) dropProcessor.doExecute(Collections.singletonList(record));
 
-        Assert.assertEquals(0, droppedRecords.size());
+        assertThat(droppedRecords.size(), equalTo(0));
+    }
+
+    @Test
+    void doExecuteMulti() {
+        pluginSetting = getDefaultPluginSetting();
+        pluginSetting.setPipelineName("dropProcessorPipeline");
+        dropProcessor = new DropEventsProcessor(pluginSetting);
+
+        final Map<String, Object> testData = new HashMap();
+        messageInput = UUID.randomUUID().toString();
+        testData.put("message", messageInput);
+        final Record<Event> record = buildRecordWithEvent(testData);
+
+        messageInput = UUID.randomUUID().toString();
+        testData.put("message", messageInput);
+        final Record<Event> record2 = buildRecordWithEvent(testData);
+
+        final List<Record<Event>> multiSet = new LinkedList<>();
+        multiSet.add(record);
+        multiSet.add(record2);
+
+        final List<Record<Event>> droppedRecords = (List<Record<Event>>) dropProcessor.doExecute(multiSet);
+
+        assertThat(droppedRecords.size(), equalTo(0));
     }
 
     private PluginSetting getDefaultPluginSetting() {
