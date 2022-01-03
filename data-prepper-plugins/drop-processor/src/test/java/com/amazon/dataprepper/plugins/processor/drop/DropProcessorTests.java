@@ -7,7 +7,11 @@ import com.amazon.dataprepper.model.record.Record;
 import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.Collections;
 
 public class DropProcessorTests {
     private String messageInput;
