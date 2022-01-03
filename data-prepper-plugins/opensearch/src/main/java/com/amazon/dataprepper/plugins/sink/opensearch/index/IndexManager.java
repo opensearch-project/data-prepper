@@ -67,20 +67,23 @@ public abstract class IndexManager {
     }
 
     private void initializeIndexPrefixAndSuffix(){
-        String indexAliasFromConfig = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
-        indexPrefix = indexAliasFromConfig.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "");
+        final String indexAliasFromConfig = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
 
         final Pattern pattern = Pattern.compile(TIME_PATTERN_INTERNAL_EXTRACTOR_REGULAR_EXPRESSION);
         final Matcher matcher = pattern.matcher(indexAliasFromConfig);
         if (matcher.find()) {
-            String timePattern = matcher.group(1);
+            if (matcher.groupCount() > 1) {
+                throw new IllegalArgumentException("Only support one date-time pattern.");
+            }
+            final String timePattern = matcher.group(1);
             validateTimePatternIsAtTheEnd(indexAliasFromConfig, timePattern);
             validateNoSpecialCharsInTimePattern(timePattern);
-            validateTimePatternNotTooGranular(timePattern);
+            validateTimePatternGranularity(timePattern);
             indexTimeSuffixFormatter = Optional.of(DateTimeFormatter.ofPattern(timePattern));
         }else{
             indexTimeSuffixFormatter = Optional.empty();
         }
+        indexPrefix = indexAliasFromConfig.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "");
     }
 
     /*
@@ -88,7 +91,7 @@ public abstract class IndexManager {
      */
     private void validateTimePatternIsAtTheEnd(final String indexAliasFromConfig, final String timePattern) {
         if (!indexAliasFromConfig.endsWith(timePattern + "}")) {
-            throw new IllegalArgumentException("Time pattern can only be a suffix of a index.");
+            throw new IllegalArgumentException("Time pattern can only be a suffix of an index.");
         }
     }
 
@@ -112,20 +115,19 @@ public abstract class IndexManager {
      * */
     private static final Set<Character> UNSUPPORTED_TIME_GRANULARITY_CHARS = ImmutableSet.of('m', 's', 'S', 'A', 'n', 'N');
 
-    private void validateTimePatternNotTooGranular(final String timePattern) {
+    private void validateTimePatternGranularity(final String timePattern) {
         final boolean containsUnsupportedTimeSymbol = timePattern.chars()
                 .mapToObj(c -> (char) c)
                 .anyMatch(character -> UNSUPPORTED_TIME_GRANULARITY_CHARS.contains(character));
         if (containsUnsupportedTimeSymbol) {
-            throw new IllegalArgumentException("To avoid creating a new index in less than one hour, " +
-                    "index time pattern should not contain a time symbol that are too granular: "
+            throw new IllegalArgumentException("Index time pattern contains time patterns that are less than one hour: "
                     + UNSUPPORTED_TIME_GRANULARITY_CHARS);
         }
     }
 
     public final String getIndexAlias() {
         if (indexTimeSuffixFormatter.isPresent()) {
-            String formattedTimeString = indexTimeSuffixFormatter.get()
+            final String formattedTimeString = indexTimeSuffixFormatter.get()
                     .format(getCurrentUtcTime());
             return indexPrefix + formattedTimeString;
         } else {

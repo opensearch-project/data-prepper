@@ -130,6 +130,15 @@ public class DefaultIndexManagerTests {
                 () -> indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration));
     }
 
+    @Test
+    public void testIndexTimePattern_Exceptional_MultipleTimePatterns(){
+        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS + "-%{yyyy}-" + "{MM.dd.HH}");
+        assertThrows(IllegalArgumentException.class,
+                () -> indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration));
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
+    }
+
     private static final List<Character> UNSUPPORTED_TIME_GRANULARITY_CHARS = Arrays.asList('m', 's', 'S', 'A', 'n', 'N');
     @Test
     public void getIndexAlias_IndexWithTimePattern_TooGranular() {
