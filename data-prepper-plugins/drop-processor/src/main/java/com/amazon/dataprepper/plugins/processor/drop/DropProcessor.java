@@ -11,7 +11,6 @@
 
 package com.amazon.dataprepper.plugins.processor.drop;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import com.amazon.dataprepper.model.annotations.SingleThread;
