@@ -1,17 +1,13 @@
 package com.amazon.dataprepper.plugins.processor.drop;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
 import org.junit.Assert;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
 import java.util.*;
-
-import static org.mockito.Mockito.mockStatic;
 
 public class DropProcessorTests {
     private String messageInput;
