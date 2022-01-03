@@ -19,7 +19,6 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.plugins.source.oteltrace.codec.OTelProtoCodec;
 import com.google.protobuf.ByteString;
-import com.linecorp.armeria.common.HttpResponse;
 import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.stub.StreamObserver;
