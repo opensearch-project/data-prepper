@@ -11,6 +11,7 @@ import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -20,6 +21,7 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.CoreMatchers.is;
 
 public class DropEventsProcessorTests {
     private String messageInput;
@@ -28,7 +30,7 @@ public class DropEventsProcessorTests {
     private final String PLUGIN_NAME = "drop_events";
 
     @Test
-    void doExecute() {
+    void testSingleMessageToDropProcessor() {
         pluginSetting = getDefaultPluginSetting();
         pluginSetting.setPipelineName("dropProcessorPipeline");
         dropProcessor = new DropEventsProcessor(pluginSetting);
@@ -38,13 +40,13 @@ public class DropEventsProcessorTests {
         testData.put("message", messageInput);
         final Record<Event> record = buildRecordWithEvent(testData);
 
-        final List<Record<Event>> droppedRecords = (List<Record<Event>>) dropProcessor.doExecute(Collections.singletonList(record));
+        final Collection<Record<Event>> droppedRecords = dropProcessor.doExecute(Collections.singletonList(record));
 
         assertThat(droppedRecords.size(), equalTo(0));
     }
 
     @Test
-    void doExecuteMulti() {
+    void testMultipleMessagesToDropProcessor() {
         pluginSetting = getDefaultPluginSetting();
         pluginSetting.setPipelineName("dropProcessorPipeline");
         dropProcessor = new DropEventsProcessor(pluginSetting);
@@ -62,9 +64,18 @@ public class DropEventsProcessorTests {
         multiSet.add(record);
         multiSet.add(record2);
 
-        final List<Record<Event>> droppedRecords = (List<Record<Event>>) dropProcessor.doExecute(multiSet);
+        final Collection<Record<Event>> droppedRecords = dropProcessor.doExecute(multiSet);
 
         assertThat(droppedRecords.size(), equalTo(0));
+    }
+
+    @Test
+    void testShutdownIsReady() {
+        pluginSetting = getDefaultPluginSetting();
+        pluginSetting.setPipelineName("dropProcessorPipeline");
+        dropProcessor = new DropEventsProcessor(pluginSetting);
+
+        assertThat(dropProcessor.isReadyForShutdown(), is(true));
     }
 
     private PluginSetting getDefaultPluginSetting() {
