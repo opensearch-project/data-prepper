@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
-import javax.inject.Singleton;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import java.io.IOException;
@@ -40,7 +39,6 @@ import java.util.Set;
  * Currently, only serves metrics in prometheus format.
  */
 @Named
-@Singleton
 public class DataPrepperServer {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperServer.class);
     private final HttpServer server;

@@ -12,7 +12,6 @@ import com.amazon.dataprepper.model.plugin.PluginFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
-import javax.inject.Singleton;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -26,7 +25,6 @@ import java.util.function.Function;
  * @since 1.2
  */
 @Named
-@Singleton
 public class DefaultPluginFactory implements PluginFactory {
 
     private final Collection<PluginProvider> pluginProviders;
