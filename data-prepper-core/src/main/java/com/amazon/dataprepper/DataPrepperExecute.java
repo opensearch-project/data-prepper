@@ -37,10 +37,6 @@ public class DataPrepperExecute {
         context.register(DataPrepperAppConfiguration.class);
         context.refresh();
 
-        for (String name : context.getBeanDefinitionNames()) {
-            LOG.info("Bean Found: {}", name);
-        }
-
         DataPrepper dataPrepper = context.getBean(DataPrepper.class);
         dataPrepper.execute();
     }
