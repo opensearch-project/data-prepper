@@ -35,6 +35,7 @@ dependencies {
 }
 
 jar {
+    zip64 = true
     dependsOn configurations.runtimeClasspath
     manifest {
         attributes('Implementation-Title': project.name,
