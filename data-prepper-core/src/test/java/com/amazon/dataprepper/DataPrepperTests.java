@@ -124,7 +124,7 @@ public class DataPrepperTests {
     }
     
     @Test
-    public void foo() throws NoSuchFieldException, IllegalAccessException {
+    public void testGivenEnvVarNotSetThenDefaultServiceNameReturned() throws NoSuchFieldException, IllegalAccessException {
         final Field dataPrepperServerField = DataPrepper.class.getDeclaredField("DEFAULT_SERVICE_NAME");
         dataPrepperServerField.setAccessible(true);
         String expected = (String) dataPrepperServerField.get(null);
