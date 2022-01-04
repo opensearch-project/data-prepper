@@ -14,6 +14,7 @@ public class DataPrepperArgs {
 
     private static final Integer DATA_PREPPER_PIPELINE_CONFIG_POSITON = 0;
     private static final Integer DATA_PREPPER_CONFIG_POSITON = 1;
+    private static final Integer MAXIMUM_SUPPORTED_NUMBER_OF_ARGS = 2;
 
     private static String checkForLogstashConfigurationAndConvert(String configurationFileLocation) {
         if (configurationFileLocation.endsWith(".conf")) {
@@ -26,7 +27,8 @@ public class DataPrepperArgs {
                 configurationFileLocation = logstashConfigConverter.convertLogstashConfigurationToPipeline(
                         configurationFileLocation, String.valueOf(configurationDirectory));
             } catch (IOException e) {
-                LOG.error("Unable to read the Logstash configuration file", e);
+                LOG.warn("Unable to read the Logstash configuration file", e);
+                throw new IllegalArgumentException("Invalid Logstash configuration file", e);
             }
         }
         return configurationFileLocation;
@@ -37,8 +39,11 @@ public class DataPrepperArgs {
 
     public DataPrepperArgs(final String ... args) {
         if (args == null || args.length == 0) {
-            LOG.error("Configuration file command line argument required but none found");
-            System.exit(1);
+            invalidArgumentsReceived("Configuration file command line argument required but none found");
+        }
+        else if (args.length > MAXIMUM_SUPPORTED_NUMBER_OF_ARGS) {
+            invalidArgumentsReceived(
+                    "Data Prepper supports a maximum of " + MAXIMUM_SUPPORTED_NUMBER_OF_ARGS + " command line arguments");
         }
 
         String configurationFileLocation = args[DATA_PREPPER_PIPELINE_CONFIG_POSITON];
@@ -52,6 +57,12 @@ public class DataPrepperArgs {
         else {
             this.dataPrepperConfigFileLocation = null;
         }
+    }
+
+    private void invalidArgumentsReceived(final String msg) {
+        LOG.warn("Invalid Data Prepper arguments received." +
+                " Valid argument format: <pipeline-config-file-path> [<data-prepper-config-file-path>]");
+        throw new IllegalArgumentException(msg);
     }
 
     @Nullable
