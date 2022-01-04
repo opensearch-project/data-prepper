@@ -2,21 +2,16 @@ package com.amazon.dataprepper.parser.config;
 
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.opensearch.dataprepper.logstash.LogstashConfigConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 @Configuration
-@ComponentScan(basePackageClasses = com.amazon.dataprepper.DataPrepper.class)
 public class DataPrepperAppConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperAppConfiguration.class);
     private static final String POSITIONAL_COMMAND_LINE_ARGUMENTS = "nonOptionArgs";
@@ -54,20 +49,5 @@ public class DataPrepperAppConfiguration {
         else {
             return new DataPrepperConfiguration();
         }
-    }
-
-    private static String checkForLogstashConfigurationAndConvert(String configurationFileLocation) {
-        if (configurationFileLocation.endsWith(".conf")) {
-            final LogstashConfigConverter logstashConfigConverter = new LogstashConfigConverter();
-            final Path configurationDirectory = Paths.get(configurationFileLocation).toAbsolutePath().getParent();
-
-            try {
-                configurationFileLocation = logstashConfigConverter.convertLogstashConfigurationToPipeline(
-                        configurationFileLocation, String.valueOf(configurationDirectory));
-            } catch (IOException e) {
-                LOG.error("Unable to read the Logstash configuration file", e);
-            }
-        }
-        return configurationFileLocation;
     }
 }
