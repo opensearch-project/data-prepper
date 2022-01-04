@@ -342,7 +342,7 @@ public class JacksonEventTest {
         event = JacksonEvent.fromMessage(message);
 
         assertThat(event, is(notNullValue()));
-        assertThat(event.get("messageKey", String.class), is(equalTo(message)));
+        assertThat(event.get("message", String.class), is(equalTo(message)));
     }
 
     @Test

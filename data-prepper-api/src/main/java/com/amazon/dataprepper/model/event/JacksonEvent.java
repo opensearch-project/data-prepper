@@ -62,7 +62,7 @@ public class JacksonEvent implements Event {
 
     static final int MAX_KEY_LENGTH = 2048;
 
-    static final String MESSAGE_KEY = "messageKey";
+    static final String MESSAGE_KEY = "message";
 
     static final String EVENT_TYPE = "event";
 
