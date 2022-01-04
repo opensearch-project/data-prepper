@@ -53,7 +53,7 @@ dependencies {
     implementation 'software.amazon.awssdk:aws-core:2.17.15'
     implementation 'software.amazon.awssdk:regions:2.17.15'
     implementation 'software.amazon.awssdk:utils:2.17.15'
-    implementation 'software.amazon.awssdk:sts:2.17.15'
+    implementation 'software.amazon.awssdk:sts:2.17.103'
     implementation 'software.amazon.awssdk:url-connection-client:2.17.15'
     implementation 'software.amazon.awssdk:arns:2.17.15'
     implementation 'io.micrometer:micrometer-core:1.7.5'
@@ -95,8 +95,8 @@ configurations.all {
         force 'com.google.guava:guava:31.0.1-jre'
         force 'junit:junit:4.13.2'
         force "org.slf4j:slf4j-api:1.7.32"
-        force 'org.apache.logging.log4j:log4j-api:2.17.0'
-        force 'org.apache.logging.log4j:log4j-core:2.17.0'
+        force 'org.apache.logging.log4j:log4j-api:2.17.1'
+        force 'org.apache.logging.log4j:log4j-core:2.17.1'
         force 'commons-beanutils:commons-beanutils:1.9.4'
     }
     // The OpenSearch plugins appear to provide their own version of Mockito
