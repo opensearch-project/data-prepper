@@ -70,17 +70,17 @@ public abstract class IndexManager {
         final String indexAliasFromConfig = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
 
         final Pattern pattern = Pattern.compile(TIME_PATTERN_INTERNAL_EXTRACTOR_REGULAR_EXPRESSION);
-        final Matcher matcher = pattern.matcher(indexAliasFromConfig);
-        if (matcher.find()) {
-            if (matcher.groupCount() > 1) {
-                throw new IllegalArgumentException("Only support one date-time pattern.");
+        final Matcher timePatternMatcher = pattern.matcher(indexAliasFromConfig);
+        if (timePatternMatcher.find()) {
+            final String timePattern = timePatternMatcher.group(1);
+            if (timePatternMatcher.find()) { // check if there is a one more match.
+                throw new IllegalArgumentException("An index only allows one date-time pattern.");
             }
-            final String timePattern = matcher.group(1);
             validateTimePatternIsAtTheEnd(indexAliasFromConfig, timePattern);
             validateNoSpecialCharsInTimePattern(timePattern);
             validateTimePatternGranularity(timePattern);
             indexTimeSuffixFormatter = Optional.of(DateTimeFormatter.ofPattern(timePattern));
-        }else{
+        } else {
             indexTimeSuffixFormatter = Optional.empty();
         }
         indexPrefix = indexAliasFromConfig.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "");

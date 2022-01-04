@@ -132,7 +132,7 @@ public class DefaultIndexManagerTests {
 
     @Test
     public void testIndexTimePattern_Exceptional_MultipleTimePatterns(){
-        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS + "-%{yyyy}-" + "{MM.dd.HH}");
+        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS + "-%{yyyy}-{MM.dd.HH}");
         assertThrows(IllegalArgumentException.class,
                 () -> indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
