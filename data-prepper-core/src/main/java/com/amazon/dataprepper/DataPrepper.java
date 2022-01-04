@@ -12,6 +12,7 @@ import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -34,6 +35,7 @@ public class DataPrepper {
 
     // TODO: Remove DataPrepperServer dependency on DataPrepper
     @Inject
+    @Lazy
     private DataPrepperServer dataPrepperServer;
 
     /**
