@@ -70,7 +70,8 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
         initMocks(this);
 
         indexManagerFactory = new IndexManagerFactory();
-
+        when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
+        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
         traceAnalyticsServiceMapIndexManager
                 = indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_SERVICE_MAP, restHighLevelClient, openSearchSinkConfiguration);
 
@@ -78,8 +79,6 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
         when(cluster.getSettings(any(ClusterGetSettingsRequest.class), any(RequestOptions.class)))
                 .thenReturn(clusterGetSettingsResponse);
 
-        when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
-        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
         when(restHighLevelClient.indices()).thenReturn(indicesClient);
     }
 
@@ -87,12 +86,16 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
     public void constructor_NullRestClient() throws IOException {
         assertThrows(NullPointerException.class, () ->
                 indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_SERVICE_MAP, null, openSearchSinkConfiguration));
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
     }
 
     @Test
     public void constructor_NullConfiguration() throws IOException {
         assertThrows(NullPointerException.class, () ->
                 indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_SERVICE_MAP, restHighLevelClient, null));
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
     }
 
     @Test
@@ -102,6 +105,8 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
         verify(restHighLevelClient).cluster();
         verify(cluster).getSettings(any(), any());
         verify(clusterGetSettingsResponse).getSetting(any());
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
     }
 
     @Test
@@ -111,12 +116,16 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
         verify(restHighLevelClient).cluster();
         verify(cluster).getSettings(any(), any());
         verify(clusterGetSettingsResponse).getSetting(any());
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
     }
 
 
     @Test
     public void checkAndCreatePolicy() throws IOException {
         assertEquals(Optional.empty(), traceAnalyticsServiceMapIndexManager.checkAndCreatePolicy());
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
     }
 
     @Test
