@@ -10,8 +10,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.ObjectReader;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import org.apache.commons.lang3.StringUtils;
@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -61,6 +62,10 @@ public class JacksonEvent implements Event {
 
     static final int MAX_KEY_LENGTH = 2048;
 
+    static final String MESSAGE_KEY = "message";
+
+    static final String EVENT_TYPE = "event";
+
     protected JacksonEvent(final Builder builder) {
 
         if (builder.eventMetadata == null) {
@@ -74,6 +79,13 @@ public class JacksonEvent implements Event {
         }
 
         this.jsonNode = getInitialJsonNode(builder.data);
+    }
+
+    static Event fromMessage(String message) {
+        return JacksonEvent.builder()
+                .withEventType(EVENT_TYPE)
+                .withData(Collections.singletonMap(MESSAGE_KEY, message))
+                .build();
     }
 
     private JsonNode getInitialJsonNode(final Object data) {
