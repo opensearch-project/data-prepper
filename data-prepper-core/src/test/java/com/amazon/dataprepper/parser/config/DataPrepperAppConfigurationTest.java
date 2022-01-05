@@ -1,6 +1,11 @@
-package com.amazon.dataprepper.parser.config;
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 import com.amazon.dataprepper.TestDataProvider;
+import com.amazon.dataprepper.parser.config.DataPrepperAppConfiguration;
+import com.amazon.dataprepper.parser.config.DataPrepperArgs;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -13,8 +18,8 @@ import java.io.IOException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
