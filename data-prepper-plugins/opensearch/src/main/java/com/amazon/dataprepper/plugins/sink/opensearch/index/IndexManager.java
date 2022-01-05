@@ -40,6 +40,7 @@ public abstract class IndexManager {
 
     public static final String INDEX_ALIAS_USED_AS_INDEX_ERROR
             = "Invalid alias name [%s], an index exists with the same name as the alias";
+    private static final String TIME_PATTERN_STARTING_SYMBOLS = "%{";
     protected RestHighLevelClient restHighLevelClient;
     protected OpenSearchSinkConfiguration openSearchSinkConfiguration;
     protected IsmPolicyManagementStrategy ismPolicyManagementStrategy;
@@ -75,6 +76,9 @@ public abstract class IndexManager {
             final String timePattern = timePatternMatcher.group(1);
             if (timePatternMatcher.find()) { // check if there is a one more match.
                 throw new IllegalArgumentException("An index only allows one date-time pattern.");
+            }
+            if(timePattern.contains(TIME_PATTERN_STARTING_SYMBOLS)){ //check if it is a nested pattern such as "data-prepper-%{%{yyyy.MM.dd}}"
+                throw new IllegalArgumentException("An index doesn't allow nested date-time patterns.");
             }
             validateTimePatternIsAtTheEnd(indexAliasFromConfig, timePattern);
             validateNoSpecialCharsInTimePattern(timePattern);
