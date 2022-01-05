@@ -14,7 +14,6 @@ import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
-import com.amazon.dataprepper.parser.config.DataPrepperArgs;
 import com.amazon.dataprepper.parser.model.PipelineConfiguration;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.PipelineConnector;
@@ -25,8 +24,6 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
-import javax.inject.Named;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -40,7 +37,6 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 
 @SuppressWarnings("rawtypes")
-@Named
 public class PipelineParser {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineParser.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory())
@@ -51,9 +47,8 @@ public class PipelineParser {
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
     private final PluginFactory pluginFactory;
 
-    @Inject
-    public PipelineParser(final DataPrepperArgs dataPrepperArgs, final PluginFactory pluginFactory) {
-        this.pipelineConfigurationFileLocation = dataPrepperArgs.getPipelineConfigFileLocation();
+    public PipelineParser(final String pipelineConfigurationFileLocation, final PluginFactory pluginFactory) {
+        this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
     }
 
