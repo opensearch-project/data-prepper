@@ -27,7 +27,7 @@ dependencies {
     implementation project(':data-prepper-plugins:common')
     implementation group: 'org.mapdb', name: 'mapdb', version: '3.0.8'
     implementation group: 'org.jetbrains.kotlin', name: 'kotlin-stdlib', version: '1.6.0'
-    implementation group: 'org.jetbrains.kotlin', name: 'kotlin-stdlib-common', version: '1.6.0'
+    implementation group: 'org.jetbrains.kotlin', name: 'kotlin-stdlib-common', version: '1.6.10'
 
     testImplementation project(':data-prepper-plugins:common').sourceSets.test.output
     testImplementation group: 'junit', name: 'junit', version: '4.13.2'
