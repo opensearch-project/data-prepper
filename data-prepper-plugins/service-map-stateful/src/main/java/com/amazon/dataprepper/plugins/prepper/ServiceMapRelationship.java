@@ -11,10 +11,9 @@
 
 package com.amazon.dataprepper.plugins.prepper;
 
-import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
-
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import java.util.Objects;
 
 
@@ -25,7 +24,7 @@ public class ServiceMapRelationship {
     /**
      * ThreadLocal object to generate hashes of relationships
      */
-    private static ThreadLocal<MessageDigest> THREAD_LOCAL_MESSAGE_DIGEST = new ThreadLocal<>();
+    private static final ThreadLocal<MessageDigest> THREAD_LOCAL_MESSAGE_DIGEST = new ThreadLocal<>();
 
     /**
      * Service name for the relationship. This corresponds to the source of the relationship
@@ -188,7 +187,7 @@ public class ServiceMapRelationship {
         }
         THREAD_LOCAL_MESSAGE_DIGEST.get().reset();
         THREAD_LOCAL_MESSAGE_DIGEST.get().update(unhashedString().getBytes());
-        return Base64.encode(THREAD_LOCAL_MESSAGE_DIGEST.get().digest());
+        return Base64.getEncoder().encodeToString(THREAD_LOCAL_MESSAGE_DIGEST.get().digest());
     }
 
     /**
