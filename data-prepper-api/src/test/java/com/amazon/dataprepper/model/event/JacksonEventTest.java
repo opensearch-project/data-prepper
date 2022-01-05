@@ -40,6 +40,7 @@ public class JacksonEventTest {
         event = JacksonEvent.builder()
                 .withEventType(eventType)
                 .build();
+
     }
 
     @Test
@@ -334,6 +335,17 @@ public class JacksonEventTest {
     }
 
     @Test
+    public void testBuild_withMessageValue() {
+
+        String message = UUID.randomUUID().toString();
+
+        event = JacksonEvent.fromMessage(message);
+
+        assertThat(event, is(notNullValue()));
+        assertThat(event.get("message", String.class), is(equalTo(message)));
+    }
+
+    @Test
     public void testBuild_withAttributes() {
 
         final Map<String, Object> testAttributes = new HashMap<>();
@@ -429,6 +441,5 @@ public class JacksonEventTest {
 
         assertThrows(IllegalArgumentException.class, () -> builder.build());
     }
-
 
 }
