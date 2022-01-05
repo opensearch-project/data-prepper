@@ -27,15 +27,14 @@ public class IndexManagerFactory {
 
     private static class DefaultIndexManager extends IndexManager {
 
-        public static final String POLICY_NAME_SUFFIX = "-policy";
+        private static final String POLICY_NAME_SUFFIX = "-policy";
 
         public DefaultIndexManager(final RestHighLevelClient restHighLevelClient,
                                    final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
             super(restHighLevelClient, openSearchSinkConfiguration);
             final Optional<String> ismPolicyFile = openSearchSinkConfiguration.getIndexConfiguration().getIsmPolicyFile();
             if (ismPolicyFile.isPresent()) {
-                final String indexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
-                final String indexPolicyName = indexAlias + POLICY_NAME_SUFFIX;
+                final String indexPolicyName = getIndexPolicyName();
                 this.ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient, indexPolicyName, ismPolicyFile.get());
             } else {
                 //Policy file doesn't exist
@@ -43,6 +42,10 @@ public class IndexManagerFactory {
             }
         }
 
+        private String getIndexPolicyName() {
+            //If index prefix has a ending dash, then remove it to avoid two consecutive dashes.
+            return indexPrefix.replaceAll("-$", "") + POLICY_NAME_SUFFIX;
+        }
     }
 
     private static class TraceAnalyticsRawIndexManager extends IndexManager {
