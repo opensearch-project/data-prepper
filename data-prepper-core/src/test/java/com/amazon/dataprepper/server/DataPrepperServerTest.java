@@ -98,9 +98,6 @@ public class DataPrepperServerTest {
         when(pluginFactory.loadPlugin(eq(DataPrepperCoreAuthenticationProvider.class),
                 argThat(a -> a.getName().equals(DataPrepperCoreAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME))))
                 .thenReturn(unauthenticatedProvider);
-
-//        when(dataPrepper.getPluginFactory()).thenReturn(pluginFactory);
-//        when(dataPrepperConfiguration.getServerPort()).thenReturn(port);
     }
 
     @AfterEach
