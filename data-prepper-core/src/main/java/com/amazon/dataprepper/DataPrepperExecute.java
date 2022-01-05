@@ -18,19 +18,19 @@ import org.springframework.core.env.SimpleCommandLinePropertySource;
 public class DataPrepperExecute {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperExecute.class);
 
-    public static void main(String[] args) {
+    public static void main(final String ... args) {
         java.security.Security.setProperty("networkaddress.cache.ttl", "60");
 
         LOG.trace("Reading args");
-        SimpleCommandLinePropertySource commandLinePropertySource = new SimpleCommandLinePropertySource(args);
+        final SimpleCommandLinePropertySource commandLinePropertySource = new SimpleCommandLinePropertySource(args);
 
         LOG.trace("Creating application context");
-        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+        final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
         context.getEnvironment().getPropertySources().addFirst(commandLinePropertySource);
         context.register(DataPrepperExecute.class);
         context.refresh();
 
-        DataPrepper dataPrepper = context.getBean(DataPrepper.class);
+        final DataPrepper dataPrepper = context.getBean(DataPrepper.class);
 
         LOG.trace("Starting Data Prepper execution");
         dataPrepper.execute();
