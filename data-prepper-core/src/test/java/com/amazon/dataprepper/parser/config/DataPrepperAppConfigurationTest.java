@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+package com.amazon.dataprepper.parser.config;
+
 import com.amazon.dataprepper.TestDataProvider;
-import com.amazon.dataprepper.parser.config.DataPrepperAppConfiguration;
-import com.amazon.dataprepper.parser.config.DataPrepperArgs;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -38,12 +38,12 @@ class DataPrepperAppConfigurationTest {
 
     @Test
     public void testGivenValidCommandLineArgumentThenDataPrepperArgsBeanCreated() {
-        Environment env = mock(Environment.class);
+        final Environment env = mock(Environment.class);
 
         when(env.getProperty("nonOptionArgs"))
                 .thenReturn(pipelineConfigFilePath);
 
-        DataPrepperArgs args = appConfiguration.dataPrepperArgs(env);
+        final DataPrepperArgs args = appConfiguration.dataPrepperArgs(env);
 
         assertThat(args.getPipelineConfigFileLocation(), is(pipelineConfigFilePath));
         assertThat(args.getDataPrepperConfigFileLocation(), is(nullValue()));
@@ -51,12 +51,12 @@ class DataPrepperAppConfigurationTest {
 
     @Test
     public void testGivenValidCommandLineArgumentsThenDataPrepperArgsBeanCreated() {
-        Environment env = mock(Environment.class);
+        final Environment env = mock(Environment.class);
 
         when(env.getProperty("nonOptionArgs"))
                 .thenReturn(pipelineConfigFilePath + "," + dataPrepperConfigFilePath);
 
-        DataPrepperArgs args = appConfiguration.dataPrepperArgs(env);
+        final DataPrepperArgs args = appConfiguration.dataPrepperArgs(env);
 
         assertThat(args.getPipelineConfigFileLocation(), is(pipelineConfigFilePath));
         assertThat(args.getDataPrepperConfigFileLocation(), is(dataPrepperConfigFilePath));
@@ -64,7 +64,7 @@ class DataPrepperAppConfigurationTest {
 
     @Test
     public void testGivenNoCommandLineArgumentsThenExceptionThrown() {
-        Environment env = mock(Environment.class);
+        final Environment env = mock(Environment.class);
 
         assertThrows(
                 RuntimeException.class,
@@ -73,11 +73,11 @@ class DataPrepperAppConfigurationTest {
 
 
     @Test
-    public void testGivenNoPipelineConfigArgThenResultOfObjectMapperReadValueIsReturned() throws IOException {
-        DataPrepperArgs dataPrepperArgs = mock(DataPrepperArgs.class);
-        ObjectMapper objectMapper = mock(ObjectMapper.class);
+    public void testGivenNoPipelineConfigArgThenResultOfObjectMapperReadValueIsReturned() {
+        final DataPrepperArgs dataPrepperArgs = mock(DataPrepperArgs.class);
+        final ObjectMapper objectMapper = mock(ObjectMapper.class);
 
-        DataPrepperConfiguration configuration = appConfiguration.dataPrepperConfiguration(dataPrepperArgs, objectMapper);
+        final DataPrepperConfiguration configuration = appConfiguration.dataPrepperConfiguration(dataPrepperArgs, objectMapper);
 
         verify(dataPrepperArgs, times(1))
                 .getDataPrepperConfigFileLocation();
@@ -86,9 +86,9 @@ class DataPrepperAppConfigurationTest {
 
     @Test
     public void testGivenPipelineConfigArgThenResultOfObjectMapperReadValueIsReturned() throws IOException {
-        DataPrepperArgs dataPrepperArgs = mock(DataPrepperArgs.class);
-        ObjectMapper objectMapper = mock(ObjectMapper.class);
-        DataPrepperConfiguration expected = mock(DataPrepperConfiguration.class);
+        final DataPrepperArgs dataPrepperArgs = mock(DataPrepperArgs.class);
+        final ObjectMapper objectMapper = mock(ObjectMapper.class);
+        final DataPrepperConfiguration expected = mock(DataPrepperConfiguration.class);
 
         when(dataPrepperArgs.getDataPrepperConfigFileLocation())
                 .thenReturn(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
@@ -96,15 +96,15 @@ class DataPrepperAppConfigurationTest {
         when(objectMapper.readValue(any(File.class), eq(DataPrepperConfiguration.class)))
                 .thenReturn(expected);
 
-        DataPrepperConfiguration configuration = appConfiguration.dataPrepperConfiguration(dataPrepperArgs, objectMapper);
+        final DataPrepperConfiguration configuration = appConfiguration.dataPrepperConfiguration(dataPrepperArgs, objectMapper);
 
         assertThat(configuration, is(expected));
     }
 
     @Test
     public void testGivenInvalidPipelineConfigArgThenExceptionThrown() throws IOException {
-        DataPrepperArgs dataPrepperArgs = mock(DataPrepperArgs.class);
-        ObjectMapper objectMapper = mock(ObjectMapper.class);
+        final DataPrepperArgs dataPrepperArgs = mock(DataPrepperArgs.class);
+        final ObjectMapper objectMapper = mock(ObjectMapper.class);
 
         when(dataPrepperArgs.getDataPrepperConfigFileLocation())
                 .thenReturn(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
