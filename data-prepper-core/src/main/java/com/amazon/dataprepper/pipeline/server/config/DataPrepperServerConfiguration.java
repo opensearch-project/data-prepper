@@ -10,6 +10,7 @@ import com.amazon.dataprepper.pipeline.server.ListPipelinesHandler;
 import com.amazon.dataprepper.pipeline.server.ShutdownHandler;
 import com.amazon.dataprepper.pipeline.server.SslUtil;
 import com.sun.net.httpserver.Authenticator;
+import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsParameters;
@@ -100,12 +101,30 @@ public class DataPrepperServerConfiguration {
     }
 
     @Bean
-    public ListPipelinesHandler listPipelinesHandler(final DataPrepper dataPrepper) {
-        return new ListPipelinesHandler(dataPrepper);
+    public ListPipelinesHandler listPipelinesHandler(
+            final DataPrepper dataPrepper,
+            final Optional<Authenticator> optionalAuthenticator,
+            final HttpServer server
+    ) {
+        final ListPipelinesHandler listPipelinesHandler = new ListPipelinesHandler(dataPrepper);
+
+        final HttpContext context = server.createContext("/list", listPipelinesHandler);
+        optionalAuthenticator.ifPresent(context::setAuthenticator);
+
+        return listPipelinesHandler;
     }
 
     @Bean
-    public ShutdownHandler shutdownHandler(final DataPrepper dataPrepper) {
-        return new ShutdownHandler(dataPrepper);
+    public ShutdownHandler shutdownHandler(
+            final DataPrepper dataPrepper,
+            final Optional<Authenticator> optionalAuthenticator,
+            final HttpServer server
+    ) {
+        final ShutdownHandler shutdownHandler = new ShutdownHandler(dataPrepper);
+
+        final HttpContext context = server.createContext("/shutdown", shutdownHandler);
+        optionalAuthenticator.ifPresent(context::setAuthenticator);
+
+        return shutdownHandler;
     }
 }

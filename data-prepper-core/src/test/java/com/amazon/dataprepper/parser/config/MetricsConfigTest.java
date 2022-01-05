@@ -7,8 +7,14 @@ package com.amazon.dataprepper.parser.config;
 
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.parser.model.MetricRegistryType;
+import com.amazon.dataprepper.pipeline.server.CloudWatchMeterRegistryProvider;
+import com.amazon.dataprepper.pipeline.server.PrometheusMetricsHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.sun.net.httpserver.Authenticator;
+import com.sun.net.httpserver.HttpContext;
+import com.sun.net.httpserver.HttpServer;
+import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
@@ -17,17 +23,23 @@ import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.isA;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -40,68 +52,185 @@ class MetricsConfigTest {
 
     @Test
     public void testYamlFactory() {
-        YAMLFactory factory = metricsConfig.yamlFactory();
+        final YAMLFactory factory = metricsConfig.yamlFactory();
 
         assertThat(factory, isA(YAMLFactory.class));
     }
 
     @Test
     public void testObjectMapper() {
-        ObjectMapper mapper = metricsConfig.objectMapper(null);
+        final ObjectMapper mapper = metricsConfig.objectMapper(null);
 
         assertThat(mapper, isA(ObjectMapper.class));
     }
 
     @Test
     public void testClassLoaderMetrics() {
-        ClassLoaderMetrics actual = metricsConfig.classLoaderMetrics();
+        final ClassLoaderMetrics actual = metricsConfig.classLoaderMetrics();
 
         assertThat(actual, isA(ClassLoaderMetrics.class));
     }
 
     @Test
     public void testJvmMemoryMetrics() {
-        JvmMemoryMetrics actual = metricsConfig.jvmMemoryMetrics();
+        final JvmMemoryMetrics actual = metricsConfig.jvmMemoryMetrics();
 
         assertThat(actual, isA(JvmMemoryMetrics.class));
     }
 
     @Test
     public void testJvmGcMetrics() {
-        JvmGcMetrics actual = metricsConfig.jvmGcMetrics();
+        final JvmGcMetrics actual = metricsConfig.jvmGcMetrics();
 
         assertThat(actual, isA(JvmGcMetrics.class));
     }
 
     @Test
     public void testProcessorMetrics() {
-        ProcessorMetrics actual = metricsConfig.processorMetrics();
+        final ProcessorMetrics actual = metricsConfig.processorMetrics();
 
         assertThat(actual, isA(ProcessorMetrics.class));
     }
 
     @Test
     public void testJvmThreadMetrics() {
-        JvmThreadMetrics actual = metricsConfig.jvmThreadMetrics();
+        final JvmThreadMetrics actual = metricsConfig.jvmThreadMetrics();
 
         assertThat(actual, isA(JvmThreadMetrics.class));
     }
 
     @Test
-    public void testGivenListOfMeterBindersWhenSystemMeterRegistryThenAllMeterBindersRegistered() {
-        Random r = new Random();
-        int copies = r.nextInt(10) + 5;
-        MeterBinder binder = mock(MeterBinder.class);
-        List<MeterBinder> meterBinders = Collections.nCopies(copies, binder);
-        DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
-
-        MetricRegistryType registryType = mock(MetricRegistryType.class);
-        List<MetricRegistryType> registryTypes = Collections.nCopies(copies, registryType);
+    public void testGivenConfigWithPrometheusMeterRegistryThenMeterRegistryCreated() {
+        final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
+        final Optional<Authenticator> optionalAuthenticator = Optional.empty();
+        final HttpServer server = mock(HttpServer.class);
+        final HttpContext context = mock(HttpContext.class);
 
         when(dataPrepperConfiguration.getMetricRegistryTypes())
-                .thenReturn(registryTypes);
+                .thenReturn(Collections.singletonList(MetricRegistryType.Prometheus));
+        when(server.createContext(anyString(), any(PrometheusMetricsHandler.class)))
+                .thenReturn(context);
 
-        CompositeMeterRegistry meterRegistry = metricsConfig.systemMeterRegistry(meterBinders, dataPrepperConfiguration);
+        final Optional<MeterRegistry> optionalMeterRegistry = metricsConfig.prometheusMeterRegistry(
+                dataPrepperConfiguration,
+                optionalAuthenticator,
+                server);
+
+        assertThat(optionalMeterRegistry.isPresent(), is(true));
+
+        final MeterRegistry registry = optionalMeterRegistry.get();
+        assertThat(registry, isA(PrometheusMeterRegistry.class));
+
+        verify(server, times(2))
+                .createContext(anyString(), any(PrometheusMetricsHandler.class));
+    }
+
+    @Test
+    public void testGivenConfigWithPrometheusMeterRegistryAndAuthenticatorThenMeterRegistryCreated() {
+        final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
+        final Authenticator authenticator = mock(Authenticator.class);
+        final Optional<Authenticator> optionalAuthenticator = Optional.of(authenticator);
+        final HttpServer server = mock(HttpServer.class);
+        final HttpContext context = mock(HttpContext.class);
+
+        when(dataPrepperConfiguration.getMetricRegistryTypes())
+                .thenReturn(Collections.singletonList(MetricRegistryType.Prometheus));
+        when(server.createContext(anyString(), any(PrometheusMetricsHandler.class)))
+                .thenReturn(context);
+
+        final Optional<MeterRegistry> optionalMeterRegistry = metricsConfig.prometheusMeterRegistry(
+                dataPrepperConfiguration,
+                optionalAuthenticator,
+                server);
+
+        assertThat(optionalMeterRegistry.isPresent(), is(true));
+
+        final MeterRegistry registry = optionalMeterRegistry.get();
+        assertThat(registry, isA(PrometheusMeterRegistry.class));
+
+        verify(server, times(2))
+                .createContext(anyString(), any(PrometheusMetricsHandler.class));
+
+        verify(context, times(2))
+                .setAuthenticator(eq(authenticator));
+    }
+
+    @Test
+    public void testGivenEmptyConfigThenMeterRegistryCreated() {
+        final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
+
+        when(dataPrepperConfiguration.getMetricRegistryTypes())
+                .thenReturn(Collections.emptyList());
+
+        final Optional<MeterRegistry> optionalMeterRegistry = metricsConfig.prometheusMeterRegistry(
+dataPrepperConfiguration,
+                Optional.empty(),
+                null);
+
+        assertThat(optionalMeterRegistry.isPresent(), is(false));
+    }
+
+    @Test
+    public void testCloudWatchMeterRegistryProviderCreated() {
+        CloudWatchMeterRegistryProvider cloudWatchMeterRegistryProvider = metricsConfig.cloudWatchMeterRegistryProvider();
+
+        assertThat(cloudWatchMeterRegistryProvider, isA(CloudWatchMeterRegistryProvider.class));
+    }
+
+    @Test
+    public void testGivenConfigWithCloudWatchMeterRegistryThenMeterRegistryCreated() {
+        final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
+        final CloudWatchMeterRegistryProvider registryProvider = mock(CloudWatchMeterRegistryProvider.class);
+        final CloudWatchMeterRegistry meterRegistry = mock(CloudWatchMeterRegistry.class);
+        final MeterRegistry.Config config = mock(MeterRegistry.Config.class);
+
+        when(dataPrepperConfiguration.getMetricRegistryTypes())
+                .thenReturn(Collections.singletonList(MetricRegistryType.CloudWatch));
+        when(registryProvider.getCloudWatchMeterRegistry())
+                .thenReturn(meterRegistry);
+        when(meterRegistry.config())
+                .thenReturn(config);
+
+        final Optional<MeterRegistry> optionalMeterRegistry = metricsConfig.cloudWatchMeterRegistry(
+                dataPrepperConfiguration,
+                registryProvider);
+
+        assertThat(optionalMeterRegistry.isPresent(), is(true));
+
+        final MeterRegistry registry = optionalMeterRegistry.get();
+        assertThat(registry, isA(CloudWatchMeterRegistry.class));
+
+        verify(config, times(1))
+                .commonTags(anyList());
+    }
+
+    @Test
+    public void testGivenConfigWithNoCloudWatchMeterRegistryThenNoMeterRegistryCreated() {
+        final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
+
+        when(dataPrepperConfiguration.getMetricRegistryTypes())
+                .thenReturn(Collections.singletonList(MetricRegistryType.Prometheus));
+
+        final Optional<MeterRegistry> optionalMeterRegistry = metricsConfig.cloudWatchMeterRegistry(
+                dataPrepperConfiguration,
+                null);
+
+        assertThat(optionalMeterRegistry.isPresent(), is(false));
+    }
+
+    @Test
+    public void testGivenListOfMeterBindersWhenSystemMeterRegistryThenAllMeterBindersRegistered() {
+        final Random r = new Random();
+        final int copies = r.nextInt(10) + 5;
+        final MeterBinder binder = mock(MeterBinder.class);
+        final List<MeterBinder> meterBinders = Collections.nCopies(copies, binder);
+
+        final MeterRegistry meterRegistryMock = mock(MeterRegistry.class);
+        final List<Optional<MeterRegistry>> optionalMeterRegistries = Collections.nCopies(1, Optional.of(meterRegistryMock));
+
+        final CompositeMeterRegistry meterRegistry = metricsConfig.systemMeterRegistry(
+                meterBinders,
+                optionalMeterRegistries);
 
         assertThat(meterRegistry, isA(CompositeMeterRegistry.class));
         verify(binder, times(copies)).bindTo(any(MeterRegistry.class));
@@ -109,15 +238,14 @@ class MetricsConfigTest {
 
     @Test
     public void testGivenEmptyListOfMeterBindersWhenSystemMeterRegistryThenNoMeterBindersRegistered() {
-        List<MeterBinder> meterBinders = Collections.emptyList();
-        DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
+        final List<MeterBinder> meterBinders = Collections.emptyList();
 
-        List<MetricRegistryType> registryTypes = Collections.emptyList();
+        final MeterRegistry meterRegistryMock = mock(MeterRegistry.class);
+        final List<Optional<MeterRegistry>> optionalMeterRegistries = Collections.nCopies(1, Optional.of(meterRegistryMock));
 
-        when(dataPrepperConfiguration.getMetricRegistryTypes())
-                .thenReturn(registryTypes);
-
-        CompositeMeterRegistry meterRegistry = metricsConfig.systemMeterRegistry(meterBinders, dataPrepperConfiguration);
+        final CompositeMeterRegistry meterRegistry = metricsConfig.systemMeterRegistry(
+                meterBinders,
+                optionalMeterRegistries);
 
         assertThat(meterRegistry, isA(CompositeMeterRegistry.class));
     }
