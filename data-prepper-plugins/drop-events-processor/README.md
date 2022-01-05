@@ -10,7 +10,7 @@ drop-pipeline:
       path: "/full/path/to/logs_json.log"
       record_type: "event"
       format: "json"
-  prepper:
+  processor:
     - drop_events:
   sink:
     - stdout:
