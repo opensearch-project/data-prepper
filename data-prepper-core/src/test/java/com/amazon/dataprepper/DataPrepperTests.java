@@ -124,14 +124,9 @@ public class DataPrepperTests {
     }
     
     @Test
-    public void testGivenEnvVarNotSetThenDefaultServiceNameReturned() throws NoSuchFieldException, IllegalAccessException {
-        final Field dataPrepperServerField = DataPrepper.class.getDeclaredField("DEFAULT_SERVICE_NAME");
-        dataPrepperServerField.setAccessible(true);
-        String expected = (String) dataPrepperServerField.get(null);
-        dataPrepperServerField.setAccessible(false);
-
+    public void testGivenEnvVarNotSetThenDefaultServiceNameReturned() {
         String actual = DataPrepper.getServiceNameForMetrics();
 
-        assertThat(actual, Matchers.is(expected));
+        assertThat(actual, Matchers.is("dataprepper"));
     }
 }
