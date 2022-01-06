@@ -31,17 +31,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import software.amazon.awssdk.core.exception.SdkClientException;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import static com.amazon.dataprepper.DataPrepper.getServiceNameForMetrics;
 import static com.amazon.dataprepper.metrics.MetricNames.SERVICE_NAME;
-import static java.lang.String.format;
 
 @Configuration
 public class MetricsConfig {
@@ -119,19 +117,18 @@ public class MetricsConfig {
     }
 
     @Bean
-    public CloudWatchMeterRegistryProvider cloudWatchMeterRegistryProvider() {
-        return new CloudWatchMeterRegistryProvider();
-    }
-
-    @Bean
-    public Optional<MeterRegistry> cloudWatchMeterRegistry(
-            final DataPrepperConfiguration dataPrepperConfiguration,
-            final CloudWatchMeterRegistryProvider cloudWatchMeterRegistryProvider
-    ) {
+    public Optional<MeterRegistry> cloudWatchMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.CloudWatch)) {
-            final CloudWatchMeterRegistry meterRegistry = cloudWatchMeterRegistryProvider.getCloudWatchMeterRegistry();
-            configureMetricRegistry(meterRegistry);
-            return Optional.of(meterRegistry);
+            try {
+                final CloudWatchMeterRegistryProvider provider = new CloudWatchMeterRegistryProvider();
+                final CloudWatchMeterRegistry meterRegistry = provider.getCloudWatchMeterRegistry();
+
+                configureMetricRegistry(meterRegistry);
+                return Optional.of(meterRegistry);
+            } catch (SdkClientException e) {
+                LOG.warn("Unable to configure Cloud Watch Meter Registry but Meter Registry was requested in Data Prepper Configuration");
+                throw new RuntimeException("Unable to initialize Cloud Watch Meter Registry", e);
+            }
         }
         else {
             return Optional.empty();
