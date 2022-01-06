@@ -6,6 +6,7 @@
 package com.amazon.dataprepper.plugin;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
+import com.amazon.dataprepper.model.configuration.PipelineDescription;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
@@ -74,6 +75,18 @@ class PluginArgumentsContextTest {
 
         assertThat(objectUnderTest.createArguments(new Class[] { PluginSetting.class, TestPluginConfiguration.class }),
                 equalTo(new Object[] { pluginSetting, testPluginConfiguration }));
+    }
+
+    @Test
+    void createArguments_with_three_classes() {
+        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+                .withPluginConfiguration(testPluginConfiguration)
+                .withPluginSetting(pluginSetting)
+                .withPipelineDescription(pluginSetting)
+                .build();
+
+        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class, PipelineDescription.class}),
+                equalTo(new Object[] { testPluginConfiguration, pluginSetting, pluginSetting }));
     }
 
     @Test
