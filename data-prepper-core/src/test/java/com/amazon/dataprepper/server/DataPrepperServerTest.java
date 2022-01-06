@@ -12,6 +12,7 @@ import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.pipeline.server.DataPrepperCoreAuthenticationProvider;
 import com.amazon.dataprepper.pipeline.server.DataPrepperServer;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
@@ -23,8 +24,11 @@ import org.junit.Assert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -54,14 +58,23 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-
+@ExtendWith(MockitoExtension.class)
 public class DataPrepperServerTest {
+    @Mock
+    DataPrepperConfiguration dataPrepperConfiguration;
+    @Mock
+    PluginFactory pluginFactory;
+    @Mock
+    DataPrepper dataPrepper;
+    @Mock
+    DataPrepperCoreAuthenticationProvider unauthenticatedProvider;
+    @Mock
+    CompositeMeterRegistry systemMeterRegistry;
 
-    private static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
+    private static ObjectMapper JSON_OBJECT_MAPPER = new ObjectMapper();
     private DataPrepperServer dataPrepperServer;
-    private DataPrepper dataPrepper;
     private final int port = 1234;
-    private PluginFactory pluginFactory;
 
     private void setRegistry(PrometheusMeterRegistry prometheusMeterRegistry) {
         final Set<MeterRegistry> meterRegistries = Metrics.globalRegistry.getRegistries();
@@ -73,12 +86,6 @@ public class DataPrepperServerTest {
         Metrics.addRegistry(prometheusMeterRegistry);
     }
 
-    private void setupDataPrepper() {
-        dataPrepper = mock(DataPrepper.class);
-        DataPrepper.configure(TestDataProvider.VALID_DATA_PREPPER_DEFAULT_LOG4J_CONFIG_FILE);
-        when(dataPrepper.getPluginFactory()).thenReturn(pluginFactory);
-    }
-
     @BeforeEach
     public void setup() {
         // Required to trust any self-signed certs, used in https tests
@@ -88,7 +95,6 @@ public class DataPrepperServerTest {
         setRegistry(new PrometheusRegistryMockScrape(PrometheusConfig.DEFAULT, ""));
         pluginFactory = mock(PluginFactory.class);
 
-        final DataPrepperCoreAuthenticationProvider unauthenticatedProvider = mock(DataPrepperCoreAuthenticationProvider.class);
         when(pluginFactory.loadPlugin(eq(DataPrepperCoreAuthenticationProvider.class),
                 argThat(a -> a.getName().equals(DataPrepperCoreAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME))))
                 .thenReturn(unauthenticatedProvider);
@@ -103,11 +109,12 @@ public class DataPrepperServerTest {
 
     @Test
     public void testGetGlobalMetrics() throws IOException, InterruptedException, URISyntaxException {
-        setupDataPrepper();
+        when(dataPrepperConfiguration.getServerPort()).thenReturn(port);
         final String scrape = UUID.randomUUID().toString();
         final PrometheusMeterRegistry prometheusMeterRegistry = new PrometheusRegistryMockScrape(PrometheusConfig.DEFAULT, scrape);
         setRegistry(prometheusMeterRegistry);
-        dataPrepperServer = new DataPrepperServer(dataPrepper);
+        dataPrepperServer = new DataPrepperServer(dataPrepperConfiguration, pluginFactory, dataPrepper, systemMeterRegistry);
+
         dataPrepperServer.start();
 
         HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/metrics/prometheus"))
@@ -120,9 +127,9 @@ public class DataPrepperServerTest {
 
     @Test
     public void testScrapeGlobalFailure() throws IOException, InterruptedException, URISyntaxException {
-        setupDataPrepper();
+        when(dataPrepperConfiguration.getServerPort()).thenReturn(port);
         setRegistry(new PrometheusRegistryThrowingScrape(PrometheusConfig.DEFAULT));
-        dataPrepperServer = new DataPrepperServer(dataPrepper);
+        dataPrepperServer = new DataPrepperServer(dataPrepperConfiguration, pluginFactory, dataPrepper, systemMeterRegistry);
         dataPrepperServer.start();
 
         HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/metrics/prometheus"))
@@ -134,45 +141,39 @@ public class DataPrepperServerTest {
 
     @Test
     public void testGetSystemMetrics() throws IOException, InterruptedException, URISyntaxException {
+        when(dataPrepperConfiguration.getServerPort()).thenReturn(port);
         final String scrape = UUID.randomUUID().toString();
         final PrometheusMeterRegistry prometheusMeterRegistry = new PrometheusRegistryMockScrape(PrometheusConfig.DEFAULT, scrape);
-        final CompositeMeterRegistry compositeMeterRegistry = new CompositeMeterRegistry();
-        compositeMeterRegistry.add(prometheusMeterRegistry);
-        setupDataPrepper();
-        final DataPrepperConfiguration dataPrepperConfiguration = DataPrepper.getConfiguration();
-        try (final MockedStatic<DataPrepper> dataPrepperMockedStatic = Mockito.mockStatic(DataPrepper.class)) {
-            dataPrepperMockedStatic.when(DataPrepper::getSystemMeterRegistry).thenReturn(compositeMeterRegistry);
-            dataPrepperMockedStatic.when(DataPrepper::getConfiguration).thenReturn(dataPrepperConfiguration);
-            dataPrepperServer = new DataPrepperServer(dataPrepper);
-            dataPrepperServer.start();
 
-            HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/metrics/sys"))
-                    .GET().build();
-            HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-            Assert.assertEquals(HttpURLConnection.HTTP_OK, response.statusCode());
-            dataPrepperServer.stop();
-        }
+        when(systemMeterRegistry.getRegistries())
+                .thenReturn(Set.of(prometheusMeterRegistry));
+
+        dataPrepperServer = new DataPrepperServer(dataPrepperConfiguration, pluginFactory, dataPrepper, systemMeterRegistry);
+        dataPrepperServer.start();
+
+        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/metrics/sys"))
+                .GET().build();
+        HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+        Assert.assertEquals(HttpURLConnection.HTTP_OK, response.statusCode());
+        dataPrepperServer.stop();
     }
 
     @Test
     public void testScrapeSystemMetricsFailure() throws IOException, InterruptedException, URISyntaxException {
+        when(dataPrepperConfiguration.getServerPort()).thenReturn(port);
         final PrometheusMeterRegistry prometheusMeterRegistry = new PrometheusRegistryThrowingScrape(PrometheusConfig.DEFAULT);
-        final CompositeMeterRegistry compositeMeterRegistry = new CompositeMeterRegistry();
-        compositeMeterRegistry.add(prometheusMeterRegistry);
-        setupDataPrepper();
-        final DataPrepperConfiguration dataPrepperConfiguration = DataPrepper.getConfiguration();
-        try (final MockedStatic<DataPrepper> dataPrepperMockedStatic = Mockito.mockStatic(DataPrepper.class)) {
-            dataPrepperMockedStatic.when(DataPrepper::getSystemMeterRegistry).thenReturn(compositeMeterRegistry);
-            dataPrepperMockedStatic.when(DataPrepper::getConfiguration).thenReturn(dataPrepperConfiguration);
-            dataPrepperServer = new DataPrepperServer(dataPrepper);
-            dataPrepperServer.start();
 
-            HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/metrics/sys"))
-                    .GET().build();
-            HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-            Assert.assertEquals(HttpURLConnection.HTTP_INTERNAL_ERROR, response.statusCode());
-            dataPrepperServer.stop();
-        }
+        when(systemMeterRegistry.getRegistries())
+                .thenReturn(Set.of(prometheusMeterRegistry));
+
+        dataPrepperServer = new DataPrepperServer(dataPrepperConfiguration, pluginFactory, dataPrepper, systemMeterRegistry);
+        dataPrepperServer.start();
+
+        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/metrics/sys"))
+                .GET().build();
+        HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+        Assert.assertEquals(HttpURLConnection.HTTP_INTERNAL_ERROR, response.statusCode());
+        dataPrepperServer.stop();
     }
 
     @Test
@@ -180,13 +181,9 @@ public class DataPrepperServerTest {
         final CloudWatchMeterRegistry cloudWatchMeterRegistry = mock(CloudWatchMeterRegistry.class);
         final CompositeMeterRegistry compositeMeterRegistry = new CompositeMeterRegistry();
         compositeMeterRegistry.add(cloudWatchMeterRegistry);
-        final DataPrepperConfiguration dataPrepperConfiguration = DataPrepperConfiguration.fromFile(
-                new File(VALID_DATA_PREPPER_CLOUDWATCH_METRICS_CONFIG_FILE));
-        setupDataPrepper();
+        final DataPrepperConfiguration config = makeConfig(VALID_DATA_PREPPER_CLOUDWATCH_METRICS_CONFIG_FILE);
         try (final MockedStatic<DataPrepper> dataPrepperMockedStatic = Mockito.mockStatic(DataPrepper.class)) {
-            dataPrepperMockedStatic.when(DataPrepper::getConfiguration).thenReturn(dataPrepperConfiguration);
-            dataPrepperMockedStatic.when(DataPrepper::getSystemMeterRegistry).thenReturn(compositeMeterRegistry);
-            dataPrepperServer = new DataPrepperServer(dataPrepper);
+            dataPrepperServer = new DataPrepperServer(config, pluginFactory, dataPrepper, systemMeterRegistry);
             dataPrepperServer.start();
             HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/metrics/sys"))
                     .GET().build();
@@ -204,47 +201,42 @@ public class DataPrepperServerTest {
         final CloudWatchMeterRegistry cloudWatchMeterRegistryForSystem = mock(CloudWatchMeterRegistry.class);
         final PrometheusMeterRegistry prometheusMeterRegistryForSystem =
                 new PrometheusRegistryMockScrape(PrometheusConfig.DEFAULT, UUID.randomUUID().toString());
-        final CompositeMeterRegistry compositeMeterRegistry = new CompositeMeterRegistry();
-        compositeMeterRegistry.add(cloudWatchMeterRegistryForSystem);
-        compositeMeterRegistry.add(prometheusMeterRegistryForSystem);
+
+        when(systemMeterRegistry.getRegistries())
+                .thenReturn(Set.of(cloudWatchMeterRegistryForSystem, prometheusMeterRegistryForSystem));
 
         //for data prepper metrics
         final PrometheusMeterRegistry prometheusMeterRegistryForDataPrepper =
                 new PrometheusRegistryMockScrape(PrometheusConfig.DEFAULT, UUID.randomUUID().toString());
         setRegistry(prometheusMeterRegistryForDataPrepper);
 
-        final DataPrepperConfiguration dataPrepperConfiguration = DataPrepperConfiguration.fromFile(
-                new File(VALID_DATA_PREPPER_MULTIPLE_METRICS_CONFIG_FILE));
-        setupDataPrepper();
-        try (final MockedStatic<DataPrepper> dataPrepperMockedStatic = Mockito.mockStatic(DataPrepper.class)) {
-            dataPrepperMockedStatic.when(DataPrepper::getConfiguration).thenReturn(dataPrepperConfiguration);
-            dataPrepperMockedStatic.when(DataPrepper::getSystemMeterRegistry).thenReturn(compositeMeterRegistry);
-            dataPrepperServer = new DataPrepperServer(dataPrepper);
-            dataPrepperServer.start();
+        final DataPrepperConfiguration config = makeConfig(VALID_DATA_PREPPER_MULTIPLE_METRICS_CONFIG_FILE);
 
-            //test prometheus registry
-            HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + dataPrepperConfiguration.getServerPort()
-                    + "/metrics/sys")).GET().build();
-            HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-            Assert.assertEquals(HttpURLConnection.HTTP_OK, response.statusCode());
-            dataPrepperServer.stop();
-        }
+        dataPrepperServer = new DataPrepperServer(config, pluginFactory, dataPrepper, systemMeterRegistry);
+        dataPrepperServer.start();
+
+        //test prometheus registry
+        HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + config.getServerPort()
+                + "/metrics/sys")).GET().build();
+        HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+        Assert.assertEquals(HttpURLConnection.HTTP_OK, response.statusCode());
+        dataPrepperServer.stop();
     }
 
     @Test
     public void testListPipelines() throws URISyntaxException, IOException, InterruptedException {
-        setupDataPrepper();
+        when(dataPrepperConfiguration.getServerPort()).thenReturn(port);
         final String pipelineName = "testPipeline";
         Mockito.when(dataPrepper.getTransformationPipelines()).thenReturn(
                 Collections.singletonMap("testPipeline", null)
         );
-        dataPrepperServer = new DataPrepperServer(dataPrepper);
+        dataPrepperServer = new DataPrepperServer(dataPrepperConfiguration, pluginFactory, dataPrepper, systemMeterRegistry);
         dataPrepperServer.start();
 
         HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/list"))
                 .GET().build();
         HttpResponse response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-        final String expectedResponse = OBJECT_MAPPER.writeValueAsString(
+        final String expectedResponse = JSON_OBJECT_MAPPER.writeValueAsString(
                 Collections.singletonMap("pipelines", Arrays.asList(
                         Collections.singletonMap("name", pipelineName)
                 ))
@@ -256,9 +248,9 @@ public class DataPrepperServerTest {
 
     @Test
     public void testListPipelinesFailure() throws URISyntaxException, IOException, InterruptedException {
-        setupDataPrepper();
+        when(dataPrepperConfiguration.getServerPort()).thenReturn(port);
         Mockito.when(dataPrepper.getTransformationPipelines()).thenThrow(new RuntimeException(""));
-        dataPrepperServer = new DataPrepperServer(dataPrepper);
+        dataPrepperServer = new DataPrepperServer(dataPrepperConfiguration, pluginFactory, dataPrepper, systemMeterRegistry);
         dataPrepperServer.start();
 
         HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/list"))
@@ -270,8 +262,9 @@ public class DataPrepperServerTest {
 
     @Test
     public void testShutdown() throws URISyntaxException, IOException, InterruptedException {
-        setupDataPrepper();
-        dataPrepperServer = new DataPrepperServer(dataPrepper);
+        when(dataPrepperConfiguration.getServerPort()).thenReturn(port);
+
+        dataPrepperServer = new DataPrepperServer(dataPrepperConfiguration, pluginFactory, dataPrepper, systemMeterRegistry);
         dataPrepperServer.start();
 
         HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/shutdown"))
@@ -284,9 +277,9 @@ public class DataPrepperServerTest {
 
     @Test
     public void testShutdownFailure() throws URISyntaxException, IOException, InterruptedException {
-        setupDataPrepper();
+        when(dataPrepperConfiguration.getServerPort()).thenReturn(port);
         Mockito.doThrow(new RuntimeException("")).when(dataPrepper).shutdown();
-        dataPrepperServer = new DataPrepperServer(dataPrepper);
+        dataPrepperServer = new DataPrepperServer(dataPrepperConfiguration, pluginFactory, dataPrepper, systemMeterRegistry);
         dataPrepperServer.start();
 
         HttpRequest request = HttpRequest.newBuilder(new URI("http://127.0.0.1:" + port + "/shutdown"))
@@ -299,12 +292,12 @@ public class DataPrepperServerTest {
 
     @Test
     public void testGetMetricsWithHttps() throws Exception {
-        setupDataPrepper();
-        DataPrepper.configure(TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE_WITH_TLS);
+        DataPrepperConfiguration config = DataPrepperServerTest.makeConfig(
+                TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE_WITH_TLS);
         final String scrape = UUID.randomUUID().toString();
         final PrometheusMeterRegistry prometheusMeterRegistry = new PrometheusRegistryMockScrape(PrometheusConfig.DEFAULT, scrape);
         setRegistry(prometheusMeterRegistry);
-        dataPrepperServer = new DataPrepperServer(dataPrepper);
+        dataPrepperServer = new DataPrepperServer(config, pluginFactory, dataPrepper, systemMeterRegistry);
         dataPrepperServer.start();
 
         HttpClient httpsClient = HttpClient.newBuilder()
@@ -324,11 +317,11 @@ public class DataPrepperServerTest {
     }
 
     @Test
-    public void testTlsWithInvalidPassword() {
-        setupDataPrepper();
-        DataPrepper.configure(TestDataProvider.INVALID_KEYSTORE_PASSWORD_DATA_PREPPER_CONFIG_FILE);
+    public void testTlsWithInvalidPassword() throws IOException {
+        DataPrepperConfiguration config = DataPrepperServerTest.makeConfig(
+                TestDataProvider.INVALID_KEYSTORE_PASSWORD_DATA_PREPPER_CONFIG_FILE);
 
-        assertThrows(IllegalStateException.class, () -> new DataPrepperServer(dataPrepper));
+        assertThrows(IllegalStateException.class, () -> new DataPrepperServer(config, pluginFactory, dataPrepper, systemMeterRegistry));
     }
 
     private SSLContext getSslContextTrustingInsecure() throws Exception {
@@ -378,6 +371,11 @@ public class DataPrepperServerTest {
         public String scrape() {
             throw new RuntimeException("");
         }
+    }
+
+    private static DataPrepperConfiguration makeConfig(String filePath) throws IOException {
+        final File configurationFile = new File(filePath);
+        return OBJECT_MAPPER.readValue(configurationFile, DataPrepperConfiguration.class);
     }
 
 }
