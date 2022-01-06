@@ -35,7 +35,7 @@ class PipelineParserConfigurationTest {
         when(args.getPipelineConfigFileLocation())
                 .thenReturn(pipelineConfigFileLocation);
 
-        PipelineParser pipelineParser = pipelineParserConfiguration.pipelineParser(args, pluginFactory);
+        final PipelineParser pipelineParser = pipelineParserConfiguration.pipelineParser(args, pluginFactory);
 
         assertThat(pipelineParser, is(notNullValue()));
         verify(args, times(1)).getPipelineConfigFileLocation();

@@ -101,7 +101,7 @@ class DataPrepperServerConfigurationTest {
         when(configuration.getServerPort())
                 .thenReturn(expectedPort);
 
-        HttpServer server = serverConfiguration.httpServer(configuration);
+        final HttpServer server = serverConfiguration.httpServer(configuration);
 
         assertThat(server, isA(HttpServer.class));
         assertThat(server, not(isA(HttpsServer.class)));
@@ -109,7 +109,7 @@ class DataPrepperServerConfigurationTest {
     }
 
     @Test
-    public void testGivenSslConfigThenHttpsServerCreater() {
+    public void testGivenSslConfigThenHttpsServerCreated() {
         final int expectedPort = getPort();
 
         when(configuration.ssl())
@@ -123,13 +123,13 @@ class DataPrepperServerConfigurationTest {
         when(configuration.getServerPort())
                 .thenReturn(expectedPort);
 
-        HttpServer server = serverConfiguration.httpServer(configuration);
+        final HttpServer server = serverConfiguration.httpServer(configuration);
 
         assertThat(server, isA(HttpServer.class));
         assertThat(server, isA(HttpsServer.class));
         assertThat(server.getAddress().getPort(), is(expectedPort));
 
-        HttpsServer httpsServer = (HttpsServer) server;
+        final HttpsServer httpsServer = (HttpsServer) server;
 
         assertThat(httpsServer.getHttpsConfigurator(), isA(HttpsConfigurator.class));
 
@@ -141,9 +141,9 @@ class DataPrepperServerConfigurationTest {
     @Test
     public void testGivenPortInUseThenExceptionThrown() throws IOException {
         final int port = getPort();
-        InetSocketAddress socketAddress = new InetSocketAddress(port);
+        final InetSocketAddress socketAddress = new InetSocketAddress(port);
 
-        HttpServer portBlockingServer = HttpServer.create(socketAddress, 0);
+        final HttpServer portBlockingServer = HttpServer.create(socketAddress, 0);
         portBlockingServer.start();
 
         try {
@@ -159,7 +159,7 @@ class DataPrepperServerConfigurationTest {
 
     @Test
     public void testGivingNoConfigThenCreateInsecureSettings() {
-        PluginSetting pluginSetting = serverConfiguration.pluginSetting(Optional.empty());
+        final PluginSetting pluginSetting = serverConfiguration.pluginSetting(Optional.empty());
 
         assertThat(pluginSetting.getName(), is("unauthenticated"));
         assertThat(pluginSetting.getSettings().isEmpty(), is(true));
@@ -167,12 +167,12 @@ class DataPrepperServerConfigurationTest {
 
     @Test
     public void testGivingInsecureConfigThenCreateInsecureSettings() {
-        PluginModel pluginModel = mock(PluginModel.class);
+        final PluginModel pluginModel = mock(PluginModel.class);
 
         when(pluginModel.getPluginName())
                 .thenReturn("unauthenticated");
 
-        PluginSetting pluginSetting = serverConfiguration.pluginSetting(Optional.of(pluginModel));
+        final PluginSetting pluginSetting = serverConfiguration.pluginSetting(Optional.of(pluginModel));
 
         assertThat(pluginSetting.getName(), is("unauthenticated"));
         assertThat(pluginSetting.getSettings().isEmpty(), is(true));
@@ -189,7 +189,7 @@ class DataPrepperServerConfigurationTest {
         when(pluginModel.getPluginSettings())
                 .thenReturn(settings);
 
-        PluginSetting pluginSetting = serverConfiguration.pluginSetting(Optional.of(pluginModel));
+        final PluginSetting pluginSetting = serverConfiguration.pluginSetting(Optional.of(pluginModel));
 
         assertThat(pluginSetting.getName(), is("super secure plugin"));
         assertThat(pluginSetting.getSettings(), is(settings));
@@ -204,7 +204,7 @@ class DataPrepperServerConfigurationTest {
         when(pluginFactory.loadPlugin(eq(DataPrepperCoreAuthenticationProvider.class), eq(pluginSetting)))
                 .thenReturn(expected);
 
-        DataPrepperCoreAuthenticationProvider authenticationProvider = serverConfiguration.authenticationProvider(
+        final DataPrepperCoreAuthenticationProvider authenticationProvider = serverConfiguration.authenticationProvider(
                 pluginFactory,
                 pluginSetting);
 
@@ -219,7 +219,7 @@ class DataPrepperServerConfigurationTest {
         when(provider.getAuthenticator())
                 .thenReturn(authenticator);
 
-        Optional<Authenticator> optional = serverConfiguration.optionalAuthenticator(provider);
+        final Optional<Authenticator> optional = serverConfiguration.optionalAuthenticator(provider);
 
         assertThat(optional.isPresent(), is(true));
         assertThat(optional.get(), is(authenticator));
@@ -234,7 +234,7 @@ class DataPrepperServerConfigurationTest {
         when(server.createContext(eq("/list"), any(ListPipelinesHandler.class)))
                 .thenReturn(context);
 
-        ListPipelinesHandler handler = serverConfiguration.listPipelinesHandler(dataPrepper, Optional.empty(), server);
+        final ListPipelinesHandler handler = serverConfiguration.listPipelinesHandler(dataPrepper, Optional.empty(), server);
 
         assertThat(handler, isA(ListPipelinesHandler.class));
         verifyNoInteractions(context);
@@ -250,7 +250,7 @@ class DataPrepperServerConfigurationTest {
         when(server.createContext(eq("/list"), any(ListPipelinesHandler.class)))
                 .thenReturn(context);
 
-        ListPipelinesHandler handler = serverConfiguration.listPipelinesHandler(dataPrepper, Optional.of(authenticator), server);
+        final ListPipelinesHandler handler = serverConfiguration.listPipelinesHandler(dataPrepper, Optional.of(authenticator), server);
 
         assertThat(handler, isA(ListPipelinesHandler.class));
         verify(context, times(1))
@@ -266,7 +266,7 @@ class DataPrepperServerConfigurationTest {
         when(server.createContext(eq("/shutdown"), any(ShutdownHandler.class)))
                 .thenReturn(context);
 
-        ShutdownHandler handler = serverConfiguration.shutdownHandler(dataPrepper, Optional.empty(), server);
+        final ShutdownHandler handler = serverConfiguration.shutdownHandler(dataPrepper, Optional.empty(), server);
 
         assertThat(handler, isA(ShutdownHandler.class));
         verifyNoInteractions(context);
@@ -282,7 +282,7 @@ class DataPrepperServerConfigurationTest {
         when(server.createContext(eq("/shutdown"), any(ShutdownHandler.class)))
                 .thenReturn(context);
 
-        ShutdownHandler handler = serverConfiguration.shutdownHandler(dataPrepper, Optional.of(authenticator), server);
+        final ShutdownHandler handler = serverConfiguration.shutdownHandler(dataPrepper, Optional.of(authenticator), server);
 
         assertThat(handler, isA(ShutdownHandler.class));
         verify(context, times(1))

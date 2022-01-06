@@ -122,7 +122,7 @@ class DataPrepperAppConfigurationTest {
     public void testPluginModelFromDataPrepperConfigurationAuthentication() {
         final DataPrepperConfiguration configuration = mock(DataPrepperConfiguration.class);
 
-        Optional<PluginModel> optional = appConfiguration.pluginModel(configuration);
+        final Optional<PluginModel> optional = appConfiguration.pluginModel(configuration);
 
         assertThat(optional.isPresent(), is(false));
         verify(configuration, times(1)).getAuthentication();
