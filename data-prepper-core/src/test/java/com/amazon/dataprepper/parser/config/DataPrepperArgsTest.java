@@ -51,6 +51,13 @@ class DataPrepperArgsTest {
     public void testGivenNoArgumentThenThrowException() {
         assertThrows(
                 IllegalArgumentException.class,
+                () -> new DataPrepperArgs(new String[]{}));
+    }
+
+    @Test
+    public void testGivenNullArgumentThenThrowException() {
+        assertThrows(
+                IllegalArgumentException.class,
                 () -> new DataPrepperArgs());
     }
 
