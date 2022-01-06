@@ -24,8 +24,8 @@ public class AggregateProcessorConfigTest {
     public void testDefault() {
         final AggregateProcessorConfig aggregateConfig = new AggregateProcessorConfig();
 
-        assertThat(AggregateProcessorConfig.DEFAULT_WINDOW_DURATION, equalTo(aggregateConfig.getWindowDuration()));
-        assertThat(AggregateProcessorConfig.DEFAULT_DB_PATH, equalTo(aggregateConfig.getDbPath()));
+        assertThat(aggregateConfig.getWindowDuration(), equalTo(AggregateProcessorConfig.DEFAULT_WINDOW_DURATION));
+        assertThat(aggregateConfig.getDbPath(), equalTo(AggregateProcessorConfig.DEFAULT_DB_PATH));
         assertThat(aggregateConfig.isDbPathValid(), equalTo(true));
     }
 
