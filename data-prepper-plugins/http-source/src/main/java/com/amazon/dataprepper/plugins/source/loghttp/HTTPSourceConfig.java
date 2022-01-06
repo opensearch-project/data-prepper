@@ -13,8 +13,9 @@ package com.amazon.dataprepper.plugins.source.loghttp;
 
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.Preconditions;
-import io.micrometer.core.instrument.util.StringUtils;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -31,18 +32,24 @@ public class HTTPSourceConfig {
     static final int DEFAULT_MAX_PENDING_REQUESTS = 1024;
 
     @JsonProperty("port")
+    @Min(0)
+    @Max(65535)
     private int port = DEFAULT_PORT;
 
     @JsonProperty("request_timeout")
+    @Min(0)
     private int requestTimeoutInMillis = DEFAULT_REQUEST_TIMEOUT_MS;
 
     @JsonProperty("thread_count")
+    @Min(0)
     private int threadCount = DEFAULT_THREAD_COUNT;
 
     @JsonProperty("max_connection_count")
+    @Min(0)
     private int maxConnectionCount = DEFAULT_MAX_CONNECTION_COUNT;
 
     @JsonProperty("max_pending_requests")
+    @Min(0)
     private int maxPendingRequests = DEFAULT_MAX_PENDING_REQUESTS;
 
     @JsonProperty(SSL)
@@ -59,25 +66,20 @@ public class HTTPSourceConfig {
 
     private PluginModel authentication;
 
-    // TODO: Remove once JSR-303 validation is available
-    void validate() {
-        Preconditions.checkArgument(port >= 0 && port < 65535, "port must be between 0 and 65535.");
-        Preconditions.checkArgument(requestTimeoutInMillis > 0, "request_timeout must be greater than 0.");
-        Preconditions.checkArgument(threadCount > 0, "thread_count must be greater than 0.");
-        Preconditions.checkArgument(maxConnectionCount > 0, "max_connection_count must be greater than 0.");
-        Preconditions.checkArgument(maxPendingRequests > 0, "max_pending_requests must be greater than 0.");
-        if (ssl) {
-            validateFilePath(String.format("%s is enabled", SSL), sslCertificateFile, SSL_CERTIFICATE_FILE);
-            validateFilePath(String.format("%s is enabled", SSL), sslKeyFile, SSL_KEY_FILE);
-        }
-
+    @AssertTrue(message = "ssl_certificate_file must be a valid file path when ssl is enabled")
+    boolean isSslCertificateFileValidation() {
+        return !ssl || isValidFilePath(sslCertificateFile);
     }
 
-    private void validateFilePath(final String typeMessage, final String argument, final String argumentName) {
-        if (StringUtils.isEmpty(argument) || !Files.exists(Paths.get(argument))) {
-            throw new IllegalArgumentException(String.format("%s, %s needs to be a valid file path.", typeMessage, argumentName));
-        }
+    @AssertTrue(message = "ssl_key_file must be a valid file path when ssl is enabled")
+    boolean isSslKeyFileValidation() {
+        return !ssl || isValidFilePath(sslKeyFile);
     }
+
+    private static boolean isValidFilePath(final String filePath) {
+        return filePath != null && !filePath.isEmpty() && Files.exists(Paths.get(filePath));
+    }
+
 
     public int getPort() {
         return port;
