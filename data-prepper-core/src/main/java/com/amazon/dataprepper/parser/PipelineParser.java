@@ -43,12 +43,12 @@ public class PipelineParser {
             .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
     private static final String PIPELINE_TYPE = "pipeline";
     private static final String ATTRIBUTE_NAME = "name";
-    private final String configurationFileLocation;
+    private final String pipelineConfigurationFileLocation;
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
     private final PluginFactory pluginFactory;
 
-    public PipelineParser(final String configurationFileLocation, final PluginFactory pluginFactory) {
-        this.configurationFileLocation = configurationFileLocation;
+    public PipelineParser(final String pipelineConfigurationFileLocation, final PluginFactory pluginFactory) {
+        this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
     }
 
@@ -58,7 +58,7 @@ public class PipelineParser {
     public Map<String, Pipeline> parseConfiguration() {
         try {
             final Map<String, PipelineConfiguration> pipelineConfigurationMap = OBJECT_MAPPER.readValue(
-                    new File(configurationFileLocation),
+                    new File(pipelineConfigurationFileLocation),
                     new TypeReference<Map<String, PipelineConfiguration>>() {
                     });
             final List<String> allPipelineNames = PipelineConfigurationValidator.validateAndGetPipelineNames(pipelineConfigurationMap);
@@ -74,7 +74,7 @@ public class PipelineParser {
             }
             return pipelineMap;
         } catch (IOException e) {
-            throw new ParseException(format("Failed to parse the configuration file %s", configurationFileLocation), e);
+            throw new ParseException(format("Failed to parse the configuration file %s", pipelineConfigurationFileLocation), e);
         }
     }
 
