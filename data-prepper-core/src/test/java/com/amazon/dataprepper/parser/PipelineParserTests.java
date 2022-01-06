@@ -72,7 +72,7 @@ class PipelineParserTests {
         final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
         assertThat(actualException.getMessage(),
                 equalTo("Provided configuration results in a loop, check pipeline: test-pipeline-1"));
-        
+
     }
 
     @Test
