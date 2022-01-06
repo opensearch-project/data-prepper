@@ -33,7 +33,7 @@ public class DataPrepperServerConfiguration {
 
     @Bean
     public HttpServer httpServer(final DataPrepperConfiguration dataPrepperConfiguration) {
-        InetSocketAddress socketAddress = new InetSocketAddress(dataPrepperConfiguration.getServerPort());
+        final InetSocketAddress socketAddress = new InetSocketAddress(dataPrepperConfiguration.getServerPort());
         try {
             if (dataPrepperConfiguration.ssl()) {
                 LOG.info("Creating Data Prepper server with TLS");
@@ -45,10 +45,10 @@ public class DataPrepperServerConfiguration {
 
                 final HttpsServer server = HttpsServer.create(socketAddress, 0);
                 server.setHttpsConfigurator(new HttpsConfigurator(sslContext) {
-                    public void configure(HttpsParameters params) {
-                        SSLContext context = getSSLContext();
-                        SSLParameters sslparams = context.getDefaultSSLParameters();
-                        params.setSSLParameters(sslparams);
+                    public void configure(final HttpsParameters params) {
+                        final SSLContext context = getSSLContext();
+                        final SSLParameters sslParams = context.getDefaultSSLParameters();
+                        params.setSSLParameters(sslParams);
                     }
                 });
 
@@ -63,14 +63,15 @@ public class DataPrepperServerConfiguration {
 
     private void printInsecurePluginModelWarning() {
         LOG.warn("Creating data prepper server without authentication. This is not secure.");
-        LOG.warn("In order to set up Http Basic authentication for the data prepper server, go here: https://github.com/opensearch-project/data-prepper/blob/main/docs/core_apis.md#authentication");
+        LOG.warn("In order to set up Http Basic authentication for the data prepper server, " +
+                "go here: https://github.com/opensearch-project/data-prepper/blob/main/docs/core_apis.md#authentication");
     }
 
     @Bean
     public PluginSetting pluginSetting(final Optional<PluginModel> optionalPluginModel) {
         if (optionalPluginModel.isPresent()) {
-            PluginModel pluginModel = optionalPluginModel.get();
-            String pluginName = pluginModel.getPluginName();
+            final PluginModel pluginModel = optionalPluginModel.get();
+            final String pluginName = pluginModel.getPluginName();
             if (pluginName.equals(DataPrepperCoreAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME)) {
                 printInsecurePluginModelWarning();
             }

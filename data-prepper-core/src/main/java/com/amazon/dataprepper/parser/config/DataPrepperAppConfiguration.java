@@ -65,19 +65,4 @@ public class DataPrepperAppConfiguration {
     public Optional<PluginModel> pluginModel(final DataPrepperConfiguration dataPrepperConfiguration) {
         return Optional.ofNullable(dataPrepperConfiguration.getAuthentication());
     }
-
-    private static String checkForLogstashConfigurationAndConvert(String configurationFileLocation) {
-        if (configurationFileLocation.endsWith(".conf")) {
-            final LogstashConfigConverter logstashConfigConverter = new LogstashConfigConverter();
-            final Path configurationDirectory = Paths.get(configurationFileLocation).toAbsolutePath().getParent();
-
-            try {
-                configurationFileLocation = logstashConfigConverter.convertLogstashConfigurationToPipeline(
-                        configurationFileLocation, String.valueOf(configurationDirectory));
-            } catch (IOException e) {
-                LOG.error("Unable to read the Logstash configuration file", e);
-            }
-        }
-        return configurationFileLocation;
-    }
 }

@@ -6,6 +6,7 @@
 package com.amazon.dataprepper.parser.config;
 
 import com.amazon.dataprepper.TestDataProvider;
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import org.springframework.core.env.Environment;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Optional;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -114,5 +116,15 @@ class DataPrepperAppConfigurationTest {
 
 
         assertThrows(IllegalArgumentException.class, () -> appConfiguration.dataPrepperConfiguration(dataPrepperArgs, objectMapper));
+    }
+
+    @Test
+    public void testPluginModelFromDataPrepperConfigurationAuthentication() {
+        final DataPrepperConfiguration configuration = mock(DataPrepperConfiguration.class);
+
+        Optional<PluginModel> optional = appConfiguration.pluginModel(configuration);
+
+        assertThat(optional.isPresent(), is(false));
+        verify(configuration, times(1)).getAuthentication();
     }
 }
