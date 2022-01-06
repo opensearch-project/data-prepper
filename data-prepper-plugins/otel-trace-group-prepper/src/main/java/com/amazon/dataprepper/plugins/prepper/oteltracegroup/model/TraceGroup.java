@@ -36,7 +36,7 @@ public class TraceGroup {
         return Objects.hash(traceGroup, traceGroupFields);
     }
 
-    TraceGroup(TraceGroupBuilder traceGroupBuilder) {
+    TraceGroup(final TraceGroupBuilder traceGroupBuilder) {
         traceGroup = traceGroupBuilder.traceGroup;
         traceGroupFields = traceGroupBuilder.traceGroupFields;
     }

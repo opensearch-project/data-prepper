@@ -309,7 +309,7 @@ public class JacksonSpanTest {
     }
 
     @Test
-    public void testBuilder_withoutParameters_throwsNullPointerException() {
+    public void testBuilder_missingNonNullParameters_throwsNullPointerException() {
         final JacksonSpan.Builder builder = JacksonSpan.builder();
         builder.withTraceGroup(null);
         assertThrows(NullPointerException.class, builder::build);
