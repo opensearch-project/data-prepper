@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.CommandLinePropertySource;
 import org.springframework.core.env.Environment;
 
 import java.io.File;
@@ -19,12 +20,11 @@ import java.io.IOException;
 @Configuration
 public class DataPrepperAppConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperAppConfiguration.class);
-    private static final String POSITIONAL_COMMAND_LINE_ARGUMENTS = "nonOptionArgs";
     private static final String COMMAND_LINE_ARG_DELIMITER = ",";
 
     @Bean
     public DataPrepperArgs dataPrepperArgs(final Environment environment) {
-        final String commandLineArgs = environment.getProperty(POSITIONAL_COMMAND_LINE_ARGUMENTS);
+        final String commandLineArgs = environment.getProperty(CommandLinePropertySource.DEFAULT_NON_OPTION_ARGS_PROPERTY_NAME);
 
         LOG.info("Command line args: {}", commandLineArgs);
 

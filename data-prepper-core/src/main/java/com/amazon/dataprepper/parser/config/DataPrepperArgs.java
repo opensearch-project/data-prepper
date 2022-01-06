@@ -70,11 +70,11 @@ public class DataPrepperArgs {
         throw new IllegalArgumentException(msg);
     }
 
-    @Nullable
     public String getPipelineConfigFileLocation() {
         return pipelineConfigFileLocation;
     }
 
+    @Nullable
     public String getDataPrepperConfigFileLocation() {
         return dataPrepperConfigFileLocation;
     }
