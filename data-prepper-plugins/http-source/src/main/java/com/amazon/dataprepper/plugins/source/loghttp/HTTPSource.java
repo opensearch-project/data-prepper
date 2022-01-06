@@ -50,8 +50,6 @@ public class HTTPSource implements Source<Record<Log>> {
 
     @DataPrepperPluginConstructor
     public HTTPSource(final HTTPSourceConfig sourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
-        // TODO: Remove once JSR-303 validation is available.
-        sourceConfig.validate();
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
         certificateProviderFactory = new CertificateProviderFactory(sourceConfig);
