@@ -50,7 +50,6 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<Span>, Rec
 
     private static final Logger LOG = LoggerFactory.getLogger(ServiceMapStatefulPrepper.class);
     private static final String EMPTY_SUFFIX = "-empty";
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Collection<Record<Event>> EMPTY_COLLECTION = Collections.emptySet();
     private static final Integer TO_MILLIS = 1_000;
 
