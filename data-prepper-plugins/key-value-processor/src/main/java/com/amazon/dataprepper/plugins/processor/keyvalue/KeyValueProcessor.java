@@ -16,7 +16,10 @@ import com.sun.tools.javac.util.List;
 import jdk.incubator.jpackage.internal.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -36,32 +39,33 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
             final Map<String, Object> parsedMap = new TreeMap<>();
-            parsedMap.put("TEST", List.of("a", "b"));
-
             final Event recordEvent = record.getData();
+
             final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
             final String[] groups = groupsRaw.split(keyValueProcessorConfig.getFieldDelimiterRegex(), 0);
-
             for(final String group : groups) {
                 final String[] terms = group.split(keyValueProcessorConfig.getKeyValueDelimiterRegex(), 2);
+                final String key = terms[0];
+                String value;
 
                 //Expected number of terms to be produced
-                if(terms.length == 2) {
-                    final String key = terms[0];
-                    final String value = terms[1];
-                    if(parsedMap.containsKey(key)) {
-                        final Object existentValue = parsedMap.get(key);
-                        if(existentValue.getClass() == String.class) {
-                            LOG.info("This is a second instance");
-                            parsedMap.replace(key, List.of((String)existentValue, value));
-                        } else {
-                            ((List<String>)existentValue).add(value);
-                        }
-                    }
-                    parsedMap.put(terms[0], terms[1]);
+                if (terms.length == 2) {
+                    value = terms[1];
                 } else {
                     LOG.error(String.format("Bad match: %s", terms[0]));
-                    //TODO WHAT TO DO WITH THE BAD MATCH??
+                    value = keyValueProcessorConfig.getNonMatchValue();
+                }
+
+                if (parsedMap.containsKey(key)) {
+                    final Object existentValue = parsedMap.get(key);
+                    if (existentValue.getClass() == String.class) {
+                        LinkedList<String> list = new LinkedList<>(List.of((String) existentValue, value));
+                        parsedMap.replace(key, list);
+                    } else {
+                        ((LinkedList<String>) existentValue).add(value);
+                    }
+                } else {
+                    parsedMap.put(key, value);
                 }
             }
 
