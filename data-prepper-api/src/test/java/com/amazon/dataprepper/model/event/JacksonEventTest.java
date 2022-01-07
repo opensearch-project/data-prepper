@@ -315,7 +315,7 @@ public class JacksonEventTest {
 
     @Test
     public void testGetAsMap_with_EmptyData() {
-        final Map<Object, Object> eventAsMap = event.getAsMap();
+        final Map<String, Object> eventAsMap = event.toMap();
         assertThat(eventAsMap, equalTo(Collections.emptyMap()));
     }
 
@@ -329,7 +329,7 @@ public class JacksonEventTest {
         event.put("list", Arrays.asList(1, 4, 5));
         mapObject.put("list", Arrays.asList(1, 4, 5));
 
-        final Map<Object, Object> eventAsMap = event.getAsMap();
+        final Map<String, Object> eventAsMap = event.toMap();
         assertThat(eventAsMap, equalTo(mapObject));
     }
 

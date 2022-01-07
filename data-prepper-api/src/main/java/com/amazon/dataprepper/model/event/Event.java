@@ -91,5 +91,5 @@ public interface Event {
      * @return a Map representation of the Event
      * @since 1.3
      */
-    Map<Object, Object> getAsMap();
+    Map<String, Object> toMap();
 }
