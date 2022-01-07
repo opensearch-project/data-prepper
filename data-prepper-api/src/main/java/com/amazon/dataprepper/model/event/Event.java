@@ -6,6 +6,7 @@
 package com.amazon.dataprepper.model.event;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * All data flowing through Data Prepper will be represented as events. An event is the base representation of data.
@@ -85,4 +86,10 @@ public interface Event {
      * @since 1.2
      */
     boolean isValueAList(String key);
+
+    /**
+     * @return a Map representation of the Event
+     * @since 1.3
+     */
+    Map<Object, Object> getAsMap();
 }
