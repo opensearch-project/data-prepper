@@ -6,16 +6,17 @@
 package com.amazon.dataprepper.pipeline.server;
 
 import com.amazon.dataprepper.DataPrepper;
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * HttpHandler to handle requests for listing pipelines running on the data prepper instance
@@ -39,12 +40,12 @@ public class ListPipelinesHandler implements HttpHandler {
     }
 
     @Override
-    public void handle(HttpExchange exchange) throws IOException {
+    public void handle(final HttpExchange exchange) throws IOException {
         try {
-            List<PipelineListing> pipelines = dataPrepper.getTransformationPipelines()
-                    .entrySet()
+            final List<PipelineListing> pipelines = dataPrepper.getTransformationPipelines()
+                    .keySet()
                     .stream()
-                    .map(entry -> new PipelineListing(entry.getKey()))
+                    .map(PipelineListing::new)
                     .collect(Collectors.toList());
             final byte[] response = OBJECT_MAPPER.writeValueAsString(Collections.singletonMap("pipelines", pipelines)).getBytes();
             exchange.getResponseHeaders().add("Content-Type", "text/plain; charset=UTF-8");

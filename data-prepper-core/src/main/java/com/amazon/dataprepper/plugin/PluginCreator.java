@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 class PluginCreator {
     private static final Logger LOG = LoggerFactory.getLogger(PluginCreator.class);
 
-    <T> T newPluginInstance(final Class<T> pluginClass,
+    public <T> T newPluginInstance(final Class<T> pluginClass,
                             final PluginArgumentsContext pluginArgumentsContext,
                             final String pluginName) {
         Objects.requireNonNull(pluginClass);
