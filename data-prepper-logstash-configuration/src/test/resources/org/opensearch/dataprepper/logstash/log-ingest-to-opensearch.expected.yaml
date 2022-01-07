@@ -12,6 +12,7 @@ logstash-converted-pipeline:
         match:
           log:
             - "%{COMBINEDAPACHELOG}"
+    - drop_events:
   sink:
     - opensearch:
         hosts:
