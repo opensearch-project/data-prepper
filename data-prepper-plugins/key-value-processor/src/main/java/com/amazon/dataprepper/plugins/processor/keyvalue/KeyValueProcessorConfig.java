@@ -18,7 +18,7 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_DESTINATION = "parsed_message";
     static final String DEFAULT_FIELD_DELIMITER_REGEX = "&";
     static final String DEFAULT_KEY_VALUE_DELIMITER_REGEX = ":";
-    static final String DEFAULT_NON_MATCH_VALUE = "null";
+    static final String DEFAULT_NON_MATCH_VALUE = null;
 
     private final String source;
     private final String destination;

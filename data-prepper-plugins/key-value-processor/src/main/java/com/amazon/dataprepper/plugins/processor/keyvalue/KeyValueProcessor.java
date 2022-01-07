@@ -56,6 +56,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     value = keyValueProcessorConfig.getNonMatchValue();
                 }
 
+                //If the parsedMap already has the key, then convert its value from a string to a LinkedList of strings
+                //Including the original string plus the newly added string, otherwise add in the new key/value
                 if (parsedMap.containsKey(key)) {
                     final Object existentValue = parsedMap.get(key);
                     if (existentValue.getClass() == String.class) {
