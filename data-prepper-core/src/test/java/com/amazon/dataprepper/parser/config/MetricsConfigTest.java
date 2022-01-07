@@ -169,21 +169,6 @@ dataPrepperConfiguration,
     }
 
     @Test
-    public void testGivenConfigWithCloudWatchMeterRegistryThenMeterRegistryCreated() {
-        final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
-
-        when(dataPrepperConfiguration.getMetricRegistryTypes())
-                .thenReturn(Collections.singletonList(MetricRegistryType.CloudWatch));
-
-        final Optional<MeterRegistry> optionalMeterRegistry = metricsConfig.cloudWatchMeterRegistry(dataPrepperConfiguration);
-
-        assertThat(optionalMeterRegistry.isPresent(), is(true));
-
-        final MeterRegistry registry = optionalMeterRegistry.get();
-        assertThat(registry, isA(CloudWatchMeterRegistry.class));
-    }
-
-    @Test
     public void testGivenConfigWithNoCloudWatchMeterRegistryThenNoMeterRegistryCreated() {
         final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
 
