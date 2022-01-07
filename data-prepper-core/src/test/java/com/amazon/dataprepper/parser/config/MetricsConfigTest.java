@@ -7,7 +7,6 @@ package com.amazon.dataprepper.parser.config;
 
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.parser.model.MetricRegistryType;
-import com.amazon.dataprepper.pipeline.server.CloudWatchMeterRegistryProvider;
 import com.amazon.dataprepper.pipeline.server.PrometheusMetricsHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -34,10 +33,9 @@ import java.util.Optional;
 import java.util.Random;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.isA;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.isA;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -171,37 +169,18 @@ dataPrepperConfiguration,
     }
 
     @Test
-    public void testCloudWatchMeterRegistryProviderCreated() {
-        CloudWatchMeterRegistryProvider cloudWatchMeterRegistryProvider = metricsConfig.cloudWatchMeterRegistryProvider();
-
-        assertThat(cloudWatchMeterRegistryProvider, isA(CloudWatchMeterRegistryProvider.class));
-    }
-
-    @Test
     public void testGivenConfigWithCloudWatchMeterRegistryThenMeterRegistryCreated() {
         final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
-        final CloudWatchMeterRegistryProvider registryProvider = mock(CloudWatchMeterRegistryProvider.class);
-        final CloudWatchMeterRegistry meterRegistry = mock(CloudWatchMeterRegistry.class);
-        final MeterRegistry.Config config = mock(MeterRegistry.Config.class);
 
         when(dataPrepperConfiguration.getMetricRegistryTypes())
                 .thenReturn(Collections.singletonList(MetricRegistryType.CloudWatch));
-        when(registryProvider.getCloudWatchMeterRegistry())
-                .thenReturn(meterRegistry);
-        when(meterRegistry.config())
-                .thenReturn(config);
 
-        final Optional<MeterRegistry> optionalMeterRegistry = metricsConfig.cloudWatchMeterRegistry(
-                dataPrepperConfiguration,
-                registryProvider);
+        final Optional<MeterRegistry> optionalMeterRegistry = metricsConfig.cloudWatchMeterRegistry(dataPrepperConfiguration);
 
         assertThat(optionalMeterRegistry.isPresent(), is(true));
 
         final MeterRegistry registry = optionalMeterRegistry.get();
         assertThat(registry, isA(CloudWatchMeterRegistry.class));
-
-        verify(config, times(1))
-                .commonTags(anyList());
     }
 
     @Test
@@ -211,9 +190,7 @@ dataPrepperConfiguration,
         when(dataPrepperConfiguration.getMetricRegistryTypes())
                 .thenReturn(Collections.singletonList(MetricRegistryType.Prometheus));
 
-        final Optional<MeterRegistry> optionalMeterRegistry = metricsConfig.cloudWatchMeterRegistry(
-                dataPrepperConfiguration,
-                null);
+        final Optional<MeterRegistry> optionalMeterRegistry = metricsConfig.cloudWatchMeterRegistry(dataPrepperConfiguration);
 
         assertThat(optionalMeterRegistry.isPresent(), is(false));
     }
