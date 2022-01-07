@@ -13,7 +13,6 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.sun.net.httpserver.Authenticator;
 import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpServer;
-import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
