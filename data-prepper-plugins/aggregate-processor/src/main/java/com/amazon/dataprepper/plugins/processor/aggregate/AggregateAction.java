@@ -20,7 +20,7 @@ public interface AggregateAction {
      *
      * @param event The current event
      * @param groupState An arbitrary map for the current group
-     * @return An {@link com.amazon.dataprepper.plugins.processor.aggregate.AggregateActionResponse} with an Optional<Event> that will either
+     * @return An {@link com.amazon.dataprepper.plugins.processor.aggregate.AggregateActionResponse} with an Event that will either
      * be processed immediately, or is empty if the Event should be removed from processing
      * @since 1.3
      */
