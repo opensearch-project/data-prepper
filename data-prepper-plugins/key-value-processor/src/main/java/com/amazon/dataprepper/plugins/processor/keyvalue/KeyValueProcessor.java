@@ -9,15 +9,13 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.processor.AbstractProcessor;
 import com.amazon.dataprepper.model.processor.Processor;
+import com.amazon.dataprepper.model.record.Record;
 import com.sun.tools.javac.util.List;
-import jdk.incubator.jpackage.internal.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
@@ -56,8 +54,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     value = keyValueProcessorConfig.getNonMatchValue();
                 }
 
-                //When enabled, if the parsedMap already has the key, then convert its value from a string to a LinkedList of strings
-                //including the original string plus the newly added string; otherwise add in the new key/value
+                //When enabled, if the parsedMap already has the key, then convert its value from a string to a
+                //LinkedList of strings including the original string plus the newly added string;
+                //otherwise add in the new key/value
                 if (keyValueProcessorConfig.getAllowDuplicateValues() && parsedMap.containsKey(key)) {
                     final Object existentValue = parsedMap.get(key);
                     if (existentValue.getClass() == String.class) {
