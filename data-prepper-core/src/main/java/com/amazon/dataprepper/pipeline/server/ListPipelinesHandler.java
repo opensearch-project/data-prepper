@@ -51,7 +51,7 @@ public class ListPipelinesHandler implements HttpHandler {
             exchange.getResponseHeaders().add("Content-Type", "text/plain; charset=UTF-8");
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
             exchange.getResponseBody().write(response);
-        } catch (Exception e) {
+        } catch (final Exception e) {
             LOG.error("Caught exception listing pipelines", e);
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_INTERNAL_ERROR, 0);
         } finally {
