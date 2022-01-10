@@ -272,6 +272,11 @@ public class JacksonEvent implements Event {
         return node.isArray();
     }
 
+    @Override
+    public Map<String, Object> toMap() {
+        return mapper.convertValue(jsonNode, MAP_TYPE_REFERENCE);
+    }
+
     private String checkAndTrimKey(final String key) {
         checkKey(key);
         return trimKey(key);
