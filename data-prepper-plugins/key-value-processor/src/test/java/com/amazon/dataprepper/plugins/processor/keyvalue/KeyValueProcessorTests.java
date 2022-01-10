@@ -29,7 +29,7 @@ public class KeyValueProcessorTests {
 
     @BeforeEach
     void setup() {
-        pluginSetting = getDefaultPluginSetting(true, "");
+        pluginSetting = getDefaultPluginSetting(true, "", null);
         pluginSetting.setPipelineName("keyValueProcessorPipeline");
         keyValueProcessor = new KeyValueProcessor(pluginSetting);
     }
@@ -65,7 +65,7 @@ public class KeyValueProcessorTests {
     @Test
     void testDuplicateSetToFalseKvToValueProcessor() {
         //override setup
-        pluginSetting = getDefaultPluginSetting(false, "");
+        pluginSetting = getDefaultPluginSetting(false, "", null);
         pluginSetting.setPipelineName("keyValueProcessorPipeline");
         keyValueProcessor = new KeyValueProcessor(pluginSetting);
 
@@ -84,7 +84,7 @@ public class KeyValueProcessorTests {
     @Test
     void testCustomPrefixKvProcessor() {
         //override setup
-        pluginSetting = getDefaultPluginSetting(false, "TEST_");
+        pluginSetting = getDefaultPluginSetting(false, "TEST_", null);
         pluginSetting.setPipelineName("keyValueProcessorPipeline");
         keyValueProcessor = new KeyValueProcessor(pluginSetting);
 
@@ -101,14 +101,34 @@ public class KeyValueProcessorTests {
     }
 
     @Test
+    void testNonMatchValueKvProcessor() {
+        //override setup
+        pluginSetting = getDefaultPluginSetting(false, "", "BAD_MATCH");
+        pluginSetting.setPipelineName("keyValueProcessorPipeline");
+        keyValueProcessor = new KeyValueProcessor(pluginSetting);
+
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", "key1+value1");
+        final Record<Event> record = buildRecordWithEvent(testData);
+
+        final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.size(), equalTo(1));
+        assertThat(editedRecords.get(0), notNullValue());
+        assertThat(editedRecords.get(0).getData().toJsonString(),
+                equalTo("{\"message\":\"key1+value1\",\"parsed_message\":{\"key1+value1\":\"BAD_MATCH\"}}"));
+    }
+
+    @Test
     void testShutdownIsReady() {
         assertThat(keyValueProcessor.isReadyForShutdown(), is(true));
     }
 
-    private PluginSetting getDefaultPluginSetting(final boolean allow_duplicate_values, final String prefix) {
+    private PluginSetting getDefaultPluginSetting(final boolean allow_duplicate_values, final String prefix, final String non_match_value) {
         final Map<String, Object> settings = new HashMap<>();
         settings.put(KeyValueProcessorConfig.ALLOW_DUPLICATE_VALUES, allow_duplicate_values);
         settings.put(KeyValueProcessorConfig.PREFIX, prefix);
+        settings.put(KeyValueProcessorConfig.NON_MATCH_VALUE, non_match_value);
 
         return new PluginSetting(PLUGIN_NAME, settings);
     }
