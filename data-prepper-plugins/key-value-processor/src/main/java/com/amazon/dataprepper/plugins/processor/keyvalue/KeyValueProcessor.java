@@ -45,7 +45,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             final String[] groups = groupsRaw.split(keyValueProcessorConfig.getFieldDelimiterRegex(), 0);
             for(final String group : groups) {
                 final String[] terms = group.split(keyValueProcessorConfig.getKeyValueDelimiterRegex(), 2);
-                final String key = terms[0];
+                final String key = keyValueProcessorConfig.getPrefix() + terms[0];
                 String value;
 
                 //Expected number of terms to be produced
@@ -56,9 +56,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     value = keyValueProcessorConfig.getNonMatchValue();
                 }
 
-                //If the parsedMap already has the key, then convert its value from a string to a LinkedList of strings
-                //Including the original string plus the newly added string, otherwise add in the new key/value
-                if (parsedMap.containsKey(key)) {
+                //When enabled, if the parsedMap already has the key, then convert its value from a string to a LinkedList of strings
+                //including the original string plus the newly added string; otherwise add in the new key/value
+                if (keyValueProcessorConfig.getAllowDuplicateValues() && parsedMap.containsKey(key)) {
                     final Object existentValue = parsedMap.get(key);
                     if (existentValue.getClass() == String.class) {
                         LinkedList<String> list = new LinkedList<>(List.of((String) existentValue, value));
