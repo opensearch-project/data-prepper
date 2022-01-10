@@ -16,7 +16,3 @@ dependencies {
     implementation project(':data-prepper-plugins:common')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
 }
-
-test {
-    useJUnitPlatform()
-}
