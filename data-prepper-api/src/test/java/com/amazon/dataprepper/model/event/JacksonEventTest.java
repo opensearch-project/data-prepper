@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -310,6 +311,26 @@ public class JacksonEventTest {
         final String result = event.toJsonString();
 
         assertThat(result, is(equalTo(String.format("{\"foo\":\"bar\",\"testObject\":{\"field1\":\"%s\"},\"list\":[1,4,5]}", value))));
+    }
+
+    @Test
+    public void testGetAsMap_with_EmptyData() {
+        final Map<String, Object> eventAsMap = event.toMap();
+        assertThat(eventAsMap, equalTo(Collections.emptyMap()));
+    }
+
+    @Test
+    public void testGetAsMap_withSimpleEvent() {
+        final Map<Object, Object> mapObject = new HashMap<>();
+
+        event.put("foo", "bar");
+        mapObject.put("foo", "bar");
+
+        event.put("list", Arrays.asList(1, 4, 5));
+        mapObject.put("list", Arrays.asList(1, 4, 5));
+
+        final Map<String, Object> eventAsMap = event.toMap();
+        assertThat(eventAsMap, equalTo(mapObject));
     }
 
     @Test
