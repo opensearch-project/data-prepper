@@ -7,11 +7,6 @@ plugins {
     id 'java'
 }
 
-dependencies {
-    implementation project(':data-prepper-api')
-    implementation project(':data-prepper-plugins:common')
-}
-
 jacocoTestCoverageVerification {
     dependsOn jacocoTestReport
     violationRules {
@@ -21,4 +16,10 @@ jacocoTestCoverageVerification {
             }
         }
     }
+}
+
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:common')
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
 }

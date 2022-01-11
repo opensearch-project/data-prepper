@@ -5,9 +5,9 @@
 
 package com.amazon.dataprepper.plugins.processor.keyvalue;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.processor.AbstractProcessor;
 import com.amazon.dataprepper.model.processor.Processor;
@@ -19,18 +19,19 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 
-@DataPrepperPlugin(name = "kv", pluginType = Processor.class)
+@DataPrepperPlugin(name = "kv", pluginType = Processor.class, pluginConfigurationType = KeyValueProcessorConfig.class)
 public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(KeyValueProcessor.class);
 
     private final KeyValueProcessorConfig keyValueProcessorConfig;
 
     @DataPrepperPluginConstructor
-    public KeyValueProcessor(final PluginSetting pluginSetting) {
-        super(pluginSetting);
-        this.keyValueProcessorConfig = KeyValueProcessorConfig.buildConfig(pluginSetting);
+    public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
+        super(pluginMetrics);
+        this.keyValueProcessorConfig = keyValueProcessorConfig;
     }
 
     @Override
@@ -43,15 +44,24 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             final String[] groups = groupsRaw.split(keyValueProcessorConfig.getFieldDelimiterRegex(), 0);
             for(final String group : groups) {
                 final String[] terms = group.split(keyValueProcessorConfig.getKeyValueDelimiterRegex(), 2);
-                final String key = keyValueProcessorConfig.getPrefix() + terms[0];
+                String key = terms[0];
                 String value;
+
+                if(keyValueProcessorConfig.getTrimKeyRegex() != null && !Objects.equals(keyValueProcessorConfig.getTrimKeyRegex(), "")) {
+                    key = key.replaceAll(keyValueProcessorConfig.getTrimKeyRegex(), "");
+                }
+                key = keyValueProcessorConfig.getPrefix() + key;
 
                 //Expected number of terms to be produced
                 if (terms.length == 2) {
                     value = terms[1];
                 } else {
-                    LOG.error(String.format("Bad match: %s", terms[0]));
+                    LOG.info(String.format("Unsuccessful match: '%s'", terms[0]));
                     value = keyValueProcessorConfig.getNonMatchValue();
+                }
+
+                if(keyValueProcessorConfig.getTrimValueRegex() != null && !Objects.equals(keyValueProcessorConfig.getTrimValueRegex(), "")) {
+                    value = value.replaceAll(keyValueProcessorConfig.getTrimValueRegex(), "");
                 }
 
                 //When enabled, if the parsedMap already has the key, then convert its value from a string to a

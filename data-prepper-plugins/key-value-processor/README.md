@@ -19,13 +19,13 @@ kv-pipeline:
 Create the following file named `logs_json.log` and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
 
 ```json
-{"message": "key1:value&key2:value2"}
+{"message": "key1=value&key2=value2"}
 ```
 
 When run, the processor will parse the message into the following output:
 
 ```json
-{"message": "key1:value&key2:value2", "destination": {"key1": "value1", "key2": "value2"}}
+{"message": "key1=value&key2=value2", "destination": {"key1": "value1", "key2": "value2"}}
 ```
 
 ##Configuration
@@ -36,18 +36,26 @@ When run, the processor will parse the message into the following output:
 * `field_delimiter_regex` - A regex specifying the delimiter between key/value pairs.
   * Default: `&`
 * `key_value_delimiter_regex` - A regex specifying the delimiter between a key and a value.
-  * Default: `:`
+  * Default: `=`
 * `non_match_value` - When a key/value cannot be successfully split, the key/value will be placed in the key field and the specified value in the value field.
   * Default: `null`
-  * Example: `key1value1&key2:value2` will parse into `{"key1value1": null, "key2": "value2"}`
+  * Example: `key1value1&key2=value2` will parse into `{"key1value1": null, "key2": "value2"}`
 * `allow_duplicate_values` - When set to `true`, duplicate keys will be coalesced into an array of values. When set to `false`, the last value of the key seen will be used.
   * Default: `true`
   * Example:
-    * `true`: `key1:value1&key1:value2` will parse into `{"key1": ["value1", "value2"]}`
-    * `false`: `key1:value1&key1:value2` will parse into `{"key1": "value2"}`
+    * `true`: `key1=value1&key1=value2` will parse into `{"key1": ["value1", "value2"]}`
+    * `false`: `key1=value1&key1=value2` will parse into `{"key1": "value2"}`
 * `prefix` - A prefix given to all keys.
   * Default is an empty string
-  
+* `trim_key_regex` - A regex that will be used to trim away characters from the key.
+  * There is no default
+  * Non-empty string is the only valid value
+  * Example: `trim_key_regex` is `"\s"`. `{"key1 =value1"}` will parse into `{"key1": "value1"}`
+* `trim_value_regex` - A regex that will be used to trim away characters from the value.
+  * There is no default
+  * Non-empty string is the only valid value
+  * Example: `trim_value_regex` is `"\s"`. `{"key1=value1 "}` will parse into `{"key1": "value1"}`
+
 ## Developer Guide
 This plugin is compatible with Java 14. See
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
