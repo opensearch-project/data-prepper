@@ -19,10 +19,12 @@ import java.util.Map;
  */
 @DataPrepperPlugin(name = "remove_duplicates", pluginType = AggregateAction.class)
 public class RemoveDuplicatesAggregateAction implements AggregateAction {
+    static final String GROUP_STATE_HAS_EVENT = "GROUP_STATE_HAS_EVENT";
+
     @Override
     public AggregateActionResponse handleEvent(final Event event, final Map<Object, Object> groupState) {
         if (groupState.size() == 0) {
-            groupState.putAll(event.toMap());
+            groupState.put(GROUP_STATE_HAS_EVENT, true);
             return AggregateActionResponse.fromEvent(event);
         }
 

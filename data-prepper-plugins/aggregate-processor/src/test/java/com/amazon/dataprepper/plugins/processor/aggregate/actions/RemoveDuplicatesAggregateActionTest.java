@@ -24,6 +24,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class RemoveDuplicatesAggregateActionTest {
     private AggregateAction removeDuplicatesAggregateAction;
     private Event testEvent;
+    private Map<Object, Object> expectedGroupState;
 
     @BeforeEach
     void setup() {
@@ -31,6 +32,9 @@ public class RemoveDuplicatesAggregateActionTest {
                 .withEventType("event")
                 .withData(Collections.singletonMap(UUID.randomUUID().toString(), UUID.randomUUID().toString()))
                 .build();
+
+        expectedGroupState = new HashMap<>();
+        expectedGroupState.put(RemoveDuplicatesAggregateAction.GROUP_STATE_HAS_EVENT, true);
     }
 
     private AggregateAction createObjectUnderTest() {
@@ -45,7 +49,7 @@ public class RemoveDuplicatesAggregateActionTest {
 
         assertThat(aggregateActionResponse.getEvent().isPresent(), equalTo(true));
         assertThat(aggregateActionResponse.getEvent().get(), equalTo(testEvent));
-        assertThat(groupState, equalTo(testEvent.toMap()));
+        assertThat(groupState, equalTo(expectedGroupState));
     }
 
     @Test
@@ -53,13 +57,12 @@ public class RemoveDuplicatesAggregateActionTest {
         removeDuplicatesAggregateAction = createObjectUnderTest();
 
         final Map<Object, Object> groupState = new HashMap<>();
-        groupState.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        groupState.put(RemoveDuplicatesAggregateAction.GROUP_STATE_HAS_EVENT, true);
 
-        final Map<Object, Object> tempGroupState = new HashMap<>(groupState);
         final AggregateActionResponse aggregateActionResponse = removeDuplicatesAggregateAction.handleEvent(testEvent, groupState);
 
         assertThat(aggregateActionResponse.getEvent().isPresent(), equalTo(false));
-        assertThat(groupState, equalTo(tempGroupState));
+        assertThat(groupState, equalTo(expectedGroupState));
     }
 
     @Test

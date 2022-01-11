@@ -20,7 +20,6 @@ public interface AggregateAction {
      *
      * @param event The current event
      * @param groupState A map for AggregationActions to maintain user-defined state for a group. The same map is provided for all events in a single group. This map is non-null.
-     * An empty groupState means that this is the first Event that will correspond with the given groupState.
      * @return An {@link com.amazon.dataprepper.plugins.processor.aggregate.AggregateActionResponse} with an Event that will either
      * be processed immediately, or is empty if the Event should be removed from processing
      * @since 1.3
