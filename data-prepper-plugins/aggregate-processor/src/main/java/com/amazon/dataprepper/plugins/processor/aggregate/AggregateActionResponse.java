@@ -15,19 +15,31 @@ import java.util.Optional;
  * @since 1.3
  */
 public class AggregateActionResponse {
-    private Optional<Event> event;
-    private boolean closeWindowNow;
+    private Event event;
 
-    public AggregateActionResponse(Optional<Event> event, boolean closeWindowNow) {
+    public AggregateActionResponse(final Event event) {
         this.event = event;
-        this.closeWindowNow = closeWindowNow;
     }
 
     public Optional<Event> getEvent() {
-        return event;
+        return Optional.ofNullable(event);
     }
 
-    public boolean isCloseWindowNow() {
-        return closeWindowNow;
+    /**
+     * @return an AggregateActionResponse with a null Event
+     * @since 1.3
+     */
+    public static AggregateActionResponse emptyEventResponse() {
+        return new AggregateActionResponse(null);
+    }
+
+    /**
+     *
+     * @param event The event to be part of the returned AggregateActionResponse
+     * @return an AggregateActionResponse with a non-null Event
+     * @since 1.3
+     */
+    public static AggregateActionResponse fromEvent(final Event event) {
+        return new AggregateActionResponse(event);
     }
 }

@@ -31,7 +31,6 @@ public class CombineAggregateActionTest {
     void setup() {
         events = new ArrayList<>();
         eventMaps = new ArrayList<>();
-        combineAggregateAction = new CombineAggregateAction();
 
         final Map<String, Object> firstEventMap = new HashMap<>();
         firstEventMap.put("string", "firstEventString");
@@ -44,13 +43,6 @@ public class CombineAggregateActionTest {
         secondEventMap.put("number", 2);
         eventMaps.add(secondEventMap);
         events.add(buildEventFromMap(secondEventMap));
-
-        final Map<String, Object> thirdEventMap = new HashMap<>();
-        thirdEventMap.put("string", "thirdEventString");
-        thirdEventMap.put("double", 2.1);
-        eventMaps.add(thirdEventMap);
-        events.add(buildEventFromMap(thirdEventMap));
-
     }
 
     private Event buildEventFromMap(final Map<String, Object> eventMap) {
@@ -60,50 +52,43 @@ public class CombineAggregateActionTest {
                 .build();
     }
 
-    @Test
-    void handleEvent_with_null_group_state_should_return_correct_AggregateResponse() {
-        final AggregateActionResponse aggregateActionResponse = combineAggregateAction.handleEvent(events.get(0), null);
-
-        assertThat(aggregateActionResponse.getEvent().isPresent(), equalTo(false));
-        assertThat(aggregateActionResponse.isCloseWindowNow(), equalTo(false));
+    private CombineAggregateAction createObjectUnderTest() {
+        return new CombineAggregateAction();
     }
 
     @Test
-    void combining_with_single_event_should_result_in_that_same_event_being_returned_on_concludeGroup() {
+    void handleEvent_with_empty_group_state_should_return_correct_AggregateResponse_and_add_event_to_groupState() {
+        combineAggregateAction = createObjectUnderTest();
+
         final Map<Object, Object> groupState = new HashMap<>();
         final AggregateActionResponse aggregateActionResponse = combineAggregateAction.handleEvent(events.get(0), groupState);
-        assertThat(aggregateActionResponse.getEvent().isPresent(), equalTo(false));
-        assertThat(aggregateActionResponse.isCloseWindowNow(), equalTo(false));
 
-        final Optional<Event> result = combineAggregateAction.concludeGroup(groupState);
-        assertThat(result.isPresent(), equalTo(true));
-        assertThat(result.get().toMap(), equalTo(events.get(0).toMap()));
-        assertThat(result.get().getMetadata().getEventType(), equalTo(CombineAggregateAction.COMBINED_EVENT_TYPE));
+        assertThat(aggregateActionResponse.getEvent().isPresent(), equalTo(false));
+        assertThat(groupState, equalTo(events.get(0).toMap()));
     }
 
     @Test
-    void combining_with_multiple_events_should_combine_into_group_state_correctly_and_return_correct_event_on_concludeGroup() {
+    void handleEvent_with_non_empty_groupState_should_combine_Event_with_groupState_correctly() {
+        combineAggregateAction = createObjectUnderTest();
+        final Map<Object, Object> groupState = new HashMap<>(events.get(0).toMap());
+        final Map<Object, Object> expectedGroupState = new HashMap<>(groupState);
+        expectedGroupState.putAll(events.get(1).toMap());
+        final AggregateActionResponse aggregateActionResponse = combineAggregateAction.handleEvent(events.get(1), groupState);
+        assertThat(aggregateActionResponse.getEvent().isPresent(), equalTo(false));
+        assertThat(groupState, equalTo(expectedGroupState));
+    }
+
+    @Test
+    void concludeGroup_should_return_groupState_As_An_Event_correctly() {
+        combineAggregateAction = createObjectUnderTest();
         final Map<Object, Object> groupState = new HashMap<>();
-        final Map<String, Object> expectedResult = new HashMap<>();
         for (final Map<String, Object> eventMap : eventMaps) {
-            expectedResult.putAll(eventMap);
+            groupState.putAll(eventMap);
         }
-
-        final AggregateActionResponse firstAggregateActionResponse = combineAggregateAction.handleEvent(events.get(0), groupState);
-        assertThat(firstAggregateActionResponse.getEvent().isPresent(), equalTo(false));
-        assertThat(firstAggregateActionResponse.isCloseWindowNow(), equalTo(false));
-
-        final AggregateActionResponse secondAggregateActionResponse = combineAggregateAction.handleEvent(events.get(1), groupState);
-        assertThat(secondAggregateActionResponse.getEvent().isPresent(), equalTo(false));
-        assertThat(secondAggregateActionResponse.isCloseWindowNow(), equalTo(false));
-
-        final AggregateActionResponse thirdAggregateActionResponse = combineAggregateAction.handleEvent(events.get(2), groupState);
-        assertThat(thirdAggregateActionResponse.getEvent().isPresent(), equalTo(false));
-        assertThat(thirdAggregateActionResponse.isCloseWindowNow(), equalTo(false));
 
         final Optional<Event> result = combineAggregateAction.concludeGroup(groupState);
         assertThat(result.isPresent(), equalTo(true));
-        assertThat(result.get().getMetadata().getEventType(), equalTo(CombineAggregateAction.COMBINED_EVENT_TYPE));
-        assertThat(result.get().toMap(), equalTo(expectedResult));
+        assertThat(result.get().getMetadata().getEventType(), equalTo(CombineAggregateAction.EVENT_TYPE));
+        assertThat(result.get().toMap(), equalTo(groupState));
     }
 }

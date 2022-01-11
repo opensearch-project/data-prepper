@@ -13,21 +13,25 @@ import com.amazon.dataprepper.plugins.processor.aggregate.AggregateActionRespons
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * An AggregateAction that combines multiple Events into a single Event. This action will add the unique keys of each smaller Event to the overall groupState,
+ * and will create a combined Event from the groupState on concludeGroup. If smaller Events have the same keys, then these keys will be overwritten with the keys of the
+ * most recently handled Event.
+ * @since 1.3
+ */
 public class CombineAggregateAction implements AggregateAction {
-    static final String COMBINED_EVENT_TYPE = "combined_event";
+    static final String EVENT_TYPE = "event";
 
     @Override
-    public AggregateActionResponse handleEvent(Event event, Map<Object, Object> groupState) {
-        if (groupState != null)
-            groupState.putAll(event.toMap());
-
-        return new AggregateActionResponse(Optional.empty(), false);
+    public AggregateActionResponse handleEvent(final Event event, final Map<Object, Object> groupState) {
+        groupState.putAll(event.toMap());
+        return AggregateActionResponse.emptyEventResponse();
     }
 
     @Override
-    public Optional<Event> concludeGroup(Map<Object, Object> groupState) {
+    public Optional<Event> concludeGroup(final Map<Object, Object> groupState) {
         final Event event = JacksonEvent.builder()
-                .withEventType(COMBINED_EVENT_TYPE)
+                .withEventType(EVENT_TYPE)
                 .withData(groupState)
                 .build();
 

@@ -19,13 +19,14 @@ public interface AggregateAction {
      * Handles an event as part of aggregation.
      *
      * @param event The current event
-     * @param groupState An arbitrary map for the current group
+     * @param groupState A map for AggregationActions to maintain user-defined state for a group. The same map is provided for all events in a single group. This map is non-null.
+     * An empty groupState means that this is the first Event that will correspond with the given groupState.
      * @return An {@link com.amazon.dataprepper.plugins.processor.aggregate.AggregateActionResponse} with an Event that will either
      * be processed immediately, or is empty if the Event should be removed from processing
      * @since 1.3
      */
-    default AggregateActionResponse handleEvent(Event event, Map<Object, Object> groupState) {
-        return new AggregateActionResponse(Optional.of(event), false);
+    default AggregateActionResponse handleEvent(final Event event, final Map<Object, Object> groupState) {
+        return AggregateActionResponse.fromEvent(event);
     }
 
     /**
@@ -36,7 +37,7 @@ public interface AggregateAction {
      * should not pass an event
      * @since 1.3
      */
-    default Optional<Event> concludeGroup(Map<Object, Object> groupState) {
+    default Optional<Event> concludeGroup(final Map<Object, Object> groupState) {
         return Optional.empty();
     }
 }
