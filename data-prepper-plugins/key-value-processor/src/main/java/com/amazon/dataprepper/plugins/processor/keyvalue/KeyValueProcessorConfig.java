@@ -24,7 +24,6 @@ public class KeyValueProcessorConfig {
     static final boolean DEFAULT_ALLOW_DUPLICATE_VALUES = true;
     static final String DEFAULT_PREFIX = "";
 
-
     private final String source;
     private final String destination;
     private final String field_delimiter_regex;
@@ -40,6 +39,21 @@ public class KeyValueProcessorConfig {
                               final String non_match_value,
                               final boolean allow_duplicate_values,
                               final String prefix) {
+        if(source == null) {
+            throw new IllegalArgumentException("source cannot be null");
+        }
+        if(destination == null) {
+            throw new IllegalArgumentException("destination cannot be null");
+        }
+        if(field_delimiter_regex == null) {
+            throw new IllegalArgumentException("field_delimiter_regex cannot be null");
+        }
+        if(key_value_delimiter_regex == null) {
+            throw new IllegalArgumentException("key_value_delimiter_regex cannot be null");
+        }
+        if(prefix == null) {
+            throw new IllegalArgumentException("prefix cannot be null");
+        }
 
         this.source = source;
         this.destination = destination;

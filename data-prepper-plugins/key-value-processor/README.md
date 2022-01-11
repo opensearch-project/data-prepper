@@ -1,29 +1,53 @@
-# Drop Events Processor
-This is a processor that drops all messages that are passed into it.
+# Key Value Processor
+This is a processor that takes in a message and parses it into key/value pairs.
 
 ## Basic Usage
 To get started, create the following `pipeline.yaml`.
 ```yaml
-drop-pipeline:
+kv-pipeline:
   source:
     file:
       path: "/full/path/to/logs_json.log"
       record_type: "event"
       format: "json"
   processor:
-    - drop_events:
+    - kv:
   sink:
     - stdout:
 ```
 
 Create the following file named `logs_json.log` and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
 
-```
-{"message": "127.0.0.1 198.126.12 [10/Oct/2000:13:55:36 -0700] 200"}
+```json
+{"message": "key1:value&key2:value2"}
 ```
 
-When run, the processor will filter out and drop all messages.
+When run, the processor will parse the message into the following output:
 
+```json
+{"message": "key1:value&key2:value2", "destination": {"key1": "value1", "key2": "value2"}}
+```
+
+##Configuration
+* `source` - The field in the message that will be parsed. 
+  * Default: `message`
+* `destination` - The field the parsed source will be output to.
+  * Default: `parsed_message`
+* `field_delimiter_regex` - A regex specifying the delimiter between key/value pairs.
+  * Default: `&`
+* `key_value_delimiter_regex` - A regex specifying the delimiter between a key and a value.
+  * Default: `:`
+* `non_match_value` - When a key/value cannot be successfully split, the key/value will be placed in the key field and the specified value in the value field.
+  * Default: `null`
+  * Example: `key1value1&key2:value2` will parse into `{"key1value1": null, "key2": "value2"}`
+* `allow_duplicate_values` - When set to `true`, duplicate keys will be coalesced into an array of values. When set to `false`, the last value of the key seen will be used.
+  * Default: `true`
+  * Example:
+    * `true`: `key1:value1&key1:value2` will parse into `{"key1": ["value1", "value2"]}`
+    * `false`: `key1:value1&key1:value2` will parse into `{"key1": "value2"}`
+* `prefix` - A prefix given to all keys.
+  * Default is an empty string
+  
 ## Developer Guide
 This plugin is compatible with Java 14. See
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
