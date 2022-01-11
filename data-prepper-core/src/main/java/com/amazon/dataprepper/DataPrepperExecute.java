@@ -5,50 +5,34 @@
 
 package com.amazon.dataprepper;
 
-import org.opensearch.dataprepper.logstash.LogstashConfigConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.core.env.SimpleCommandLinePropertySource;
 
 /**
  * Execute entry into Data Prepper.
  */
+@ComponentScan
 public class DataPrepperExecute {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperExecute.class);
 
-    public static void main(String[] args) {
+    public static void main(final String ... args) {
         java.security.Security.setProperty("networkaddress.cache.ttl", "60");
 
-        if(args.length > 1) {
-            DataPrepper.configure(args[1]);
-        } else {
-            DataPrepper.configureWithDefaults();
-        }
-        final DataPrepper dataPrepper = DataPrepper.getInstance();
-        if (args.length > 0) {
-            String configurationFileLocation = checkForLogstashConfigurationAndConvert(args[0]);
-            dataPrepper.execute(configurationFileLocation);
-        } else {
-            LOG.error("Configuration file is required");
-            System.exit(1);
-        }
-    }
+        LOG.trace("Reading args");
+        final SimpleCommandLinePropertySource commandLinePropertySource = new SimpleCommandLinePropertySource(args);
 
-    private static String checkForLogstashConfigurationAndConvert(String configurationFileLocation) {
-        if (configurationFileLocation.endsWith(".conf")) {
-            final LogstashConfigConverter logstashConfigConverter = new LogstashConfigConverter();
-            final Path configurationDirectory = Paths.get(configurationFileLocation).toAbsolutePath().getParent();
+        LOG.trace("Creating application context");
+        final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+        context.getEnvironment().getPropertySources().addFirst(commandLinePropertySource);
+        context.register(DataPrepperExecute.class);
+        context.refresh();
 
-            try {
-                configurationFileLocation = logstashConfigConverter.convertLogstashConfigurationToPipeline(
-                        configurationFileLocation, String.valueOf(configurationDirectory));
-            } catch (IOException e) {
-                LOG.error("Unable to read the Logstash configuration file", e);
-            }
-        }
-        return configurationFileLocation;
+        final DataPrepper dataPrepper = context.getBean(DataPrepper.class);
+
+        LOG.trace("Starting Data Prepper execution");
+        dataPrepper.execute();
     }
 }

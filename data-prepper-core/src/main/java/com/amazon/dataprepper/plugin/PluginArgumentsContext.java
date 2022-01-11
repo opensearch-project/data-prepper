@@ -6,10 +6,10 @@
 package com.amazon.dataprepper.plugin;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
+import com.amazon.dataprepper.model.configuration.PipelineDescription;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
-
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +37,10 @@ class PluginArgumentsContext {
 
         typedArgumentsSuppliers.put(PluginMetrics.class, () -> PluginMetrics.fromPluginSetting(builder.pluginSetting));
 
+        if (builder.pipelineDescription != null) {
+            typedArgumentsSuppliers.put(PipelineDescription.class, () -> builder.pipelineDescription);
+        }
+
         if(builder.pluginFactory != null)
             typedArgumentsSuppliers.put(PluginFactory.class, () -> builder.pluginFactory);
     }
@@ -60,6 +64,7 @@ class PluginArgumentsContext {
         private Object pluginConfiguration;
         private PluginSetting pluginSetting;
         private PluginFactory pluginFactory;
+        private PipelineDescription pipelineDescription;
 
         Builder withPluginConfiguration(final Object pluginConfiguration) {
             this.pluginConfiguration = pluginConfiguration;
@@ -73,6 +78,11 @@ class PluginArgumentsContext {
 
         Builder withPluginFactory(final PluginFactory pluginFactory) {
             this.pluginFactory = pluginFactory;
+            return this;
+        }
+
+        Builder withPipelineDescription(final PipelineDescription pipelineDescription) {
+            this.pipelineDescription = pipelineDescription;
             return this;
         }
 

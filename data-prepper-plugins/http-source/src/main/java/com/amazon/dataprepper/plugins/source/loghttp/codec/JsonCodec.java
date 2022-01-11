@@ -21,8 +21,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * JsonCodec parses the json array format HTTP data into List<{@link String}>.
- * TODO: replace output List<String> with List<InternalModel> type
+ * JsonCodec parses the json array format HTTP data into List&lt;{@link String}&gt;.
+ * TODO: replace output List&lt;String&gt; with List&lt;InternalModel&gt; type
  * <p>
  */
 public class JsonCodec implements Codec<List<String>> {

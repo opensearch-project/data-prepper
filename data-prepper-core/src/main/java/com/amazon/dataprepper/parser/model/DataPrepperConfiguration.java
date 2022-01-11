@@ -11,8 +11,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
@@ -33,20 +31,7 @@ public class DataPrepperConfiguration {
 
     public static final DataPrepperConfiguration DEFAULT_CONFIG = new DataPrepperConfiguration();
 
-    /**
-     * Construct a DataPrepperConfiguration from a yaml file
-     * @param file
-     * @return
-     */
-    public static DataPrepperConfiguration fromFile(File file) {
-        try {
-            return OBJECT_MAPPER.readValue(file, DataPrepperConfiguration.class);
-        } catch (IOException e) {
-            throw new IllegalArgumentException("Invalid DataPrepper configuration file.", e);
-        }
-    }
-
-    private DataPrepperConfiguration() {}
+    public DataPrepperConfiguration() {}
 
     @JsonCreator
     public DataPrepperConfiguration(

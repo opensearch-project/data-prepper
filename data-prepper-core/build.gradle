@@ -19,17 +19,24 @@ dependencies {
     testImplementation project(':data-prepper-plugins:common').sourceSets.test.output
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    implementation "javax.validation:validation-api:2.0.1.Final"
-    implementation "org.apache.bval:bval-extras:2.0.5"
-    implementation "org.apache.bval:bval-jsr:2.0.5"
     implementation "org.reflections:reflections:0.10.2"
     implementation 'io.micrometer:micrometer-core'
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'io.micrometer:micrometer-registry-cloudwatch2'
     implementation 'software.amazon.awssdk:cloudwatch'
+    implementation 'org.hibernate.validator:hibernate-validator:7.0.2.Final'
+    implementation 'org.glassfish:jakarta.el:4.0.1'
     implementation platform('org.apache.logging.log4j:log4j-bom:2.17.1')
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.logging.log4j:log4j-slf4j-impl'
+    implementation 'javax.inject:javax.inject:1'
+    implementation('org.springframework:spring-core:5.3.13') {
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+    implementation('org.springframework:spring-context:5.3.13') {
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+    testImplementation 'org.springframework:spring-test:5.3.14'
     testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
 }
