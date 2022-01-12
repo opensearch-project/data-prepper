@@ -15,7 +15,6 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_FIELD_DELIMITER_REGEX = "&";
     static final String DEFAULT_KEY_VALUE_DELIMITER_REGEX = "=";
     static final String DEFAULT_NON_MATCH_VALUE = null;
-    static final boolean DEFAULT_ALLOW_DUPLICATE_VALUES = true;
     static final String DEFAULT_PREFIX = "";
 
     @NotEmpty
@@ -34,9 +33,6 @@ public class KeyValueProcessorConfig {
 
     @JsonProperty("non_match_value")
     private String nonMatchValue = DEFAULT_NON_MATCH_VALUE;
-
-    @JsonProperty("allow_duplicate_values")
-    private boolean allowDuplicateValues = DEFAULT_ALLOW_DUPLICATE_VALUES;
 
     @NotNull
     private String prefix = DEFAULT_PREFIX;
@@ -65,10 +61,6 @@ public class KeyValueProcessorConfig {
 
     public String getNonMatchValue() {
         return nonMatchValue;
-    }
-
-    public boolean getAllowDuplicateValues() {
-        return allowDuplicateValues;
     }
 
     public String getPrefix() {

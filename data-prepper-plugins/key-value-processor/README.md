@@ -40,11 +40,6 @@ When run, the processor will parse the message into the following output:
 * `non_match_value` - When a key/value cannot be successfully split, the key/value will be placed in the key field and the specified value in the value field.
   * Default: `null`
   * Example: `key1value1&key2=value2` will parse into `{"key1value1": null, "key2": "value2"}`
-* `allow_duplicate_values` - When set to `true`, duplicate keys will be coalesced into an array of values. When set to `false`, the last value of the key seen will be used.
-  * Default: `true`
-  * Example:
-    * `true`: `key1=value1&key1=value2` will parse into `{"key1": ["value1", "value2"]}`
-    * `false`: `key1=value1&key1=value2` will parse into `{"key1": "value2"}`
 * `prefix` - A prefix given to all keys.
   * Default is an empty string
 * `trim_key_regex` - A regex that will be used to trim away characters from the key.

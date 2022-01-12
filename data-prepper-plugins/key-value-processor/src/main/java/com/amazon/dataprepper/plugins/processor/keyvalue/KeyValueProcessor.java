@@ -64,10 +64,10 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     value = value.replaceAll(keyValueProcessorConfig.getTrimValueRegex(), "");
                 }
 
-                //When enabled, if the parsedMap already has the key, then convert its value from a string to a
+                //If the parsedMap already has the key, then convert its value from a string to a
                 //LinkedList of strings including the original string plus the newly added string;
                 //otherwise add in the new key/value
-                if (keyValueProcessorConfig.getAllowDuplicateValues() && parsedMap.containsKey(key)) {
+                if (parsedMap.containsKey(key)) {
                     final Object existentValue = parsedMap.get(key);
                     if (existentValue.getClass() == String.class) {
                         LinkedList<String> list = new LinkedList<>(List.of((String) existentValue, value));
