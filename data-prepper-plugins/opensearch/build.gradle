@@ -1,23 +1,36 @@
 buildscript {
     ext {
-        opensearch_version = System.getProperty("opensearch.version", "${versionMap.opensearchVersion}")
-        opensearch_group = "org.opensearch"
+        opensearch_version = System.getProperty('opensearch.version', "${versionMap.opensearchVersion}")
+        opensearch_group = 'org.opensearch'
         distribution = 'oss-zip'
     }
 
     repositories {
-        maven { url 'https://plugins.gradle.org/m2/' }
         mavenCentral()
+        gradlePluginPortal()
     }
 
     dependencies {
         classpath "${opensearch_group}.gradle:build-tools:${opensearch_version}"
+        constraints {
+            classpath('com.netflix.nebula:nebula-core') {
+                version {
+                    require '3.0.1'
+                }
+                because 'Nebula 3.0.0 is not in Maven Central and any dependency on it will attempt to use JCenter.'
+            }
+        }
     }
 }
 
 plugins {
     id 'java'
 }
+
+repositories {
+    mavenCentral()
+}
+
 apply plugin: 'opensearch.testclusters'
 apply plugin: 'opensearch.build'
 apply plugin: 'opensearch.rest-test'
@@ -53,7 +66,7 @@ dependencies {
     implementation 'software.amazon.awssdk:aws-core:2.17.15'
     implementation 'software.amazon.awssdk:regions:2.17.15'
     implementation 'software.amazon.awssdk:utils:2.17.15'
-    implementation 'software.amazon.awssdk:sts:2.17.15'
+    implementation 'software.amazon.awssdk:sts:2.17.110'
     implementation 'software.amazon.awssdk:url-connection-client:2.17.15'
     implementation 'software.amazon.awssdk:arns:2.17.15'
     implementation 'io.micrometer:micrometer-core:1.7.5'
