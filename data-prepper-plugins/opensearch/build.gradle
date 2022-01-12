@@ -29,6 +29,17 @@ buildscript {
 plugins {
     id 'java'
 }
+
+repositories {
+    mavenCentral() {
+        metadataSources {
+            mavenPom()
+            ignoreGradleMetadataRedirection()
+        }
+    }
+}
+
+
 apply plugin: 'opensearch.testclusters'
 apply plugin: 'opensearch.build'
 apply plugin: 'opensearch.rest-test'
@@ -48,15 +59,6 @@ apply plugin: 'opensearch.rest-test'
 ext {
     licenseFile = rootProject.file('LICENSE')
     noticeFile = rootProject.file('NOTICE')
-}
-
-repositories {
-    mavenCentral() {
-        metadataSources {
-            mavenPom()
-            ignoreGradleMetadataRedirection()
-        }
-    }
 }
 
 dependencies {
