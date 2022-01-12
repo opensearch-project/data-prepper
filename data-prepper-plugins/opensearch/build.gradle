@@ -6,8 +6,19 @@ buildscript {
     }
 
     repositories {
-        maven { url 'https://plugins.gradle.org/m2/' }
-        mavenCentral()
+        mavenCentral() {
+            metadataSources {
+                mavenPom()
+                ignoreGradleMetadataRedirection()
+            }
+        }
+        maven {
+            url 'https://plugins.gradle.org/m2/'
+            metadataSources {
+                mavenPom()
+                ignoreGradleMetadataRedirection()
+            }
+        }
     }
 
     dependencies {
@@ -37,6 +48,15 @@ apply plugin: 'opensearch.rest-test'
 ext {
     licenseFile = rootProject.file('LICENSE')
     noticeFile = rootProject.file('NOTICE')
+}
+
+repositories {
+    mavenCentral() {
+        metadataSources {
+            mavenPom()
+            ignoreGradleMetadataRedirection()
+        }
+    }
 }
 
 dependencies {

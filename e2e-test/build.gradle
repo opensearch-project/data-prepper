@@ -6,8 +6,18 @@
 subprojects {
     buildscript {
         repositories {
+            mavenCentral() {
+                metadataSources {
+                    mavenPom()
+                    ignoreGradleMetadataRedirection()
+                }
+            }
             maven {
-                url "https://plugins.gradle.org/m2/"
+                url 'https://plugins.gradle.org/m2/'
+                metadataSources {
+                    mavenPom()
+                    ignoreGradleMetadataRedirection()
+                }
             }
         }
         dependencies {
