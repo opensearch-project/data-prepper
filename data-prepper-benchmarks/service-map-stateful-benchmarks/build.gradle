@@ -9,33 +9,10 @@
  *  GitHub history for details.
  */
 
-buildscript {
-    repositories {
-        mavenCentral() {
-            metadataSources {
-                mavenPom()
-                ignoreGradleMetadataRedirection()
-            }
-        }
-        maven {
-            url 'https://plugins.gradle.org/m2/'
-            metadataSources {
-                mavenPom()
-                ignoreGradleMetadataRedirection()
-            }
-        }
-    }
-
-    dependencies {
-        classpath 'me.champeau.gradle:jmh-gradle-plugin:0.5.3'
-    }
-}
-
 plugins {
     id 'java'
+    id "me.champeau.gradle.jmh" version "0.5.3"
 }
-
-apply plugin: 'me.champeau.gradle.jmh'
 
 group 'com.amazon'
 version '0.1-beta'
