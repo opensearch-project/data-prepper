@@ -28,6 +28,6 @@ public class RemoveDuplicatesAggregateAction implements AggregateAction {
             return AggregateActionResponse.fromEvent(event);
         }
 
-        return AggregateActionResponse.emptyEventResponse();
+        return AggregateActionResponse.nullEventResponse();
     }
 }

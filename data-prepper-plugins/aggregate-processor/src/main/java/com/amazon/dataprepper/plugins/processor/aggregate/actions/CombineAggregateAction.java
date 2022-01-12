@@ -25,7 +25,7 @@ public class CombineAggregateAction implements AggregateAction {
     @Override
     public AggregateActionResponse handleEvent(final Event event, final Map<Object, Object> groupState) {
         groupState.putAll(event.toMap());
-        return AggregateActionResponse.emptyEventResponse();
+        return AggregateActionResponse.nullEventResponse();
     }
 
     @Override

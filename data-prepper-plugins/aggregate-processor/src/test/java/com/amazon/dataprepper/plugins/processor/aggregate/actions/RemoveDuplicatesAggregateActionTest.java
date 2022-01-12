@@ -47,8 +47,7 @@ public class RemoveDuplicatesAggregateActionTest {
         final Map<Object, Object> groupState = new HashMap<>();
         final AggregateActionResponse aggregateActionResponse = removeDuplicatesAggregateAction.handleEvent(testEvent, groupState);
 
-        assertThat(aggregateActionResponse.getEvent().isPresent(), equalTo(true));
-        assertThat(aggregateActionResponse.getEvent().get(), equalTo(testEvent));
+        assertThat(aggregateActionResponse.getEvent(), equalTo(testEvent));
         assertThat(groupState, equalTo(expectedGroupState));
     }
 
@@ -61,7 +60,7 @@ public class RemoveDuplicatesAggregateActionTest {
 
         final AggregateActionResponse aggregateActionResponse = removeDuplicatesAggregateAction.handleEvent(testEvent, groupState);
 
-        assertThat(aggregateActionResponse.getEvent().isPresent(), equalTo(false));
+        assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         assertThat(groupState, equalTo(expectedGroupState));
     }
 

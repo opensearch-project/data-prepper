@@ -63,7 +63,7 @@ public class CombineAggregateActionTest {
         final Map<Object, Object> groupState = new HashMap<>();
         final AggregateActionResponse aggregateActionResponse = combineAggregateAction.handleEvent(events.get(0), groupState);
 
-        assertThat(aggregateActionResponse.getEvent().isPresent(), equalTo(false));
+        assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         assertThat(groupState, equalTo(events.get(0).toMap()));
     }
 
@@ -74,7 +74,7 @@ public class CombineAggregateActionTest {
         final Map<Object, Object> expectedGroupState = new HashMap<>(groupState);
         expectedGroupState.putAll(events.get(1).toMap());
         final AggregateActionResponse aggregateActionResponse = combineAggregateAction.handleEvent(events.get(1), groupState);
-        assertThat(aggregateActionResponse.getEvent().isPresent(), equalTo(false));
+        assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         assertThat(groupState, equalTo(expectedGroupState));
     }
 

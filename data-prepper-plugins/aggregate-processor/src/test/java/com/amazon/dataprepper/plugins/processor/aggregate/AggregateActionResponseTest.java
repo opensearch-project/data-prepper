@@ -10,7 +10,6 @@ import com.amazon.dataprepper.model.event.JacksonEvent;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -19,10 +18,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class AggregateActionResponseTest {
 
     @Test
-    void emptyEventResponse_returns_correct_AggregateActionResponse() {
-        final AggregateActionResponse emptyEventResponse = AggregateActionResponse.emptyEventResponse();
+    void nullEventResponse_returns_correct_AggregateActionResponse() {
+        final AggregateActionResponse emptyEventResponse = AggregateActionResponse.nullEventResponse();
 
-        assertThat(emptyEventResponse.getEvent(), equalTo(Optional.empty()));
+        assertThat(emptyEventResponse.getEvent(), equalTo(null));
     }
 
     @Test
@@ -34,7 +33,6 @@ public class AggregateActionResponseTest {
 
         final AggregateActionResponse aggregateActionResponse = AggregateActionResponse.fromEvent(event);
 
-        assertThat(aggregateActionResponse.getEvent().isPresent(), equalTo(true));
-        assertThat(aggregateActionResponse.getEvent().get(), equalTo(event));
+        assertThat(aggregateActionResponse.getEvent(), equalTo(event));
     }
 }
