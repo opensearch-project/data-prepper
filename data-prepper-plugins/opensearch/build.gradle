@@ -23,6 +23,14 @@ buildscript {
 
     dependencies {
         classpath "${opensearch_group}.gradle:build-tools:${opensearch_version}"
+        constraints {
+            classpath('com.netflix.nebula:nebula-core') {
+                version {
+                    require '3.0.1'
+                }
+                because 'Nebula 3.0.0 is not in Maven Central. It will try JCenter.'
+            }
+        }
     }
 }
 
