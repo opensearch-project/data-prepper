@@ -6,9 +6,8 @@
 subprojects {
     buildscript {
         repositories {
-            maven {
-                url "https://plugins.gradle.org/m2/"
-            }
+            mavenCentral()
+            gradlePluginPortal()
         }
         dependencies {
             classpath 'com.bmuschko:gradle-docker-plugin:7.0.0'
