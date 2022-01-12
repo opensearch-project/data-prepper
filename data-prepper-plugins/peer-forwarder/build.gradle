@@ -9,6 +9,10 @@
  *  GitHub history for details.
  */
 
+plugins {
+    id 'java'
+}
+
 group 'com.amazon'
 version '0.1.0'
 

@@ -22,15 +22,17 @@ buildscript {
     }
     dependencies {
         classpath 'com.github.jk1:gradle-license-report:1.17'
-        classpath 'com.diffplug.spotless:spotless-plugin-gradle:6.1.0'
-        classpath 'io.spring.gradle:dependency-management-plugin:1.0.11.RELEASE'
     }
+}
+
+plugins {
+    id 'com.diffplug.spotless' version '6.1.0'
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
 }
 
 apply from: file("${rootDir}/build-resources.gradle")
 allprojects {
     apply plugin: 'checkstyle'
-    apply plugin: 'io.spring.dependency-management'
     apply plugin: 'com.diffplug.spotless'
     apply plugin: 'com.github.jk1.dependency-license-report'
 

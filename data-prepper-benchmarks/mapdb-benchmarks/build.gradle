@@ -31,7 +31,10 @@ buildscript {
     }
 }
 
-apply plugin: 'java'
+plugins {
+    id 'java'
+}
+
 apply plugin: 'me.champeau.gradle.jmh'
 
 group 'com.amazon'

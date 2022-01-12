@@ -8,6 +8,9 @@
  *  Modifications Copyright OpenSearch Contributors. See
  *  GitHub history for details.
  */
+plugins {
+    id 'java'
+}
 
 dependencies {
     implementation project(':data-prepper-api')

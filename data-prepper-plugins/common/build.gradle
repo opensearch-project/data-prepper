@@ -9,6 +9,9 @@
  *  GitHub history for details.
  */
 
+plugins {
+    id 'java-library'
+}
 dependencies {
     api project(':data-prepper-api')
     implementation 'com.fasterxml.jackson.core:jackson-databind'

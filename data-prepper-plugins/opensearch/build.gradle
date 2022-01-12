@@ -34,6 +34,10 @@ buildscript {
     }
 }
 
+plugins {
+    id 'java'
+}
+
 repositories {
     mavenCentral() {
         metadataSources {
@@ -44,7 +48,6 @@ repositories {
 }
 
 
-apply plugin: 'java'
 apply plugin: 'opensearch.testclusters'
 apply plugin: 'opensearch.build'
 apply plugin: 'opensearch.rest-test'

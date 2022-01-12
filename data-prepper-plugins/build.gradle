@@ -8,10 +8,8 @@
  *  Modifications Copyright OpenSearch Contributors. See
  *  GitHub history for details.
  */
-
-allprojects {
-    apply plugin: 'java'
-    apply plugin: 'java-library'
+plugins {
+    id 'java-library'
 }
 
 dependencies {
