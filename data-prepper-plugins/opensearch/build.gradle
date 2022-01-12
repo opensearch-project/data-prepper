@@ -6,19 +6,8 @@ buildscript {
     }
 
     repositories {
-        mavenCentral() {
-            metadataSources {
-                mavenPom()
-                ignoreGradleMetadataRedirection()
-            }
-        }
-        maven {
-            url 'https://plugins.gradle.org/m2/'
-            metadataSources {
-                mavenPom()
-                ignoreGradleMetadataRedirection()
-            }
-        }
+        mavenCentral()
+        gradlePluginPortal()
     }
 
     dependencies {
@@ -39,12 +28,7 @@ plugins {
 }
 
 repositories {
-    mavenCentral() {
-        metadataSources {
-            mavenPom()
-            ignoreGradleMetadataRedirection()
-        }
-    }
+    mavenCentral()
 }
 
 
