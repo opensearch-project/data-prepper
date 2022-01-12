@@ -9,10 +9,6 @@
  *  GitHub history for details.
  */
 
-plugins {
-    id 'java'
-}
-
 ext {
     opensearch_version = System.getProperty("opensearch.version", "${versionMap.opensearchVersion}")
 }
