@@ -6,6 +6,12 @@ import com.github.jk1.license.render.TextReportRenderer
 
 buildscript {
     repositories {
+        mavenCentral() {
+            metadataSources {
+                mavenPom()
+                ignoreGradleMetadataRedirection()
+            }
+        }
         maven {
             url 'https://plugins.gradle.org/m2/'
             metadataSources {
