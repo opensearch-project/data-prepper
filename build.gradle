@@ -4,16 +4,37 @@
  */
 import com.github.jk1.license.render.TextReportRenderer
 
+buildscript {
+    repositories {
+        mavenCentral() {
+            metadataSources {
+                mavenPom()
+                ignoreGradleMetadataRedirection()
+            }
+        }
+        maven {
+            url 'https://plugins.gradle.org/m2/'
+            metadataSources {
+                mavenPom()
+                ignoreGradleMetadataRedirection()
+            }
+        }
+    }
+    dependencies {
+        classpath 'com.github.jk1:gradle-license-report:1.17'
+    }
+}
+
 plugins {
     id 'com.diffplug.spotless' version '6.1.0'
-    id 'com.github.jk1.dependency-license-report' version '1.17'
-    id "io.spring.dependency-management" version "1.0.11.RELEASE"
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
 }
 
 apply from: file("${rootDir}/build-resources.gradle")
 allprojects {
     apply plugin: 'checkstyle'
     apply plugin: 'com.diffplug.spotless'
+    apply plugin: 'com.github.jk1.dependency-license-report'
 
     group = 'org.opensearch.dataprepper'
     
