@@ -20,6 +20,8 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 @DataPrepperPlugin(name = "kv", pluginType = Processor.class, pluginConfigurationType = KeyValueProcessorConfig.class)
 public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -27,10 +29,45 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private final KeyValueProcessorConfig keyValueProcessorConfig;
 
+    private final Pattern fieldDelimiterPattern;
+    private final Pattern keyValueDelimiterPattern;
+
     @DataPrepperPluginConstructor
-    public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
+    public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) throws PatternSyntaxException {
         super(pluginMetrics);
         this.keyValueProcessorConfig = keyValueProcessorConfig;
+
+        if(!validateRegex(keyValueProcessorConfig.getFieldDelimiterRegex())) {
+            throw new PatternSyntaxException("field_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getFieldDelimiterRegex(), -1);
+        }
+
+        if(!validateRegex(keyValueProcessorConfig.getKeyValueDelimiterRegex())) {
+            throw new PatternSyntaxException("key_value_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getKeyValueDelimiterRegex(), -1);
+        }
+
+        if(!validateRegex(keyValueProcessorConfig.getDeleteKeyRegex())) {
+            throw new PatternSyntaxException("delete_key_regex is not a valid regex string", keyValueProcessorConfig.getDeleteKeyRegex(), -1);
+        }
+
+        if(!validateRegex(keyValueProcessorConfig.getDeleteValueRegex())) {
+            throw new PatternSyntaxException("delete_value_regex is not a valid regex string", keyValueProcessorConfig.getDeleteValueRegex(), -1);
+        }
+
+        fieldDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getFieldDelimiterRegex());
+        keyValueDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getKeyValueDelimiterRegex());
+    }
+
+    private boolean validateRegex(final String pattern)
+    {
+        if(pattern != null && !Objects.equals(pattern, "")) {
+            try {
+                Pattern.compile(pattern);
+            } catch (PatternSyntaxException e) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     @Override
@@ -40,9 +77,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             final Event recordEvent = record.getData();
 
             final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
-            final String[] groups = groupsRaw.split(keyValueProcessorConfig.getFieldDelimiterRegex(), 0);
+            final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
             for(final String group : groups) {
-                final String[] terms = group.split(keyValueProcessorConfig.getKeyValueDelimiterRegex(), 2);
+                final String[] terms = keyValueDelimiterPattern.split(group, 2);
                 String key = terms[0];
                 Object value;
 
@@ -75,11 +112,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         if (parsedMap.containsKey(key)) {
             final Object existentValue = parsedMap.get(key);
             if (existentValue instanceof String) {
-                LinkedList<Object> list = new LinkedList<>();
-                list.add(existentValue);
-                list.add(value);
+                LinkedList<Object> replacementValueList = new LinkedList<>();
+                replacementValueList.add(existentValue);
+                replacementValueList.add(value);
 
-                parsedMap.replace(key, list);
+                parsedMap.replace(key, replacementValueList);
             } else {
                 ((LinkedList<Object>) existentValue).add(value);
             }

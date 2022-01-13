@@ -25,13 +25,13 @@ Create the following file named `logs_json.log` and replace the `path` in the fi
 When run, the processor will parse the message into the following output:
 
 ```json
-{"message": "key1=value&key2=value2", "destination": {"key1": "value1", "key2": "value2"}}
+{"message": "key1=value&key2=value2", "parsed_message": {"key1": "value1", "key2": "value2"}}
 ```
 
 ##Configuration
 * `source` - The field in the message that will be parsed. 
   * Default: `message`
-* `destination` - The field the parsed source will be output to.
+* `destination` - The field the parsed source will be output to. This will overwrite any preexisting data for that key.
   * Default: `parsed_message`
 * `field_delimiter_regex` - A regex specifying the delimiter between key/value pairs.
   * Default: `&`
@@ -42,13 +42,13 @@ When run, the processor will parse the message into the following output:
   * Example: `key1value1&key2=value2` will parse into `{"key1value1": null, "key2": "value2"}`
 * `prefix` - A prefix given to all keys.
   * Default is an empty string
-* `delete_key_regex` - A regex that will be used to delete away characters from the key.
+* `delete_key_regex` - A regex that will be used to delete characters from the key.
   * There is no default
   * Non-empty string is the only valid value
   * Example: `delete_key_regex` is `"\s"`. `{"key1 =value1"}` will parse into `{"key1": "value1"}`
-* `delete_value_regex` - A regex that will be used to delete away characters from the value.
+* `delete_value_regex` - A regex that will be used to delete characters from the value.
   * There is no default
-  * Non-empty string is the only valid value
+  * Cannot be an empty string
   * Example: `delete_value_regex` is `"\s"`. `{"key1=value1 "}` will parse into `{"key1": "value1"}`
 
 ## Developer Guide
