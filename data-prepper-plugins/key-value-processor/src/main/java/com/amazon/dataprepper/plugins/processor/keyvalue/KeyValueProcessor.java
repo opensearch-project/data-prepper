@@ -44,48 +44,48 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             for(final String group : groups) {
                 final String[] terms = group.split(keyValueProcessorConfig.getKeyValueDelimiterRegex(), 2);
                 String key = terms[0];
-                String value;
+                Object value;
 
                 if(keyValueProcessorConfig.getTrimKeyRegex() != null && !Objects.equals(keyValueProcessorConfig.getTrimKeyRegex(), "")) {
                     key = key.replaceAll(keyValueProcessorConfig.getTrimKeyRegex(), "");
                 }
                 key = keyValueProcessorConfig.getPrefix() + key;
 
-                //Expected number of terms to be produced
                 if (terms.length == 2) {
                     value = terms[1];
                 } else {
-                    LOG.info(String.format("Unsuccessful match: '%s'", terms[0]));
+                    LOG.debug(String.format("Unsuccessful match: '%s'", terms[0]));
                     value = keyValueProcessorConfig.getNonMatchValue();
                 }
 
                 if(keyValueProcessorConfig.getTrimValueRegex() != null && !Objects.equals(keyValueProcessorConfig.getTrimValueRegex(), "")) {
-                    value = value.replaceAll(keyValueProcessorConfig.getTrimValueRegex(), "");
+                    value = ((String)value).replaceAll(keyValueProcessorConfig.getTrimValueRegex(), "");
                 }
 
-                //If the parsedMap already has the key, then convert its value from a string to a
-                //LinkedList of strings including the original string plus the newly added string;
-                //otherwise add in the new key/value
-                if (parsedMap.containsKey(key)) {
-                    final Object existentValue = parsedMap.get(key);
-                    if (existentValue.getClass() == String.class) {
-                        LinkedList<String> list = new LinkedList<>();
-                        list.add((String) existentValue);
-                        list.add(value);
-                        
-                        parsedMap.replace(key, list);
-                    } else {
-                        ((LinkedList<String>) existentValue).add(value);
-                    }
-                } else {
-                    parsedMap.put(key, value);
-                }
+                addKeyValueToMap(parsedMap, key, value);
             }
 
             recordEvent.put(keyValueProcessorConfig.getDestination(), parsedMap);
         }
 
         return records;
+    }
+
+    private void addKeyValueToMap(Map<String, Object> parsedMap, String key, Object value) {
+        if (parsedMap.containsKey(key)) {
+            final Object existentValue = parsedMap.get(key);
+            if (existentValue instanceof String) {
+                LinkedList<Object> list = new LinkedList<>();
+                list.add(existentValue);
+                list.add(value);
+
+                parsedMap.replace(key, list);
+            } else {
+                ((LinkedList<Object>) existentValue).add(value);
+            }
+        } else {
+            parsedMap.put(key, value);
+        }
     }
 
     @Override

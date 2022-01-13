@@ -14,7 +14,7 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_DESTINATION = "parsed_message";
     static final String DEFAULT_FIELD_DELIMITER_REGEX = "&";
     static final String DEFAULT_KEY_VALUE_DELIMITER_REGEX = "=";
-    static final String DEFAULT_NON_MATCH_VALUE = null;
+    static final Object DEFAULT_NON_MATCH_VALUE = null;
     static final String DEFAULT_PREFIX = "";
     static final String DEFAULT_TRIM_KEY_REGEX = "";
     static final String DEFAULT_TRIM_VALUE_REGEX = "";
@@ -34,7 +34,7 @@ public class KeyValueProcessorConfig {
     private String keyValueDelimiterRegex = DEFAULT_KEY_VALUE_DELIMITER_REGEX;
 
     @JsonProperty("non_match_value")
-    private String nonMatchValue = DEFAULT_NON_MATCH_VALUE;
+    private Object nonMatchValue = DEFAULT_NON_MATCH_VALUE;
 
     @NotNull
     private String prefix = DEFAULT_PREFIX;
@@ -63,7 +63,7 @@ public class KeyValueProcessorConfig {
         return keyValueDelimiterRegex;
     }
 
-    public String getNonMatchValue() {
+    public Object getNonMatchValue() {
         return nonMatchValue;
     }
 
