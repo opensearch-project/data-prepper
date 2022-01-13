@@ -133,7 +133,7 @@ public class KeyValueProcessorTests {
         LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
-        assertThat(parsed_message.get("key1+value1"), equalTo(null));
+        assertThatKeyEquals(parsed_message, "key1+value1", null);
     }
 
     @Test
@@ -220,7 +220,7 @@ public class KeyValueProcessorTests {
 
     private void assertThatKeyEquals(final LinkedHashMap parsed_message, final String key, final Object value)
     {
-        assertThat(parsed_message.get(key), notNullValue());
+        assertThat(parsed_message.containsKey(key), is(true));
         assertThat(parsed_message.get(key), equalTo(value));
     }
 
