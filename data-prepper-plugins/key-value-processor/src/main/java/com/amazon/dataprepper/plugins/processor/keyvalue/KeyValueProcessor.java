@@ -12,7 +12,6 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.processor.AbstractProcessor;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
-import com.sun.tools.javac.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +69,10 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 if (parsedMap.containsKey(key)) {
                     final Object existentValue = parsedMap.get(key);
                     if (existentValue.getClass() == String.class) {
-                        LinkedList<String> list = new LinkedList<>(List.of((String) existentValue, value));
+                        LinkedList<String> list = new LinkedList<>();
+                        list.add((String) existentValue);
+                        list.add(value);
+                        
                         parsedMap.replace(key, list);
                     } else {
                         ((LinkedList<String>) existentValue).add(value);
