@@ -23,7 +23,7 @@ import java.util.TreeMap;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-@DataPrepperPlugin(name = "kv", pluginType = Processor.class, pluginConfigurationType = KeyValueProcessorConfig.class)
+@DataPrepperPlugin(name = "key_value", pluginType = Processor.class, pluginConfigurationType = KeyValueProcessorConfig.class)
 public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(KeyValueProcessor.class);
 
