@@ -12,7 +12,6 @@ import com.amazon.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -38,7 +37,6 @@ public class KeyValueProcessorTests {
     @Mock
     private KeyValueProcessorConfig mockConfig;
 
-    @InjectMocks
     private KeyValueProcessor keyValueProcessor;
 
     @BeforeEach
@@ -52,6 +50,8 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getPrefix()).thenReturn(defaultConfig.getPrefix());
         lenient().when(mockConfig.getDeleteKeyRegex()).thenReturn(defaultConfig.getDeleteKeyRegex());
         lenient().when(mockConfig.getDeleteValueRegex()).thenReturn(defaultConfig.getDeleteValueRegex());
+
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
     }
 
     @Test
@@ -77,12 +77,14 @@ public class KeyValueProcessorTests {
 
     @Test
     void testSingleRegexFieldDelimiterKvToObjectKeyValueProcessor() {
-        when(mockConfig.getFieldDelimiterRegex()).thenReturn("!_*!");
+        when(mockConfig.getFieldDelimiterRegex()).thenReturn(":_*:");
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
 
-        final Record<Event> record = getMessage("key1=value1!_____!key2=value2");
+        final Record<Event> record = getMessage("key1=value1:_____:key2=value2");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
         LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
 
+        System.out.println(parsed_message);
         assertThat(parsed_message.size(), equalTo(2));
         assertThatKeyEquals(parsed_message, "key1", "value1");
         assertThatKeyEquals(parsed_message, "key2", "value2");
@@ -91,6 +93,7 @@ public class KeyValueProcessorTests {
     @Test
     void testSingleRegexKvDelimiterKvToObjectKeyValueProcessor() {
         when(mockConfig.getKeyValueDelimiterRegex()).thenReturn(":\\+*:");
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
 
         final Record<Event> record = getMessage("key1:++:value1&key2:+:value2");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
