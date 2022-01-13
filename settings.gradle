@@ -39,5 +39,4 @@ include 'data-prepper-logstash-configuration'
 include 'e2e-test'
 include 'e2e-test:trace'
 include 'e2e-test:log'
-findProject(':data-prepper-plugins:key-value-processor')?.name = 'key-value-processor'
 
