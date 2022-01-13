@@ -16,8 +16,8 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_KEY_VALUE_DELIMITER_REGEX = "=";
     static final Object DEFAULT_NON_MATCH_VALUE = null;
     static final String DEFAULT_PREFIX = "";
-    static final String DEFAULT_TRIM_KEY_REGEX = "";
-    static final String DEFAULT_TRIM_VALUE_REGEX = "";
+    static final String DEFAULT_DELETE_KEY_REGEX = "";
+    static final String DEFAULT_DELETE_VALUE_REGEX = "";
 
     @NotEmpty
     private String source = DEFAULT_SOURCE;
@@ -39,13 +39,13 @@ public class KeyValueProcessorConfig {
     @NotNull
     private String prefix = DEFAULT_PREFIX;
 
-    @JsonProperty("trim_key_regex")
+    @JsonProperty("delete_key_regex")
     @NotNull
-    private String trimKeyRegex = DEFAULT_TRIM_KEY_REGEX;
+    private String deleteKeyRegex = DEFAULT_DELETE_KEY_REGEX;
 
-    @JsonProperty("trim_value_regex")
+    @JsonProperty("delete_value_regex")
     @NotNull
-    private String trimValueRegex = DEFAULT_TRIM_VALUE_REGEX;
+    private String deleteValueRegex = DEFAULT_DELETE_VALUE_REGEX;
 
     public String getSource() {
         return source;
@@ -71,11 +71,11 @@ public class KeyValueProcessorConfig {
         return prefix;
     }
 
-    public String getTrimKeyRegex() {
-        return trimKeyRegex;
+    public String getDeleteKeyRegex() {
+        return deleteKeyRegex;
     }
 
-    public String getTrimValueRegex() {
-        return trimValueRegex;
+    public String getDeleteValueRegex() {
+        return deleteValueRegex;
     }
 }

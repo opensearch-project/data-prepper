@@ -46,8 +46,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 String key = terms[0];
                 Object value;
 
-                if(keyValueProcessorConfig.getTrimKeyRegex() != null && !Objects.equals(keyValueProcessorConfig.getTrimKeyRegex(), "")) {
-                    key = key.replaceAll(keyValueProcessorConfig.getTrimKeyRegex(), "");
+                if(keyValueProcessorConfig.getDeleteKeyRegex() != null && !Objects.equals(keyValueProcessorConfig.getDeleteKeyRegex(), "")) {
+                    key = key.replaceAll(keyValueProcessorConfig.getDeleteKeyRegex(), "");
                 }
                 key = keyValueProcessorConfig.getPrefix() + key;
 
@@ -58,8 +58,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     value = keyValueProcessorConfig.getNonMatchValue();
                 }
 
-                if(keyValueProcessorConfig.getTrimValueRegex() != null && !Objects.equals(keyValueProcessorConfig.getTrimValueRegex(), "")) {
-                    value = ((String)value).replaceAll(keyValueProcessorConfig.getTrimValueRegex(), "");
+                if(keyValueProcessorConfig.getDeleteValueRegex() != null && !Objects.equals(keyValueProcessorConfig.getDeleteValueRegex(), "")) {
+                    value = ((String)value).replaceAll(keyValueProcessorConfig.getDeleteValueRegex(), "");
                 }
 
                 addKeyValueToMap(parsedMap, key, value);

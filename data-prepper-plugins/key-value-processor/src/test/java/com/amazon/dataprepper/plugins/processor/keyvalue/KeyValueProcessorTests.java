@@ -50,8 +50,8 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getKeyValueDelimiterRegex()).thenReturn(defaultConfig.getKeyValueDelimiterRegex());
         lenient().when(mockConfig.getNonMatchValue()).thenReturn(defaultConfig.getNonMatchValue());
         lenient().when(mockConfig.getPrefix()).thenReturn(defaultConfig.getPrefix());
-        lenient().when(mockConfig.getTrimKeyRegex()).thenReturn(defaultConfig.getTrimKeyRegex());
-        lenient().when(mockConfig.getTrimValueRegex()).thenReturn(defaultConfig.getTrimValueRegex());
+        lenient().when(mockConfig.getDeleteKeyRegex()).thenReturn(defaultConfig.getDeleteKeyRegex());
+        lenient().when(mockConfig.getDeleteValueRegex()).thenReturn(defaultConfig.getDeleteValueRegex());
     }
 
     @Test
@@ -161,8 +161,8 @@ public class KeyValueProcessorTests {
     }
 
     @Test
-    void testTrimKeyRegexKvProcessor() {
-        when(mockConfig.getTrimKeyRegex()).thenReturn("\\s");
+    void testDeleteKeyRegexKvProcessor() {
+        when(mockConfig.getDeleteKeyRegex()).thenReturn("\\s");
 
         final Record<Event> record = getMessage("key1  =value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
@@ -173,8 +173,8 @@ public class KeyValueProcessorTests {
     }
 
     @Test
-    void testTrimValueRegexKvProcessor() {
-        when(mockConfig.getTrimValueRegex()).thenReturn("\\s");
+    void testDeleteValueRegexKvProcessor() {
+        when(mockConfig.getDeleteValueRegex()).thenReturn("\\s");
 
         final Record<Event> record = getMessage("key1=value1   &key2=value2");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
@@ -186,9 +186,9 @@ public class KeyValueProcessorTests {
     }
 
     @Test
-    void testTrimValueAndKeyRegexKvProcessor() {
-        when(mockConfig.getTrimKeyRegex()).thenReturn("\\s");
-        when(mockConfig.getTrimValueRegex()).thenReturn("\\s");
+    void testDeleteValueAndKeyRegexKvProcessor() {
+        when(mockConfig.getDeleteKeyRegex()).thenReturn("\\s");
+        when(mockConfig.getDeleteValueRegex()).thenReturn("\\s");
 
         final Record<Event> record = getMessage("key1  =value1   & key2 = value2 ");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));

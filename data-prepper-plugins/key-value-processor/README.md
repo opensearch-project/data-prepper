@@ -42,14 +42,14 @@ When run, the processor will parse the message into the following output:
   * Example: `key1value1&key2=value2` will parse into `{"key1value1": null, "key2": "value2"}`
 * `prefix` - A prefix given to all keys.
   * Default is an empty string
-* `trim_key_regex` - A regex that will be used to trim away characters from the key.
+* `delete_key_regex` - A regex that will be used to delete away characters from the key.
   * There is no default
   * Non-empty string is the only valid value
-  * Example: `trim_key_regex` is `"\s"`. `{"key1 =value1"}` will parse into `{"key1": "value1"}`
-* `trim_value_regex` - A regex that will be used to trim away characters from the value.
+  * Example: `delete_key_regex` is `"\s"`. `{"key1 =value1"}` will parse into `{"key1": "value1"}`
+* `delete_value_regex` - A regex that will be used to delete away characters from the value.
   * There is no default
   * Non-empty string is the only valid value
-  * Example: `trim_value_regex` is `"\s"`. `{"key1=value1 "}` will parse into `{"key1": "value1"}`
+  * Example: `delete_value_regex` is `"\s"`. `{"key1=value1 "}` will parse into `{"key1": "value1"}`
 
 ## Developer Guide
 This plugin is compatible with Java 14. See
