@@ -11,7 +11,7 @@ kv-pipeline:
       record_type: "event"
       format: "json"
   processor:
-    - kv:
+    - key_value:
   sink:
     - stdout:
 ```

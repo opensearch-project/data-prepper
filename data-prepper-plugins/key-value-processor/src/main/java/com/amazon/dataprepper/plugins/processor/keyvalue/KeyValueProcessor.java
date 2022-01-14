@@ -16,10 +16,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TreeMap;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -71,9 +72,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     }
 
     @Override
-    public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
+    public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
-            final Map<String, Object> parsedMap = new TreeMap<>();
+            final Map<String, Object> parsedMap = new HashMap<>();
             final Event recordEvent = record.getData();
 
             final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
@@ -95,7 +96,10 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     value = keyValueProcessorConfig.getNonMatchValue();
                 }
 
-                if(keyValueProcessorConfig.getDeleteValueRegex() != null && !Objects.equals(keyValueProcessorConfig.getDeleteValueRegex(), "")) {
+                if(value != null
+                        && value instanceof String
+                        && keyValueProcessorConfig.getDeleteValueRegex() != null
+                        && !Objects.equals(keyValueProcessorConfig.getDeleteValueRegex(), "")) {
                     value = ((String)value).replaceAll(keyValueProcessorConfig.getDeleteValueRegex(), "");
                 }
 
@@ -108,20 +112,15 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return records;
     }
 
-    private void addKeyValueToMap(Map<String, Object> parsedMap, String key, Object value) {
-        if (parsedMap.containsKey(key)) {
-            final Object existentValue = parsedMap.get(key);
-            if (existentValue instanceof String) {
-                LinkedList<Object> replacementValueList = new LinkedList<>();
-                replacementValueList.add(existentValue);
-                replacementValueList.add(value);
-
-                parsedMap.replace(key, replacementValueList);
-            } else {
-                ((LinkedList<Object>) existentValue).add(value);
-            }
+    private void addKeyValueToMap(final Map<String, Object> parsedMap, final String key, final Object value) {
+        if (value instanceof List) {
+            ((List<Object>) value).add(value);
         } else {
-            parsedMap.put(key, value);
+            final LinkedList<Object> list = new LinkedList<>();
+            list.add(value);
+            list.add(value);
+
+            parsedMap.replace(key, list);
         }
     }
 
