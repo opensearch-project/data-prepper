@@ -113,14 +113,19 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     }
 
     private void addKeyValueToMap(final Map<String, Object> parsedMap, final String key, final Object value) {
-        if (value instanceof List) {
-            ((List<Object>) value).add(value);
-        } else {
-            final LinkedList<Object> list = new LinkedList<>();
-            list.add(value);
-            list.add(value);
+        if(!parsedMap.containsKey(key)) {
+            parsedMap.put(key, value);
+            return;
+        }
 
-            parsedMap.replace(key, list);
+        if (parsedMap.get(key) instanceof List) {
+            ((List<Object>) parsedMap.get(key)).add(value);
+        } else {
+            final LinkedList<Object> combinedList = new LinkedList<>();
+            combinedList.add(parsedMap.get(key));
+            combinedList.add(value);
+
+            parsedMap.replace(key, combinedList);
         }
     }
 
