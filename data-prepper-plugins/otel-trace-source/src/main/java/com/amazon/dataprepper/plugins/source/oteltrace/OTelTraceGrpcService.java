@@ -48,6 +48,7 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
 
     private final int bufferWriteTimeoutInMillis;
+    private final OTelProtoCodec oTelProtoCodec;
     private final Buffer<Record<Span>> buffer;
 
     private final Counter requestTimeoutCounter;
@@ -60,10 +61,12 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
     private final Timer requestProcessDuration;
 
     public OTelTraceGrpcService(int bufferWriteTimeoutInMillis,
-                                Buffer<Record<Span>> buffer,
+                                final OTelProtoCodec oTelProtoCodec,
+                                final Buffer<Record<Span>> buffer,
                                 final PluginMetrics pluginMetrics) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
+        this.oTelProtoCodec = oTelProtoCodec;
 
         requestTimeoutCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
@@ -94,7 +97,7 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
         payloadSizeSummary.record(request.getSerializedSize());
 
         try {
-            spans = OTelProtoCodec.parseExportTraceServiceRequest(request);
+            spans = oTelProtoCodec.parseExportTraceServiceRequest(request);
         } catch (Exception e) {
             LOG.error("Failed to parse the request content [{}] due to:", request, e);
             badRequestsCounter.increment();

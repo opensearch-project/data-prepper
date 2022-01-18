@@ -43,6 +43,8 @@ public class OTelProtoCodecTest {
 
     private static final String TEST_REQUEST_JSON_FILE = "test-request.json";
 
+    private final OTelProtoCodec objectUnderTest = new OTelProtoCodec();
+
     private Map<String, Object> returnMap(final String jsonStr) throws JsonProcessingException {
         return (Map<String, Object>) OBJECT_MAPPER.readValue(jsonStr, Map.class);
     }
@@ -67,7 +69,7 @@ public class OTelProtoCodecTest {
     @Test
     public void testParseExportTraceServiceRequest() throws IOException {
         final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_JSON_FILE);
-        final List<Span> spans = OTelProtoCodec.parseExportTraceServiceRequest(exportTraceServiceRequest);
+        final List<Span> spans = objectUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest);
         assertThat(spans.size()).isEqualTo(3);
         for (final Span span: spans) {
             if (span.getParentSpanId().isEmpty()) {
@@ -105,7 +107,7 @@ public class OTelProtoCodecTest {
         final KeyValue spanAttribute2 = KeyValue.newBuilder().setKey("http.status").setValue(AnyValue.newBuilder()
                 .setStringValue("4xx").build()).build();
 
-        final Map<String, Object> actual = OTelProtoCodec.getSpanAttributes(io.opentelemetry.proto.trace.v1.Span.newBuilder()
+        final Map<String, Object> actual = objectUnderTest.getSpanAttributes(io.opentelemetry.proto.trace.v1.Span.newBuilder()
                 .addAllAttributes(Arrays.asList(spanAttribute1, spanAttribute2)).build());
         assertThat(actual.get(OTelProtoCodec.SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(spanAttribute2.getKey()))
                 .equals(spanAttribute2.getValue().getStringValue())).isTrue();
@@ -132,7 +134,7 @@ public class OTelProtoCodecTest {
         final KeyValue spanAttribute2 = KeyValue.newBuilder().setKey("service.name").setValue(AnyValue.newBuilder()
                 .setStringValue("EaglesService").build()).build();
 
-        final Map<String, Object> actual = OTelProtoCodec.getResourceAttributes(Resource.newBuilder()
+        final Map<String, Object> actual = objectUnderTest.getResourceAttributes(Resource.newBuilder()
                 .addAllAttributes(Arrays.asList(spanAttribute1, spanAttribute2)).build());
         assertThat(actual.get(OTelProtoCodec.RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(spanAttribute2.getKey()))
                 .equals(spanAttribute2.getValue().getStringValue())).isTrue();
@@ -163,7 +165,7 @@ public class OTelProtoCodecTest {
         final KeyValue spanAttribute1 = KeyValue.newBuilder().setKey("aws.details").setValue(AnyValue.newBuilder()
                 .setArrayValue(arrayValue)).build();
 
-        final Map<String, Object> actual = OTelProtoCodec.getResourceAttributes(Resource.newBuilder()
+        final Map<String, Object> actual = objectUnderTest.getResourceAttributes(Resource.newBuilder()
                 .addAllAttributes(Collections.singletonList(spanAttribute1)).build());
         assertThat(actual.containsKey(OTelProtoCodec.RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(spanAttribute1.getKey()))).isTrue();
         final List<Object> actualValue = returnList((String) actual
@@ -185,17 +187,17 @@ public class OTelProtoCodecTest {
         final InstrumentationLibrary il3 = InstrumentationLibrary.newBuilder().setVersion("0.6.0").build();
         final InstrumentationLibrary il4 = InstrumentationLibrary.newBuilder().build();
 
-        assertThat(OTelProtoCodec.getInstrumentationLibraryAttributes(il1).size() == 2).isTrue();
-        assertThat(OTelProtoCodec.getInstrumentationLibraryAttributes(il1).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME).equals(il1.getName())).isTrue();
-        assertThat(OTelProtoCodec.getInstrumentationLibraryAttributes(il1).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_VERSION).equals(il1.getVersion())).isTrue();
+        assertThat(objectUnderTest.getInstrumentationLibraryAttributes(il1).size() == 2).isTrue();
+        assertThat(objectUnderTest.getInstrumentationLibraryAttributes(il1).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME).equals(il1.getName())).isTrue();
+        assertThat(objectUnderTest.getInstrumentationLibraryAttributes(il1).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_VERSION).equals(il1.getVersion())).isTrue();
 
-        assertThat(OTelProtoCodec.getInstrumentationLibraryAttributes(il2).size() == 1).isTrue();
-        assertThat(OTelProtoCodec.getInstrumentationLibraryAttributes(il2).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME).equals(il2.getName())).isTrue();
+        assertThat(objectUnderTest.getInstrumentationLibraryAttributes(il2).size() == 1).isTrue();
+        assertThat(objectUnderTest.getInstrumentationLibraryAttributes(il2).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME).equals(il2.getName())).isTrue();
 
-        assertThat(OTelProtoCodec.getInstrumentationLibraryAttributes(il3).size() == 1).isTrue();
-        assertThat(OTelProtoCodec.getInstrumentationLibraryAttributes(il3).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_VERSION).equals(il3.getVersion())).isTrue();
+        assertThat(objectUnderTest.getInstrumentationLibraryAttributes(il3).size() == 1).isTrue();
+        assertThat(objectUnderTest.getInstrumentationLibraryAttributes(il3).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_VERSION).equals(il3.getVersion())).isTrue();
 
-        assertThat(OTelProtoCodec.getInstrumentationLibraryAttributes(il4).isEmpty()).isTrue();
+        assertThat(objectUnderTest.getInstrumentationLibraryAttributes(il4).isEmpty()).isTrue();
     }
 
     @Test
@@ -205,18 +207,18 @@ public class OTelProtoCodecTest {
         final Status st3 = Status.newBuilder().setCode(Status.StatusCode.STATUS_CODE_UNSET).build();
         final Status st4 = Status.newBuilder().build();
 
-        assertThat(OTelProtoCodec.getSpanStatusAttributes(st1).size() == 2).isTrue();
-        assertThat(Status.StatusCode.forNumber((Integer) OTelProtoCodec.getSpanStatusAttributes(st1).get(OTelProtoCodec.STATUS_CODE)).equals(st1.getCode())).isTrue();
-        assertThat(OTelProtoCodec.getSpanStatusAttributes(st1).get(OTelProtoCodec.STATUS_MESSAGE).equals(st1.getMessage())).isTrue();
+        assertThat(objectUnderTest.getSpanStatusAttributes(st1).size() == 2).isTrue();
+        assertThat(Status.StatusCode.forNumber((Integer) objectUnderTest.getSpanStatusAttributes(st1).get(OTelProtoCodec.STATUS_CODE)).equals(st1.getCode())).isTrue();
+        assertThat(objectUnderTest.getSpanStatusAttributes(st1).get(OTelProtoCodec.STATUS_MESSAGE).equals(st1.getMessage())).isTrue();
 
-        assertThat(OTelProtoCodec.getSpanStatusAttributes(st2).size() == 2).isTrue();
-        assertThat(Status.StatusCode.forNumber((Integer) OTelProtoCodec.getSpanStatusAttributes(st2).get(OTelProtoCodec.STATUS_CODE)).equals(st2.getCode())).isTrue();
+        assertThat(objectUnderTest.getSpanStatusAttributes(st2).size() == 2).isTrue();
+        assertThat(Status.StatusCode.forNumber((Integer) objectUnderTest.getSpanStatusAttributes(st2).get(OTelProtoCodec.STATUS_CODE)).equals(st2.getCode())).isTrue();
 
-        assertThat(OTelProtoCodec.getSpanStatusAttributes(st3).size() == 1).isTrue();
-        assertThat(Status.StatusCode.forNumber((Integer) OTelProtoCodec.getSpanStatusAttributes(st3).get(OTelProtoCodec.STATUS_CODE)).equals(st3.getCode())).isTrue();
+        assertThat(objectUnderTest.getSpanStatusAttributes(st3).size() == 1).isTrue();
+        assertThat(Status.StatusCode.forNumber((Integer) objectUnderTest.getSpanStatusAttributes(st3).get(OTelProtoCodec.STATUS_CODE)).equals(st3.getCode())).isTrue();
 
-        assertThat(OTelProtoCodec.getSpanStatusAttributes(st4).size() == 1).isTrue();
-        assertThat(Status.StatusCode.forNumber((Integer) OTelProtoCodec.getSpanStatusAttributes(st4).get(OTelProtoCodec.STATUS_CODE)).equals(st4.getCode())).isTrue();
+        assertThat(objectUnderTest.getSpanStatusAttributes(st4).size() == 1).isTrue();
+        assertThat(Status.StatusCode.forNumber((Integer) objectUnderTest.getSpanStatusAttributes(st4).get(OTelProtoCodec.STATUS_CODE)).equals(st4.getCode())).isTrue();
 
     }
 
@@ -229,11 +231,11 @@ public class OTelProtoCodecTest {
                 .setEndTimeUnixNano(1598013600000000321L).build();
         final io.opentelemetry.proto.trace.v1.Span emptyTimeSpan = io.opentelemetry.proto.trace.v1.Span.newBuilder().build();
 
-        final String startTime = OTelProtoCodec.getStartTimeISO8601(startTimeUnixNano);
+        final String startTime = objectUnderTest.getStartTimeISO8601(startTimeUnixNano);
         assertThat(Instant.parse(startTime).getEpochSecond() * NANO_MULTIPLIER + Instant.parse(startTime).getNano() == startTimeUnixNano.getStartTimeUnixNano()).isTrue();
-        final String endTime = OTelProtoCodec.getEndTimeISO8601(endTimeUnixNano);
+        final String endTime = objectUnderTest.getEndTimeISO8601(endTimeUnixNano);
         assertThat(Instant.parse(endTime).getEpochSecond() * NANO_MULTIPLIER + Instant.parse(endTime).getNano() == endTimeUnixNano.getEndTimeUnixNano()).isTrue();
-        final String emptyTime = OTelProtoCodec.getStartTimeISO8601(endTimeUnixNano);
+        final String emptyTime = objectUnderTest.getStartTimeISO8601(endTimeUnixNano);
         assertThat(Instant.parse(emptyTime).getEpochSecond() * NANO_MULTIPLIER + Instant.parse(emptyTime).getNano() == emptyTimeSpan.getStartTimeUnixNano()).isTrue();
 
     }
@@ -242,18 +244,18 @@ public class OTelProtoCodecTest {
     public void testTraceGroup() {
         final io.opentelemetry.proto.trace.v1.Span span1 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
                 .setParentSpanId(ByteString.copyFrom("PArentIdExists", StandardCharsets.UTF_8)).build();
-        assertThat(OTelProtoCodec.getTraceGroup(span1)).isNull();
+        assertThat(objectUnderTest.getTraceGroup(span1)).isNull();
         final String testTraceGroup = "testTraceGroup";
         final io.opentelemetry.proto.trace.v1.Span span2 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
                 .setName(testTraceGroup).build();
-        assertThat(OTelProtoCodec.getTraceGroup(span2)).isEqualTo(testTraceGroup);
+        assertThat(objectUnderTest.getTraceGroup(span2)).isEqualTo(testTraceGroup);
     }
 
     @Test
     public void testTraceGroupFields() {
         final io.opentelemetry.proto.trace.v1.Span span1 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
                 .setParentSpanId(ByteString.copyFrom("PArentIdExists", StandardCharsets.UTF_8)).build();
-        final TraceGroupFields traceGroupFields1 = OTelProtoCodec.getTraceGroupFields(span1);
+        final TraceGroupFields traceGroupFields1 = objectUnderTest.getTraceGroupFields(span1);
         assertThat(traceGroupFields1.getEndTime()).isNull();
         assertThat(traceGroupFields1.getDurationInNanos()).isNull();
         assertThat(traceGroupFields1.getStatusCode()).isNull();
@@ -267,9 +269,9 @@ public class OTelProtoCodecTest {
                 .build();
         final TraceGroupFields expectedTraceGroupFields = DefaultTraceGroupFields.builder()
                 .withStatusCode(testStatusCode)
-                .withEndTime(OTelProtoCodec.getEndTimeISO8601(span2))
+                .withEndTime(objectUnderTest.getEndTimeISO8601(span2))
                 .withDurationInNanos(testEndTimeUnixNano - testStartTimeUnixNano)
                 .build();
-        assertThat(OTelProtoCodec.getTraceGroupFields(span2)).isEqualTo(expectedTraceGroupFields);
+        assertThat(objectUnderTest.getTraceGroupFields(span2)).isEqualTo(expectedTraceGroupFields);
     }
 }

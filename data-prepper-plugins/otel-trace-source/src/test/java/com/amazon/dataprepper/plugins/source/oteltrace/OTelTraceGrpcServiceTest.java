@@ -36,7 +36,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Captor;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
@@ -50,8 +49,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -75,6 +72,10 @@ public class OTelTraceGrpcServiceTest {
     private static PluginSetting pluginSetting;
     private final int bufferWriteTimeoutInMillis = 100000;
 
+    @Mock
+    OTelProtoCodec mockOTelProtoCodec;
+    @Mock
+    PluginMetrics mockPluginMetrics;
     @Mock
     Counter requestsReceivedCounter;
     @Mock
@@ -109,8 +110,6 @@ public class OTelTraceGrpcServiceTest {
         pluginSetting = new PluginSetting("OTelTraceGrpcService", Collections.EMPTY_MAP);
         pluginSetting.setPipelineName("pipeline");
 
-        PluginMetrics mockPluginMetrics = mock(PluginMetrics.class);
-
         when(mockPluginMetrics.counter(OTelTraceGrpcService.REQUESTS_RECEIVED)).thenReturn(requestsReceivedCounter);
         when(mockPluginMetrics.counter(OTelTraceGrpcService.REQUEST_TIMEOUTS)).thenReturn(timeoutCounter);
         when(mockPluginMetrics.counter(OTelTraceGrpcService.BAD_REQUESTS)).thenReturn(badRequestsCounter);
@@ -124,7 +123,7 @@ public class OTelTraceGrpcServiceTest {
             return null;
         }).when(requestProcessDuration).record(ArgumentMatchers.<Runnable>any());
 
-        sut = new OTelTraceGrpcService(bufferWriteTimeoutInMillis, buffer, mockPluginMetrics);
+        sut = new OTelTraceGrpcService(bufferWriteTimeoutInMillis, new OTelProtoCodec(), buffer, mockPluginMetrics);
     }
 
     @Test
@@ -174,30 +173,28 @@ public class OTelTraceGrpcServiceTest {
 
     @Test
     public void export_BadRequest_responseObserverOnError() throws Exception {
-        try (final MockedStatic<OTelProtoCodec> oTelProtoCodecMockedStatic = mockStatic(OTelProtoCodec.class)) {
-            final String testMessage = "test message";
-            final RuntimeException testException = new RuntimeException(testMessage);
-            oTelProtoCodecMockedStatic.when(() -> OTelProtoCodec.parseExportTraceServiceRequest(any()))
-                    .thenThrow(testException);
-            sut.export(SUCCESS_REQUEST, responseObserver);
+        final String testMessage = "test message";
+        final RuntimeException testException = new RuntimeException(testMessage);
+        when(mockOTelProtoCodec.parseExportTraceServiceRequest(any())).thenThrow(testException);
+        sut = new OTelTraceGrpcService(bufferWriteTimeoutInMillis, mockOTelProtoCodec, buffer, mockPluginMetrics);
+        sut.export(SUCCESS_REQUEST, responseObserver);
 
-            verifyNoInteractions(buffer);
-            verify(responseObserver, times(0)).onNext(ExportTraceServiceResponse.newBuilder().build());
-            verify(responseObserver, times(0)).onCompleted();
-            verify(responseObserver, times(1)).onError(statusExceptionArgumentCaptor.capture());
-            verify(requestsReceivedCounter, times(1)).increment();
-            verify(badRequestsCounter, times(1)).increment();
-            verifyNoInteractions(successRequestsCounter);
-            verifyNoInteractions(requestsTooLargeCounter);
-            verifyNoInteractions(timeoutCounter);
-            final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
-            verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
-            assertEquals(SUCCESS_REQUEST.getSerializedSize(), Math.round(payloadLengthCaptor.getValue()));
-            verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
+        verifyNoInteractions(buffer);
+        verify(responseObserver, times(0)).onNext(ExportTraceServiceResponse.newBuilder().build());
+        verify(responseObserver, times(0)).onCompleted();
+        verify(responseObserver, times(1)).onError(statusExceptionArgumentCaptor.capture());
+        verify(requestsReceivedCounter, times(1)).increment();
+        verify(badRequestsCounter, times(1)).increment();
+        verifyNoInteractions(successRequestsCounter);
+        verifyNoInteractions(requestsTooLargeCounter);
+        verifyNoInteractions(timeoutCounter);
+        final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
+        verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
+        assertEquals(SUCCESS_REQUEST.getSerializedSize(), Math.round(payloadLengthCaptor.getValue()));
+        verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
 
-            StatusException capturedStatusException = statusExceptionArgumentCaptor.getValue();
-            assertEquals(Status.INVALID_ARGUMENT.getCode(), capturedStatusException.getStatus().getCode());
-        }
+        StatusException capturedStatusException = statusExceptionArgumentCaptor.getValue();
+        assertEquals(Status.INVALID_ARGUMENT.getCode(), capturedStatusException.getStatus().getCode());
     }
 
     @Test
