@@ -9,4 +9,5 @@
 | Asif Sohail Mohammed | [asifsmohammed](https://github.com/asifsmohammed) | Amazon |
 | David Powers | [dapowers87](https://github.com/dapowers87) | Amazon |
 | Shivani Shukla | [sshivanii](https://github.com/sshivanii) | Amazon |
+| Phill Treddenick | [treddeni-amazon](https://github.com/treddeni-amazon) | Amazon |
 | David Venable | [dlvenable](https://github.com/dlvenable) | Amazon |
