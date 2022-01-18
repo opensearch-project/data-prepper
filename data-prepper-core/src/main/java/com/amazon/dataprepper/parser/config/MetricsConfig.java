@@ -29,6 +29,7 @@ import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.core.exception.SdkClientException;
@@ -36,7 +37,6 @@ import software.amazon.awssdk.core.exception.SdkClientException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 import static com.amazon.dataprepper.DataPrepper.getServiceNameForMetrics;
 import static com.amazon.dataprepper.metrics.MetricNames.SERVICE_NAME;
@@ -90,9 +90,9 @@ public class MetricsConfig {
     }
 
     @Bean
-    public Optional<MeterRegistry> prometheusMeterRegistry(
+    public MeterRegistry prometheusMeterRegistry(
             final DataPrepperConfiguration dataPrepperConfiguration,
-            final Optional<Authenticator> optionalAuthenticator,
+            @Autowired(required = false) final Authenticator authenticator,
             final HttpServer server
     ) {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.Prometheus)) {
@@ -105,53 +105,50 @@ public class MetricsConfig {
             contextList.add(server.createContext(METRICS_CONTEXT_PREFIX + "/prometheus", metricsHandler));
             contextList.add(server.createContext(METRICS_CONTEXT_PREFIX + "/sys", metricsHandler));
 
-            optionalAuthenticator.ifPresent(
-                    authenticator -> contextList.forEach(
-                            context -> context.setAuthenticator(authenticator)));
+            if (authenticator != null) {
+                contextList.forEach(context -> context.setAuthenticator(authenticator));
+            }
 
-            return Optional.of(meterRegistry);
+            return meterRegistry;
         }
         else {
-            return Optional.empty();
+            return null;
         }
     }
 
     @Bean
-    public Optional<MeterRegistry> cloudWatchMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
+    public MeterRegistry cloudWatchMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.CloudWatch)) {
             try {
                 final CloudWatchMeterRegistryProvider provider = new CloudWatchMeterRegistryProvider();
                 final CloudWatchMeterRegistry meterRegistry = provider.getCloudWatchMeterRegistry();
 
                 configureMetricRegistry(meterRegistry);
-                return Optional.of(meterRegistry);
-            } catch (SdkClientException e) {
+                return meterRegistry;
+            } catch (final SdkClientException e) {
                 LOG.warn("Unable to configure Cloud Watch Meter Registry but Meter Registry was requested in Data Prepper Configuration");
                 throw new RuntimeException("Unable to initialize Cloud Watch Meter Registry", e);
             }
         }
         else {
-            return Optional.empty();
+            return null;
         }
     }
 
     @Bean
     public CompositeMeterRegistry systemMeterRegistry(
             final List<MeterBinder> meterBinders,
-            final List<Optional<MeterRegistry>> optionalMeterRegistries
+            final List<MeterRegistry> meterRegistries
     ) {
         final CompositeMeterRegistry compositeMeterRegistry = new CompositeMeterRegistry();
 
         LOG.debug("{} Meter Binder beans registered.", meterBinders.size());
         meterBinders.forEach(binder -> binder.bindTo(compositeMeterRegistry));
 
-        optionalMeterRegistries.stream()
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .forEach(meterRegistry -> {
-                    compositeMeterRegistry.add(meterRegistry);
-                    Metrics.addRegistry(meterRegistry);
-                });
+        meterRegistries.forEach(meterRegistry -> {
+            compositeMeterRegistry.add(meterRegistry);
+            Metrics.addRegistry(meterRegistry);
+        });
 
         return compositeMeterRegistry;
     }

@@ -28,12 +28,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.Random;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isA;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -99,7 +99,6 @@ class MetricsConfigTest {
     @Test
     public void testGivenConfigWithPrometheusMeterRegistryThenMeterRegistryCreated() {
         final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
-        final Optional<Authenticator> optionalAuthenticator = Optional.empty();
         final HttpServer server = mock(HttpServer.class);
         final HttpContext context = mock(HttpContext.class);
 
@@ -108,15 +107,12 @@ class MetricsConfigTest {
         when(server.createContext(anyString(), any(PrometheusMetricsHandler.class)))
                 .thenReturn(context);
 
-        final Optional<MeterRegistry> optionalMeterRegistry = metricsConfig.prometheusMeterRegistry(
+        final MeterRegistry meterRegistry = metricsConfig.prometheusMeterRegistry(
                 dataPrepperConfiguration,
-                optionalAuthenticator,
+                null,
                 server);
 
-        assertThat(optionalMeterRegistry.isPresent(), is(true));
-
-        final MeterRegistry registry = optionalMeterRegistry.get();
-        assertThat(registry, isA(PrometheusMeterRegistry.class));
+        assertThat(meterRegistry, isA(PrometheusMeterRegistry.class));
 
         verify(server, times(2))
                 .createContext(anyString(), any(PrometheusMetricsHandler.class));
@@ -126,7 +122,6 @@ class MetricsConfigTest {
     public void testGivenConfigWithPrometheusMeterRegistryAndAuthenticatorThenMeterRegistryCreated() {
         final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
         final Authenticator authenticator = mock(Authenticator.class);
-        final Optional<Authenticator> optionalAuthenticator = Optional.of(authenticator);
         final HttpServer server = mock(HttpServer.class);
         final HttpContext context = mock(HttpContext.class);
 
@@ -135,15 +130,12 @@ class MetricsConfigTest {
         when(server.createContext(anyString(), any(PrometheusMetricsHandler.class)))
                 .thenReturn(context);
 
-        final Optional<MeterRegistry> optionalMeterRegistry = metricsConfig.prometheusMeterRegistry(
+        final MeterRegistry meterRegistry = metricsConfig.prometheusMeterRegistry(
                 dataPrepperConfiguration,
-                optionalAuthenticator,
+                authenticator,
                 server);
 
-        assertThat(optionalMeterRegistry.isPresent(), is(true));
-
-        final MeterRegistry registry = optionalMeterRegistry.get();
-        assertThat(registry, isA(PrometheusMeterRegistry.class));
+        assertThat(meterRegistry, isA(PrometheusMeterRegistry.class));
 
         verify(server, times(2))
                 .createContext(anyString(), any(PrometheusMetricsHandler.class));
@@ -159,12 +151,12 @@ class MetricsConfigTest {
         when(dataPrepperConfiguration.getMetricRegistryTypes())
                 .thenReturn(Collections.emptyList());
 
-        final Optional<MeterRegistry> optionalMeterRegistry = metricsConfig.prometheusMeterRegistry(
-dataPrepperConfiguration,
-                Optional.empty(),
+        final MeterRegistry meterRegistry = metricsConfig.prometheusMeterRegistry(
+                dataPrepperConfiguration,
+                null,
                 null);
 
-        assertThat(optionalMeterRegistry.isPresent(), is(false));
+        assertThat(meterRegistry, is(nullValue()));
     }
 
     @Test
@@ -174,9 +166,9 @@ dataPrepperConfiguration,
         when(dataPrepperConfiguration.getMetricRegistryTypes())
                 .thenReturn(Collections.singletonList(MetricRegistryType.Prometheus));
 
-        final Optional<MeterRegistry> optionalMeterRegistry = metricsConfig.cloudWatchMeterRegistry(dataPrepperConfiguration);
+        final MeterRegistry meterRegistry = metricsConfig.cloudWatchMeterRegistry(dataPrepperConfiguration);
 
-        assertThat(optionalMeterRegistry.isPresent(), is(false));
+        assertThat(meterRegistry, is(nullValue()));
     }
 
     @Test
@@ -187,11 +179,11 @@ dataPrepperConfiguration,
         final List<MeterBinder> meterBinders = Collections.nCopies(copies, binder);
 
         final MeterRegistry meterRegistryMock = mock(MeterRegistry.class);
-        final List<Optional<MeterRegistry>> optionalMeterRegistries = Collections.nCopies(1, Optional.of(meterRegistryMock));
+        final List<MeterRegistry> meterRegistries = Collections.nCopies(1, meterRegistryMock);
 
         final CompositeMeterRegistry meterRegistry = metricsConfig.systemMeterRegistry(
                 meterBinders,
-                optionalMeterRegistries);
+                meterRegistries);
 
         assertThat(meterRegistry, isA(CompositeMeterRegistry.class));
         verify(binder, times(copies)).bindTo(any(MeterRegistry.class));
@@ -202,11 +194,11 @@ dataPrepperConfiguration,
         final List<MeterBinder> meterBinders = Collections.emptyList();
 
         final MeterRegistry meterRegistryMock = mock(MeterRegistry.class);
-        final List<Optional<MeterRegistry>> optionalMeterRegistries = Collections.nCopies(1, Optional.of(meterRegistryMock));
+        final List<MeterRegistry> meterRegistries = Collections.nCopies(1, meterRegistryMock);
 
         final CompositeMeterRegistry meterRegistry = metricsConfig.systemMeterRegistry(
                 meterBinders,
-                optionalMeterRegistries);
+                meterRegistries);
 
         assertThat(meterRegistry, isA(CompositeMeterRegistry.class));
     }
