@@ -182,8 +182,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     @Override
     public String toJsonString() {
-        final ObjectNode attributesNode = (ObjectNode) jsonNode.get("attributes");
-        final ObjectNode flattenedJsonNode = jsonNode.deepCopy();
+        final ObjectNode attributesNode = (ObjectNode) getJsonNode().get("attributes");
+        final ObjectNode flattenedJsonNode = getJsonNode().deepCopy();
         if (attributesNode != null) {
             flattenedJsonNode.remove("attributes");
             for (Iterator<Map.Entry<String, JsonNode>> it = attributesNode.fields(); it.hasNext(); ) {

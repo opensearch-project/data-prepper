@@ -26,6 +26,7 @@ import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.amazon.dataprepper.plugins.health.HealthGrpcService;
 import com.amazon.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
+import com.amazon.dataprepper.plugins.source.oteltrace.codec.OTelProtoCodec;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
@@ -80,6 +81,7 @@ public class OTelTraceSource implements Source<Record<Span>> {
 
             final OTelTraceGrpcService oTelTraceGrpcService = new OTelTraceGrpcService(
                     oTelTraceSourceConfig.getRequestTimeoutInMillis(),
+                    new OTelProtoCodec(),
                     buffer,
                     pluginMetrics
             );

@@ -112,7 +112,7 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<Span>, Record<
                 } catch (Exception e) {
                     recordsOut.add(record);
                     recordsOutMissingTraceGroupCounter.increment();
-                    LOG.error("Failed to process the raw span: [{}]", record.getData(), e);
+                    LOG.error("Failed to process the span: [{}]", record.getData(), e);
                 }
             } else {
                 recordsOut.add(record);

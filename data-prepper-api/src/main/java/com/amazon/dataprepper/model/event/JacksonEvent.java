@@ -57,7 +57,7 @@ public class JacksonEvent implements Event {
 
     private final EventMetadata eventMetadata;
 
-    protected final JsonNode jsonNode;
+    private final JsonNode jsonNode;
 
     static final int MAX_KEY_LENGTH = 2048;
 
@@ -88,6 +88,10 @@ public class JacksonEvent implements Event {
             }
         }
         return mapper.valueToTree(data);
+    }
+
+    protected JsonNode getJsonNode() {
+        return jsonNode;
     }
 
     /**
