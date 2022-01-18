@@ -16,7 +16,6 @@ import org.springframework.core.env.Environment;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Optional;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -26,7 +25,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -81,7 +79,7 @@ class DataPrepperAppConfigurationTest {
 
         final DataPrepperConfiguration configuration = appConfiguration.dataPrepperConfiguration(dataPrepperArgs, objectMapper);
 
-        verify(dataPrepperArgs, times(1))
+        verify(dataPrepperArgs)
                 .getDataPrepperConfigFileLocation();
         assertThat(configuration, notNullValue());
     }
@@ -122,9 +120,23 @@ class DataPrepperAppConfigurationTest {
     public void testPluginModelFromDataPrepperConfigurationAuthentication() {
         final DataPrepperConfiguration configuration = mock(DataPrepperConfiguration.class);
 
-        final Optional<PluginModel> optional = appConfiguration.pluginModel(configuration);
+        final PluginModel pluginModel = appConfiguration.authentication(configuration);
 
-        assertThat(optional.isPresent(), is(false));
-        verify(configuration, times(1)).getAuthentication();
+        assertThat(pluginModel, is(nullValue()));
+        verify(configuration).getAuthentication();
+    }
+
+    @Test
+    public void testGivenReturnAuthenticationThenBeanShouldEqualAuthentication() {
+        final DataPrepperConfiguration configuration = mock(DataPrepperConfiguration.class);
+        final PluginModel expected = mock(PluginModel.class);
+
+        when(configuration.getAuthentication())
+                .thenReturn(expected);
+
+        final PluginModel pluginModel = appConfiguration.authentication(configuration);
+
+        assertThat(pluginModel, is(expected));
+        verify(configuration).getAuthentication();
     }
 }

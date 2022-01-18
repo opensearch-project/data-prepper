@@ -17,7 +17,6 @@ import org.springframework.core.env.Environment;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Optional;
 
 @Configuration
 public class DataPrepperAppConfiguration {
@@ -31,7 +30,7 @@ public class DataPrepperAppConfiguration {
         LOG.info("Command line args: {}", commandLineArgs);
 
         if (commandLineArgs != null) {
-            String[] args = commandLineArgs.split(COMMAND_LINE_ARG_DELIMITER);
+            final String[] args = commandLineArgs.split(COMMAND_LINE_ARG_DELIMITER);
             return new DataPrepperArgs(args);
         }
         else {
@@ -59,7 +58,7 @@ public class DataPrepperAppConfiguration {
     }
 
     @Bean
-    public Optional<PluginModel> pluginModel(final DataPrepperConfiguration dataPrepperConfiguration) {
-        return Optional.ofNullable(dataPrepperConfiguration.getAuthentication());
+    public PluginModel authentication(final DataPrepperConfiguration dataPrepperConfiguration) {
+        return dataPrepperConfiguration.getAuthentication();
     }
 }

@@ -20,7 +20,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -47,15 +46,15 @@ public class DataPrepperServerTest {
 
         dataPrepperServer.start();
 
-        verify(server, times(1)).start();
-        verify(server, times(1)).getAddress();
-        verify(socketAddress, times(1)).getPort();
+        verify(server).start();
+        verify(server).getAddress();
+        verify(socketAddress).getPort();
     }
 
     @Test
     public void testGivenValidServerWhenStopThenShouldCallServerStopWithNoDely() {
         dataPrepperServer.stop();
 
-        verify(server, times(1)).stop(eq(0));
+        verify(server).stop(eq(0));
     }
 }

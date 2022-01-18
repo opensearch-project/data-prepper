@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 class PluginCreator {
     private static final Logger LOG = LoggerFactory.getLogger(PluginCreator.class);
 
-    public <T> T newPluginInstance(final Class<T> pluginClass,
+    <T> T newPluginInstance(final Class<T> pluginClass,
                             final PluginArgumentsContext pluginArgumentsContext,
                             final String pluginName) {
         Objects.requireNonNull(pluginClass);
@@ -38,7 +38,8 @@ class PluginCreator {
             return (T) constructor.newInstance(constructorArguments);
         } catch (final IllegalAccessException | InstantiationException ex) {
             LOG.error("Encountered exception while instantiating the plugin {}", pluginClass.getSimpleName(), ex);
-            throw new InvalidPluginDefinitionException("Unable to access or instantiate the plugin '" + pluginClass.getSimpleName() + ".'", ex);
+            throw new InvalidPluginDefinitionException(
+                    "Unable to access or instantiate the plugin '" + pluginClass.getSimpleName() + ".'", ex);
         } catch (final InvocationTargetException ex) {
             LOG.error("Encountered exception while instantiating the plugin {}", pluginClass.getSimpleName(), ex);
             throw new PluginInvocationException("Exception throw from the plugin'" + pluginClass.getSimpleName() + "'." , ex);

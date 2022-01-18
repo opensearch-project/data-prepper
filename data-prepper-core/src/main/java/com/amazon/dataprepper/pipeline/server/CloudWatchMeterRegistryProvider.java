@@ -12,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
 
+import javax.inject.Inject;
+import javax.inject.Named;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
@@ -25,12 +27,14 @@ import static java.util.Objects.requireNonNull;
  * {@link CloudWatchMeterRegistryProvider} also has a constructor with {@link CloudWatchAsyncClient} that will be used
  * for communication with Cloudwatch.
  */
+@Named
 public class CloudWatchMeterRegistryProvider {
     private static final String CLOUDWATCH_PROPERTIES = "cloudwatch.properties";
     private static final Logger LOG = LoggerFactory.getLogger(CloudWatchMeterRegistryProvider.class);
 
     private final CloudWatchMeterRegistry cloudWatchMeterRegistry;
 
+    @Inject
     public CloudWatchMeterRegistryProvider() {
         this(CLOUDWATCH_PROPERTIES, CloudWatchAsyncClient.create());
     }
@@ -55,22 +59,17 @@ public class CloudWatchMeterRegistryProvider {
      * Returns CloudWatchConfig using the properties from {@link #CLOUDWATCH_PROPERTIES}
      */
     private CloudWatchConfig createCloudWatchConfig(final String cloudWatchPropertiesFilePath) {
-        CloudWatchConfig cloudWatchConfig = null;
         try (final InputStream inputStream = requireNonNull(getClass().getClassLoader()
                 .getResourceAsStream(cloudWatchPropertiesFilePath))) {
             final Properties cloudwatchProperties = new Properties();
             cloudwatchProperties.load(inputStream);
-            cloudWatchConfig = new CloudWatchConfig() {
-                @Override
-                public String get(final String key) {
-                    return cloudwatchProperties.getProperty(key);
-                }
-            };
-        } catch (IOException ex) {
+            return cloudwatchProperties::getProperty;
+        } catch (final IOException ex) {
             LOG.error("Encountered exception in creating CloudWatchConfig for CloudWatchMeterRegistry, " +
                     "Proceeding without metrics", ex);
+
             //If there is no registry attached, micrometer will make NoopMeters which are discarded.
+            return null;
         }
-        return cloudWatchConfig;
     }
 }

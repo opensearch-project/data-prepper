@@ -8,12 +8,8 @@ package com.amazon.dataprepper.parser.config;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.parser.model.MetricRegistryType;
 import com.amazon.dataprepper.pipeline.server.CloudWatchMeterRegistryProvider;
-import com.amazon.dataprepper.pipeline.server.PrometheusMetricsHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.sun.net.httpserver.Authenticator;
-import com.sun.net.httpserver.HttpContext;
-import com.sun.net.httpserver.HttpServer;
 import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
@@ -29,12 +25,10 @@ import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -90,24 +84,10 @@ public class MetricsConfig {
     }
 
     @Bean
-    public MeterRegistry prometheusMeterRegistry(
-            final DataPrepperConfiguration dataPrepperConfiguration,
-            @Autowired(required = false) final Authenticator authenticator,
-            final HttpServer server
-    ) {
+    public MeterRegistry prometheusMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.Prometheus)) {
             final PrometheusMeterRegistry meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
             configureMetricRegistry(meterRegistry);
-
-            final PrometheusMetricsHandler metricsHandler = new PrometheusMetricsHandler(meterRegistry);
-
-            final List<HttpContext> contextList = new ArrayList<>(2);
-            contextList.add(server.createContext(METRICS_CONTEXT_PREFIX + "/prometheus", metricsHandler));
-            contextList.add(server.createContext(METRICS_CONTEXT_PREFIX + "/sys", metricsHandler));
-
-            if (authenticator != null) {
-                contextList.forEach(context -> context.setAuthenticator(authenticator));
-            }
 
             return meterRegistry;
         }
@@ -117,13 +97,15 @@ public class MetricsConfig {
     }
 
     @Bean
-    public MeterRegistry cloudWatchMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
+    public MeterRegistry cloudWatchMeterRegistry(
+            final DataPrepperConfiguration dataPrepperConfiguration,
+            final CloudWatchMeterRegistryProvider cloudWatchMeterRegistryProvider
+    ) {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.CloudWatch)) {
             try {
-                final CloudWatchMeterRegistryProvider provider = new CloudWatchMeterRegistryProvider();
-                final CloudWatchMeterRegistry meterRegistry = provider.getCloudWatchMeterRegistry();
-
+                final CloudWatchMeterRegistry meterRegistry = cloudWatchMeterRegistryProvider.getCloudWatchMeterRegistry();
                 configureMetricRegistry(meterRegistry);
+
                 return meterRegistry;
             } catch (final SdkClientException e) {
                 LOG.warn("Unable to configure Cloud Watch Meter Registry but Meter Registry was requested in Data Prepper Configuration");

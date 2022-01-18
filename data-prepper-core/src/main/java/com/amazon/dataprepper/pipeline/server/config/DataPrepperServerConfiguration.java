@@ -9,26 +9,23 @@ import com.amazon.dataprepper.DataPrepper;
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
-import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.pipeline.server.DataPrepperCoreAuthenticationProvider;
+import com.amazon.dataprepper.pipeline.server.HttpServerProvider;
 import com.amazon.dataprepper.pipeline.server.ListPipelinesHandler;
+import com.amazon.dataprepper.pipeline.server.PrometheusMetricsHandler;
 import com.amazon.dataprepper.pipeline.server.ShutdownHandler;
-import com.amazon.dataprepper.pipeline.server.SslUtil;
 import com.sun.net.httpserver.Authenticator;
 import com.sun.net.httpserver.HttpContext;
+import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import com.sun.net.httpserver.HttpsConfigurator;
-import com.sun.net.httpserver.HttpsParameters;
-import com.sun.net.httpserver.HttpsServer;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLParameters;
-import java.io.IOException;
-import java.net.InetSocketAddress;
+import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.Optional;
 
@@ -36,34 +33,39 @@ import java.util.Optional;
 public class DataPrepperServerConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperServerConfiguration.class);
 
-    @Bean
-    public HttpServer httpServer(final DataPrepperConfiguration dataPrepperConfiguration) {
-        final InetSocketAddress socketAddress = new InetSocketAddress(dataPrepperConfiguration.getServerPort());
-        try {
-            if (dataPrepperConfiguration.ssl()) {
-                LOG.info("Creating Data Prepper server with TLS");
-                final SSLContext sslContext = SslUtil.createSslContext(
-                        dataPrepperConfiguration.getKeyStoreFilePath(),
-                        dataPrepperConfiguration.getKeyStorePassword(),
-                        dataPrepperConfiguration.getPrivateKeyPassword()
-                );
+    private void createContext(
+            final HttpServer httpServer,
+            final HttpHandler httpHandler,
+            @Nullable final Authenticator authenticator,
+            final String ... paths
+    ) {
+        for (final String path : paths) {
+            final HttpContext context = httpServer.createContext(path, httpHandler);
 
-                final HttpsServer server = HttpsServer.create(socketAddress, 0);
-                server.setHttpsConfigurator(new HttpsConfigurator(sslContext) {
-                    public void configure(final HttpsParameters params) {
-                        final SSLContext context = getSSLContext();
-                        final SSLParameters sslParams = context.getDefaultSSLParameters();
-                        params.setSSLParameters(sslParams);
-                    }
-                });
-
-                return server;
-            } else {
-                return HttpServer.create(socketAddress, 0);
+            if (authenticator != null) {
+                context.setAuthenticator(authenticator);
             }
-        } catch (final IOException ex) {
-            throw new RuntimeException("Failed to create server", ex);
         }
+    }
+
+    @Bean
+    public HttpServer httpServer(
+            final HttpServerProvider httpServerProvider,
+            final ListPipelinesHandler listPipelinesHandler,
+            @Autowired(required = false) @Nullable final PrometheusMeterRegistry prometheusMeterRegistry,
+            @Autowired(required = false) @Nullable final Authenticator authenticator
+            ) {
+
+        final HttpServer server = httpServerProvider.get();
+
+        createContext(server, listPipelinesHandler, authenticator, "/list");
+
+        if (prometheusMeterRegistry != null) {
+            final PrometheusMetricsHandler prometheusMetricsHandler = new PrometheusMetricsHandler(prometheusMeterRegistry);
+            createContext(server, prometheusMetricsHandler, authenticator, "/metrics/prometheus", "/metrics/sys");
+        }
+
+        return server;
     }
 
     private void printInsecurePluginModelWarning() {
@@ -102,22 +104,13 @@ public class DataPrepperServerConfiguration {
     }
 
     @Bean
-    public Optional<Authenticator> optionalAuthenticator(final DataPrepperCoreAuthenticationProvider authenticationProvider) {
-        return Optional.ofNullable(authenticationProvider.getAuthenticator());
+    public Authenticator authenticator(final DataPrepperCoreAuthenticationProvider authenticationProvider) {
+        return authenticationProvider.getAuthenticator();
     }
 
     @Bean
-    public ListPipelinesHandler listPipelinesHandler(
-            final DataPrepper dataPrepper,
-            final Optional<Authenticator> optionalAuthenticator,
-            final HttpServer server
-    ) {
-        final ListPipelinesHandler listPipelinesHandler = new ListPipelinesHandler(dataPrepper);
-
-        final HttpContext context = server.createContext("/list", listPipelinesHandler);
-        optionalAuthenticator.ifPresent(context::setAuthenticator);
-
-        return listPipelinesHandler;
+    public ListPipelinesHandler listPipelinesHandler(final DataPrepper dataPrepper) {
+        return new ListPipelinesHandler(dataPrepper);
     }
 
     @Bean

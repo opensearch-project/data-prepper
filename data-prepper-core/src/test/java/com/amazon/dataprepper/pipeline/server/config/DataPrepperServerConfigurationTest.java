@@ -9,34 +9,28 @@ import com.amazon.dataprepper.DataPrepper;
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
-import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.pipeline.server.DataPrepperCoreAuthenticationProvider;
+import com.amazon.dataprepper.pipeline.server.HttpServerProvider;
 import com.amazon.dataprepper.pipeline.server.ListPipelinesHandler;
+import com.amazon.dataprepper.pipeline.server.PrometheusMetricsHandler;
 import com.amazon.dataprepper.pipeline.server.ShutdownHandler;
 import com.sun.net.httpserver.Authenticator;
 import com.sun.net.httpserver.HttpContext;
+import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import com.sun.net.httpserver.HttpsConfigurator;
-import com.sun.net.httpserver.HttpsServer;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.IOException;
-import java.net.DatagramSocket;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isA;
-import static org.hamcrest.Matchers.not;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -47,114 +41,66 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DataPrepperServerConfigurationTest {
-    private static final Random r = new Random();
-    private static final Integer MAX_PORT = 65535;
-    private static final String P12_KEYSTORE = "src/test/resources/tls/test_keystore.p12";
-
-    private static boolean available(final int port) {
-        ServerSocket ss = null;
-        DatagramSocket ds = null;
-        try {
-            ss = new ServerSocket(port);
-            ss.setReuseAddress(true);
-            ds = new DatagramSocket(port);
-            ds.setReuseAddress(true);
-            return true;
-        } catch (final IOException ignored) {
-        } finally {
-            if (ds != null) {
-                ds.close();
-            }
-
-            if (ss != null) {
-                try {
-                    ss.close();
-                } catch (final IOException ignored) {
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private static int getPort() {
-        final int MAX_RETRIES = 10;
-        for (int i = 0; i < MAX_RETRIES; i++) {
-            final int electivePort = r.nextInt(MAX_PORT);
-            if (available(electivePort)) {
-                return electivePort;
-            }
-        }
-        throw new RuntimeException("No available port found");
-    }
+    @Mock
+    private HttpContext context;
 
     @Mock
-    private DataPrepperConfiguration configuration;
+    private HttpServer httpServer;
+
+    @Mock
+    private HttpServerProvider httpServerProvider;
+
+    @Mock
+    private ListPipelinesHandler listPipelinesHandler;
 
     private final DataPrepperServerConfiguration serverConfiguration = new DataPrepperServerConfiguration();
 
     @Test
-    public void testGivenNoSslThenInsecureServerCreated() {
-        final int expectedPort = getPort();
-        when(configuration.ssl())
-                .thenReturn(false);
-        when(configuration.getServerPort())
-                .thenReturn(expectedPort);
+    public void testGivenNullPrometheusMeterRegistryAndNullAuthenticatorThenServerIsCreated() {
+        when(httpServerProvider.get())
+                .thenReturn(httpServer);
+        final HttpServer server = serverConfiguration.httpServer(httpServerProvider, listPipelinesHandler, null, null);
 
-        final HttpServer server = serverConfiguration.httpServer(configuration);
+        assertThat(server, is(httpServer));
+        verify(server).createContext("/list", listPipelinesHandler);
 
-        assertThat(server, isA(HttpServer.class));
-        assertThat(server, not(isA(HttpsServer.class)));
-        assertThat(server.getAddress().getPort(), is(expectedPort));
     }
 
     @Test
-    public void testGivenSslConfigThenHttpsServerCreated() {
-        final int expectedPort = getPort();
+    public void testGivenPrometheusMeterRegistryAndNullAuthenticatorThenServerIsCreated() {
+        final PrometheusMeterRegistry meterRegistry = mock(PrometheusMeterRegistry.class);
 
-        when(configuration.ssl())
-                .thenReturn(true);
-        when(configuration.getKeyStoreFilePath())
-                .thenReturn(P12_KEYSTORE);
-        when(configuration.getKeyStorePassword())
-                .thenReturn("");
-        when(configuration.getPrivateKeyPassword())
-                .thenReturn("");
-        when(configuration.getServerPort())
-                .thenReturn(expectedPort);
+        when(httpServerProvider.get())
+                .thenReturn(httpServer);
+        when(httpServer.createContext(any(String.class), any(HttpHandler.class)))
+                .thenReturn(context);
 
-        final HttpServer server = serverConfiguration.httpServer(configuration);
+        final HttpServer server = serverConfiguration.httpServer(httpServerProvider, listPipelinesHandler, meterRegistry, null);
 
-        assertThat(server, isA(HttpServer.class));
-        assertThat(server, isA(HttpsServer.class));
-        assertThat(server.getAddress().getPort(), is(expectedPort));
-
-        final HttpsServer httpsServer = (HttpsServer) server;
-
-        assertThat(httpsServer.getHttpsConfigurator(), isA(HttpsConfigurator.class));
-
-        verify(configuration, times(1)).getKeyStoreFilePath();
-        verify(configuration, times(1)).getKeyStorePassword();
-        verify(configuration, times(1)).getPrivateKeyPassword();
+        assertThat(server, is(httpServer));
+        verify(server).createContext(eq("/list"), eq(listPipelinesHandler));
+        verify(server).createContext(eq("/metrics/prometheus"), any(PrometheusMetricsHandler.class));
+        verify(server).createContext(eq("/metrics/sys"), any(PrometheusMetricsHandler.class));
+        verifyNoInteractions(context);
     }
 
     @Test
-    public void testGivenPortInUseThenExceptionThrown() throws IOException {
-        final int port = getPort();
-        final InetSocketAddress socketAddress = new InetSocketAddress(port);
+    public void testGivenPrometheusMeterRegistryAndAuthenticatorThenServerIsCreated() {
+        final PrometheusMeterRegistry meterRegistry = mock(PrometheusMeterRegistry.class);
+        final Authenticator authenticator = mock(Authenticator.class);
 
-        final HttpServer portBlockingServer = HttpServer.create(socketAddress, 0);
-        portBlockingServer.start();
+        when(httpServerProvider.get())
+                .thenReturn(httpServer);
+        when(httpServer.createContext(any(String.class), any(HttpHandler.class)))
+                .thenReturn(context);
 
-        try {
-            when(configuration.getServerPort())
-                    .thenReturn(port);
+        final HttpServer server = serverConfiguration.httpServer(httpServerProvider, listPipelinesHandler, meterRegistry, authenticator);
 
-            assertThrows(RuntimeException.class, () -> serverConfiguration.httpServer(configuration));
-        } catch (final Exception ignored) {
-        } finally {
-            portBlockingServer.stop(0);
-        }
+        assertThat(server, is(httpServer));
+        verify(server).createContext(eq("/list"), eq(listPipelinesHandler));
+        verify(server).createContext(eq("/metrics/prometheus"), any(PrometheusMetricsHandler.class));
+        verify(server).createContext(eq("/metrics/sys"), any(PrometheusMetricsHandler.class));
+        verify(context, times(3)).setAuthenticator(eq(authenticator));
     }
 
     @Test
@@ -214,47 +160,32 @@ class DataPrepperServerConfigurationTest {
     @Test
     public void testGivenGetAuthenticatorReturnsValueThenReturnOptionalContainingValue() {
         final DataPrepperCoreAuthenticationProvider provider = mock(DataPrepperCoreAuthenticationProvider.class);
-        final Authenticator authenticator = mock(Authenticator.class);
+        final Authenticator authenticatorMock = mock(Authenticator.class);
 
         when(provider.getAuthenticator())
-                .thenReturn(authenticator);
+                .thenReturn(authenticatorMock);
 
-        final Optional<Authenticator> optional = serverConfiguration.optionalAuthenticator(provider);
+        final Authenticator authenticator = serverConfiguration.authenticator(provider);
 
-        assertThat(optional.isPresent(), is(true));
-        assertThat(optional.get(), is(authenticator));
+        assertThat(authenticator, is(authenticatorMock));
     }
 
     @Test
     public void testGivenValidInputWithNoAuthenticatorThenServerListContextCreated() {
         final DataPrepper dataPrepper = mock(DataPrepper.class);
-        final HttpServer server = mock(HttpServer.class);
-        final HttpContext context = mock(HttpContext.class);
 
-        when(server.createContext(eq("/list"), any(ListPipelinesHandler.class)))
-                .thenReturn(context);
-
-        final ListPipelinesHandler handler = serverConfiguration.listPipelinesHandler(dataPrepper, Optional.empty(), server);
+        final ListPipelinesHandler handler = serverConfiguration.listPipelinesHandler(dataPrepper);
 
         assertThat(handler, isA(ListPipelinesHandler.class));
-        verifyNoInteractions(context);
     }
 
     @Test
     public void testGivenValidInputWithAuthenticatorThenServerListContextCreated() {
         final DataPrepper dataPrepper = mock(DataPrepper.class);
-        final Authenticator authenticator = mock(Authenticator.class);
-        final HttpServer server = mock(HttpServer.class);
-        final HttpContext context = mock(HttpContext.class);
 
-        when(server.createContext(eq("/list"), any(ListPipelinesHandler.class)))
-                .thenReturn(context);
-
-        final ListPipelinesHandler handler = serverConfiguration.listPipelinesHandler(dataPrepper, Optional.of(authenticator), server);
+        final ListPipelinesHandler handler = serverConfiguration.listPipelinesHandler(dataPrepper);
 
         assertThat(handler, isA(ListPipelinesHandler.class));
-        verify(context, times(1))
-                .setAuthenticator(eq(authenticator));
     }
 
     @Test
@@ -285,7 +216,7 @@ class DataPrepperServerConfigurationTest {
         final ShutdownHandler handler = serverConfiguration.shutdownHandler(dataPrepper, Optional.of(authenticator), server);
 
         assertThat(handler, isA(ShutdownHandler.class));
-        verify(context, times(1))
+        verify(context)
                 .setAuthenticator(eq(authenticator));
     }
 }

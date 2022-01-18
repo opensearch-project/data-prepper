@@ -7,12 +7,10 @@ package com.amazon.dataprepper.parser.config;
 
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.parser.model.MetricRegistryType;
-import com.amazon.dataprepper.pipeline.server.PrometheusMetricsHandler;
+import com.amazon.dataprepper.pipeline.server.CloudWatchMeterRegistryProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.sun.net.httpserver.Authenticator;
-import com.sun.net.httpserver.HttpContext;
-import com.sun.net.httpserver.HttpServer;
+import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
@@ -35,8 +33,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isA;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -99,49 +95,13 @@ class MetricsConfigTest {
     @Test
     public void testGivenConfigWithPrometheusMeterRegistryThenMeterRegistryCreated() {
         final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
-        final HttpServer server = mock(HttpServer.class);
-        final HttpContext context = mock(HttpContext.class);
 
         when(dataPrepperConfiguration.getMetricRegistryTypes())
                 .thenReturn(Collections.singletonList(MetricRegistryType.Prometheus));
-        when(server.createContext(anyString(), any(PrometheusMetricsHandler.class)))
-                .thenReturn(context);
 
-        final MeterRegistry meterRegistry = metricsConfig.prometheusMeterRegistry(
-                dataPrepperConfiguration,
-                null,
-                server);
+        final MeterRegistry meterRegistry = metricsConfig.prometheusMeterRegistry(dataPrepperConfiguration);
 
         assertThat(meterRegistry, isA(PrometheusMeterRegistry.class));
-
-        verify(server, times(2))
-                .createContext(anyString(), any(PrometheusMetricsHandler.class));
-    }
-
-    @Test
-    public void testGivenConfigWithPrometheusMeterRegistryAndAuthenticatorThenMeterRegistryCreated() {
-        final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
-        final Authenticator authenticator = mock(Authenticator.class);
-        final HttpServer server = mock(HttpServer.class);
-        final HttpContext context = mock(HttpContext.class);
-
-        when(dataPrepperConfiguration.getMetricRegistryTypes())
-                .thenReturn(Collections.singletonList(MetricRegistryType.Prometheus));
-        when(server.createContext(anyString(), any(PrometheusMetricsHandler.class)))
-                .thenReturn(context);
-
-        final MeterRegistry meterRegistry = metricsConfig.prometheusMeterRegistry(
-                dataPrepperConfiguration,
-                authenticator,
-                server);
-
-        assertThat(meterRegistry, isA(PrometheusMeterRegistry.class));
-
-        verify(server, times(2))
-                .createContext(anyString(), any(PrometheusMetricsHandler.class));
-
-        verify(context, times(2))
-                .setAuthenticator(eq(authenticator));
     }
 
     @Test
@@ -151,10 +111,7 @@ class MetricsConfigTest {
         when(dataPrepperConfiguration.getMetricRegistryTypes())
                 .thenReturn(Collections.emptyList());
 
-        final MeterRegistry meterRegistry = metricsConfig.prometheusMeterRegistry(
-                dataPrepperConfiguration,
-                null,
-                null);
+        final MeterRegistry meterRegistry = metricsConfig.prometheusMeterRegistry(dataPrepperConfiguration);
 
         assertThat(meterRegistry, is(nullValue()));
     }
@@ -166,9 +123,29 @@ class MetricsConfigTest {
         when(dataPrepperConfiguration.getMetricRegistryTypes())
                 .thenReturn(Collections.singletonList(MetricRegistryType.Prometheus));
 
-        final MeterRegistry meterRegistry = metricsConfig.cloudWatchMeterRegistry(dataPrepperConfiguration);
+        final MeterRegistry meterRegistry = metricsConfig.cloudWatchMeterRegistry(dataPrepperConfiguration, null);
 
         assertThat(meterRegistry, is(nullValue()));
+    }
+
+    @Test
+    public void testGivenConfigWithCloudWatchMeterRegistryThenNoMeterRegistryCreated() {
+        final CloudWatchMeterRegistryProvider provider = mock(CloudWatchMeterRegistryProvider.class);
+        final CloudWatchMeterRegistry expected = mock(CloudWatchMeterRegistry.class);
+        final MeterRegistry.Config config = mock(MeterRegistry.Config.class);
+        final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
+
+        when(provider.getCloudWatchMeterRegistry())
+                .thenReturn(expected);
+        when(expected.config())
+                .thenReturn(config);
+
+        when(dataPrepperConfiguration.getMetricRegistryTypes())
+                .thenReturn(Collections.singletonList(MetricRegistryType.CloudWatch));
+
+        final MeterRegistry meterRegistry = metricsConfig.cloudWatchMeterRegistry(dataPrepperConfiguration, provider);
+
+        assertThat(meterRegistry, is(expected));
     }
 
     @Test
