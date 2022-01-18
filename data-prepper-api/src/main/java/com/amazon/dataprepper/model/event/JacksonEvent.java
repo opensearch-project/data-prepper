@@ -90,6 +90,10 @@ public class JacksonEvent implements Event {
         return mapper.valueToTree(data);
     }
 
+    protected JsonNode getJsonNode() {
+        return jsonNode;
+    }
+
     /**
      * Adds or updates the key with a given value in the Event.
      * @param key where the value will be set

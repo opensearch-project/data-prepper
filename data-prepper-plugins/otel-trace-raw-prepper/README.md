@@ -16,11 +16,6 @@ prepper:
 ## Metrics
 Apart from common metrics in [AbstractPrepper](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/prepper/AbstractPrepper.java), otel-trace-raw-prepper introduces the following custom metrics.
 
-### Counter
-- `spanProcessingErrors`: records the number of processing exceptions for invalid spans.
-- `resourceSpansProcessingErrors`: records the number of processing exceptions for invalid resource spans.
-- `totalProcessingErrors`: records the total number of processing errors for spans and resource spans.
-
 ## Developer Guide
 This plugin is compatible with Java 8. See 
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md) 

@@ -12,6 +12,7 @@
 package com.amazon.dataprepper.integration.trace;
 
 
+import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
 import com.amazon.dataprepper.plugins.prepper.oteltracegroup.model.TraceGroup;
 import com.amazon.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -61,20 +62,25 @@ public class EndToEndRawSpanTest {
 
     private static final Map<String, TraceGroup> TEST_TRACEID_TO_TRACE_GROUP = new HashMap<String, TraceGroup>() {{
        put(Hex.toHexString(EndToEndTestSpan.TRACE_1_ROOT_SPAN.traceId.getBytes()),
-               new TraceGroup(
-                       EndToEndTestSpan.TRACE_1_ROOT_SPAN.name,
-                       EndToEndTestSpan.TRACE_1_ROOT_SPAN.endTime,
-                       EndToEndTestSpan.TRACE_1_ROOT_SPAN.durationInNanos,
-                       EndToEndTestSpan.TRACE_1_ROOT_SPAN.statusCode
-               ));
+               new TraceGroup.TraceGroupBuilder()
+                       .setTraceGroup(EndToEndTestSpan.TRACE_1_ROOT_SPAN.name)
+                       .setTraceGroupFields(DefaultTraceGroupFields.builder()
+                               .withEndTime(EndToEndTestSpan.TRACE_1_ROOT_SPAN.endTime)
+                               .withDurationInNanos(EndToEndTestSpan.TRACE_1_ROOT_SPAN.durationInNanos)
+                               .withStatusCode(EndToEndTestSpan.TRACE_1_ROOT_SPAN.statusCode)
+                               .build())
+                       .build()
+               );
        put(Hex.toHexString(EndToEndTestSpan.TRACE_2_ROOT_SPAN.traceId.getBytes()),
-               new TraceGroup(
-                       EndToEndTestSpan.TRACE_2_ROOT_SPAN.name,
-                       EndToEndTestSpan.TRACE_2_ROOT_SPAN.endTime,
-                       EndToEndTestSpan.TRACE_2_ROOT_SPAN.durationInNanos,
-                       EndToEndTestSpan.TRACE_2_ROOT_SPAN.statusCode
-               )
-       );
+               new TraceGroup.TraceGroupBuilder()
+                       .setTraceGroup(EndToEndTestSpan.TRACE_2_ROOT_SPAN.name)
+                       .setTraceGroupFields(DefaultTraceGroupFields.builder()
+                               .withEndTime(EndToEndTestSpan.TRACE_2_ROOT_SPAN.endTime)
+                               .withDurationInNanos(EndToEndTestSpan.TRACE_2_ROOT_SPAN.durationInNanos)
+                               .withStatusCode(EndToEndTestSpan.TRACE_2_ROOT_SPAN.statusCode)
+                               .build())
+                       .build()
+               );
     }};
     private static final List<EndToEndTestSpan> TEST_SPAN_SET_1_WITH_ROOT_SPAN = Arrays.asList(
             EndToEndTestSpan.TRACE_1_ROOT_SPAN, EndToEndTestSpan.TRACE_1_SPAN_2, EndToEndTestSpan.TRACE_1_SPAN_3,
@@ -120,6 +126,7 @@ public class EndToEndRawSpanTest {
         final RestHighLevelClient restHighLevelClient = builder.build().createClient();
         // Wait for otel-trace-raw-prepper by at least trace_flush_interval
         Thread.sleep(6000);
+        Thread.sleep(3000);
         // Wait for data to flow through pipeline and be indexed by ES
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(
                 () -> {
@@ -165,9 +172,10 @@ public class EndToEndRawSpanTest {
         searchHits.forEach(hit -> {
             Map<String, Object> source = hit.getSourceAsMap();
             // OpenSearch API identifies Number type by range, need to convert to Long
-            if (source.containsKey(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)) {
-                final Long durationInNanos = ((Number) source.get(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)).longValue();
-                source.put(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD, durationInNanos);
+            if (source.containsKey(TraceGroup.TRACE_GROUP_NAME_FIELD)) {
+                final Map<String, Object> traceGroupFields = (Map<String, Object>) source.get("traceGroupFields");
+                final Long durationInNanos = ((Number) traceGroupFields.get("durationInNanos")).longValue();
+                traceGroupFields.put("durationInNanos", durationInNanos);
             }
             sources.add(source);
         });

@@ -16,6 +16,7 @@ import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
@@ -44,7 +45,6 @@ import io.netty.util.AsciiString;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
-import io.opentelemetry.proto.trace.v1.Span;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -128,17 +128,19 @@ public class OTelTraceSourceTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private BlockingBuffer<Record<ExportTraceServiceRequest>> buffer;
+    private BlockingBuffer<Record<Span>> buffer;
 
     private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
             .addResourceSpans(ResourceSpans.newBuilder()
                     .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
-                            .addSpans(Span.newBuilder().setTraceState("SUCCESS").build())).build()).build();
+                            .addSpans(io.opentelemetry.proto.trace.v1.Span.newBuilder().setTraceState("SUCCESS").build())).build())
+            .build();
     private OTelTraceSource SOURCE;
     private static final ExportTraceServiceRequest FAILURE_REQUEST = ExportTraceServiceRequest.newBuilder()
             .addResourceSpans(ResourceSpans.newBuilder()
                     .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
-                            .addSpans(Span.newBuilder().setTraceState("FAILURE").build())).build()).build();
+                            .addSpans(io.opentelemetry.proto.trace.v1.Span.newBuilder().setTraceState("FAILURE").build())).build())
+            .build();
 
     private static void assertStatusCode415AndNoServerHeaders(final AggregatedHttpResponse response, final Throwable throwable) {
         assertThat("Http Status", response.status(), is(HttpStatus.UNSUPPORTED_MEDIA_TYPE));
@@ -152,7 +154,7 @@ public class OTelTraceSourceTest {
         assertThat("Response Header Keys", headerKeys, not(contains("server")));
     }
 
-    private BlockingBuffer<Record<ExportTraceServiceRequest>> getBuffer() {
+    private BlockingBuffer<Record<Span>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 1);
         integerHashMap.put("batch_size", 1);

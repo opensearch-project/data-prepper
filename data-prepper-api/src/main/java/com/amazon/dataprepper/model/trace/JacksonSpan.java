@@ -7,15 +7,19 @@ package com.amazon.dataprepper.model.trace;
 
 import com.amazon.dataprepper.model.event.EventType;
 import com.amazon.dataprepper.model.event.JacksonEvent;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 
 /**
  * A Jackson implementation for {@link Span}. This class extends the {@link JacksonEvent}.
@@ -43,10 +47,10 @@ public class JacksonSpan extends JacksonEvent implements Span {
     private static final String DURATION_IN_NANOS_KEY = "durationInNanos";
     private static final String TRACE_GROUP_FIELDS_KEY = "traceGroupFields";
 
+    private static final List<String> REQUIRED_KEYS = Arrays.asList(TRACE_GROUP_KEY);
     private static final List<String>
-            REQUIRED_NON_EMPTY_KEYS = Arrays.asList(TRACE_ID_KEY, SPAN_ID_KEY, TRACE_STATE_KEY, PARENT_SPAN_ID_KEY, PARENT_SPAN_ID_KEY,
-            NAME_KEY, KIND_KEY, START_TIME_KEY, END_TIME_KEY);
-    private static final List<String> REQUIRED_NON_NULL_KEYS = Arrays.asList(DURATION_IN_NANOS_KEY);
+            REQUIRED_NON_EMPTY_KEYS = Arrays.asList(TRACE_ID_KEY, SPAN_ID_KEY, NAME_KEY, KIND_KEY, START_TIME_KEY, END_TIME_KEY);
+    private static final List<String> REQUIRED_NON_NULL_KEYS = Arrays.asList(DURATION_IN_NANOS_KEY, TRACE_GROUP_FIELDS_KEY);
 
     protected JacksonSpan(final Builder builder) {
         super(builder);
@@ -174,6 +178,23 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    @Override
+    public String toJsonString() {
+        final ObjectNode attributesNode = (ObjectNode) getJsonNode().get("attributes");
+        final ObjectNode flattenedJsonNode = getJsonNode().deepCopy();
+        if (attributesNode != null) {
+            flattenedJsonNode.remove("attributes");
+            for (Iterator<Map.Entry<String, JsonNode>> it = attributesNode.fields(); it.hasNext(); ) {
+                Map.Entry<String, JsonNode> entry = it.next();
+                String field = entry.getKey();
+                if (!flattenedJsonNode.has(field)) {
+                    flattenedJsonNode.set(field, entry.getValue());
+                }
+            }
+        }
+        return flattenedJsonNode.toString();
     }
 
     /**
@@ -413,6 +434,10 @@ public class JacksonSpan extends JacksonEvent implements Span {
         }
 
         private void validateParameters() {
+            REQUIRED_KEYS.forEach(key -> {
+                checkState(data.containsKey(key), String.format("%s need to be assigned", key));
+            });
+
             REQUIRED_NON_EMPTY_KEYS.forEach(key -> {
                 final String value = (String) data.get(key);
                 checkNotNull(value, String.format("%s cannot be null", key));

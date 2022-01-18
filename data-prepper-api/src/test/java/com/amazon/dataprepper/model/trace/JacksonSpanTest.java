@@ -6,6 +6,9 @@
 package com.amazon.dataprepper.model.trace;
 
 import com.amazon.dataprepper.model.event.JacksonEvent;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,7 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class JacksonSpanTest {
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     private static final String TEST_TRACE_ID =  UUID.randomUUID().toString();
     private static final String TEST_SPAN_ID =  UUID.randomUUID().toString();
@@ -211,6 +215,27 @@ public class JacksonSpanTest {
         final TraceGroupFields traceGroupFields = jacksonSpan.getTraceGroupFields();
         assertThat(traceGroupFields, is(equalTo(traceGroupFields)));
     }
+
+    @Test
+    public void testToJsonStringAllParameters() throws JsonProcessingException {
+        final String jsonResult = jacksonSpan.toJsonString();
+        final Map<String, Object> resultMap = mapper.readValue(jsonResult, new TypeReference<Map<String, Object>>() {});
+
+        assertThat(resultMap.containsKey("key1"), is(true));
+        assertThat(resultMap.containsKey("key2"), is(true));
+        assertThat(resultMap.containsKey("attributes"), is(false));
+    }
+
+    @Test
+    public void testToJsonStringWithoutAttributes() throws JsonProcessingException {
+        builder.withAttributes(null);
+        final String jsonResult = builder.build().toJsonString();
+        final Map<String, Object> resultMap = mapper.readValue(jsonResult, new TypeReference<Map<String, Object>>() {});
+
+        assertThat(resultMap.containsKey("key1"), is(false));
+        assertThat(resultMap.containsKey("key2"), is(false));
+        assertThat(resultMap.containsKey("attributes"), is(false));
+    }
     
     @Test
     public void testBuilder_withAllParameters_createsSpan() {
@@ -284,8 +309,9 @@ public class JacksonSpanTest {
     }
 
     @Test
-    public void testBuilder_withoutParameters_throwsNullPointerException() {
-        final JacksonEvent.Builder builder = JacksonSpan.builder();
+    public void testBuilder_missingNonNullParameters_throwsNullPointerException() {
+        final JacksonSpan.Builder builder = JacksonSpan.builder();
+        builder.withTraceGroup(null);
         assertThrows(NullPointerException.class, builder::build);
     }
     
@@ -310,30 +336,6 @@ public class JacksonSpanTest {
     @Test
     public void testBuilder_withEmptySpanId_throwsIllegalArgumentException() {
         builder.withSpanId("");
-        assertThrows(IllegalArgumentException.class, builder::build);
-    }
-
-    @Test
-    public void testBuilder_withoutTraceState_throwsNullPointerException() {
-        builder.withTraceState(null);
-        assertThrows(NullPointerException.class, builder::build);
-    }
-
-    @Test
-    public void testBuilder_withEmptyTraceState_throwsIllegalArgumentException() {
-        builder.withTraceState("");
-        assertThrows(IllegalArgumentException.class, builder::build);
-    }
-
-    @Test
-    public void testBuilder_withoutParentSpanId_throwsNullPointerException() {
-        builder.withParentSpanId(null);
-        assertThrows(NullPointerException.class, builder::build);
-    }
-
-    @Test
-    public void testBuilder_withEmptyParentSpanId_throwsIllegalArgumentException() {
-        builder.withParentSpanId("");
         assertThrows(IllegalArgumentException.class, builder::build);
     }
 
@@ -383,6 +385,35 @@ public class JacksonSpanTest {
     public void testBuilder_withEmptyEndTime_throwsIllegalArgumentException() {
         builder.withEndTime("");
         assertThrows(IllegalArgumentException.class, builder::build);
+    }
+
+    @Test
+    public void testBuilder_missingTraceGroupKey_throwsIllegalStateException() {
+        builder = JacksonSpan.builder()
+                .withSpanId(TEST_SPAN_ID)
+                .withTraceId(TEST_TRACE_ID)
+                .withTraceState(TEST_TRACE_STATE)
+                .withParentSpanId(TEST_PARENT_SPAN_ID)
+                .withName(TEST_NAME)
+                .withServiceName(TEST_SERVICE_NAME)
+                .withKind(TEST_KIND)
+                .withStartTime(TEST_START_TIME)
+                .withEndTime(TEST_END_TIME)
+                .withAttributes(TEST_ATTRIBUTES)
+                .withDroppedAttributesCount(TEST_DROPPED_ATTRIBUTES_COUNT)
+                .withEvents(Arrays.asList(defaultSpanEvent))
+                .withDroppedEventsCount(TEST_DROPPED_EVENTS_COUNT)
+                .withLinks(Arrays.asList(defaultLink))
+                .withDroppedLinksCount(TEST_DROPPED_LINKS_COUNT)
+                .withDurationInNanos(TEST_DURATION_IN_NANOS)
+                .withTraceGroupFields(defaultTraceGroupFields);
+        assertThrows(IllegalStateException.class, builder::build);
+    }
+
+    @Test
+    public void testBuilder_withoutTraceGroupFields_throwsNullPointerException() {
+        builder.withTraceGroupFields(null);
+        assertThrows(NullPointerException.class, builder::build);
     }
 
     @Test

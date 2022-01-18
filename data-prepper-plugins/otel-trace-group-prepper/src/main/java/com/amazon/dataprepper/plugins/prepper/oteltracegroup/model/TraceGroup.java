@@ -1,6 +1,7 @@
 package com.amazon.dataprepper.plugins.prepper.oteltracegroup.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.amazon.dataprepper.model.trace.Span;
+import com.amazon.dataprepper.model.trace.TraceGroupFields;
 
 import java.util.Objects;
 
@@ -10,54 +11,58 @@ public class TraceGroup {
     public static final String TRACE_GROUP_STATUS_CODE_FIELD = "traceGroupFields.statusCode";
     public static final String TRACE_GROUP_DURATION_IN_NANOS_FIELD = "traceGroupFields.durationInNanos";
 
-    @JsonProperty(TRACE_GROUP_NAME_FIELD)
-    private final String name;
+    private final String traceGroup;
 
-    @JsonProperty(TRACE_GROUP_END_TIME_FIELD)
-    private final String endTime;
+    private final TraceGroupFields traceGroupFields;
 
-    @JsonProperty(TRACE_GROUP_DURATION_IN_NANOS_FIELD)
-    private final Long durationInNanos;
-
-    @JsonProperty(TRACE_GROUP_STATUS_CODE_FIELD)
-    private final Integer statusCode;
-
-    public String getName() {
-        return name;
+    public String getTraceGroup() {
+        return traceGroup;
     }
 
-    public String getEndTime() {
-        return endTime;
-    }
-
-    public Long getDurationInNanos() {
-        return durationInNanos;
-    }
-
-    public Integer getStatusCode() {
-        return statusCode;
-    }
-
-    public TraceGroup(final String name, final String endTime, final Long durationInNanos, final Integer statusCode) {
-        this.name = name;
-        this.endTime = endTime;
-        this.durationInNanos = durationInNanos;
-        this.statusCode = statusCode;
+    public TraceGroupFields getTraceGroupFields() {
+        return traceGroupFields;
     }
 
     @Override
-    public boolean equals(final Object o) {
+    public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        final TraceGroup that = (TraceGroup) o;
-        return Objects.equals(name, that.name) &&
-                Objects.equals(endTime, that.endTime) &&
-                Objects.equals(durationInNanos, that.durationInNanos) &&
-                Objects.equals(statusCode, that.statusCode);
+        TraceGroup that = (TraceGroup) o;
+        return Objects.equals(traceGroup, that.traceGroup) && Objects.equals(traceGroupFields, that.traceGroupFields);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, endTime, durationInNanos, statusCode);
+        return Objects.hash(traceGroup, traceGroupFields);
+    }
+
+    TraceGroup(final TraceGroupBuilder traceGroupBuilder) {
+        traceGroup = traceGroupBuilder.traceGroup;
+        traceGroupFields = traceGroupBuilder.traceGroupFields;
+    }
+
+    public static class TraceGroupBuilder {
+        private String traceGroup;
+        private TraceGroupFields traceGroupFields;
+
+        public TraceGroupBuilder setTraceGroup(String traceGroup) {
+            this.traceGroup = traceGroup;
+            return this;
+        }
+
+        public TraceGroupBuilder setTraceGroupFields(TraceGroupFields traceGroupFields) {
+            this.traceGroupFields = traceGroupFields;
+            return this;
+        }
+
+        public TraceGroup build() {
+            return new TraceGroup(this);
+        }
+
+        public TraceGroupBuilder setFromSpan(final Span span) {
+            return this
+                    .setTraceGroup(span.getTraceGroup())
+                    .setTraceGroupFields(span.getTraceGroupFields());
+        }
     }
 }
