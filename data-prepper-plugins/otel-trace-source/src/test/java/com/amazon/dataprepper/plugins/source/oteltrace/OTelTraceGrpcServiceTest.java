@@ -44,7 +44,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
@@ -140,12 +141,12 @@ public class OTelTraceGrpcServiceTest {
         verifyNoInteractions(timeoutCounter);
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
-        assertEquals(SUCCESS_REQUEST.getSerializedSize(), Math.round(payloadLengthCaptor.getValue()));
+        assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(SUCCESS_REQUEST.getSerializedSize()));
         verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
 
         List<Record<Span>> capturedRecords = (List<Record<Span>>) recordsCaptor.getValue();
-        assertEquals(1, capturedRecords.size());
-        assertEquals("SUCCESS", capturedRecords.get(0).getData().getTraceState());
+        assertThat(capturedRecords.size(), equalTo(1));
+        assertThat(capturedRecords.get(0).getData().getTraceState(), equalTo("SUCCESS"));
     }
 
     @Test
@@ -165,10 +166,10 @@ public class OTelTraceGrpcServiceTest {
         verifyNoInteractions(requestsTooLargeCounter);
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
-        assertEquals(SUCCESS_REQUEST.getSerializedSize(), Math.round(payloadLengthCaptor.getValue()));
+        assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(SUCCESS_REQUEST.getSerializedSize()));
         verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
         StatusException capturedStatusException = statusExceptionArgumentCaptor.getValue();
-        assertEquals(Status.RESOURCE_EXHAUSTED.getCode(), capturedStatusException.getStatus().getCode());
+        assertThat(capturedStatusException.getStatus().getCode(), equalTo(Status.RESOURCE_EXHAUSTED.getCode()));
     }
 
     @Test
@@ -190,11 +191,11 @@ public class OTelTraceGrpcServiceTest {
         verifyNoInteractions(timeoutCounter);
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
-        assertEquals(SUCCESS_REQUEST.getSerializedSize(), Math.round(payloadLengthCaptor.getValue()));
+        assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(SUCCESS_REQUEST.getSerializedSize()));
         verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
 
         StatusException capturedStatusException = statusExceptionArgumentCaptor.getValue();
-        assertEquals(Status.INVALID_ARGUMENT.getCode(), capturedStatusException.getStatus().getCode());
+        assertThat(capturedStatusException.getStatus().getCode(), equalTo(Status.INVALID_ARGUMENT.getCode()));
     }
 
     @Test
@@ -215,10 +216,10 @@ public class OTelTraceGrpcServiceTest {
         verifyNoInteractions(badRequestsCounter);
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
-        assertEquals(SUCCESS_REQUEST.getSerializedSize(), Math.round(payloadLengthCaptor.getValue()));
+        assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(SUCCESS_REQUEST.getSerializedSize()));
         verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
         StatusException capturedStatusException = statusExceptionArgumentCaptor.getValue();
-        assertEquals(Status.RESOURCE_EXHAUSTED.getCode(), capturedStatusException.getStatus().getCode());
+        assertThat(capturedStatusException.getStatus().getCode(), equalTo(Status.RESOURCE_EXHAUSTED.getCode()));
     }
 
     @Test
@@ -239,9 +240,9 @@ public class OTelTraceGrpcServiceTest {
         verifyNoInteractions(badRequestsCounter);
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
-        assertEquals(SUCCESS_REQUEST.getSerializedSize(), Math.round(payloadLengthCaptor.getValue()));
+        assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(SUCCESS_REQUEST.getSerializedSize()));
         verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
         StatusException capturedStatusException = statusExceptionArgumentCaptor.getValue();
-        assertEquals(Status.INTERNAL.getCode(), capturedStatusException.getStatus().getCode());
+        assertThat(capturedStatusException.getStatus().getCode(), equalTo(Status.INTERNAL.getCode()));
     }
 }
