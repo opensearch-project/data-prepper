@@ -21,7 +21,6 @@ import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.plugins.prepper.state.MapDbPrepperState;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.SignedBytes;
 import org.apache.commons.codec.binary.Hex;
