@@ -27,7 +27,6 @@ import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
-import java.util.Optional;
 
 @Configuration
 public class DataPrepperServerConfiguration {
@@ -52,6 +51,7 @@ public class DataPrepperServerConfiguration {
     public HttpServer httpServer(
             final HttpServerProvider httpServerProvider,
             final ListPipelinesHandler listPipelinesHandler,
+            final ShutdownHandler shutdownHandler,
             @Autowired(required = false) @Nullable final PrometheusMeterRegistry prometheusMeterRegistry,
             @Autowired(required = false) @Nullable final Authenticator authenticator
             ) {
@@ -59,6 +59,7 @@ public class DataPrepperServerConfiguration {
         final HttpServer server = httpServerProvider.get();
 
         createContext(server, listPipelinesHandler, authenticator, "/list");
+        createContext(server, shutdownHandler, authenticator, "/shutdown");
 
         if (prometheusMeterRegistry != null) {
             final PrometheusMetricsHandler prometheusMetricsHandler = new PrometheusMetricsHandler(prometheusMeterRegistry);
@@ -75,14 +76,13 @@ public class DataPrepperServerConfiguration {
     }
 
     @Bean
-    public PluginSetting pluginSetting(final Optional<PluginModel> optionalPluginModel) {
-        if (optionalPluginModel.isPresent()) {
-            final PluginModel pluginModel = optionalPluginModel.get();
-            final String pluginName = pluginModel.getPluginName();
+    public PluginSetting pluginSetting(@Autowired(required = false) final PluginModel authentication) {
+        if (authentication != null) {
+            final String pluginName = authentication.getPluginName();
             if (pluginName.equals(DataPrepperCoreAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME)) {
                 printInsecurePluginModelWarning();
             }
-            return new PluginSetting(pluginName, pluginModel.getPluginSettings());
+            return new PluginSetting(pluginName, authentication.getPluginSettings());
         }
         else {
             printInsecurePluginModelWarning();
@@ -114,16 +114,7 @@ public class DataPrepperServerConfiguration {
     }
 
     @Bean
-    public ShutdownHandler shutdownHandler(
-            final DataPrepper dataPrepper,
-            final Optional<Authenticator> optionalAuthenticator,
-            final HttpServer server
-    ) {
-        final ShutdownHandler shutdownHandler = new ShutdownHandler(dataPrepper);
-
-        final HttpContext context = server.createContext("/shutdown", shutdownHandler);
-        optionalAuthenticator.ifPresent(context::setAuthenticator);
-
-        return shutdownHandler;
+    public ShutdownHandler shutdownHandler(final DataPrepper dataPrepper) {
+        return new ShutdownHandler(dataPrepper);
     }
 }

@@ -25,10 +25,12 @@ import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
+import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.List;
 
@@ -97,11 +99,28 @@ public class MetricsConfig {
     }
 
     @Bean
-    public MeterRegistry cloudWatchMeterRegistry(
-            final DataPrepperConfiguration dataPrepperConfiguration,
-            final CloudWatchMeterRegistryProvider cloudWatchMeterRegistryProvider
+    public CloudWatchMeterRegistryProvider cloudWatchMeterRegistryProvider(
+            final DataPrepperConfiguration dataPrepperConfiguration
     ) {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.CloudWatch)) {
+            return new CloudWatchMeterRegistryProvider();
+        }
+        else {
+            return null;
+        }
+    }
+
+    @Bean
+    public MeterRegistry cloudWatchMeterRegistry(
+            final DataPrepperConfiguration dataPrepperConfiguration,
+            @Autowired(required = false) @Nullable final CloudWatchMeterRegistryProvider cloudWatchMeterRegistryProvider
+    ) {
+        if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.CloudWatch)) {
+            if (cloudWatchMeterRegistryProvider == null) {
+                throw new IllegalStateException(
+                        "configuration required configure cloudwatch meter registry but one could not be configured");
+            }
+
             try {
                 final CloudWatchMeterRegistry meterRegistry = cloudWatchMeterRegistryProvider.getCloudWatchMeterRegistry();
                 configureMetricRegistry(meterRegistry);

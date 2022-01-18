@@ -26,7 +26,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -53,17 +52,20 @@ class DataPrepperServerConfigurationTest {
     @Mock
     private ListPipelinesHandler listPipelinesHandler;
 
+    @Mock
+    private ShutdownHandler shutdownHandler;
+
     private final DataPrepperServerConfiguration serverConfiguration = new DataPrepperServerConfiguration();
 
     @Test
     public void testGivenNullPrometheusMeterRegistryAndNullAuthenticatorThenServerIsCreated() {
         when(httpServerProvider.get())
                 .thenReturn(httpServer);
-        final HttpServer server = serverConfiguration.httpServer(httpServerProvider, listPipelinesHandler, null, null);
+        final HttpServer server = serverConfiguration.httpServer(httpServerProvider, listPipelinesHandler, shutdownHandler, null, null);
 
         assertThat(server, is(httpServer));
         verify(server).createContext("/list", listPipelinesHandler);
-
+        verify(server).createContext(eq("/shutdown"), eq(shutdownHandler));
     }
 
     @Test
@@ -75,10 +77,16 @@ class DataPrepperServerConfigurationTest {
         when(httpServer.createContext(any(String.class), any(HttpHandler.class)))
                 .thenReturn(context);
 
-        final HttpServer server = serverConfiguration.httpServer(httpServerProvider, listPipelinesHandler, meterRegistry, null);
+        final HttpServer server = serverConfiguration.httpServer(
+                httpServerProvider,
+                listPipelinesHandler,
+                shutdownHandler,
+                meterRegistry,
+                null);
 
         assertThat(server, is(httpServer));
         verify(server).createContext(eq("/list"), eq(listPipelinesHandler));
+        verify(server).createContext(eq("/shutdown"), eq(shutdownHandler));
         verify(server).createContext(eq("/metrics/prometheus"), any(PrometheusMetricsHandler.class));
         verify(server).createContext(eq("/metrics/sys"), any(PrometheusMetricsHandler.class));
         verifyNoInteractions(context);
@@ -94,18 +102,24 @@ class DataPrepperServerConfigurationTest {
         when(httpServer.createContext(any(String.class), any(HttpHandler.class)))
                 .thenReturn(context);
 
-        final HttpServer server = serverConfiguration.httpServer(httpServerProvider, listPipelinesHandler, meterRegistry, authenticator);
+        final HttpServer server = serverConfiguration.httpServer(
+                httpServerProvider,
+                listPipelinesHandler,
+                shutdownHandler,
+                meterRegistry,
+                authenticator);
 
         assertThat(server, is(httpServer));
         verify(server).createContext(eq("/list"), eq(listPipelinesHandler));
+        verify(server).createContext(eq("/shutdown"), eq(shutdownHandler));
         verify(server).createContext(eq("/metrics/prometheus"), any(PrometheusMetricsHandler.class));
         verify(server).createContext(eq("/metrics/sys"), any(PrometheusMetricsHandler.class));
-        verify(context, times(3)).setAuthenticator(eq(authenticator));
+        verify(context, times(4)).setAuthenticator(eq(authenticator));
     }
 
     @Test
     public void testGivingNoConfigThenCreateInsecureSettings() {
-        final PluginSetting pluginSetting = serverConfiguration.pluginSetting(Optional.empty());
+        final PluginSetting pluginSetting = serverConfiguration.pluginSetting(null);
 
         assertThat(pluginSetting.getName(), is("unauthenticated"));
         assertThat(pluginSetting.getSettings().isEmpty(), is(true));
@@ -118,7 +132,7 @@ class DataPrepperServerConfigurationTest {
         when(pluginModel.getPluginName())
                 .thenReturn("unauthenticated");
 
-        final PluginSetting pluginSetting = serverConfiguration.pluginSetting(Optional.of(pluginModel));
+        final PluginSetting pluginSetting = serverConfiguration.pluginSetting(pluginModel);
 
         assertThat(pluginSetting.getName(), is("unauthenticated"));
         assertThat(pluginSetting.getSettings().isEmpty(), is(true));
@@ -135,7 +149,7 @@ class DataPrepperServerConfigurationTest {
         when(pluginModel.getPluginSettings())
                 .thenReturn(settings);
 
-        final PluginSetting pluginSetting = serverConfiguration.pluginSetting(Optional.of(pluginModel));
+        final PluginSetting pluginSetting = serverConfiguration.pluginSetting(pluginModel);
 
         assertThat(pluginSetting.getName(), is("super secure plugin"));
         assertThat(pluginSetting.getSettings(), is(settings));
@@ -189,34 +203,11 @@ class DataPrepperServerConfigurationTest {
     }
 
     @Test
-    public void testGivenValidInputWithNoAuthenticatorThenServerShutdownContextCreated() {
+    public void testShutdownHandlerIsCreated() {
         final DataPrepper dataPrepper = mock(DataPrepper.class);
-        final HttpServer server = mock(HttpServer.class);
-        final HttpContext context = mock(HttpContext.class);
 
-        when(server.createContext(eq("/shutdown"), any(ShutdownHandler.class)))
-                .thenReturn(context);
-
-        final ShutdownHandler handler = serverConfiguration.shutdownHandler(dataPrepper, Optional.empty(), server);
+        final ShutdownHandler handler = serverConfiguration.shutdownHandler(dataPrepper);
 
         assertThat(handler, isA(ShutdownHandler.class));
-        verifyNoInteractions(context);
-    }
-
-    @Test
-    public void testGivenValidInputWithAuthenticatorThenServerShutdownContextCreated() {
-        final DataPrepper dataPrepper = mock(DataPrepper.class);
-        final Authenticator authenticator = mock(Authenticator.class);
-        final HttpServer server = mock(HttpServer.class);
-        final HttpContext context = mock(HttpContext.class);
-
-        when(server.createContext(eq("/shutdown"), any(ShutdownHandler.class)))
-                .thenReturn(context);
-
-        final ShutdownHandler handler = serverConfiguration.shutdownHandler(dataPrepper, Optional.of(authenticator), server);
-
-        assertThat(handler, isA(ShutdownHandler.class));
-        verify(context)
-                .setAuthenticator(eq(authenticator));
     }
 }

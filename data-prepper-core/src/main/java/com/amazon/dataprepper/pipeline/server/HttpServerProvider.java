@@ -55,6 +55,10 @@ public class HttpServerProvider implements Provider<HttpServer> {
 
                 return server;
             } else {
+                LOG.warn("Creating Data Prepper server without TLS. This is not secure.");
+                LOG.warn("In order to set up TLS for the Data Prepper server, go here: " +
+                        "https://github.com/opensearch-project/data-prepper/blob/main/docs/configuration.md#server-configuration");
+
                 return HttpServer.create(socketAddress, 0);
             }
         } catch (final IOException ex) {
