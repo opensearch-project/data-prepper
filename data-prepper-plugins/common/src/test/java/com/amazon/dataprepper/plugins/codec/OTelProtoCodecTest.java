@@ -142,6 +142,52 @@ public class OTelProtoCodecTest {
             }
         }
 
+        @Test
+        public void testGetSpanEvent() {
+            final String testName = "test name";
+            final long testTimeNanos = System.nanoTime();
+            final String testTime = convertUnixNanosToISO8601(testTimeNanos);
+            final String testKey = "test key";
+            final String testValue = "test value";
+            io.opentelemetry.proto.trace.v1.Span.Event testOTelProtoSpanEvent = io.opentelemetry.proto.trace.v1.Span.Event.newBuilder()
+                    .setName(testName)
+                    .setTimeUnixNano(testTimeNanos)
+                    .setDroppedAttributesCount(0)
+                    .addAttributes(KeyValue.newBuilder().setKey(testKey).setValue(AnyValue.newBuilder()
+                            .setStringValue(testValue).build()).build())
+                    .build();
+            final SpanEvent result = OTelProtoCodec.OTelProtoDecoder.getSpanEvent(testOTelProtoSpanEvent);
+            assertThat(result.getAttributes().size(), equalTo(1));
+            assertThat(result.getDroppedAttributesCount(), equalTo(0));
+            assertThat(result.getName(), equalTo(testName));
+            assertThat(result.getTime(), equalTo(testTime));
+        }
+
+        @Test
+        public void testGetSpanLink() {
+            final byte[] testSpanIdBytes = getRandomBytes(16);
+            final byte[] testTraceIdBytes = getRandomBytes(16);
+            final String testSpanId = Hex.encodeHexString(testSpanIdBytes);
+            final String testTraceId = Hex.encodeHexString(testTraceIdBytes);
+            final String testTraceState = "test state";
+            final String testKey = "test key";
+            final String testValue = "test value";
+            io.opentelemetry.proto.trace.v1.Span.Link testOTelProtoSpanLink = io.opentelemetry.proto.trace.v1.Span.Link.newBuilder()
+                    .setSpanId(ByteString.copyFrom(testSpanIdBytes))
+                    .setTraceId(ByteString.copyFrom(testTraceIdBytes))
+                    .setTraceState(testTraceState)
+                    .setDroppedAttributesCount(0)
+                    .addAttributes(KeyValue.newBuilder().setKey(testKey).setValue(AnyValue.newBuilder()
+                            .setStringValue(testValue).build()).build())
+                    .build();
+            final Link result = OTelProtoCodec.OTelProtoDecoder.getLink(testOTelProtoSpanLink);
+            assertThat(result.getAttributes().size(), equalTo(1));
+            assertThat(result.getDroppedAttributesCount(), equalTo(0));
+            assertThat(result.getSpanId(), equalTo(testSpanId));
+            assertThat(result.getTraceId(), equalTo(testTraceId));
+            assertThat(result.getTraceState(), equalTo(testTraceState));
+        }
+
         /**
          * Below object has a KeyValue with a key mapped to KeyValueList and is part of the span attributes
          *
