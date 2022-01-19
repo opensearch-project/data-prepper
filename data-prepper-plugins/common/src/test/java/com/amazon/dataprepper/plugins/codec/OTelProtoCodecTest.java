@@ -1,12 +1,6 @@
 /*
- *  SPDX-License-Identifier: Apache-2.0
- *
- *  The OpenSearch Contributors require contributions made to
- *  this file be licensed under the Apache-2.0 license or a
- *  compatible open source license.
- *
- *  Modifications Copyright OpenSearch Contributors. See
- *  GitHub history for details.
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package com.amazon.dataprepper.plugins.codec;
@@ -61,14 +55,6 @@ import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.INSTRUMENTATIO
 import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.OTelProtoEncoder.RESOURCE_ATTRIBUTES_PREFIX;
 import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.OTelProtoEncoder.SERVICE_NAME_ATTRIBUTE;
 import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.OTelProtoEncoder.SPAN_ATTRIBUTES_PREFIX;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.OTelProtoEncoder.constructInstrumentationLibrary;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.OTelProtoEncoder.constructResource;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.OTelProtoEncoder.constructSpanStatus;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.OTelProtoEncoder.convertSpanEvent;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.OTelProtoEncoder.convertSpanLink;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.OTelProtoEncoder.convertToResourceSpans;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.OTelProtoEncoder.getResourceAttributes;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.OTelProtoEncoder.getSpanAttributes;
 import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.SERVICE_NAME;
 import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.STATUS_CODE;
 import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.STATUS_MESSAGE;
@@ -88,6 +74,9 @@ public class OTelProtoCodecTest {
     private static final Random RANDOM = new Random();
     private static final String TEST_REQUEST_JSON_FILE = "test-request.json";
     private static final String TEST_SPAN_EVENT_JSON_FILE = "test-span-event.json";
+
+    private final OTelProtoCodec.OTelProtoDecoder decoderUnderTest = new OTelProtoCodec.OTelProtoDecoder();
+    private final OTelProtoCodec.OTelProtoEncoder encoderUnderTest = new OTelProtoCodec.OTelProtoEncoder();
 
     private byte[] getRandomBytes(int len) {
         byte[] bytes = new byte[len];
@@ -121,7 +110,7 @@ public class OTelProtoCodecTest {
         @Test
         public void testParseExportTraceServiceRequest() throws IOException {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_JSON_FILE);
-            final List<Span> spans = OTelProtoCodec.OTelProtoDecoder.parseExportTraceServiceRequest(exportTraceServiceRequest);
+            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest);
             assertThat(spans.size(), is(equalTo(3)));
             for (final Span span: spans) {
                 if (span.getParentSpanId().isEmpty()) {
@@ -156,7 +145,7 @@ public class OTelProtoCodecTest {
                     .addAttributes(KeyValue.newBuilder().setKey(testKey).setValue(AnyValue.newBuilder()
                             .setStringValue(testValue).build()).build())
                     .build();
-            final SpanEvent result = OTelProtoCodec.OTelProtoDecoder.getSpanEvent(testOTelProtoSpanEvent);
+            final SpanEvent result = decoderUnderTest.getSpanEvent(testOTelProtoSpanEvent);
             assertThat(result.getAttributes().size(), equalTo(1));
             assertThat(result.getDroppedAttributesCount(), equalTo(0));
             assertThat(result.getName(), equalTo(testName));
@@ -180,7 +169,7 @@ public class OTelProtoCodecTest {
                     .addAttributes(KeyValue.newBuilder().setKey(testKey).setValue(AnyValue.newBuilder()
                             .setStringValue(testValue).build()).build())
                     .build();
-            final Link result = OTelProtoCodec.OTelProtoDecoder.getLink(testOTelProtoSpanLink);
+            final Link result = decoderUnderTest.getLink(testOTelProtoSpanLink);
             assertThat(result.getAttributes().size(), equalTo(1));
             assertThat(result.getDroppedAttributesCount(), equalTo(0));
             assertThat(result.getSpanId(), equalTo(testSpanId));
@@ -205,7 +194,7 @@ public class OTelProtoCodecTest {
             final KeyValue spanAttribute2 = KeyValue.newBuilder().setKey("http.status").setValue(AnyValue.newBuilder()
                     .setStringValue("4xx").build()).build();
 
-            final Map<String, Object> actual = OTelProtoCodec.OTelProtoDecoder.getSpanAttributes(io.opentelemetry.proto.trace.v1.Span.newBuilder()
+            final Map<String, Object> actual = decoderUnderTest.getSpanAttributes(io.opentelemetry.proto.trace.v1.Span.newBuilder()
                     .addAllAttributes(Arrays.asList(spanAttribute1, spanAttribute2)).build());
             assertThat(actual.get(OTelProtoCodec.SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(spanAttribute2.getKey())),
                     equalTo(spanAttribute2.getValue().getStringValue()));
@@ -233,7 +222,7 @@ public class OTelProtoCodecTest {
             final KeyValue spanAttribute2 = KeyValue.newBuilder().setKey("service.name").setValue(AnyValue.newBuilder()
                     .setStringValue("EaglesService").build()).build();
 
-            final Map<String, Object> actual = OTelProtoCodec.OTelProtoDecoder.getResourceAttributes(Resource.newBuilder()
+            final Map<String, Object> actual = decoderUnderTest.getResourceAttributes(Resource.newBuilder()
                     .addAllAttributes(Arrays.asList(spanAttribute1, spanAttribute2)).build());
             assertThat(actual.get(OTelProtoCodec.RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(spanAttribute2.getKey())),
                     equalTo(spanAttribute2.getValue().getStringValue()));
@@ -264,7 +253,7 @@ public class OTelProtoCodecTest {
             final KeyValue spanAttribute1 = KeyValue.newBuilder().setKey("aws.details").setValue(AnyValue.newBuilder()
                     .setArrayValue(arrayValue)).build();
 
-            final Map<String, Object> actual = OTelProtoCodec.OTelProtoDecoder.getResourceAttributes(Resource.newBuilder()
+            final Map<String, Object> actual = decoderUnderTest.getResourceAttributes(Resource.newBuilder()
                     .addAllAttributes(Collections.singletonList(spanAttribute1)).build());
             assertThat(actual.containsKey(OTelProtoCodec.RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(spanAttribute1.getKey())), is(true));
             final List<Object> actualValue = returnList((String) actual
@@ -286,17 +275,17 @@ public class OTelProtoCodecTest {
             final InstrumentationLibrary il3 = InstrumentationLibrary.newBuilder().setVersion("0.6.0").build();
             final InstrumentationLibrary il4 = InstrumentationLibrary.newBuilder().build();
 
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getInstrumentationLibraryAttributes(il1).size(), equalTo(2));
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getInstrumentationLibraryAttributes(il1).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME), equalTo(il1.getName()));
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getInstrumentationLibraryAttributes(il1).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_VERSION), equalTo(il1.getVersion()));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).size(), equalTo(2));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME), equalTo(il1.getName()));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_VERSION), equalTo(il1.getVersion()));
 
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getInstrumentationLibraryAttributes(il2).size(), equalTo(1));
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getInstrumentationLibraryAttributes(il2).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME), equalTo(il2.getName()));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il2).size(), equalTo(1));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il2).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME), equalTo(il2.getName()));
 
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getInstrumentationLibraryAttributes(il3).size(), equalTo(1));
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getInstrumentationLibraryAttributes(il3).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_VERSION), equalTo(il3.getVersion()));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il3).size(), equalTo(1));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il3).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_VERSION), equalTo(il3.getVersion()));
 
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getInstrumentationLibraryAttributes(il4).isEmpty(), is(true));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il4).isEmpty(), is(true));
         }
 
         @Test
@@ -306,18 +295,18 @@ public class OTelProtoCodecTest {
             final Status st3 = Status.newBuilder().setCode(Status.StatusCode.STATUS_CODE_UNSET).build();
             final Status st4 = Status.newBuilder().build();
 
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getSpanStatusAttributes(st1).size(), equalTo(2));
-            assertThat(Status.StatusCode.forNumber((Integer) OTelProtoCodec.OTelProtoDecoder.getSpanStatusAttributes(st1).get(STATUS_CODE)), equalTo(st1.getCode()));
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getSpanStatusAttributes(st1).get(OTelProtoCodec.STATUS_MESSAGE), equalTo(st1.getMessage()));
+            assertThat(decoderUnderTest.getSpanStatusAttributes(st1).size(), equalTo(2));
+            assertThat(Status.StatusCode.forNumber((Integer) decoderUnderTest.getSpanStatusAttributes(st1).get(STATUS_CODE)), equalTo(st1.getCode()));
+            assertThat(decoderUnderTest.getSpanStatusAttributes(st1).get(OTelProtoCodec.STATUS_MESSAGE), equalTo(st1.getMessage()));
 
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getSpanStatusAttributes(st2).size(), equalTo(2));
-            assertThat(Status.StatusCode.forNumber((Integer) OTelProtoCodec.OTelProtoDecoder.getSpanStatusAttributes(st2).get(STATUS_CODE)), equalTo(st2.getCode()));
+            assertThat(decoderUnderTest.getSpanStatusAttributes(st2).size(), equalTo(2));
+            assertThat(Status.StatusCode.forNumber((Integer) decoderUnderTest.getSpanStatusAttributes(st2).get(STATUS_CODE)), equalTo(st2.getCode()));
 
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getSpanStatusAttributes(st3).size(), equalTo(1));
-            assertThat(Status.StatusCode.forNumber((Integer) OTelProtoCodec.OTelProtoDecoder.getSpanStatusAttributes(st3).get(STATUS_CODE)), equalTo(st3.getCode()));
+            assertThat(decoderUnderTest.getSpanStatusAttributes(st3).size(), equalTo(1));
+            assertThat(Status.StatusCode.forNumber((Integer) decoderUnderTest.getSpanStatusAttributes(st3).get(STATUS_CODE)), equalTo(st3.getCode()));
 
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getSpanStatusAttributes(st4).size(), equalTo(1));
-            assertThat(Status.StatusCode.forNumber((Integer) OTelProtoCodec.OTelProtoDecoder.getSpanStatusAttributes(st4).get(STATUS_CODE)), equalTo(st4.getCode()));
+            assertThat(decoderUnderTest.getSpanStatusAttributes(st4).size(), equalTo(1));
+            assertThat(Status.StatusCode.forNumber((Integer) decoderUnderTest.getSpanStatusAttributes(st4).get(STATUS_CODE)), equalTo(st4.getCode()));
 
         }
 
@@ -330,11 +319,11 @@ public class OTelProtoCodecTest {
                     .setEndTimeUnixNano(1598013600000000321L).build();
             final io.opentelemetry.proto.trace.v1.Span emptyTimeSpan = io.opentelemetry.proto.trace.v1.Span.newBuilder().build();
 
-            final String startTime = OTelProtoCodec.OTelProtoDecoder.getStartTimeISO8601(startTimeUnixNano);
+            final String startTime = decoderUnderTest.getStartTimeISO8601(startTimeUnixNano);
             assertThat(Instant.parse(startTime).getEpochSecond() * NANO_MULTIPLIER + Instant.parse(startTime).getNano(), equalTo(startTimeUnixNano.getStartTimeUnixNano()));
-            final String endTime = OTelProtoCodec.OTelProtoDecoder.getEndTimeISO8601(endTimeUnixNano);
+            final String endTime = decoderUnderTest.getEndTimeISO8601(endTimeUnixNano);
             assertThat(Instant.parse(endTime).getEpochSecond() * NANO_MULTIPLIER + Instant.parse(endTime).getNano(), equalTo(endTimeUnixNano.getEndTimeUnixNano()));
-            final String emptyTime = OTelProtoCodec.OTelProtoDecoder.getStartTimeISO8601(endTimeUnixNano);
+            final String emptyTime = decoderUnderTest.getStartTimeISO8601(endTimeUnixNano);
             assertThat(Instant.parse(emptyTime).getEpochSecond() * NANO_MULTIPLIER + Instant.parse(emptyTime).getNano(), equalTo(emptyTimeSpan.getStartTimeUnixNano()));
 
         }
@@ -343,18 +332,18 @@ public class OTelProtoCodecTest {
         public void testTraceGroup() {
             final io.opentelemetry.proto.trace.v1.Span span1 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
                     .setParentSpanId(ByteString.copyFrom("PArentIdExists", StandardCharsets.UTF_8)).build();
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getTraceGroup(span1), nullValue());
+            assertThat(decoderUnderTest.getTraceGroup(span1), nullValue());
             final String testTraceGroup = "testTraceGroup";
             final io.opentelemetry.proto.trace.v1.Span span2 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
                     .setName(testTraceGroup).build();
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getTraceGroup(span2), equalTo(testTraceGroup));
+            assertThat(decoderUnderTest.getTraceGroup(span2), equalTo(testTraceGroup));
         }
 
         @Test
         public void testTraceGroupFields() {
             final io.opentelemetry.proto.trace.v1.Span span1 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
                     .setParentSpanId(ByteString.copyFrom("PArentIdExists", StandardCharsets.UTF_8)).build();
-            final TraceGroupFields traceGroupFields1 = OTelProtoCodec.OTelProtoDecoder.getTraceGroupFields(span1);
+            final TraceGroupFields traceGroupFields1 = decoderUnderTest.getTraceGroupFields(span1);
             assertThat(traceGroupFields1.getEndTime(), nullValue());
             assertThat(traceGroupFields1.getDurationInNanos(), nullValue());
             assertThat(traceGroupFields1.getStatusCode(), nullValue());
@@ -368,10 +357,10 @@ public class OTelProtoCodecTest {
                     .build();
             final TraceGroupFields expectedTraceGroupFields = DefaultTraceGroupFields.builder()
                     .withStatusCode(testStatusCode)
-                    .withEndTime(OTelProtoCodec.OTelProtoDecoder.getEndTimeISO8601(span2))
+                    .withEndTime(decoderUnderTest.getEndTimeISO8601(span2))
                     .withDurationInNanos(testEndTimeUnixNano - testStartTimeUnixNano)
                     .build();
-            assertThat(OTelProtoCodec.OTelProtoDecoder.getTraceGroupFields(span2), equalTo(expectedTraceGroupFields));
+            assertThat(decoderUnderTest.getTraceGroupFields(span2), equalTo(expectedTraceGroupFields));
         }
     }
 
@@ -379,14 +368,14 @@ public class OTelProtoCodecTest {
     class OTelProtoEncoderTest {
         @Test
         public void testNullToAnyValue() throws UnsupportedEncodingException {
-            final AnyValue result = OTelProtoCodec.OTelProtoEncoder.objectToAnyValue(null);
+            final AnyValue result = encoderUnderTest.objectToAnyValue(null);
             assertThat(result.getValueCase(), equalTo(AnyValue.ValueCase.VALUE_NOT_SET));
         }
 
         @Test
         public void testIntegerToAnyValue() throws UnsupportedEncodingException {
             final Integer testInteger = 1;
-            final AnyValue result = OTelProtoCodec.OTelProtoEncoder.objectToAnyValue(testInteger);
+            final AnyValue result = encoderUnderTest.objectToAnyValue(testInteger);
             assertThat(result.getValueCase(), equalTo(AnyValue.ValueCase.INT_VALUE));
             assertThat(result.getIntValue(), equalTo(testInteger.longValue()));
         }
@@ -394,7 +383,7 @@ public class OTelProtoCodecTest {
         @Test
         public void testLongToAnyValue() throws UnsupportedEncodingException {
             final Long testLong = 1L;
-            final AnyValue result = OTelProtoCodec.OTelProtoEncoder.objectToAnyValue(testLong);
+            final AnyValue result = encoderUnderTest.objectToAnyValue(testLong);
             assertThat(result.getValueCase(), equalTo(AnyValue.ValueCase.INT_VALUE));
             assertThat(result.getIntValue(), equalTo(testLong));
         }
@@ -402,7 +391,7 @@ public class OTelProtoCodecTest {
         @Test
         public void testBooleanToAnyValue() throws UnsupportedEncodingException {
             final Boolean testBoolean = false;
-            final AnyValue result = OTelProtoCodec.OTelProtoEncoder.objectToAnyValue(testBoolean);
+            final AnyValue result = encoderUnderTest.objectToAnyValue(testBoolean);
             assertThat(result.getValueCase(), equalTo(AnyValue.ValueCase.BOOL_VALUE));
             assertThat(result.getBoolValue(), is(testBoolean));
         }
@@ -410,7 +399,7 @@ public class OTelProtoCodecTest {
         @Test
         public void testStringToAnyValue() throws UnsupportedEncodingException {
             final String testString = "test string";
-            final AnyValue result = OTelProtoCodec.OTelProtoEncoder.objectToAnyValue(testString);
+            final AnyValue result = encoderUnderTest.objectToAnyValue(testString);
             assertThat(result.getValueCase(), equalTo(AnyValue.ValueCase.STRING_VALUE));
             assertThat(result.getStringValue(), equalTo(testString));
         }
@@ -418,7 +407,7 @@ public class OTelProtoCodecTest {
         @Test
         public void testUnsupportedTypeToAnyValue() {
             assertThrows(UnsupportedEncodingException.class,
-                    () -> OTelProtoCodec.OTelProtoEncoder.objectToAnyValue(new UnsupportedEncodingClass()));
+                    () -> encoderUnderTest.objectToAnyValue(new UnsupportedEncodingClass()));
         }
 
         @Test
@@ -428,7 +417,7 @@ public class OTelProtoCodecTest {
             final Map<String, Object> testAllAttributes = Map.of(
                     SPAN_ATTRIBUTES_PREFIX + testKeyRelevant, 1,
                     testKeyIrrelevant, 2);
-            final List<KeyValue> result = getSpanAttributes(testAllAttributes);
+            final List<KeyValue> result = encoderUnderTest.getSpanAttributes(testAllAttributes);
             assertThat(result.size(), equalTo(1));
             assertThat(result.get(0).getKey(), equalTo(testKeyRelevant));
             assertThat(result.get(0).getValue().getIntValue(), equalTo(1L));
@@ -442,7 +431,7 @@ public class OTelProtoCodecTest {
                     RESOURCE_ATTRIBUTES_PREFIX + testKeyRelevant, 1,
                     RESOURCE_ATTRIBUTES_PREFIX + SERVICE_NAME_ATTRIBUTE, "A",
                     testKeyIrrelevant, 2);
-            final List<KeyValue> result = getResourceAttributes(testAllAttributes);
+            final List<KeyValue> result = encoderUnderTest.getResourceAttributes(testAllAttributes);
             assertThat(result.size(), equalTo(1));
             assertThat(result.get(0).getKey(), equalTo(testKeyRelevant));
             assertThat(result.get(0).getValue().getIntValue(), equalTo(1L));
@@ -457,7 +446,7 @@ public class OTelProtoCodecTest {
                     STATUS_CODE, testStatusCode,
                     STATUS_MESSAGE, testStatusMessage,
                     testKeyIrrelevant, 2);
-            final Status status = constructSpanStatus(testAllAttributes);
+            final Status status = encoderUnderTest.constructSpanStatus(testAllAttributes);
             assertThat(status.getCodeValue(), equalTo(testStatusCode));
             assertThat(status.getMessage(), equalTo(testStatusMessage));
         }
@@ -469,7 +458,7 @@ public class OTelProtoCodecTest {
             final Map<String, Object> testAllAttributes = Map.of(
                     STATUS_CODE, testStatusCode,
                     testKeyIrrelevant, 2);
-            final Status status = constructSpanStatus(testAllAttributes);
+            final Status status = encoderUnderTest.constructSpanStatus(testAllAttributes);
             assertThat(status.getCodeValue(), equalTo(testStatusCode));
         }
 
@@ -480,7 +469,7 @@ public class OTelProtoCodecTest {
             final Map<String, Object> testAllAttributes = Map.of(
                     STATUS_MESSAGE, testStatusMessage,
                     testKeyIrrelevant, 2);
-            final Status status = constructSpanStatus(testAllAttributes);
+            final Status status = encoderUnderTest.constructSpanStatus(testAllAttributes);
             assertThat(status.getMessage(), equalTo(testStatusMessage));
         }
 
@@ -488,7 +477,7 @@ public class OTelProtoCodecTest {
         public void testEncodeSpanStatusMissingAll() {
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(testKeyIrrelevant, 2);
-            final Status status = constructSpanStatus(testAllAttributes);
+            final Status status = encoderUnderTest.constructSpanStatus(testAllAttributes);
             assertThat(status, instanceOf(Status.class));
         }
 
@@ -501,7 +490,7 @@ public class OTelProtoCodecTest {
                     INSTRUMENTATION_LIBRARY_NAME, testName,
                     INSTRUMENTATION_LIBRARY_VERSION, testVersion,
                     testKeyIrrelevant, 2);
-            final InstrumentationLibrary instrumentationLibrary = constructInstrumentationLibrary(testAllAttributes);
+            final InstrumentationLibrary instrumentationLibrary = encoderUnderTest.constructInstrumentationLibrary(testAllAttributes);
             assertThat(instrumentationLibrary.getName(), equalTo(testName));
             assertThat(instrumentationLibrary.getVersion(), equalTo(testVersion));
         }
@@ -513,7 +502,7 @@ public class OTelProtoCodecTest {
             final Map<String, Object> testAllAttributes = Map.of(
                     INSTRUMENTATION_LIBRARY_VERSION, testVersion,
                     testKeyIrrelevant, 2);
-            final InstrumentationLibrary instrumentationLibrary = constructInstrumentationLibrary(testAllAttributes);
+            final InstrumentationLibrary instrumentationLibrary = encoderUnderTest.constructInstrumentationLibrary(testAllAttributes);
             assertThat(instrumentationLibrary.getVersion(), equalTo(testVersion));
         }
 
@@ -524,7 +513,7 @@ public class OTelProtoCodecTest {
             final Map<String, Object> testAllAttributes = Map.of(
                     INSTRUMENTATION_LIBRARY_NAME, testName,
                     testKeyIrrelevant, 2);
-            final InstrumentationLibrary instrumentationLibrary = constructInstrumentationLibrary(testAllAttributes);
+            final InstrumentationLibrary instrumentationLibrary = encoderUnderTest.constructInstrumentationLibrary(testAllAttributes);
             assertThat(instrumentationLibrary.getName(), equalTo(testName));
         }
 
@@ -532,7 +521,7 @@ public class OTelProtoCodecTest {
         public void testEncodeInstrumentationLibraryMissingAll() {
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(testKeyIrrelevant, 2);
-            final InstrumentationLibrary instrumentationLibrary = constructInstrumentationLibrary(testAllAttributes);
+            final InstrumentationLibrary instrumentationLibrary = encoderUnderTest.constructInstrumentationLibrary(testAllAttributes);
             assertThat(instrumentationLibrary, instanceOf(InstrumentationLibrary.class));
         }
 
@@ -545,7 +534,7 @@ public class OTelProtoCodecTest {
                     RESOURCE_ATTRIBUTES_PREFIX + testKeyRelevant, 1,
                     RESOURCE_ATTRIBUTES_PREFIX + SERVICE_NAME_ATTRIBUTE, "A",
                     testKeyIrrelevant, 2);
-            final Resource resource = constructResource(testServiceName, testAllAttributes);
+            final Resource resource = encoderUnderTest.constructResource(testServiceName, testAllAttributes);
             assertThat(resource.getAttributesCount(), equalTo(2));
             assertThat(
                     resource.getAttributesList().stream()
@@ -561,7 +550,7 @@ public class OTelProtoCodecTest {
             final Map<String, Object> testAllAttributes = Map.of(
                     RESOURCE_ATTRIBUTES_PREFIX + testKeyRelevant, 1,
                     testKeyIrrelevant, 2);
-            final Resource resource = constructResource(null, testAllAttributes);
+            final Resource resource = encoderUnderTest.constructResource(null, testAllAttributes);
             assertThat(resource.getAttributesCount(), equalTo(1));
             assertThat(resource.getAttributesList().stream().noneMatch(kv -> kv.getKey().equals(SERVICE_NAME)), is(true));
         }
@@ -579,7 +568,7 @@ public class OTelProtoCodecTest {
                     .withTime(testTime)
                     .withAttributes(Map.of(testKey, testValue))
                     .build();
-            final io.opentelemetry.proto.trace.v1.Span.Event result = convertSpanEvent(testSpanEvent);
+            final io.opentelemetry.proto.trace.v1.Span.Event result = encoderUnderTest.convertSpanEvent(testSpanEvent);
             assertThat(result.getAttributesCount(), equalTo(1));
             assertThat(result.getDroppedAttributesCount(), equalTo(0));
             assertThat(result.getName(), equalTo(testName));
@@ -602,7 +591,7 @@ public class OTelProtoCodecTest {
                     .withDroppedAttributesCount(0)
                     .withAttributes(Map.of(testKey, testValue))
                     .build();
-            final io.opentelemetry.proto.trace.v1.Span.Link result = convertSpanLink(testSpanLink);
+            final io.opentelemetry.proto.trace.v1.Span.Link result = encoderUnderTest.convertSpanLink(testSpanLink);
             assertThat(result.getAttributesCount(), equalTo(1));
             assertThat(result.getDroppedAttributesCount(), equalTo(0));
             assertThat(result.getSpanId().toByteArray(), equalTo(testSpanIdBytes));
@@ -613,7 +602,7 @@ public class OTelProtoCodecTest {
         @Test
         public void testEncodeResourceSpans() throws DecoderException, UnsupportedEncodingException {
             final Span testSpan = buildSpanFromJsonFile(TEST_SPAN_EVENT_JSON_FILE);
-            final ResourceSpans rs = convertToResourceSpans(testSpan);
+            final ResourceSpans rs = encoderUnderTest.convertToResourceSpans(testSpan);
             assertThat(rs.getResource(), equalTo(Resource.getDefaultInstance()));
             assertThat(rs.getInstrumentationLibrarySpansCount(), equalTo(1));
             final InstrumentationLibrarySpans instrumentationLibrarySpans = rs.getInstrumentationLibrarySpans(0);
@@ -692,13 +681,13 @@ public class OTelProtoCodecTest {
     @Test
     public void testOTelProtoCodecConsistency() throws IOException, DecoderException {
         final ExportTraceServiceRequest request = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_JSON_FILE);
-        final List<Span> spansFirstDec = OTelProtoCodec.OTelProtoDecoder.parseExportTraceServiceRequest(request);
+        final List<Span> spansFirstDec = decoderUnderTest.parseExportTraceServiceRequest(request);
         final List<ResourceSpans> resourceSpansList = new ArrayList<>();
         for (final Span span: spansFirstDec) {
-            resourceSpansList.add(convertToResourceSpans(span));
+            resourceSpansList.add(encoderUnderTest.convertToResourceSpans(span));
         }
         final List<Span> spansSecondDec = resourceSpansList.stream()
-                .flatMap(rs -> OTelProtoCodec.OTelProtoDecoder.parseResourceSpans(rs).stream()).collect(Collectors.toList());
+                .flatMap(rs -> decoderUnderTest.parseResourceSpans(rs).stream()).collect(Collectors.toList());
         assertThat(spansFirstDec.size(), equalTo(spansSecondDec.size()));
         for (int i = 0; i < spansFirstDec.size(); i++) {
             assertThat(spansFirstDec.get(i).toJsonString(), equalTo(spansSecondDec.get(i).toJsonString()));

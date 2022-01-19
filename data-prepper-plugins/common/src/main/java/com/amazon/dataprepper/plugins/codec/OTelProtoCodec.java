@@ -1,12 +1,6 @@
 /*
- *  SPDX-License-Identifier: Apache-2.0
- *
- *  The OpenSearch Contributors require contributions made to
- *  this file be licensed under the Apache-2.0 license or a
- *  compatible open source license.
- *
- *  Modifications Copyright OpenSearch Contributors. See
- *  GitHub history for details.
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package com.amazon.dataprepper.plugins.codec;
@@ -61,7 +55,7 @@ public class OTelProtoCodec {
     static final String STATUS_CODE = "status.code";
     static final String STATUS_MESSAGE = "status.message";
     /**
-     * To make it ES friendly we will replace '.' in keys with '@' in all the Keys in {@link io.opentelemetry.proto.common.v1.KeyValue}
+     * To make it OpenSearch friendly we will replace '.' in keys with '@' in all the Keys in {@link io.opentelemetry.proto.common.v1.KeyValue}
      */
     private static final String DOT = ".";
     private static final String AT = "@";
@@ -84,12 +78,12 @@ public class OTelProtoCodec {
     }
 
     public static class OTelProtoDecoder {
-        public static List<Span> parseExportTraceServiceRequest(final ExportTraceServiceRequest exportTraceServiceRequest) {
+        public List<Span> parseExportTraceServiceRequest(final ExportTraceServiceRequest exportTraceServiceRequest) {
             return exportTraceServiceRequest.getResourceSpansList().stream()
                     .flatMap(rs -> parseResourceSpans(rs).stream()).collect(Collectors.toList());
         }
 
-        public static List<Span> parseResourceSpans(final ResourceSpans resourceSpans) {
+        protected List<Span> parseResourceSpans(final ResourceSpans resourceSpans) {
             final List<Span> spans = new LinkedList<>();
 
             final String serviceName = getServiceName(resourceSpans.getResource()).orElse(null);
@@ -103,7 +97,7 @@ public class OTelProtoCodec {
             return spans;
         }
 
-        public static Span parseSpan(final io.opentelemetry.proto.trace.v1.Span sp, final InstrumentationLibrary instrumentationLibrary,
+        protected Span parseSpan(final io.opentelemetry.proto.trace.v1.Span sp, final InstrumentationLibrary instrumentationLibrary,
                                      final String serviceName, final Map<String, Object> resourceAttributes) {
             return JacksonSpan.builder()
                     .withSpanId(Hex.encodeHexString(sp.getSpanId().toByteArray()))
@@ -124,9 +118,9 @@ public class OTelProtoCodec {
                             )
                     ))
                     .withDroppedAttributesCount(sp.getDroppedAttributesCount())
-                    .withEvents(sp.getEventsList().stream().map(OTelProtoDecoder::getSpanEvent).collect(Collectors.toList()))
+                    .withEvents(sp.getEventsList().stream().map(this::getSpanEvent).collect(Collectors.toList()))
                     .withDroppedEventsCount(sp.getDroppedEventsCount())
-                    .withLinks(sp.getLinksList().stream().map(OTelProtoDecoder::getLink).collect(Collectors.toList()))
+                    .withLinks(sp.getLinksList().stream().map(this::getLink).collect(Collectors.toList()))
                     .withDroppedLinksCount(sp.getDroppedLinksCount())
                     .withTraceGroup(getTraceGroup(sp))
                     .withDurationInNanos(sp.getEndTimeUnixNano() - sp.getStartTimeUnixNano())
@@ -134,7 +128,7 @@ public class OTelProtoCodec {
                     .build();
         }
 
-        public static Object convertAnyValue(final AnyValue value) {
+        protected Object convertAnyValue(final AnyValue value) {
             switch (value.getValueCase()) {
                 case VALUE_NOT_SET:
                 case STRING_VALUE:
@@ -153,7 +147,7 @@ public class OTelProtoCodec {
                 case ARRAY_VALUE:
                     try {
                         return OBJECT_MAPPER.writeValueAsString(value.getArrayValue().getValuesList().stream()
-                                .map(OTelProtoDecoder::convertAnyValue).collect(Collectors.toList()));
+                                .map(this::convertAnyValue).collect(Collectors.toList()));
                     } catch (JsonProcessingException e) {
                         throw new RuntimeException(e);
                     }
@@ -170,13 +164,13 @@ public class OTelProtoCodec {
             }
         }
 
-        public static Map<String, Object> mergeAllAttributes(final Collection<Map<String, Object>> attributes) {
+        protected Map<String, Object> mergeAllAttributes(final Collection<Map<String, Object>> attributes) {
             return attributes.stream()
                     .flatMap(map -> map.entrySet().stream())
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         }
 
-        public static SpanEvent getSpanEvent(final io.opentelemetry.proto.trace.v1.Span.Event event) {
+        protected SpanEvent getSpanEvent(final io.opentelemetry.proto.trace.v1.Span.Event event) {
             return DefaultSpanEvent.builder()
                     .withTime(getTimeISO8601(event))
                     .withName(event.getName())
@@ -185,7 +179,7 @@ public class OTelProtoCodec {
                     .build();
         }
 
-        public static Link getLink(final io.opentelemetry.proto.trace.v1.Span.Link link) {
+        protected Link getLink(final io.opentelemetry.proto.trace.v1.Span.Link link) {
             return DefaultLink.builder()
                     .withSpanId(Hex.encodeHexString(link.getSpanId().toByteArray()))
                     .withTraceId(Hex.encodeHexString(link.getTraceId().toByteArray()))
@@ -195,19 +189,19 @@ public class OTelProtoCodec {
                     .build();
         }
 
-        public static Map<String, Object> getSpanAttributes(final io.opentelemetry.proto.trace.v1.Span span) {
+        protected Map<String, Object> getSpanAttributes(final io.opentelemetry.proto.trace.v1.Span span) {
             return span.getAttributesList().stream().collect(Collectors.toMap(i -> SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
         }
 
-        public static Map<String, Object> getResourceAttributes(final Resource resource) {
+        protected Map<String, Object> getResourceAttributes(final Resource resource) {
             return resource.getAttributesList().stream().collect(Collectors.toMap(i -> RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
         }
 
-        public static Map<String, Object> getLinkAttributes(final io.opentelemetry.proto.trace.v1.Span.Link link) {
+        protected Map<String, Object> getLinkAttributes(final io.opentelemetry.proto.trace.v1.Span.Link link) {
             return link.getAttributesList().stream().collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
         }
 
-        public static Map<String, Object> getEventAttributes(final io.opentelemetry.proto.trace.v1.Span.Event event) {
+        protected Map<String, Object> getEventAttributes(final io.opentelemetry.proto.trace.v1.Span.Event event) {
             return event.getAttributesList().stream().collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
         }
 
@@ -219,7 +213,7 @@ public class OTelProtoCodec {
          * <p>
          * Note: The reason this method is part of the codec class is because the trace group definition will be expanded in the future when we support Links in OpenSearch Dashboards Trace Analytics.
          */
-        public static String getTraceGroup(final io.opentelemetry.proto.trace.v1.Span span) {
+        protected String getTraceGroup(final io.opentelemetry.proto.trace.v1.Span span) {
             return span.getParentSpanId().isEmpty()? span.getName() : null;
         }
 
@@ -236,7 +230,7 @@ public class OTelProtoCodec {
          * <p>
          * Note: The reason this method is part of the codec class is because the trace group definition will be expanded in the future when we support Links in OpenSearch Dashboards Trace Analytics.
          */
-        public static TraceGroupFields getTraceGroupFields(final io.opentelemetry.proto.trace.v1.Span span) {
+        protected TraceGroupFields getTraceGroupFields(final io.opentelemetry.proto.trace.v1.Span span) {
             DefaultTraceGroupFields.Builder traceGroupFieldsBuilder = DefaultTraceGroupFields.builder();
             if (span.getParentSpanId().isEmpty()) {
                 traceGroupFieldsBuilder = traceGroupFieldsBuilder
@@ -247,7 +241,7 @@ public class OTelProtoCodec {
             return traceGroupFieldsBuilder.build();
         }
 
-        public static Map<String, Object> getInstrumentationLibraryAttributes(final InstrumentationLibrary instrumentationLibrary) {
+        protected Map<String, Object> getInstrumentationLibraryAttributes(final InstrumentationLibrary instrumentationLibrary) {
             final Map<String, Object> instrumentationAttr = new HashMap<>();
             if (!instrumentationLibrary.getName().isEmpty()) {
                 instrumentationAttr.put(INSTRUMENTATION_LIBRARY_NAME, instrumentationLibrary.getName());
@@ -258,7 +252,7 @@ public class OTelProtoCodec {
             return instrumentationAttr;
         }
 
-        public static Map<String, Object> getSpanStatusAttributes(final Status status) {
+        protected Map<String, Object> getSpanStatusAttributes(final Status status) {
             final Map<String, Object> statusAttr = new HashMap<>();
             statusAttr.put(STATUS_CODE, status.getCodeValue());
             if(!status.getMessage().isEmpty()){
@@ -267,19 +261,19 @@ public class OTelProtoCodec {
             return statusAttr;
         }
 
-        public static String getStartTimeISO8601(final io.opentelemetry.proto.trace.v1.Span span) {
+        protected String getStartTimeISO8601(final io.opentelemetry.proto.trace.v1.Span span) {
             return convertUnixNanosToISO8601(span.getStartTimeUnixNano());
         }
 
-        public static String getEndTimeISO8601(final io.opentelemetry.proto.trace.v1.Span span) {
+        protected String getEndTimeISO8601(final io.opentelemetry.proto.trace.v1.Span span) {
             return convertUnixNanosToISO8601(span.getEndTimeUnixNano());
         }
 
-        public static String getTimeISO8601(final io.opentelemetry.proto.trace.v1.Span.Event event) {
+        protected String getTimeISO8601(final io.opentelemetry.proto.trace.v1.Span.Event event) {
             return convertUnixNanosToISO8601(event.getTimeUnixNano());
         }
 
-        public static Optional<String> getServiceName(final Resource resource) {
+        protected Optional<String> getServiceName(final Resource resource) {
             return resource.getAttributesList().stream().filter(
                     keyValue -> keyValue.getKey().equals(SERVICE_NAME)
                             && !keyValue.getValue().getStringValue().isEmpty()
@@ -292,7 +286,7 @@ public class OTelProtoCodec {
         protected static final String RESOURCE_ATTRIBUTES_PREFIX = RESOURCE_ATTRIBUTES + DOT;
         protected static final String SPAN_ATTRIBUTES_PREFIX = SPAN_ATTRIBUTES + DOT;
 
-        public static ResourceSpans convertToResourceSpans(final Span span) throws UnsupportedEncodingException, DecoderException {
+        public ResourceSpans convertToResourceSpans(final Span span) throws UnsupportedEncodingException, DecoderException {
             final ResourceSpans.Builder rsBuilder = ResourceSpans.newBuilder();
             final Resource resource = constructResource(span.getServiceName(), span.getAttributes());
             rsBuilder.setResource(resource);
@@ -305,7 +299,7 @@ public class OTelProtoCodec {
             return rsBuilder.build();
         }
 
-        public static List<KeyValue> getSpanAttributes(final Map<String, Object> attributes) throws UnsupportedEncodingException {
+        protected List<KeyValue> getSpanAttributes(final Map<String, Object> attributes) throws UnsupportedEncodingException {
             final List<String> spanAttributeKeys = attributes.keySet().stream()
                     .filter(key -> key.startsWith(SPAN_ATTRIBUTES_PREFIX)).collect(Collectors.toList());
             final List<KeyValue> result = new ArrayList<>();
@@ -321,7 +315,7 @@ public class OTelProtoCodec {
             return result;
         }
 
-        public static Resource constructResource(final String serviceName, final Map<String, Object> attributes) throws UnsupportedEncodingException {
+        protected Resource constructResource(final String serviceName, final Map<String, Object> attributes) throws UnsupportedEncodingException {
             final Resource.Builder rsBuilder = Resource.newBuilder();
             final List<KeyValue> resourceAttributes = getResourceAttributes(attributes);
             rsBuilder.addAllAttributes(resourceAttributes);
@@ -334,7 +328,7 @@ public class OTelProtoCodec {
             return rsBuilder.build();
         }
 
-        public static List<KeyValue> getResourceAttributes(final Map<String, Object> attributes) throws UnsupportedEncodingException {
+        protected List<KeyValue> getResourceAttributes(final Map<String, Object> attributes) throws UnsupportedEncodingException {
             final List<String> resourceAttributeKeys = attributes.keySet().stream()
                     .filter(key -> key.startsWith(RESOURCE_ATTRIBUTES_PREFIX)).collect(Collectors.toList());
             final List<KeyValue> result = new ArrayList<>();
@@ -352,7 +346,7 @@ public class OTelProtoCodec {
             return result;
         }
 
-        public static InstrumentationLibrary constructInstrumentationLibrary(final Map<String, Object> attributes) {
+        protected InstrumentationLibrary constructInstrumentationLibrary(final Map<String, Object> attributes) {
             final InstrumentationLibrary.Builder builder = InstrumentationLibrary.newBuilder();
             final Optional<String> instrumentationLibraryName = Optional.ofNullable((String) attributes.get(INSTRUMENTATION_LIBRARY_NAME));
             final Optional<String> instrumentationLibraryVersion = Optional.ofNullable((String) attributes.get(INSTRUMENTATION_LIBRARY_VERSION));
@@ -361,7 +355,7 @@ public class OTelProtoCodec {
             return builder.build();
         }
 
-        public static Status constructSpanStatus(final Map<String, Object> attributes) {
+        protected Status constructSpanStatus(final Map<String, Object> attributes) {
             final io.opentelemetry.proto.trace.v1.Status.Builder builder = Status.newBuilder();
             final Optional<Integer> statusCode = Optional.ofNullable((Integer) attributes.get(STATUS_CODE));
             final Optional<String> statusMessage = Optional.ofNullable((String) attributes.get(STATUS_MESSAGE));
@@ -370,7 +364,7 @@ public class OTelProtoCodec {
             return builder.build();
         }
 
-        public static List<io.opentelemetry.proto.trace.v1.Span.Event> convertSpanEvents(final List<? extends SpanEvent> spanEvents) throws UnsupportedEncodingException {
+        protected List<io.opentelemetry.proto.trace.v1.Span.Event> convertSpanEvents(final List<? extends SpanEvent> spanEvents) throws UnsupportedEncodingException {
             final List<io.opentelemetry.proto.trace.v1.Span.Event> result = new ArrayList<>();
             for (final SpanEvent spanEvent: spanEvents) {
                 result.add(convertSpanEvent(spanEvent));
@@ -378,7 +372,7 @@ public class OTelProtoCodec {
             return result;
         }
 
-        public static io.opentelemetry.proto.trace.v1.Span.Event convertSpanEvent(final SpanEvent spanEvent) throws UnsupportedEncodingException {
+        protected io.opentelemetry.proto.trace.v1.Span.Event convertSpanEvent(final SpanEvent spanEvent) throws UnsupportedEncodingException {
             final io.opentelemetry.proto.trace.v1.Span.Event.Builder builder = io.opentelemetry.proto.trace.v1.Span.Event.newBuilder();
             builder.setName(spanEvent.getName());
             builder.setTimeUnixNano(timeISO8601ToNanos(spanEvent.getTime()));
@@ -392,7 +386,7 @@ public class OTelProtoCodec {
             return builder.build();
         }
 
-        public static List<io.opentelemetry.proto.trace.v1.Span.Link> convertSpanLinks(final List<? extends Link> links) throws DecoderException, UnsupportedEncodingException {
+        protected List<io.opentelemetry.proto.trace.v1.Span.Link> convertSpanLinks(final List<? extends Link> links) throws DecoderException, UnsupportedEncodingException {
             final List<io.opentelemetry.proto.trace.v1.Span.Link> result = new ArrayList<>();
             for (final Link link: links) {
                 result.add(convertSpanLink(link));
@@ -400,7 +394,7 @@ public class OTelProtoCodec {
             return result;
         }
 
-        public static io.opentelemetry.proto.trace.v1.Span.Link convertSpanLink(final Link link) throws DecoderException, UnsupportedEncodingException {
+        protected io.opentelemetry.proto.trace.v1.Span.Link convertSpanLink(final Link link) throws DecoderException, UnsupportedEncodingException {
             final io.opentelemetry.proto.trace.v1.Span.Link.Builder builder = io.opentelemetry.proto.trace.v1.Span.Link.newBuilder();
             builder.setSpanId(ByteString.copyFrom(Hex.decodeHex(link.getSpanId())));
             builder.setTraceId(ByteString.copyFrom(Hex.decodeHex(link.getTraceId())));
@@ -415,7 +409,7 @@ public class OTelProtoCodec {
             return builder.build();
         }
 
-        public static io.opentelemetry.proto.trace.v1.Span constructSpan(final Span span) throws DecoderException, UnsupportedEncodingException {
+        protected io.opentelemetry.proto.trace.v1.Span constructSpan(final Span span) throws DecoderException, UnsupportedEncodingException {
             io.opentelemetry.proto.trace.v1.Span.Builder builder = io.opentelemetry.proto.trace.v1.Span.newBuilder()
                     .setSpanId(ByteString.copyFrom(Hex.decodeHex(span.getSpanId())))
                     .setParentSpanId(ByteString.copyFrom(Hex.decodeHex(span.getParentSpanId())))
@@ -438,7 +432,7 @@ public class OTelProtoCodec {
             return builder.build();
         }
 
-        public static AnyValue objectToAnyValue(final Object obj) throws UnsupportedEncodingException {
+        protected AnyValue objectToAnyValue(final Object obj) throws UnsupportedEncodingException {
             final AnyValue.Builder anyValueBuilder = AnyValue.newBuilder();
             if (obj == null) {
                 return anyValueBuilder.build();
