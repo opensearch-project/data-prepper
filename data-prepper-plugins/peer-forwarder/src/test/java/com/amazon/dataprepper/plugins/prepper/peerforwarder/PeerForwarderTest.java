@@ -15,6 +15,9 @@ import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
+import com.amazon.dataprepper.model.trace.JacksonSpan;
+import com.amazon.dataprepper.model.trace.Span;
 import com.google.protobuf.ByteString;
 import io.grpc.Channel;
 import io.micrometer.core.instrument.Measurement;
@@ -24,7 +27,6 @@ import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
-import io.opentelemetry.proto.trace.v1.Span;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -42,8 +44,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -54,23 +58,28 @@ import static org.mockito.Mockito.when;
 public class PeerForwarderTest {
     private static final String TEST_PIPELINE_NAME = "testPipeline";
     private static final String LOCAL_IP = "127.0.0.1";
-    private static final Span SPAN_1 = Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdA")).setSpanId(ByteString.copyFromUtf8("spanId1")).build();
-    private static final Span SPAN_2 = Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdA")).setSpanId(ByteString.copyFromUtf8("spanId2")).build();
-    private static final Span SPAN_3 = Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdA")).setSpanId(ByteString.copyFromUtf8("spanId3")).build();
-    private static final Span SPAN_4 = Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdB")).setSpanId(ByteString.copyFromUtf8("spanId4")).build();
-    private static final Span SPAN_5 = Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdB")).setSpanId(ByteString.copyFromUtf8("spanId5")).build();
-    private static final Span SPAN_6 = Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdB")).setSpanId(ByteString.copyFromUtf8("spanId6")).build();
+    private static final Span SPAN_1 = getSpan("traceIdA", "spanId1", "", "serviceA", "spanName1",
+            io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
+    private static final Span SPAN_2 = getSpan("traceIdA", "spanId2", "", "serviceA", "spanName2",
+            io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
+    private static final Span SPAN_3 = getSpan("traceIdA", "spanId3", "", "serviceA", "spanName3",
+            io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
+    private static final Span SPAN_4 = getSpan("traceIdB", "spanId4", "", "serviceB", "spanName4",
+            io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
+    private static final Span SPAN_5 = getSpan("traceIdB", "spanId5", "", "serviceB", "spanName5",
+            io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
+    private static final Span SPAN_6 = getSpan("traceIdB", "spanId6", "", "serviceB", "spanName6",
+            io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
 
-    private static final ExportTraceServiceRequest REQUEST_1 = generateRequest(SPAN_1, SPAN_2, SPAN_4);
-    private static final ExportTraceServiceRequest REQUEST_2 = generateRequest(SPAN_3, SPAN_5, SPAN_6);
-    private static final ExportTraceServiceRequest REQUEST_3 = generateRequest(SPAN_1, SPAN_2, SPAN_3);
-    private static final ExportTraceServiceRequest REQUEST_4 = generateRequest(SPAN_4, SPAN_5, SPAN_6);
+    private static final List<Span> TEST_SPANS_ALL = Arrays.asList(SPAN_1, SPAN_2, SPAN_3, SPAN_4, SPAN_5, SPAN_6);
+    private static final List<Span> TEST_SPANS_A = Arrays.asList(SPAN_1, SPAN_2, SPAN_3);
+    private static final List<Span> TEST_SPANS_B = Arrays.asList(SPAN_4, SPAN_5, SPAN_6);
+
+
+//    private static final ExportTraceServiceRequest REQUEST_1 = generateRequest(SPAN_1, SPAN_2, SPAN_4);
+//    private static final ExportTraceServiceRequest REQUEST_2 = generateRequest(SPAN_3, SPAN_5, SPAN_6);
+//    private static final ExportTraceServiceRequest REQUEST_3 = generateRequest(SPAN_1, SPAN_2, SPAN_3);
+//    private static final ExportTraceServiceRequest REQUEST_4 = generateRequest(SPAN_4, SPAN_5, SPAN_6);
 
     private MockedStatic<PeerClientPool> peerClientPoolClassMock;
 
@@ -92,42 +101,64 @@ public class PeerForwarderTest {
         peerClientPoolClassMock.close();
     }
 
-    private static ExportTraceServiceRequest generateRequest(final Span... spans) {
-        return ExportTraceServiceRequest.newBuilder()
-                .addResourceSpans(ResourceSpans.newBuilder()
-                        .setResource(Resource.newBuilder().build())
-                        .addInstrumentationLibrarySpans(
-                                InstrumentationLibrarySpans.newBuilder()
-                                        .setInstrumentationLibrary(InstrumentationLibrary.newBuilder().build())
-                                        .addAllSpans(Arrays.asList(spans)))
-                        .build()).build();
+    public static Span getSpan(final String traceId, final String spanId, final String parentId,
+                               final String serviceName, final String spanName, final io.opentelemetry.proto.trace.v1.Span.SpanKind spanKind) {
+        final String endTime = UUID.randomUUID().toString();
+        JacksonSpan.Builder builder = JacksonSpan.builder()
+                .withSpanId(spanId)
+                .withTraceId(traceId)
+                .withTraceState("")
+                .withParentSpanId(parentId)
+                .withName(spanName)
+                .withServiceName(serviceName)
+                .withKind(spanKind.name())
+                .withStartTime(UUID.randomUUID().toString())
+                .withEndTime(endTime)
+                .withTraceGroup(parentId.isEmpty()? null : spanName)
+                .withDurationInNanos(500L);
+        if (parentId.isEmpty()) {
+            builder.withTraceGroupFields(
+                    DefaultTraceGroupFields.builder()
+                            .withStatusCode(1)
+                            .withDurationInNanos(500L)
+                            .withEndTime(endTime)
+                            .build()
+            );
+        } else {
+            builder.withTraceGroupFields(
+                    DefaultTraceGroupFields.builder().build());
+        }
+        return builder.build();
     }
 
-    private static ResourceSpans generateResourceSpans(final Span... spans) {
-        return ResourceSpans.newBuilder().setResource(Resource.newBuilder().build()).addInstrumentationLibrarySpans(
-                InstrumentationLibrarySpans.newBuilder()
-                        .setInstrumentationLibrary(InstrumentationLibrary.newBuilder().build())
-                        .addAllSpans(Arrays.asList(spans))).build();
-    }
+//    private static ExportTraceServiceRequest generateRequest(final Span... spans) {
+//        return ExportTraceServiceRequest.newBuilder()
+//                .addResourceSpans(ResourceSpans.newBuilder()
+//                        .setResource(Resource.newBuilder().build())
+//                        .addInstrumentationLibrarySpans(
+//                                InstrumentationLibrarySpans.newBuilder()
+//                                        .setInstrumentationLibrary(InstrumentationLibrary.newBuilder().build())
+//                                        .addAllSpans(Arrays.asList(spans)))
+//                        .build()).build();
+//    }
+
+//    private static ResourceSpans generateResourceSpans(final Span... spans) {
+//        return ResourceSpans.newBuilder().setResource(Resource.newBuilder().build()).addInstrumentationLibrarySpans(
+//                InstrumentationLibrarySpans.newBuilder()
+//                        .setInstrumentationLibrary(InstrumentationLibrary.newBuilder().build())
+//                        .addAllSpans(Arrays.asList(spans))).build();
+//    }
 
     @Test
     public void testLocalIpOnly() {
         final PeerForwarder testPeerForwarder = generatePeerForwarder(Collections.singletonList(LOCAL_IP), 2);
-        final List<Record<ExportTraceServiceRequest>> exportedRecords =
-                testPeerForwarder.doExecute(Arrays.asList(new Record<>(REQUEST_1), new Record<>(REQUEST_2)));
-        assertTrue(exportedRecords.size() >= 3);
-        final List<ResourceSpans> exportedResourceSpans = new ArrayList<>();
-        for (final Record<ExportTraceServiceRequest> record: exportedRecords) {
-            exportedResourceSpans.addAll(record.getData().getResourceSpansList());
-        }
-        final List<ResourceSpans> expectedResourceSpans = Arrays.asList(
-                generateResourceSpans(SPAN_1, SPAN_2),
-                generateResourceSpans(SPAN_3),
-                generateResourceSpans(SPAN_4),
-                generateResourceSpans(SPAN_5, SPAN_6)
-        );
-        assertTrue(exportedResourceSpans.containsAll(expectedResourceSpans));
-        assertTrue(expectedResourceSpans.containsAll(exportedResourceSpans));
+        final List<Span> inputSpans = Arrays.asList(SPAN_1, SPAN_2, SPAN_4, SPAN_5);
+        final List<Record<Span>> exportedRecords = testPeerForwarder.doExecute(
+                inputSpans.stream().map(Record::new).collect(Collectors.toList()));
+        assertEquals(4, exportedRecords.size());
+        final List<Span> exportedSpans = exportedRecords.stream().map(Record::getData).collect(Collectors.toList());
+        assertTrue(exportedSpans.containsAll(inputSpans));
+        assertTrue(inputSpans.containsAll(exportedSpans));
     }
 
     @Test
@@ -149,27 +180,19 @@ public class PeerForwarderTest {
         MetricsTestUtil.initMetrics();
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
 
-        final List<Record<ExportTraceServiceRequest>> exportedRecords = testPeerForwarder
-                .doExecute(Arrays.asList(new Record<>(REQUEST_1), new Record<>(REQUEST_2)));
+        final List<Record<Span>> exportedRecords = testPeerForwarder
+                .doExecute(TEST_SPANS_ALL.stream().map(Record::new).collect(Collectors.toList()));
 
-        final List<ResourceSpans> expectedLocalResourceSpans = Arrays.asList(
-                generateResourceSpans(SPAN_1, SPAN_2),
-                generateResourceSpans(SPAN_3)
-        );
-        final List<ResourceSpans> expectedForwardedResourceSpans = Arrays.asList(
-                generateResourceSpans(SPAN_5, SPAN_6),
-                generateResourceSpans(SPAN_4)
-        );
-        Assert.assertEquals(1, exportedRecords.size());
-        final ExportTraceServiceRequest localRequest = exportedRecords.get(0).getData();
-        final List<ResourceSpans> localResourceSpans = localRequest.getResourceSpansList();
-        assertTrue(localResourceSpans.containsAll(expectedLocalResourceSpans));
-        assertTrue(expectedLocalResourceSpans.containsAll(localResourceSpans));
+        final List<Span> expectedLocalSpans = Arrays.asList(SPAN_1, SPAN_2, SPAN_3);
+        Assert.assertEquals(3, exportedRecords.size());
+        final List<Span> localSpans = exportedRecords.stream().map(Record::getData).collect(Collectors.toList());
+        assertTrue(localSpans.containsAll(expectedLocalSpans));
+        assertTrue(expectedLocalSpans.containsAll(localSpans));
         Assert.assertEquals(1, requestsByIp.get(peerIp).size());
         final ExportTraceServiceRequest forwardedRequest = requestsByIp.get(peerIp).get(0);
         final List<ResourceSpans> forwardedResourceSpans = forwardedRequest.getResourceSpansList();
-        assertTrue(forwardedResourceSpans.containsAll(expectedForwardedResourceSpans));
-        assertTrue(expectedForwardedResourceSpans.containsAll(forwardedResourceSpans));
+        assertEquals(3, forwardedResourceSpans.size());
+        // TODO: more assertion
     }
 
     @Test
@@ -177,16 +200,13 @@ public class PeerForwarderTest {
         final List<String> testIps = generateTestIps(2);
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
 
-        final List<Record<ExportTraceServiceRequest>> exportedRecords = testPeerForwarder
-                .doExecute(Collections.singletonList(new Record<>(REQUEST_3)));
+        final List<Record<Span>> exportedRecords = testPeerForwarder
+                .doExecute(TEST_SPANS_A.stream().map(Record::new).collect(Collectors.toList()));
 
-        final List<ResourceSpans> expectedLocalResourceSpans = Collections.singletonList(
-                generateResourceSpans(SPAN_1, SPAN_2, SPAN_3));
-        Assert.assertEquals(1, exportedRecords.size());
-        final ExportTraceServiceRequest localRequest = exportedRecords.get(0).getData();
-        final List<ResourceSpans> localResourceSpans = localRequest.getResourceSpansList();
-        assertTrue(localResourceSpans.containsAll(expectedLocalResourceSpans));
-        assertTrue(expectedLocalResourceSpans.containsAll(localResourceSpans));
+        Assert.assertEquals(3, exportedRecords.size());
+        final List<Span> localSpans = exportedRecords.stream().map(Record::getData).collect(Collectors.toList());
+        assertTrue(localSpans.containsAll(TEST_SPANS_A));
+        assertTrue(TEST_SPANS_A.containsAll(localSpans));
     }
 
     @Test
@@ -209,16 +229,14 @@ public class PeerForwarderTest {
         MetricsTestUtil.initMetrics();
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
 
-        final List<Record<ExportTraceServiceRequest>> exportedRecords = testPeerForwarder
-                .doExecute(Collections.singletonList(new Record<>(REQUEST_4)));
+        final List<Record<Span>> exportedRecords = testPeerForwarder
+                .doExecute(TEST_SPANS_B.stream().map(Record::new).collect(Collectors.toList()));
 
-        final List<ResourceSpans> expectedForwardedResourceSpans = Collections.singletonList(
-                generateResourceSpans(SPAN_4, SPAN_5, SPAN_6));
         Assert.assertEquals(1, requestsByIp.get(peerIp).size());
         final ExportTraceServiceRequest forwardedRequest = requestsByIp.get(peerIp).get(0);
         final List<ResourceSpans> forwardedResourceSpans = forwardedRequest.getResourceSpansList();
-        assertTrue(forwardedResourceSpans.containsAll(expectedForwardedResourceSpans));
-        assertTrue(expectedForwardedResourceSpans.containsAll(forwardedResourceSpans));
+        assertEquals(3, forwardedResourceSpans.size());
+        // TODO: more assertion on forwardedResourceSpans
         Assert.assertEquals(0, exportedRecords.size());
 
         // Verify metrics
@@ -258,16 +276,13 @@ public class PeerForwarderTest {
         MetricsTestUtil.initMetrics();
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
 
-        final List<Record<ExportTraceServiceRequest>> exportedRecords = testPeerForwarder
-                .doExecute(Collections.singletonList(new Record<>(REQUEST_4)));
+        final List<Record<Span>> exportedRecords = testPeerForwarder
+                .doExecute(TEST_SPANS_B.stream().map(Record::new).collect(Collectors.toList()));
 
-        final List<ResourceSpans> expectedLocalResourceSpans = Collections.singletonList(
-                generateResourceSpans(SPAN_4, SPAN_5, SPAN_6));
-        Assert.assertEquals(1, exportedRecords.size());
-        final ExportTraceServiceRequest exportedRequest = exportedRecords.get(0).getData();
-        final List<ResourceSpans> forwardedResourceSpans = exportedRequest.getResourceSpansList();
-        assertTrue(forwardedResourceSpans.containsAll(expectedLocalResourceSpans));
-        assertTrue(expectedLocalResourceSpans.containsAll(forwardedResourceSpans));
+        Assert.assertEquals(3, exportedRecords.size());
+        final List<Span> exportedSpans = exportedRecords.stream().map(Record::getData).collect(Collectors.toList());
+        assertTrue(exportedSpans.containsAll(TEST_SPANS_B));
+        assertTrue(TEST_SPANS_B.containsAll(exportedSpans));
 
         // Verify metrics
         final List<Measurement> forwardRequestErrorMeasurements = MetricsTestUtil.getMeasurementList(
