@@ -18,6 +18,7 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
 import com.amazon.dataprepper.model.trace.JacksonSpan;
 import com.amazon.dataprepper.model.trace.Span;
+import com.amazon.dataprepper.plugins.codec.OTelProtoCodec;
 import io.grpc.Channel;
 import io.micrometer.core.instrument.Measurement;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
@@ -36,6 +37,8 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -88,13 +91,16 @@ public class PeerForwarderTest {
     private MockedStatic<PeerClientPool> peerClientPoolClassMock;
 
     @Mock
+    private OTelProtoCodec.OTelProtoEncoder oTelProtoEncoder;
+
+    @Mock
     private PeerClientPool peerClientPool;
 
     @Mock
     private TraceServiceGrpc.TraceServiceBlockingStub client;
 
     @Before
-    public void setUp() {
+    public void setUp() throws DecoderException, UnsupportedEncodingException {
         peerClientPoolClassMock = Mockito.mockStatic(PeerClientPool.class);
         peerClientPoolClassMock.when(PeerClientPool::getInstance).thenReturn(peerClientPool);
     }
@@ -140,6 +146,17 @@ public class PeerForwarderTest {
     private String extractServiceName(final ResourceSpans resourceSpans) {
         return resourceSpans.getResource().getAttributesList().stream().filter(kv -> kv.getKey().equals("service.name"))
                 .findFirst().get().getValue().getStringValue();
+    }
+
+    private void reflectivelySetEncoder(final PeerForwarder peerForwarder, final OTelProtoCodec.OTelProtoEncoder encoder)
+            throws NoSuchFieldException, IllegalAccessException {
+        final Field field = PeerForwarder.class.getDeclaredField("oTelProtoEncoder");
+        try {
+            field.setAccessible(true);
+            field.set(peerForwarder, encoder);
+        } finally {
+            field.setAccessible(false);
+        }
     }
 
     @Test
@@ -270,7 +287,7 @@ public class PeerForwarderTest {
     }
 
     @Test
-    public void testSingleRemoteIpForwardRequestError() {
+    public void testSingleRemoteIpForwardRequestClientError() {
         final List<String> testIps = generateTestIps(2);
         final Channel channel = mock(Channel.class);
         final String peerIp = testIps.get(1);
@@ -312,6 +329,32 @@ public class PeerForwarderTest {
         assertTrue(forwardRequestLatencyMeasurements.get(1).getValue() > 0.0);
         // MAX
         assertTrue(forwardRequestLatencyMeasurements.get(2).getValue() > 0.0);
+    }
+
+    @Test
+    public void testSingleRemoteIpForwardRequestEncodeError() throws NoSuchFieldException, IllegalAccessException,
+            DecoderException, UnsupportedEncodingException {
+        final List<String> testIps = generateTestIps(2);
+        final Channel channel = mock(Channel.class);
+        final String peerIp = testIps.get(1);
+        final String fullPeerIp = String.format("%s:21890", peerIp);
+        when(channel.authority()).thenReturn(fullPeerIp);
+        when(peerClientPool.getClient(peerIp)).thenReturn(client);
+        when(client.export(any(ExportTraceServiceRequest.class))).thenThrow(new RuntimeException());
+        when(client.getChannel()).thenReturn(channel);
+
+        MetricsTestUtil.initMetrics();
+        final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
+        when(oTelProtoEncoder.convertToResourceSpans(any(Span.class))).thenThrow(new DecoderException());
+        reflectivelySetEncoder(testPeerForwarder, oTelProtoEncoder);
+
+        final List<Record<Span>> exportedRecords = testPeerForwarder
+                .doExecute(TEST_SPANS_B.stream().map(Record::new).collect(Collectors.toList()));
+
+        Assert.assertEquals(3, exportedRecords.size());
+        final List<Span> exportedSpans = exportedRecords.stream().map(Record::getData).collect(Collectors.toList());
+        assertTrue(exportedSpans.containsAll(TEST_SPANS_B));
+        assertTrue(TEST_SPANS_B.containsAll(exportedSpans));
     }
 
     @Test
