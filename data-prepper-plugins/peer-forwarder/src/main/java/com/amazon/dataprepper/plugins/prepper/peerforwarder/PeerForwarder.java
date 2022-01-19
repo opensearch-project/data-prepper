@@ -17,15 +17,18 @@ import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.trace.Span;
+import com.amazon.dataprepper.plugins.codec.OTelProtoCodec;
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery.StaticPeerListProvider;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import org.apache.commons.codec.DecoderException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -55,6 +58,7 @@ public class PeerForwarder extends AbstractPrepper<Record<Span>, Record<Span>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarder.class);
 
+    private final OTelProtoCodec.OTelProtoEncoder oTelProtoEncoder;
     private final HashRing hashRing;
     private final PeerClientPool peerClientPool;
     private final int maxNumSpansPerRequest;
@@ -66,10 +70,12 @@ public class PeerForwarder extends AbstractPrepper<Record<Span>, Record<Span>> {
     private final ExecutorService executorService;
 
     public PeerForwarder(final PluginSetting pluginSetting,
+                         final OTelProtoCodec.OTelProtoEncoder oTelProtoEncoder,
                          final PeerClientPool peerClientPool,
                          final HashRing hashRing,
                          final int maxNumSpansPerRequest) {
         super(pluginSetting);
+        this.oTelProtoEncoder = oTelProtoEncoder;
         this.peerClientPool = peerClientPool;
         this.hashRing = hashRing;
         this.maxNumSpansPerRequest = maxNumSpansPerRequest;
@@ -87,6 +93,7 @@ public class PeerForwarder extends AbstractPrepper<Record<Span>, Record<Span>> {
     public PeerForwarder(final PluginSetting pluginSetting, final PeerForwarderConfig peerForwarderConfig) {
         this(
                 pluginSetting,
+                new OTelProtoCodec.OTelProtoEncoder(),
                 peerForwarderConfig.getPeerClientPool(),
                 peerForwarderConfig.getHashRing(),
                 peerForwarderConfig.getMaxNumSpansPerRequest()
@@ -119,16 +126,22 @@ public class PeerForwarder extends AbstractPrepper<Record<Span>, Record<Span>> {
             ExportTraceServiceRequest.Builder currRequestBuilder = ExportTraceServiceRequest.newBuilder();
             List<Span> currBatchSpans = new ArrayList<>();
             for (final Span span : entry.getValue()) {
-                final ResourceSpans rs = convertSpanToResourceSpans(span);
-                final int rsSize = PeerForwarderUtils.getResourceSpansSize(rs);
+                final ResourceSpans rs;
+                try {
+                    rs = oTelProtoEncoder.convertToResourceSpans(span);
+                    currRequestBuilder.addResourceSpans(rs);
+                    currBatchSpans.add(span);
+                } catch (UnsupportedEncodingException | DecoderException e) {
+                    LOG.error("failed to encode span with spanId: {} into opentelemetry-protobuf due to {}, span will be exported locally.",
+                            span.getSpanId(), e.getMessage());
+                    recordsToProcessLocally.add(new Record<>(span));
+                }
                 if (currBatchSpans.size() >= maxNumSpansPerRequest) {
                     final ExportTraceServiceRequest currRequest = currRequestBuilder.build();
                     forwardedRequestFuturesToSpans.put(processRequest(client, currRequest), currBatchSpans);
                     currRequestBuilder = ExportTraceServiceRequest.newBuilder();
                     currBatchSpans = new ArrayList<>();
                 }
-                currRequestBuilder.addResourceSpans(rs);
-                currBatchSpans.add(span);
             }
             // Dealing with the last batch request
             if (currBatchSpans.size() > 0) {
@@ -151,11 +164,6 @@ public class PeerForwarder extends AbstractPrepper<Record<Span>, Record<Span>> {
         }
 
         return recordsToProcessLocally;
-    }
-
-    // TODO: replace this placeHolder method with API method in OTelProtoCodec
-    public static ResourceSpans convertSpanToResourceSpans(final Span span) {
-        return null;
     }
 
     /**
