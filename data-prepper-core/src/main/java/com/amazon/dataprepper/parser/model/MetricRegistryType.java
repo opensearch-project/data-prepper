@@ -13,7 +13,7 @@ import io.micrometer.prometheus.PrometheusMeterRegistry;
 
 import java.util.Arrays;
 
-import static com.amazon.dataprepper.DataPrepper.getServiceNameForMetrics;
+import static com.amazon.dataprepper.core.DataPrepper.getServiceNameForMetrics;
 import static com.amazon.dataprepper.metrics.MetricNames.SERVICE_NAME;
 import static java.lang.String.format;
 

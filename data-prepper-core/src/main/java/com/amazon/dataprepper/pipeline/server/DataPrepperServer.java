@@ -5,7 +5,7 @@
 
 package com.amazon.dataprepper.pipeline.server;
 
-import com.amazon.dataprepper.DataPrepper;
+import com.amazon.dataprepper.core.DataPrepper;
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.PluginFactory;

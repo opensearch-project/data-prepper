@@ -5,8 +5,8 @@
 
 package com.amazon.dataprepper.server;
 
-import com.amazon.dataprepper.DataPrepper;
 import com.amazon.dataprepper.TestDataProvider;
+import com.amazon.dataprepper.core.DataPrepper;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.pipeline.server.DataPrepperCoreAuthenticationProvider;

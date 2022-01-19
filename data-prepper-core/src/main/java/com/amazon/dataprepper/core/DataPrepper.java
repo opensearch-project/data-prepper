@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper;
+package com.amazon.dataprepper.core;
 
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.parser.PipelineParser;

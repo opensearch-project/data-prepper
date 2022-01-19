@@ -5,17 +5,18 @@
 
 package com.amazon.dataprepper.pipeline.server;
 
-import com.amazon.dataprepper.DataPrepper;
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.amazon.dataprepper.core.DataPrepper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * HttpHandler to handle requests for listing pipelines running on the data prepper instance

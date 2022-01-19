@@ -5,13 +5,14 @@
 
 package com.amazon.dataprepper.pipeline.server;
 
-import com.amazon.dataprepper.DataPrepper;
-import java.io.IOException;
-import java.net.HttpURLConnection;
+import com.amazon.dataprepper.core.DataPrepper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.HttpURLConnection;
 
 /**
  * HttpHandler to handle requests to shut down the data prepper instance
