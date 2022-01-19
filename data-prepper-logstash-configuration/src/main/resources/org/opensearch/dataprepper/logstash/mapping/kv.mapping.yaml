@@ -1,0 +1,11 @@
+pluginName: key_value
+mappedAttributeNames:
+  source: source
+  target: destination
+  field_split: field_delimiter_regex
+  field_split_pattern: field_delimiter_regex
+  value_split: key_value_delimiter_regex
+  value_split_pattern: key_value_delimiter_regex
+  prefix: prefix
+  remove_char_key: delete_key_regex
+  remove_char_value: delete_value_regex
