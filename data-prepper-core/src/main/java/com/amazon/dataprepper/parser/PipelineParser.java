@@ -14,6 +14,7 @@ import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
+import com.amazon.dataprepper.parser.config.DataPrepperArgs;
 import com.amazon.dataprepper.parser.model.PipelineConfiguration;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.PipelineConnector;
@@ -24,6 +25,8 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
+import javax.inject.Named;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -37,6 +40,7 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 
 @SuppressWarnings("rawtypes")
+@Named
 public class PipelineParser {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineParser.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory())
@@ -47,8 +51,9 @@ public class PipelineParser {
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
     private final PluginFactory pluginFactory;
 
-    public PipelineParser(final String pipelineConfigurationFileLocation, final PluginFactory pluginFactory) {
-        this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
+    @Inject
+    public PipelineParser(final DataPrepperArgs dataPrepperArgs, final PluginFactory pluginFactory) {
+        this.pipelineConfigurationFileLocation = dataPrepperArgs.getPipelineConfigFileLocation();
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
     }
 
@@ -67,13 +72,13 @@ public class PipelineParser {
             final Map<String, Pipeline> pipelineMap = new LinkedHashMap<>();
             pipelineConfigurationMap.forEach((pipelineName, configuration) ->
                     configuration.updateCommonPipelineConfiguration(pipelineName));
-            for (String pipelineName : allPipelineNames) {
+            for (final String pipelineName : allPipelineNames) {
                 if (!pipelineMap.containsKey(pipelineName) && pipelineConfigurationMap.containsKey(pipelineName)) {
                     buildPipelineFromConfiguration(pipelineName, pipelineConfigurationMap, pipelineMap);
                 }
             }
             return pipelineMap;
-        } catch (IOException e) {
+        } catch (final IOException e) {
             throw new ParseException(format("Failed to parse the configuration file %s", pipelineConfigurationFileLocation), e);
         }
     }
@@ -108,7 +113,7 @@ public class PipelineParser {
 
             final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, processorSets, sinks, processorThreads, readBatchDelay);
             pipelineMap.put(pipelineName, pipeline);
-        } catch (Exception ex) {
+        } catch (final Exception ex) {
             //If pipeline construction errors out, we will skip that pipeline and proceed
             LOG.error("Construction of pipeline components failed, skipping building of pipeline [{}] and its connected " +
                     "pipelines", pipelineName, ex);
@@ -120,7 +125,7 @@ public class PipelineParser {
     private List<Processor> newProcessor(final PluginSetting pluginSetting) {
         try {
             return newProcessor(pluginSetting, Processor.class);
-        } catch (NoPluginFoundException ex) {
+        } catch (final NoPluginFoundException ex) {
             LOG.warn(
                     "No plugin of type Processor found for plugin setting: {}, attempting to find comparable Prepper plugin.",
                     pluginSetting.getName());
@@ -208,10 +213,12 @@ public class PipelineParser {
 
         //remove sink connected pipelines
         final List<PluginSetting> sinkPluginSettings = failedPipelineConfiguration.getSinkPluginSettings();
-        sinkPluginSettings.forEach(sinkPluginSetting -> {
-            getPipelineNameIfPipelineType(sinkPluginSetting).ifPresent(sinkPipeline -> processRemoveIfRequired(
-                    sinkPipeline, pipelineConfigurationMap, pipelineMap));
-        });
+        sinkPluginSettings.forEach(sinkPluginSetting ->
+                getPipelineNameIfPipelineType(sinkPluginSetting)
+                        .ifPresent(sinkPipeline -> processRemoveIfRequired(
+                                sinkPipeline,
+                                pipelineConfigurationMap,
+                                pipelineMap)));
     }
 
     private void processRemoveIfRequired(
