@@ -18,15 +18,14 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
 import com.amazon.dataprepper.model.trace.JacksonSpan;
 import com.amazon.dataprepper.model.trace.Span;
-import com.google.protobuf.ByteString;
 import io.grpc.Channel;
 import io.micrometer.core.instrument.Measurement;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
-import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
-import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -47,6 +46,7 @@ import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.convertUnixNanosToISO8601;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -58,28 +58,32 @@ import static org.mockito.Mockito.when;
 public class PeerForwarderTest {
     private static final String TEST_PIPELINE_NAME = "testPipeline";
     private static final String LOCAL_IP = "127.0.0.1";
-    private static final Span SPAN_1 = getSpan("traceIdA", "spanId1", "", "serviceA", "spanName1",
+    private static final String TEST_TRACE_ID_1 = "b1";
+    private static final String TEST_TRACE_ID_2 = "b2";
+    private static final String TEST_SERVICE_A = "serviceA";
+    private static final String TEST_SERVICE_B = "serviceB";
+    private static final String TEST_SPAN_ID_1 = "d1";
+    private static final String TEST_SPAN_ID_2 = "d2";
+    private static final String TEST_SPAN_ID_3 = "d3";
+    private static final String TEST_SPAN_ID_4 = "d4";
+    private static final String TEST_SPAN_ID_5 = "d5";
+    private static final String TEST_SPAN_ID_6 = "d6";
+    private static final Span SPAN_1 = getSpan(TEST_TRACE_ID_1, TEST_SPAN_ID_1, "", TEST_SERVICE_A, "spanName1",
             io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
-    private static final Span SPAN_2 = getSpan("traceIdA", "spanId2", "", "serviceA", "spanName2",
+    private static final Span SPAN_2 = getSpan(TEST_TRACE_ID_1, TEST_SPAN_ID_2, "", TEST_SERVICE_A, "spanName2",
             io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
-    private static final Span SPAN_3 = getSpan("traceIdA", "spanId3", "", "serviceA", "spanName3",
+    private static final Span SPAN_3 = getSpan(TEST_TRACE_ID_1, TEST_SPAN_ID_3, "", TEST_SERVICE_A, "spanName3",
             io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
-    private static final Span SPAN_4 = getSpan("traceIdB", "spanId4", "", "serviceB", "spanName4",
+    private static final Span SPAN_4 = getSpan(TEST_TRACE_ID_2, TEST_SPAN_ID_4, "", TEST_SERVICE_B, "spanName4",
             io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
-    private static final Span SPAN_5 = getSpan("traceIdB", "spanId5", "", "serviceB", "spanName5",
+    private static final Span SPAN_5 = getSpan(TEST_TRACE_ID_2, TEST_SPAN_ID_5, "", TEST_SERVICE_B, "spanName5",
             io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
-    private static final Span SPAN_6 = getSpan("traceIdB", "spanId6", "", "serviceB", "spanName6",
+    private static final Span SPAN_6 = getSpan(TEST_TRACE_ID_2, TEST_SPAN_ID_6, "", TEST_SERVICE_B, "spanName6",
             io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
 
     private static final List<Span> TEST_SPANS_ALL = Arrays.asList(SPAN_1, SPAN_2, SPAN_3, SPAN_4, SPAN_5, SPAN_6);
     private static final List<Span> TEST_SPANS_A = Arrays.asList(SPAN_1, SPAN_2, SPAN_3);
     private static final List<Span> TEST_SPANS_B = Arrays.asList(SPAN_4, SPAN_5, SPAN_6);
-
-
-//    private static final ExportTraceServiceRequest REQUEST_1 = generateRequest(SPAN_1, SPAN_2, SPAN_4);
-//    private static final ExportTraceServiceRequest REQUEST_2 = generateRequest(SPAN_3, SPAN_5, SPAN_6);
-//    private static final ExportTraceServiceRequest REQUEST_3 = generateRequest(SPAN_1, SPAN_2, SPAN_3);
-//    private static final ExportTraceServiceRequest REQUEST_4 = generateRequest(SPAN_4, SPAN_5, SPAN_6);
 
     private MockedStatic<PeerClientPool> peerClientPoolClassMock;
 
@@ -103,6 +107,8 @@ public class PeerForwarderTest {
 
     public static Span getSpan(final String traceId, final String spanId, final String parentId,
                                final String serviceName, final String spanName, final io.opentelemetry.proto.trace.v1.Span.SpanKind spanKind) {
+        final long startTimeNanos = System.nanoTime();
+        final long endTimeNanos = System.nanoTime();
         final String endTime = UUID.randomUUID().toString();
         JacksonSpan.Builder builder = JacksonSpan.builder()
                 .withSpanId(spanId)
@@ -112,10 +118,10 @@ public class PeerForwarderTest {
                 .withName(spanName)
                 .withServiceName(serviceName)
                 .withKind(spanKind.name())
-                .withStartTime(UUID.randomUUID().toString())
-                .withEndTime(endTime)
+                .withStartTime(convertUnixNanosToISO8601(startTimeNanos))
+                .withEndTime(convertUnixNanosToISO8601(endTimeNanos))
                 .withTraceGroup(parentId.isEmpty()? null : spanName)
-                .withDurationInNanos(500L);
+                .withDurationInNanos(endTimeNanos - startTimeNanos);
         if (parentId.isEmpty()) {
             builder.withTraceGroupFields(
                     DefaultTraceGroupFields.builder()
@@ -131,23 +137,10 @@ public class PeerForwarderTest {
         return builder.build();
     }
 
-//    private static ExportTraceServiceRequest generateRequest(final Span... spans) {
-//        return ExportTraceServiceRequest.newBuilder()
-//                .addResourceSpans(ResourceSpans.newBuilder()
-//                        .setResource(Resource.newBuilder().build())
-//                        .addInstrumentationLibrarySpans(
-//                                InstrumentationLibrarySpans.newBuilder()
-//                                        .setInstrumentationLibrary(InstrumentationLibrary.newBuilder().build())
-//                                        .addAllSpans(Arrays.asList(spans)))
-//                        .build()).build();
-//    }
-
-//    private static ResourceSpans generateResourceSpans(final Span... spans) {
-//        return ResourceSpans.newBuilder().setResource(Resource.newBuilder().build()).addInstrumentationLibrarySpans(
-//                InstrumentationLibrarySpans.newBuilder()
-//                        .setInstrumentationLibrary(InstrumentationLibrary.newBuilder().build())
-//                        .addAllSpans(Arrays.asList(spans))).build();
-//    }
+    private String extractServiceName(final ResourceSpans resourceSpans) {
+        return resourceSpans.getResource().getAttributesList().stream().filter(kv -> kv.getKey().equals("service.name"))
+                .findFirst().get().getValue().getStringValue();
+    }
 
     @Test
     public void testLocalIpOnly() {
@@ -162,7 +155,7 @@ public class PeerForwarderTest {
     }
 
     @Test
-    public void testSingleRemoteIpBothLocalAndForwardedRequest() {
+    public void testSingleRemoteIpBothLocalAndForwardedRequest() throws DecoderException {
         final List<String> testIps = generateTestIps(2);
         final Channel channel = mock(Channel.class);
         final String peerIp = testIps.get(1);
@@ -192,7 +185,14 @@ public class PeerForwarderTest {
         final ExportTraceServiceRequest forwardedRequest = requestsByIp.get(peerIp).get(0);
         final List<ResourceSpans> forwardedResourceSpans = forwardedRequest.getResourceSpansList();
         assertEquals(3, forwardedResourceSpans.size());
-        // TODO: more assertion
+        forwardedResourceSpans.forEach(rs -> {
+            assertEquals(TEST_SERVICE_B, extractServiceName(rs));
+            assertEquals(1, rs.getInstrumentationLibrarySpansCount());
+            final InstrumentationLibrarySpans ils = rs.getInstrumentationLibrarySpans(0);
+            assertEquals(1, ils.getSpansCount());
+            final io.opentelemetry.proto.trace.v1.Span sp = ils.getSpans(0);
+            assertEquals(TEST_TRACE_ID_2, Hex.encodeHexString(sp.getTraceId().toByteArray()));
+        });
     }
 
     @Test
@@ -236,7 +236,14 @@ public class PeerForwarderTest {
         final ExportTraceServiceRequest forwardedRequest = requestsByIp.get(peerIp).get(0);
         final List<ResourceSpans> forwardedResourceSpans = forwardedRequest.getResourceSpansList();
         assertEquals(3, forwardedResourceSpans.size());
-        // TODO: more assertion on forwardedResourceSpans
+        forwardedResourceSpans.forEach(rs -> {
+            assertEquals(TEST_SERVICE_B, extractServiceName(rs));
+            assertEquals(1, rs.getInstrumentationLibrarySpansCount());
+            final InstrumentationLibrarySpans ils = rs.getInstrumentationLibrarySpans(0);
+            assertEquals(1, ils.getSpansCount());
+            final io.opentelemetry.proto.trace.v1.Span sp = ils.getSpans(0);
+            assertEquals(TEST_TRACE_ID_2, Hex.encodeHexString(sp.getTraceId().toByteArray()));
+        });
         Assert.assertEquals(0, exportedRecords.size());
 
         // Verify metrics

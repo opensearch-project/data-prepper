@@ -132,8 +132,8 @@ public class PeerForwarder extends AbstractPrepper<Record<Span>, Record<Span>> {
                     currRequestBuilder.addResourceSpans(rs);
                     currBatchSpans.add(span);
                 } catch (UnsupportedEncodingException | DecoderException e) {
-                    LOG.error("failed to encode span with spanId: {} into opentelemetry-protobuf due to {}, span will be exported locally.",
-                            span.getSpanId(), e.getMessage());
+                    LOG.error("failed to encode span with spanId: {} into opentelemetry-protobuf, span will be exported locally.",
+                            span.getSpanId(), e);
                     recordsToProcessLocally.add(new Record<>(span));
                 }
                 if (currBatchSpans.size() >= maxNumSpansPerRequest) {
