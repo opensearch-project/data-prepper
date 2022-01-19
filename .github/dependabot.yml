@@ -17,12 +17,37 @@ updates:
     interval: monthly
 
 - package-ecosystem: gradle
+  directory: "/data-prepper-plugins/aggregate-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/armeria-common"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
   directory: "/data-prepper-plugins/blocking-buffer"
   schedule:
     interval: monthly
 
 - package-ecosystem: gradle
   directory: "/data-prepper-plugins/common"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/drop-events-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/grok-prepper"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/http-source"
   schedule:
     interval: monthly
 
