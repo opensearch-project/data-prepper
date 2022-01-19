@@ -15,8 +15,6 @@ package com.amazon.dataprepper.integration.trace;
 import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
 import com.amazon.dataprepper.plugins.prepper.oteltracegroup.model.TraceGroup;
 import com.amazon.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
 import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.retry.RetryRule;
@@ -55,8 +53,6 @@ import java.util.concurrent.TimeUnit;
 import static org.awaitility.Awaitility.await;
 
 public class EndToEndRawSpanTest {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
     private static final int DATA_PREPPER_PORT_1 = 21890;
     private static final int DATA_PREPPER_PORT_2 = 21891;
 
@@ -133,7 +129,11 @@ public class EndToEndRawSpanTest {
                     refreshIndices(restHighLevelClient);
                     final SearchRequest searchRequest = new SearchRequest(INDEX_NAME);
                     searchRequest.source(
-                            SearchSourceBuilder.searchSource().size(100)
+                            SearchSourceBuilder.searchSource()
+                                    .size(100)
+                                    .fetchField(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD)
+                                    .fetchField(TraceGroup.TRACE_GROUP_END_TIME_FIELD, "strict_date_time")
+                                    .fetchField(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD)
                     );
                     final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
                     final List<Map<String, Object>> foundSources = getSourcesFromSearchHits(searchResponse.getHits());
@@ -171,11 +171,16 @@ public class EndToEndRawSpanTest {
         final List<Map<String, Object>> sources = new ArrayList<>();
         searchHits.forEach(hit -> {
             Map<String, Object> source = hit.getSourceAsMap();
-            // OpenSearch API identifies Number type by range, need to convert to Long
             if (source.containsKey(TraceGroup.TRACE_GROUP_NAME_FIELD)) {
-                final Map<String, Object> traceGroupFields = (Map<String, Object>) source.get("traceGroupFields");
-                final Long durationInNanos = ((Number) traceGroupFields.get("durationInNanos")).longValue();
-                traceGroupFields.put("durationInNanos", durationInNanos);
+                // Extract and replace traceGroupFields with searchHit fields to unify the representation
+                source.entrySet().removeIf(entry -> entry.getKey().startsWith("traceGroupFields"));
+                final Number statusCode = hit.field(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD).getValue();
+                // Restore trailing zeros for thousand, e.g. 2020-08-20T05:40:46.0895568Z -> 2020-08-20T05:40:46.089556800Z
+                final String endTime = Instant.parse(hit.field(TraceGroup.TRACE_GROUP_END_TIME_FIELD).getValue()).toString();
+                final Number durationInNanos = hit.field(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD).getValue();
+                source.put(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD, statusCode.intValue());
+                source.put(TraceGroup.TRACE_GROUP_END_TIME_FIELD, endTime);
+                source.put(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD, durationInNanos.longValue());
             }
             sources.add(source);
         });
@@ -281,7 +286,10 @@ public class EndToEndRawSpanTest {
         esDocSource.put("status.code", span.getStatus().getCodeValue());
         esDocSource.put("serviceName", serviceName);
         final TraceGroup traceGroup = TEST_TRACEID_TO_TRACE_GROUP.get(traceId);
-        esDocSource.putAll(OBJECT_MAPPER.convertValue(traceGroup, MAP_TYPE_REFERENCE));
+        esDocSource.put(TraceGroup.TRACE_GROUP_NAME_FIELD, traceGroup.getTraceGroup());
+        esDocSource.put(TraceGroup.TRACE_GROUP_END_TIME_FIELD, traceGroup.getTraceGroupFields().getEndTime());
+        esDocSource.put(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD, traceGroup.getTraceGroupFields().getDurationInNanos());
+        esDocSource.put(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD, traceGroup.getTraceGroupFields().getStatusCode());
 
         return esDocSource;
     }
