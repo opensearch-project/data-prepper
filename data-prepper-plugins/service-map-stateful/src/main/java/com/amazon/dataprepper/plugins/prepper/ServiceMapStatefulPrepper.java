@@ -258,18 +258,6 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<Span>, Rec
         return serviceDependencyRecords;
     }
 
-    public static void main(String[] args) {
-        final ServiceMapRelationship destinationRelationship =
-                ServiceMapRelationship.newDestinationRelationship("serviceA",
-                        "kindA", "serviceB", "resourceA", "traceGroupA");
-        final ServiceMapRelationship targetRelationship = ServiceMapRelationship.newTargetRelationship("serviceB",
-                "kindB", "serviceB", "traceGroupB", "traceGroupB");
-        final Event targetRelationshipEvent = JacksonEvent.builder().withEventType("event").withData(targetRelationship).build();
-        final Event destinationRelationshipEvent = JacksonEvent.builder().withEventType("event").withData(destinationRelationship).build();
-        System.out.println(targetRelationshipEvent.toJsonString());
-        System.out.println(destinationRelationshipEvent.toJsonString());
-    }
-
     /**
      * Checks both current and previous trace group windows for the trace id
      *
