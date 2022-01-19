@@ -16,7 +16,7 @@ import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.buffer.SizeOverflowException;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.trace.Span;
-import com.amazon.dataprepper.plugins.source.oteltrace.codec.OTelProtoCodec;
+import com.amazon.dataprepper.plugins.codec.OTelProtoCodec;
 import io.grpc.Context;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -48,7 +48,7 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
 
     private final int bufferWriteTimeoutInMillis;
-    private final OTelProtoCodec oTelProtoCodec;
+    private final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder;
     private final Buffer<Record<Span>> buffer;
 
     private final Counter requestTimeoutCounter;
@@ -61,12 +61,12 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
     private final Timer requestProcessDuration;
 
     public OTelTraceGrpcService(int bufferWriteTimeoutInMillis,
-                                final OTelProtoCodec oTelProtoCodec,
+                                final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                 final Buffer<Record<Span>> buffer,
                                 final PluginMetrics pluginMetrics) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
-        this.oTelProtoCodec = oTelProtoCodec;
+        this.oTelProtoDecoder = oTelProtoDecoder;
 
         requestTimeoutCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
@@ -97,7 +97,7 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
         payloadSizeSummary.record(request.getSerializedSize());
 
         try {
-            spans = oTelProtoCodec.parseExportTraceServiceRequest(request);
+            spans = oTelProtoDecoder.parseExportTraceServiceRequest(request);
         } catch (Exception e) {
             LOG.error("Failed to parse the request content [{}] due to:", request, e);
             badRequestsCounter.increment();

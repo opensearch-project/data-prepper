@@ -17,7 +17,7 @@ import com.amazon.dataprepper.model.buffer.SizeOverflowException;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.trace.Span;
-import com.amazon.dataprepper.plugins.source.oteltrace.codec.OTelProtoCodec;
+import com.amazon.dataprepper.plugins.codec.OTelProtoCodec;
 import com.google.protobuf.ByteString;
 import io.grpc.Status;
 import io.grpc.StatusException;
@@ -74,7 +74,7 @@ public class OTelTraceGrpcServiceTest {
     private final int bufferWriteTimeoutInMillis = 100000;
 
     @Mock
-    OTelProtoCodec mockOTelProtoCodec;
+    OTelProtoCodec.OTelProtoDecoder mockOTelProtoDecoder;
     @Mock
     PluginMetrics mockPluginMetrics;
     @Mock
@@ -124,7 +124,7 @@ public class OTelTraceGrpcServiceTest {
             return null;
         }).when(requestProcessDuration).record(ArgumentMatchers.<Runnable>any());
 
-        sut = new OTelTraceGrpcService(bufferWriteTimeoutInMillis, new OTelProtoCodec(), buffer, mockPluginMetrics);
+        sut = new OTelTraceGrpcService(bufferWriteTimeoutInMillis, new OTelProtoCodec.OTelProtoDecoder(), buffer, mockPluginMetrics);
     }
 
     @Test
@@ -176,8 +176,8 @@ public class OTelTraceGrpcServiceTest {
     public void export_BadRequest_responseObserverOnError() throws Exception {
         final String testMessage = "test message";
         final RuntimeException testException = new RuntimeException(testMessage);
-        when(mockOTelProtoCodec.parseExportTraceServiceRequest(any())).thenThrow(testException);
-        sut = new OTelTraceGrpcService(bufferWriteTimeoutInMillis, mockOTelProtoCodec, buffer, mockPluginMetrics);
+        when(mockOTelProtoDecoder.parseExportTraceServiceRequest(any())).thenThrow(testException);
+        sut = new OTelTraceGrpcService(bufferWriteTimeoutInMillis, mockOTelProtoDecoder, buffer, mockPluginMetrics);
         sut.export(SUCCESS_REQUEST, responseObserver);
 
         verifyNoInteractions(buffer);
