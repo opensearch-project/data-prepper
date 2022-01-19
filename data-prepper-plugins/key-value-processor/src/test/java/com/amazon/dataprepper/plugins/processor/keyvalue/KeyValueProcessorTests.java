@@ -23,12 +23,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.PatternSyntaxException;
 
-import static org.hamcrest.CoreMatchers.anything;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -61,7 +60,7 @@ public class KeyValueProcessorTests {
     void testSingleKvToObjectKeyValueProcessor() {
         final Record<Event> record = getMessage("key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
         assertThatKeyEquals(parsed_message, "key1", "value1");
@@ -71,7 +70,7 @@ public class KeyValueProcessorTests {
     void testMultipleKvToObjectKeyValueProcessor() {
         final Record<Event> record = getMessage("key1=value1&key2=value2");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
         assertThatKeyEquals(parsed_message, "key1", "value1");
@@ -85,7 +84,7 @@ public class KeyValueProcessorTests {
 
         final Record<Event> record = getMessage("key1=value1:_____:key2=value2");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         System.out.println(parsed_message);
         assertThat(parsed_message.size(), equalTo(2));
@@ -100,7 +99,7 @@ public class KeyValueProcessorTests {
 
         final Record<Event> record = getMessage("key1:++:value1&key2:+:value2");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
         assertThatKeyEquals(parsed_message, "key1", "value1");
@@ -110,70 +109,34 @@ public class KeyValueProcessorTests {
     @Test
     void testBadKeyValueDelimiterRegexKeyValueProcessor() {
         when(mockConfig.getKeyValueDelimiterRegex()).thenReturn("[");
-        try {
-             keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
-             assertThat("Exception should have been thrown.", keyValueProcessor, is(not(anything())));
-        }
-        catch (PatternSyntaxException e) {
-            assertThat(e.getMessage().startsWith("key_value_delimiter_regex"), is(true));
-        }
-        catch (Exception e) {
-            assertThat("Should have been PatternSyntaxException", is(true));
-        }
+        assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
     }
 
     @Test
     void testBadFieldDelimiterRegexKeyValueProcessor() {
         when(mockConfig.getFieldDelimiterRegex()).thenReturn("[");
-        try {
-            keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
-            assertThat("Exception should have been thrown.", keyValueProcessor, is(not(anything())));
-        }
-        catch (PatternSyntaxException e) {
-            assertThat(e.getMessage().startsWith("field_delimiter_regex"), is(true));
-        }
-        catch (Exception e) {
-            assertThat("Should have been PatternSyntaxException", is(true));
-        }
+        assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
     }
 
     @Test
     void testBadDeleteKeyRegexKeyValueProcessor() {
         when(mockConfig.getDeleteKeyRegex()).thenReturn("[");
-        try {
-            keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
-            assertThat("Exception should have been thrown.", keyValueProcessor, is(not(anything())));
-        }
-        catch (PatternSyntaxException e) {
-            assertThat(e.getMessage().startsWith("delete_key_regex"), is(true));
-        }
-        catch (Exception e) {
-            assertThat("Should have been PatternSyntaxException", is(true));
-        }
+        assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
     }
 
     @Test
     void testBadDeleteValueRegexKeyValueProcessor() {
         when(mockConfig.getDeleteValueRegex()).thenReturn("[");
-        try {
-            keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
-            assertThat("Exception should have been thrown.", keyValueProcessor, is(not(anything())));
-        }
-        catch (PatternSyntaxException e) {
-            assertThat(e.getMessage().startsWith("delete_value_regex"), is(true));
-        }
-        catch (Exception e) {
-            assertThat("Should have been PatternSyntaxException", is(true));
-        }
+        assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
     }
 
     @Test
     void testDuplicateKeyToArrayValueProcessor() {
         final Record<Event> record = getMessage("key1=value1&key1=value2&key1=value3");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
-        final ArrayList expectedValue = new ArrayList();
+        final ArrayList<Object> expectedValue = new ArrayList<>();
         expectedValue.add("value1");
         expectedValue.add("value2");
         expectedValue.add("value3");
@@ -185,9 +148,9 @@ public class KeyValueProcessorTests {
     void testDuplicateKeyToArrayWithNonMatchValueProcessor() {
         final Record<Event> record = getMessage("key1=value1&key1=value2&key1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
-        final ArrayList expectedValue = new ArrayList();
+        final ArrayList<Object> expectedValue = new ArrayList();
         expectedValue.add("value1");
         expectedValue.add("value2");
         expectedValue.add(null);
@@ -201,7 +164,7 @@ public class KeyValueProcessorTests {
 
         final Record<Event> record = getMessage("key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
         assertThatKeyEquals(parsed_message, "TEST_key1", "value1");
@@ -211,7 +174,7 @@ public class KeyValueProcessorTests {
     void testDefaultNonMatchValueKvProcessor() {
         final Record<Event> record = getMessage("key1+value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
         assertThatKeyEquals(parsed_message, "key1+value1", null);
@@ -223,7 +186,7 @@ public class KeyValueProcessorTests {
 
         final Record<Event> record = getMessage("key1+value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
         assertThatKeyEquals(parsed_message, "key1+value1", "BAD_MATCH");
@@ -235,7 +198,7 @@ public class KeyValueProcessorTests {
 
         final Record<Event> record = getMessage("key1+value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
         assertThatKeyEquals(parsed_message, "key1+value1", true);
@@ -247,7 +210,7 @@ public class KeyValueProcessorTests {
 
         final Record<Event> record = getMessage("key1  =value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
         assertThatKeyEquals(parsed_message, "key1", "value1");
@@ -259,7 +222,7 @@ public class KeyValueProcessorTests {
 
         final Record<Event> record = getMessage("key1=value1   &key2=value2");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
         assertThatKeyEquals(parsed_message, "key1", "value1");
@@ -273,7 +236,7 @@ public class KeyValueProcessorTests {
 
         final Record<Event> record = getMessage("key1&key2=value2");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
         assertThatKeyEquals(parsed_message, "key1", 3);
@@ -287,7 +250,7 @@ public class KeyValueProcessorTests {
 
         final Record<Event> record = getMessage("key1  =value1   & key2 = value2 ");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap parsed_message = getLinkedHashMap(editedRecords);
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(2));
         assertThatKeyEquals(parsed_message, "key1", "value1");
@@ -305,15 +268,15 @@ public class KeyValueProcessorTests {
         return buildRecordWithEvent(testData);
     }
 
-    private LinkedHashMap getLinkedHashMap(List<Record<Event>> editedRecords) {
+    private LinkedHashMap<String, Object> getLinkedHashMap(List<Record<Event>> editedRecords) {
         assertThat(editedRecords.size(), equalTo(1));
         assertThat(editedRecords.get(0), notNullValue());
-        LinkedHashMap parsed_message = editedRecords.get(0).getData().get("parsed_message", LinkedHashMap.class);
+        LinkedHashMap<String, Object> parsed_message = editedRecords.get(0).getData().get("parsed_message", LinkedHashMap.class);
         assertThat(parsed_message, notNullValue());
         return parsed_message;
     }
 
-    private void assertThatKeyEquals(final LinkedHashMap parsed_message, final String key, final Object value)
+    private void assertThatKeyEquals(final LinkedHashMap<String, Object> parsed_message, final String key, final Object value)
     {
         assertThat(parsed_message.containsKey(key), is(true));
         assertThat(parsed_message.get(key), equalTo(value));
