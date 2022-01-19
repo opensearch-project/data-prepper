@@ -26,7 +26,7 @@ dependencies {
     implementation "org.apache.commons:commons-lang3:3.12.0"
     implementation "org.bouncycastle:bcprov-jdk15on:1.69"
     implementation "org.bouncycastle:bcpkix-jdk15on:1.69"
-    testImplementation 'org.assertj:assertj-core:3.21.0'
+    testImplementation 'org.assertj:assertj-core:3.22.0'
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
     testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation("commons-io:commons-io:2.10.0")
