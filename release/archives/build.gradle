@@ -1,18 +1,12 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 plugins {
     id "de.undercouch.download" version "4.1.2" apply false
     id "jp.classmethod.aws.s3" version "0.41" apply false
 }
-
-/*
- *  SPDX-License-Identifier: Apache-2.0
- *
- *  The OpenSearch Contributors require contributions made to
- *  this file be licensed under the Apache-2.0 license or a
- *  compatible open source license.
- *
- *  Modifications Copyright OpenSearch Contributors. See
- *  GitHub history for details.
- */
 
 import com.amazonaws.services.s3.model.ObjectMetadata
 import jp.classmethod.aws.gradle.s3.AmazonS3FileUploadTask
