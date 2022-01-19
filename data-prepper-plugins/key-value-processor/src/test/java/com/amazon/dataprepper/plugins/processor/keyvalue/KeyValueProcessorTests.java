@@ -109,25 +109,29 @@ public class KeyValueProcessorTests {
     @Test
     void testBadKeyValueDelimiterRegexKeyValueProcessor() {
         when(mockConfig.getKeyValueDelimiterRegex()).thenReturn("[");
-        assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
+        PatternSyntaxException e = assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
+        assertThat(e.getMessage().startsWith("key_value_delimiter"), is(true));
     }
 
     @Test
     void testBadFieldDelimiterRegexKeyValueProcessor() {
         when(mockConfig.getFieldDelimiterRegex()).thenReturn("[");
-        assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
+        PatternSyntaxException e = assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
+        assertThat(e.getMessage().startsWith("field_delimiter"), is(true));
     }
 
     @Test
     void testBadDeleteKeyRegexKeyValueProcessor() {
         when(mockConfig.getDeleteKeyRegex()).thenReturn("[");
-        assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
+        PatternSyntaxException e = assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
+        assertThat(e.getMessage().startsWith("delete_key_regex"), is(true));
     }
 
     @Test
     void testBadDeleteValueRegexKeyValueProcessor() {
         when(mockConfig.getDeleteValueRegex()).thenReturn("[");
-        assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
+        PatternSyntaxException e = assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
+        assertThat(e.getMessage().startsWith("delete_value_regex"), is(true));
     }
 
     @Test
