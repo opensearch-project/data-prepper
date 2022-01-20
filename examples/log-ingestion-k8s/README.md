@@ -51,7 +51,7 @@ if the data-prepper is running locally, set `Host` value to be `host.docker.inte
    ```
    $ minikube service my-nginx -n my-app
    ```
-   example output:
+   The example output will be as follows:
    ```
    😿  service default/my-nginx has no node port
    🏃  Starting tunnel for service my-nginx.
@@ -61,7 +61,8 @@ if the data-prepper is running locally, set `Host` value to be `host.docker.inte
    | default   | my-nginx |             | http://127.0.0.1:62907 |
    |-----------|----------|-------------|------------------------|
    ```
-7. You could now curl the URL by
+   which exposes a random port 62907 in the above example.
+7. You could now curl the above exposed URL by
    ```
    curl http://127.0.0.1:62907
    ```
