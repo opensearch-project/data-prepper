@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.plugins.processor.aggregate;
 
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
@@ -31,6 +32,10 @@ public class AggregateProcessorConfig {
     @NotEmpty
     private String dbPath = DEFAULT_DB_PATH;
 
+    @JsonProperty("action")
+    @NotEmpty
+    private PluginModel aggregateAction;
+
     @JsonIgnore
     private File dbFile;
 
@@ -45,6 +50,8 @@ public class AggregateProcessorConfig {
     public String getDbPath() {
         return dbPath;
     }
+
+    public PluginModel getAggregateAction() { return aggregateAction; }
 
     @AssertTrue(message = "db_path is not a valid file path")
     boolean isDbPathValid() {
