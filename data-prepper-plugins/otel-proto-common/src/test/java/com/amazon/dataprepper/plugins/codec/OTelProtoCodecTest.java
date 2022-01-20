@@ -126,7 +126,7 @@ public class OTelProtoCodecTest {
                 }
                 Map<String, Object> attributes = span.getAttributes();
                 assertThat(attributes.containsKey(OTelProtoCodec.RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("service.name")), is(true));
-                assertThat(attributes.containsKey(OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME), is(true));
+                assertThat(attributes.containsKey(INSTRUMENTATION_LIBRARY_NAME), is(true));
                 assertThat(attributes.containsKey(STATUS_CODE), is(true));
             }
         }
@@ -276,14 +276,14 @@ public class OTelProtoCodecTest {
             final InstrumentationLibrary il4 = InstrumentationLibrary.newBuilder().build();
 
             assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).size(), equalTo(2));
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME), equalTo(il1.getName()));
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_VERSION), equalTo(il1.getVersion()));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).get(INSTRUMENTATION_LIBRARY_NAME), equalTo(il1.getName()));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).get(INSTRUMENTATION_LIBRARY_VERSION), equalTo(il1.getVersion()));
 
             assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il2).size(), equalTo(1));
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il2).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME), equalTo(il2.getName()));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il2).get(INSTRUMENTATION_LIBRARY_NAME), equalTo(il2.getName()));
 
             assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il3).size(), equalTo(1));
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il3).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_VERSION), equalTo(il3.getVersion()));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il3).get(INSTRUMENTATION_LIBRARY_VERSION), equalTo(il3.getVersion()));
 
             assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il4).isEmpty(), is(true));
         }
@@ -297,7 +297,7 @@ public class OTelProtoCodecTest {
 
             assertThat(decoderUnderTest.getSpanStatusAttributes(st1).size(), equalTo(2));
             assertThat(Status.StatusCode.forNumber((Integer) decoderUnderTest.getSpanStatusAttributes(st1).get(STATUS_CODE)), equalTo(st1.getCode()));
-            assertThat(decoderUnderTest.getSpanStatusAttributes(st1).get(OTelProtoCodec.STATUS_MESSAGE), equalTo(st1.getMessage()));
+            assertThat(decoderUnderTest.getSpanStatusAttributes(st1).get(STATUS_MESSAGE), equalTo(st1.getMessage()));
 
             assertThat(decoderUnderTest.getSpanStatusAttributes(st2).size(), equalTo(2));
             assertThat(Status.StatusCode.forNumber((Integer) decoderUnderTest.getSpanStatusAttributes(st2).get(STATUS_CODE)), equalTo(st2.getCode()));
