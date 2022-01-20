@@ -16,7 +16,11 @@ Kubernetes cluster.
 ## Getting started
 
 ### Prerequisite
-A Data-Prepper endpoint with [example_log_pipeline.yaml](data-prepper-pipeline-config/example_log_pipeline.yaml) configured.
+A Data-Prepper endpoint with [example_log_pipeline.yaml](data-prepper-pipeline-config/example_log_pipeline.yaml) configured. For example, you could run data-prepper via docker:
+
+```
+docker run -p 2021:2021 -p 4900:4900 --name data-prepper -v ${PWD}/data-prepper-pipeline-config/example_log_pipeline.yaml:/usr/share/data-prepper/pipelines.yaml opensearchproject/data-prepper:latest
+```
 
 ### Steps
 1. Install [Docker](https://docs.docker.com/get-docker/).
