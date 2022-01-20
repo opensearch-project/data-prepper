@@ -29,7 +29,7 @@ docker run -p 2021:2021 -p 4900:4900 --name data-prepper -v ${PWD}/data-prepper-
     2. https://minikube.sigs.k8s.io/docs/start/
 Notice that this demo uses minikube > 1.21.
 3. Replace the `Host` value in `output-data-prepper.conf` in [fluent-bit-05-configmap.yaml](fluent-bit-05-configmap.yaml) with your Data-Prepper endpoint. For example,
-if the data-prepper is running locally, set `Host` value to be `host.docker.internal`.
+if the data-prepper is running locally, set `Host` value to be `host.docker.internal` (hostname to access docker host on MacOS/Windows) or 172.17.0.1 (docker host ip on Linux).
 4. `minikube start`
 5. You could run `kubectl apply -f .` to deploy everything or run step-by-step as follows:
    1. Deploy two `nginx` pods as sample application in `my-app` namespace and expose them as `my-nginx` service:
@@ -105,3 +105,7 @@ The deployed `nginx` pods will generate apache logs accordingly and Fluent Bit D
    ```
    minikube stop
    ```
+   
+## Reference
+
+* https://github.com/fluent/fluent-bit-kubernetes-logging
