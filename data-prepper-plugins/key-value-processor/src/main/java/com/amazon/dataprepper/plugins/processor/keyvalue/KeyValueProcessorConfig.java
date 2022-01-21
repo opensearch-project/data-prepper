@@ -12,8 +12,8 @@ import jakarta.validation.constraints.NotNull;
 public class KeyValueProcessorConfig {
     static final String DEFAULT_SOURCE = "message";
     static final String DEFAULT_DESTINATION = "parsed_message";
-    static final String DEFAULT_FIELD_SPLIT_CHARACTERS = "&";
-    static final String DEFAULT_KEY_VALUE_DELIMITER_REGEX = "=";
+    public static final String DEFAULT_FIELD_SPLIT_CHARACTERS = "&";
+    public static final String DEFAULT_VALUE_SPLIT_CHARACTERS = "=";
     static final Object DEFAULT_NON_MATCH_VALUE = null;
     static final String DEFAULT_PREFIX = "";
     static final String DEFAULT_DELETE_KEY_REGEX = "";
@@ -33,8 +33,10 @@ public class KeyValueProcessorConfig {
     private String fieldSplitCharacters = DEFAULT_FIELD_SPLIT_CHARACTERS;
 
     @JsonProperty("key_value_delimiter_regex")
-    @NotEmpty
-    private String keyValueDelimiterRegex = DEFAULT_KEY_VALUE_DELIMITER_REGEX;
+    private String keyValueDelimiterRegex;
+
+    @JsonProperty("value_split_characters")
+    private String valueSplitCharacters = DEFAULT_VALUE_SPLIT_CHARACTERS;
 
     @JsonProperty("non_match_value")
     private Object nonMatchValue = DEFAULT_NON_MATCH_VALUE;
@@ -68,6 +70,10 @@ public class KeyValueProcessorConfig {
 
     public String getKeyValueDelimiterRegex() {
         return keyValueDelimiterRegex;
+    }
+
+    public String getValueSplitCharacters() {
+        return valueSplitCharacters;
     }
 
     public Object getNonMatchValue() {
