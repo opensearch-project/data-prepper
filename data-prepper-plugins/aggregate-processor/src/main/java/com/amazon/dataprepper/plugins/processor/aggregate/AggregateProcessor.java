@@ -21,8 +21,6 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 @DataPrepperPlugin(name = "aggregate", pluginType = Processor.class, pluginConfigurationType = AggregateProcessorConfig.class)
 public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -35,7 +33,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
 
     @DataPrepperPluginConstructor
     public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
-        this(aggregateProcessorConfig, pluginMetrics, pluginFactory, new GroupStateManager(), new AggregateIdentificationKeysHasher());
+        this(aggregateProcessorConfig, pluginMetrics, pluginFactory, new GroupStateManager(), new AggregateIdentificationKeysHasher(aggregateProcessorConfig.getIdentificationKeys()));
     }
     public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final GroupStateManager groupStateManager, final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher) {
         super(pluginMetrics);
@@ -57,14 +55,16 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
 
         for (final Record<Event> record : records) {
             final Event event = record.getData();
-            final Map<Object, Object> identificationKeysHash = aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event, aggregateProcessorConfig.getIdentificationKeys());
-            final Map<Object, Object> groupStateForEvent = groupStateManager.getGroupState(identificationKeysHash);
+            final AggregateIdentificationKeysHasher.IdentificationHash identificationKeysHash = aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event);
+            final GroupState groupStateForEvent = groupStateManager.getGroupState(identificationKeysHash);
 
-            final AggregateActionResponse handleEventResponse = aggregateAction.handleEvent(event, groupStateForEvent);
+            final AggregateActionResponse handleEventResponse = aggregateAction.handleEvent(event, groupStateForEvent.getGroupState());
 
-            final Optional<Event> aggregateActionResponseEvent = Optional.ofNullable(handleEventResponse.getEvent());
-            aggregateActionResponseEvent.ifPresent(value -> recordsOut.add(new Record<>(value, record.getMetadata())));
+            final Event aggregateActionResponseEvent = handleEventResponse.getEvent();
 
+            if (aggregateActionResponseEvent != null) {
+                recordsOut.add(new Record<>(aggregateActionResponseEvent, record.getMetadata()));
+            }
         }
         return recordsOut;
     }

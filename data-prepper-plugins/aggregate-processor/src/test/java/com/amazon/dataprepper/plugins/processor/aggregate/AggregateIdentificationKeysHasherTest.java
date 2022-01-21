@@ -32,7 +32,7 @@ public class AggregateIdentificationKeysHasherTest {
     }
 
     private AggregateIdentificationKeysHasher createObjectUnderTest() {
-        return new AggregateIdentificationKeysHasher();
+        return new AggregateIdentificationKeysHasher(identificationKeys);
     }
 
     @Test
@@ -51,7 +51,7 @@ public class AggregateIdentificationKeysHasherTest {
                 .withData(eventMap)
                 .build();
 
-        final Map<Object, Object> result = aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event, identificationKeys);
+        final AggregateIdentificationKeysHasher.IdentificationHash result = aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event);
         assertThat(result, equalTo(expectedResult));
     }
 
@@ -71,7 +71,7 @@ public class AggregateIdentificationKeysHasherTest {
                 .withData(eventMap)
                 .build();
 
-        final Map<Object, Object> result = aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event, identificationKeys);
+        final AggregateIdentificationKeysHasher.IdentificationHash result = aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event);
         assertThat(result, equalTo(expectedResult));
     }
 }

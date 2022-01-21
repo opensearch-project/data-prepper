@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 
 import java.io.File;
 import java.util.List;
@@ -33,7 +34,7 @@ public class AggregateProcessorConfig {
     private String dbPath = DEFAULT_DB_PATH;
 
     @JsonProperty("action")
-    @NotEmpty
+    @NotNull
     private PluginModel aggregateAction;
 
     @JsonIgnore
