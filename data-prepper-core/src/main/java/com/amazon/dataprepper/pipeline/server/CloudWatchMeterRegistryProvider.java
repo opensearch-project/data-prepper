@@ -55,22 +55,17 @@ public class CloudWatchMeterRegistryProvider {
      * Returns CloudWatchConfig using the properties from {@link #CLOUDWATCH_PROPERTIES}
      */
     private CloudWatchConfig createCloudWatchConfig(final String cloudWatchPropertiesFilePath) {
-        CloudWatchConfig cloudWatchConfig = null;
         try (final InputStream inputStream = requireNonNull(getClass().getClassLoader()
                 .getResourceAsStream(cloudWatchPropertiesFilePath))) {
             final Properties cloudwatchProperties = new Properties();
             cloudwatchProperties.load(inputStream);
-            cloudWatchConfig = new CloudWatchConfig() {
-                @Override
-                public String get(final String key) {
-                    return cloudwatchProperties.getProperty(key);
-                }
-            };
-        } catch (IOException ex) {
+            return cloudwatchProperties::getProperty;
+        } catch (final IOException ex) {
             LOG.error("Encountered exception in creating CloudWatchConfig for CloudWatchMeterRegistry, " +
                     "Proceeding without metrics", ex);
+
             //If there is no registry attached, micrometer will make NoopMeters which are discarded.
+            return null;
         }
-        return cloudWatchConfig;
     }
 }
