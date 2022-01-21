@@ -55,6 +55,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -335,13 +336,8 @@ public class PeerForwarderTest {
     public void testSingleRemoteIpForwardRequestEncodeError() throws NoSuchFieldException, IllegalAccessException,
             DecoderException, UnsupportedEncodingException {
         final List<String> testIps = generateTestIps(2);
-        final Channel channel = mock(Channel.class);
         final String peerIp = testIps.get(1);
-        final String fullPeerIp = String.format("%s:21890", peerIp);
-        when(channel.authority()).thenReturn(fullPeerIp);
         when(peerClientPool.getClient(peerIp)).thenReturn(client);
-        when(client.export(any(ExportTraceServiceRequest.class))).thenThrow(new RuntimeException());
-        when(client.getChannel()).thenReturn(channel);
 
         MetricsTestUtil.initMetrics();
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
@@ -351,6 +347,7 @@ public class PeerForwarderTest {
         final List<Record<Span>> exportedRecords = testPeerForwarder
                 .doExecute(TEST_SPANS_B.stream().map(Record::new).collect(Collectors.toList()));
 
+        verifyNoInteractions(client);
         Assert.assertEquals(3, exportedRecords.size());
         final List<Span> exportedSpans = exportedRecords.stream().map(Record::getData).collect(Collectors.toList());
         assertTrue(exportedSpans.containsAll(TEST_SPANS_B));
