@@ -15,7 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -35,9 +34,9 @@ class PipelineParserConfigurationTest {
         when(args.getPipelineConfigFileLocation())
                 .thenReturn(pipelineConfigFileLocation);
 
-        PipelineParser pipelineParser = pipelineParserConfiguration.pipelineParser(args, pluginFactory);
+        final PipelineParser pipelineParser = pipelineParserConfiguration.pipelineParser(args, pluginFactory);
 
         assertThat(pipelineParser, is(notNullValue()));
-        verify(args, times(1)).getPipelineConfigFileLocation();
+        verify(args).getPipelineConfigFileLocation();
     }
 }

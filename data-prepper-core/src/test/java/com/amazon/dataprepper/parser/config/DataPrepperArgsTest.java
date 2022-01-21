@@ -24,7 +24,7 @@ class DataPrepperArgsTest {
 
     @Test
     public void testGivenSingleArgumentThenAssignedToPipelineConfig() {
-        DataPrepperArgs args = new DataPrepperArgs(PIPELINE_FILE_PATH);
+        final DataPrepperArgs args = new DataPrepperArgs(PIPELINE_FILE_PATH);
 
         assertThat(args, is(notNullValue()));
         assertThat(args.getPipelineConfigFileLocation(), is(PIPELINE_FILE_PATH));
@@ -33,7 +33,7 @@ class DataPrepperArgsTest {
 
     @Test
     public void testGivenTwoArgumentThenAssignedCorrectly() {
-        DataPrepperArgs args = new DataPrepperArgs(PIPELINE_FILE_PATH, DP_CONFIG_YAML_FILE_PATH);
+        final DataPrepperArgs args = new DataPrepperArgs(PIPELINE_FILE_PATH, DP_CONFIG_YAML_FILE_PATH);
 
         assertThat(args, is(notNullValue()));
         assertThat(args.getPipelineConfigFileLocation(), is(PIPELINE_FILE_PATH));
@@ -51,12 +51,19 @@ class DataPrepperArgsTest {
     public void testGivenNoArgumentThenThrowException() {
         assertThrows(
                 IllegalArgumentException.class,
-                () -> new DataPrepperArgs());
+                () -> new DataPrepperArgs(new String[]{}));
+    }
+
+    @Test
+    public void testGivenNullArgumentThenThrowException() {
+        assertThrows(
+                IllegalArgumentException.class,
+                DataPrepperArgs::new);
     }
 
     @Test
     public void testGivenLogstashConfigPathThenPipelineConfigCreated() {
-        DataPrepperArgs args = new DataPrepperArgs(LOGSTASH_PIPELINE_FILE_PATH, DP_CONFIG_YAML_FILE_PATH);
+        final DataPrepperArgs args = new DataPrepperArgs(LOGSTASH_PIPELINE_FILE_PATH, DP_CONFIG_YAML_FILE_PATH);
 
         assertThat(args, is(notNullValue()));
         assertThat(

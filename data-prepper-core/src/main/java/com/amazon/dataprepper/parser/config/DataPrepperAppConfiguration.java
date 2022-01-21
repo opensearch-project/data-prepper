@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.parser.config;
 
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -29,7 +30,7 @@ public class DataPrepperAppConfiguration {
         LOG.info("Command line args: {}", commandLineArgs);
 
         if (commandLineArgs != null) {
-            String[] args = commandLineArgs.split(COMMAND_LINE_ARG_DELIMITER);
+            final String[] args = commandLineArgs.split(COMMAND_LINE_ARG_DELIMITER);
             return new DataPrepperArgs(args);
         }
         else {
@@ -54,5 +55,10 @@ public class DataPrepperAppConfiguration {
         else {
             return new DataPrepperConfiguration();
         }
+    }
+
+    @Bean
+    public PluginModel authentication(final DataPrepperConfiguration dataPrepperConfiguration) {
+        return dataPrepperConfiguration.getAuthentication();
     }
 }
