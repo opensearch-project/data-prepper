@@ -47,6 +47,7 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getSource()).thenReturn(defaultConfig.getSource());
         lenient().when(mockConfig.getDestination()).thenReturn(defaultConfig.getDestination());
         lenient().when(mockConfig.getFieldDelimiterRegex()).thenReturn(defaultConfig.getFieldDelimiterRegex());
+        lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(defaultConfig.getFieldSplitCharacters());
         lenient().when(mockConfig.getKeyValueDelimiterRegex()).thenReturn(defaultConfig.getKeyValueDelimiterRegex());
         lenient().when(mockConfig.getNonMatchValue()).thenReturn(defaultConfig.getNonMatchValue());
         lenient().when(mockConfig.getPrefix()).thenReturn(defaultConfig.getPrefix());
@@ -163,6 +164,40 @@ public class KeyValueProcessorTests {
     }
 
     @Test
+    void testFieldSplitCharactersKeyValueProcessor() {
+        when(mockConfig.getFieldSplitCharacters()).thenReturn("&!");
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("key1=value1&key1=value2!key1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        final ArrayList<Object> expectedValue = new ArrayList();
+        expectedValue.add("value1");
+        expectedValue.add("value2");
+        expectedValue.add(null);
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", expectedValue);
+    }
+
+    @Test
+    void testFieldSplitCharactersDoesntSupercedeDelimiterKeyValueProcessor() {
+        when(mockConfig.getFieldDelimiterRegex()).thenReturn(":d+:");
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("key1=value1:d:key1=value2:d:key1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        final ArrayList<Object> expectedValue = new ArrayList();
+        expectedValue.add("value1");
+        expectedValue.add("value2");
+        expectedValue.add(null);
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", expectedValue);
+    }
+
+    @Test
     void testCustomPrefixKvProcessor() {
         when(mockConfig.getPrefix()).thenReturn("TEST_");
 
@@ -252,7 +287,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getDeleteKeyRegex()).thenReturn("\\s");
         when(mockConfig.getDeleteValueRegex()).thenReturn("\\s");
 
-        final Record<Event> record = getMessage("key1  =value1   & key2 = value2 ");
+        final Record<Event> record = getMessage("key1  =value1  &  key2 = value2 ");
         final List<Record<Event>> editedRecords = (List<Record<Event>>)keyValueProcessor.doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 

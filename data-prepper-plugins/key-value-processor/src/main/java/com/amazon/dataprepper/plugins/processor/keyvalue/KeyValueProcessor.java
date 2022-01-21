@@ -30,7 +30,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private final KeyValueProcessorConfig keyValueProcessorConfig;
 
-    private final Pattern fieldDelimiterPattern;
+    private Pattern fieldDelimiterPattern = null;
     private final Pattern keyValueDelimiterPattern;
 
     @DataPrepperPluginConstructor
@@ -38,12 +38,32 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         super(pluginMetrics);
         this.keyValueProcessorConfig = keyValueProcessorConfig;
 
-        if(!validateRegex(keyValueProcessorConfig.getFieldDelimiterRegex())) {
-            throw new PatternSyntaxException("field_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getFieldDelimiterRegex(), -1);
+        if(keyValueProcessorConfig.getFieldDelimiterRegex() != null
+            && !Objects.equals(keyValueProcessorConfig.getFieldDelimiterRegex(), "")) {
+            if(!validateRegex(keyValueProcessorConfig.getFieldDelimiterRegex())) {
+                throw new PatternSyntaxException("field_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getFieldDelimiterRegex(), -1);
+            }
+
+            fieldDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getFieldDelimiterRegex());
+        } else {
+            char[] splitters = keyValueProcessorConfig.getFieldSplitCharacters().toCharArray();
+            StringBuilder regexedFieldSplitCharacters = new StringBuilder();
+            for(char c : splitters) {
+                if(Objects.equals(c, '\\')) {
+                    regexedFieldSplitCharacters.append(c);
+                } else {
+                    regexedFieldSplitCharacters.append(c).append('|');
+                }
+            }
+
+            regexedFieldSplitCharacters = new StringBuilder(regexedFieldSplitCharacters.substring(0, regexedFieldSplitCharacters.length() - 1));
+            fieldDelimiterPattern = Pattern.compile(regexedFieldSplitCharacters.toString());
         }
 
         if(!validateRegex(keyValueProcessorConfig.getKeyValueDelimiterRegex())) {
             throw new PatternSyntaxException("key_value_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getKeyValueDelimiterRegex(), -1);
+        } else {
+            keyValueDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getKeyValueDelimiterRegex());
         }
 
         if(!validateRegex(keyValueProcessorConfig.getDeleteKeyRegex())) {
@@ -53,9 +73,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         if(!validateRegex(keyValueProcessorConfig.getDeleteValueRegex())) {
             throw new PatternSyntaxException("delete_value_regex is not a valid regex string", keyValueProcessorConfig.getDeleteValueRegex(), -1);
         }
-
-        fieldDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getFieldDelimiterRegex());
-        keyValueDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getKeyValueDelimiterRegex());
     }
 
     private boolean validateRegex(final String pattern)
