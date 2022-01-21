@@ -6,6 +6,7 @@
 package com.amazon.dataprepper.parser.config;
 
 import com.amazon.dataprepper.TestDataProvider;
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -24,7 +25,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -79,7 +79,7 @@ class DataPrepperAppConfigurationTest {
 
         final DataPrepperConfiguration configuration = appConfiguration.dataPrepperConfiguration(dataPrepperArgs, objectMapper);
 
-        verify(dataPrepperArgs, times(1))
+        verify(dataPrepperArgs)
                 .getDataPrepperConfigFileLocation();
         assertThat(configuration, notNullValue());
     }
@@ -114,5 +114,29 @@ class DataPrepperAppConfigurationTest {
 
 
         assertThrows(IllegalArgumentException.class, () -> appConfiguration.dataPrepperConfiguration(dataPrepperArgs, objectMapper));
+    }
+
+    @Test
+    public void testPluginModelFromDataPrepperConfigurationAuthentication() {
+        final DataPrepperConfiguration configuration = mock(DataPrepperConfiguration.class);
+
+        final PluginModel pluginModel = appConfiguration.authentication(configuration);
+
+        assertThat(pluginModel, is(nullValue()));
+        verify(configuration).getAuthentication();
+    }
+
+    @Test
+    public void testGivenReturnAuthenticationThenBeanShouldEqualAuthentication() {
+        final DataPrepperConfiguration configuration = mock(DataPrepperConfiguration.class);
+        final PluginModel expected = mock(PluginModel.class);
+
+        when(configuration.getAuthentication())
+                .thenReturn(expected);
+
+        final PluginModel pluginModel = appConfiguration.authentication(configuration);
+
+        assertThat(pluginModel, is(expected));
+        verify(configuration).getAuthentication();
     }
 }

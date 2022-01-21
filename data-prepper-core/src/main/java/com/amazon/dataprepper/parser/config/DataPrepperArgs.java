@@ -31,7 +31,7 @@ public class DataPrepperArgs {
             try {
                 configurationFileLocation = logstashConfigConverter.convertLogstashConfigurationToPipeline(
                         configurationFileLocation, String.valueOf(configurationDirectory));
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 LOG.warn("Unable to read the Logstash configuration file", e);
                 throw new IllegalArgumentException("Invalid Logstash configuration file", e);
             }
@@ -51,7 +51,7 @@ public class DataPrepperArgs {
                     "Data Prepper supports a maximum of " + MAXIMUM_SUPPORTED_NUMBER_OF_ARGS + " command line arguments");
         }
 
-        String configurationFileLocation = args[DATA_PREPPER_PIPELINE_CONFIG_POSITON];
+        final String configurationFileLocation = args[DATA_PREPPER_PIPELINE_CONFIG_POSITON];
         LOG.info("Using {} configuration file", configurationFileLocation);
 
         this.pipelineConfigFileLocation = DataPrepperArgs.checkForLogstashConfigurationAndConvert(configurationFileLocation);

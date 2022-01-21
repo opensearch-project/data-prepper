@@ -25,7 +25,6 @@ import java.util.Map;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -70,7 +69,7 @@ public class DataPrepperTests {
 
     @Test
     public void testGivenInvalidInputThenExceptionThrown() {
-        PipelineParser pipelineParser = mock(PipelineParser.class);
+        final PipelineParser pipelineParser = mock(PipelineParser.class);
 
         assertThrows(
                 RuntimeException.class,
@@ -92,23 +91,23 @@ public class DataPrepperTests {
     public void testGivenValidPipelineParserWhenExecuteThenAllPipelinesExecuteAndServerStartAndReturnTrue() {
         assertThat(dataPrepper.execute(), Matchers.is(true));
 
-        verify(pipeline, times(1)).execute();
-        verify(dataPrepperServer, times(1)).start();
+        verify(pipeline).execute();
+        verify(dataPrepperServer).start();
     }
 
     @Test
     public void testDataPrepperShutdown() {
         dataPrepper.shutdown();
-        verify(pipeline, times(1)).shutdown();
+        verify(pipeline).shutdown();
     }
 
     @Test
     public void testDataPrepperShutdownPipeline() {
-        Pipeline randomPipeline = mock(Pipeline.class);
+        final Pipeline randomPipeline = mock(Pipeline.class);
         parseConfigurationFixture.put("Random Pipeline", randomPipeline);
         dataPrepper.shutdown("Random Pipeline");
 
-        verify(randomPipeline, times(1)).shutdown();
+        verify(randomPipeline).shutdown();
     }
 
     @Test
@@ -120,12 +119,12 @@ public class DataPrepperTests {
     public void testShutdownDataPrepperServer() {
         dataPrepper.shutdownDataPrepperServer();
 
-        verify(dataPrepperServer, times(1)).stop();
+        verify(dataPrepperServer).stop();
     }
     
     @Test
     public void testGivenEnvVarNotSetThenDefaultServiceNameReturned() {
-        String actual = DataPrepper.getServiceNameForMetrics();
+        final String actual = DataPrepper.getServiceNameForMetrics();
 
         assertThat(actual, Matchers.is("dataprepper"));
     }

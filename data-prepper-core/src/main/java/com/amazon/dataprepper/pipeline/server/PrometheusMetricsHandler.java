@@ -13,13 +13,14 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.nio.charset.StandardCharsets;
 
 /**
  * HttpHandler to handle requests for Prometheus metrics
  */
 public class PrometheusMetricsHandler implements HttpHandler {
 
-    private PrometheusMeterRegistry prometheusMeterRegistry;
+    private final PrometheusMeterRegistry prometheusMeterRegistry;
     private final Logger LOG = LoggerFactory.getLogger(PrometheusMetricsHandler.class);
 
     public PrometheusMetricsHandler(final PrometheusMeterRegistry prometheusMeterRegistry) {
@@ -27,13 +28,13 @@ public class PrometheusMetricsHandler implements HttpHandler {
     }
 
     @Override
-    public void handle(HttpExchange exchange) throws IOException {
+    public void handle(final HttpExchange exchange) throws IOException {
         try {
-            byte response[] = prometheusMeterRegistry.scrape().getBytes("UTF-8");
+            final byte[] response = prometheusMeterRegistry.scrape().getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "text/plain; charset=UTF-8");
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
             exchange.getResponseBody().write(response);
-        } catch (Exception e) {
+        } catch (final Exception e) {
             LOG.error("Encountered exception scraping prometheus meter registry", e);
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_INTERNAL_ERROR, 0);
         } finally {
