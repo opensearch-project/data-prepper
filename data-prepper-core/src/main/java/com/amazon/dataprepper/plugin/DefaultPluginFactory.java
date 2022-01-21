@@ -102,7 +102,6 @@ public class DefaultPluginFactory implements PluginFactory {
         return new PluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
                 .withPluginConfiguration(configuration)
-                .withPluginSetting(pluginSetting)
                 .withPluginFactory(this)
                 .build();
     }
