@@ -10,6 +10,7 @@ import com.amazon.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import com.amazon.dataprepper.plugins.TestPlugin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,7 +38,11 @@ class DefaultPluginFactoryIT {
     }
 
     private DefaultPluginFactory createObjectUnderTest() {
-        return new DefaultPluginFactory();
+        final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+        context.scan(DefaultPluginFactory.class.getPackage().getName());
+        context.refresh();
+
+        return context.getBean(DefaultPluginFactory.class);
     }
 
     @Test
