@@ -104,6 +104,20 @@ public class KeyValueProcessorTests {
     }
 
     @Test
+    void testBothKeyValuesDefinedErrorKeyValueProcessor() {
+        when(mockConfig.getKeyValueDelimiterRegex()).thenReturn(":\\+*:");
+
+        assertThrows(IllegalArgumentException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
+    }
+
+    @Test
+    void testBothFieldsDefinedErrorKeyValueProcessor() {
+        when(mockConfig.getFieldDelimiterRegex()).thenReturn(":\\+*:");
+
+        assertThrows(IllegalArgumentException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
+    }
+
+    @Test
     void testSingleRegexKvDelimiterKvToObjectKeyValueProcessor() {
         when(mockConfig.getKeyValueDelimiterRegex()).thenReturn(":\\+*:");
         when(mockConfig.getValueSplitCharacters()).thenReturn(null);
