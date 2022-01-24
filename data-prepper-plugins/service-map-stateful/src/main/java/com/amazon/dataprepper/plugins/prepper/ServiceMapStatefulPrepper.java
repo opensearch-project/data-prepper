@@ -14,14 +14,16 @@ package com.amazon.dataprepper.plugins.prepper;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.SingleThread;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
+import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.plugins.prepper.state.MapDbPrepperState;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.SignedBytes;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,15 +42,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @SingleThread
 @DataPrepperPlugin(name = "service_map_stateful", pluginType = Prepper.class)
-public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
+public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<Span>, Record<Event>> {
 
     public static final String SPANS_DB_SIZE = "spansDbSize";
     public static final String TRACE_GROUP_DB_SIZE = "traceGroupDbSize";
 
     private static final Logger LOG = LoggerFactory.getLogger(ServiceMapStatefulPrepper.class);
     private static final String EMPTY_SUFFIX = "-empty";
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final Collection<Record<String>> EMPTY_COLLECTION = Collections.emptySet();
+    private static final Collection<Record<Event>> EMPTY_COLLECTION = Collections.emptySet();
     private static final Integer TO_MILLIS = 1_000;
 
     // TODO: This should not be tracked in this class, move it up to the creator
@@ -127,41 +128,37 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
      * added to the service map index. Otherwise, returns an empty set.
      */
     @Override
-    public Collection<Record<String>> doExecute(Collection<Record<ExportTraceServiceRequest>> records) {
-        final Collection<Record<String>> relationships = windowDurationHasPassed() ? evaluateEdges() : EMPTY_COLLECTION;
+    public Collection<Record<Event>> doExecute(Collection<Record<Span>> records) {
+        final Collection<Record<Event>> relationships = windowDurationHasPassed() ? evaluateEdges() : EMPTY_COLLECTION;
         final Map<byte[], ServiceMapStateData> batchStateData = new TreeMap<>(SignedBytes.lexicographicalComparator());
-        records.forEach(i -> i.getData().getResourceSpansList().forEach(resourceSpans -> {
-            OTelHelper.getServiceName(resourceSpans.getResource()).ifPresent(serviceName -> resourceSpans.getInstrumentationLibrarySpansList().forEach(
-                    instrumentationLibrarySpans -> {
-                        instrumentationLibrarySpans.getSpansList().forEach(
-                                span -> {
-                                    if (OTelHelper.checkValidSpan(span)) {
-                                        try {
-                                            batchStateData.put(
-                                                    span.getSpanId().toByteArray(),
-                                                    new ServiceMapStateData(
-                                                            serviceName,
-                                                            span.getParentSpanId().isEmpty() ? null : span.getParentSpanId().toByteArray(),
-                                                            span.getTraceId().toByteArray(),
-                                                            span.getKind().name(),
-                                                            span.getName()));
-                                        } catch (RuntimeException e) {
-                                            LOG.error("Caught exception trying to put service map state data into batch", e);
-                                        }
-                                        if (span.getParentSpanId().isEmpty()) {
-                                            try {
-                                                currentTraceGroupWindow.put(span.getTraceId().toByteArray(), span.getName());
-                                            } catch (RuntimeException e) {
-                                                LOG.error("Caught exception trying to put trace group name", e);
-                                            }
-                                        }
-                                    } else {
-                                        LOG.warn("Invalid span received");
-                                    }
-                                });
+        records.forEach(record -> {
+            final Span span = record.getData();
+            if (span.getServiceName() != null) {
+                final String serviceName = span.getServiceName();
+                final String spanId = span.getSpanId();
+                final String traceId = span.getTraceId();
+                final String parentSpanId = span.getParentSpanId();
+                try {
+                    batchStateData.put(
+                            Hex.decodeHex(spanId),
+                            new ServiceMapStateData(
+                                    serviceName,
+                                    parentSpanId.isEmpty()? null : Hex.decodeHex(parentSpanId),
+                                    Hex.decodeHex(traceId),
+                                    span.getKind(),
+                                    span.getName()));
+                } catch (Exception e) {
+                    LOG.error("Caught exception trying to put service map state data into batch", e);
+                }
+                if (parentSpanId.isEmpty()) {
+                    try {
+                        currentTraceGroupWindow.put(Hex.decodeHex(traceId), span.getName());
+                    } catch (Exception e) {
+                        LOG.error("Caught exception trying to put trace group name", e);
                     }
-            ));
-        }));
+                }
+            }
+        });
         try {
             currentWindow.putAll(batchStateData);
         } catch (RuntimeException e) {
@@ -175,10 +172,10 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
      *
      * @return Set of Record<String> containing json representation of ServiceMapRelationships found
      */
-    private Collection<Record<String>> evaluateEdges() {
+    private Collection<Record<Event>> evaluateEdges() {
         LOG.info("Evaluating service map edges");
         try {
-            final Collection<Record<String>> serviceDependencyRecords = new HashSet<>();
+            final Collection<Record<Event>> serviceDependencyRecords = new HashSet<>();
 
             serviceDependencyRecords.addAll(iteratePrepperState(previousWindow));
             serviceDependencyRecords.addAll(iteratePrepperState(currentWindow));
@@ -200,8 +197,8 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
         }
     }
 
-    private Collection<Record<String>> iteratePrepperState(final MapDbPrepperState<ServiceMapStateData> prepperState) {
-        final Collection<Record<String>> serviceDependencyRecords = new HashSet<>();
+    private Collection<Record<Event>> iteratePrepperState(final MapDbPrepperState<ServiceMapStateData> prepperState) {
+        final Collection<Record<Event>> serviceDependencyRecords = new HashSet<>();
 
         if (prepperState.getAll() != null && !prepperState.getAll().isEmpty()) {
             prepperState.getIterator(preppersCreated.get(), thisPrepperId).forEachRemaining(entry -> {
@@ -232,7 +229,11 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
                 // check if relationshipState has it
                 if (!RELATIONSHIP_STATE.contains(destinationRelationship)) {
                     try {
-                        serviceDependencyRecords.add(new Record<>(OBJECT_MAPPER.writeValueAsString(destinationRelationship)));
+                        final Event destinationRelationshipEvent = JacksonEvent.builder()
+                                .withEventType("event")
+                                .withData(destinationRelationship)
+                                .build();
+                        serviceDependencyRecords.add(new Record<>(destinationRelationshipEvent));
                         RELATIONSHIP_STATE.add(destinationRelationship);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
@@ -241,7 +242,11 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<ExportTrac
 
                 if (!RELATIONSHIP_STATE.contains(targetRelationship)) {
                     try {
-                        serviceDependencyRecords.add(new Record<>(OBJECT_MAPPER.writeValueAsString(targetRelationship)));
+                        final Event targetRelationshipEvent = JacksonEvent.builder()
+                                .withEventType("event")
+                                .withData(targetRelationship)
+                                .build();
+                        serviceDependencyRecords.add(new Record<>(targetRelationshipEvent));
                         RELATIONSHIP_STATE.add(targetRelationship);
                     } catch (Exception e) {
                         throw new RuntimeException(e);
