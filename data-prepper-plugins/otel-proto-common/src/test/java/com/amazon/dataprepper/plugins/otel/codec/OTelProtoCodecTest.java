@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.plugins.codec;
+package com.amazon.dataprepper.plugins.otel.codec;
 
 import com.amazon.dataprepper.model.trace.DefaultLink;
 import com.amazon.dataprepper.model.trace.DefaultSpanEvent;
@@ -50,16 +50,6 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.INSTRUMENTATION_LIBRARY_VERSION;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.OTelProtoEncoder.RESOURCE_ATTRIBUTES_PREFIX;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.OTelProtoEncoder.SERVICE_NAME_ATTRIBUTE;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.OTelProtoEncoder.SPAN_ATTRIBUTES_PREFIX;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.SERVICE_NAME;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.STATUS_CODE;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.STATUS_MESSAGE;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.convertUnixNanosToISO8601;
-import static com.amazon.dataprepper.plugins.codec.OTelProtoCodec.timeISO8601ToNanos;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -126,8 +116,8 @@ public class OTelProtoCodecTest {
                 }
                 Map<String, Object> attributes = span.getAttributes();
                 assertThat(attributes.containsKey(OTelProtoCodec.RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply("service.name")), is(true));
-                assertThat(attributes.containsKey(INSTRUMENTATION_LIBRARY_NAME), is(true));
-                assertThat(attributes.containsKey(STATUS_CODE), is(true));
+                assertThat(attributes.containsKey(OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME), is(true));
+                assertThat(attributes.containsKey(OTelProtoCodec.STATUS_CODE), is(true));
             }
         }
 
@@ -135,7 +125,7 @@ public class OTelProtoCodecTest {
         public void testGetSpanEvent() {
             final String testName = "test name";
             final long testTimeNanos = System.nanoTime();
-            final String testTime = convertUnixNanosToISO8601(testTimeNanos);
+            final String testTime = OTelProtoCodec.convertUnixNanosToISO8601(testTimeNanos);
             final String testKey = "test key";
             final String testValue = "test value";
             io.opentelemetry.proto.trace.v1.Span.Event testOTelProtoSpanEvent = io.opentelemetry.proto.trace.v1.Span.Event.newBuilder()
@@ -276,14 +266,14 @@ public class OTelProtoCodecTest {
             final InstrumentationLibrary il4 = InstrumentationLibrary.newBuilder().build();
 
             assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).size(), equalTo(2));
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).get(INSTRUMENTATION_LIBRARY_NAME), equalTo(il1.getName()));
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).get(INSTRUMENTATION_LIBRARY_VERSION), equalTo(il1.getVersion()));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME), equalTo(il1.getName()));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il1).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_VERSION), equalTo(il1.getVersion()));
 
             assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il2).size(), equalTo(1));
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il2).get(INSTRUMENTATION_LIBRARY_NAME), equalTo(il2.getName()));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il2).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME), equalTo(il2.getName()));
 
             assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il3).size(), equalTo(1));
-            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il3).get(INSTRUMENTATION_LIBRARY_VERSION), equalTo(il3.getVersion()));
+            assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il3).get(OTelProtoCodec.INSTRUMENTATION_LIBRARY_VERSION), equalTo(il3.getVersion()));
 
             assertThat(decoderUnderTest.getInstrumentationLibraryAttributes(il4).isEmpty(), is(true));
         }
@@ -296,17 +286,17 @@ public class OTelProtoCodecTest {
             final Status st4 = Status.newBuilder().build();
 
             assertThat(decoderUnderTest.getSpanStatusAttributes(st1).size(), equalTo(2));
-            assertThat(Status.StatusCode.forNumber((Integer) decoderUnderTest.getSpanStatusAttributes(st1).get(STATUS_CODE)), equalTo(st1.getCode()));
-            assertThat(decoderUnderTest.getSpanStatusAttributes(st1).get(STATUS_MESSAGE), equalTo(st1.getMessage()));
+            assertThat(Status.StatusCode.forNumber((Integer) decoderUnderTest.getSpanStatusAttributes(st1).get(OTelProtoCodec.STATUS_CODE)), equalTo(st1.getCode()));
+            assertThat(decoderUnderTest.getSpanStatusAttributes(st1).get(OTelProtoCodec.STATUS_MESSAGE), equalTo(st1.getMessage()));
 
             assertThat(decoderUnderTest.getSpanStatusAttributes(st2).size(), equalTo(2));
-            assertThat(Status.StatusCode.forNumber((Integer) decoderUnderTest.getSpanStatusAttributes(st2).get(STATUS_CODE)), equalTo(st2.getCode()));
+            assertThat(Status.StatusCode.forNumber((Integer) decoderUnderTest.getSpanStatusAttributes(st2).get(OTelProtoCodec.STATUS_CODE)), equalTo(st2.getCode()));
 
             assertThat(decoderUnderTest.getSpanStatusAttributes(st3).size(), equalTo(1));
-            assertThat(Status.StatusCode.forNumber((Integer) decoderUnderTest.getSpanStatusAttributes(st3).get(STATUS_CODE)), equalTo(st3.getCode()));
+            assertThat(Status.StatusCode.forNumber((Integer) decoderUnderTest.getSpanStatusAttributes(st3).get(OTelProtoCodec.STATUS_CODE)), equalTo(st3.getCode()));
 
             assertThat(decoderUnderTest.getSpanStatusAttributes(st4).size(), equalTo(1));
-            assertThat(Status.StatusCode.forNumber((Integer) decoderUnderTest.getSpanStatusAttributes(st4).get(STATUS_CODE)), equalTo(st4.getCode()));
+            assertThat(Status.StatusCode.forNumber((Integer) decoderUnderTest.getSpanStatusAttributes(st4).get(OTelProtoCodec.STATUS_CODE)), equalTo(st4.getCode()));
 
         }
 
@@ -415,7 +405,7 @@ public class OTelProtoCodecTest {
             final String testKeyRelevant = "relevantKey";
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
-                    SPAN_ATTRIBUTES_PREFIX + testKeyRelevant, 1,
+                    OTelProtoCodec.OTelProtoEncoder.SPAN_ATTRIBUTES_PREFIX + testKeyRelevant, 1,
                     testKeyIrrelevant, 2);
             final List<KeyValue> result = encoderUnderTest.getSpanAttributes(testAllAttributes);
             assertThat(result.size(), equalTo(1));
@@ -428,8 +418,8 @@ public class OTelProtoCodecTest {
             final String testKeyRelevant = "relevantKey";
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
-                    RESOURCE_ATTRIBUTES_PREFIX + testKeyRelevant, 1,
-                    RESOURCE_ATTRIBUTES_PREFIX + SERVICE_NAME_ATTRIBUTE, "A",
+                    OTelProtoCodec.OTelProtoEncoder.RESOURCE_ATTRIBUTES_PREFIX + testKeyRelevant, 1,
+                    OTelProtoCodec.OTelProtoEncoder.RESOURCE_ATTRIBUTES_PREFIX + OTelProtoCodec.OTelProtoEncoder.SERVICE_NAME_ATTRIBUTE, "A",
                     testKeyIrrelevant, 2);
             final List<KeyValue> result = encoderUnderTest.getResourceAttributes(testAllAttributes);
             assertThat(result.size(), equalTo(1));
@@ -443,8 +433,8 @@ public class OTelProtoCodecTest {
             final int testStatusCode = Status.StatusCode.STATUS_CODE_OK.getNumber();
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
-                    STATUS_CODE, testStatusCode,
-                    STATUS_MESSAGE, testStatusMessage,
+                    OTelProtoCodec.STATUS_CODE, testStatusCode,
+                    OTelProtoCodec.STATUS_MESSAGE, testStatusMessage,
                     testKeyIrrelevant, 2);
             final Status status = encoderUnderTest.constructSpanStatus(testAllAttributes);
             assertThat(status.getCodeValue(), equalTo(testStatusCode));
@@ -456,7 +446,7 @@ public class OTelProtoCodecTest {
             final int testStatusCode = Status.StatusCode.STATUS_CODE_OK.getNumber();
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
-                    STATUS_CODE, testStatusCode,
+                    OTelProtoCodec.STATUS_CODE, testStatusCode,
                     testKeyIrrelevant, 2);
             final Status status = encoderUnderTest.constructSpanStatus(testAllAttributes);
             assertThat(status.getCodeValue(), equalTo(testStatusCode));
@@ -467,7 +457,7 @@ public class OTelProtoCodecTest {
             final String testStatusMessage = "test message";
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
-                    STATUS_MESSAGE, testStatusMessage,
+                    OTelProtoCodec.STATUS_MESSAGE, testStatusMessage,
                     testKeyIrrelevant, 2);
             final Status status = encoderUnderTest.constructSpanStatus(testAllAttributes);
             assertThat(status.getMessage(), equalTo(testStatusMessage));
@@ -487,8 +477,8 @@ public class OTelProtoCodecTest {
             final String testVersion = "1.1";
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
-                    INSTRUMENTATION_LIBRARY_NAME, testName,
-                    INSTRUMENTATION_LIBRARY_VERSION, testVersion,
+                    OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME, testName,
+                    OTelProtoCodec.INSTRUMENTATION_LIBRARY_VERSION, testVersion,
                     testKeyIrrelevant, 2);
             final InstrumentationLibrary instrumentationLibrary = encoderUnderTest.constructInstrumentationLibrary(testAllAttributes);
             assertThat(instrumentationLibrary.getName(), equalTo(testName));
@@ -500,7 +490,7 @@ public class OTelProtoCodecTest {
             final String testVersion = "1.1";
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
-                    INSTRUMENTATION_LIBRARY_VERSION, testVersion,
+                    OTelProtoCodec.INSTRUMENTATION_LIBRARY_VERSION, testVersion,
                     testKeyIrrelevant, 2);
             final InstrumentationLibrary instrumentationLibrary = encoderUnderTest.constructInstrumentationLibrary(testAllAttributes);
             assertThat(instrumentationLibrary.getVersion(), equalTo(testVersion));
@@ -511,7 +501,7 @@ public class OTelProtoCodecTest {
             final String testName = "test name";
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
-                    INSTRUMENTATION_LIBRARY_NAME, testName,
+                    OTelProtoCodec.INSTRUMENTATION_LIBRARY_NAME, testName,
                     testKeyIrrelevant, 2);
             final InstrumentationLibrary instrumentationLibrary = encoderUnderTest.constructInstrumentationLibrary(testAllAttributes);
             assertThat(instrumentationLibrary.getName(), equalTo(testName));
@@ -531,16 +521,16 @@ public class OTelProtoCodecTest {
             final String testKeyRelevant = "relevantKey";
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
-                    RESOURCE_ATTRIBUTES_PREFIX + testKeyRelevant, 1,
-                    RESOURCE_ATTRIBUTES_PREFIX + SERVICE_NAME_ATTRIBUTE, "A",
+                    OTelProtoCodec.OTelProtoEncoder.RESOURCE_ATTRIBUTES_PREFIX + testKeyRelevant, 1,
+                    OTelProtoCodec.OTelProtoEncoder.RESOURCE_ATTRIBUTES_PREFIX + OTelProtoCodec.OTelProtoEncoder.SERVICE_NAME_ATTRIBUTE, "A",
                     testKeyIrrelevant, 2);
             final Resource resource = encoderUnderTest.constructResource(testServiceName, testAllAttributes);
             assertThat(resource.getAttributesCount(), equalTo(2));
             assertThat(
                     resource.getAttributesList().stream()
-                            .anyMatch(kv -> kv.getKey().equals(SERVICE_NAME) && kv.getValue().getStringValue().equals(testServiceName)),
+                            .anyMatch(kv -> kv.getKey().equals(OTelProtoCodec.SERVICE_NAME) && kv.getValue().getStringValue().equals(testServiceName)),
                     is(true));
-            assertThat(resource.getAttributesList().stream().noneMatch(kv -> kv.getKey().equals(SERVICE_NAME_ATTRIBUTE)), is(true));
+            assertThat(resource.getAttributesList().stream().noneMatch(kv -> kv.getKey().equals(OTelProtoCodec.OTelProtoEncoder.SERVICE_NAME_ATTRIBUTE)), is(true));
         }
 
         @Test
@@ -548,18 +538,18 @@ public class OTelProtoCodecTest {
             final String testKeyRelevant = "relevantKey";
             final String testKeyIrrelevant = "irrelevantKey";
             final Map<String, Object> testAllAttributes = Map.of(
-                    RESOURCE_ATTRIBUTES_PREFIX + testKeyRelevant, 1,
+                    OTelProtoCodec.OTelProtoEncoder.RESOURCE_ATTRIBUTES_PREFIX + testKeyRelevant, 1,
                     testKeyIrrelevant, 2);
             final Resource resource = encoderUnderTest.constructResource(null, testAllAttributes);
             assertThat(resource.getAttributesCount(), equalTo(1));
-            assertThat(resource.getAttributesList().stream().noneMatch(kv -> kv.getKey().equals(SERVICE_NAME)), is(true));
+            assertThat(resource.getAttributesList().stream().noneMatch(kv -> kv.getKey().equals(OTelProtoCodec.SERVICE_NAME)), is(true));
         }
 
         @Test
         public void testEncodeSpanEvent() throws UnsupportedEncodingException {
             final String testName = "test name";
             final long testTimeNanos = System.nanoTime();
-            final String testTime = convertUnixNanosToISO8601(testTimeNanos);
+            final String testTime = OTelProtoCodec.convertUnixNanosToISO8601(testTimeNanos);
             final String testKey = "test key";
             final String testValue = "test value";
             final SpanEvent testSpanEvent = DefaultSpanEvent.builder()
@@ -671,10 +661,10 @@ public class OTelProtoCodecTest {
     @Test
     public void testTimeCodec() {
         final long testNanos = System.nanoTime();
-        final String timeISO8601 = convertUnixNanosToISO8601(testNanos);
-        final long nanoCodecResult = timeISO8601ToNanos(convertUnixNanosToISO8601(testNanos));
+        final String timeISO8601 = OTelProtoCodec.convertUnixNanosToISO8601(testNanos);
+        final long nanoCodecResult = OTelProtoCodec.timeISO8601ToNanos(OTelProtoCodec.convertUnixNanosToISO8601(testNanos));
         assertThat(nanoCodecResult, equalTo(testNanos));
-        final String stringCodecResult = convertUnixNanosToISO8601(timeISO8601ToNanos(timeISO8601));
+        final String stringCodecResult = OTelProtoCodec.convertUnixNanosToISO8601(OTelProtoCodec.timeISO8601ToNanos(timeISO8601));
         assertThat(stringCodecResult, equalTo(timeISO8601));
     }
 

@@ -17,7 +17,7 @@ import com.amazon.dataprepper.model.buffer.SizeOverflowException;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.trace.Span;
-import com.amazon.dataprepper.plugins.codec.OTelProtoCodec;
+import com.amazon.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import com.google.protobuf.ByteString;
 import io.grpc.Status;
 import io.grpc.StatusException;

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.plugins.codec;
+package com.amazon.dataprepper.plugins.otel.codec;
 
 import com.amazon.dataprepper.model.trace.DefaultLink;
 import com.amazon.dataprepper.model.trace.DefaultSpanEvent;
@@ -149,7 +149,7 @@ public class OTelProtoCodec {
                         return OBJECT_MAPPER.writeValueAsString(value.getArrayValue().getValuesList().stream()
                                 .map(this::convertAnyValue).collect(Collectors.toList()));
                     } catch (JsonProcessingException e) {
-                        throw new RuntimeException(e);
+                        throw new OTelEncodingException(e);
                     }
                 case KVLIST_VALUE:
                     try {
