@@ -17,7 +17,7 @@ import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.trace.Span;
-import com.amazon.dataprepper.plugins.codec.OTelProtoCodec;
+import com.amazon.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery.StaticPeerListProvider;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
