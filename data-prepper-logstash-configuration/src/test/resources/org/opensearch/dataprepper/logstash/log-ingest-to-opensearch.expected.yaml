@@ -13,6 +13,8 @@ logstash-converted-pipeline:
           log:
             - "%{COMBINEDAPACHELOG}"
     - drop_events: {}
+    - key_value:
+        destination: "test"
   sink:
     - opensearch:
         hosts:

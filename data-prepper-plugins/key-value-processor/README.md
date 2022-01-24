@@ -33,20 +33,28 @@ When run, the processor will parse the message into the following output:
   * Default: `message`
 * `destination` - The field the parsed source will be output to. This will overwrite any preexisting data for that key.
   * Default: `parsed_message`
-* `field_delimiter_regex` - A regex specifying the delimiter between key/value pairs.
+* `field_delimiter_regex` - A regex specifying the delimiter between key/value pairs. Special regex characters such as `[` and `]` must be escaped using `\\`.
+  * There is no default.
+  * Note: This cannot be defined at the same time as `field_split_characters`
+* `field_split_characters` - A string of characters to split between key/value pairs. Special regex characters such as `[` and `]` must be escaped using `\\`.
   * Default: `&`
-* `key_value_delimiter_regex` - A regex specifying the delimiter between a key and a value.
+  * Note: This cannot be defined at the same time as `field_delimiter_regex`
+* `key_value_delimiter_regex` - A regex specifying the delimiter between a key and a value. Special regex characters such as `[` and `]` must be escaped using `\\`.
   * Default: `=`
+  * Note: This cannot be defined at the same time as `value_split_characters`
+* `value_split_characters` - A string of characters to split between keys and values. Special regex characters such as `[` and `]` must be escaped using `\\`.
+  * Default: `&`
+  *   * Note: This cannot be defined at the same time as `key_value_delimiter_regex`
 * `non_match_value` - When a key/value cannot be successfully split, the key/value will be placed in the key field and the specified value in the value field.
   * Default: `null`
   * Example: `key1value1&key2=value2` will parse into `{"key1value1": null, "key2": "value2"}`
 * `prefix` - A prefix given to all keys.
   * Default is an empty string
-* `delete_key_regex` - A regex that will be used to delete characters from the key.
+* `delete_key_regex` - A regex that will be used to delete characters from the key. Special regex characters such as `[` and `]` must be escaped using `\\`.
   * There is no default
   * Non-empty string is the only valid value
   * Example: `delete_key_regex` is `"\s"`. `{"key1 =value1"}` will parse into `{"key1": "value1"}`
-* `delete_value_regex` - A regex that will be used to delete characters from the value.
+* `delete_value_regex` - A regex that will be used to delete characters from the value. Special regex characters such as `[` and `]` must be escaped using `\\`.
   * There is no default
   * Cannot be an empty string
   * Example: `delete_value_regex` is `"\s"`. `{"key1=value1 "}` will parse into `{"key1": "value1"}`
