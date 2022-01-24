@@ -11,8 +11,12 @@ package com.amazon.dataprepper.plugins.otel.codec;
  *
  * @since 1.3
  */
-public class OTelEncodingException extends RuntimeException {
-    public OTelEncodingException(Throwable cause) {
+public class OTelDecodingException extends RuntimeException {
+    public OTelDecodingException(Throwable cause) {
         super(cause);
+    }
+
+    public OTelDecodingException(String message) {
+        super(message);
     }
 }

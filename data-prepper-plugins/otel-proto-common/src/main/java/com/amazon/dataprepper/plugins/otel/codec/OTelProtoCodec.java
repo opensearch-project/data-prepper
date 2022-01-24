@@ -149,7 +149,7 @@ public class OTelProtoCodec {
                         return OBJECT_MAPPER.writeValueAsString(value.getArrayValue().getValuesList().stream()
                                 .map(this::convertAnyValue).collect(Collectors.toList()));
                     } catch (JsonProcessingException e) {
-                        throw new OTelEncodingException(e);
+                        throw new OTelDecodingException(e);
                     }
                 case KVLIST_VALUE:
                     try {
@@ -157,10 +157,10 @@ public class OTelProtoCodec {
                                 .collect(Collectors.toMap(i -> REPLACE_DOT_WITH_AT.apply(i.getKey()),
                                         i ->convertAnyValue(i.getValue()))));
                     } catch (JsonProcessingException e) {
-                        throw new RuntimeException(e);
+                        throw new OTelDecodingException(e);
                     }
                 default:
-                    throw new RuntimeException("Unknown case");
+                    throw new OTelDecodingException("Unknown case");
             }
         }
 
