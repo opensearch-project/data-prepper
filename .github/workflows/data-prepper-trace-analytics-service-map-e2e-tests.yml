@@ -26,6 +26,5 @@ jobs:
         uses: actions/checkout@v2
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-#        TODO: recover e2e test
-#      - name: Run service-map end-to-end tests with Gradle
-#        run: ./gradlew :e2e-test:trace:serviceMapEndToEndTest
+      - name: Run service-map end-to-end tests with Gradle
+        run: ./gradlew :e2e-test:trace:serviceMapEndToEndTest
