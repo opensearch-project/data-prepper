@@ -9,6 +9,7 @@ import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
+import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -139,7 +140,7 @@ public class KeyValueProcessorTests {
         when(mockConfig.getValueSplitCharacters()).thenReturn(null);
 
         PatternSyntaxException e = assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
-        assertThat(e.getMessage().startsWith("key_value_delimiter"), is(true));
+        assertThat(e.getMessage(), CoreMatchers.startsWith("key_value_delimiter"));
     }
 
     @Test
@@ -148,21 +149,21 @@ public class KeyValueProcessorTests {
         when(mockConfig.getFieldSplitCharacters()).thenReturn(null);
 
         PatternSyntaxException e = assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
-        assertThat(e.getMessage().startsWith("field_delimiter"), is(true));
+        assertThat(e.getMessage(), CoreMatchers.startsWith("field_delimiter"));
     }
 
     @Test
     void testBadDeleteKeyRegexKeyValueProcessor() {
         when(mockConfig.getDeleteKeyRegex()).thenReturn("[");
         PatternSyntaxException e = assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
-        assertThat(e.getMessage().startsWith("delete_key_regex"), is(true));
+        assertThat(e.getMessage(), CoreMatchers.startsWith("delete_key_regex"));
     }
 
     @Test
     void testBadDeleteValueRegexKeyValueProcessor() {
         when(mockConfig.getDeleteValueRegex()).thenReturn("[");
         PatternSyntaxException e = assertThrows(PatternSyntaxException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
-        assertThat(e.getMessage().startsWith("delete_value_regex"), is(true));
+        assertThat(e.getMessage(), CoreMatchers.startsWith("delete_value_regex"));
     }
 
     @Test

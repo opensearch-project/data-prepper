@@ -30,7 +30,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private final KeyValueProcessorConfig keyValueProcessorConfig;
 
-    private Pattern fieldDelimiterPattern = null;
+    private final Pattern fieldDelimiterPattern;
     private final Pattern keyValueDelimiterPattern;
 
     @DataPrepperPluginConstructor
