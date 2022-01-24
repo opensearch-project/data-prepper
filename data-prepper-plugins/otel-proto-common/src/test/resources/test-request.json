@@ -26,6 +26,45 @@
             "value": {
               "stringValue": "0.8.0-SNAPSHOT"
             }
+          },
+          {
+            "key": "array",
+            "value": {
+              "arrayValue": {
+                "values": [
+                  {
+                    "stringValue": "test string"
+                  },
+                  {
+                    "boolValue": false
+                  },
+                  {
+                    "intValue": 0
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "key": "kvList",
+            "value": {
+              "kvlistValue": {
+                "values": [
+                  {
+                    "key": "key1",
+                    "value": {
+                      "stringValue": "value1"
+                    }
+                  },
+                  {
+                    "key": "key2",
+                    "value": {
+                      "stringValue": "value2"
+                    }
+                  }
+                ]
+              }
+            }
           }
         ],
         "droppedAttributesCount": 0
