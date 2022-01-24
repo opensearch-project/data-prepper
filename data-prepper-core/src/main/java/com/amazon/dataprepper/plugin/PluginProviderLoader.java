@@ -8,12 +8,14 @@ package com.amazon.dataprepper.plugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Named;
 import java.util.Collection;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+@Named
 class PluginProviderLoader {
     private static final Logger LOG = LoggerFactory.getLogger(PluginProviderLoader.class);
     private final ServiceLoader<PluginProvider> serviceLoader;

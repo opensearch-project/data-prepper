@@ -11,10 +11,9 @@ import com.amazon.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import jakarta.validation.ConstraintViolation;
-import jakarta.validation.Validation;
 import jakarta.validation.Validator;
-import jakarta.validation.ValidatorFactory;
 
+import javax.inject.Named;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -23,15 +22,15 @@ import java.util.stream.Collectors;
  * Converts and validates a plugin configuration. This class is responsible for taking a {@link PluginSetting}
  * and converting it to the plugin model type which should be denoted by {@link DataPrepperPlugin#pluginConfigurationType()}
  */
+@Named
 class PluginConfigurationConverter {
     private final ObjectMapper objectMapper;
     private final Validator validator;
 
-    PluginConfigurationConverter() {
+    PluginConfigurationConverter(final Validator validator) {
         this.objectMapper = new ObjectMapper().setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
 
-        final ValidatorFactory validationFactory = Validation.buildDefaultValidatorFactory();
-        validator = validationFactory.getValidator();
+        this.validator = validator;
     }
 
     /**

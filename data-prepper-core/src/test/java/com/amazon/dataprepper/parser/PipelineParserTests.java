@@ -10,6 +10,7 @@ import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.plugin.DefaultPluginFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.util.Map;
 
@@ -34,7 +35,10 @@ class PipelineParserTests {
 
     @BeforeEach
     void setUp() {
-        pluginFactory = new DefaultPluginFactory();
+        final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+        context.scan(DefaultPluginFactory.class.getPackage().getName());
+        context.refresh();
+        pluginFactory = context.getBean(DefaultPluginFactory.class);
     }
 
     @Test

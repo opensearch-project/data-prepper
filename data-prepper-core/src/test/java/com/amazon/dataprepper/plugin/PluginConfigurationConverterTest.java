@@ -9,12 +9,9 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Path;
-import jakarta.validation.Validation;
 import jakarta.validation.Validator;
-import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
 import java.util.Collections;
 import java.util.UUID;
@@ -30,7 +27,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 
 class PluginConfigurationConverterTest {
     private PluginSetting pluginSetting;
@@ -53,14 +49,7 @@ class PluginConfigurationConverterTest {
     }
 
     private PluginConfigurationConverter createObjectUnderTest() {
-        final ValidatorFactory validatorFactory = mock(ValidatorFactory.class);
-        given(validatorFactory.getValidator()).willReturn(validator);
-
-        try(final MockedStatic<Validation> validationMockedStatic = mockStatic(Validation.class)) {
-            validationMockedStatic.when(Validation::buildDefaultValidatorFactory)
-                    .thenReturn(validatorFactory);
-            return new PluginConfigurationConverter();
-        }
+        return new PluginConfigurationConverter(validator);
     }
 
     @Test
