@@ -27,18 +27,18 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     private static final Logger LOG = LoggerFactory.getLogger(AggregateProcessor.class);
 
     private final AggregateProcessorConfig aggregateProcessorConfig;
-    private final GroupStateManager groupStateManager;
+    private final AggregateGroupManager aggregateGroupManager;
     private final AggregateAction aggregateAction;
     private final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher;
 
     @DataPrepperPluginConstructor
     public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
-        this(aggregateProcessorConfig, pluginMetrics, pluginFactory, new GroupStateManager(), new AggregateIdentificationKeysHasher(aggregateProcessorConfig.getIdentificationKeys()));
+        this(aggregateProcessorConfig, pluginMetrics, pluginFactory, new AggregateGroupManager(), new AggregateIdentificationKeysHasher(aggregateProcessorConfig.getIdentificationKeys()));
     }
-    public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final GroupStateManager groupStateManager, final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher) {
+    public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final AggregateGroupManager aggregateGroupManager, final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher) {
         super(pluginMetrics);
         this.aggregateProcessorConfig = aggregateProcessorConfig;
-        this.groupStateManager = groupStateManager;
+        this.aggregateGroupManager = aggregateGroupManager;
         this.aggregateIdentificationKeysHasher = aggregateIdentificationKeysHasher;
         this.aggregateAction = loadAggregateAction(pluginFactory);
     }
@@ -56,9 +56,9 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
         for (final Record<Event> record : records) {
             final Event event = record.getData();
             final AggregateIdentificationKeysHasher.IdentificationHash identificationKeysHash = aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event);
-            final GroupState groupStateForEvent = groupStateManager.getGroupState(identificationKeysHash);
+            final AggregateGroup aggregateGroupForEvent = aggregateGroupManager.getAggregateGroup(identificationKeysHash);
 
-            final AggregateActionResponse handleEventResponse = aggregateAction.handleEvent(event, groupStateForEvent.getGroupState());
+            final AggregateActionResponse handleEventResponse = aggregateAction.handleEvent(event, aggregateGroupForEvent.getGroupState());
 
             final Event aggregateActionResponseEvent = handleEventResponse.getEvent();
 

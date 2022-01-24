@@ -8,10 +8,10 @@ package com.amazon.dataprepper.plugins.processor.aggregate;
 import java.util.HashMap;
 import java.util.Map;
 
-public class GroupState {
+public class AggregateGroup {
     private final Map<Object, Object> groupState = new HashMap<>();
 
-    GroupState() {
+    AggregateGroup() {
 
     }
 

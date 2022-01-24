@@ -56,10 +56,10 @@ public class AggregateProcessorTest {
     private PluginModel actionConfiguration;
 
     @Mock
-    private GroupStateManager groupStateManager;
+    private AggregateGroupManager aggregateGroupManager;
 
     @Mock
-    private GroupState groupState;
+    private AggregateGroup aggregateGroup;
 
     @Mock
     private AggregateActionResponse aggregateActionResponse;
@@ -84,13 +84,13 @@ public class AggregateProcessorTest {
 
         when(aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event))
                 .thenReturn(identificationHash);
-        when(groupStateManager.getGroupState(identificationHash)).thenReturn(groupState);
-        when(groupState.getGroupState()).thenReturn(Collections.emptyMap());
+        when(aggregateGroupManager.getAggregateGroup(identificationHash)).thenReturn(aggregateGroup);
+        when(aggregateGroup.getGroupState()).thenReturn(Collections.emptyMap());
         when(aggregateAction.handleEvent(eq(event), eq(Collections.emptyMap()))).thenReturn(aggregateActionResponse);
     }
 
     private AggregateProcessor createObjectUnderTest() {
-        return new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, groupStateManager, aggregateIdentificationKeysHasher);
+        return new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, aggregateGroupManager, aggregateIdentificationKeysHasher);
     }
 
     @Test
