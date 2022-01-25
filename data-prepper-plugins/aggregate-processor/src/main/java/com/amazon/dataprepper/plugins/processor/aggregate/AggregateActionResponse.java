@@ -8,12 +8,11 @@ package com.amazon.dataprepper.plugins.processor.aggregate;
 import com.amazon.dataprepper.model.event.Event;
 
 /**
- * Model class to be returned in {@link com.amazon.dataprepper.plugins.processor.aggregate.AggregateAction}. Contains both the Event to be processed and an option
- * to close the current window for {@link com.amazon.dataprepper.plugins.processor.aggregate.AggregateProcessor} immediately after an event is handled.
+ * Model class to be returned in {@link com.amazon.dataprepper.plugins.processor.aggregate.AggregateAction}. Contains the Event to be processed, which is null if no Event should be processed.
  * @since 1.3
  */
 public class AggregateActionResponse {
-    private Event event;
+    private final Event event;
 
     public AggregateActionResponse(final Event event) {
         this.event = event;
