@@ -357,7 +357,6 @@ public class PeerForwarderTest {
             when(channel.authority()).thenReturn(fullPeerIp);
             when(peerClientPool.getClient(peerIp)).thenReturn(client);
             when(client.getChannel()).thenReturn(channel);
-            when(client.export(any(ExportTraceServiceRequest.class))).thenReturn(null);
 
             MetricsTestUtil.initMetrics();
             final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
