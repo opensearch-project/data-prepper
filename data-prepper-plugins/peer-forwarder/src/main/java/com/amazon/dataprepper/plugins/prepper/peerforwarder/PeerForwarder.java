@@ -126,13 +126,12 @@ public class PeerForwarder extends AbstractPrepper<Record<Span>, Record<Span>> {
             ExportTraceServiceRequest.Builder currRequestBuilder = ExportTraceServiceRequest.newBuilder();
             List<Span> currBatchSpans = new ArrayList<>();
             for (final Span span : entry.getValue()) {
-                final ResourceSpans rs;
                 try {
-                    rs = oTelProtoEncoder.convertToResourceSpans(span);
+                    final ResourceSpans rs = oTelProtoEncoder.convertToResourceSpans(span);
                     currRequestBuilder.addResourceSpans(rs);
                     currBatchSpans.add(span);
                 } catch (UnsupportedEncodingException | DecoderException e) {
-                    LOG.error("failed to encode span with spanId: {} into opentelemetry-protobuf, span will be exported locally.",
+                    LOG.error("failed to encode span with spanId: {} into opentelemetry-protobuf, span will be processed locally.",
                             span.getSpanId(), e);
                     recordsToProcessLocally.add(new Record<>(span));
                 }
@@ -155,11 +154,13 @@ public class PeerForwarder extends AbstractPrepper<Record<Span>, Record<Span>> {
                 final CompletableFuture<ExportTraceServiceRequest> future = entry.getKey();
                 final ExportTraceServiceRequest request = future.get();
                 if (request != null) {
-                    final List<Span> spansFailedToForward = forwardedRequestFuturesToSpans.get(future);
+                    final List<Span> spansFailedToForward = entry.getValue();
                     recordsToProcessLocally.addAll(spansFailedToForward.stream().map(Record::new).collect(Collectors.toList()));
                 }
             } catch (InterruptedException | ExecutionException e) {
                 LOG.error("Problem with asynchronous peer forwarding", e);
+                final List<Span> spansFailedToForward = entry.getValue();
+                recordsToProcessLocally.addAll(spansFailedToForward.stream().map(Record::new).collect(Collectors.toList()));
             }
         }
 
