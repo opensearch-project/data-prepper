@@ -11,16 +11,19 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-import com.fasterxml.jackson.datatype.joda.JodaModule;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -54,7 +57,8 @@ public class JacksonEvent implements Event {
     private static final String SEPARATOR = "/";
 
     private static final ObjectMapper mapper = new ObjectMapper()
-            .registerModule(new JodaModule());
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
 
@@ -67,6 +71,8 @@ public class JacksonEvent implements Event {
     static final String MESSAGE_KEY = "message";
 
     static final String EVENT_TYPE = "event";
+
+    private static String zonedDateTime;
 
     protected JacksonEvent(final Builder builder) {
 
@@ -81,6 +87,9 @@ public class JacksonEvent implements Event {
         }
 
         this.jsonNode = getInitialJsonNode(builder.data);
+
+        zonedDateTime = ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX"));
+        put("event_timestamp", zonedDateTime);
     }
 
     static Event fromMessage(String message) {
@@ -88,6 +97,10 @@ public class JacksonEvent implements Event {
                 .withEventType(EVENT_TYPE)
                 .withData(Collections.singletonMap(MESSAGE_KEY, message))
                 .build();
+    }
+
+    static String getZonedDateTime() {
+        return zonedDateTime;
     }
 
     private JsonNode getInitialJsonNode(final Object data) {

@@ -25,6 +25,7 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasKey;
 import static org.junit.Assert.assertThrows;
 import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTimestamp;
 
@@ -300,7 +301,7 @@ public class JacksonEventTest {
     public void testToString_withEmptyData() {
         final String result = event.toJsonString();
 
-        assertThat(result, is(equalTo("{}")));
+        assertThat(result, is(equalTo("{\"event_timestamp\":\"" + JacksonEvent.getZonedDateTime() + "\"}")));
     }
 
     @Test
@@ -311,7 +312,9 @@ public class JacksonEventTest {
         event.put("list", Arrays.asList(1, 4, 5));
         final String result = event.toJsonString();
 
-        assertThat(result, is(equalTo(String.format("{\"foo\":\"bar\",\"testObject\":{\"field1\":\"%s\"},\"list\":[1,4,5]}", value))));
+        String expectedResult = "{\"event_timestamp\":\"" + JacksonEvent.getZonedDateTime() +
+                "\",\"foo\":\"bar\",\"testObject\":{\"field1\":\"%s\"},\"list\":[1,4,5]}";
+        assertThat(result, equalTo(String.format(expectedResult, value)));
     }
 
     @Test

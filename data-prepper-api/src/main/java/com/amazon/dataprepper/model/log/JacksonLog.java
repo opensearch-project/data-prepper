@@ -7,7 +7,6 @@ package com.amazon.dataprepper.model.log;
 
 import com.amazon.dataprepper.model.event.EventType;
 import com.amazon.dataprepper.model.event.JacksonEvent;
-import org.joda.time.LocalDateTime;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -18,7 +17,6 @@ public class JacksonLog extends JacksonEvent implements Log {
 
     protected JacksonLog(final Builder builder) {
         super(builder);
-        this.put("event_timestamp", LocalDateTime.now());
 
         checkArgument(this.getMetadata().getEventType().equals("LOG"), "eventType must be of type Log");
     }
@@ -48,7 +46,6 @@ public class JacksonLog extends JacksonEvent implements Log {
          * @return a log
          * @since 1.2
          */
-        @Override
         public JacksonLog build() {
             this.withEventType(EventType.LOG.toString());
             return new JacksonLog(this);

@@ -15,7 +15,6 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class JacksonLogTest {
 
@@ -49,17 +48,5 @@ public class JacksonLogTest {
 
         assertThat(logBuilder, is(notNullValue()));
         assertThrows(IllegalArgumentException.class, logBuilder::build);
-    }
-
-    @Test
-    public void testBuilder_usesLogEventType_withDefaultTimestamp() {
-        final Log log = JacksonLog.builder()
-                .withEventType("test")
-                .getThis()
-                .build();
-
-        assertThat(log, is(notNullValue()));
-        assertTrue(log.containsKey("event_timestamp"));
-        assertThat(log.getMetadata().getEventType(), is(equalTo("LOG")));
     }
 }
