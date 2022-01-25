@@ -16,7 +16,7 @@ service-map-pipeline:
       name: "entry-pipeline"
   prepper:
     - service_map_stateful:
-        window_duration: 3
+        window_duration: 4
   sink:
     - opensearch:
         hosts: ["https://node-0.example.com:9200"]
