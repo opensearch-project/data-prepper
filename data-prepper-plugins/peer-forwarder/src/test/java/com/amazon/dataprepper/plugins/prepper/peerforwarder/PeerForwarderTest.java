@@ -32,6 +32,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -47,6 +48,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.amazon.dataprepper.plugins.otel.codec.OTelProtoCodec.convertUnixNanosToISO8601;
@@ -55,6 +60,9 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -99,6 +107,9 @@ public class PeerForwarderTest {
 
     @Mock
     private TraceServiceGrpc.TraceServiceBlockingStub client;
+
+    @Mock
+    private CompletableFuture<ExportTraceServiceRequest> completableFuture;
 
     @Before
     public void setUp() throws DecoderException, UnsupportedEncodingException {
@@ -330,6 +341,36 @@ public class PeerForwarderTest {
         assertTrue(forwardRequestLatencyMeasurements.get(1).getValue() > 0.0);
         // MAX
         assertTrue(forwardRequestLatencyMeasurements.get(2).getValue() > 0.0);
+    }
+
+    @Test
+    public void testSingleRemoteIpForwardRequestFutureError() throws ExecutionException, InterruptedException {
+        try (final MockedStatic<CompletableFuture> completableFutureMockedStatic = mockStatic(CompletableFuture.class)) {
+            completableFutureMockedStatic.when(() -> CompletableFuture.supplyAsync(
+                    ArgumentMatchers.<Supplier<ExportTraceServiceRequest>>any(), any(ExecutorService.class)))
+                    .thenReturn(completableFuture);
+            when(completableFuture.get()).thenThrow(new InterruptedException());
+            final List<String> testIps = generateTestIps(2);
+            final Channel channel = mock(Channel.class);
+            final String peerIp = testIps.get(1);
+            final String fullPeerIp = String.format("%s:21890", peerIp);
+            when(channel.authority()).thenReturn(fullPeerIp);
+            when(peerClientPool.getClient(peerIp)).thenReturn(client);
+            when(client.getChannel()).thenReturn(channel);
+            when(client.export(any(ExportTraceServiceRequest.class))).thenReturn(null);
+
+            MetricsTestUtil.initMetrics();
+            final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
+
+            final List<Record<Span>> exportedRecords = testPeerForwarder
+                    .doExecute(TEST_SPANS_B.stream().map(Record::new).collect(Collectors.toList()));
+
+            verify(completableFuture, times(1)).get();
+            Assert.assertEquals(3, exportedRecords.size());
+            final List<Span> exportedSpans = exportedRecords.stream().map(Record::getData).collect(Collectors.toList());
+            assertTrue(exportedSpans.containsAll(TEST_SPANS_B));
+            assertTrue(TEST_SPANS_B.containsAll(exportedSpans));
+        }
     }
 
     @Test

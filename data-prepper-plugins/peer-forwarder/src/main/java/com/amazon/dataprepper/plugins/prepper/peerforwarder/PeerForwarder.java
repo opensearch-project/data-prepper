@@ -158,7 +158,7 @@ public class PeerForwarder extends AbstractPrepper<Record<Span>, Record<Span>> {
                     recordsToProcessLocally.addAll(spansFailedToForward.stream().map(Record::new).collect(Collectors.toList()));
                 }
             } catch (InterruptedException | ExecutionException e) {
-                LOG.error("Problem with asynchronous peer forwarding", e);
+                LOG.error("Problem with asynchronous peer forwarding, current batch of spans will be processed locally.", e);
                 final List<Span> spansFailedToForward = entry.getValue();
                 recordsToProcessLocally.addAll(spansFailedToForward.stream().map(Record::new).collect(Collectors.toList()));
             }
