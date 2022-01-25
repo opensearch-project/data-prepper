@@ -118,7 +118,9 @@ public class PeerForwarder extends AbstractPrepper<Record<Span>, Record<Span>> {
         for (final Map.Entry<String, List<Span>> entry : spansByEndPoint.entrySet()) {
             final TraceServiceGrpc.TraceServiceBlockingStub client = getClient(entry.getKey());
             if (isLocalClient(client)) {
-                recordsToProcessLocally.addAll(entry.getValue().stream().map(Record::new).collect(Collectors.toList()));
+                final List<Record<Span>> recordsAssignedToLocalClient = entry.getValue().stream().map(Record::new)
+                        .collect(Collectors.toList());
+                recordsToProcessLocally.addAll(recordsAssignedToLocalClient);
                 continue;
             }
 
