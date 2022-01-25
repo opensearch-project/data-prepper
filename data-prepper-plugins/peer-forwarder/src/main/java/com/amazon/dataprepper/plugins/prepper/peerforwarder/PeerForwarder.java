@@ -16,15 +16,19 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.model.trace.Span;
+import com.amazon.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery.StaticPeerListProvider;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import org.apache.commons.codec.DecoderException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -39,9 +43,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 @DataPrepperPlugin(name = "peer_forwarder", pluginType = Prepper.class)
-public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<ExportTraceServiceRequest>> {
+public class PeerForwarder extends AbstractPrepper<Record<Span>, Record<Span>> {
     public static final String REQUESTS = "requests";
     public static final String LATENCY = "latency";
     public static final String ERRORS = "errors";
@@ -53,6 +58,7 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
 
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarder.class);
 
+    private final OTelProtoCodec.OTelProtoEncoder oTelProtoEncoder;
     private final HashRing hashRing;
     private final PeerClientPool peerClientPool;
     private final int maxNumSpansPerRequest;
@@ -64,10 +70,12 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
     private final ExecutorService executorService;
 
     public PeerForwarder(final PluginSetting pluginSetting,
+                         final OTelProtoCodec.OTelProtoEncoder oTelProtoEncoder,
                          final PeerClientPool peerClientPool,
                          final HashRing hashRing,
                          final int maxNumSpansPerRequest) {
         super(pluginSetting);
+        this.oTelProtoEncoder = oTelProtoEncoder;
         this.peerClientPool = peerClientPool;
         this.hashRing = hashRing;
         this.maxNumSpansPerRequest = maxNumSpansPerRequest;
@@ -85,6 +93,7 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
     public PeerForwarder(final PluginSetting pluginSetting, final PeerForwarderConfig peerForwarderConfig) {
         this(
                 pluginSetting,
+                new OTelProtoCodec.OTelProtoEncoder(),
                 peerForwarderConfig.getPeerClientPool(),
                 peerForwarderConfig.getHashRing(),
                 peerForwarderConfig.getMaxNumSpansPerRequest()
@@ -92,65 +101,68 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
     }
 
     @Override
-    public List<Record<ExportTraceServiceRequest>> doExecute(final Collection<Record<ExportTraceServiceRequest>> records) {
-        final Map<String, List<ResourceSpans>> groupedRS = new HashMap<>();
-
+    public List<Record<Span>> doExecute(final Collection<Record<Span>> records) {
+        final Collection<Span> spans = records.stream().map(Record::getData).collect(Collectors.toList());
+        final Map<String, List<Span>> spansByTraceId = PeerForwarderUtils.splitByTrace(spans);
         // Group ResourceSpans by consistent hashing of traceId
-        for (final Record<ExportTraceServiceRequest> record : records) {
-            for (final ResourceSpans rs : record.getData().getResourceSpansList()) {
-                final List<Map.Entry<String, ResourceSpans>> rsBatch = PeerForwarderUtils.splitByTrace(rs);
-                for (final Map.Entry<String, ResourceSpans> entry : rsBatch) {
-                    final String traceId = entry.getKey();
-                    final ResourceSpans newRS = entry.getValue();
-                    final String dataPrepperIp = hashRing.getServerIp(traceId).orElse(StaticPeerListProvider.LOCAL_ENDPOINT);
-                    groupedRS.computeIfAbsent(dataPrepperIp, x -> new ArrayList<>()).add(newRS);
-                }
-            }
+        final Map<String, List<Span>> spansByEndPoint = new HashMap<>();
+        for (final Map.Entry<String, List<Span>> entry: spansByTraceId.entrySet()) {
+            final String traceId = entry.getKey();
+            final String dataPrepperIp = hashRing.getServerIp(traceId).orElse(StaticPeerListProvider.LOCAL_ENDPOINT);
+            spansByEndPoint.computeIfAbsent(dataPrepperIp, x -> new ArrayList<>()).addAll(entry.getValue());
         }
 
-        final List<Record<ExportTraceServiceRequest>> recordsToProcessLocally = new ArrayList<>();
-        final List<CompletableFuture<Record>> forwardedRequestFutures = new ArrayList<>();
+        final List<Record<Span>> recordsToProcessLocally = new ArrayList<>();
+        final Map<CompletableFuture<ExportTraceServiceRequest>, List<Span>> forwardedRequestFuturesToSpans = new HashMap<>();
 
-        for (final Map.Entry<String, List<ResourceSpans>> entry : groupedRS.entrySet()) {
+        for (final Map.Entry<String, List<Span>> entry : spansByEndPoint.entrySet()) {
             final TraceServiceGrpc.TraceServiceBlockingStub client = getClient(entry.getKey());
+            if (isLocalClient(client)) {
+                final List<Record<Span>> recordsAssignedToLocalClient = entry.getValue().stream().map(Record::new)
+                        .collect(Collectors.toList());
+                recordsToProcessLocally.addAll(recordsAssignedToLocalClient);
+                continue;
+            }
 
             // Create ExportTraceRequest for storing single batch of spans
             ExportTraceServiceRequest.Builder currRequestBuilder = ExportTraceServiceRequest.newBuilder();
-            int currSpansCount = 0;
-            for (final ResourceSpans rs : entry.getValue()) {
-                final int rsSize = PeerForwarderUtils.getResourceSpansSize(rs);
-                if (currSpansCount >= maxNumSpansPerRequest) {
-                    final ExportTraceServiceRequest currRequest = currRequestBuilder.build();
-                    if (isLocalClient(client)) {
-                        recordsToProcessLocally.add(new Record<>(currRequest));
-                    } else {
-                        forwardedRequestFutures.add(processRequest(client, currRequest));
-                    }
-                    currRequestBuilder = ExportTraceServiceRequest.newBuilder();
-                    currSpansCount = 0;
+            List<Span> currBatchSpans = new ArrayList<>();
+            for (final Span span : entry.getValue()) {
+                try {
+                    final ResourceSpans rs = oTelProtoEncoder.convertToResourceSpans(span);
+                    currRequestBuilder.addResourceSpans(rs);
+                    currBatchSpans.add(span);
+                } catch (UnsupportedEncodingException | DecoderException e) {
+                    LOG.error("failed to encode span with spanId: {} into opentelemetry-protobuf, span will be processed locally.",
+                            span.getSpanId(), e);
+                    recordsToProcessLocally.add(new Record<>(span));
                 }
-                currRequestBuilder.addResourceSpans(rs);
-                currSpansCount += rsSize;
+                if (currBatchSpans.size() >= maxNumSpansPerRequest) {
+                    final ExportTraceServiceRequest currRequest = currRequestBuilder.build();
+                    forwardedRequestFuturesToSpans.put(processRequest(client, currRequest), currBatchSpans);
+                    currRequestBuilder = ExportTraceServiceRequest.newBuilder();
+                    currBatchSpans = new ArrayList<>();
+                }
             }
             // Dealing with the last batch request
-            if (currSpansCount > 0) {
+            if (currBatchSpans.size() > 0) {
                 final ExportTraceServiceRequest currRequest = currRequestBuilder.build();
-                if (client == null) {
-                    recordsToProcessLocally.add(new Record<>(currRequest));
-                } else {
-                    forwardedRequestFutures.add(processRequest(client, currRequest));
-                }
+                forwardedRequestFuturesToSpans.put(processRequest(client, currRequest), currBatchSpans);
             }
         }
 
-        for (final CompletableFuture<Record> future : forwardedRequestFutures) {
+        for (final Map.Entry<CompletableFuture<ExportTraceServiceRequest>, List<Span>> entry : forwardedRequestFuturesToSpans.entrySet()) {
             try {
-                final Record record = future.get();
-                if (record != null) {
-                    recordsToProcessLocally.add(record);
+                final CompletableFuture<ExportTraceServiceRequest> future = entry.getKey();
+                final ExportTraceServiceRequest request = future.get();
+                if (request != null) {
+                    final List<Span> spansFailedToForward = entry.getValue();
+                    recordsToProcessLocally.addAll(spansFailedToForward.stream().map(Record::new).collect(Collectors.toList()));
                 }
             } catch (InterruptedException | ExecutionException e) {
-                LOG.error("Problem with asynchronous peer forwarding", e);
+                LOG.error("Problem with asynchronous peer forwarding, current batch of spans will be processed locally.", e);
+                final List<Span> spansFailedToForward = entry.getValue();
+                recordsToProcessLocally.addAll(spansFailedToForward.stream().map(Record::new).collect(Collectors.toList()));
             }
         }
 
@@ -162,7 +174,7 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
      * the request succeeds, otherwise the payload will contain the failed ExportTraceServiceRequest to
      * be processed locally.
      */
-    private CompletableFuture<Record> processRequest(final TraceServiceGrpc.TraceServiceBlockingStub client,
+    private CompletableFuture<ExportTraceServiceRequest> processRequest(final TraceServiceGrpc.TraceServiceBlockingStub client,
                                                      final ExportTraceServiceRequest request) {
         final String peerIp = client.getChannel().authority();
         final Timer forwardRequestTimer = forwardRequestTimers.computeIfAbsent(
@@ -172,7 +184,7 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
         final Counter forwardRequestErrorCounter = forwardRequestErrorCounters.computeIfAbsent(
                 peerIp, ip -> pluginMetrics.counterWithTags(ERRORS, DESTINATION, ip));
 
-        final CompletableFuture<Record> callFuture = CompletableFuture.supplyAsync(() ->
+        final CompletableFuture<ExportTraceServiceRequest> callFuture = CompletableFuture.supplyAsync(() ->
         {
             forwardedRequestCounter.increment();
             try {
@@ -181,7 +193,7 @@ public class PeerForwarder extends AbstractPrepper<Record<ExportTraceServiceRequ
             } catch (Exception e) {
                 LOG.error("Failed to forward request to address: {}", peerIp, e);
                 forwardRequestErrorCounter.increment();
-                return new Record<>(request);
+                return request;
             }
         }, executorService);
 

@@ -26,6 +26,5 @@ jobs:
       uses: actions/checkout@v2
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-#      TODO: recover e2e test
-#    - name: Run raw-span compatibility end-to-end tests with Gradle
-#      run: ./gradlew :e2e-test:trace:rawSpanCompatibilityEndToEndTest
+    - name: Run raw-span compatibility end-to-end tests with Gradle
+      run: ./gradlew :e2e-test:trace:rawSpanCompatibilityEndToEndTest
