@@ -8,9 +8,10 @@ package com.amazon.dataprepper.plugins.processor.aggregate.actions;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.plugins.processor.aggregate.AggregateAction;
+import com.amazon.dataprepper.plugins.processor.aggregate.AggregateActionInput;
 import com.amazon.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
+import com.amazon.dataprepper.plugins.processor.aggregate.GroupState;
 
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -23,16 +24,18 @@ public class CombineAggregateAction implements AggregateAction {
     static final String EVENT_TYPE = "event";
 
     @Override
-    public AggregateActionResponse handleEvent(final Event event, final Map<Object, Object> groupState) {
+    public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
+        final GroupState groupState = aggregateActionInput.getGroupState();
         groupState.putAll(event.toMap());
         return AggregateActionResponse.nullEventResponse();
     }
 
     @Override
-    public Optional<Event> concludeGroup(final Map<Object, Object> groupState) {
+    public Optional<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
+
         final Event event = JacksonEvent.builder()
                 .withEventType(EVENT_TYPE)
-                .withData(groupState)
+                .withData(aggregateActionInput.getGroupState())
                 .build();
 
         return Optional.of(event);
