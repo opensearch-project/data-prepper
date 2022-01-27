@@ -8,7 +8,10 @@ package com.amazon.dataprepper.plugins.processor.aggregate.actions;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.plugins.processor.aggregate.AggregateAction;
+import com.amazon.dataprepper.plugins.processor.aggregate.AggregateActionInput;
 import com.amazon.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
+import com.amazon.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
+import com.amazon.dataprepper.plugins.processor.aggregate.GroupState;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -60,20 +63,25 @@ public class CombineAggregateActionTest {
     void handleEvent_with_empty_group_state_should_return_correct_AggregateResponse_and_add_event_to_groupState() {
         combineAggregateAction = createObjectUnderTest();
 
-        final Map<Object, Object> groupState = new HashMap<>();
-        final AggregateActionResponse aggregateActionResponse = combineAggregateAction.handleEvent(events.get(0), groupState);
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput();
+
+        final AggregateActionResponse aggregateActionResponse = combineAggregateAction.handleEvent(events.get(0), aggregateActionInput);
 
         assertThat(aggregateActionResponse.getEvent(), equalTo(null));
-        assertThat(groupState, equalTo(events.get(0).toMap()));
+        assertThat(aggregateActionInput.getGroupState(), equalTo(events.get(0).toMap()));
     }
 
     @Test
     void handleEvent_with_non_empty_groupState_should_combine_Event_with_groupState_correctly() {
         combineAggregateAction = createObjectUnderTest();
-        final Map<Object, Object> groupState = new HashMap<>(events.get(0).toMap());
-        final Map<Object, Object> expectedGroupState = new HashMap<>(groupState);
+
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput();
+        final GroupState groupState = aggregateActionInput.getGroupState();
+        groupState.putAll(events.get(0).toMap());
+        final GroupState expectedGroupState = new AggregateActionTestUtils.TestGroupState();
+        expectedGroupState.putAll(groupState);
         expectedGroupState.putAll(events.get(1).toMap());
-        final AggregateActionResponse aggregateActionResponse = combineAggregateAction.handleEvent(events.get(1), groupState);
+        final AggregateActionResponse aggregateActionResponse = combineAggregateAction.handleEvent(events.get(1), aggregateActionInput);
         assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         assertThat(groupState, equalTo(expectedGroupState));
     }
@@ -81,12 +89,13 @@ public class CombineAggregateActionTest {
     @Test
     void concludeGroup_should_return_groupState_As_An_Event_correctly() {
         combineAggregateAction = createObjectUnderTest();
-        final Map<Object, Object> groupState = new HashMap<>();
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput();
+        final GroupState groupState = aggregateActionInput.getGroupState();
         for (final Map<String, Object> eventMap : eventMaps) {
             groupState.putAll(eventMap);
         }
 
-        final Optional<Event> result = combineAggregateAction.concludeGroup(groupState);
+        final Optional<Event> result = combineAggregateAction.concludeGroup(aggregateActionInput);
         assertThat(result.isPresent(), equalTo(true));
         assertThat(result.get().getMetadata().getEventType(), equalTo(CombineAggregateAction.EVENT_TYPE));
         assertThat(result.get().toMap(), equalTo(groupState));

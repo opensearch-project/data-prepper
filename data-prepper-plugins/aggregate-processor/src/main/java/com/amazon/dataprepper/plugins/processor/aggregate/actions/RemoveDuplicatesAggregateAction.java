@@ -8,9 +8,9 @@ package com.amazon.dataprepper.plugins.processor.aggregate.actions;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.plugins.processor.aggregate.AggregateAction;
+import com.amazon.dataprepper.plugins.processor.aggregate.AggregateActionInput;
 import com.amazon.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
-
-import java.util.Map;
+import com.amazon.dataprepper.plugins.processor.aggregate.GroupState;
 
 /**
  * An AggregateAction that will pass down the first Event of a groupState immediately for processing, and then ignore Events
@@ -22,7 +22,8 @@ public class RemoveDuplicatesAggregateAction implements AggregateAction {
     static final String GROUP_STATE_HAS_EVENT = "GROUP_STATE_HAS_EVENT";
 
     @Override
-    public AggregateActionResponse handleEvent(final Event event, final Map<Object, Object> groupState) {
+    public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
+        final GroupState groupState = aggregateActionInput.getGroupState();
         if (groupState.size() == 0) {
             groupState.put(GROUP_STATE_HAS_EVENT, true);
             return AggregateActionResponse.fromEvent(event);
