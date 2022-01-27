@@ -85,8 +85,7 @@ public class AggregateProcessorTest {
         when(aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event))
                 .thenReturn(identificationHash);
         when(aggregateGroupManager.getAggregateGroup(identificationHash)).thenReturn(aggregateGroup);
-        when(aggregateGroup.getGroupState()).thenReturn(Collections.emptyMap());
-        when(aggregateAction.handleEvent(eq(event), eq(Collections.emptyMap()))).thenReturn(aggregateActionResponse);
+        when(aggregateAction.handleEvent(event, aggregateGroup)).thenReturn(aggregateActionResponse);
     }
 
     private AggregateProcessor createObjectUnderTest() {
