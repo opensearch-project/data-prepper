@@ -58,7 +58,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
             final AggregateIdentificationKeysHasher.IdentificationHash identificationKeysHash = aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event);
             final AggregateGroup aggregateGroupForEvent = aggregateGroupManager.getAggregateGroup(identificationKeysHash);
 
-            final AggregateActionResponse handleEventResponse = aggregateAction.handleEvent(event, aggregateGroupForEvent.getGroupState());
+            final AggregateActionResponse handleEventResponse = aggregateAction.handleEvent(event, aggregateGroupForEvent);
 
             final Event aggregateActionResponseEvent = handleEventResponse.getEvent();
 
