@@ -26,6 +26,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
+import static org.opensearch.dataprepper.matcher.MapEquals.isEqualWithoutTimestamp;
 
 public class JacksonEventTest {
 
@@ -316,12 +317,12 @@ public class JacksonEventTest {
     @Test
     public void testGetAsMap_with_EmptyData() {
         final Map<String, Object> eventAsMap = event.toMap();
-        assertThat(eventAsMap, equalTo(Collections.emptyMap()));
+        assertThat(eventAsMap, isEqualWithoutTimestamp(Collections.emptyMap()));
     }
 
     @Test
     public void testGetAsMap_withSimpleEvent() {
-        final Map<Object, Object> mapObject = new HashMap<>();
+        final Map<String, Object> mapObject = new HashMap<>();
 
         event.put("foo", "bar");
         mapObject.put("foo", "bar");
@@ -330,7 +331,7 @@ public class JacksonEventTest {
         mapObject.put("list", Arrays.asList(1, 4, 5));
 
         final Map<String, Object> eventAsMap = event.toMap();
-        assertThat(eventAsMap, equalTo(mapObject));
+        assertThat(eventAsMap, isEqualWithoutTimestamp(mapObject));
     }
 
     @Test

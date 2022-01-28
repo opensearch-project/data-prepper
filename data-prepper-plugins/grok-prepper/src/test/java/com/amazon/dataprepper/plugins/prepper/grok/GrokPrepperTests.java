@@ -39,7 +39,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -52,6 +51,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.opensearch.dataprepper.matcher.MapEquals.isEqualWithoutTimestamp;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -590,11 +590,11 @@ public class GrokPrepperTests {
         return new PluginSetting(PLUGIN_NAME, settings);
     }
 
-    static void assertRecordsAreEqual(final Record<Event> first, final Record<Event> second) throws JsonProcessingException {
+     private void assertRecordsAreEqual(final Record<Event> first, final Record<Event> second) throws JsonProcessingException {
         final Map<String, Object> recordMapFirst = OBJECT_MAPPER.readValue(first.getData().toJsonString(), MAP_TYPE_REFERENCE);
         final Map<String, Object> recordMapSecond = OBJECT_MAPPER.readValue(second.getData().toJsonString(), MAP_TYPE_REFERENCE);
 
-        assertThat(recordMapFirst, is(equalTo(recordMapSecond)));
+        assertThat(recordMapFirst, isEqualWithoutTimestamp(recordMapSecond));
     }
 
     static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {

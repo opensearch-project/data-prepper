@@ -46,4 +46,5 @@ include 'data-prepper-logstash-configuration'
 include 'e2e-test'
 include 'e2e-test:trace'
 include 'e2e-test:log'
+include 'data-prepper-test-common'
 
