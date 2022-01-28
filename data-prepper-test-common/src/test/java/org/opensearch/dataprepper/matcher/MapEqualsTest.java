@@ -16,9 +16,9 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 class MapEqualsTest {
-    Map<String, Object> expectedMap = new HashMap<>();
+    private final Map<String, Object> expectedMap = new HashMap<>();
 
-    MapEquals createObjectUnderTest() {
+    private MapEquals createObjectUnderTest() {
         expectedMap.put("List", Arrays.asList(1, 2, 3));
         expectedMap.put("@timestamp", OffsetDateTime.now());
 
@@ -26,7 +26,7 @@ class MapEqualsTest {
     }
 
     @Test
-    public void matchesSafely_will_return_true_if_maps_are_equal_Test() {
+    void matchesSafely_will_return_true_if_maps_are_equal_Test() {
         Map<String, Object> actualMap = new HashMap<>();
         actualMap.put("List", Arrays.asList(1, 2, 3));
 
@@ -34,7 +34,7 @@ class MapEqualsTest {
     }
 
     @Test
-    public void matchesSafely_will_return_false_if_maps_are_not_equal_Test() {
+    void matchesSafely_will_return_false_if_maps_are_not_equal_Test() {
         Map<String, Object> actualMap = new HashMap<>();
         actualMap.put("List", Arrays.asList(1, 2));
 
@@ -42,7 +42,7 @@ class MapEqualsTest {
     }
 
     @Test
-    public void matchesSafely_will_return_true_if_maps_with_timestamp_are_not_equal_Test() {
+    void matchesSafely_will_return_true_if_maps_with_timestamp_are_not_equal_Test() {
         Map<String, Object> actualMap = new HashMap<>();
         actualMap.put("List", Arrays.asList(1, 2, 3));
         actualMap.put("@timestamp", OffsetDateTime.now());
@@ -51,7 +51,7 @@ class MapEqualsTest {
     }
 
     @Test
-    public void matchesSafely_will_return_false_if_key_is_missing_Test() {
+    void matchesSafely_will_return_false_if_key_is_missing_Test() {
         Map<String, Object> actualMap = new HashMap<>();
         actualMap.put("anotherList", Arrays.asList(1, 2, 3));
         actualMap.put("@timestamp", OffsetDateTime.now());
