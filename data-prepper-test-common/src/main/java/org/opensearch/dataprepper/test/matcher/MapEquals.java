@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.matcher;
+package org.opensearch.dataprepper.test.matcher;
 
 import org.hamcrest.Description;
 import org.hamcrest.TypeSafeMatcher;
@@ -19,7 +19,7 @@ import java.util.Set;
  */
 public class MapEquals extends TypeSafeMatcher<Map<String, Object>> {
     private final Map<String, Object> expectedMap;
-    private final String DEFAULT_TIMESTAMP_KEY_FOR_EVENT = "@timestamp";
+    private static final String DEFAULT_TIMESTAMP_KEY_FOR_EVENT = "@timestamp";
 
     MapEquals(Map<String, Object> map) {
         expectedMap = map;
@@ -34,7 +34,8 @@ public class MapEquals extends TypeSafeMatcher<Map<String, Object>> {
         for (String key : keys) {
             Object actualValue = actualMap.get(key);
             Object expectedValue = expectedMap.get(key);
-            if ((!key.equals(DEFAULT_TIMESTAMP_KEY_FOR_EVENT)) && (actualValue == null || expectedValue == null || !actualValue.equals(expectedValue)))
+            if ((!key.equals(DEFAULT_TIMESTAMP_KEY_FOR_EVENT)) &&
+                    (actualValue == null || expectedValue == null || !actualValue.equals(expectedValue)))
                 return false;
         }
         return true;
@@ -46,7 +47,10 @@ public class MapEquals extends TypeSafeMatcher<Map<String, Object>> {
     }
 
     /**
+     * Custom matcher which matches map by ignoring default timestamp
+     * @param expectedMap a Map for comparison
      * @return {@link MapEquals}
+     * @since 1.3
      */
     public static MapEquals isEqualWithoutTimestamp(final Map<String, Object> expectedMap) {
         return new MapEquals(expectedMap);

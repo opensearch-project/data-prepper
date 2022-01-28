@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.matcher;
+package org.opensearch.dataprepper.test.matcher;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.time.OffsetDateTime;
@@ -12,17 +13,17 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTimestamp;
 
 class MapEqualsTest {
-    private final Map<String, Object> expectedMap = new HashMap<>();
+    private static final Map<String, Object> expectedMap = new HashMap<>();
 
-    private MapEquals createObjectUnderTest() {
+    @BeforeAll
+    static void setup() {
         expectedMap.put("List", Arrays.asList(1, 2, 3));
         expectedMap.put("@timestamp", OffsetDateTime.now());
-
-        return new MapEquals(expectedMap);
     }
 
     @Test
@@ -30,7 +31,7 @@ class MapEqualsTest {
         Map<String, Object> actualMap = new HashMap<>();
         actualMap.put("List", Arrays.asList(1, 2, 3));
 
-        assertThat(createObjectUnderTest().matchesSafely(actualMap), is(true));
+        assertThat(actualMap, isEqualWithoutTimestamp(expectedMap));
     }
 
     @Test
@@ -38,7 +39,7 @@ class MapEqualsTest {
         Map<String, Object> actualMap = new HashMap<>();
         actualMap.put("List", Arrays.asList(1, 2));
 
-        assertThat(createObjectUnderTest().matchesSafely(actualMap),is(false));
+        assertThat(actualMap, not(isEqualWithoutTimestamp(expectedMap)));
     }
 
     @Test
@@ -47,7 +48,7 @@ class MapEqualsTest {
         actualMap.put("List", Arrays.asList(1, 2, 3));
         actualMap.put("@timestamp", OffsetDateTime.now());
 
-        assertThat(createObjectUnderTest().matchesSafely(actualMap), is(true));
+        assertThat(actualMap, isEqualWithoutTimestamp(expectedMap));
     }
 
     @Test
@@ -56,7 +57,7 @@ class MapEqualsTest {
         actualMap.put("anotherList", Arrays.asList(1, 2, 3));
         actualMap.put("@timestamp", OffsetDateTime.now());
 
-        assertThat(createObjectUnderTest().matchesSafely(actualMap), is(false));
+        assertThat(actualMap, not(isEqualWithoutTimestamp(expectedMap)));
     }
 
 }

@@ -51,7 +51,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.opensearch.dataprepper.matcher.MapEquals.isEqualWithoutTimestamp;
+import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTimestamp;
 
 
 @ExtendWith(MockitoExtension.class)
