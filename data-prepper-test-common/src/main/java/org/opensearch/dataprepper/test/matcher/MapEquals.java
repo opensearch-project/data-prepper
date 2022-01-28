@@ -8,9 +8,8 @@ package org.opensearch.dataprepper.test.matcher;
 import org.hamcrest.Description;
 import org.hamcrest.TypeSafeMatcher;
 
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Custom Hamcrest assertion {@link MapEquals#isEqualWithoutTimestamp(Map)} which compares two maps
@@ -27,18 +26,13 @@ public class MapEquals extends TypeSafeMatcher<Map<String, Object>> {
 
     @Override
     protected boolean matchesSafely(final Map<String, Object> actualMap) {
-        Set<String> keys = new HashSet<>();
-        keys.addAll(actualMap.keySet());
-        keys.addAll(expectedMap.keySet());
+        Map<String, Object> modifiedExpectedMap = new HashMap<>(expectedMap);
+        Map<String, Object> modifiedActualMap = new HashMap<>(actualMap);
 
-        for (String key : keys) {
-            Object actualValue = actualMap.get(key);
-            Object expectedValue = expectedMap.get(key);
-            if ((!key.equals(DEFAULT_TIMESTAMP_KEY_FOR_EVENT)) &&
-                    (actualValue == null || expectedValue == null || !actualValue.equals(expectedValue)))
-                return false;
-        }
-        return true;
+        modifiedExpectedMap.remove(DEFAULT_TIMESTAMP_KEY_FOR_EVENT);
+        modifiedActualMap.remove(DEFAULT_TIMESTAMP_KEY_FOR_EVENT);
+
+        return modifiedExpectedMap.equals(modifiedActualMap);
     }
 
     @Override
