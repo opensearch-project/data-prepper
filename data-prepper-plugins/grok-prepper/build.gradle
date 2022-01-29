@@ -14,6 +14,7 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
+    testImplementation project(':data-prepper-test-common')
 }
 
 jacocoTestCoverageVerification {
