@@ -24,10 +24,10 @@ class MapEqualsTest {
     @BeforeAll
     static void setup() {
         expectedMap1.put("List", Arrays.asList(1, 2, 3));
-        expectedMap1.put("@timestamp", OffsetDateTime.now());
+        expectedMap1.put(MapEquals.DEFAULT_TIMESTAMP_KEY_FOR_EVENT, OffsetDateTime.now());
 
         expectedMap2.put("List", Arrays.asList(1, 2, 3));
-        expectedMap2.put("@timestamp", OffsetDateTime.now());
+        expectedMap2.put(MapEquals.DEFAULT_TIMESTAMP_KEY_FOR_EVENT, OffsetDateTime.now());
         expectedMap2.put(null, Arrays.asList(1, 2, 3));
     }
 
@@ -51,7 +51,7 @@ class MapEqualsTest {
     void matchesSafely_will_return_true_if_maps_with_timestamp_are_not_equal_Test() {
         Map<String, Object> actualMap = new HashMap<>();
         actualMap.put("List", Arrays.asList(1, 2, 3));
-        actualMap.put("@timestamp", OffsetDateTime.now());
+        actualMap.put(MapEquals.DEFAULT_TIMESTAMP_KEY_FOR_EVENT, OffsetDateTime.now());
 
         assertThat(actualMap, isEqualWithoutTimestamp(expectedMap1));
     }
@@ -60,7 +60,7 @@ class MapEqualsTest {
     void matchesSafely_will_return_false_if_key_is_missing_Test() {
         Map<String, Object> actualMap = new HashMap<>();
         actualMap.put("anotherList", Arrays.asList(1, 2, 3));
-        actualMap.put("@timestamp", OffsetDateTime.now());
+        actualMap.put(MapEquals.DEFAULT_TIMESTAMP_KEY_FOR_EVENT, OffsetDateTime.now());
 
         assertThat(actualMap, not(isEqualWithoutTimestamp(expectedMap1)));
     }
@@ -70,7 +70,7 @@ class MapEqualsTest {
         Map<String, Object> actualMap = new HashMap<>();
         actualMap.put(null, null);
         actualMap.put("List", Arrays.asList(1, 2, 3));
-        actualMap.put("@timestamp", OffsetDateTime.now());
+        actualMap.put(MapEquals.DEFAULT_TIMESTAMP_KEY_FOR_EVENT, OffsetDateTime.now());
 
         assertThat(actualMap, not(isEqualWithoutTimestamp(expectedMap2)));
     }
@@ -80,7 +80,7 @@ class MapEqualsTest {
         Map<String, Object> actualMap = new HashMap<>();
         actualMap.put(null, Arrays.asList(1, 2, 3));
         actualMap.put("List", Arrays.asList(1, 2, 3));
-        actualMap.put("@timestamp", OffsetDateTime.now());
+        actualMap.put(MapEquals.DEFAULT_TIMESTAMP_KEY_FOR_EVENT, OffsetDateTime.now());
 
         assertThat(actualMap, isEqualWithoutTimestamp(expectedMap2));
     }

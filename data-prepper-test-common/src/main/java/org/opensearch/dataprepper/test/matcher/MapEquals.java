@@ -18,7 +18,7 @@ import java.util.Map;
  */
 public class MapEquals extends TypeSafeMatcher<Map<String, Object>> {
     private final Map<String, Object> expectedMap;
-    private static final String DEFAULT_TIMESTAMP_KEY_FOR_EVENT = "@timestamp";
+    static final String DEFAULT_TIMESTAMP_KEY_FOR_EVENT = "@timestamp";
 
     MapEquals(Map<String, Object> map) {
         expectedMap = map;
