@@ -7,6 +7,7 @@ package com.amazon.dataprepper.plugin;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import org.reflections.Reflections;
+import org.reflections.util.ConfigurationBuilder;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,12 +22,13 @@ import java.util.Set;
  */
 public class ClasspathPluginProvider implements PluginProvider {
 
-    private static final String DEFAULT_PLUGINS_CLASSPATH = "com.amazon.dataprepper.plugins";
     private final Reflections reflections;
     private Map<String, Map<Class<?>, Class<?>>> nameToSupportedTypeToPluginType;
 
     public ClasspathPluginProvider() {
-        this(new Reflections(DEFAULT_PLUGINS_CLASSPATH));
+        this(new Reflections(new ConfigurationBuilder()
+                .forPackages(new PluginPackagesSupplier().get()))
+        );
     }
 
     /**
