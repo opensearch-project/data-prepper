@@ -47,7 +47,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *             "buzz": 42
  *         }
  *     }
- *
+ * A @timestamp field will be added to JacksonEvent whose default value is the date-time when the object is created.
+ * Existing @timestamp field will be overwritten if it already exists in the event.
  * @since 1.2
  */
 public class JacksonEvent implements Event {
