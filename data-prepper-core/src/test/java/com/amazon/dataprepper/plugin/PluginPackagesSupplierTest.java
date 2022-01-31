@@ -64,6 +64,43 @@ class PluginPackagesSupplierTest {
     }
 
     @Test
+    void get_returns_default_package_if_resources_have_no_plugin_packages_defined() throws IOException {
+        final PluginPackagesSupplier objectUnderTest = createObjectUnderTest();
+
+        final Iterator<URL> iteratorOfEmptyFiles = IntStream.range(0, 3)
+                .mapToObj(propertyLine -> new ByteArrayInputStream(new byte[]{}))
+                .map(PluginPackagesSupplierTest::createMockedUrl)
+                .iterator();
+
+        when(objectUnderTest.loadResources()).thenReturn(iteratorOfEmptyFiles);
+
+        final String[] actualPackages = objectUnderTest.get();
+        assertThat(actualPackages, notNullValue());
+
+        assertThat(actualPackages.length, equalTo(1));
+        assertThat(actualPackages[0], equalTo(DEFAULT_PACKAGE_NAME));
+    }
+
+    @Test
+    void get_returns_default_package_if_resources_have_empty_plugin_packages_defined() throws IOException {
+        final PluginPackagesSupplier objectUnderTest = createObjectUnderTest();
+
+        final Iterator<URL> iterator = IntStream.range(0, 3)
+                .mapToObj(packageName -> PROPERTIES_PREFIX)
+                .map(propertyLine -> new ByteArrayInputStream(propertyLine.getBytes()))
+                .map(PluginPackagesSupplierTest::createMockedUrl)
+                .iterator();
+
+        when(objectUnderTest.loadResources()).thenReturn(iterator);
+
+        final String[] actualPackages = objectUnderTest.get();
+        assertThat(actualPackages, notNullValue());
+
+        assertThat(actualPackages.length, equalTo(1));
+        assertThat(actualPackages[0], equalTo(DEFAULT_PACKAGE_NAME));
+    }
+
+    @Test
     void get_returns_packages_from_all_resources() throws IOException {
         final PluginPackagesSupplier objectUnderTest = createObjectUnderTest();
 

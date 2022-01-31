@@ -17,9 +17,11 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * Supplies packages to scan for plugins.
@@ -70,22 +72,25 @@ class PluginPackagesSupplier implements Supplier<String[]> {
             final URL pluginPropertiesUrl = pluginResources.next();
 
             final Properties pluginProperties = new Properties();
-            final InputStream pluginPropertiesInputStream;
             try {
-                pluginPropertiesInputStream = pluginPropertiesUrl.openStream();
+                final InputStream pluginPropertiesInputStream = pluginPropertiesUrl.openStream();
                 pluginProperties.load(pluginPropertiesInputStream);
             } catch (final IOException ex) {
                 LOG.warn("Unable to load properties from resource. url={}", pluginPropertiesUrl, ex);
             }
 
-            final String packagesRawString = pluginProperties.getProperty("org.opensearch.dataprepper.plugin.packages");
+            final String packagesRawString = pluginProperties.getProperty("org.opensearch.dataprepper.plugin.packages", "");
 
             final String[] currentPackageNames = packagesRawString.split(",");
 
-            packageNames.addAll(Arrays.asList(currentPackageNames));
+            final List<String> validPackageNames = Arrays.stream(currentPackageNames)
+                    .filter(p -> !p.isEmpty())
+                    .collect(Collectors.toList());
+            packageNames.addAll(validPackageNames);
         }
 
-        if(packageNames.isEmpty()) {
+        if (packageNames.isEmpty()) {
+            LOG.warn("Unable to load packages from data-prepper.plugins.properties file. Reverting to default plugin package.");
             packageNames.add(DEFAULT_PLUGINS_CLASSPATH);
         }
 
