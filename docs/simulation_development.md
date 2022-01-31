@@ -1,7 +1,7 @@
-# Adding new simulations
+# Adding new performance testing simulations
 
 ## Simulation coding guideline
-- New simulations can be added to the `./data-prepper-performance-test/src/gatling/java/org/opensearch/dataprepper/test/performance` folder.
+- New simulations can be added to the `./performance-test/src/gatling/java/org/opensearch/dataprepper/test/performance` folder.
 - Simulations are written in Java.
 - Use a class name that describes what type of scenario your simulation is designed to simulate and end with a `Simulation` suffix. 
 - Simulations are executed using the Simulations classes static function.
@@ -24,5 +24,5 @@ private static final String targetHost = System.getProperty("targetHost", "http:
 
 Parameters can be set from the command line using the `-D` flag
 ```bash
-./gradlew :data-prepper-performance-test:gatlingRun -DtargetRps=100 -DmaxUsers=10 -DtargetHost=127.0.0.1
+./gradlew :performance-test:gatlingRun -DtargetRps=100 -DmaxUsers=10 -DtargetHost=127.0.0.1
 ```

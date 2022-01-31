@@ -27,4 +27,4 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Build performance tests with Gradle
-        run: ./gradlew :data-prepper-performance-test:compileGatlingJava
+        run: ./gradlew :performance-test:compileGatlingJava

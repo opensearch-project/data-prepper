@@ -2,7 +2,7 @@
 
 ### Run all simulations
 ```shell
-./gradlew :data-prepper-performance-test:gatlingRun
+./gradlew :performance-test:gatlingRun
 ```
 
 If you need to run a task several times in a row (with different environment or configuration), you may use the --rerun-tasks flag.
@@ -10,21 +10,21 @@ If you need to run a task several times in a row (with different environment or 
 example:
 
 ```shell
-./gradlew --rerun-tasks :data-prepper-performance-test:gatlingRun
+./gradlew --rerun-tasks :performance-test:gatlingRun
 ```
 
 ### Run specific test
 
-To run TargetRpsSimulation. Source code available at `./data-prepper-performance-test/src/gatling/java/org/opensearch/dataprepper/test/performance/TargetRpsSimulation.java`
+To run TargetRpsSimulation. Source code available at `./performance-test/src/gatling/java/org/opensearch/dataprepper/test/performance/TargetRpsSimulation.java`
 
 ```shell
 # ./gradlew gatlingRun-<simulation-class-path>
-./gradlew :data-prepper-performance-test:gatlingRun-org.opensearch.dataprepper.test.performance.TargetRpsSimulation
+./gradlew :performance-test:gatlingRun-org.opensearch.dataprepper.test.performance.TargetRpsSimulation
 ```
 
 ### Verify Gatling scenarios compile
 ```shell
-./gradlew :data-prepper-performance-test:compileGatlingJava
+./gradlew :performance-test:compileGatlingJava
 ```
 
 # Gatling Documentation
