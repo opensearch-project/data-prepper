@@ -79,6 +79,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
   private static final String DEFAULT_RAW_SPAN_FILE_1 = "raw-span-1.json";
   private static final String DEFAULT_RAW_SPAN_FILE_2 = "raw-span-2.json";
   private static final String DEFAULT_SERVICE_MAP_FILE = "service-map-1.json";
+  private static final String TIMESTAMP_KEY = "@timestamp";
 
   @Before
   public void metricsInit() {
@@ -471,6 +472,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
     final Map<String, Object> expectedContent = new HashMap<>();
     expectedContent.put("log", "foobar");
+    expectedContent.put(TIMESTAMP_KEY, retSources.get(0).get(TIMESTAMP_KEY));
 
     assertEquals(1, retSources.size());
     assertTrue(retSources.containsAll(Arrays.asList(expectedContent)));

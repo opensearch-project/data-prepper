@@ -6,12 +6,14 @@
 package com.amazon.dataprepper.model.event;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Instant;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -25,7 +27,7 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.Assert.assertThrows;
 import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTimestamp;
 
@@ -34,6 +36,8 @@ public class JacksonEventTest {
     private Event event;
 
     private String eventType;
+
+    private ZonedDateTime timestamp;
 
     @BeforeEach
     public void setup() {
@@ -44,6 +48,7 @@ public class JacksonEventTest {
                 .withEventType(eventType)
                 .build();
 
+        timestamp = event.get(JacksonEvent.TIMESTAMP_KEY, ZonedDateTime.class);
     }
 
     @Test
@@ -301,7 +306,7 @@ public class JacksonEventTest {
     public void testToString_withEmptyData() {
         final String result = event.toJsonString();
 
-        assertThat(result, is(equalTo("{\"event_timestamp\":\"" + JacksonEvent.getZonedDateTime() + "\"}")));
+        assertThat(result, is(equalTo("{\"" + JacksonEvent.TIMESTAMP_KEY + "\":\"" + timestamp + "\"}")));
     }
 
     @Test
@@ -312,7 +317,7 @@ public class JacksonEventTest {
         event.put("list", Arrays.asList(1, 4, 5));
         final String result = event.toJsonString();
 
-        String expectedResult = "{\"event_timestamp\":\"" + JacksonEvent.getZonedDateTime() +
+        String expectedResult = "{\"" + JacksonEvent.TIMESTAMP_KEY + "\":\"" + timestamp +
                 "\",\"foo\":\"bar\",\"testObject\":{\"field1\":\"%s\"},\"list\":[1,4,5]}";
         assertThat(result, equalTo(String.format(expectedResult, value)));
     }
@@ -467,4 +472,9 @@ public class JacksonEventTest {
         assertThrows(IllegalArgumentException.class, () -> builder.build());
     }
 
+    @Test
+    public void testTimestamp_isNotNullAndValid() {
+        Assertions.assertNotNull(timestamp);
+        assertThat(timestamp, is(lessThanOrEqualTo(ZonedDateTime.now())));
+    }
 }

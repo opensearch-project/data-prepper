@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.time.OffsetDateTime;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -57,7 +57,8 @@ public class JacksonEvent implements Event {
     private static final String SEPARATOR = "/";
 
     private static final ObjectMapper mapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule().addSerializer(OffsetDateTime.class, new OffsetSerializerWithMilliSecondPrecision()))
+            .registerModule(new JavaTimeModule()
+                    .addSerializer(ZonedDateTime.class, new CustomZonedDateTimeSerializerWithMilliSecondPrecision()))
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
             .disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE);
 
@@ -73,6 +74,8 @@ public class JacksonEvent implements Event {
 
     static final String EVENT_TYPE = "event";
 
+    static final String TIMESTAMP_KEY = "@timestamp";
+
     protected JacksonEvent(final Builder builder) {
 
         if (builder.eventMetadata == null) {
@@ -86,7 +89,7 @@ public class JacksonEvent implements Event {
         }
 
         this.jsonNode = getInitialJsonNode(builder.data);
-        put("event_timestamp", OffsetDateTime.now());
+        put(TIMESTAMP_KEY, ZonedDateTime.now());
     }
 
     static Event fromMessage(String message) {
@@ -327,6 +330,7 @@ public class JacksonEvent implements Event {
                     || c == '.'
                     || c == '-'
                     || c == '_'
+                    || c == '@'
                     || c == '/')) {
 
                 return false;

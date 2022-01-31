@@ -15,6 +15,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -25,6 +26,7 @@ import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperTests.build
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class GrokPrepperIT {
@@ -32,6 +34,7 @@ public class GrokPrepperIT {
     private GrokPrepper grokPrepper;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
+    private static final String TIMESTAMP_KEY = "@timestamp";
     private final String PLUGIN_NAME = "grok";
     private String messageInput;
 
@@ -466,6 +469,10 @@ public class GrokPrepperIT {
         final Map<String, Object> recordMapFirst = OBJECT_MAPPER.readValue(first.getData().toJsonString(), MAP_TYPE_REFERENCE);
         final Map<String, Object> recordMapSecond = OBJECT_MAPPER.readValue(second.getData().toJsonString(), MAP_TYPE_REFERENCE);
 
+        assertThat(first.getData().get(TIMESTAMP_KEY, ZonedDateTime.class),
+                lessThanOrEqualTo(second.getData().get(TIMESTAMP_KEY, ZonedDateTime.class)));
+        recordMapFirst.remove(TIMESTAMP_KEY);
+        recordMapSecond.remove(TIMESTAMP_KEY);
         assertThat(recordMapFirst, equalTo(recordMapSecond));
     }
 

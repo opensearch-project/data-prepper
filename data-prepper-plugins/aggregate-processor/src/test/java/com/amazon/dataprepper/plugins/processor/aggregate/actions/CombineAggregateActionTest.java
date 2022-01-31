@@ -30,6 +30,8 @@ public class CombineAggregateActionTest {
     private List<Event> events;
     private List<Map<String, Object>> eventMaps;
 
+    private static final String TIMESTAMP_KEY = "@timestamp";
+
     @BeforeEach
     void setup() {
         events = new ArrayList<>();
@@ -97,6 +99,7 @@ public class CombineAggregateActionTest {
 
         final Optional<Event> result = combineAggregateAction.concludeGroup(aggregateActionInput);
         assertThat(result.isPresent(), equalTo(true));
+        result.get().delete(TIMESTAMP_KEY);
         assertThat(result.get().getMetadata().getEventType(), equalTo(CombineAggregateAction.EVENT_TYPE));
         assertThat(result.get().toMap(), equalTo(groupState));
     }

@@ -46,6 +46,7 @@ public class FileSourceTests {
     private static final String TEST_FILE_PATH_JSON = "src/test/resources/test-file-source-json.tst";
     private static final String TEST_FILE_PATH_INVALID_JSON = "src/test/resources/test-file-source-invalid-json.tst";
     private static final String FILE_DOES_NOT_EXIST = "file_does_not_exist";
+    private static final String TIMESTAMP_KEY = "@timestamp";
 
     private FileSourceConfig fileSourceConfig;
     private FileSource fileSource;
@@ -208,6 +209,8 @@ public class FileSourceTests {
 
     static void assertExpectedRecordsAreEqual(final List<Record<Object>> expectedEvents, final List<Record<Object>> actualEvents) {
         for (int i = 0; i < expectedEvents.size(); i++) {
+            ((JacksonEvent) actualEvents.get(i).getData()).delete(TIMESTAMP_KEY);
+            ((JacksonEvent) expectedEvents.get(i).getData()).delete(TIMESTAMP_KEY);
             assertThat(actualEvents.get(i), notNullValue());
             assertThat(actualEvents.get(i).getData(), notNullValue());
             assertEventRecordsAreEqual(actualEvents.get(i), expectedEvents.get(i));
