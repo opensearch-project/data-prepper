@@ -3,14 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.plugins.processor.mutatefield;
+package com.amazon.dataprepper.plugins.processor.mutateevent;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertFalse;
 
 import java.lang.reflect.Field;
 import java.util.Map;
 
-public class MutateFieldProcessorConfig {
+public class MutateEventProcessorConfig {
     @MutateAction
     final private Map<String, String> rename = null;
     @MutateAction
@@ -19,6 +20,15 @@ public class MutateFieldProcessorConfig {
     final private String delete = null;
     @MutateAction
     final private Map<String, String> copy = null;
+
+    @JsonProperty("overwrite_on_rename")
+    final private boolean overwriteOnRename = true;
+
+    @JsonProperty("overwrite_on_add")
+    final private boolean overwriteOnAdd = true;
+
+    @JsonProperty("overwrite_on_copy")
+    final private boolean overwriteOnCopy = true;
 
     public Map<String, String> getRename() {
         return rename;
@@ -34,6 +44,18 @@ public class MutateFieldProcessorConfig {
 
     public Map<String, String> getCopy() {
         return copy;
+    }
+
+    public boolean getOverwriteOnRename() {
+        return overwriteOnRename;
+    }
+
+    public boolean getOverwriteOnAdd() {
+        return overwriteOnAdd;
+    }
+
+    public boolean getOverwriteOnCopy() {
+        return overwriteOnCopy;
     }
 
     @AssertFalse(message="More than one mutation action defined. Only one mutation action allowed.")
