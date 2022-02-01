@@ -64,8 +64,8 @@ public class AbstractBufferTest {
         Assert.assertTrue(
                 MetricsTestUtil.isBetween(
                         MetricsTestUtil.getMeasurementFromList(writeTimeMeasurements, Statistic.TOTAL_TIME).getValue(),
-                        0.5,
-                        0.6));
+                        0.4,
+                        0.7));
     }
 
     @Test
@@ -91,8 +91,8 @@ public class AbstractBufferTest {
         Assert.assertTrue(
                 MetricsTestUtil.isBetween(
                         MetricsTestUtil.getMeasurementFromList(writeTimeMeasurements, Statistic.TOTAL_TIME).getValue(),
-                        0.1,
-                        0.2));
+                        0.05,
+                        0.25));
     }
 
     @Test
@@ -129,8 +129,8 @@ public class AbstractBufferTest {
         Assert.assertEquals(1.0, MetricsTestUtil.getMeasurementFromList(readTimeMeasurements, Statistic.COUNT).getValue(), 0);
         Assert.assertTrue(MetricsTestUtil.isBetween(
                 MetricsTestUtil.getMeasurementFromList(readTimeMeasurements, Statistic.TOTAL_TIME).getValue(),
-                0.1,
-                0.2));
+                0.05,
+                0.25));
     }
 
     @Test

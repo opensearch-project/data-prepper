@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.File;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.is;
@@ -65,10 +67,12 @@ class DataPrepperArgsTest {
     public void testGivenLogstashConfigPathThenPipelineConfigCreated() {
         final DataPrepperArgs args = new DataPrepperArgs(LOGSTASH_PIPELINE_FILE_PATH, DP_CONFIG_YAML_FILE_PATH);
 
+        final String configFileEnding = String.format("src%stest%sresources%slogstash-filter.yaml", File.separator, File.separator, File.separator);
+
         assertThat(args, is(notNullValue()));
         assertThat(
                 args.getPipelineConfigFileLocation(),
-                endsWith("src/test/resources/logstash-filter.yaml"));
+                endsWith(configFileEnding));
         assertThat(args.getDataPrepperConfigFileLocation(), is(DP_CONFIG_YAML_FILE_PATH));
     }
 

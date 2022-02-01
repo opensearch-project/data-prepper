@@ -403,7 +403,7 @@ public class JacksonEventTest {
                 .build();
 
         assertThat(event.getMetadata().getAttributes(), is(not(equalTo(testAttributes))));
-        assertThat(event.getMetadata().getTimeReceived(), is(not(equalTo(now))));
+        assertThat(event.getMetadata().getTimeReceived(), equalTo(now));
         assertThat(event.getMetadata().getEventType(), is(equalTo(emEventType)));
     }
 

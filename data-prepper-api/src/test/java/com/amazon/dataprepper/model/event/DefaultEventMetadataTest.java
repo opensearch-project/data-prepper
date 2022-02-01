@@ -83,7 +83,7 @@ public class DefaultEventMetadataTest {
     @Test
     public void testBuild_withoutTimeReceived() {
 
-        final Instant before = Instant.now();
+        final Instant before = Instant.ofEpochMilli(Instant.now().toEpochMilli() - 1);
 
         EventMetadata result = DefaultEventMetadata.builder()
                 .withEventType(testEventType)
@@ -93,7 +93,7 @@ public class DefaultEventMetadataTest {
         final Instant timeReceived = result.getTimeReceived();
         assertThat(timeReceived, notNullValue());
         assertThat(timeReceived, is(greaterThan(before)));
-        assertThat(timeReceived, is(lessThan(Instant.now())));
+        assertThat(timeReceived, is(lessThan(Instant.ofEpochMilli(Instant.now().toEpochMilli() + 1))));
     }
 
     @Test
