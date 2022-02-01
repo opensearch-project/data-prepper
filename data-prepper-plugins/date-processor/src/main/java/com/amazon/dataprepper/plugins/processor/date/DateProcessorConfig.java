@@ -7,10 +7,10 @@ package com.amazon.dataprepper.plugins.processor.date;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.Size;
 
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 
 public class DateProcessorConfig {
     static final String DEFAULT_DESTINATION = "@timestamp";
@@ -19,8 +19,7 @@ public class DateProcessorConfig {
 
     @JsonProperty("match")
     @NotEmpty(message = "match can not be empty")
-    @Size(min = 2, message = "match should have field name and at least one pattern")
-    private List<String> match;
+    private Map<String, List<String>> match;
 
     @JsonProperty("destination")
     private String destination = DEFAULT_DESTINATION;
@@ -31,7 +30,7 @@ public class DateProcessorConfig {
     @JsonProperty("locale")
     private String locale = DEFAULT_LOCALE;
 
-    public List<String> getMatch() {
+    public Map<String, List<String>> getMatch() {
         return match;
     }
 

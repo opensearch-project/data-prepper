@@ -12,6 +12,7 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.processor.AbstractProcessor;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
+import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +25,7 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private final DateProcessorConfig dateProcessorConfig;
 
     @DataPrepperPluginConstructor
-    protected DateProcessor(PluginMetrics pluginMetrics, final DateProcessorConfig dateProcessorConfig) {
+    protected DateProcessor(PluginMetrics pluginMetrics, final DateProcessorConfig dateProcessorConfig) throws NotImplementedException {
         super(pluginMetrics);
         this.dateProcessorConfig = dateProcessorConfig;
     }

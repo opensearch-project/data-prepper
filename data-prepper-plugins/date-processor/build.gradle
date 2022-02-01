@@ -7,15 +7,8 @@ plugins {
     id 'java'
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     implementation project(':data-prepper-api')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-}
-
-test {
-    useJUnitPlatform()
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
 }
