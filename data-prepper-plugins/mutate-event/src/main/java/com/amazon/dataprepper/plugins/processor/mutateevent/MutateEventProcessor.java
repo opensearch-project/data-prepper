@@ -37,7 +37,7 @@ public class MutateEventProcessor extends AbstractProcessor<Record<Event>, Recor
                 if(key != null
                         && newKey != null
                         && !key.equals(newKey)
-                        && (!recordEvent.containsKey(newKey) || mutateEventProcessorConfig.getOverwriteOnRename())) {
+                        && (!recordEvent.containsKey(newKey) || mutateEventProcessorConfig.getOverwrite())) {
                     final Object source = recordEvent.get(key, Object.class);
                     recordEvent.put(newKey, source);
                     recordEvent.delete(key);
@@ -46,7 +46,7 @@ public class MutateEventProcessor extends AbstractProcessor<Record<Event>, Recor
                 final String key = mutateEventProcessorConfig.getAdd().keySet().toArray()[0].toString();
                 final Object newValue = mutateEventProcessorConfig.getAdd().values().toArray()[0];
 
-                if(key != null && (!recordEvent.containsKey(key) || mutateEventProcessorConfig.getOverwriteOnAdd())) {
+                if(key != null && (!recordEvent.containsKey(key) || mutateEventProcessorConfig.getOverwrite())) {
                     recordEvent.put(key, newValue);
                 }
             } else if(mutateEventProcessorConfig.getDelete() != null) {
@@ -61,7 +61,7 @@ public class MutateEventProcessor extends AbstractProcessor<Record<Event>, Recor
                 if(key != null
                         && newKey != null
                         && !key.equals(newKey)
-                        && (!recordEvent.containsKey(newKey) || mutateEventProcessorConfig.getOverwriteOnCopy())) {
+                        && (!recordEvent.containsKey(newKey) || mutateEventProcessorConfig.getOverwrite())) {
                     final Object source = recordEvent.get(key, Object.class);
                     recordEvent.put(newKey, source);
                 }

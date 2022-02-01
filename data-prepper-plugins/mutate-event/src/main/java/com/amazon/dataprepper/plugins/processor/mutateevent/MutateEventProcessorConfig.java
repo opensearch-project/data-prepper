@@ -5,7 +5,6 @@
 
 package com.amazon.dataprepper.plugins.processor.mutateevent;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertFalse;
 
 import java.lang.reflect.Field;
@@ -21,14 +20,7 @@ public class MutateEventProcessorConfig {
     @MutateAction
     final private Map<String, String> copy = null;
 
-    @JsonProperty("overwrite_on_rename")
-    final private boolean overwriteOnRename = true;
-
-    @JsonProperty("overwrite_on_add")
-    final private boolean overwriteOnAdd = true;
-
-    @JsonProperty("overwrite_on_copy")
-    final private boolean overwriteOnCopy = true;
+    final private boolean overwrite = true;
 
     public Map<String, String> getRename() {
         return rename;
@@ -46,16 +38,8 @@ public class MutateEventProcessorConfig {
         return copy;
     }
 
-    public boolean getOverwriteOnRename() {
-        return overwriteOnRename;
-    }
-
-    public boolean getOverwriteOnAdd() {
-        return overwriteOnAdd;
-    }
-
-    public boolean getOverwriteOnCopy() {
-        return overwriteOnCopy;
+    public boolean getOverwrite() {
+        return overwrite;
     }
 
     @AssertFalse(message="More than one mutation action defined. Only one mutation action allowed.")
