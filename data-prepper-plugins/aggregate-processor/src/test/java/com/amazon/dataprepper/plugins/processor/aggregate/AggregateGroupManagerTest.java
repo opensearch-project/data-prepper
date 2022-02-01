@@ -91,11 +91,11 @@ public class AggregateGroupManagerTest {
 
         final AggregateGroup groupToConclude = mock(AggregateGroup.class);
         final AggregateIdentificationKeysHasher.IdentificationHash hashForGroupToConclude = mock(AggregateIdentificationKeysHasher.IdentificationHash.class);
-        when(groupToConclude.getGroupStart()).thenReturn(Instant.ofEpochMilli(Instant.now().toEpochMilli() - (TEST_WINDOW_DURATION * 1000L)));
+        when(groupToConclude.getGroupStart()).thenReturn(Instant.now().minusSeconds(TEST_WINDOW_DURATION));
 
         final AggregateGroup groupToNotConclude = mock(AggregateGroup.class);
         final AggregateIdentificationKeysHasher.IdentificationHash hashForGroupToNotConclude = mock(AggregateIdentificationKeysHasher.IdentificationHash.class);
-        when(groupToNotConclude.getGroupStart()).thenReturn(Instant.ofEpochMilli(Instant.now().toEpochMilli() + (TEST_WINDOW_DURATION * 1000L)));
+        when(groupToNotConclude.getGroupStart()).thenReturn(Instant.now().plusSeconds(TEST_WINDOW_DURATION));
 
         aggregateGroupManager.putGroupWithHash(hashForGroupToConclude, groupToConclude);
         aggregateGroupManager.putGroupWithHash(hashForGroupToNotConclude, groupToNotConclude);

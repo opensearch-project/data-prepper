@@ -44,7 +44,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
         this.aggregateProcessorConfig = aggregateProcessorConfig;
         this.aggregateGroupManager = aggregateGroupManager;
         this.aggregateIdentificationKeysHasher = aggregateIdentificationKeysHasher;
-        AggregateAction aggregateAction = loadAggregateAction(pluginFactory);
+        final AggregateAction aggregateAction = loadAggregateAction(pluginFactory);
         this.aggregateActionSynchronizer = aggregateActionSynchronizerProvider.provide(aggregateAction, aggregateGroupManager);
     }
 
