@@ -21,6 +21,8 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @DataPrepperPlugin(name = "aggregate", pluginType = Processor.class, pluginConfigurationType = AggregateProcessorConfig.class)
 public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -28,19 +30,22 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
 
     private final AggregateProcessorConfig aggregateProcessorConfig;
     private final AggregateGroupManager aggregateGroupManager;
-    private final AggregateAction aggregateAction;
+    private final AggregateActionSynchronizer aggregateActionSynchronizer;
     private final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher;
 
     @DataPrepperPluginConstructor
     public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
-        this(aggregateProcessorConfig, pluginMetrics, pluginFactory, new AggregateGroupManager(), new AggregateIdentificationKeysHasher(aggregateProcessorConfig.getIdentificationKeys()));
+        this(aggregateProcessorConfig, pluginMetrics, pluginFactory, new AggregateGroupManager(aggregateProcessorConfig.getWindowDuration()),
+                new AggregateIdentificationKeysHasher(aggregateProcessorConfig.getIdentificationKeys()), new AggregateActionSynchronizer.AggregateActionSynchronizerProvider());
     }
-    public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final AggregateGroupManager aggregateGroupManager, final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher) {
+    public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final AggregateGroupManager aggregateGroupManager,
+                              final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher, final AggregateActionSynchronizer.AggregateActionSynchronizerProvider aggregateActionSynchronizerProvider) {
         super(pluginMetrics);
         this.aggregateProcessorConfig = aggregateProcessorConfig;
         this.aggregateGroupManager = aggregateGroupManager;
         this.aggregateIdentificationKeysHasher = aggregateIdentificationKeysHasher;
-        this.aggregateAction = loadAggregateAction(pluginFactory);
+        AggregateAction aggregateAction = loadAggregateAction(pluginFactory);
+        this.aggregateActionSynchronizer = aggregateActionSynchronizerProvider.provide(aggregateAction, aggregateGroupManager);
     }
 
     private AggregateAction loadAggregateAction(final PluginFactory pluginFactory) {
@@ -53,12 +58,19 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
         final List<Record<Event>> recordsOut = new LinkedList<>();
 
+        final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude();
+
+        for (final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry : groupsToConclude) {
+            final Optional<Event> concludeGroupEvent = aggregateActionSynchronizer.concludeGroup(groupEntry.getKey(), groupEntry.getValue());
+            concludeGroupEvent.ifPresent(value -> recordsOut.add(new Record<>(value)));
+        }
+
         for (final Record<Event> record : records) {
             final Event event = record.getData();
             final AggregateIdentificationKeysHasher.IdentificationHash identificationKeysHash = aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event);
             final AggregateGroup aggregateGroupForEvent = aggregateGroupManager.getAggregateGroup(identificationKeysHash);
 
-            final AggregateActionResponse handleEventResponse = aggregateAction.handleEvent(event, aggregateGroupForEvent);
+            final AggregateActionResponse handleEventResponse = aggregateActionSynchronizer.handleEventForGroup(event, identificationKeysHash, aggregateGroupForEvent);
 
             final Event aggregateActionResponseEvent = handleEventResponse.getEvent();
 
