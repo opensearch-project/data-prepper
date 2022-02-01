@@ -51,6 +51,7 @@ public class LogstashConfigConverter {
         ObjectMapper mapper = new ObjectMapper(YAMLFactory.builder()
                 .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
                 .enable(YAMLGenerator.Feature.INDENT_ARRAYS_WITH_INDICATOR)
+                .enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS)
                 .disable(YAMLGenerator.Feature.SPLIT_LINES)
                 .enable(YAMLGenerator.Feature.LITERAL_BLOCK_STYLE)
                 .build());

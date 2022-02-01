@@ -385,7 +385,7 @@ public class JacksonEventTest {
     @Test
     public void testBuild_withAllMetadataFields() {
 
-        final Instant now = Instant.now();
+        final Instant now = Instant.now().minusSeconds(1);
         final Map<String, Object> testAttributes = new HashMap<>();
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID());
         testAttributes.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
