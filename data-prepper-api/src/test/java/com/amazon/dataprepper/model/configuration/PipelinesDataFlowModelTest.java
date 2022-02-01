@@ -31,6 +31,7 @@ class PipelinesDataFlowModelTest {
     void setup() {
         objectMapper = new ObjectMapper(YAMLFactory.builder()
                 .disable(YAMLGenerator.Feature.WRITE_DOC_START_MARKER)
+                .enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS)
                 .build());
     }
 
