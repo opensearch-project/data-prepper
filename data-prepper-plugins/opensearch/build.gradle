@@ -101,7 +101,7 @@ configurations.all {
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-smile:2.13.0'
         force 'com.google.guava:guava:31.0.1-jre'
         force 'junit:junit:4.13.2'
-        force "org.slf4j:slf4j-api:1.7.32"
+        force "org.slf4j:slf4j-api:1.7.35"
         force 'org.apache.logging.log4j:log4j-api:2.17.1'
         force 'org.apache.logging.log4j:log4j-core:2.17.1'
         force 'commons-beanutils:commons-beanutils:1.9.4'
