@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperTests.assertRecordsAreEqual;
 import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepperTests.buildRecordWithEvent;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -461,6 +460,13 @@ public class GrokPrepperIT {
         pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
 
         assertThrows(IllegalArgumentException.class, () -> new GrokPrepper(pluginSetting));
+    }
+
+    private void assertRecordsAreEqual(final Record<Event> first, final Record<Event> second) throws JsonProcessingException {
+        final Map<String, Object> recordMapFirst = OBJECT_MAPPER.readValue(first.getData().toJsonString(), MAP_TYPE_REFERENCE);
+        final Map<String, Object> recordMapSecond = OBJECT_MAPPER.readValue(second.getData().toJsonString(), MAP_TYPE_REFERENCE);
+
+        assertThat(recordMapFirst, equalTo(recordMapSecond));
     }
 
 }

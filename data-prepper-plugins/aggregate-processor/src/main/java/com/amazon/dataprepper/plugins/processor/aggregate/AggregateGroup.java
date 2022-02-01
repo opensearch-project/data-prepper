@@ -5,17 +5,14 @@
 
 package com.amazon.dataprepper.plugins.processor.aggregate;
 
-import java.util.HashMap;
-import java.util.Map;
-
-public class AggregateGroup {
-    private final Map<Object, Object> groupState = new HashMap<>();
+class AggregateGroup implements AggregateActionInput {
+    private final GroupState groupState;
 
     AggregateGroup() {
-
+        this.groupState = new DefaultGroupState();
     }
 
-    public Map<Object, Object> getGroupState() {
+    public GroupState getGroupState() {
         return groupState;
     }
 }
