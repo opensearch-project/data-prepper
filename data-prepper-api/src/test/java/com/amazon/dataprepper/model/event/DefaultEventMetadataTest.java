@@ -20,8 +20,8 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anEmptyMap;
 import static org.hamcrest.Matchers.emptyOrNullString;
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class DefaultEventMetadataTest {
@@ -92,8 +92,8 @@ public class DefaultEventMetadataTest {
         assertThat(result, notNullValue());
         final Instant timeReceived = result.getTimeReceived();
         assertThat(timeReceived, notNullValue());
-        assertThat(timeReceived, is(greaterThan(before)));
-        assertThat(timeReceived, is(lessThan(Instant.now())));
+        assertThat(timeReceived, is(greaterThanOrEqualTo(before)));
+        assertThat(timeReceived, is(lessThanOrEqualTo(Instant.now())));
     }
 
     @Test

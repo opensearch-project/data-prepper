@@ -10,6 +10,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
@@ -64,7 +65,7 @@ public class PluginModelTests {
     public final void testSerialization_empty_plugin_to_YAML() throws JsonGenerationException, JsonMappingException, IOException {
         final PluginModel pluginModel = new PluginModel("customPlugin", new HashMap<>());
 
-        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
         final String serialized = mapper.writeValueAsString(pluginModel);
 
@@ -78,7 +79,7 @@ public class PluginModelTests {
     public final void testUsingCustomSerializerWithPluginSettings_noExceptions() throws JsonGenerationException, JsonMappingException, IOException {
         final PluginModel pluginModel = new PluginModel("customPlugin", validPluginSettings());
 
-        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
         final String serialized = mapper.writeValueAsString(pluginModel);
 
