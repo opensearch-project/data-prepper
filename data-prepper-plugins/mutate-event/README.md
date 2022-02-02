@@ -31,6 +31,7 @@ When run, the processor will parse the message into the following output:
 ```
 
 ##Mutation Actions
+There must be exactly one mutation action defined in the configuration.
 * `add` - Takes in a new event name and its associated data
 * `copy`- Takes in the source event name and the destination event name
 * `rename` - Takes in a source event name and the destination event name

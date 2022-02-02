@@ -1,0 +1,3 @@
+pluginName: mutate_event
+  add_field: add
+  delete_field: delete
