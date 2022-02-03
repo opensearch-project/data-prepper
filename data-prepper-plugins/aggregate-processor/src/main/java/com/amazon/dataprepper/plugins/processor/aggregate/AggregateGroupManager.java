@@ -7,6 +7,7 @@ package com.amazon.dataprepper.plugins.processor.aggregate;
 
 import com.google.common.collect.Maps;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,22 +16,14 @@ import java.util.Map;
 class AggregateGroupManager {
 
     private final Map<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> allGroups = Maps.newConcurrentMap();
-    private final int windowDuration;
+    private final Duration windowDuration;
 
     AggregateGroupManager(final int windowDuration) {
-        this.windowDuration = windowDuration;
+        this.windowDuration = Duration.ofSeconds(windowDuration);
     }
 
     AggregateGroup getAggregateGroup(final AggregateIdentificationKeysHasher.IdentificationHash identificationHash) {
-        final AggregateGroup aggregateGroup = allGroups.get(identificationHash);
-
-        if (aggregateGroup != null) {
-            return aggregateGroup;
-        }
-
-        final AggregateGroup newAggregateGroup = new AggregateGroup();
-        allGroups.put(identificationHash, newAggregateGroup);
-        return newAggregateGroup;
+        return allGroups.computeIfAbsent(identificationHash, (hash) -> new AggregateGroup());
     }
 
     List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> getGroupsToConclude() {
@@ -44,11 +37,12 @@ class AggregateGroupManager {
     }
 
     private boolean shouldConcludeGroup(final AggregateGroup aggregateGroup) {
-        return (Instant.now().toEpochMilli() - aggregateGroup.getGroupStart().toEpochMilli()) >= windowDuration * 1000L;
+        return Duration.between(aggregateGroup.getGroupStart(), Instant.now()).compareTo(windowDuration) >= 0;
     }
 
-    void removeGroupWithHash(final AggregateIdentificationKeysHasher.IdentificationHash hash, final AggregateGroup group) {
+    void closeGroup(final AggregateIdentificationKeysHasher.IdentificationHash hash, final AggregateGroup group) {
         allGroups.remove(hash, group);
+        group.resetGroup();
     }
 
     void putGroupWithHash(final AggregateIdentificationKeysHasher.IdentificationHash hash, final AggregateGroup group) {

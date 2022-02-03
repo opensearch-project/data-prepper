@@ -39,11 +39,8 @@ class AggregateGroup implements AggregateActionInput {
         return handleEventForGroupLock;
     }
 
-    void resetGroupStart() {
-        this.groupStart = Instant.now();
-    }
-
-    void clearGroupState() {
+    void resetGroup() {
+        groupStart = Instant.now();
         groupState.clear();
     }
 }

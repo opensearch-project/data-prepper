@@ -12,6 +12,21 @@ import org.slf4j.LoggerFactory;
 import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 
+/**
+ * An {@link AggregateAction} contains two functons, {@link AggregateAction#concludeGroup(AggregateActionInput)} and {@link AggregateAction#handleEvent(Event, AggregateActionInput)},
+ * that potentially modify a shared state that needs to be synchronized between multiple worker threads. These two functions should not be called on the same {@link AggregateGroup} at the same time,
+ * and this class enforces that behavior using the two {@link java.util.concurrent.locks.ReentrantLock} that belong to each {@link AggregateGroup}.
+ * The synchronization is designed to hold the following conditions:
+ *
+ * <ol>
+ *     <li>The critical sections of concludeGroup and handleEventForGroup should not be entered at the same time</li>
+ *     <li>If a thread is trying to enter the critical section for concludeGroup, no new threads should be able to attempt to enter the critical section for handleEventForGroup.
+ *         This condition is achieved using a turnstile synchronization pattern that locks and then immediately unlocks the concludeGroupLock</li>
+ *     <li>If multiple threads try to conclude the same {@link AggregateGroup} at the same time, only one should gain access to the critical section for concludeGroup, and
+ *     the remaining threads should immediately return from concludeGroup</li>
+ * </ol>
+ * @since 1.3
+ */
 class AggregateActionSynchronizer {
     private final AggregateAction aggregateAction;
     private final AggregateGroupManager aggregateGroupManager;
@@ -29,15 +44,14 @@ class AggregateActionSynchronizer {
 
         Optional<Event> concludeGroupEvent = Optional.empty();
         if (concludeGroupLock.tryLock()) {
+            handleEventForGroupLock.lock();
             try {
-                handleEventForGroupLock.lock();
+                LOG.debug("Start critical section in concludeGroup");
                 concludeGroupEvent = aggregateAction.concludeGroup(aggregateGroup);
-                aggregateGroupManager.removeGroupWithHash(hash, aggregateGroup);
-                aggregateGroup.resetGroupStart();
-                aggregateGroup.clearGroupState();
-            } catch (Exception e) {
+                aggregateGroupManager.closeGroup(hash, aggregateGroup);
+            } catch (final Exception e) {
                 LOG.debug("Error while concluding group: ", e);
-            } finally{
+            } finally {
                 handleEventForGroupLock.unlock();
                 concludeGroupLock.unlock();
             }
@@ -53,14 +67,15 @@ class AggregateActionSynchronizer {
         concludeGroupLock.unlock();
 
         AggregateActionResponse handleEventResponse;
+        handleEventForGroupLock.lock();
         try {
-            handleEventForGroupLock.lock();
+            LOG.debug("Start critical section in handleEventForGroup");
             handleEventResponse = aggregateAction.handleEvent(event, aggregateGroup);
             aggregateGroupManager.putGroupWithHash(hash, aggregateGroup);
         } catch (final Exception e) {
             LOG.debug("Error while handling event, event will be processed by remainder of the pipeline: ", e);
             handleEventResponse = new AggregateActionResponse(event);
-        } finally{
+        } finally {
             handleEventForGroupLock.unlock();
         }
 

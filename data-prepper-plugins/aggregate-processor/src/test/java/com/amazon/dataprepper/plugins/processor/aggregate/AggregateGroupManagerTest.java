@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -29,7 +30,7 @@ public class AggregateGroupManagerTest {
 
     private AggregateIdentificationKeysHasher.IdentificationHash identificationHash;
 
-    private static final int TEST_WINDOW_DURATION = 10;
+    private static final int TEST_WINDOW_DURATION = new Random().nextInt(10) + 10;
 
     @BeforeEach
     void setup() {

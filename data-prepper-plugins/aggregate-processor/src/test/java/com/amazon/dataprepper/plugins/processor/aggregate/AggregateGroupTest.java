@@ -16,13 +16,13 @@ import static org.hamcrest.Matchers.equalTo;
 public class AggregateGroupTest {
 
     @Test
-    void clearingGroupState_after_getting_group_state_clears_group_state() {
+    void resetGroup_after_getting_group_state_clears_group_state() {
         final AggregateGroup aggregateGroup = new AggregateGroup();
 
         final GroupState groupState = aggregateGroup.getGroupState();
         groupState.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
-        aggregateGroup.clearGroupState();
+        aggregateGroup.resetGroup();
 
         assertThat(groupState, equalTo(Collections.emptyMap()));
     }

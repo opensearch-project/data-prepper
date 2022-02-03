@@ -9,8 +9,12 @@ import com.amazon.dataprepper.model.event.Event;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.util.Optional;
 import java.util.concurrent.locks.Lock;
@@ -18,13 +22,14 @@ import java.util.concurrent.locks.Lock;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class AggregateActionSynchronizerTest {
 
     @Mock
@@ -53,13 +58,11 @@ public class AggregateActionSynchronizerTest {
 
     @BeforeEach
     void setup() {
-        lenient().doNothing().when(handleEventForGroupLock).lock();
-        lenient().doNothing().when(handleEventForGroupLock).unlock();
-        lenient().doNothing().when(concludeGroupLock).unlock();
-        lenient().doNothing().when(aggregateGroup).clearGroupState();
-        lenient().doNothing().when(aggregateGroup).resetGroupStart();
-        lenient().doNothing().when(aggregateGroupManager).putGroupWithHash(identificationHash, aggregateGroup);
-        lenient().doNothing().when(aggregateGroupManager).removeGroupWithHash(identificationHash, aggregateGroup);
+        doNothing().when(handleEventForGroupLock).lock();
+        doNothing().when(handleEventForGroupLock).unlock();
+        doNothing().when(concludeGroupLock).unlock();
+        doNothing().when(aggregateGroupManager).putGroupWithHash(identificationHash, aggregateGroup);
+        doNothing().when(aggregateGroupManager).closeGroup(identificationHash, aggregateGroup);
         when(aggregateGroup.getConcludeGroupLock()).thenReturn(concludeGroupLock);
         when(aggregateGroup.getHandleEventForGroupLock()).thenReturn(handleEventForGroupLock);
     }
@@ -79,8 +82,6 @@ public class AggregateActionSynchronizerTest {
         verifyNoInteractions(handleEventForGroupLock);
         verifyNoInteractions(aggregateAction);
         verifyNoInteractions(aggregateGroupManager);
-        verify(aggregateGroup, times(0)).resetGroupStart();
-        verify(aggregateGroup, times(0)).clearGroupState();
         verify(concludeGroupLock, times(0)).unlock();
 
         assertThat(concludeGroupEvent, equalTo(Optional.empty()));
@@ -90,17 +91,16 @@ public class AggregateActionSynchronizerTest {
     void concludeGroup_with_tryLock_true_calls_expected_functions_and_returns_correct_event() {
         final AggregateActionSynchronizer objectUnderTest = createObjectUnderTest();
         when(concludeGroupLock.tryLock()).thenReturn(true);
-        lenient().when(aggregateAction.concludeGroup(aggregateGroup)).thenReturn(Optional.of(event));
+        when(aggregateAction.concludeGroup(aggregateGroup)).thenReturn(Optional.of(event));
 
         final Optional<Event> concludeGroupEvent = objectUnderTest.concludeGroup(identificationHash, aggregateGroup);
 
-        verify(handleEventForGroupLock).lock();
-        verify(handleEventForGroupLock).unlock();
-        verify(aggregateGroup).resetGroupStart();
-        verify(aggregateGroup).clearGroupState();
-        verify(aggregateGroupManager).removeGroupWithHash(identificationHash, aggregateGroup);
-        verify(aggregateAction).concludeGroup(aggregateGroup);
-        verify(concludeGroupLock).unlock();
+        final InOrder inOrder = Mockito.inOrder(handleEventForGroupLock, aggregateAction, aggregateGroupManager, concludeGroupLock);
+        inOrder.verify(handleEventForGroupLock).lock();
+        inOrder.verify(aggregateAction).concludeGroup(aggregateGroup);
+        inOrder.verify(aggregateGroupManager).closeGroup(identificationHash, aggregateGroup);
+        inOrder.verify(handleEventForGroupLock).unlock();
+        inOrder.verify(concludeGroupLock).unlock();
 
         assertThat(concludeGroupEvent.isPresent(), equalTo(true));
         assertThat(concludeGroupEvent.get(), equalTo(event));
@@ -110,12 +110,15 @@ public class AggregateActionSynchronizerTest {
     void locks_are_unlocked_and_empty_optional_returned_when_aggregateAction_concludeGroup_throws_exception() {
         final AggregateActionSynchronizer objectUnderTest = createObjectUnderTest();
         when(concludeGroupLock.tryLock()).thenReturn(true);
-        lenient().when(aggregateAction.concludeGroup(aggregateGroup)).thenThrow(RuntimeException.class);
+        when(aggregateAction.concludeGroup(aggregateGroup)).thenThrow(RuntimeException.class);
 
         final Optional<Event> concludeGroupEvent = objectUnderTest.concludeGroup(identificationHash, aggregateGroup);
 
-        verify(handleEventForGroupLock).unlock();
-        verify(concludeGroupLock).unlock();
+        final InOrder inOrder = Mockito.inOrder(handleEventForGroupLock, aggregateAction, concludeGroupLock);
+        inOrder.verify(handleEventForGroupLock).lock();
+        inOrder.verify(aggregateAction).concludeGroup(aggregateGroup);
+        inOrder.verify(handleEventForGroupLock).unlock();
+        inOrder.verify(concludeGroupLock).unlock();
 
         assertThat(concludeGroupEvent, equalTo(Optional.empty()));
     }
@@ -123,16 +126,17 @@ public class AggregateActionSynchronizerTest {
     @Test
     void handleEventForGroup_calls_expected_functions_and_returns_correct_AggregateActionResponse() {
         final AggregateActionSynchronizer objectUnderTest = createObjectUnderTest();
-        lenient().when(aggregateAction.handleEvent(event, aggregateGroup)).thenReturn(aggregateActionResponse);
+        when(aggregateAction.handleEvent(event, aggregateGroup)).thenReturn(aggregateActionResponse);
 
         final AggregateActionResponse handleEventResponse = objectUnderTest.handleEventForGroup(event, identificationHash, aggregateGroup);
 
-        verify(concludeGroupLock).lock();
-        verify(concludeGroupLock).unlock();
-        verify(handleEventForGroupLock).lock();
-        verify(handleEventForGroupLock).unlock();
-        verify(aggregateGroupManager).putGroupWithHash(identificationHash, aggregateGroup);
-        verify(aggregateAction).handleEvent(event, aggregateGroup);
+        final InOrder inOrder = Mockito.inOrder(concludeGroupLock, handleEventForGroupLock, aggregateAction, aggregateGroupManager);
+        inOrder.verify(concludeGroupLock).lock();
+        inOrder.verify(concludeGroupLock).unlock();
+        inOrder.verify(handleEventForGroupLock).lock();
+        inOrder.verify(aggregateAction).handleEvent(event, aggregateGroup);
+        inOrder.verify(aggregateGroupManager).putGroupWithHash(identificationHash, aggregateGroup);
+        inOrder.verify(handleEventForGroupLock).unlock();
 
         assertThat(handleEventResponse, equalTo(aggregateActionResponse));
     }
@@ -140,11 +144,16 @@ public class AggregateActionSynchronizerTest {
     @Test
     void locks_are_unlocked_and_event_returned_when_aggregateAction_handleEvent_throws_exception() {
         final AggregateActionSynchronizer objectUnderTest = createObjectUnderTest();
-        lenient().when(aggregateAction.handleEvent(event, aggregateGroup)).thenThrow(RuntimeException.class);
+        when(aggregateAction.handleEvent(event, aggregateGroup)).thenThrow(RuntimeException.class);
 
         final AggregateActionResponse handleEventResponse = objectUnderTest.handleEventForGroup(event, identificationHash, aggregateGroup);
 
-        verify(handleEventForGroupLock).unlock();
+        final InOrder inOrder = Mockito.inOrder(concludeGroupLock, handleEventForGroupLock, aggregateAction);
+        inOrder.verify(concludeGroupLock).lock();
+        inOrder.verify(concludeGroupLock).unlock();
+        inOrder.verify(handleEventForGroupLock).lock();
+        inOrder.verify(aggregateAction).handleEvent(event, aggregateGroup);
+        inOrder.verify(handleEventForGroupLock).unlock();
 
         assertThat(handleEventResponse, notNullValue());
         assertThat(handleEventResponse.getEvent(), equalTo(event));
