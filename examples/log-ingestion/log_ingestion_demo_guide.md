@@ -45,11 +45,11 @@ process them with the [Grok Prepper](../../data-prepper-plugins/grok-prepper) by
 and send the processed logs to a local [OpenSearch sink](../../data-prepper-plugins/opensearch) to an index named `apache_logs`.
 
 
-3. Run the Data Prepper docker image with the `log_pipeline.yaml` from step 2 passed in. This command attaches the Data Prepper Docker image to the Docker network `log-ingestion_opensearch_net` so that 
+3. Run the Data Prepper docker image with the `log_pipeline.yaml` from step 2 passed in. This command attaches the Data Prepper Docker image to the Docker network `data-prepper-example_opensearch-net` so that 
 FluentBit is able to send logs to the http source of Data Prepper.
 
 ```
-docker run --name data-prepper -v /full/path/to/log_pipeline.yaml:/usr/share/data-prepper/pipelines.yaml --network "log-ingestion_opensearch-net" opensearch-data-prepper:latest
+docker run --name data-prepper -v /full/path/to/log_pipeline.yaml:/usr/share/data-prepper/pipelines.yaml --network "data-prepper-example_opensearch-net" opensearchproject/data-prepper:latest
 ```
 
 If Data Prepper is running correctly, you should see something similar to the following line as the latest output in your terminal.
