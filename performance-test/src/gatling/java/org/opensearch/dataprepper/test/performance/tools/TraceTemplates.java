@@ -108,7 +108,7 @@ public class TraceTemplates {
                                                 .addLinks(Span.Link.newBuilder()
                                                         .setTraceId(ByteString.copyFrom(traceId))
                                                         .setSpanId(ByteString.copyFrom(spanId))
-                                                        .setTraceState("")
+                                                        .setTraceState("test state")
                                                         .addAttributes(kvBuilder))
                                                 .build()
                                 )
