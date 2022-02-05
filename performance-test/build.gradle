@@ -15,6 +15,9 @@ repositories {
 }
 
 dependencies {
+    gatling "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetryProto}"
+    gatling "org.apache.commons:commons-lang3:3.12.0"
+    gatling 'com.google.protobuf:protobuf-java-util:3.19.1'
     implementation 'com.fasterxml.jackson.core:jackson-core:2.13.0'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.2'
