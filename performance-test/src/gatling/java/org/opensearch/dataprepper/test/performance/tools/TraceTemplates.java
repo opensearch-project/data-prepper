@@ -20,27 +20,39 @@ import io.opentelemetry.proto.trace.v1.Status;
 import org.apache.commons.lang3.RandomStringUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class TraceTemplates {
     private static final JsonFormat.Printer PRINTER = JsonFormat.printer().omittingInsignificantWhitespace();
     private static final Random RANDOM = new Random();
 
-    public static Function<Session, String> exportTraceServiceRequestTemplate(final int batchSize) {
-        return session -> {
+    public static List<String> exportTraceServiceRequestJsons(final int peerListSize, final int batchSize) {
+        return getExportTraceServiceRequests(peerListSize, batchSize).stream().map(exportTraceServiceRequest -> {
             try {
-                return PRINTER.print(getExportTraceServiceRequest(batchSize));
+                return PRINTER.print(exportTraceServiceRequest);
             } catch (InvalidProtocolBufferException e) {
                 throw new RuntimeException(e);
             }
-        };
+        }).collect(Collectors.toList());
     }
 
-    public static ExportTraceServiceRequest getExportTraceServiceRequest(final int batchSize) {
+    public static List<ExportTraceServiceRequest> getExportTraceServiceRequests(final int peerListSize, final int batchSize) {
+        final List<ExportTraceServiceRequest> results = new ArrayList<>();
+        final List<ResourceSpans> resourceSpansList = getTraceGroupResourceSpans(peerListSize * batchSize);
+        for (int i=0; i<peerListSize*batchSize; i+=batchSize) {
+            results.add(getExportTraceServiceRequest(resourceSpansList.subList(i, i+batchSize)));
+        }
+        Collections.shuffle(results);
+        return results;
+    }
+
+    public static ExportTraceServiceRequest getExportTraceServiceRequest(final List<ResourceSpans> resourceSpansList) {
         return ExportTraceServiceRequest.newBuilder()
-                .addAllResourceSpans(getTraceGroupResourceSpans(batchSize))
+                .addAllResourceSpans(resourceSpansList)
                 .build();
     }
 
