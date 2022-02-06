@@ -6,19 +6,21 @@
 package com.amazon.dataprepper.plugins.processor.date;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotEmpty;
 
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
 public class DateProcessorConfig {
+    static final Boolean DEFAULT_FROM_TIME_RECEIVED = false;
     static final String DEFAULT_DESTINATION = "@timestamp";
-    static final String DEFAULT_TIMEZONE = ZoneId.systemDefault().toString();
+    static final String DEFAULT_TIMEZONE = "UTC";
     static final String DEFAULT_LOCALE = "en-US";
+    static final String DEFAULT_OUTPUT_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
+
+    @JsonProperty("from_time_received")
+    private Boolean fromTimeReceived = DEFAULT_FROM_TIME_RECEIVED;
 
     @JsonProperty("match")
-    @NotEmpty(message = "match can not be empty")
     private Map<String, List<String>> match;
 
     @JsonProperty("destination")
@@ -29,6 +31,10 @@ public class DateProcessorConfig {
 
     @JsonProperty("locale")
     private String locale = DEFAULT_LOCALE;
+
+    public Boolean getFromTimeReceived() {
+        return fromTimeReceived;
+    }
 
     public Map<String, List<String>> getMatch() {
         return match;
