@@ -10,6 +10,7 @@ import com.amazon.dataprepper.model.event.Event;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 class AggregateIdentificationKeysHasher {
     private final List<String> identificationKeys;
@@ -33,13 +34,16 @@ class AggregateIdentificationKeysHasher {
         }
 
         @Override
-        public boolean equals(Object other) {
-            return this.hash.equals(other);
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            IdentificationHash that = (IdentificationHash) o;
+            return Objects.equals(hash, that.hash);
         }
 
         @Override
         public int hashCode() {
-            return hash.hashCode();
+            return Objects.hash(hash);
         }
     }
 }
