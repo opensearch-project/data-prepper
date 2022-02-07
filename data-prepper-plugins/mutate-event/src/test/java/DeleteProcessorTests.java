@@ -45,7 +45,7 @@ public class DeleteProcessorTests {
     }
 
     @Test
-    public void testDeleteMutateEventProcessorTests() {
+    public void testDeleteProcessorTests() {
         when(mockConfig.getKey()).thenReturn("message");
         final Record<Event> record = getMessage("thisisamessage");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
