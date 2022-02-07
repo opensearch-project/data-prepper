@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.plugins.processor.aggregate.actions;
 
+import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.plugins.processor.aggregate.AggregateAction;
@@ -20,7 +21,8 @@ import java.util.Optional;
  * most recently handled Event.
  * @since 1.3
  */
-public class CombineAggregateAction implements AggregateAction {
+@DataPrepperPlugin(name = "put_all", pluginType = AggregateAction.class)
+public class PutAllAggregateAction implements AggregateAction {
     static final String EVENT_TYPE = "event";
 
     @Override

@@ -25,7 +25,7 @@ import java.util.Optional;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class CombineAggregateActionTest {
+public class PutAllAggregateActionTest {
     private AggregateAction combineAggregateAction;
     private List<Event> events;
     private List<Map<String, Object>> eventMaps;
@@ -55,8 +55,8 @@ public class CombineAggregateActionTest {
                 .build();
     }
 
-    private CombineAggregateAction createObjectUnderTest() {
-        return new CombineAggregateAction();
+    private PutAllAggregateAction createObjectUnderTest() {
+        return new PutAllAggregateAction();
     }
 
     @Test
@@ -97,7 +97,7 @@ public class CombineAggregateActionTest {
 
         final Optional<Event> result = combineAggregateAction.concludeGroup(aggregateActionInput);
         assertThat(result.isPresent(), equalTo(true));
-        assertThat(result.get().getMetadata().getEventType(), equalTo(CombineAggregateAction.EVENT_TYPE));
+        assertThat(result.get().getMetadata().getEventType(), equalTo(PutAllAggregateAction.EVENT_TYPE));
         assertThat(result.get().toMap(), equalTo(groupState));
     }
 }
