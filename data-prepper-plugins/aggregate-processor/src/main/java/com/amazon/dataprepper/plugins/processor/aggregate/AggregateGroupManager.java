@@ -5,27 +5,47 @@
 
 package com.amazon.dataprepper.plugins.processor.aggregate;
 
-import java.util.Map;
-
 import com.google.common.collect.Maps;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 class AggregateGroupManager {
 
-    private final Map<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> allGroupStates = Maps.newConcurrentMap();
+    private final Map<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> allGroups = Maps.newConcurrentMap();
+    private final Duration windowDuration;
 
-    AggregateGroupManager() {
-
+    AggregateGroupManager(final int windowDuration) {
+        this.windowDuration = Duration.ofSeconds(windowDuration);
     }
 
     AggregateGroup getAggregateGroup(final AggregateIdentificationKeysHasher.IdentificationHash identificationHash) {
-        final AggregateGroup aggregateGroup = allGroupStates.get(identificationHash);
+        return allGroups.computeIfAbsent(identificationHash, (hash) -> new AggregateGroup());
+    }
 
-        if (aggregateGroup != null) {
-            return aggregateGroup;
+    List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> getGroupsToConclude() {
+        final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> groupsToConclude = new ArrayList<>();
+        for (final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry : allGroups.entrySet()) {
+            if (shouldConcludeGroup(groupEntry.getValue())) {
+                groupsToConclude.add(groupEntry);
+            }
         }
+        return groupsToConclude;
+    }
 
-        final AggregateGroup newAggregateGroup = new AggregateGroup();
-        allGroupStates.put(identificationHash, newAggregateGroup);
-        return newAggregateGroup;
+    private boolean shouldConcludeGroup(final AggregateGroup aggregateGroup) {
+        return Duration.between(aggregateGroup.getGroupStart(), Instant.now()).compareTo(windowDuration) >= 0;
+    }
+
+    void closeGroup(final AggregateIdentificationKeysHasher.IdentificationHash hash, final AggregateGroup group) {
+        allGroups.remove(hash, group);
+        group.resetGroup();
+    }
+
+    void putGroupWithHash(final AggregateIdentificationKeysHasher.IdentificationHash hash, final AggregateGroup group) {
+        allGroups.put(hash, group);
     }
 }
