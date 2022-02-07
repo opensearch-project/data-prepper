@@ -51,7 +51,7 @@ public class AddProcessorTests {
     }
 
     @Test
-    public void testAddNoOverwriteMutateEventProcessorTests() {
+    public void testAddNoOverwriteProcessorTests() {
         when(mockConfig.getKey()).thenReturn("newMessage");
         when(mockConfig.getValue()).thenReturn(3);
         when(mockConfig.getSkipIfPresent()).thenReturn(true);

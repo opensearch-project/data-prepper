@@ -40,7 +40,7 @@ public class RenameProcessorTests {
     private RenameProcessor processor;
 
     @Test
-    public void testRenameMutateEventProcessorTests() {
+    public void testRenameProcessorTests() {
         when(mockConfig.getFrom()).thenReturn("message");
         when(mockConfig.getTo()).thenReturn("newMessage");
         final Record<Event> record = getMessage("thisisamessage");
@@ -52,7 +52,7 @@ public class RenameProcessorTests {
     }
 
     @Test
-    public void testRenameNoOverwriteMutateEventProcessorTests() {
+    public void testRenameNoOverwriteProcessorTests() {
         when(mockConfig.getFrom()).thenReturn("message");
         when(mockConfig.getTo()).thenReturn("newMessage");
         when(mockConfig.getSkipIfPresent()).thenReturn(true);
