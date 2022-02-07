@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.test.performance;
 import io.gatling.javaapi.core.CoreDsl;
 import io.gatling.javaapi.core.ScenarioBuilder;
 import io.gatling.javaapi.core.Simulation;
-import org.opensearch.dataprepper.test.performance.tools.Chain;
 import org.opensearch.dataprepper.test.performance.tools.Protocol;
 import org.opensearch.dataprepper.test.performance.tools.TraceChain;
 

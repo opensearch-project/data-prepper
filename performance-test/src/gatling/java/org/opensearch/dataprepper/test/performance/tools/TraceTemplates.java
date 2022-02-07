@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.test.performance.tools;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
-import io.gatling.javaapi.core.Session;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
@@ -23,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class TraceTemplates {
