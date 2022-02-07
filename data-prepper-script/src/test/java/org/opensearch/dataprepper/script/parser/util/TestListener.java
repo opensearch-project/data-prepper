@@ -10,8 +10,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
-import org.opensearch.dataprepper.script.antlr.DataPrepperScriptBaseListener;
 import org.opensearch.dataprepper.script.antlr.DataPrepperScriptParser;
+import org.opensearch.dataprepper.script.parser.LogListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +20,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Stack;
 
-public class TestListener extends DataPrepperScriptBaseListener {
+public class TestListener extends LogListener {
     private static final Logger LOG = LoggerFactory.getLogger(TestListener.class);
 
     private static final String ESCAPED_FORWARD_SLASH = "|escaped-forward-slash|";

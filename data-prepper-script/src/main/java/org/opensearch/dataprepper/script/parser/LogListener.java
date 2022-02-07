@@ -14,21 +14,38 @@ import org.opensearch.dataprepper.script.antlr.DataPrepperScriptParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * @since 1.3
+ * LogListener is a utility listener that logs every event enter and exit. Useful for debugging and developing new
+ * listeners.
+ */
 public class LogListener implements DataPrepperScriptListener {
     private static final Logger LOG = LoggerFactory.getLogger(LogListener.class);
 
     private int level = 0;
 
+    /**
+     * @since 1.3
+     * Utility function to repeat String str, n number of times.
+     * @param n is the number of times str will be printed
+     * @param str the string to be repeated.
+     * @return String containing n instances of str
+     */
     private String nCopiesOf(final int n, final String str) {
         return String.join("", Collections.nCopies(Math.max(n, 1), str));
     }
 
+    /**
+     * @since 1.3
+     * Get self or child nodes of type Terminal Node (Indivisible Rule/Token)
+     * @param ctx Current parsing context
+     * @return List of self or all child nodes that are Terminal Nodes. List may be empty if no terminal nodes found.
+     */
     private List<TerminalNode> getTerminalNodes(final ParserRuleContext ctx) {
         if (ctx instanceof TerminalNode) {
             return Collections.singletonList((TerminalNode) ctx);
@@ -53,6 +70,12 @@ public class LogListener implements DataPrepperScriptListener {
         }
     }
 
+    /**
+     * @since 1.3
+     * Get terminal nodes a convert to a string of comma separated values
+     * @param ctx Current parsing context
+     * @return string of comma separated values
+     */
     private String getTerminalString(final ParserRuleContext ctx) {
         final List<TerminalNode> terminalNodes = getTerminalNodes(ctx);
         return terminalNodes.stream()
@@ -61,38 +84,19 @@ public class LogListener implements DataPrepperScriptListener {
                 .collect(Collectors.joining(", "));
     }
 
+    /**
+     * @since 1.3
+     * Creates an indented prefix for pretty format printed hierarchical structures
+     * @return String of tabs based on level in hierarchy
+     */
     private String prefix() {
         return String.join("|", Collections.nCopies(level, "\t"));
-    }
-
-    private String getOp(final DataPrepperScriptParser.ExpressionContext ctx) {
-        try {
-            final Field opField = ctx.getClass().getDeclaredField("op");
-            opField.setAccessible(true);
-            final Object op = opField.get(ctx);
-
-            if (op != null) {
-                if (op instanceof Token) {
-                    return ((Token) op).getText();
-                }
-                else {
-                    return op.toString();
-                }
-            }
-            else {
-                return null;
-            }
-        } catch (final NoSuchFieldException | IllegalAccessException e) {
-            LOG.error("Unable to getOp on {}", ctx.getText(), e);
-            return null;
-        }
     }
 
     @Override
     public void enterStatement(final DataPrepperScriptParser.StatementContext ctx) {
         LOG.info("{}enterStatement: {}", prefix(), ctx.getText());
         level++;
-
     }
 
     @Override
@@ -182,6 +186,17 @@ public class LogListener implements DataPrepperScriptListener {
         LOG.info("{}visitTerminal: {}", prefix(), node.getText());
     }
 
+    /**
+     * @since 1.3
+     * Logs all error nodes visited with indicator where the parsing error occurred in the statement. Trigger on Lexer
+     * error only, parser error will be available in context variable on all other listener functions Sample output:
+     * <pre>
+     * Parsing error expected token '[' at position 5<br>
+     * 5 in true<br>
+     *      ^
+     * </pre>
+     * @param node cause of lexer error
+     */
     @Override
     public void visitErrorNode(final ErrorNode node) {
         LOG.warn("visitErrorNode: {}", node.getText());
@@ -200,9 +215,16 @@ public class LogListener implements DataPrepperScriptListener {
 
     @Override
     public void enterEveryRule(final ParserRuleContext ctx) {
+        if (ctx.exception != null) {
+            LOG.error("Parser exception {} thrown parsing {} on enter rule", ctx.exception, ctx.getText());
+        }
     }
 
     @Override
     public void exitEveryRule(final ParserRuleContext ctx) {
+        if (ctx.exception != null) {
+            // Log errors will be printed by enterEveryRule
+            LOG.trace("Parser exception {} thrown parsing {} on exit rule", ctx.exception, ctx.getText());
+        }
     }
 }

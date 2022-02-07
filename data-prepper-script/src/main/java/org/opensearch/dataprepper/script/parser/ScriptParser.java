@@ -16,6 +16,11 @@ import org.opensearch.dataprepper.script.antlr.DataPrepperScriptParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * @since 1.3
+ * ScriptParser is an abstraction layer to interface with Antlr generated classes from DataPrepperScript.g4 grammar
+ * file for parsing statements
+ */
 public class ScriptParser {
     private static final Logger LOG = LoggerFactory.getLogger(ScriptParser.class);
     private static final CharStream EMPTY_STREAM = CharStreams.fromString("");
@@ -30,6 +35,13 @@ public class ScriptParser {
         parser = new DataPrepperScriptParser(tokenStream);
     }
 
+    /**
+     * @since 1.3
+     * Parse a statement String to Antlr ParseTree format. Uses DataPrepperScriptLexer used to generate a token stream.
+     * Then DataPrepperScriptParser generates a ParseTree by applying grammar rules to the token stream.
+     * @param statement String to be parsed
+     * @return ParseTree representing hierarchy of the parsed statement by operation precedence
+     */
     public ParseTree parse(final String statement) {
         LOG.debug("Parsing statement: {}", statement);
 
@@ -37,7 +49,7 @@ public class ScriptParser {
         lexer.setInputStream(input);
 
         final TokenStream tokenStream = new CommonTokenStream(lexer);
-        parser.setInputStream(tokenStream);
+        parser.setTokenStream(tokenStream);
 
         return parser.statement();
     }
