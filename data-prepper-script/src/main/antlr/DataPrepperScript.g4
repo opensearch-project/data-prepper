@@ -9,21 +9,32 @@ grammar DataPrepperScript;
     package org.opensearch.dataprepper.script.antlr;
 }
 
-fragment Digit
-    : [0-9]
+fragment
+Digit
+    : '0'
+    | NonZeroDigit
     ;
 
-fragment NumberCharacters
-    : Digit
-    | '.'
+fragment
+NonZeroDigit
+    : [1-9]
     ;
 
-Number
-    : Digit (NumberCharacters)*
+Integer
+    : '0'
+    | NonZeroDigit Digit*
+    ;
+
+Float
+    : NonZeroDigit? Digit '.' Digit
+    | NonZeroDigit? Digit '.' Digit+ NonZeroDigit
+    | '.' Digit
+    | '.' Digit* NonZeroDigit
     ;
 
 Boolean
-    : ( TRUE | FALSE )
+    : TRUE
+    | FALSE
     ;
 
 fragment
@@ -60,7 +71,7 @@ JsonPointerStringCharacter
 
 fragment
 JsonPointerCharacter
-    : [A-Za-z0-9]
+    : [A-Za-z0-9_]
     ;
 
 fragment
@@ -77,60 +88,72 @@ String
     : DOUBLEQUOTE StringCharacters? DOUBLEQUOTE
     ;
 
-expr
-    : term
-    | list
-    | group
-    | NOT expr
-    | expr op=(IN | NOTIN) expr
-    | expr op=(LT | LTEQ | GT | GTEQ) expr
-    | expr op=(REGEQ | REGNEQ) expr
-    | expr op=(EQ | NEQ) expr
-    | expr op=(AND | OR) expr
+statement
+    : expression EOF
+    ;
+
+expression
+    : primary
+    | 'not' expression
+    | expression op=('in' | 'not in') listInitializer
+    | expression op=('<' | '<=' | '>' | '>=') expression
+    | expression op=('=~' | '!~') regexPattern
+    | expression op=('==' | '!=') expression
+    | expression op=('and' | 'or') expression
     | OTHER {System.err.println("unknown char: " + $OTHER.text);}
     ;
 
-group
-    : LPAREN expr RPAREN
+primary
+    : literal
+    | listInitializer
+    | expressionInitializer
     ;
 
-listItems
-    : expr (LISTSEPARATOR expr)*
+regexPattern
+    : JsonPointer
+    | String
+    | '(' (JsonPointer | String) ')'
     ;
 
-list
-    : LBOXBRACKET listItems? RBOXBRACKET
+expressionInitializer
+    : '(' expression ')'
     ;
 
-term
-    : Number
+listInitializer
+    : '[' expression (',' expression)* ']'
+    ;
+
+literal
+    : Float
+    | Integer
     | Boolean
     | JsonPointer
     | String
     ;
 
-EQ : '==';
-NEQ : '!=';
+EQUAL : '==';
+NOT_EQUAL : '!=';
 LT : '<';
-LTEQ : '<=';
 GT : '>';
-GTEQ : '>=';
-REGEQ : '=~';
-REGNEQ : '!~';
-IN : 'in';
-NOTIN : 'not in';
+LTE : '<=';
+GTE : '>=';
+MATCH_REGEX_PATTERN : '=~';
+NOT_MATCH_REGEX_PATTERN : '!~';
+IN_LIST : 'in';
+NOT_IN_LIST : 'not in';
 AND : 'and';
 OR : 'or';
 NOT : 'not';
 LPAREN : '(';
 RPAREN : ')';
-LBOXBRACKET : '[';
-RBOXBRACKET : ']';
+LBRACK : '[';
+RBRACK : ']';
 TRUE : 'true';
 FALSE : 'false';
 FORWARDSLASH : '/';
 DOUBLEQUOTE : '"';
 LISTSEPARATOR : ',';
+PERIOD : '.';
 
 SPACE
     : [ \t\r\n] -> skip

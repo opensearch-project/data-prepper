@@ -31,7 +31,7 @@ public class ScriptParser {
     }
 
     public ParseTree parse(final String statement) {
-        LOG.info("Parsing statement: {}", statement);
+        LOG.debug("Parsing statement: {}", statement);
 
         final IntStream input = CharStreams.fromString(statement);
         lexer.setInputStream(input);
@@ -39,6 +39,6 @@ public class ScriptParser {
         final TokenStream tokenStream = new CommonTokenStream(lexer);
         parser.setInputStream(tokenStream);
 
-        return parser.expr();
+        return parser.statement();
     }
 }

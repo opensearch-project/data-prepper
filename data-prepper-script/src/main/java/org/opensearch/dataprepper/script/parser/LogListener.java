@@ -25,9 +25,16 @@ public class LogListener implements DataPrepperScriptListener {
 
     private int level = 0;
 
+    private String nCopiesOf(final int n, final String str) {
+        return String.join("", Collections.nCopies(Math.max(n, 1), str));
+    }
+
     private List<TerminalNode> getTerminalNodes(final ParserRuleContext ctx) {
         if (ctx instanceof TerminalNode) {
             return Collections.singletonList((TerminalNode) ctx);
+        }
+        else if (ctx.children == null) {
+            return Collections.emptyList();
         }
         else {
             return ctx.children.stream()
@@ -35,8 +42,8 @@ public class LogListener implements DataPrepperScriptListener {
                         if (tree instanceof TerminalNode) {
                             return Stream.of((TerminalNode) tree);
                         }
-                        else if (tree instanceof DataPrepperScriptParser.TermContext){
-                            return getTerminalNodes((DataPrepperScriptParser.TermContext) tree).stream();
+                        else if (tree instanceof DataPrepperScriptParser.LiteralContext){
+                            return getTerminalNodes((DataPrepperScriptParser.LiteralContext) tree).stream();
                         }
                         else {
                             return Stream.empty();
@@ -58,7 +65,7 @@ public class LogListener implements DataPrepperScriptListener {
         return String.join("|", Collections.nCopies(level, "\t"));
     }
 
-    private String getOp(final DataPrepperScriptParser.ExprContext ctx) {
+    private String getOp(final DataPrepperScriptParser.ExpressionContext ctx) {
         try {
             final Field opField = ctx.getClass().getDeclaredField("op");
             opField.setAccessible(true);
@@ -82,67 +89,92 @@ public class LogListener implements DataPrepperScriptListener {
     }
 
     @Override
-    public void enterExpr(final DataPrepperScriptParser.ExprContext ctx) {
+    public void enterStatement(final DataPrepperScriptParser.StatementContext ctx) {
+        LOG.info("{}enterStatement: {}", prefix(), ctx.getText());
+        level++;
+
+    }
+
+    @Override
+    public void exitStatement(final DataPrepperScriptParser.StatementContext ctx) {
+        level--;
+        LOG.info("{}exitStatement: {}", prefix(), ctx.getText());
+    }
+
+    @Override
+    public void enterExpression(final DataPrepperScriptParser.ExpressionContext ctx) {
         final String terminals = getTerminalString(ctx);
-
-        LOG.info("{}enterExpr: {} -> Terminal: {}", prefix(), ctx.getText(), terminals);
+        LOG.info("{}enterExpression: {} -> Terminal: {}", prefix(), ctx.getText(), terminals);
         level++;
     }
 
     @Override
-    public void exitExpr(final DataPrepperScriptParser.ExprContext ctx) {
+    public void exitExpression(final DataPrepperScriptParser.ExpressionContext ctx) {
         final String terminals = getTerminalString(ctx);
         level--;
-        LOG.info("{}exitExpr: {} -> Terminal: {}", prefix(), ctx.getText(), terminals);
+        LOG.info("{}exitExpression: {} -> Terminal: {}", prefix(), ctx.getText(), terminals);
     }
 
+
     @Override
-    public void enterGroup(final DataPrepperScriptParser.GroupContext ctx) {
-        LOG.info("{}enterGroup: {}", prefix(), ctx.getText());
+    public void enterPrimary(final DataPrepperScriptParser.PrimaryContext ctx) {
+        LOG.info("{}enterPrimary: {}", prefix(), ctx.getText());
         level++;
 
     }
 
     @Override
-    public void exitGroup(final DataPrepperScriptParser.GroupContext ctx) {
+    public void exitPrimary(final DataPrepperScriptParser.PrimaryContext ctx) {
         level--;
-        LOG.info("{}exitGroup: {}", prefix(), ctx.getText());
+        LOG.info("{}exitPrimary: {}", prefix(), ctx.getText());
     }
 
     @Override
-    public void enterListItems(final DataPrepperScriptParser.ListItemsContext ctx) {
-        LOG.info("{}enterListItems: {}", prefix(), ctx.getText());
+    public void enterRegexPattern(final DataPrepperScriptParser.RegexPatternContext ctx) {
+        LOG.info("{}enterRegexPattern: {}", prefix(), ctx.getText());
         level++;
     }
 
     @Override
-    public void exitListItems(final DataPrepperScriptParser.ListItemsContext ctx) {
+    public void exitRegexPattern(final DataPrepperScriptParser.RegexPatternContext ctx) {
         level--;
-        LOG.info("{}exitListItems: {}", prefix(), ctx.getText());
+        LOG.info("{}exitRegexPattern: {}", prefix(), ctx.getText());
     }
 
     @Override
-    public void enterList(final DataPrepperScriptParser.ListContext ctx) {
-        LOG.info("{}enterList: {}", prefix(), ctx.getText());
+    public void enterExpressionInitializer(final DataPrepperScriptParser.ExpressionInitializerContext ctx) {
+        LOG.info("{}enterExpressionInitializer: {}", prefix(), ctx.getText());
         level++;
     }
 
     @Override
-    public void exitList(final DataPrepperScriptParser.ListContext ctx) {
+    public void exitExpressionInitializer(final DataPrepperScriptParser.ExpressionInitializerContext ctx) {
         level--;
-        LOG.info("{}exitList: {}", prefix(), ctx.getText());
+        LOG.info("{}exitExpressionInitializer: {}", prefix(), ctx.getText());
     }
 
     @Override
-    public void enterTerm(final DataPrepperScriptParser.TermContext ctx) {
-        LOG.info("{}enterTerm: {}", prefix(), ctx.getText());
+    public void enterListInitializer(final DataPrepperScriptParser.ListInitializerContext ctx) {
+        LOG.info("{}enterListInitializer: {}", prefix(), ctx.getText());
         level++;
     }
 
     @Override
-    public void exitTerm(final DataPrepperScriptParser.TermContext ctx) {
+    public void exitListInitializer(final DataPrepperScriptParser.ListInitializerContext ctx) {
         level--;
-        LOG.info("{}exitTerm: {}", prefix(), ctx.getText());
+        LOG.info("{}exitListInitializer: {}", prefix(), ctx.getText());
+    }
+
+    @Override
+    public void enterLiteral(final DataPrepperScriptParser.LiteralContext ctx) {
+        LOG.info("{}enterLiteral: {}", prefix(), ctx.getText());
+        level++;
+    }
+
+    @Override
+    public void exitLiteral(final DataPrepperScriptParser.LiteralContext ctx) {
+        level--;
+        LOG.info("{}exitLiteral: {}", prefix(), ctx.getText());
     }
 
     @Override
@@ -152,18 +184,25 @@ public class LogListener implements DataPrepperScriptListener {
 
     @Override
     public void visitErrorNode(final ErrorNode node) {
-        LOG.info("visitErrorNode: {}", node.getText());
+        LOG.warn("visitErrorNode: {}", node.getText());
+
+        final Token symbol = node.getSymbol();
+        final String sourceStatement = symbol.getInputStream().toString();
+        final String locationIdentifier = nCopiesOf(symbol.getCharPositionInLine(), " ") + '^';
+        LOG.error(
+                "Parsing error {} at position {}\n{}\n{}",
+                node.getText(),
+                symbol.getCharPositionInLine(),
+                sourceStatement,
+                locationIdentifier
+        );
     }
 
     @Override
     public void enterEveryRule(final ParserRuleContext ctx) {
-//        LOG.info("{}enterEveryRule: {}", prefix(), ctx.getText());
-//        level++;
     }
 
     @Override
     public void exitEveryRule(final ParserRuleContext ctx) {
-//        level--;
-//        LOG.info("{}exitEveryRule: {}", prefix(), ctx.getText());
     }
 }
