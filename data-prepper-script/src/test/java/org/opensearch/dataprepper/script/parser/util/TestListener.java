@@ -20,6 +20,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Stack;
 
+/**
+ * @since 1.3
+ * Listener used for testing to convert {@link org.antlr.v4.runtime.tree.ParseTree} objects to a nested string format
+ * for easy assertions. Parsing errors are tracked in {@link TestListener#errorNodeList} and
+ * {@link TestListener#exceptionList}. For hamcrest assertions {@link ListenerMatcher}.
+ */
 public class TestListener extends LogListener {
     private static final Logger LOG = LoggerFactory.getLogger(TestListener.class);
 
@@ -141,13 +147,11 @@ public class TestListener extends LogListener {
     @Override
     public void enterStatement(final DataPrepperScriptParser.StatementContext ctx) {
         super.enterStatement(ctx);
-//        enterNode(ctx);
     }
 
     @Override
     public void exitStatement(final DataPrepperScriptParser.StatementContext ctx) {
         super.exitStatement(ctx);
-//        exitNode(ctx);
     }
 
     @Override
