@@ -7,7 +7,7 @@ package com.amazon.dataprepper.plugins.processor.mutateevent;
 
 import jakarta.validation.constraints.NotEmpty;
 
-public class DeleteProcessorConfig {
+public class DeleteEntryProcessorConfig {
     @NotEmpty
     private String key;
 

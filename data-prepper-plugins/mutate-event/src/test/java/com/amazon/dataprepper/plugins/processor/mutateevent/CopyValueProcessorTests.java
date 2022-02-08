@@ -9,12 +9,10 @@ import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
@@ -28,21 +26,20 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@RunWith(MockitoJUnitRunner.class)
-public class CopyProcessorTests {
+public class CopyValueProcessorTests {
     @Mock
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private CopyProcessorConfig mockConfig;
+    private CopyValueProcessorConfig mockConfig;
 
     @InjectMocks
-    private CopyProcessor processor;
+    private CopyValueProcessor processor;
 
     @Test
     public void testCopyProcessorTests() {
-        when(mockConfig.getFrom()).thenReturn("message");
-        when(mockConfig.getTo()).thenReturn("newMessage");
+        when(mockConfig.getFromKey()).thenReturn("message");
+        when(mockConfig.getToKey()).thenReturn("newMessage");
         final Record<Event> record = getMessage("thisisamessage");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
@@ -54,9 +51,9 @@ public class CopyProcessorTests {
 
     @Test
     public void testCopyNoOverwriteProcessorTests() {
-        when(mockConfig.getFrom()).thenReturn("message");
-        when(mockConfig.getTo()).thenReturn("newMessage");
-        when(mockConfig.getSkipIfPresent()).thenReturn(true);
+        when(mockConfig.getFromKey()).thenReturn("message");
+        when(mockConfig.getToKey()).thenReturn("newMessage");
+        when(mockConfig.getOverwriteIfKeyExists()).thenReturn(false);
         final Record<Event> record = getMessage("thisisamessage");
         record.getData().put("newMessage", "test");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));

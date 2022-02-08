@@ -9,12 +9,10 @@ import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
@@ -28,40 +26,37 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@RunWith(MockitoJUnitRunner.class)
-public class RenameProcessorTests {
+public class AddEntryProcessorTests {
     @Mock
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private RenameProcessorConfig mockConfig;
+    private AddEntryProcessorConfig mockConfig;
 
     @InjectMocks
-    private RenameProcessor processor;
+    private AddEntryProcessor processor;
 
     @Test
-    public void testRenameProcessorTests() {
-        when(mockConfig.getFrom()).thenReturn("message");
-        when(mockConfig.getTo()).thenReturn("newMessage");
+    public void testAddProcessorTests() {
+        when(mockConfig.getKey()).thenReturn("newMessage");
+        when(mockConfig.getValue()).thenReturn(3);
         final Record<Event> record = getMessage("thisisamessage");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
-        assertThat(editedRecords.get(0).getData().containsKey("message"), is(false));
-        assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo("thisisamessage"));
+        assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo(3));
     }
 
     @Test
-    public void testRenameNoOverwriteProcessorTests() {
-        when(mockConfig.getFrom()).thenReturn("message");
-        when(mockConfig.getTo()).thenReturn("newMessage");
-        when(mockConfig.getSkipIfPresent()).thenReturn(true);
+    public void testAddNoOverwriteProcessorTests() {
+        when(mockConfig.getKey()).thenReturn("newMessage");
+        when(mockConfig.getValue()).thenReturn(3);
+        when(mockConfig.getOverwriteIfKeyExists()).thenReturn(false);
         final Record<Event> record = getMessage("thisisamessage");
         record.getData().put("newMessage", "test");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
-        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
         assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo("test"));
     }
 

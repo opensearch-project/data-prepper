@@ -15,12 +15,12 @@ import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
-@DataPrepperPlugin(name = "add_entry", pluginType = Processor.class, pluginConfigurationType = AddProcessorConfig.class)
-public class AddProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private final AddProcessorConfig config;
+@DataPrepperPlugin(name = "rename_entry", pluginType = Processor.class, pluginConfigurationType = RenameEntryProcessorConfig.class)
+public class RenameEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
+    private final RenameEntryProcessorConfig config;
 
     @DataPrepperPluginConstructor
-    public AddProcessor(final PluginMetrics pluginMetrics, final AddProcessorConfig config) {
+    public RenameEntryProcessor(final PluginMetrics pluginMetrics, final RenameEntryProcessorConfig config) {
         super(pluginMetrics);
         this.config = config;
     }
@@ -29,11 +29,14 @@ public class AddProcessor extends AbstractProcessor<Record<Event>, Record<Event>
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
-            final String key = config.getKey();
-            final Object value = config.getValue();
+            final String key = config.getFromKey();
+            final String newKey = config.getToKey();
 
-            if(!recordEvent.containsKey(key) || !config.getSkipIfPresent()) {
-                recordEvent.put(key, value);
+            if(!key.equals(newKey)
+                    && (!recordEvent.containsKey(newKey) || config.getOverwriteIfKeyExists())) {
+                final Object source = recordEvent.get(key, Object.class);
+                recordEvent.put(newKey, source);
+                recordEvent.delete(key);
             }
         }
 

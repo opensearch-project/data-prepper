@@ -15,12 +15,12 @@ import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
-@DataPrepperPlugin(name = "copy_entry", pluginType = Processor.class, pluginConfigurationType = CopyProcessorConfig.class)
-public class CopyProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private final CopyProcessorConfig config;
+@DataPrepperPlugin(name = "delete_entry", pluginType = Processor.class, pluginConfigurationType = DeleteEntryProcessorConfig.class)
+public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
+    private final DeleteEntryProcessorConfig config;
 
     @DataPrepperPluginConstructor
-    public CopyProcessor(final PluginMetrics pluginMetrics, final CopyProcessorConfig config) {
+    public DeleteEntryProcessor(final PluginMetrics pluginMetrics, final DeleteEntryProcessorConfig config) {
         super(pluginMetrics);
         this.config = config;
     }
@@ -29,15 +29,8 @@ public class CopyProcessor extends AbstractProcessor<Record<Event>, Record<Event
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
-            final String key = config.getFrom();
-            final String newKey = config.getTo();
-            if (key != null
-                    && newKey != null
-                    && !key.equals(newKey)
-                    && (!recordEvent.containsKey(newKey) || !config.getSkipIfPresent())) {
-                final Object source = recordEvent.get(key, Object.class);
-                recordEvent.put(newKey, source);
-            }
+            final String key = config.getKey();
+            recordEvent.delete(key);
         }
 
         return records;
