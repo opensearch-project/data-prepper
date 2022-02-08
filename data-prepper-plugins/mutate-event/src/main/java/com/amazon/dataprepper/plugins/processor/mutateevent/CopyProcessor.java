@@ -15,7 +15,7 @@ import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
-@DataPrepperPlugin(name = "copy", pluginType = Processor.class, pluginConfigurationType = CopyProcessorConfig.class)
+@DataPrepperPlugin(name = "copy_entry", pluginType = Processor.class, pluginConfigurationType = CopyProcessorConfig.class)
 public class CopyProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private final CopyProcessorConfig config;
 
