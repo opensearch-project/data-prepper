@@ -17,8 +17,8 @@ public class CopyValueProcessorConfig {
     @JsonProperty("to_key")
     private String toKey;
 
-    @JsonProperty("overwrite_if_key_exists")
-    private boolean overwriteIfKeyExists = false;
+    @JsonProperty("overwrite_if_to_key_exists")
+    private boolean overwriteIfToKeyExists = false;
 
     public String getFromKey() {
         return fromKey;
@@ -28,7 +28,7 @@ public class CopyValueProcessorConfig {
         return toKey;
     }
 
-    public boolean getOverwriteIfKeyExists() {
-        return overwriteIfKeyExists;
+    public boolean getOverwriteIfToKeyExists() {
+        return overwriteIfToKeyExists;
     }
 }

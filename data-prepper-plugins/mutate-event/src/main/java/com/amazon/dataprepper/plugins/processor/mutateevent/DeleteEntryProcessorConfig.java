@@ -5,13 +5,15 @@
 
 package com.amazon.dataprepper.plugins.processor.mutateevent;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 
 public class DeleteEntryProcessorConfig {
     @NotEmpty
-    private String key;
+    @JsonProperty("with_key")
+    private String withKey;
 
-    public String getKey() {
-        return key;
+    public String getWithKey() {
+        return withKey;
     }
 }

@@ -8,7 +8,7 @@ package com.amazon.dataprepper.plugins.processor.mutateevent;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 
-public class RenameEntryProcessorConfig {
+public class RenameKeyProcessorConfig {
     @NotEmpty
     @JsonProperty("from_key")
     private String fromKey;

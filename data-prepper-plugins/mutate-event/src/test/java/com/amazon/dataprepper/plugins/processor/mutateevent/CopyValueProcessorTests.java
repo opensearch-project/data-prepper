@@ -53,7 +53,7 @@ public class CopyValueProcessorTests {
     public void testCopyNoOverwriteProcessorTests() {
         when(mockConfig.getFromKey()).thenReturn("message");
         when(mockConfig.getToKey()).thenReturn("newMessage");
-        when(mockConfig.getOverwriteIfKeyExists()).thenReturn(false);
+        when(mockConfig.getOverwriteIfToKeyExists()).thenReturn(false);
         final Record<Event> record = getMessage("thisisamessage");
         record.getData().put("newMessage", "test");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));

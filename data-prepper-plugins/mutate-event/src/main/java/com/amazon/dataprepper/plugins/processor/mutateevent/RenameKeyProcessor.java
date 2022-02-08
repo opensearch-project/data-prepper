@@ -15,12 +15,12 @@ import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
-@DataPrepperPlugin(name = "rename_entry", pluginType = Processor.class, pluginConfigurationType = RenameEntryProcessorConfig.class)
-public class RenameEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private final RenameEntryProcessorConfig config;
+@DataPrepperPlugin(name = "rename_key", pluginType = Processor.class, pluginConfigurationType = RenameKeyProcessorConfig.class)
+public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
+    private final RenameKeyProcessorConfig config;
 
     @DataPrepperPluginConstructor
-    public RenameEntryProcessor(final PluginMetrics pluginMetrics, final RenameEntryProcessorConfig config) {
+    public RenameKeyProcessor(final PluginMetrics pluginMetrics, final RenameKeyProcessorConfig config) {
         super(pluginMetrics);
         this.config = config;
     }

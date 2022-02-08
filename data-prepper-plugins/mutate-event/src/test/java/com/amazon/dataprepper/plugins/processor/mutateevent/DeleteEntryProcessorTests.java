@@ -43,7 +43,7 @@ public class DeleteEntryProcessorTests {
 
     @Test
     public void testDeleteProcessorTests() {
-        when(mockConfig.getKey()).thenReturn("message");
+        when(mockConfig.getWithKey()).thenReturn("message");
         final Record<Event> record = getMessage("thisisamessage");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 

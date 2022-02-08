@@ -29,7 +29,7 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
-            final String key = config.getKey();
+            final String key = config.getWithKey();
             recordEvent.delete(key);
         }
 

@@ -26,15 +26,15 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class RenameEntryProcessorTests {
+public class RenameKeyProcessorTests {
     @Mock
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private RenameEntryProcessorConfig mockConfig;
+    private RenameKeyProcessorConfig mockConfig;
 
     @InjectMocks
-    private RenameEntryProcessor processor;
+    private RenameKeyProcessor processor;
 
     @Test
     public void testRenameProcessorTests() {

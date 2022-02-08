@@ -32,7 +32,7 @@ public class CopyValueProcessor extends AbstractProcessor<Record<Event>, Record<
             final String key = config.getFromKey();
             final String newKey = config.getToKey();
             if (!key.equals(newKey)
-                    && (!recordEvent.containsKey(newKey) || config.getOverwriteIfKeyExists())) {
+                    && (!recordEvent.containsKey(newKey) || config.getOverwriteIfToKeyExists())) {
                 final Object source = recordEvent.get(key, Object.class);
                 recordEvent.put(newKey, source);
             }
