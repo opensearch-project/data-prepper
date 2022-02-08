@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+package com.amazon.dataprepper.plugins.processor.mutateevent;
+
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.processor.mutateevent.AddProcessor;
-import com.amazon.dataprepper.plugins.processor.mutateevent.AddProcessorConfig;
 import org.junit.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.runner.RunWith;
@@ -29,38 +29,42 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @RunWith(MockitoJUnitRunner.class)
-public class AddProcessorTests {
+public class CopyProcessorTests {
     @Mock
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private AddProcessorConfig mockConfig;
+    private CopyProcessorConfig mockConfig;
 
     @InjectMocks
-    private AddProcessor processor;
+    private CopyProcessor processor;
 
     @Test
-    public void testAddProcessorTests() {
-        when(mockConfig.getKey()).thenReturn("newMessage");
-        when(mockConfig.getValue()).thenReturn(3);
+    public void testCopyProcessorTests() {
+        when(mockConfig.getFrom()).thenReturn("message");
+        when(mockConfig.getTo()).thenReturn("newMessage");
         final Record<Event> record = getMessage("thisisamessage");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
-        assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo(3));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo("thisisamessage"));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
     }
 
     @Test
-    public void testAddNoOverwriteProcessorTests() {
-        when(mockConfig.getKey()).thenReturn("newMessage");
-        when(mockConfig.getValue()).thenReturn(3);
+    public void testCopyNoOverwriteProcessorTests() {
+        when(mockConfig.getFrom()).thenReturn("message");
+        when(mockConfig.getTo()).thenReturn("newMessage");
         when(mockConfig.getSkipIfPresent()).thenReturn(true);
         final Record<Event> record = getMessage("thisisamessage");
         record.getData().put("newMessage", "test");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
         assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo("test"));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
     }
 
     private Record<Event> getMessage(String message) {
