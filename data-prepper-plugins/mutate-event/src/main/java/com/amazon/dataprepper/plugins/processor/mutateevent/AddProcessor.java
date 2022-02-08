@@ -15,7 +15,7 @@ import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
-@DataPrepperPlugin(name = "add", pluginType = Processor.class, pluginConfigurationType = AddProcessorConfig.class)
+@DataPrepperPlugin(name = "add_entry", pluginType = Processor.class, pluginConfigurationType = AddProcessorConfig.class)
 public class AddProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private final AddProcessorConfig config;
 
