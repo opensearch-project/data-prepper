@@ -15,7 +15,7 @@ import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
-@DataPrepperPlugin(name = "rename", pluginType = Processor.class, pluginConfigurationType = RenameProcessorConfig.class)
+@DataPrepperPlugin(name = "rename_entry", pluginType = Processor.class, pluginConfigurationType = RenameProcessorConfig.class)
 public class RenameProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private final RenameProcessorConfig config;
 
