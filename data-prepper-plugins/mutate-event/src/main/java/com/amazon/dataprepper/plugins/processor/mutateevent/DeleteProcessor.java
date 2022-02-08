@@ -15,7 +15,7 @@ import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
-@DataPrepperPlugin(name = "delete", pluginType = Processor.class, pluginConfigurationType = DeleteProcessorConfig.class)
+@DataPrepperPlugin(name = "delete_entry", pluginType = Processor.class, pluginConfigurationType = DeleteProcessorConfig.class)
 public class DeleteProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private final DeleteProcessorConfig config;
 
