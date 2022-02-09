@@ -321,6 +321,7 @@ public class JacksonEvent implements Event {
                     || c == '.'
                     || c == '-'
                     || c == '_'
+                    || c == '@'
                     || c == '/')) {
 
                 return false;

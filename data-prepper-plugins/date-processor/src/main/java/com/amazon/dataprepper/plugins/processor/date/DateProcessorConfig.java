@@ -11,11 +11,9 @@ import java.util.List;
 import java.util.Map;
 
 public class DateProcessorConfig {
-    static final Boolean DEFAULT_FROM_TIME_RECEIVED = false;
+    private static final Boolean DEFAULT_FROM_TIME_RECEIVED = false;
     static final String DEFAULT_DESTINATION = "@timestamp";
     static final String DEFAULT_TIMEZONE = "UTC";
-    static final String DEFAULT_LOCALE = "en-US";
-    static final String DEFAULT_OUTPUT_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
 
     @JsonProperty("from_time_received")
     private Boolean fromTimeReceived = DEFAULT_FROM_TIME_RECEIVED;
@@ -30,7 +28,7 @@ public class DateProcessorConfig {
     private String timezone = DEFAULT_TIMEZONE;
 
     @JsonProperty("locale")
-    private String locale = DEFAULT_LOCALE;
+    private String locale;
 
     public Boolean getFromTimeReceived() {
         return fromTimeReceived;

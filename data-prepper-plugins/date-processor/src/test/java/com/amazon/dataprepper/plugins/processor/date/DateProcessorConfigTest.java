@@ -17,6 +17,5 @@ class DateProcessorConfigTest {
 
         assertThat(dateProcessorConfig.getDestination(), equalTo(DateProcessorConfig.DEFAULT_DESTINATION));
         assertThat(dateProcessorConfig.getTimezone(), equalTo(DateProcessorConfig.DEFAULT_TIMEZONE));
-        assertThat(dateProcessorConfig.getLocale(), equalTo(DateProcessorConfig.DEFAULT_LOCALE));
     }
 }

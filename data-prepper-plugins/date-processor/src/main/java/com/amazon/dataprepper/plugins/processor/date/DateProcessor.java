@@ -16,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -31,94 +30,136 @@ import java.util.stream.Collectors;
 @DataPrepperPlugin(name = "date", pluginType = Processor.class, pluginConfigurationType = DateProcessorConfig.class)
 public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(DateProcessor.class);
-
-    private final DateProcessorConfig dateProcessorConfig;
+    private static final ZoneId OUTPUT_TIMEZONE = ZoneId.systemDefault();
+    static final String OUTPUT_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
 
     private String keyToParse;
+    private Locale sourceLocale;
+    private ZoneId sourceTimezone;
     private List<DateTimeFormatter> dateTimeFormatters;
-
+    private IllegalArgumentException parsingException;
+    private final DateProcessorConfig dateProcessorConfig;
 
     @DataPrepperPluginConstructor
     protected DateProcessor(PluginMetrics pluginMetrics, final DateProcessorConfig dateProcessorConfig) {
         super(pluginMetrics);
         this.dateProcessorConfig = dateProcessorConfig;
 
-        if (dateProcessorConfig.getFromTimeReceived() && !dateProcessorConfig.getMatch().isEmpty()) {
+        if (Boolean.TRUE.equals(dateProcessorConfig.getFromTimeReceived()) && dateProcessorConfig.getMatch() != null) {
             throw new IllegalArgumentException("from_time_received and match are mutually exclusive options.");
         }
 
-        if (!dateProcessorConfig.getMatch().isEmpty()) {
+        else if (Boolean.FALSE.equals(dateProcessorConfig.getFromTimeReceived()) && dateProcessorConfig.getMatch() != null) {
+            sourceTimezone = buildZoneId(dateProcessorConfig.getTimezone());
+            if (dateProcessorConfig.getLocale() == null || dateProcessorConfig.getLocale().equalsIgnoreCase("ROOT")) {
+                sourceLocale = Locale.ROOT;
+            }
+            else {
+                sourceLocale = parseLocale(dateProcessorConfig.getLocale());
+            }
+
+            if (dateProcessorConfig.getMatch().size() != 1)
+                throw new IllegalArgumentException("match can have a minimum and maximum of 1 entry.");
             extractKeyAndFormatters(dateProcessorConfig.getMatch());
         }
-
     }
 
     @Override
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
             String sourceTimestamp;
-            ZonedDateTime zonedDateTime = null;
+            String zonedDateTime = null;
 
-            if (dateProcessorConfig.getFromTimeReceived()) {
+            if (Boolean.TRUE.equals(dateProcessorConfig.getFromTimeReceived())) {
                 Instant timeReceived = record.getData().getMetadata().getTimeReceived();
-                zonedDateTime = getZonedDateTimeFromInstant(timeReceived);
+                zonedDateTime =  getZonedDateTimeFromInstant(timeReceived);
             }
-            else {
+            else if (keyToParse != null && !keyToParse.isEmpty()) {
                 sourceTimestamp = record.getData().get(keyToParse, String.class);
+
                 for (DateTimeFormatter formatter : dateTimeFormatters) {
                     zonedDateTime = getZonedDateTime(sourceTimestamp, formatter);
+                    if (zonedDateTime != null)
+                        break;
                 }
                 if (zonedDateTime == null) {
-                    LOG.debug("Unable to parse {} with provided patterns.", sourceTimestamp);
+                    LOG.debug("Unable to parse {} with provided patterns. {}", sourceTimestamp, parsingException.getMessage());
                 }
             }
-
-            record.getData().put(dateProcessorConfig.getDestination(), zonedDateTime);
-
+            if (zonedDateTime != null)
+                record.getData().put(dateProcessorConfig.getDestination(), zonedDateTime);
         }
         return records;
     }
 
-    private ZonedDateTime getZonedDateTimeFromInstant(Instant timeReceived) {
-        // define output format
-        return timeReceived.atZone(ZoneId.systemDefault());
+    private ZoneId buildZoneId(final String timezone) {
+        try {
+            return ZoneId.of(timezone);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Unsupported timezone provided.");
+        }
     }
 
-    private void extractKeyAndFormatters(Map<String, List<String>> match) {
-        if (match.size() > 1)
-            throw new IllegalArgumentException("Only 1 key is supported.");
-        for (final Map.Entry<String, List<String>> entry : dateProcessorConfig.getMatch().entrySet()) {
+    private Locale parseLocale(final String localeString) {
+        boolean isBCP47Format = localeString.contains("-");
+
+        final String[] localeFields;
+        if (isBCP47Format) {
+            localeFields = localeString.split("-");
+        }
+        else
+            localeFields = localeString.split("_");
+
+        switch (localeFields.length) {
+            case 1:
+                return new Locale(localeFields[0]);
+            case 2:
+                return new Locale(localeFields[0], localeFields[1]);
+            case 3:
+                return new Locale(localeFields[0], localeFields[1], localeFields[2]);
+            default:
+                throw new IllegalArgumentException("Invalid locale format. Only language, country and variant are supported.");
+        }
+    }
+
+    private void extractKeyAndFormatters(final Map<String, List<String>> match) {
+        for (final Map.Entry<String, List<String>> entry : match.entrySet()) {
             keyToParse = entry.getKey();
-            dateTimeFormatters = (entry.getValue().stream().map(this::getFormatter).collect(Collectors.toList()));
+            dateTimeFormatters = (entry.getValue().stream().map(this::getSourceFormatter).collect(Collectors.toList()));
         }
         if (dateTimeFormatters.isEmpty())
             throw new IllegalArgumentException("At least 1 pattern is required.");
     }
 
-
-    private DateTimeFormatter getFormatter(String pattern) {
+    private DateTimeFormatter getSourceFormatter(final String pattern) {
+        final ZonedDateTime zonedDateTimeForDefaultValues = ZonedDateTime.now();
         return new DateTimeFormatterBuilder()
                 .appendPattern(pattern)
-                .parseDefaulting(ChronoField.YEAR, LocalDate.now().getYear())
-                .toFormatter(getLocale(dateProcessorConfig.getLocale()))
-                .withZone(getZoneId(dateProcessorConfig.getTimezone()));
+                .parseDefaulting(ChronoField.YEAR, zonedDateTimeForDefaultValues.getYear())
+                .parseDefaulting(ChronoField.MONTH_OF_YEAR, zonedDateTimeForDefaultValues.getMonthValue())
+                .parseDefaulting(ChronoField.DAY_OF_MONTH, zonedDateTimeForDefaultValues.getDayOfMonth())
+                .parseDefaulting(ChronoField.HOUR_OF_DAY, zonedDateTimeForDefaultValues.getHour())
+                .parseDefaulting(ChronoField.MINUTE_OF_HOUR, zonedDateTimeForDefaultValues.getMinute())
+                .parseDefaulting(ChronoField.SECOND_OF_MINUTE, zonedDateTimeForDefaultValues.getSecond())
+                .toFormatter(sourceLocale)
+                .withZone(sourceTimezone);
     }
 
-    private Locale getLocale(String locale) {
-        return Locale.forLanguageTag(locale);
+    private String getZonedDateTimeFromInstant(final Instant timeReceived) {
+        return timeReceived.atZone(OUTPUT_TIMEZONE).format(getOutputFormatter());
     }
 
-    private ZoneId getZoneId(String timezone) {
-        return ZoneId.of(timezone);
-    }
-
-    private ZonedDateTime getZonedDateTime(String timestamp, DateTimeFormatter dateTimeFormatter) {
+    private String getZonedDateTime(String timestamp, DateTimeFormatter dateTimeFormatter) {
         try {
-            return ZonedDateTime.parse(timestamp, dateTimeFormatter);
+            return ZonedDateTime.parse(timestamp, dateTimeFormatter).format(getOutputFormatter());
         } catch (Exception e) {
-            e.printStackTrace();
+            parsingException = new IllegalArgumentException("Unable to convert timestamp to datetime object.");
         }
-        return ZonedDateTime.now();
+        return null;
+    }
+
+    private DateTimeFormatter getOutputFormatter() {
+        return DateTimeFormatter.ofPattern(OUTPUT_FORMAT).withZone(OUTPUT_TIMEZONE);
     }
 
     @Override
@@ -128,7 +169,7 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
     @Override
     public boolean isReadyForShutdown() {
-        return false;
+        return true;
     }
 
     @Override
