@@ -15,26 +15,26 @@ import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
-@DataPrepperPlugin(name = "copy_value", pluginType = Processor.class, pluginConfigurationType = CopyValueProcessorConfig.class)
-public class CopyValueProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private final CopyValueProcessorConfig config;
+@DataPrepperPlugin(name = "add_entry", pluginType = Processor.class, pluginConfigurationType = AddEntryProcessorConfig.class)
+public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
+    private final AddEntryProcessorConfig config;
+    private final String key;
+    private final Object value;
 
     @DataPrepperPluginConstructor
-    public CopyValueProcessor(final PluginMetrics pluginMetrics, final CopyValueProcessorConfig config) {
+    public AddEntryProcessor(final PluginMetrics pluginMetrics, final AddEntryProcessorConfig config) {
         super(pluginMetrics);
-        this.config = config;
+        this.key = config.getKey();
+        this.value = config.getValue();
     }
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
-            final String key = config.getFromKey();
-            final String newKey = config.getToKey();
-            if (!key.equals(newKey)
-                    && (!recordEvent.containsKey(newKey) || config.getOverwriteIfToKeyExists())) {
-                final Object source = recordEvent.get(key, Object.class);
-                recordEvent.put(newKey, source);
+
+            if(!recordEvent.containsKey(key) || config.getOverwriteIfKeyExists()) {
+                recordEvent.put(key, value);
             }
         }
 

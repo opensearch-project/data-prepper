@@ -15,25 +15,29 @@ import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
-@DataPrepperPlugin(name = "add_entry", pluginType = Processor.class, pluginConfigurationType = AddEntryProcessorConfig.class)
-public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private final AddEntryProcessorConfig config;
+@DataPrepperPlugin(name = "copy_value", pluginType = Processor.class, pluginConfigurationType = CopyValueProcessorConfig.class)
+public class CopyValueProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
+    private final String key;
+    private final String newKey;
 
     @DataPrepperPluginConstructor
-    public AddEntryProcessor(final PluginMetrics pluginMetrics, final AddEntryProcessorConfig config) {
+    public CopyValueProcessor(final PluginMetrics pluginMetrics, final CopyValueProcessorConfig config) {
         super(pluginMetrics);
-        this.config = config;
+        this.key = config.getFromKey();
+        this.newKey = config.getToKey();
     }
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
+        if (key.equals(newKey)) {
+            return records;
+        }
+
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
-            final String key = config.getKey();
-            final Object value = config.getValue();
-
-            if(!recordEvent.containsKey(key) || config.getOverwriteIfKeyExists()) {
-                recordEvent.put(key, value);
+            if(!recordEvent.containsKey(newKey) || config.getOverwriteIfToKeyExists()) {
+                final Object source = recordEvent.get(key, Object.class);
+                recordEvent.put(newKey, source);
             }
         }
 

@@ -17,19 +17,18 @@ import java.util.Collection;
 
 @DataPrepperPlugin(name = "delete_entry", pluginType = Processor.class, pluginConfigurationType = DeleteEntryProcessorConfig.class)
 public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private final DeleteEntryProcessorConfig config;
+    private final String key;
 
     @DataPrepperPluginConstructor
     public DeleteEntryProcessor(final PluginMetrics pluginMetrics, final DeleteEntryProcessorConfig config) {
         super(pluginMetrics);
-        this.config = config;
+        this.key = config.getWithKey();
     }
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
-            final String key = config.getWithKey();
             recordEvent.delete(key);
         }
 
