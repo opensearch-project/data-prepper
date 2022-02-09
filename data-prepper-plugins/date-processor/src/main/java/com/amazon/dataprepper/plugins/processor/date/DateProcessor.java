@@ -151,7 +151,7 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
     private String getZonedDateTime(String timestamp, DateTimeFormatter dateTimeFormatter) {
         try {
-            return ZonedDateTime.parse(timestamp, dateTimeFormatter).format(getOutputFormatter());
+            return ZonedDateTime.parse(timestamp, dateTimeFormatter).format(getOutputFormatter().withZone(OUTPUT_TIMEZONE));
         } catch (Exception e) {
             parsingException = new IllegalArgumentException("Unable to convert timestamp to datetime object.");
         }
@@ -159,7 +159,7 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
     }
 
     private DateTimeFormatter getOutputFormatter() {
-        return DateTimeFormatter.ofPattern(OUTPUT_FORMAT).withZone(OUTPUT_TIMEZONE);
+        return DateTimeFormatter.ofPattern(OUTPUT_FORMAT);
     }
 
     @Override

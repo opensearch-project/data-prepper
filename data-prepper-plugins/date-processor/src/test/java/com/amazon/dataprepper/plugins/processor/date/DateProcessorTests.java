@@ -58,8 +58,10 @@ class DateProcessorTests {
     private Map<String, Object> resultData;
     private final String pattern1 = "yyyy-MM-dd";
     private final String pattern2 = "yyyy-MMM-dd HH:mm:ss.SSS";
+    private final String pattern3 = "yyyy-MM-dd HH:mm:ss";
     private final String logDate1 = LocalDate.now().toString();
     private final String logDate2 = LocalDateTime.now().format(DateTimeFormatter.ofPattern(pattern2));
+    private final String logDate3 = "2022-01-12 15:20:45";
 
     @BeforeEach
     void setup() {
@@ -232,18 +234,18 @@ class DateProcessorTests {
     @Test
     void match_with_custom_timezone_test() throws JsonProcessingException {
         HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logdate", Arrays.asList(pattern2, pattern1));
+        match.put("logdate", Collections.singletonList(pattern3));
         when(mockDateProcessorConfig.getMatch()).thenReturn(match);
         when(mockDateProcessorConfig.getTimezone()).thenReturn("America/New_York");
 
         dateProcessor = createObjectUnderTest();
 
         testData = getTestData();
-        testData.put("logdate", logDate2);
+        testData.put("logdate", logDate3);
 
         Map<String, Object> resultData = getTestData();
-        resultData.put("logdate", logDate2);
-        resultData.put(TIMESTAMP_KEY, ZonedDateTime.now().format(DateTimeFormatter.ofPattern(DateProcessor.OUTPUT_FORMAT)));
+        resultData.put("logdate", logDate3);
+        resultData.put(TIMESTAMP_KEY, "2022-01-12T14:20:45.000-06:00");
 
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
