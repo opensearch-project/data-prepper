@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.plugins.processor.aggregate;
 
+import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
@@ -12,6 +13,8 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +34,8 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,9 +43,6 @@ public class AggregateProcessorTest {
 
     @Mock
     private PluginFactory pluginFactory;
-
-    @Mock
-    private PluginMetrics pluginMetrics;
 
     @Mock
     private AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher;
@@ -72,6 +74,30 @@ public class AggregateProcessorTest {
     @Mock
     private AggregateActionResponse aggregateActionResponse;
 
+    @Mock
+    private PluginMetrics pluginMetrics;
+
+    @Mock
+    private Counter actionHandleEventsForwardedCounter;
+
+    @Mock
+    private Counter actionHandleEventsDroppedCounter;
+
+    @Mock
+    private Counter actionConcludeGroupEventsForwardedCounter;
+
+    @Mock
+    private Counter actionConcludeGroupEventsDroppedCounter;
+
+    @Mock
+    private Counter recordsIn;
+
+    @Mock
+    private Counter recordsOut;
+
+    @Mock
+    private Timer timeElapsed;
+
     private Event event;
 
     @BeforeEach
@@ -94,8 +120,17 @@ public class AggregateProcessorTest {
                 .thenReturn(identificationHash);
         when(aggregateGroupManager.getAggregateGroup(identificationHash)).thenReturn(aggregateGroup);
 
-        when(aggregateActionSynchronizerProvider.provide(aggregateAction, aggregateGroupManager)).thenReturn(aggregateActionSynchronizer);
+        when(aggregateActionSynchronizerProvider.provide(aggregateAction, aggregateGroupManager, pluginMetrics)).thenReturn(aggregateActionSynchronizer);
         when(aggregateActionSynchronizer.handleEventForGroup(event, identificationHash, aggregateGroup)).thenReturn(aggregateActionResponse);
+
+        when(pluginMetrics.counter(AggregateProcessor.ACTION_HANDLE_EVENTS_FORWARDED)).thenReturn(actionHandleEventsForwardedCounter);
+        when(pluginMetrics.counter(AggregateProcessor.ACTION_HANDLE_EVENTS_DROPPED)).thenReturn(actionHandleEventsDroppedCounter);
+        when(pluginMetrics.counter(AggregateProcessor.ACTION_CONCLUDE_GROUP_EVENTS_FORWARDED)).thenReturn(actionConcludeGroupEventsForwardedCounter);
+        when(pluginMetrics.counter(AggregateProcessor.ACTION_CONCLUDE_GROUP_EVENTS_DROPPED)).thenReturn(actionConcludeGroupEventsDroppedCounter);
+
+        when(pluginMetrics.counter(MetricNames.RECORDS_IN)).thenReturn(recordsIn);
+        when(pluginMetrics.counter(MetricNames.RECORDS_OUT)).thenReturn(recordsOut);
+        when(pluginMetrics.timer(MetricNames.TIME_ELAPSED)).thenReturn(timeElapsed);
     }
 
     private AggregateProcessor createObjectUnderTest() {
@@ -111,6 +146,12 @@ public class AggregateProcessorTest {
         final List<Record<Event>> recordsOut = (List<Record<Event>>)objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
 
         assertThat(recordsOut.size(), equalTo(0));
+
+        verify(actionHandleEventsDroppedCounter).increment();
+
+        verifyNoInteractions(actionHandleEventsForwardedCounter);
+        verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
+        verifyNoInteractions(actionConcludeGroupEventsForwardedCounter);
     }
 
     @Test
@@ -124,6 +165,12 @@ public class AggregateProcessorTest {
         assertThat(recordsOut.size(), equalTo(1));
         assertThat(recordsOut.get(0), notNullValue());
         assertThat(recordsOut.get(0).getData(), equalTo(event));
+
+        verify(actionHandleEventsForwardedCounter).increment();
+
+        verifyNoInteractions(actionHandleEventsDroppedCounter);
+        verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
+        verifyNoInteractions(actionConcludeGroupEventsForwardedCounter);
     }
 
     @Test
@@ -138,6 +185,12 @@ public class AggregateProcessorTest {
         final List<Record<Event>> recordsOut = (List<Record<Event>>)objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
 
         assertThat(recordsOut.size(), equalTo(0));
+
+        verify(actionConcludeGroupEventsDroppedCounter).increment();
+        verify(actionHandleEventsDroppedCounter).increment();
+
+        verifyNoInteractions(actionHandleEventsForwardedCounter);
+        verifyNoInteractions(actionConcludeGroupEventsForwardedCounter);
 
     }
 
@@ -155,5 +208,11 @@ public class AggregateProcessorTest {
         assertThat(recordsOut.size(), equalTo(1));
         assertThat(recordsOut.get(0), notNullValue());
         assertThat(recordsOut.get(0).getData(), equalTo(event));
+
+        verify(actionConcludeGroupEventsForwardedCounter).increment();
+        verify(actionHandleEventsDroppedCounter).increment();
+
+        verifyNoInteractions(actionHandleEventsForwardedCounter);
+        verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
     }
 }

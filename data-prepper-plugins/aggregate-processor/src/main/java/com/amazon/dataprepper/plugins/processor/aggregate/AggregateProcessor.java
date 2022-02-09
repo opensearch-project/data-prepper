@@ -15,6 +15,7 @@ import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.processor.AbstractProcessor;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
+import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,6 +28,17 @@ import java.util.Optional;
 @DataPrepperPlugin(name = "aggregate", pluginType = Processor.class, pluginConfigurationType = AggregateProcessorConfig.class)
 public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(AggregateProcessor.class);
+
+    static final String ACTION_HANDLE_EVENTS_FORWARDED = "actionHandleEventsForwarded";
+    static final String ACTION_HANDLE_EVENTS_DROPPED = "actionHandleEventsDropped";
+    static final String ACTION_CONCLUDE_GROUP_EVENTS_FORWARDED = "actionConcludeGroupEventsForwarded";
+    static final String ACTION_CONCLUDE_GROUP_EVENTS_DROPPED = "actionConcludeGroupEventsDropped";
+    static final String CURRENT_AGGREGATE_GROUPS = "currentAggregateGroups";
+
+    private final Counter actionHandleEventsForwardedCounter;
+    private final Counter actionHandleEventsDroppedCounter;
+    private final Counter actionConcludeGroupEventsDroppedCounter;
+    private final Counter actionConcludeGroupEventsForwardedCounter;
 
     private final AggregateProcessorConfig aggregateProcessorConfig;
     private final AggregateGroupManager aggregateGroupManager;
@@ -45,7 +57,14 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
         this.aggregateGroupManager = aggregateGroupManager;
         this.aggregateIdentificationKeysHasher = aggregateIdentificationKeysHasher;
         final AggregateAction aggregateAction = loadAggregateAction(pluginFactory);
-        this.aggregateActionSynchronizer = aggregateActionSynchronizerProvider.provide(aggregateAction, aggregateGroupManager);
+        this.aggregateActionSynchronizer = aggregateActionSynchronizerProvider.provide(aggregateAction, aggregateGroupManager, pluginMetrics);
+
+        this.actionConcludeGroupEventsForwardedCounter = pluginMetrics.counter(ACTION_CONCLUDE_GROUP_EVENTS_FORWARDED);
+        this.actionConcludeGroupEventsDroppedCounter = pluginMetrics.counter(ACTION_CONCLUDE_GROUP_EVENTS_DROPPED);
+        this.actionHandleEventsForwardedCounter = pluginMetrics.counter(ACTION_HANDLE_EVENTS_FORWARDED);
+        this.actionHandleEventsDroppedCounter = pluginMetrics.counter(ACTION_HANDLE_EVENTS_DROPPED);
+
+        pluginMetrics.gauge(CURRENT_AGGREGATE_GROUPS, aggregateGroupManager, AggregateGroupManager::getAllGroupsSize);
     }
 
     private AggregateAction loadAggregateAction(final PluginFactory pluginFactory) {
@@ -62,7 +81,13 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
 
         for (final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry : groupsToConclude) {
             final Optional<Event> concludeGroupEvent = aggregateActionSynchronizer.concludeGroup(groupEntry.getKey(), groupEntry.getValue());
-            concludeGroupEvent.ifPresent(value -> recordsOut.add(new Record<>(value)));
+
+            if (concludeGroupEvent.isPresent()) {
+                recordsOut.add(new Record(concludeGroupEvent.get()));
+                actionConcludeGroupEventsForwardedCounter.increment();
+            } else {
+                actionConcludeGroupEventsDroppedCounter.increment();
+            }
         }
 
         for (final Record<Event> record : records) {
@@ -76,6 +101,9 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
 
             if (aggregateActionResponseEvent != null) {
                 recordsOut.add(new Record<>(aggregateActionResponseEvent, record.getMetadata()));
+                actionHandleEventsForwardedCounter.increment();
+            } else {
+                actionHandleEventsDroppedCounter.increment();
             }
         }
         return recordsOut;
@@ -88,7 +116,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
 
     @Override
     public boolean isReadyForShutdown() {
-        return false;
+        return true;
     }
 
     @Override

@@ -48,4 +48,8 @@ class AggregateGroupManager {
     void putGroupWithHash(final AggregateIdentificationKeysHasher.IdentificationHash hash, final AggregateGroup group) {
         allGroups.put(hash, group);
     }
+
+    long getAllGroupsSize() {
+        return allGroups.size();
+    }
 }
