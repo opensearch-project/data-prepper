@@ -8,27 +8,44 @@ package com.amazon.dataprepper.plugins.processor.mutateevent;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 
+import java.util.List;
+
 public class RenameKeyProcessorConfig {
-    @NotEmpty
-    @JsonProperty("from_key")
-    private String fromKey;
+    public static class Entry {
+        @NotEmpty
+        @JsonProperty("from_key")
+        private String fromKey;
 
-    @NotEmpty
-    @JsonProperty("to_key")
-    private String toKey;
+        @NotEmpty
+        @JsonProperty("to_key")
+        private String toKey;
 
-    @JsonProperty("overwrite_if_key_exists")
-    private boolean overwriteIfKeyExists = false;
+        @JsonProperty("overwrite_if_to_key_exists")
+        private boolean overwriteIfToKeyExists = false;
 
-    public String getFromKey() {
-        return fromKey;
+        public String getFromKey() {
+            return fromKey;
+        }
+
+        public String getToKey() {
+            return toKey;
+        }
+
+        public boolean getOverwriteIfToKeyExists() {
+            return overwriteIfToKeyExists;
+        }
+
+        public Entry(final String fromKey, final String toKey, final boolean overwriteIfKeyExists) {
+            this.fromKey = fromKey;
+            this.toKey = toKey;
+            this.overwriteIfToKeyExists = overwriteIfKeyExists;
+        }
     }
 
-    public String getToKey() {
-        return toKey;
-    }
+    @NotEmpty
+    private List<Entry> entries;
 
-    public boolean getOverwriteIfKeyExists() {
-        return overwriteIfKeyExists;
+    public List<Entry> getEntries() {
+        return entries;
     }
 }

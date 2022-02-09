@@ -11,12 +11,13 @@ import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -33,34 +34,96 @@ public class AddEntryProcessorTests {
     @Mock
     private AddEntryProcessorConfig mockConfig;
 
-    @InjectMocks
-    private AddEntryProcessor processor;
-
     @Test
-    public void testAddProcessorTests() {
-        when(mockConfig.getKey()).thenReturn("newMessage");
-        when(mockConfig.getValue()).thenReturn(3);
-        final Record<Event> record = getMessage("thisisamessage");
+    public void testSingleAddProcessorTests() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", 3, false)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
         assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
         assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo(3));
     }
 
     @Test
-    public void testAddNoOverwriteProcessorTests() {
-        when(mockConfig.getKey()).thenReturn("newMessage");
-        when(mockConfig.getValue()).thenReturn(3);
-        when(mockConfig.getOverwriteIfKeyExists()).thenReturn(false);
-        final Record<Event> record = getMessage("thisisamessage");
+    public void testMultiAddProcessorTests() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", 3, false),
+                createEntry("message2", 4, false)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
+        assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
+        assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo(3));
+        assertThat(editedRecords.get(0).getData().containsKey("message2"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message2", Object.class), equalTo(4));
+    }
+
+    @Test
+    public void testSingleNoOverwriteAddProcessorTests() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", 3, false)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
         record.getData().put("newMessage", "test");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
         assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
         assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo("test"));
     }
 
-    private Record<Event> getMessage(String message) {
+    @Test
+    public void testSingleOverwriteAddProcessorTests() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", 3, true)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        record.getData().put("newMessage", "test");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
+        assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
+        assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo(3));
+    }
+
+    @Test
+    public void testMultiOverwriteMixedAddProcessorTests() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", 3, true),
+                (createEntry("message", 4, false))));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        record.getData().put("newMessage", "test");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
+        assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo(3));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
+    }
+
+    private AddEntryProcessor createObjectUnderTest() {
+        return new AddEntryProcessor(pluginMetrics, mockConfig);
+    }
+
+    private AddEntryProcessorConfig.Entry createEntry(final String key, final Object value, final boolean overwriteIfKeyExists) {
+        return new AddEntryProcessorConfig.Entry(key, value, overwriteIfKeyExists);
+    }
+
+    private List<AddEntryProcessorConfig.Entry> createListOfEntries(final AddEntryProcessorConfig.Entry... entries) {
+        return new LinkedList<>(Arrays.asList(entries));
+    }
+
+    private Record<Event> getEvent(String message) {
         final Map<String, Object> testData = new HashMap();
         testData.put("message", message);
         return buildRecordWithEvent(testData);

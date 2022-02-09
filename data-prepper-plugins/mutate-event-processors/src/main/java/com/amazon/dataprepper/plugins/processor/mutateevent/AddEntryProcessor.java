@@ -14,19 +14,16 @@ import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
+import java.util.List;
 
 @DataPrepperPlugin(name = "add_entry", pluginType = Processor.class, pluginConfigurationType = AddEntryProcessorConfig.class)
 public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private final String key;
-    private final Object value;
-    private final boolean overwriteIfKeyExists;
+    private final List<AddEntryProcessorConfig.Entry> entries;
 
     @DataPrepperPluginConstructor
     public AddEntryProcessor(final PluginMetrics pluginMetrics, final AddEntryProcessorConfig config) {
         super(pluginMetrics);
-        this.key = config.getKey();
-        this.value = config.getValue();
-        this.overwriteIfKeyExists = config.getOverwriteIfKeyExists();
+        this.entries = config.getEntries();
     }
 
     @Override
@@ -34,8 +31,10 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            if(!recordEvent.containsKey(key) || overwriteIfKeyExists) {
-                recordEvent.put(key, value);
+            for(AddEntryProcessorConfig.Entry entry : entries) {
+                if (!recordEvent.containsKey(entry.getKey()) || entry.getOverwriteIfKeyExists()) {
+                    recordEvent.put(entry.getKey(), entry.getValue());
+                }
             }
         }
 

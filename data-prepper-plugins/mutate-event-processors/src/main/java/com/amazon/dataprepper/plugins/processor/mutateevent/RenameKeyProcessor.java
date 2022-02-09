@@ -14,33 +14,33 @@ import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
+import java.util.List;
 
 @DataPrepperPlugin(name = "rename_key", pluginType = Processor.class, pluginConfigurationType = RenameKeyProcessorConfig.class)
 public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private final String key;
-    private final String newKey;
-    private final boolean overwriteIfKeyExists;
+    private final List<RenameKeyProcessorConfig.Entry> entries;
 
     @DataPrepperPluginConstructor
     public RenameKeyProcessor(final PluginMetrics pluginMetrics, final RenameKeyProcessorConfig config) {
         super(pluginMetrics);
-        this.key = config.getFromKey();
-        this.newKey = config.getToKey();
-        this.overwriteIfKeyExists = config.getOverwriteIfKeyExists();
+        this.entries = config.getEntries();
     }
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
-        if(key.equals(newKey)) {
-            return records;
-        }
-
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
-            if(!recordEvent.containsKey(newKey) || overwriteIfKeyExists) {
-                final Object source = recordEvent.get(key, Object.class);
-                recordEvent.put(newKey, source);
-                recordEvent.delete(key);
+
+            for(RenameKeyProcessorConfig.Entry entry : entries) {
+                if(entry.getFromKey().equals(entry.getToKey())) {
+                    continue;
+                }
+
+                if (!recordEvent.containsKey(entry.getToKey()) || entry.getOverwriteIfToKeyExists()) {
+                    final Object source = recordEvent.get(entry.getFromKey(), Object.class);
+                    recordEvent.put(entry.getToKey(), source);
+                    recordEvent.delete(entry.getFromKey());
+                }
             }
         }
 
