@@ -147,9 +147,8 @@ public class AggregateProcessorTest {
 
         assertThat(recordsOut.size(), equalTo(0));
 
-        verify(actionHandleEventsDroppedCounter).increment();
-
-        verifyNoInteractions(actionHandleEventsForwardedCounter);
+        verify(actionHandleEventsDroppedCounter).increment(1);
+        verify(actionHandleEventsForwardedCounter).increment(0);
         verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
         verifyNoInteractions(actionConcludeGroupEventsForwardedCounter);
     }
@@ -166,9 +165,8 @@ public class AggregateProcessorTest {
         assertThat(recordsOut.get(0), notNullValue());
         assertThat(recordsOut.get(0).getData(), equalTo(event));
 
-        verify(actionHandleEventsForwardedCounter).increment();
-
-        verifyNoInteractions(actionHandleEventsDroppedCounter);
+        verify(actionHandleEventsForwardedCounter).increment(1);
+        verify(actionHandleEventsDroppedCounter).increment(0);
         verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
         verifyNoInteractions(actionConcludeGroupEventsForwardedCounter);
     }
@@ -187,9 +185,8 @@ public class AggregateProcessorTest {
         assertThat(recordsOut.size(), equalTo(0));
 
         verify(actionConcludeGroupEventsDroppedCounter).increment();
-        verify(actionHandleEventsDroppedCounter).increment();
-
-        verifyNoInteractions(actionHandleEventsForwardedCounter);
+        verify(actionHandleEventsDroppedCounter).increment(1);
+        verify(actionHandleEventsForwardedCounter).increment(0);
         verifyNoInteractions(actionConcludeGroupEventsForwardedCounter);
 
     }
@@ -210,9 +207,8 @@ public class AggregateProcessorTest {
         assertThat(recordsOut.get(0).getData(), equalTo(event));
 
         verify(actionConcludeGroupEventsForwardedCounter).increment();
-        verify(actionHandleEventsDroppedCounter).increment();
-
-        verifyNoInteractions(actionHandleEventsForwardedCounter);
+        verify(actionHandleEventsDroppedCounter).increment(1);
+        verify(actionHandleEventsForwardedCounter).increment(0);
         verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
     }
 }

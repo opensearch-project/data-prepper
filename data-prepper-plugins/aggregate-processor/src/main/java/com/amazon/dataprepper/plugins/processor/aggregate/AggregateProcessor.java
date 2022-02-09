@@ -90,6 +90,8 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
             }
         }
 
+        int handleEventsForwarded = 0;
+        int handleEventsDropped = 0;
         for (final Record<Event> record : records) {
             final Event event = record.getData();
             final AggregateIdentificationKeysHasher.IdentificationHash identificationKeysHash = aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event);
@@ -101,11 +103,14 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
 
             if (aggregateActionResponseEvent != null) {
                 recordsOut.add(new Record<>(aggregateActionResponseEvent, record.getMetadata()));
-                actionHandleEventsForwardedCounter.increment();
+                handleEventsForwarded++;
             } else {
-                actionHandleEventsDroppedCounter.increment();
+                handleEventsDropped++;
             }
         }
+
+        actionHandleEventsForwardedCounter.increment(handleEventsForwarded);
+        actionHandleEventsDroppedCounter.increment(handleEventsDropped);
         return recordsOut;
     }
 
