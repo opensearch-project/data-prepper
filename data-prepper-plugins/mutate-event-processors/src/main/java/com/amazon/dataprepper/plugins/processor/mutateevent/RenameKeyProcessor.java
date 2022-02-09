@@ -19,12 +19,14 @@ import java.util.Collection;
 public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private final String key;
     private final String newKey;
+    private final boolean overwriteIfKeyExists;
 
     @DataPrepperPluginConstructor
     public RenameKeyProcessor(final PluginMetrics pluginMetrics, final RenameKeyProcessorConfig config) {
         super(pluginMetrics);
         this.key = config.getFromKey();
         this.newKey = config.getToKey();
+        this.overwriteIfKeyExists = config.getOverwriteIfKeyExists();
     }
 
     @Override
@@ -35,7 +37,7 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
 
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
-            if(!recordEvent.containsKey(newKey) || config.getOverwriteIfKeyExists()) {
+            if(!recordEvent.containsKey(newKey) || overwriteIfKeyExists) {
                 final Object source = recordEvent.get(key, Object.class);
                 recordEvent.put(newKey, source);
                 recordEvent.delete(key);

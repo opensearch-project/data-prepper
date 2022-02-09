@@ -19,12 +19,14 @@ import java.util.Collection;
 public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private final String key;
     private final Object value;
+    private final boolean overwriteIfKeyExists;
 
     @DataPrepperPluginConstructor
     public AddEntryProcessor(final PluginMetrics pluginMetrics, final AddEntryProcessorConfig config) {
         super(pluginMetrics);
         this.key = config.getKey();
         this.value = config.getValue();
+        this.overwriteIfKeyExists = config.getOverwriteIfKeyExists();
     }
 
     @Override
@@ -32,7 +34,7 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            if(!recordEvent.containsKey(key) || config.getOverwriteIfKeyExists()) {
+            if(!recordEvent.containsKey(key) || overwriteIfKeyExists) {
                 recordEvent.put(key, value);
             }
         }

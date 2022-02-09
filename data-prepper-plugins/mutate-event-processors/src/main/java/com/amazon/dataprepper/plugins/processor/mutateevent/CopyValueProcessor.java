@@ -19,12 +19,14 @@ import java.util.Collection;
 public class CopyValueProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private final String key;
     private final String newKey;
+    private final boolean overwriteIfToKeyExists;
 
     @DataPrepperPluginConstructor
     public CopyValueProcessor(final PluginMetrics pluginMetrics, final CopyValueProcessorConfig config) {
         super(pluginMetrics);
         this.key = config.getFromKey();
         this.newKey = config.getToKey();
+        this.overwriteIfToKeyExists = config.getOverwriteIfToKeyExists();
     }
 
     @Override
@@ -35,7 +37,7 @@ public class CopyValueProcessor extends AbstractProcessor<Record<Event>, Record<
 
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
-            if(!recordEvent.containsKey(newKey) || config.getOverwriteIfToKeyExists()) {
+            if(!recordEvent.containsKey(newKey) || overwriteIfToKeyExists) {
                 final Object source = recordEvent.get(key, Object.class);
                 recordEvent.put(newKey, source);
             }
