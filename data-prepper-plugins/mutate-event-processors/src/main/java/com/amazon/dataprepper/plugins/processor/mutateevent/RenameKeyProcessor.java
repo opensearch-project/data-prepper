@@ -17,8 +17,8 @@ import java.util.Collection;
 
 @DataPrepperPlugin(name = "rename_key", pluginType = Processor.class, pluginConfigurationType = RenameKeyProcessorConfig.class)
 public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private final String newKey;
     private final String key;
+    private final String newKey;
 
     @DataPrepperPluginConstructor
     public RenameKeyProcessor(final PluginMetrics pluginMetrics, final RenameKeyProcessorConfig config) {

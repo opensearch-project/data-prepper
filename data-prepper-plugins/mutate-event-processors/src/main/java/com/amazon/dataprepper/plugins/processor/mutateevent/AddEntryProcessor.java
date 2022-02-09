@@ -17,7 +17,6 @@ import java.util.Collection;
 
 @DataPrepperPlugin(name = "add_entry", pluginType = Processor.class, pluginConfigurationType = AddEntryProcessorConfig.class)
 public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private final AddEntryProcessorConfig config;
     private final String key;
     private final Object value;
 
