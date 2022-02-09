@@ -86,7 +86,7 @@ public class MetricsConfig {
     }
 
     @Bean
-    public MeterRegistry prometheusMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
+    public PrometheusMeterRegistry prometheusMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.Prometheus)) {
             final PrometheusMeterRegistry meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
             configureMetricRegistry(meterRegistry);
