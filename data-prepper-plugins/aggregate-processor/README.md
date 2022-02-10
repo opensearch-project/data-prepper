@@ -1,6 +1,6 @@
 # Aggregate Processor
 
-This stateful processor groups Events together based on the values of the [identification_keys](#identification_keys) provided, and performs a configurable [action](#action) on each group.
+This stateful processor groups Events together based on the values of the [identification_keys](#identification_keys) provided, and performs a configurable [action](#action) on each group. You can use existing actions, or you can create your own actions as Java code to perform custom aggregations.
 It is a great way to reduce unnecessary log volume and create aggregated logs over time.
 
 ## Usage
@@ -92,34 +92,7 @@ public interface AggregateAction {
 ```
 
 The `AggregateActionInput` that is passed to the functions of the interface contains a method `getGroupState()`, which returns a `GroupState` Object that can be operated on like a java `Map`. 
-Here is an example of an `AggregateAction` implementation for [put_all](#put_all):
-
-```
-@DataPrepperPlugin(name = "put_all", pluginType = AggregateAction.class)
-public class PutAllAggregateAction implements AggregateAction {
-    static final String EVENT_TYPE = "event";
-
-    // This function drops the Event that is passed to it after merging it into the group state.
-    @Override
-    public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
-        final GroupState groupState = aggregateActionInput.getGroupState();
-        groupState.putAll(event.toMap());
-        return AggregateActionResponse.nullEventResponse();
-    }
-
-    // This function returns the aggregated group state as a single Event.
-    @Override
-    public Optional<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
-
-        final Event event = JacksonEvent.builder()
-                .withEventType(EVENT_TYPE)
-                .withData(aggregateActionInput.getGroupState())
-                .build();
-
-        return Optional.of(event);
-    }
-}
-```
+For actual examples, take a closer look at the code for some existing AggregateActions [here](src/main/java/com/amazon/dataprepper/plugins/processor/aggregate/actions).
 
 ## State
 
