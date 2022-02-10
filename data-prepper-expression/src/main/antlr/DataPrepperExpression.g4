@@ -9,16 +9,119 @@ grammar DataPrepperExpression;
     package org.opensearch.dataprepper.expression.antlr;
 }
 
-fragment
-Digit
-    : '0'
-    | NonZeroDigit
+expression
+    : conditionalExpression EOF
+    | OTHER {System.err.println("unknown char: " + $OTHER.text);}
     ;
 
-fragment
-NonZeroDigit
-    : [1-9]
+conditionalExpression
+    : conditionalExpression conditionalOperator equalityOperatorExpression
+    | equalityOperatorExpression
     ;
+
+conditionalOperator
+    : 'and'
+    | 'or'
+    ;
+
+equalityOperatorExpression
+    : equalityOperatorExpression equalityOperator regexOperatorExpression
+    | regexOperatorExpression
+    ;
+
+equalityOperator
+    : '=='
+    | '!='
+    ;
+
+regexOperatorExpression
+    : regexOperatorExpression regexEqualityOperator regexPattern
+    | relationalOperatorExpression
+    ;
+
+regexEqualityOperator
+    : '=~'
+    | '!~'
+    ;
+
+relationalOperatorExpression
+    : relationalOperatorExpression relationalOperator setOperatorExpression
+    | setOperatorExpression
+    ;
+
+relationalOperator
+    : '<'
+    | '<='
+    | '>'
+    | '>='
+    ;
+
+setOperatorExpression
+    : setOperatorExpression setOperator setInitializer
+    | unaryOperatorExpression
+    ;
+
+setOperator
+    : 'in'
+    | 'not in'
+    ;
+
+unaryOperatorExpression
+    : primary
+    | setInitializer
+    | regexPattern
+    | parenthesisExpression
+    | unaryNotOperatorExpression
+    ;
+
+parenthesisExpression
+    : '(' conditionalExpression ')'
+    ;
+
+regexPattern
+    : jsonPointer
+    | String
+    ;
+
+setInitializer
+    : '{' primary (',' primary)* '}'
+    ;
+
+unaryNotOperatorExpression
+    : unaryOperator primary
+    ;
+
+unaryOperator
+    : 'not'
+    ;
+
+primary
+    : jsonPointer
+    | variableIdentifier
+    | setInitializer
+    | literal
+    ;
+
+jsonPointer
+    : JsonPointer
+    | EscapedJsonPointer
+    ;
+
+variableIdentifier
+    : variableName
+    ;
+
+variableName
+    : VariableIdentifier
+    ;
+
+literal
+    : Float
+    | Integer
+    | Boolean
+    | String
+    ;
+
 
 Integer
     : '0'
@@ -32,9 +135,78 @@ Float
     | '.' Digit* NonZeroDigit
     ;
 
+fragment
+Digit
+    : '0'
+    | NonZeroDigit
+    ;
+
+fragment
+NonZeroDigit
+    : [1-9]
+    ;
+
 Boolean
-    : TRUE
-    | FALSE
+    : 'true'
+    | 'false'
+    ;
+
+JsonPointer
+    : FORWARDSLASH JsonPointerCharacters (FORWARDSLASH JsonPointerCharacters)*
+    ;
+
+fragment
+JsonPointerCharacters
+    : JsonPointerCharacter+
+    ;
+
+fragment
+JsonPointerCharacter
+    : [A-Za-z0-9_]
+    ;
+
+EscapedJsonPointer
+    : DOUBLEQUOTE FORWARDSLASH JsonPointerStringCharacters? DOUBLEQUOTE
+    ;
+
+fragment
+JsonPointerStringCharacters
+    : JsonPointerStringCharacter+
+    ;
+
+fragment
+JsonPointerStringCharacter
+    : ~["\\]
+    | JsonPointerEscapeSequence
+    ;
+
+fragment
+JsonPointerEscapeSequence
+    : '\\' [btnfr"'\\/]
+    ;
+
+VariableIdentifier
+    : '${' VariableNameCharacters '}'
+    ;
+
+fragment
+VariableNameCharacters
+    : VariableNameLeadingCharacter VariableNameCharacter*
+    ;
+
+fragment
+VariableNameLeadingCharacter
+    : [A-Za-z_]
+    ;
+
+fragment
+VariableNameCharacter
+    : VariableNameLeadingCharacter
+    | [0-9-]
+    ;
+
+String
+    : DOUBLEQUOTE StringCharacters? DOUBLEQUOTE
     ;
 
 fragment
@@ -51,187 +223,6 @@ StringCharacter
 fragment
 EscapeSequence
     : '\\' [btnfr"'\\$]
-    ;
-
-fragment
-JsonPointerEscapeSequence
-    : '\\' [btnfr"'\\/]
-    ;
-
-fragment
-JsonPointerStringCharacters
-    : JsonPointerStringCharacter+
-    ;
-
-fragment
-JsonPointerStringCharacter
-    : ~["\\]
-    | JsonPointerEscapeSequence
-    ;
-
-fragment
-JsonPointerCharacter
-    : [A-Za-z0-9_]
-    ;
-
-fragment
-JsonPointerCharacters
-    : JsonPointerCharacter+
-    ;
-
-JsonPointer
-    : FORWARDSLASH JsonPointerCharacters? (FORWARDSLASH JsonPointerCharacters)*
-    ;
-
-EscapedJsonPointer
-    : DOUBLEQUOTE FORWARDSLASH JsonPointerStringCharacters? DOUBLEQUOTE
-    ;
-
-String
-    : DOUBLEQUOTE StringCharacters? DOUBLEQUOTE
-    ;
-
-fragment
-VariableNameLeadingCharacter
-    : [A-Za-z_]
-    ;
-
-fragment
-VariableNameCharacter
-    : VariableNameLeadingCharacter
-    | [0-9-]
-    ;
-
-fragment
-VariableNameCharacters
-    : VariableNameLeadingCharacter VariableNameCharacter*
-    ;
-
-VariableIdentifier
-    : '${' VariableNameCharacters '}'
-    ;
-
-expression
-    : binaryOperatorExpression EOF
-    | OTHER {System.err.println("unknown char: " + $OTHER.text);}
-    ;
-
-binaryOperatorExpression
-    : conditionalExpression
-    ;
-
-conditionalExpression
-    : conditionalExpression conditionalOperator equalityOperatorExpression
-    | equalityOperatorExpression
-    ;
-
-equalityOperatorExpression
-    : equalityOperatorExpression binaryOperator regexOperatorExpression
-    | regexOperatorExpression
-    ;
-
-regexOperatorExpression
-    : regexOperatorExpression regexEqualityOperator regexPattern
-    | relationalOperatorExpression
-    ;
-
-relationalOperatorExpression
-    : relationalOperatorExpression relationalOperator setOperatorExpression
-    | setOperatorExpression
-    ;
-
-setOperatorExpression
-    : setOperatorExpression setOperator setInitializer
-    | unaryOperatorExpression
-    ;
-
-unaryOperatorExpression
-    : primary
-    | setInitializer
-    | regexPattern
-    | parenthesisExpression
-    | unaryNotOperatorExpression
-    ;
-
-unaryNotOperatorExpression
-    : unaryOperator primary
-    ;
-
-binaryOperator
-    : relationalOperator
-    | equalityOperator
-    ;
-
-regexEqualityOperator
-    : '=~'
-    | '!~'
-    ;
-
-setOperator
-    : 'in'
-    | 'not in'
-    ;
-
-
-conditionalOperator
-    : 'and'
-    | 'or'
-    ;
-
-unaryOperator
-    : 'not'
-    ;
-
-equalityOperator
-    : '=='
-    | '!='
-    ;
-
-relationalOperator
-    : '<'
-    | '<='
-    | '>'
-    | '>='
-    ;
-
-primary
-    : literal
-    | jsonPointer
-    | variableIdentifier
-    | setInitializer
-    ;
-
-jsonPointer
-    : JsonPointer
-    | EscapedJsonPointer
-    ;
-
-regexPattern
-    : jsonPointer
-    | String
-    ;
-
-parenthesisExpression
-    : '(' binaryOperatorExpression ')'
-    ;
-
-setInitializer
-    : '{' primary (',' primary)* '}'
-    ;
-
-variableIdentifier
-    : variableName
-    ;
-
-variableName
-    : VariableIdentifier
-    ;
-
-literal
-    : Float
-    | Integer
-    | Boolean
-    | String
     ;
 
 EQUAL : '==';
@@ -253,8 +244,6 @@ LBRACK : '[';
 RBRACK : ']';
 LBRACE : '{';
 RBRACE : '}';
-TRUE : 'true';
-FALSE : 'false';
 FORWARDSLASH : '/';
 DOUBLEQUOTE : '"';
 SET_SEPARATOR : ',';
