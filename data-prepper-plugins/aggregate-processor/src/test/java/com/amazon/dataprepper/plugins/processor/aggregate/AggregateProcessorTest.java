@@ -78,13 +78,13 @@ public class AggregateProcessorTest {
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private Counter actionHandleEventsForwardedCounter;
+    private Counter actionHandleEventsOutCounter;
 
     @Mock
     private Counter actionHandleEventsDroppedCounter;
 
     @Mock
-    private Counter actionConcludeGroupEventsForwardedCounter;
+    private Counter actionConcludeGroupEventsOutCounter;
 
     @Mock
     private Counter actionConcludeGroupEventsDroppedCounter;
@@ -123,9 +123,9 @@ public class AggregateProcessorTest {
         when(aggregateActionSynchronizerProvider.provide(aggregateAction, aggregateGroupManager, pluginMetrics)).thenReturn(aggregateActionSynchronizer);
         when(aggregateActionSynchronizer.handleEventForGroup(event, identificationHash, aggregateGroup)).thenReturn(aggregateActionResponse);
 
-        when(pluginMetrics.counter(AggregateProcessor.ACTION_HANDLE_EVENTS_FORWARDED)).thenReturn(actionHandleEventsForwardedCounter);
+        when(pluginMetrics.counter(AggregateProcessor.ACTION_HANDLE_EVENTS_OUT)).thenReturn(actionHandleEventsOutCounter);
         when(pluginMetrics.counter(AggregateProcessor.ACTION_HANDLE_EVENTS_DROPPED)).thenReturn(actionHandleEventsDroppedCounter);
-        when(pluginMetrics.counter(AggregateProcessor.ACTION_CONCLUDE_GROUP_EVENTS_FORWARDED)).thenReturn(actionConcludeGroupEventsForwardedCounter);
+        when(pluginMetrics.counter(AggregateProcessor.ACTION_CONCLUDE_GROUP_EVENTS_OUT)).thenReturn(actionConcludeGroupEventsOutCounter);
         when(pluginMetrics.counter(AggregateProcessor.ACTION_CONCLUDE_GROUP_EVENTS_DROPPED)).thenReturn(actionConcludeGroupEventsDroppedCounter);
 
         when(pluginMetrics.counter(MetricNames.RECORDS_IN)).thenReturn(recordsIn);
@@ -148,9 +148,9 @@ public class AggregateProcessorTest {
         assertThat(recordsOut.size(), equalTo(0));
 
         verify(actionHandleEventsDroppedCounter).increment(1);
-        verify(actionHandleEventsForwardedCounter).increment(0);
+        verify(actionHandleEventsOutCounter).increment(0);
         verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
-        verifyNoInteractions(actionConcludeGroupEventsForwardedCounter);
+        verifyNoInteractions(actionConcludeGroupEventsOutCounter);
     }
 
     @Test
@@ -165,10 +165,10 @@ public class AggregateProcessorTest {
         assertThat(recordsOut.get(0), notNullValue());
         assertThat(recordsOut.get(0).getData(), equalTo(event));
 
-        verify(actionHandleEventsForwardedCounter).increment(1);
+        verify(actionHandleEventsOutCounter).increment(1);
         verify(actionHandleEventsDroppedCounter).increment(0);
         verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
-        verifyNoInteractions(actionConcludeGroupEventsForwardedCounter);
+        verifyNoInteractions(actionConcludeGroupEventsOutCounter);
     }
 
     @Test
@@ -186,8 +186,8 @@ public class AggregateProcessorTest {
 
         verify(actionConcludeGroupEventsDroppedCounter).increment();
         verify(actionHandleEventsDroppedCounter).increment(1);
-        verify(actionHandleEventsForwardedCounter).increment(0);
-        verifyNoInteractions(actionConcludeGroupEventsForwardedCounter);
+        verify(actionHandleEventsOutCounter).increment(0);
+        verifyNoInteractions(actionConcludeGroupEventsOutCounter);
 
     }
 
@@ -206,9 +206,9 @@ public class AggregateProcessorTest {
         assertThat(recordsOut.get(0), notNullValue());
         assertThat(recordsOut.get(0).getData(), equalTo(event));
 
-        verify(actionConcludeGroupEventsForwardedCounter).increment();
+        verify(actionConcludeGroupEventsOutCounter).increment();
         verify(actionHandleEventsDroppedCounter).increment(1);
-        verify(actionHandleEventsForwardedCounter).increment(0);
+        verify(actionHandleEventsOutCounter).increment(0);
         verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
     }
 }

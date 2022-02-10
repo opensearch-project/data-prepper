@@ -29,16 +29,16 @@ import java.util.Optional;
 public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(AggregateProcessor.class);
 
-    static final String ACTION_HANDLE_EVENTS_FORWARDED = "actionHandleEventsForwarded";
+    static final String ACTION_HANDLE_EVENTS_OUT = "actionHandleEventsOut";
     static final String ACTION_HANDLE_EVENTS_DROPPED = "actionHandleEventsDropped";
-    static final String ACTION_CONCLUDE_GROUP_EVENTS_FORWARDED = "actionConcludeGroupEventsForwarded";
+    static final String ACTION_CONCLUDE_GROUP_EVENTS_OUT = "actionConcludeGroupEventsOut";
     static final String ACTION_CONCLUDE_GROUP_EVENTS_DROPPED = "actionConcludeGroupEventsDropped";
     static final String CURRENT_AGGREGATE_GROUPS = "currentAggregateGroups";
 
-    private final Counter actionHandleEventsForwardedCounter;
+    private final Counter actionHandleEventsOutCounter;
     private final Counter actionHandleEventsDroppedCounter;
     private final Counter actionConcludeGroupEventsDroppedCounter;
-    private final Counter actionConcludeGroupEventsForwardedCounter;
+    private final Counter actionConcludeGroupEventsOutCounter;
 
     private final AggregateProcessorConfig aggregateProcessorConfig;
     private final AggregateGroupManager aggregateGroupManager;
@@ -59,9 +59,9 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
         final AggregateAction aggregateAction = loadAggregateAction(pluginFactory);
         this.aggregateActionSynchronizer = aggregateActionSynchronizerProvider.provide(aggregateAction, aggregateGroupManager, pluginMetrics);
 
-        this.actionConcludeGroupEventsForwardedCounter = pluginMetrics.counter(ACTION_CONCLUDE_GROUP_EVENTS_FORWARDED);
+        this.actionConcludeGroupEventsOutCounter = pluginMetrics.counter(ACTION_CONCLUDE_GROUP_EVENTS_OUT);
         this.actionConcludeGroupEventsDroppedCounter = pluginMetrics.counter(ACTION_CONCLUDE_GROUP_EVENTS_DROPPED);
-        this.actionHandleEventsForwardedCounter = pluginMetrics.counter(ACTION_HANDLE_EVENTS_FORWARDED);
+        this.actionHandleEventsOutCounter = pluginMetrics.counter(ACTION_HANDLE_EVENTS_OUT);
         this.actionHandleEventsDroppedCounter = pluginMetrics.counter(ACTION_HANDLE_EVENTS_DROPPED);
 
         pluginMetrics.gauge(CURRENT_AGGREGATE_GROUPS, aggregateGroupManager, AggregateGroupManager::getAllGroupsSize);
@@ -84,13 +84,13 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
 
             if (concludeGroupEvent.isPresent()) {
                 recordsOut.add(new Record(concludeGroupEvent.get()));
-                actionConcludeGroupEventsForwardedCounter.increment();
+                actionConcludeGroupEventsOutCounter.increment();
             } else {
                 actionConcludeGroupEventsDroppedCounter.increment();
             }
         }
 
-        int handleEventsForwarded = 0;
+        int handleEventsOut = 0;
         int handleEventsDropped = 0;
         for (final Record<Event> record : records) {
             final Event event = record.getData();
@@ -103,13 +103,13 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
 
             if (aggregateActionResponseEvent != null) {
                 recordsOut.add(new Record<>(aggregateActionResponseEvent, record.getMetadata()));
-                handleEventsForwarded++;
+                handleEventsOut++;
             } else {
                 handleEventsDropped++;
             }
         }
 
-        actionHandleEventsForwardedCounter.increment(handleEventsForwarded);
+        actionHandleEventsOutCounter.increment(handleEventsOut);
         actionHandleEventsDroppedCounter.increment(handleEventsDropped);
         return recordsOut;
     }
