@@ -80,8 +80,11 @@ JsonPointerCharacters
     ;
 
 JsonPointer
+    : FORWARDSLASH JsonPointerCharacters? (FORWARDSLASH JsonPointerCharacters)*
+    ;
+
+EscapedJsonPointer
     : DOUBLEQUOTE FORWARDSLASH JsonPointerStringCharacters? DOUBLEQUOTE
-    | FORWARDSLASH JsonPointerCharacters? (FORWARDSLASH JsonPointerCharacters)*
     ;
 
 String
@@ -146,6 +149,7 @@ unaryOperatorExpression
     : primary
     | setInitializer
     | regexPattern
+    | parenthesisExpression
     | unaryNotOperatorExpression
     ;
 
@@ -192,15 +196,19 @@ relationalOperator
 
 primary
     : literal
+    | jsonPointer
     | variableIdentifier
     | setInitializer
-    | parenthesisExpression
+    ;
+
+jsonPointer
+    : JsonPointer
+    | EscapedJsonPointer
     ;
 
 regexPattern
-    : JsonPointer
+    : jsonPointer
     | String
-    | '(' (JsonPointer | String) ')'
     ;
 
 parenthesisExpression
@@ -208,7 +216,7 @@ parenthesisExpression
     ;
 
 setInitializer
-    : '{' binaryOperatorExpression (',' binaryOperatorExpression)* '}'
+    : '{' primary (',' primary)* '}'
     ;
 
 variableIdentifier
@@ -223,7 +231,6 @@ literal
     : Float
     | Integer
     | Boolean
-    | JsonPointer
     | String
     ;
 
