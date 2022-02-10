@@ -132,22 +132,22 @@ Apart from common metrics in [AbstractProcessor](https://github.com/opensearch-p
 
 **Counter**
 
-* `actionHandleEventsOut`: The number of Events that have been returned from the `handleEvent` call to the [action]() configured
+* `actionHandleEventsOut`: The number of Events that have been returned from the `handleEvent` call to the [action](#action) configured
 
 
-* `actionHandleEventsDropped`: The number of Events that have not been returned from the `handleEvent` call to the [action]() configured.
+* `actionHandleEventsDropped`: The number of Events that have not been returned from the `handleEvent` call to the [action](#action) configured.
 
 
-* `actionHandleEventsProcessingErrors`: The number of calls made to `handleEvent` for the [action]() configured that resulted in an error.
+* `actionHandleEventsProcessingErrors`: The number of calls made to `handleEvent` for the [action](#action) configured that resulted in an error.
 
 
-* `actionConcludeGroupEventsOut`: The number of Events that have been returned from the `concludeGroup` call to the [action]() configured.
+* `actionConcludeGroupEventsOut`: The number of Events that have been returned from the `concludeGroup` call to the [action](#action) configured.
 
 
-* `actionConcludeGroupEventsDropped`: The number of Events that have not been returned from the `condludeGroup` call to the [action]() configured.
+* `actionConcludeGroupEventsDropped`: The number of Events that have not been returned from the `condludeGroup` call to the [action](#action) configured.
 
 
-* `actionConcludeGroupEventsProcessingErrors`: The number of calls made to `concludeGroup` for the [action]() configured that resulted in an error.
+* `actionConcludeGroupEventsProcessingErrors`: The number of calls made to `concludeGroup` for the [action](#action) configured that resulted in an error.
 
 **Gauge**
 
