@@ -5,7 +5,9 @@
 
 package com.amazon.dataprepper.plugins.processor.aggregate;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,6 +58,15 @@ public class AggregateActionSynchronizerTest {
     @Mock
     private Event event;
 
+    @Mock
+    private PluginMetrics pluginMetrics;
+
+    @Mock
+    private Counter actionHandleEventsProcessingErrors;
+
+    @Mock
+    private Counter actionConcludeGroupEventsProcessingErrors;
+
     @BeforeEach
     void setup() {
         doNothing().when(handleEventForGroupLock).lock();
@@ -65,11 +76,14 @@ public class AggregateActionSynchronizerTest {
         doNothing().when(aggregateGroupManager).closeGroup(identificationHash, aggregateGroup);
         when(aggregateGroup.getConcludeGroupLock()).thenReturn(concludeGroupLock);
         when(aggregateGroup.getHandleEventForGroupLock()).thenReturn(handleEventForGroupLock);
+
+        when(pluginMetrics.counter(AggregateActionSynchronizer.ACTION_HANDLE_EVENTS_PROCESSING_ERRORS)).thenReturn(actionHandleEventsProcessingErrors);
+        when(pluginMetrics.counter(AggregateActionSynchronizer.ACTION_CONCLUDE_GROUP_EVENTS_PROCESSING_ERRORS)).thenReturn(actionConcludeGroupEventsProcessingErrors);
     }
 
     private AggregateActionSynchronizer createObjectUnderTest() {
         final AggregateActionSynchronizer.AggregateActionSynchronizerProvider aggregateActionSynchronizerProvider = new AggregateActionSynchronizer.AggregateActionSynchronizerProvider();
-        return aggregateActionSynchronizerProvider.provide(aggregateAction, aggregateGroupManager);
+        return aggregateActionSynchronizerProvider.provide(aggregateAction, aggregateGroupManager, pluginMetrics);
     }
 
     @Test
@@ -114,9 +128,10 @@ public class AggregateActionSynchronizerTest {
 
         final Optional<Event> concludeGroupEvent = objectUnderTest.concludeGroup(identificationHash, aggregateGroup);
 
-        final InOrder inOrder = Mockito.inOrder(handleEventForGroupLock, aggregateAction, concludeGroupLock);
+        final InOrder inOrder = Mockito.inOrder(handleEventForGroupLock, aggregateAction, concludeGroupLock, actionConcludeGroupEventsProcessingErrors);
         inOrder.verify(handleEventForGroupLock).lock();
         inOrder.verify(aggregateAction).concludeGroup(aggregateGroup);
+        inOrder.verify(actionConcludeGroupEventsProcessingErrors).increment();
         inOrder.verify(handleEventForGroupLock).unlock();
         inOrder.verify(concludeGroupLock).unlock();
 
@@ -148,11 +163,12 @@ public class AggregateActionSynchronizerTest {
 
         final AggregateActionResponse handleEventResponse = objectUnderTest.handleEventForGroup(event, identificationHash, aggregateGroup);
 
-        final InOrder inOrder = Mockito.inOrder(concludeGroupLock, handleEventForGroupLock, aggregateAction);
+        final InOrder inOrder = Mockito.inOrder(concludeGroupLock, handleEventForGroupLock, aggregateAction, actionHandleEventsProcessingErrors);
         inOrder.verify(concludeGroupLock).lock();
         inOrder.verify(concludeGroupLock).unlock();
         inOrder.verify(handleEventForGroupLock).lock();
         inOrder.verify(aggregateAction).handleEvent(event, aggregateGroup);
+        inOrder.verify(actionHandleEventsProcessingErrors).increment();
         inOrder.verify(handleEventForGroupLock).unlock();
 
         assertThat(handleEventResponse, notNullValue());
