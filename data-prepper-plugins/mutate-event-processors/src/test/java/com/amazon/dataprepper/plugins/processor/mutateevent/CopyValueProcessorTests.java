@@ -83,6 +83,50 @@ public class CopyValueProcessorTests {
         assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
     }
 
+    private static class TestObject {
+        public String a;
+
+        @Override
+        public boolean equals(Object o) {
+            if(o instanceof TestObject) {
+                TestObject testObject = (TestObject) o;
+                return this.a == testObject.a;
+            }
+
+            return false;
+        }
+    }
+
+    @Test
+    public void testNestedObjectCopyProcessorTests() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", true)));
+
+        final CopyValueProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        TestObject data = new TestObject();
+        data.a = "test";
+        record.getData().put("message", data);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("newMessage", TestObject.class), equalTo(data));
+        assertThat(editedRecords.get(0).getData().get("message", TestObject.class), equalTo(data));
+    }
+
+    @Test
+    public void testFromKeyDneCopyProcessorTests() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message2", "newMessage", false)));
+
+        final CopyValueProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
+    }
+
     @Test
     public void testOverwriteSingleCopyProcessorTests() {
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", true)));

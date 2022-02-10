@@ -31,7 +31,7 @@ public class CopyValueProcessor extends AbstractProcessor<Record<Event>, Record<
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
             for(CopyValueProcessorConfig.Entry entry : entries) {
-                if (entry.getFromKey().equals(entry.getToKey())) {
+                if (entry.getFromKey().equals(entry.getToKey()) || !recordEvent.containsKey(entry.getFromKey())) {
                     continue;
                 }
 

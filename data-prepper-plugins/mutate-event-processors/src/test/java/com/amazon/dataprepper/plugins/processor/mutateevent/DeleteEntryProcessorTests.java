@@ -47,6 +47,20 @@ public class DeleteEntryProcessorTests {
     }
 
     @Test
+    public void testWithKeyDneDeleteProcessorTest() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message2")));
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        record.getData().put("newMessage", "test");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("message2"), is(false));
+    }
+
+    @Test
     public void testMultiDeleteProcessorTest() {
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message"),
                 createEntry("message2")));

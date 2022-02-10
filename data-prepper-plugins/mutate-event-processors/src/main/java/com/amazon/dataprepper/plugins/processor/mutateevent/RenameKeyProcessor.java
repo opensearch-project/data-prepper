@@ -32,7 +32,7 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
             final Event recordEvent = record.getData();
 
             for(RenameKeyProcessorConfig.Entry entry : entries) {
-                if(entry.getFromKey().equals(entry.getToKey())) {
+                if(entry.getFromKey().equals(entry.getToKey()) || !recordEvent.containsKey(entry.getFromKey())) {
                     continue;
                 }
 

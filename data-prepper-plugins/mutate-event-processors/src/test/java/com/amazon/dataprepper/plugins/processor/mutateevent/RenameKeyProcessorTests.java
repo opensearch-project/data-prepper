@@ -63,6 +63,19 @@ public class RenameKeyProcessorTests {
     }
 
     @Test
+    public void testFromKeyDneRenameProcessorTests() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message2", "newMessage", false)));
+
+        final RenameKeyProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
+    }
+
+    @Test
     public void testMultiMixedOverwriteRenameProcessorTests() {
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", true),
                 createEntry("message2", "existingMessage", false)));
