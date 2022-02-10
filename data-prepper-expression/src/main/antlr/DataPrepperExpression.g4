@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-grammar DataPrepperStatement;
+grammar DataPrepperExpression;
 
 @header {
     package org.opensearch.dataprepper.expression.antlr;
@@ -108,13 +108,9 @@ VariableIdentifier
     : '${' VariableNameCharacters '}'
     ;
 
-statement
-    : expression EOF
-    | OTHER {System.err.println("unknown char: " + $OTHER.text);}
-    ;
-
 expression
-    : binaryOperatorExpression
+    : binaryOperatorExpression EOF
+    | OTHER {System.err.println("unknown char: " + $OTHER.text);}
     ;
 
 binaryOperatorExpression
@@ -198,7 +194,7 @@ primary
     : literal
     | variableIdentifier
     | setInitializer
-    | expressionInitializer
+    | parenthesisExpression
     ;
 
 regexPattern
@@ -207,8 +203,8 @@ regexPattern
     | '(' (JsonPointer | String) ')'
     ;
 
-expressionInitializer
-    : '(' expression ')'
+parenthesisExpression
+    : '(' binaryOperatorExpression ')'
     ;
 
 setInitializer
