@@ -40,7 +40,7 @@ When run, the processor will parse the message into the following output:
 ###Configuration
 * `entries` - A list of entries to add to an event
   * `key` - The key of the new entry to be added
-  * `value` - The value of the new entry to be added. Strings, booleans, numbers, and null are valid to use
+  * `value` - The value of the new entry to be added. Strings, booleans, numbers, null, nested objects, and arrays containing the aforementioned data types are valid to use
   * `overwrite_if_key_exists` - When set to `true`, if `key` already exists in the event, then the existing value will be overwritten. The default is `false`. 
 
 ___

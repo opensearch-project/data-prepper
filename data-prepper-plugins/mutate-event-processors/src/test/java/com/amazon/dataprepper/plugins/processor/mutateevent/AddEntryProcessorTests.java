@@ -167,6 +167,47 @@ public class AddEntryProcessorTests {
         assertThat(editedRecords.get(0).getData().get("newMessage", Object.class), equalTo(null));
     }
 
+    private static class TestObject {
+        public String a;
+
+        @Override
+        public boolean equals(Object o) {
+            TestObject testObject = (TestObject) o;
+            return this.a == testObject.a;
+        }
+    }
+
+    @Test
+    public void testNestedAddProcessorTests() {
+        TestObject obj = new TestObject();
+        obj.a = "test";
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", obj, false)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
+        assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
+        assertThat(editedRecords.get(0).getData().get("newMessage", TestObject.class), equalTo(obj));
+    }
+
+    @Test
+    public void testArrayAddProcessorTests() {
+        Object[] array = new Object[] { 1, 1.2, "string", true, null };
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", array, false)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
+        assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
+        assertThat(editedRecords.get(0).getData().get("newMessage", Object[].class), equalTo(array));
+    }
+
     @Test
     public void testFloatAddProcessorTests() {
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", 1.2, false)));
