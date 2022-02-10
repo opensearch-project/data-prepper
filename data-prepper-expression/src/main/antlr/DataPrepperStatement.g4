@@ -137,18 +137,18 @@ regexOperatorExpression
     ;
 
 relationalOperatorExpression
-    : relationalOperatorExpression relationalOperator listOperatorExpression
-    | listOperatorExpression
+    : relationalOperatorExpression relationalOperator setOperatorExpression
+    | setOperatorExpression
     ;
 
-listOperatorExpression
-    : listOperatorExpression listOperator listInitializer
+setOperatorExpression
+    : setOperatorExpression setOperator setInitializer
     | unaryOperatorExpression
     ;
 
 unaryOperatorExpression
     : primary
-    | listInitializer
+    | setInitializer
     | regexPattern
     | unaryNotOperatorExpression
     ;
@@ -167,7 +167,7 @@ regexEqualityOperator
     | '!~'
     ;
 
-listOperator
+setOperator
     : 'in'
     | 'not in'
     ;
@@ -197,7 +197,7 @@ relationalOperator
 primary
     : literal
     | variableIdentifier
-    | listInitializer
+    | setInitializer
     | expressionInitializer
     ;
 
@@ -211,7 +211,7 @@ expressionInitializer
     : '(' expression ')'
     ;
 
-listInitializer
+setInitializer
     : '{' binaryOperatorExpression (',' binaryOperatorExpression)* '}'
     ;
 
@@ -239,8 +239,8 @@ LTE : '<=';
 GTE : '>=';
 MATCH_REGEX_PATTERN : '=~';
 NOT_MATCH_REGEX_PATTERN : '!~';
-IN_LIST : 'in';
-NOT_IN_LIST : 'not in';
+IN_SET : 'in';
+NOT_IN_SET : 'not in';
 AND : 'and';
 OR : 'or';
 NOT : 'not';
@@ -254,7 +254,7 @@ TRUE : 'true';
 FALSE : 'false';
 FORWARDSLASH : '/';
 DOUBLEQUOTE : '"';
-LISTSEPARATOR : ',';
+SET_SEPARATOR : ',';
 PERIOD : '.';
 
 SPACE
