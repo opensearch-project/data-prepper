@@ -15,15 +15,15 @@ import java.util.List;
 
 public class AggregateProcessorConfig {
 
-    static int DEFAULT_WINDOW_DURATION = 180;
+    static int DEFAULT_GROUP_DURATION = 180;
 
     @JsonProperty("identification_keys")
     @NotEmpty
     private List<String> identificationKeys;
 
-    @JsonProperty("window_duration")
+    @JsonProperty("group_duration")
     @Min(0)
-    private int windowDuration = DEFAULT_WINDOW_DURATION;
+    private int groupDuration = DEFAULT_GROUP_DURATION;
 
     @JsonProperty("action")
     @NotNull
@@ -33,8 +33,8 @@ public class AggregateProcessorConfig {
         return identificationKeys;
     }
 
-    public int getWindowDuration() {
-        return windowDuration;
+    public int getGroupDuration() {
+        return groupDuration;
     }
 
     public PluginModel getAggregateAction() { return aggregateAction; }

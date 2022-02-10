@@ -15,6 +15,6 @@ public class AggregateProcessorConfigTest {
     public void testDefault() {
         final AggregateProcessorConfig aggregateConfig = new AggregateProcessorConfig();
 
-        assertThat(aggregateConfig.getWindowDuration(), equalTo(AggregateProcessorConfig.DEFAULT_WINDOW_DURATION));
+        assertThat(aggregateConfig.getGroupDuration(), equalTo(AggregateProcessorConfig.DEFAULT_GROUP_DURATION));
     }
 }
