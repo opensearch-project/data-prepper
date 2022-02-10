@@ -44,13 +44,13 @@ StringCharacters
 
 fragment
 StringCharacter
-    : ~["\\]
+    : ~["\\$]
     | EscapeSequence
     ;
 
 fragment
 EscapeSequence
-    : '\\' [btnfr"'\\]
+    : '\\' [btnfr"'\\$]
     ;
 
 fragment
