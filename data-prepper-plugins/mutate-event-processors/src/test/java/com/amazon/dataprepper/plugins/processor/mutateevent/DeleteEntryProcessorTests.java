@@ -14,10 +14,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -77,14 +75,6 @@ public class DeleteEntryProcessorTests {
 
     private DeleteEntryProcessor createObjectUnderTest() {
         return new DeleteEntryProcessor(pluginMetrics, mockConfig);
-    }
-
-    private DeleteEntryProcessorConfig.Entry createEntry(final String withKey) {
-        return new DeleteEntryProcessorConfig.Entry(withKey);
-    }
-
-    private List<DeleteEntryProcessorConfig.Entry> createListOfEntries(final DeleteEntryProcessorConfig.Entry... entries) {
-        return new LinkedList<>(Arrays.asList(entries));
     }
 
     private Record<Event> getEvent(String message) {
