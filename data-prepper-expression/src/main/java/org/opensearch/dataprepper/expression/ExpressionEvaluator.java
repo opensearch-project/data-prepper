@@ -4,7 +4,7 @@ import com.amazon.dataprepper.model.event.Event;
 
 /**
  * @since 1.3
- * ScriptEngine interface to abstract the parse and evaluate implementations.
+ * ExpressionEvaluator interface to abstract the parse and evaluate implementations.
  */
 public interface ExpressionEvaluator<T> {
 
