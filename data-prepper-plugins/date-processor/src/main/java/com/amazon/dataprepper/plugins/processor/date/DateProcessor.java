@@ -67,25 +67,14 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
     @Override
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
-            String sourceTimestamp;
             String zonedDateTime = null;
 
-            if (Boolean.TRUE.equals(dateProcessorConfig.getFromTimeReceived())) {
-                Instant timeReceived = record.getData().getMetadata().getTimeReceived();
-                zonedDateTime =  getZonedDateTimeFromInstant(timeReceived);
-            }
-            else if (keyToParse != null && !keyToParse.isEmpty()) {
-                sourceTimestamp = record.getData().get(keyToParse, String.class);
+            if (Boolean.TRUE.equals(dateProcessorConfig.getFromTimeReceived()))
+                zonedDateTime =  getDateTimeFromInstant(record);
 
-                for (DateTimeFormatter formatter : dateTimeFormatters) {
-                    zonedDateTime = getZonedDateTime(sourceTimestamp, formatter);
-                    if (zonedDateTime != null)
-                        break;
-                }
-                if (zonedDateTime == null) {
-                    LOG.debug("Unable to parse {} with provided patterns. {}", sourceTimestamp, parsingException.getMessage());
-                }
-            }
+            else if (keyToParse != null && !keyToParse.isEmpty())
+                zonedDateTime = getDateTimeFromMatch(record);
+
             if (zonedDateTime != null)
                 record.getData().put(dateProcessorConfig.getDestination(), zonedDateTime);
         }
@@ -101,6 +90,7 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
     }
 
     private Locale parseLocale(final String localeString) {
+        Locale locale = null;
         boolean isBCP47Format = localeString.contains("-");
 
         final String[] localeFields;
@@ -112,13 +102,29 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
         switch (localeFields.length) {
             case 1:
-                return new Locale(localeFields[0]);
+                locale = new Locale(localeFields[0]);
+                break;
             case 2:
-                return new Locale(localeFields[0], localeFields[1]);
+                locale = new Locale(localeFields[0], localeFields[1]);
+                break;
             case 3:
-                return new Locale(localeFields[0], localeFields[1], localeFields[2]);
+                locale = new Locale(localeFields[0], localeFields[1], localeFields[2]);
+                break;
             default:
                 throw new IllegalArgumentException("Invalid locale format. Only language, country and variant are supported.");
+        }
+
+        if (isLocaleValid(locale))
+            return locale;
+        else
+            throw new IllegalArgumentException("Unknown locale provided.");
+    }
+
+    private boolean isLocaleValid(Locale locale) {
+        try {
+            return locale.getISO3Language() != null && locale.getISO3Country() != null;
+        } catch (IllegalArgumentException e) {
+            return false;
         }
     }
 
@@ -138,24 +144,40 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
                 .parseDefaulting(ChronoField.YEAR, zonedDateTimeForDefaultValues.getYear())
                 .parseDefaulting(ChronoField.MONTH_OF_YEAR, zonedDateTimeForDefaultValues.getMonthValue())
                 .parseDefaulting(ChronoField.DAY_OF_MONTH, zonedDateTimeForDefaultValues.getDayOfMonth())
-                .parseDefaulting(ChronoField.HOUR_OF_DAY, zonedDateTimeForDefaultValues.getHour())
-                .parseDefaulting(ChronoField.MINUTE_OF_HOUR, zonedDateTimeForDefaultValues.getMinute())
-                .parseDefaulting(ChronoField.SECOND_OF_MINUTE, zonedDateTimeForDefaultValues.getSecond())
+                .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
+                .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
+                .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)
                 .toFormatter(sourceLocale)
                 .withZone(sourceTimezone);
     }
 
-    private String getZonedDateTimeFromInstant(final Instant timeReceived) {
+    private String getDateTimeFromInstant(final Record<Event> record) {
+        Instant timeReceived = record.getData().getMetadata().getTimeReceived();
         return timeReceived.atZone(OUTPUT_TIMEZONE).format(getOutputFormatter());
     }
 
-    private String getZonedDateTime(String timestamp, DateTimeFormatter dateTimeFormatter) {
+    private String getDateTimeFromMatch(final Record<Event> record) {
+        String datetime = null;
+        String sourceTimestamp = null;
         try {
-            return ZonedDateTime.parse(timestamp, dateTimeFormatter).format(getOutputFormatter().withZone(OUTPUT_TIMEZONE));
+            sourceTimestamp = record.getData().get(keyToParse, String.class);
         } catch (Exception e) {
-            parsingException = new IllegalArgumentException("Unable to convert timestamp to datetime object.");
+            LOG.debug("Unable to find {} in event data.", keyToParse);
         }
-        return null;
+
+        for (DateTimeFormatter formatter : dateTimeFormatters) {
+            try {
+                datetime = ZonedDateTime.parse(sourceTimestamp, formatter).format(getOutputFormatter().withZone(OUTPUT_TIMEZONE));
+            } catch (Exception ignored) {
+
+            }
+            if (datetime != null)
+                break;
+        }
+        if (datetime == null) {
+            LOG.debug("Unable to parse {} with provided patterns", sourceTimestamp);
+        }
+        return datetime;
     }
 
     private DateTimeFormatter getOutputFormatter() {
