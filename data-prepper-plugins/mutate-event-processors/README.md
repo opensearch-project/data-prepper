@@ -4,6 +4,8 @@ The following is a list of processors available to mutate an event.
 ___
 
 ##AddEntryProcessor
+A processor that adds entries to an event
+
 ###Basic Usage
 To get started, create the following `pipeline.yaml`.
 ```yaml
@@ -38,14 +40,16 @@ When run, the processor will parse the message into the following output:
 > If `newMessage` had already existed, its existing value would have been overwritten with `3`
 
 ###Configuration
-* `entries` - A list of entries to add to an event
-  * `key` - The key of the new entry to be added
-  * `value` - The value of the new entry to be added. Strings, booleans, numbers, null, nested objects, and arrays containing the aforementioned data types are valid to use
-  * `overwrite_if_key_exists` - When set to `true`, if `key` already exists in the event, then the existing value will be overwritten. The default is `false`. 
+* `entries` - (required) - A list of entries to add to an event
+  * `key` - (required) - The key of the new entry to be added
+  * `value` - (required) - The value of the new entry to be added. Strings, booleans, numbers, null, nested objects, and arrays containing the aforementioned data types are valid to use
+  * `overwrite_if_key_exists` - (optional) - When set to `true`, if `key` already exists in the event, then the existing value will be overwritten. The default is `false`. 
 
 ___
 
 ##CopyValueProcessor
+A processor that copies values within an event
+
 ###Basic Usage
 To get started, create the following `pipeline.yaml`.
 ```yaml
@@ -80,14 +84,16 @@ When run, the processor will parse the message into the following output:
 > If `newMessage` had already existed, its existing value would have been overwritten with `value`
 
 ###Configuration
-* `entries` - A list of entries to be copied in an event
-    * `from_key` - The key of the entry to be copied
-    * `to_key` - The key of the new entry to be added
-    * `overwrite_if_to_key_exists` - When set to `true`, if `to_key` already exists in the event, then the existing value will be overwritten. The default is `false`.
+* `entries` - (required) - A list of entries to be copied in an event
+    * `from_key` - (required) - The key of the entry to be copied
+    * `to_key` - (required) - The key of the new entry to be added
+    * `overwrite_if_to_key_exists` - (optional) - When set to `true`, if `to_key` already exists in the event, then the existing value will be overwritten. The default is `false`.
 
 ___
 
 ##DeleteEntryProcessor
+A processor that deletes entries in an event
+
 ###Basic Usage
 To get started, create the following `pipeline.yaml`.
 ```yaml
@@ -120,12 +126,14 @@ When run, the processor will parse the message into the following output:
 > If `message` had not existed in the event, then nothing would have happened
 
 ###Configuration
-* `entries` - A list of entries to be deleted from an event
-    * `with_key` - The key of the entry to be deleted
+* `entries` - (required) - A list of entries to be deleted from an event
+    * `with_key` - (required) - The key of the entry to be deleted
 
 ___
 
 ##RenameKeyProcessor
+A processor that renames keys in an event
+
 ###Basic Usage
 To get started, create the following `pipeline.yaml`.
 ```yaml
@@ -160,10 +168,10 @@ When run, the processor will parse the message into the following output:
 > If `newMessage` had already existed, its existing value would have been overwritten with `value`
 
 ###Configuration
-* `entries` - A list of entries to rename in an event
-    * `from_key` - The key of the entry to be renamed
-    * `to_key` - The new key of the entry
-    * `overwrite_if_to_key_exists` - When set to `true`, if `to_key` already exists in the event, then the existing value will be overwritten. The default is `false`.
+* `entries` - (required) - A list of entries to rename in an event
+    * `from_key` - (required) - The key of the entry to be renamed
+    * `to_key` - (required) - The new key of the entry
+    * `overwrite_if_to_key_exists` - (optional) - When set to `true`, if `to_key` already exists in the event, then the existing value will be overwritten. The default is `false`.
 
 ###Special Consideration
 The renaming operation occurs in the order defined. This means that chaining is implicit with the RenameKeyProcessor. Take the following `piplines.yaml` for example:
