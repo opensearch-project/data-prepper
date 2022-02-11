@@ -16,7 +16,7 @@ pipeline:
       record_type: "event"
       format: "json"
   processor:
-    - add_entry:
+    - add_entries:
         entries:
         - key: "newMessage"
           value: 3
@@ -60,7 +60,7 @@ pipeline:
       record_type: "event"
       format: "json"
   processor:
-    - copy_value:
+    - copy_values:
         entries:
         - from_key: "message"
           to_key: "newMessage"
@@ -104,7 +104,7 @@ pipeline:
       record_type: "event"
       format: "json"
   processor:
-    - delete_entry:
+    - delete_entries:
         with_keys: ["message"]
   sink:
     - stdout:
@@ -142,7 +142,7 @@ pipeline:
       record_type: "event"
       format: "json"
   processor:
-    - rename_key:
+    - rename_keys:
         entries:
         - from_key: "message"
           to_key: "newMessage"
