@@ -240,8 +240,6 @@ OR : 'or';
 NOT : 'not';
 LPAREN : '(';
 RPAREN : ')';
-LBRACK : '[';
-RBRACK : ']';
 LBRACE : '{';
 RBRACE : '}';
 FORWARDSLASH : '/';
