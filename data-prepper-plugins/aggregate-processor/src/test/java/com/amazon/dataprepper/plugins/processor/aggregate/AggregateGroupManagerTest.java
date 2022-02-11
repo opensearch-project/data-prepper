@@ -30,7 +30,7 @@ public class AggregateGroupManagerTest {
 
     private AggregateIdentificationKeysHasher.IdentificationHash identificationHash;
 
-    private static final int TEST_WINDOW_DURATION = new Random().nextInt(10) + 10;
+    private static final int TEST_GROUP_DURATION = new Random().nextInt(10) + 10;
 
     @BeforeEach
     void setup() {
@@ -41,7 +41,7 @@ public class AggregateGroupManagerTest {
     }
 
     private AggregateGroupManager createObjectUnderTest() {
-        return new AggregateGroupManager(TEST_WINDOW_DURATION);
+        return new AggregateGroupManager(TEST_GROUP_DURATION);
     }
 
     @Test
@@ -92,11 +92,11 @@ public class AggregateGroupManagerTest {
 
         final AggregateGroup groupToConclude = mock(AggregateGroup.class);
         final AggregateIdentificationKeysHasher.IdentificationHash hashForGroupToConclude = mock(AggregateIdentificationKeysHasher.IdentificationHash.class);
-        when(groupToConclude.getGroupStart()).thenReturn(Instant.now().minusSeconds(TEST_WINDOW_DURATION));
+        when(groupToConclude.getGroupStart()).thenReturn(Instant.now().minusSeconds(TEST_GROUP_DURATION));
 
         final AggregateGroup groupToNotConclude = mock(AggregateGroup.class);
         final AggregateIdentificationKeysHasher.IdentificationHash hashForGroupToNotConclude = mock(AggregateIdentificationKeysHasher.IdentificationHash.class);
-        when(groupToNotConclude.getGroupStart()).thenReturn(Instant.now().plusSeconds(TEST_WINDOW_DURATION));
+        when(groupToNotConclude.getGroupStart()).thenReturn(Instant.now().plusSeconds(TEST_GROUP_DURATION));
 
         aggregateGroupManager.putGroupWithHash(hashForGroupToConclude, groupToConclude);
         aggregateGroupManager.putGroupWithHash(hashForGroupToNotConclude, groupToNotConclude);
