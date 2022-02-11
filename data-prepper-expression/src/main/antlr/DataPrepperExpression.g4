@@ -245,7 +245,6 @@ RBRACE : '}';
 FORWARDSLASH : '/';
 DOUBLEQUOTE : '"';
 SET_SEPARATOR : ',';
-PERIOD : '.';
 
 SPACE
     : [ \t\r\n] -> skip
