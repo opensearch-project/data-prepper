@@ -1,0 +1,22 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+plugins {
+    id 'antlr'
+    id 'java'
+    id 'idea'
+}
+
+dependencies {
+    antlr 'org.antlr:antlr4:4.9.2'
+}
+
+generateGrammarSource {
+    outputDirectory = new File('build/generated-src/antlr/main/org/opensearch/dataprepper/expression/antlr/')
+}
+
+test {
+    useJUnitPlatform()
+}
