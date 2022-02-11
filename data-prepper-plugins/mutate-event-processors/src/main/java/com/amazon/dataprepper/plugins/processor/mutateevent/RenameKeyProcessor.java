@@ -16,7 +16,7 @@ import com.amazon.dataprepper.model.record.Record;
 import java.util.Collection;
 import java.util.List;
 
-@DataPrepperPlugin(name = "rename_key", pluginType = Processor.class, pluginConfigurationType = RenameKeyProcessorConfig.class)
+@DataPrepperPlugin(name = "rename_keys", pluginType = Processor.class, pluginConfigurationType = RenameKeyProcessorConfig.class)
 public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private final List<RenameKeyProcessorConfig.Entry> entries;
 
