@@ -11,6 +11,15 @@ plugins {
 
 dependencies {
     antlr 'org.antlr:antlr4:4.9.2'
+    implementation project(':data-prepper-api')
+    implementation 'javax.inject:javax.inject:1'
+    implementation('org.springframework:spring-core:5.3.13') {
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+    implementation('org.springframework:spring-context:5.3.15') {
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+    testImplementation 'org.springframework:spring-test:5.3.15'
 }
 
 generateGrammarSource {
