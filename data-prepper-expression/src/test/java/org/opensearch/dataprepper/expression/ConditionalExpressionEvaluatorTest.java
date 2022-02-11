@@ -11,14 +11,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @ExtendWith(MockitoExtension.class)
-class ConditionalStatementEvaluatorTest {
+class ConditionalExpressionEvaluatorTest {
 
     @Mock
     private Parser<ParseTree> parser;
     @Mock
     private Evaluator<ParseTree, Event> evaluator;
     @InjectMocks
-    private ConditionalStatementEvaluator statementEvaluator;
+    private ConditionalExpressionEvaluator statementEvaluator;
 
     @Test
     void testThrowsNotImplementedException() {

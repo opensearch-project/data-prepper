@@ -11,12 +11,12 @@ import javax.inject.Named;
  * {@link com.amazon.dataprepper.model.sink.Sink} and data-prepper-core objects can use to evaluate statements.
  */
 @Named
-public class ConditionalStatementEvaluator implements StatementEvaluator<Boolean> {
+public class ConditionalExpressionEvaluator implements ExpressionEvaluator<Boolean> {
     private final Parser<ParseTree> parser;
     private final Evaluator<ParseTree, Event> evaluator;
 
     @Inject
-    public ConditionalStatementEvaluator(final Parser<ParseTree> parser, final Evaluator<ParseTree, Event> evaluator) {
+    public ConditionalExpressionEvaluator(final Parser<ParseTree> parser, final Evaluator<ParseTree, Event> evaluator) {
         this.parser = parser;
         this.evaluator = evaluator;
     }
