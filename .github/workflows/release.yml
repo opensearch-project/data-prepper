@@ -1,0 +1,24 @@
+name: Build Release Artifacts
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up JDK
+      uses: actions/setup-java@v1
+      with:
+        java-version: 14
+    - name: Checkout Data-Prepper
+      uses: actions/checkout@v2
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    - name: Build
+      run: ./gradlew build
+    - name: Archives
+      run: ./gradlew :release:archives:linux:linuxTar -Prelease
+    - name: Docker
+      run: ./gradlew :release:docker:docker -Prelease
