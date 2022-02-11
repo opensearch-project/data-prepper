@@ -18,12 +18,12 @@ import java.util.List;
 
 @DataPrepperPlugin(name = "delete_entry", pluginType = Processor.class, pluginConfigurationType = DeleteEntryProcessorConfig.class)
 public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private final List<DeleteEntryProcessorConfig.Entry> entries;
+    private final String[] entries;
 
     @DataPrepperPluginConstructor
     public DeleteEntryProcessor(final PluginMetrics pluginMetrics, final DeleteEntryProcessorConfig config) {
         super(pluginMetrics);
-        this.entries = config.getEntries();
+        this.entries = config.getWithKeys();
     }
 
     @Override
@@ -31,8 +31,8 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            for(DeleteEntryProcessorConfig.Entry entry : entries) {
-                recordEvent.delete(entry.getWithKey());
+            for(String entry : entries) {
+                recordEvent.delete(entry);
             }
         }
 

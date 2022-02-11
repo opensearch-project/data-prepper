@@ -105,8 +105,7 @@ pipeline:
       format: "json"
   processor:
     - delete_entry:
-        entries:
-        - with_key: "message"
+        with_keys: ["message"]
   sink:
     - stdout:
 ```
@@ -126,8 +125,7 @@ When run, the processor will parse the message into the following output:
 > If `message` had not existed in the event, then nothing would have happened
 
 ###Configuration
-* `entries` - (required) - A list of entries to be deleted from an event
-    * `with_key` - (required) - The key of the entry to be deleted
+* `with_keys` - (required) - An array of keys of the entries to be deleted
 
 ___
 

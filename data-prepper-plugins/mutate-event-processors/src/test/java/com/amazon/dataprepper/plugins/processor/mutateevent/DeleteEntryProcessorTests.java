@@ -35,7 +35,7 @@ public class DeleteEntryProcessorTests {
 
     @Test
     public void testSingleDeleteProcessorTest() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message")));
+        when(mockConfig.getWithKeys()).thenReturn(new String[] { "message" });
 
         final DeleteEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -48,7 +48,7 @@ public class DeleteEntryProcessorTests {
 
     @Test
     public void testWithKeyDneDeleteProcessorTest() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message2")));
+        when(mockConfig.getWithKeys()).thenReturn(new String[] { "message2" });
 
         final DeleteEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -62,8 +62,7 @@ public class DeleteEntryProcessorTests {
 
     @Test
     public void testMultiDeleteProcessorTest() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message"),
-                createEntry("message2")));
+        when(mockConfig.getWithKeys()).thenReturn(new String[] { "message", "message2" });
 
         final DeleteEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");

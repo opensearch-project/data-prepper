@@ -12,30 +12,12 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 public class DeleteEntryProcessorConfig {
-    public static class Entry {
-        @NotEmpty
-        @NotNull
-        @JsonProperty("with_key")
-        private String withKey;
-
-        public String getWithKey() {
-            return withKey;
-        }
-
-        public Entry(final String withKey) {
-            this.withKey = withKey;
-        }
-
-        public Entry() {
-
-        }
-    }
-
     @NotEmpty
     @NotNull
-    private List<Entry> entries;
+    @JsonProperty("with_keys")
+    private String[] withKeys;
 
-    public List<Entry> getEntries() {
-        return entries;
+    public String[] getWithKeys() {
+        return withKeys;
     }
 }
