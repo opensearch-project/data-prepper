@@ -23,7 +23,6 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.Collection;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -31,13 +30,10 @@ import java.util.stream.Collectors;
 public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(DateProcessor.class);
     private static final ZoneId OUTPUT_TIMEZONE = ZoneId.systemDefault();
-    static final String OUTPUT_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
+    private static final String OUTPUT_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
 
     private String keyToParse;
-    private Locale sourceLocale;
-    private ZoneId sourceTimezone;
     private List<DateTimeFormatter> dateTimeFormatters;
-    private IllegalArgumentException parsingException;
     private final DateProcessorConfig dateProcessorConfig;
 
     @DataPrepperPluginConstructor
@@ -45,23 +41,8 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
         super(pluginMetrics);
         this.dateProcessorConfig = dateProcessorConfig;
 
-        if (Boolean.TRUE.equals(dateProcessorConfig.getFromTimeReceived()) && dateProcessorConfig.getMatch() != null) {
-            throw new IllegalArgumentException("from_time_received and match are mutually exclusive options.");
-        }
-
-        else if (Boolean.FALSE.equals(dateProcessorConfig.getFromTimeReceived()) && dateProcessorConfig.getMatch() != null) {
-            sourceTimezone = buildZoneId(dateProcessorConfig.getTimezone());
-            if (dateProcessorConfig.getLocale() == null || dateProcessorConfig.getLocale().equalsIgnoreCase("ROOT")) {
-                sourceLocale = Locale.ROOT;
-            }
-            else {
-                sourceLocale = parseLocale(dateProcessorConfig.getLocale());
-            }
-
-            if (dateProcessorConfig.getMatch().size() != 1)
-                throw new IllegalArgumentException("match can have a minimum and maximum of 1 entry.");
+        if (dateProcessorConfig.getMatch() != null)
             extractKeyAndFormatters(dateProcessorConfig.getMatch());
-        }
     }
 
     @Override
@@ -81,60 +62,11 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
         return records;
     }
 
-    private ZoneId buildZoneId(final String timezone) {
-        try {
-            return ZoneId.of(timezone);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Unsupported timezone provided.");
-        }
-    }
-
-    private Locale parseLocale(final String localeString) {
-        Locale locale = null;
-        boolean isBCP47Format = localeString.contains("-");
-
-        final String[] localeFields;
-        if (isBCP47Format) {
-            localeFields = localeString.split("-");
-        }
-        else
-            localeFields = localeString.split("_");
-
-        switch (localeFields.length) {
-            case 1:
-                locale = new Locale(localeFields[0]);
-                break;
-            case 2:
-                locale = new Locale(localeFields[0], localeFields[1]);
-                break;
-            case 3:
-                locale = new Locale(localeFields[0], localeFields[1], localeFields[2]);
-                break;
-            default:
-                throw new IllegalArgumentException("Invalid locale format. Only language, country and variant are supported.");
-        }
-
-        if (isLocaleValid(locale))
-            return locale;
-        else
-            throw new IllegalArgumentException("Unknown locale provided.");
-    }
-
-    private boolean isLocaleValid(Locale locale) {
-        try {
-            return locale.getISO3Language() != null && locale.getISO3Country() != null;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-    }
-
     private void extractKeyAndFormatters(final Map<String, List<String>> match) {
         for (final Map.Entry<String, List<String>> entry : match.entrySet()) {
             keyToParse = entry.getKey();
             dateTimeFormatters = (entry.getValue().stream().map(this::getSourceFormatter).collect(Collectors.toList()));
         }
-        if (dateTimeFormatters.isEmpty())
-            throw new IllegalArgumentException("At least 1 pattern is required.");
     }
 
     private DateTimeFormatter getSourceFormatter(final String pattern) {
@@ -147,8 +79,8 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
                 .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
                 .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
                 .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)
-                .toFormatter(sourceLocale)
-                .withZone(sourceTimezone);
+                .toFormatter(dateProcessorConfig.getSourceLocale())
+                .withZone(dateProcessorConfig.getZonedId());
     }
 
     private String getDateTimeFromInstant(final Record<Event> record) {
@@ -158,11 +90,12 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
     private String getDateTimeFromMatch(final Record<Event> record) {
         String datetime = null;
-        String sourceTimestamp = null;
+        String sourceTimestamp;
         try {
             sourceTimestamp = record.getData().get(keyToParse, String.class);
         } catch (Exception e) {
             LOG.debug("Unable to find {} in event data.", keyToParse);
+            return null;
         }
 
         for (DateTimeFormatter formatter : dateTimeFormatters) {

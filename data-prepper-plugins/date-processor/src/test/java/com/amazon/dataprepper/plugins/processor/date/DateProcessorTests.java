@@ -9,9 +9,6 @@ import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.LocaleUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,12 +19,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,12 +33,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -53,29 +44,21 @@ class DateProcessorTests {
 
     @Mock
     private DateProcessorConfig mockDateProcessorConfig;
-
     private DateProcessor dateProcessor;
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
-    private static final String TIMESTAMP_KEY = "@timestamp";
-
-    private final String messageInput =  UUID.randomUUID().toString();
     private Map<String, Object> testData;
+    private LocalDateTime expectedDateTime;
+    private Instant expectedInstant;
+
+    private static final String TIMESTAMP_KEY = "@timestamp";
+    private final String messageInput =  UUID.randomUUID().toString();
     private final String pattern1 = "yyyy-MM-dd";
     private final String pattern2 = "yyyy-MMM-dd HH:mm:ss.SSS";
-    private final String logDate1 = LocalDate.now().toString();
-    private final String logDate2 = LocalDateTime.now().format(DateTimeFormatter.ofPattern(pattern2));
-    private LocalDateTime expectedDateTime;
-    private final String pattern4 = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS";
+    private final String pattern3 = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS";
 
     @BeforeEach
     void setup() {
         final DateProcessorConfig dateProcessorConfig = new DateProcessorConfig();
-        lenient().when(mockDateProcessorConfig.getFromTimeReceived()).thenReturn(dateProcessorConfig.getFromTimeReceived());
-        lenient().when(mockDateProcessorConfig.getMatch()).thenReturn(dateProcessorConfig.getMatch());
         lenient().when(mockDateProcessorConfig.getDestination()).thenReturn(dateProcessorConfig.getDestination());
-        lenient().when(mockDateProcessorConfig.getTimezone()).thenReturn(dateProcessorConfig.getTimezone());
-        lenient().when(mockDateProcessorConfig.getLocale()).thenReturn(dateProcessorConfig.getLocale());
 
         expectedDateTime = LocalDateTime.now();
     }
@@ -85,194 +68,151 @@ class DateProcessorTests {
     }
 
     @Test
-    void both_from_time_received_and_match_configured_throws_IllegalArgumentException_test() {
-        when(mockDateProcessorConfig.getFromTimeReceived()).thenReturn(true);
-        when(mockDateProcessorConfig.getMatch()).thenReturn(Collections.singletonMap("logtime", Collections.singletonList("yyyy-mm")));
-
-        Exception exception = assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
-        assertThat(exception.getMessage(), equalTo("from_time_received and match are mutually exclusive options."));
-    }
-
-    @Test
-    void match_with_empty_map_throws_IllegalArgumentException_test() {
-        HashMap<String, List<String>> match = new HashMap<>();
-        when(mockDateProcessorConfig.getMatch()).thenReturn(match);
-
-        Exception exception = assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
-        assertThat(exception.getMessage(), equalTo("match can have a minimum and maximum of 1 entry."));
-    }
-
-    @Test
-    void match_with_more_than_one_key_throws_IllegalArgumentException_test() {
-        HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logdate1", Collections.emptyList());
-        match.put("logdate2", Collections.emptyList());
-        when(mockDateProcessorConfig.getMatch()).thenReturn(match);
-
-        Exception exception = assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
-        assertThat(exception.getMessage(), equalTo("match can have a minimum and maximum of 1 entry."));
-    }
-
-    @Test
-    void match_with_no_patterns_throws_IllegalArgumentException_test() {
-        HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logdate", Collections.emptyList());
-        when(mockDateProcessorConfig.getMatch()).thenReturn(match);
-
-        Exception exception = assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
-        assertThat(exception.getMessage(), equalTo("At least 1 pattern is required."));
-    }
-
-    @Test
-    void from_time_received_with_default_destination_test() throws JsonProcessingException {
+    void from_time_received_with_default_destination_test() {
         when(mockDateProcessorConfig.getFromTimeReceived()).thenReturn(true);
 
+        expectedInstant = Instant.now();
         dateProcessor = createObjectUnderTest();
-        final Record<Event> record = buildRecordWithEvent(getTestData());
+
+        Map<String, Object> testData = getTestData();
+
+        final Record<Event> record = new Record<>(JacksonEvent.builder()
+                .withData(testData)
+                .withEventType("event")
+                .withTimeReceived(expectedInstant)
+                .build());
+
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
-        Map<String, Object> resultData = new HashMap<>();
-        resultData.put("message", messageInput);
-        resultData.put(TIMESTAMP_KEY, ZonedDateTime.now().format(DateTimeFormatter.ofPattern(DateProcessor.OUTPUT_FORMAT)));
-        final List<Record<Event>> expectedRecords = Collections.singletonList(buildRecordWithEvent(resultData));
+        ZonedDateTime actualZonedDateTime = processedRecords.get(0).getData().get(TIMESTAMP_KEY, ZonedDateTime.class);
 
-        assertThatRecordsAreEqual(processedRecords.get(0), expectedRecords.get(0), TIMESTAMP_KEY);
+        Assertions.assertEquals(0, actualZonedDateTime.toInstant().compareTo(expectedInstant.truncatedTo(ChronoUnit.MILLIS)));
     }
 
     @Test
-    void from_time_received_with_custom_destination_test() throws JsonProcessingException {
+    void from_time_received_with_custom_destination_test() {
+        String destination = "new_field";
         when(mockDateProcessorConfig.getFromTimeReceived()).thenReturn(true);
-        when(mockDateProcessorConfig.getDestination()).thenReturn("custom_field");
+        when(mockDateProcessorConfig.getDestination()).thenReturn(destination);
 
+        expectedInstant = Instant.now();
         dateProcessor = createObjectUnderTest();
-        final Record<Event> record = buildRecordWithEvent(getTestData());
+
+        Map<String, Object> testData = getTestData();
+
+        final Record<Event> record = new Record<>(JacksonEvent.builder()
+                .withData(testData)
+                .withEventType("event")
+                .withTimeReceived(expectedInstant)
+                .build());
+
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
-        Map<String, Object> resultData = new HashMap<>();
-        resultData.put("message", messageInput);
-        resultData.put("custom_field", ZonedDateTime.now().format(DateTimeFormatter.ofPattern(DateProcessor.OUTPUT_FORMAT)));
-        final List<Record<Event>> expectedRecords = Collections.singletonList(buildRecordWithEvent(resultData));
+        ZonedDateTime actualZonedDateTime = processedRecords.get(0).getData().get(destination, ZonedDateTime.class);
 
-        assertThat(processedRecords.get(0).getData().get("custom_field", ZonedDateTime.class),
-                lessThanOrEqualTo(expectedRecords.get(0).getData().get("custom_field", ZonedDateTime.class)));
-        assertThatRecordsAreEqual(processedRecords.get(0), expectedRecords.get(0), "custom_field");
+        Assertions.assertEquals(0, actualZonedDateTime.toInstant().compareTo(expectedInstant.truncatedTo(ChronoUnit.MILLIS)));
     }
 
     @Test
-    void match_with_default_destination_test() throws JsonProcessingException {
+    void match_with_default_destination_test() {
         HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logdate", Collections.singletonList(pattern2));
+        match.put("logDate", Collections.singletonList(pattern2));
         when(mockDateProcessorConfig.getMatch()).thenReturn(match);
+        when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
+        when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
 
         dateProcessor = createObjectUnderTest();
 
         testData = getTestData();
-        testData.put("logdate", logDate2);
-
-        Map<String, Object> resultData = new HashMap<>();
-        resultData.put("message", messageInput);
-        resultData.put("logdate", logDate2);
-        resultData.put(TIMESTAMP_KEY, ZonedDateTime.now().format(DateTimeFormatter.ofPattern(DateProcessor.OUTPUT_FORMAT)));
+        testData.put("logDate", expectedDateTime.format(DateTimeFormatter.ofPattern(pattern2)));
 
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
-        final List<Record<Event>> expectedRecords = Collections.singletonList(buildRecordWithEvent(resultData));
-
-        assertThatRecordsAreEqual(processedRecords.get(0), expectedRecords.get(0), TIMESTAMP_KEY);
+        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getZonedId(), TIMESTAMP_KEY);
     }
 
     @Test
-    void match_with_custom_destination_test() throws JsonProcessingException {
+    void match_with_custom_destination_test() {
+        String destination = "new_field";
         HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logdate", Collections.singletonList(pattern2));
+        match.put("logDate", Collections.singletonList(pattern2));
         when(mockDateProcessorConfig.getMatch()).thenReturn(match);
-        when(mockDateProcessorConfig.getDestination()).thenReturn("custom_field");
+        when(mockDateProcessorConfig.getDestination()).thenReturn(destination);
+        when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
+        when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
 
         dateProcessor = createObjectUnderTest();
 
         testData = getTestData();
-        testData.put("logdate", logDate2);
-
-        Map<String, Object> resultData = new HashMap<>();
-        resultData.put("message", messageInput);
-        resultData.put("logdate", logDate2);
-        resultData.put("custom_field", ZonedDateTime.now().format(DateTimeFormatter.ofPattern(DateProcessor.OUTPUT_FORMAT)));
+        testData.put("logDate", expectedDateTime.format(DateTimeFormatter.ofPattern(pattern2)));
 
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
-        final List<Record<Event>> expectedRecords = Collections.singletonList(buildRecordWithEvent(resultData));
-
-        assertThatRecordsAreEqual(processedRecords.get(0), expectedRecords.get(0), "custom_field");
+        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getZonedId(), destination);
     }
 
-    // failing test
     @Test
-    void match_with_missing_hours_minutes_seconds_adds_zeros_test() throws JsonProcessingException {
+    void match_with_missing_hours_minutes_seconds_adds_zeros_test() {
         HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logdate", Collections.singletonList(pattern1));
+        match.put("logDate", Collections.singletonList(pattern1));
         when(mockDateProcessorConfig.getMatch()).thenReturn(match);
+        when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
+        when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
+
+        dateProcessor = createObjectUnderTest();
+
+        LocalDate localDate = LocalDate.now(ZoneId.of("UTC"));
+        testData = getTestData();
+        testData.put("logDate", localDate.toString());
+
+        final Record<Event> record = buildRecordWithEvent(testData);
+        final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
+
+        ZonedDateTime actualZonedDateTime =  processedRecords.get(0).getData().get(TIMESTAMP_KEY, ZonedDateTime.class);
+        ZonedDateTime expectedZonedDateTime = localDate.atStartOfDay().atZone(ZoneId.of("UTC"));
+
+        Assertions.assertTrue(actualZonedDateTime.isEqual(expectedZonedDateTime));
+    }
+
+    @Test
+    void match_with_wrong_patterns_return_same_record_test_without_timestamp() {
+        HashMap<String, List<String>> match = new HashMap<>();
+        match.put("logDate", Collections.singletonList(pattern2));
+        when(mockDateProcessorConfig.getMatch()).thenReturn(match);
+        when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
+        when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
 
         dateProcessor = createObjectUnderTest();
 
         testData = getTestData();
-        testData.put("logdate", logDate1);
-
-        Map<String, Object> resultData = new HashMap<>();
-        resultData.put("message", messageInput);
-        resultData.put("logdate", logDate1);
-        resultData.put(TIMESTAMP_KEY, ZonedDateTime.now().format(DateTimeFormatter.ofPattern(DateProcessor.OUTPUT_FORMAT)));
+        testData.put("loDdate", expectedDateTime.format(DateTimeFormatter.ofPattern(pattern3)));
 
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
-        final List<Record<Event>> expectedRecords = Collections.singletonList(buildRecordWithEvent(resultData));
-
-        System.out.println(processedRecords.get(0).getData().toJsonString());
-//        assertThatRecordsAreEqual(processedRecords.get(0), expectedRecords.get(0), TIMESTAMP_KEY);
-    }
-
-    @Test
-    void match_with_unsupported_timezone_throws_IllegalArgumentException_test() {
-        HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logdate", Collections.singletonList(pattern2));
-        when(mockDateProcessorConfig.getMatch()).thenReturn(match);
-        when(mockDateProcessorConfig.getTimezone()).thenReturn(UUID.randomUUID().toString());
-
-        Exception exception = assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
-        assertThat(exception.getMessage(), equalTo("Unsupported timezone provided."));
+        Assertions.assertFalse(processedRecords.get(0).getData().containsKey(TIMESTAMP_KEY));
     }
 
     @ParameterizedTest
     @ValueSource(strings = { "America/New_York", "America/Los_Angeles", "Australia/Adelaide", "Japan" } )
     void match_with_custom_timezone_test(String timezone) {
         HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logdate", Collections.singletonList(pattern4));
+        match.put("logdate", Collections.singletonList(pattern3));
         when(mockDateProcessorConfig.getMatch()).thenReturn(match);
-        when(mockDateProcessorConfig.getTimezone()).thenReturn(timezone);
+        when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of(timezone));
+        when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
 
         dateProcessor = createObjectUnderTest();
 
         Map<String, Object> testData = getTestData();
-        testData.put("logdate", expectedDateTime.format(DateTimeFormatter.ofPattern(pattern4)));
+        testData.put("logdate", expectedDateTime.format(DateTimeFormatter.ofPattern(pattern3)));
 
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
-        assertTimestampsAreEqual(processedRecords.get(0), timezone);
-    }
-
-    @Test
-    void match_with_unsupported_locale_throws_IllegalArgumentException_test() {
-        HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logdate", Collections.emptyList());
-        when(mockDateProcessorConfig.getMatch()).thenReturn(match);
-        when(mockDateProcessorConfig.getLocale()).thenReturn(String.valueOf(UUID.randomUUID()));
-
-        Exception exception = assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
-
-         assertThat(exception.getMessage(), equalTo("Invalid locale format. Only language, country and variant are supported."));
+        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getZonedId(), TIMESTAMP_KEY);
     }
 
     @ParameterizedTest
@@ -281,7 +221,8 @@ class DateProcessorTests {
         HashMap<String, List<String>> match = new HashMap<>();
         match.put("logdate", Collections.singletonList(pattern2));
         when(mockDateProcessorConfig.getMatch()).thenReturn(match);
-        when(mockDateProcessorConfig.getLocale()).thenReturn(locale);
+        when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.forLanguageTag(locale));
+        when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
 
         dateProcessor = createObjectUnderTest();
 
@@ -291,7 +232,7 @@ class DateProcessorTests {
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
-        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getTimezone());
+        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getZonedId(), TIMESTAMP_KEY);
     }
 
     @ParameterizedTest
@@ -300,7 +241,8 @@ class DateProcessorTests {
         HashMap<String, List<String>> match = new HashMap<>();
         match.put("logdate", Collections.singletonList(pattern2));
         when(mockDateProcessorConfig.getMatch()).thenReturn(match);
-        when(mockDateProcessorConfig.getLocale()).thenReturn(locale);
+        when(mockDateProcessorConfig.getSourceLocale()).thenReturn(LocaleUtils.toLocale(locale));
+        when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
 
         dateProcessor = createObjectUnderTest();
 
@@ -310,44 +252,7 @@ class DateProcessorTests {
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
-        assertTimestampsAreEqual(processedRecords.get(0), "UTC");
-    }
-
-    @Test
-    void match_with_wrong_patterns_return_same_record_test() {
-        HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logdate", Collections.singletonList(pattern2));
-        when(mockDateProcessorConfig.getMatch()).thenReturn(match);
-
-        dateProcessor = createObjectUnderTest();
-
-        testData = getTestData();
-        testData.put("logdate", ZonedDateTime.now().format(DateTimeFormatter.ofPattern("yyyy MM dd HH:mm.ss")));
-
-        final Record<Event> record = buildRecordWithEvent(testData);
-        final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
-
-        assertFalse(processedRecords.get(0).getData().containsKey(TIMESTAMP_KEY));
-    }
-
-    private void assertThatRecordsAreEqual(final Record<Event> first, final Record<Event> second, final String key) throws JsonProcessingException {
-        final Map<String, Object> recordMapFirst = OBJECT_MAPPER.readValue(first.getData().toJsonString(), MAP_TYPE_REFERENCE);
-        final Map<String, Object> recordMapSecond = OBJECT_MAPPER.readValue(second.getData().toJsonString(), MAP_TYPE_REFERENCE);
-
-        ZonedDateTime firstZonedDateTime = first.getData().get(key, ZonedDateTime.class);
-        ZonedDateTime secondZonedDateTime = second.getData().get(key, ZonedDateTime.class);
-
-        recordMapFirst.remove(key);
-        recordMapSecond.remove(key);
-
-        assertThat(recordMapFirst.size(), equalTo(recordMapSecond.size()));
-        assertThatTimestampsAreEqual(firstZonedDateTime, secondZonedDateTime);
-        assertThat(recordMapFirst, equalTo(recordMapSecond));
-    }
-
-    private void assertThatTimestampsAreEqual(final ZonedDateTime resultTimestamp, final ZonedDateTime expectedTimestamp) {
-        assertThat(resultTimestamp, lessThanOrEqualTo(expectedTimestamp));
-        assertThat(resultTimestamp, greaterThanOrEqualTo(expectedTimestamp.minusDays(1)));
+        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getZonedId(), TIMESTAMP_KEY);
     }
 
     static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
@@ -364,16 +269,11 @@ class DateProcessorTests {
         return testData;
     }
 
-    private void assertTimestampsAreEqual(Record<Event> record, String timezone) {
-        ZonedDateTime zonedDateTime =  record.getData().get(TIMESTAMP_KEY, ZonedDateTime.class);
-        OffsetDateTime actualOffsetDateTime = OffsetDateTime.from(zonedDateTime);
-        System.out.println(actualOffsetDateTime);
+    private void assertTimestampsAreEqual(Record<Event> record, ZoneId zoneId, String destination) {
+        ZonedDateTime actualZonedDateTime =  record.getData().get(destination, ZonedDateTime.class);
+        ZonedDateTime expectedZonedDatetime = expectedDateTime.atZone(zoneId).truncatedTo(ChronoUnit.MILLIS);
 
-        ZonedDateTime expectedZonedDatetime = expectedDateTime.atZone(ZoneId.of(timezone));
-        OffsetDateTime expectedOffsetDateTime = OffsetDateTime.from(expectedZonedDatetime).truncatedTo(ChronoUnit.MILLIS);
-        System.out.println(expectedOffsetDateTime);
-
-        Assertions.assertTrue(actualOffsetDateTime.isEqual(expectedOffsetDateTime));
+        Assertions.assertTrue(actualZonedDateTime.isEqual(expectedZonedDatetime));
     }
 
 }
