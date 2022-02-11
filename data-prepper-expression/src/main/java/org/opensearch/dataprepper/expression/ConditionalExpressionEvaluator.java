@@ -11,7 +11,7 @@ import javax.inject.Named;
  * {@link com.amazon.dataprepper.model.sink.Sink} and data-prepper-core objects can use to evaluate statements.
  */
 @Named
-public class ConditionalExpressionEvaluator implements ExpressionEvaluator<Boolean> {
+class ConditionalExpressionEvaluator implements ExpressionEvaluator<Boolean> {
     private final Parser<ParseTree> parser;
     private final Evaluator<ParseTree, Event> evaluator;
 
@@ -28,6 +28,7 @@ public class ConditionalExpressionEvaluator implements ExpressionEvaluator<Boole
      */
     @Override
     public Boolean evaluate(final String statement, final Event context) throws ClassCastException {
+        // TODO: Implement method
         throw new RuntimeException("Method not implemented");
     }
 }
