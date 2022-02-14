@@ -12,13 +12,15 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.lang.reflect.Field;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class DateProcessorConfigTest {
     @Test
@@ -32,12 +34,14 @@ class DateProcessorConfigTest {
     @Nested
     class Validation {
 
-        private String random;
+        private DateProcessorConfig.DateMatch mockDateMatch;
         final DateProcessorConfig dateProcessorConfig = new DateProcessorConfig();
+        private String random;
 
         @BeforeEach
         void setUp() {
             random = UUID.randomUUID().toString();
+            mockDateMatch = mock(DateProcessorConfig.DateMatch.class);
         }
 
         @Test
@@ -53,62 +57,67 @@ class DateProcessorConfigTest {
 
         @Test
         void isValidMatchAndFromTimestampReceived_should_return_false_if_from_time_received_and_match_are_configured() throws NoSuchFieldException, IllegalAccessException {
-            HashMap<String, List<String>> match = new HashMap<>();
-            match.put(UUID.randomUUID().toString(), Collections.singletonList(random));
+            when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(random));
+
+            List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
             reflectivelySetField(dateProcessorConfig, "fromTimeReceived", true);
-            reflectivelySetField(dateProcessorConfig, "match", match);
+            reflectivelySetField(dateProcessorConfig, "match", dateMatches);
 
             assertThat(dateProcessorConfig.isValidMatchAndFromTimestampReceived(), equalTo(false));
         }
 
         @Test
         void isValidMatch_should_return_true_if_match_has_single_entry() throws NoSuchFieldException, IllegalAccessException {
-            HashMap<String, List<String>> match = new HashMap<>();
-            match.put(UUID.randomUUID().toString(), Collections.singletonList(random));
+            when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(random));
 
-            reflectivelySetField(dateProcessorConfig, "match", match);
+            List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+            reflectivelySetField(dateProcessorConfig, "match", dateMatches);
+
             assertThat(dateProcessorConfig.isValidMatch(), equalTo(true));
         }
 
         @Test
         void isValidMatch_should_return_false_if_match_has_multiple_entries() throws NoSuchFieldException, IllegalAccessException {
-            HashMap<String, List<String>> match = new HashMap<>();
-            match.put(UUID.randomUUID().toString(), Collections.singletonList(random));
-            match.put(UUID.randomUUID().toString(), Collections.singletonList(random));
+            when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(random));
 
-            reflectivelySetField(dateProcessorConfig, "match", match);
+            List<DateProcessorConfig.DateMatch> dateMatches = Arrays.asList(mockDateMatch, mockDateMatch);
+            reflectivelySetField(dateProcessorConfig, "match", dateMatches);
+
             assertThat(dateProcessorConfig.isValidMatch(), equalTo(false));
         }
 
         @Test
         void isValidMatch_should_return_true_if_match_is_null() throws NoSuchFieldException, IllegalAccessException {
             reflectivelySetField(dateProcessorConfig, "match", null);
+
             assertThat(dateProcessorConfig.isValidMatch(), equalTo(true));
         }
 
         @Test
         void isValidMatch_should_return_false_if_match_is_empty() throws NoSuchFieldException, IllegalAccessException {
-            HashMap<String, List<String>> match = new HashMap<>();
+            when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(random));
 
-            reflectivelySetField(dateProcessorConfig, "match", match);
+            List<DateProcessorConfig.DateMatch> dateMatches = Collections.emptyList();
+            reflectivelySetField(dateProcessorConfig, "match", dateMatches);
+
             assertThat(dateProcessorConfig.isValidMatch(), equalTo(false));
         }
 
         @Test
         void isValidMatch_should_return_false_if_match_has_zero_patterns() throws NoSuchFieldException, IllegalAccessException {
-            HashMap<String, List<String>> match = new HashMap<>();
-            match.put(UUID.randomUUID().toString(), Collections.emptyList());
+            List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+            reflectivelySetField(dateProcessorConfig, "match", dateMatches);
 
-            reflectivelySetField(dateProcessorConfig, "match", match);
             assertThat(dateProcessorConfig.isValidMatch(), equalTo(false));
         }
 
         @Test
         void isValidMatch_should_return_true_if_match_has_at_least_one_pattern() throws NoSuchFieldException, IllegalAccessException {
-            HashMap<String, List<String>> match = new HashMap<>();
-            match.put(UUID.randomUUID().toString(), Collections.singletonList(random));
+            when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(random));
 
-            reflectivelySetField(dateProcessorConfig, "match", match);
+            List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+            reflectivelySetField(dateProcessorConfig, "match", dateMatches);
+
             assertThat(dateProcessorConfig.isValidMatch(), equalTo(true));
         }
 

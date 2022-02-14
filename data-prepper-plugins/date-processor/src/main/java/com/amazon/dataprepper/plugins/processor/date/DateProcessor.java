@@ -24,7 +24,6 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @DataPrepperPlugin(name = "date", pluginType = Processor.class, pluginConfigurationType = DateProcessorConfig.class)
@@ -43,7 +42,7 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
         this.dateProcessorConfig = dateProcessorConfig;
 
         if (dateProcessorConfig.getMatch() != null)
-            extractKeyAndFormatters(dateProcessorConfig.getMatch());
+            extractKeyAndFormatters();
     }
 
     @Override
@@ -52,7 +51,7 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
             String zonedDateTime = null;
 
             if (Boolean.TRUE.equals(dateProcessorConfig.getFromTimeReceived()))
-                zonedDateTime =  getDateTimeFromInstant(record);
+                zonedDateTime =  getDateTimeFromTimeReceived(record);
 
             else if (keyToParse != null && !keyToParse.isEmpty())
                 zonedDateTime = getDateTimeFromMatch(record);
@@ -63,10 +62,10 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
         return records;
     }
 
-    private void extractKeyAndFormatters(final Map<String, List<String>> match) {
-        for (final Map.Entry<String, List<String>> entry : match.entrySet()) {
+    private void extractKeyAndFormatters() {
+        for (DateProcessorConfig.DateMatch entry: dateProcessorConfig.getMatch()) {
             keyToParse = entry.getKey();
-            dateTimeFormatters = (entry.getValue().stream().map(this::getSourceFormatter).collect(Collectors.toList()));
+            dateTimeFormatters = entry.getPatterns().stream().map(this::getSourceFormatter).collect(Collectors.toList());
         }
     }
 
@@ -85,34 +84,39 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
                 .withZone(dateProcessorConfig.getZonedId());
     }
 
-    private String getDateTimeFromInstant(final Record<Event> record) {
-        Instant timeReceived = record.getData().getMetadata().getTimeReceived();
+    private String getDateTimeFromTimeReceived(final Record<Event> record) {
+        final Instant timeReceived = record.getData().getMetadata().getTimeReceived();
         return timeReceived.atZone(OUTPUT_TIMEZONE).format(getOutputFormatter());
     }
 
     private String getDateTimeFromMatch(final Record<Event> record) {
-        String datetime = null;
-        String sourceTimestamp;
+        String sourceTimestamp = getSourceTimestamp(record);
+        if (sourceTimestamp == null)
+            return null;
+
+        return getFormattedDateTimeString(sourceTimestamp);
+    }
+
+    private String getSourceTimestamp(final Record<Event> record) {
         try {
-            sourceTimestamp = record.getData().get(keyToParse, String.class);
+            return record.getData().get(keyToParse, String.class);
         } catch (Exception e) {
             LOG.debug("Unable to find {} in event data.", keyToParse);
             return null;
         }
+    }
 
+    private String getFormattedDateTimeString(final String sourceTimestamp) {
         for (DateTimeFormatter formatter : dateTimeFormatters) {
             try {
-                datetime = ZonedDateTime.parse(sourceTimestamp, formatter).format(getOutputFormatter().withZone(OUTPUT_TIMEZONE));
+                return ZonedDateTime.parse(sourceTimestamp, formatter).format(getOutputFormatter().withZone(OUTPUT_TIMEZONE));
             } catch (Exception ignored) {
 
             }
-            if (datetime != null)
-                break;
         }
-        if (datetime == null) {
-            LOG.debug("Unable to parse {} with provided patterns", sourceTimestamp);
-        }
-        return datetime;
+
+        LOG.debug("Unable to parse {} with any of the provided patterns", sourceTimestamp);
+        return null;
     }
 
     private DateTimeFormatter getOutputFormatter() {

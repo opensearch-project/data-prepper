@@ -44,6 +44,9 @@ class DateProcessorTests {
 
     @Mock
     private DateProcessorConfig mockDateProcessorConfig;
+
+    @Mock
+    private DateProcessorConfig.DateMatch mockDateMatch;
     private DateProcessor dateProcessor;
     private Map<String, Object> testData;
     private LocalDateTime expectedDateTime;
@@ -115,9 +118,12 @@ class DateProcessorTests {
 
     @Test
     void match_with_default_destination_test() {
-        HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logDate", Collections.singletonList(pattern2));
-        when(mockDateProcessorConfig.getMatch()).thenReturn(match);
+        when(mockDateMatch.getKey()).thenReturn("logDate");
+        when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(pattern2));
+
+        List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+
+        when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
         when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
         when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
 
@@ -135,9 +141,11 @@ class DateProcessorTests {
     @Test
     void match_with_custom_destination_test() {
         String destination = "new_field";
-        HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logDate", Collections.singletonList(pattern2));
-        when(mockDateProcessorConfig.getMatch()).thenReturn(match);
+        when(mockDateMatch.getKey()).thenReturn("logDate");
+        when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(pattern2));
+
+        List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+        when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
         when(mockDateProcessorConfig.getDestination()).thenReturn(destination);
         when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
         when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
@@ -155,9 +163,11 @@ class DateProcessorTests {
 
     @Test
     void match_with_missing_hours_minutes_seconds_adds_zeros_test() {
-        HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logDate", Collections.singletonList(pattern1));
-        when(mockDateProcessorConfig.getMatch()).thenReturn(match);
+        when(mockDateMatch.getKey()).thenReturn("logDate");
+        when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(pattern1));
+
+        List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+        when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
         when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
         when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
 
@@ -178,9 +188,11 @@ class DateProcessorTests {
 
     @Test
     void match_with_wrong_patterns_return_same_record_test_without_timestamp() {
-        HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logDate", Collections.singletonList(pattern2));
-        when(mockDateProcessorConfig.getMatch()).thenReturn(match);
+        when(mockDateMatch.getKey()).thenReturn("logDate");
+        when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(pattern2));
+
+        List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+        when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
         when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
         when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
 
@@ -198,16 +210,18 @@ class DateProcessorTests {
     @ParameterizedTest
     @ValueSource(strings = { "America/New_York", "America/Los_Angeles", "Australia/Adelaide", "Japan" } )
     void match_with_custom_timezone_test(String timezone) {
-        HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logdate", Collections.singletonList(pattern3));
-        when(mockDateProcessorConfig.getMatch()).thenReturn(match);
+        when(mockDateMatch.getKey()).thenReturn("logDate");
+        when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(pattern3));
+
+        List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+        when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
         when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of(timezone));
         when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
 
         dateProcessor = createObjectUnderTest();
 
         Map<String, Object> testData = getTestData();
-        testData.put("logdate", expectedDateTime.format(DateTimeFormatter.ofPattern(pattern3)));
+        testData.put("logDate", expectedDateTime.format(DateTimeFormatter.ofPattern(pattern3)));
 
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
@@ -218,16 +232,18 @@ class DateProcessorTests {
     @ParameterizedTest
     @ValueSource(strings = {"en-US", "zh-CN", "it-IT"})
     void match_with_BCP47_locale_test(String locale) {
-        HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logdate", Collections.singletonList(pattern2));
-        when(mockDateProcessorConfig.getMatch()).thenReturn(match);
+        when(mockDateMatch.getKey()).thenReturn("logDate");
+        when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(pattern2));
+
+        List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+        when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
         when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.forLanguageTag(locale));
         when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
 
         dateProcessor = createObjectUnderTest();
 
         testData = getTestData();
-        testData.put("logdate", expectedDateTime.format(DateTimeFormatter.ofPattern(pattern2).withLocale(Locale.forLanguageTag(locale))));
+        testData.put("logDate", expectedDateTime.format(DateTimeFormatter.ofPattern(pattern2).withLocale(Locale.forLanguageTag(locale))));
 
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
@@ -238,16 +254,18 @@ class DateProcessorTests {
     @ParameterizedTest
     @ValueSource(strings = {"en_US", "fr_FR", "ja_JP"})
     void match_with_POSIX_locale_test(String locale) {
-        HashMap<String, List<String>> match = new HashMap<>();
-        match.put("logdate", Collections.singletonList(pattern2));
-        when(mockDateProcessorConfig.getMatch()).thenReturn(match);
+        when(mockDateMatch.getKey()).thenReturn("logDate");
+        when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(pattern2));
+
+        List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+        when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
         when(mockDateProcessorConfig.getSourceLocale()).thenReturn(LocaleUtils.toLocale(locale));
         when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
 
         dateProcessor = createObjectUnderTest();
 
         testData = getTestData();
-        testData.put("logdate", expectedDateTime.format(DateTimeFormatter.ofPattern(pattern2).withLocale(LocaleUtils.toLocale(locale))));
+        testData.put("logDate", expectedDateTime.format(DateTimeFormatter.ofPattern(pattern2).withLocale(LocaleUtils.toLocale(locale))));
 
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));

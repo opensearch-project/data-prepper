@@ -12,18 +12,32 @@ import jakarta.validation.constraints.AssertTrue;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 public class DateProcessorConfig {
     static final Boolean DEFAULT_FROM_TIME_RECEIVED = false;
     static final String DEFAULT_DESTINATION = "@timestamp";
     static final String DEFAULT_TIMEZONE = "UTC";
 
+    public static class DateMatch {
+        @JsonProperty("key")
+        private String key;
+        @JsonProperty("patterns")
+        private List<String> patterns;
+
+        public String getKey() {
+            return key;
+        }
+
+        public List<String> getPatterns() {
+            return patterns;
+        }
+    }
+
     @JsonProperty("from_time_received")
     private Boolean fromTimeReceived = DEFAULT_FROM_TIME_RECEIVED;
 
     @JsonProperty("match")
-    private Map<String, List<String>> match;
+    private List<DateMatch> match;
 
     @JsonProperty("destination")
     private String destination = DEFAULT_DESTINATION;
@@ -44,7 +58,7 @@ public class DateProcessorConfig {
         return fromTimeReceived;
     }
 
-    public Map<String, List<String>> getMatch() {
+    public List<DateMatch> getMatch() {
         return match;
     }
 
@@ -114,8 +128,7 @@ public class DateProcessorConfig {
             if (match.size() != 1)
                 return false;
 
-            Map.Entry<String, List<String>> firstEntry = match.entrySet().iterator().next();
-            return firstEntry.getValue() != null && !firstEntry.getValue().isEmpty();
+            return match.get(0).getPatterns() != null && !match.get(0).getPatterns().isEmpty();
         }
         return true;
     }
