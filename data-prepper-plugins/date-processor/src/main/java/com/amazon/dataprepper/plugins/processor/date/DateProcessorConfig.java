@@ -103,9 +103,9 @@ public class DateProcessorConfig {
             throw new IllegalArgumentException("Unknown locale provided.");
     }
 
-    @AssertTrue(message = "match and from_time_received are mutually exclusive options.")
+    @AssertTrue(message = "match and from_time_received are mutually exclusive options. match or from_time_received is required.")
     boolean isValidMatchAndFromTimestampReceived() {
-        return !Boolean.TRUE.equals(fromTimeReceived) || match == null;
+        return Boolean.TRUE.equals(fromTimeReceived) ^ match != null;
     }
 
     @AssertTrue(message = "match can have a minimum and maximum of 1 entry and at least one pattern.")

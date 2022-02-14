@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -70,12 +71,13 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
     }
 
     private DateTimeFormatter getSourceFormatter(final String pattern) {
-        final ZonedDateTime zonedDateTimeForDefaultValues = ZonedDateTime.now();
+        final LocalDate localDateForDefaultValues = LocalDate.now(dateProcessorConfig.getZonedId());
+
         return new DateTimeFormatterBuilder()
                 .appendPattern(pattern)
-                .parseDefaulting(ChronoField.YEAR, zonedDateTimeForDefaultValues.getYear())
-                .parseDefaulting(ChronoField.MONTH_OF_YEAR, zonedDateTimeForDefaultValues.getMonthValue())
-                .parseDefaulting(ChronoField.DAY_OF_MONTH, zonedDateTimeForDefaultValues.getDayOfMonth())
+                .parseDefaulting(ChronoField.YEAR, localDateForDefaultValues.getYear())
+                .parseDefaulting(ChronoField.MONTH_OF_YEAR, localDateForDefaultValues.getMonthValue())
+                .parseDefaulting(ChronoField.DAY_OF_MONTH, localDateForDefaultValues.getDayOfMonth())
                 .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
                 .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
                 .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)

@@ -47,9 +47,8 @@ class DateProcessorConfigTest {
         }
 
         @Test
-        void isValidMatchAndFromTimestampReceived_should_return_true_if_from_time_received_and_match_are_not_configured() {
-
-            assertThat(dateProcessorConfig.isValidMatchAndFromTimestampReceived(), equalTo(true));
+        void isValidMatchAndFromTimestampReceived_should_return_false_if_from_time_received_and_match_are_not_configured() {
+            assertThat(dateProcessorConfig.isValidMatchAndFromTimestampReceived(), equalTo(false));
         }
 
         @Test
