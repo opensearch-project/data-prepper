@@ -1,0 +1,9 @@
+pluginName: date
+attributesMapperClass: org.opensearch.dataprepper.logstash.mapping.DateLogstashPluginAttributesMapper
+mappedAttributeNames:
+  match: match
+  target: destination
+  timezone: timezone
+  locale: locale
+additionalAttributes:
+  from_time_received: false

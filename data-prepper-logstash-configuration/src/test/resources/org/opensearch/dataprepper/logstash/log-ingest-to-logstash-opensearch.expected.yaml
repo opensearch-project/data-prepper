@@ -8,6 +8,15 @@ logstash-converted-pipeline:
         match:
           log:
             - "%{COMBINEDAPACHELOG}"
+    - date:
+        from_time_received: false
+        destination: "@timestamp"
+        locale: "en_US"
+        timezone: "UTC"
+        match:
+          timestamp:
+            - "yyyy-MM-dd HH:mm:ss"
+            - "yyyy MMM dd HH:mm"
   sink:
     - opensearch:
         hosts:
