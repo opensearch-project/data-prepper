@@ -13,7 +13,10 @@ import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Converts Logstash plugin model to Data Prepper plugin model using mapping file
@@ -33,7 +36,10 @@ class LogstashPluginMapper {
         this.attributesMapperProvider = attributesMapperProvider;
     }
 
-    public PluginModel mapPlugin(LogstashPlugin logstashPlugin) {
+    public List<PluginModel> mapPlugin(LogstashPlugin logstashPlugin) {
+        if(Objects.equals(logstashPlugin.getPluginName(), "mutate")) {
+            return (new MutateMapper()).getModels(logstashPlugin);
+        }
 
         String mappingResourceName = logstashPlugin.getPluginName() + ".mapping.yaml";
 
@@ -58,6 +64,9 @@ class LogstashPluginMapper {
 
         final Map<String, Object> pluginSettings = pluginAttributesMapper.mapAttributes(logstashPlugin.getAttributes(), logstashMappingModel);
 
-        return new PluginModel(logstashMappingModel.getPluginName(), pluginSettings);
+        LinkedList<PluginModel> models = new LinkedList<>();
+        models.add(new PluginModel(logstashMappingModel.getPluginName(), pluginSettings));
+
+        return models;
     }
 }

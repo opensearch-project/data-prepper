@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.logstash.exception.LogstashMappingException;
 import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -93,10 +94,10 @@ class LogstashPluginMapperTest {
         final LogstashPlugin logstashPlugin = mock(LogstashPlugin.class);
         when(logstashPlugin.getPluginName()).thenReturn("amazon_es");
 
-        final PluginModel pluginModel = createObjectUnderTest().mapPlugin(logstashPlugin);
+        final List<PluginModel> pluginModels = createObjectUnderTest().mapPlugin(logstashPlugin);
 
-        assertThat(pluginModel, notNullValue());
-        assertThat(pluginModel.getPluginName(), equalTo("opensearch"));
+        assertThat(pluginModels, notNullValue());
+        assertThat(pluginModels.get(0).getPluginName(), equalTo("opensearch"));
     }
 
     @Test
@@ -108,10 +109,10 @@ class LogstashPluginMapperTest {
         when(logstashPluginAttributesMapper.mapAttributes(anyList(), any(LogstashAttributesMappings.class)))
                 .thenReturn(mappedPluginSettings);
 
-        final PluginModel pluginModel = createObjectUnderTest().mapPlugin(logstashPlugin);
+        final List<PluginModel> pluginModels = createObjectUnderTest().mapPlugin(logstashPlugin);
 
-        assertThat(pluginModel, notNullValue());
-        assertThat(pluginModel.getPluginSettings(), notNullValue());
-        assertThat(pluginModel.getPluginSettings(), equalTo(mappedPluginSettings));
+        assertThat(pluginModels, notNullValue());
+        assertThat(pluginModels.get(0).getPluginSettings(), notNullValue());
+        assertThat(pluginModels.get(0).getPluginSettings(), equalTo(mappedPluginSettings));
     }
 }
