@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.expression;
 
 import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.hamcrest.DiagnosingMatcher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -18,6 +19,7 @@ import org.opensearch.dataprepper.expression.util.MockTokenStreamHelper;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
+import static org.opensearch.dataprepper.expression.util.ContextMatcher.hasContext;
 import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.isParseTree;
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
@@ -60,31 +62,22 @@ public class ParserTest {
 
         final ParseTree expression = parser.expression();
 
-        assertThat(expression, isParseTree(EXPRESSION).withChildrenMatching(
-                isParseTree(
-                        CONDITIONAL_EXPRESSION,
-                        EQUALITY_OPERATOR_EXPRESSION
-                ).withChildrenMatching(
-                        isParseTree(
-                                EQUALITY_OPERATOR_EXPRESSION,
-                                REGEX_OPERATOR_EXPRESSION,
-                                RELATIONAL_OPERATOR_EXPRESSION,
-                                SET_OPERATOR_EXPRESSION,
-                                UNARY_OPERATOR_EXPRESSION,
-                                PRIMARY,
-                                LITERAL
-                        ).containingTerminalNode(),
-                        isParseTree(EQUALITY_OPERATOR).containingTerminalNode(),
-                                isParseTree(
-                                        REGEX_OPERATOR_EXPRESSION,
-                                        RELATIONAL_OPERATOR_EXPRESSION,
-                                        SET_OPERATOR_EXPRESSION,
-                                        UNARY_OPERATOR_EXPRESSION,
-                                        PRIMARY,
-                                        LITERAL
-                                ).containingTerminalNode()
-                ),
-                isTerminalNode())
+        final DiagnosingMatcher<ParseTree> equals = isParseTree(EQUALITY_OPERATOR).containingTerminalNode();
+        final DiagnosingMatcher<ParseTree> endsWithInteger = isParseTree(
+                REGEX_OPERATOR_EXPRESSION,
+                RELATIONAL_OPERATOR_EXPRESSION,
+                SET_OPERATOR_EXPRESSION,
+                UNARY_OPERATOR_EXPRESSION,
+                PRIMARY,
+                LITERAL
+        ).containingTerminalNode();
+        final DiagnosingMatcher<ParseTree> leftHandSide = hasContext(EQUALITY_OPERATOR_EXPRESSION, endsWithInteger);
+        final DiagnosingMatcher<ParseTree> equalityExpression = isParseTree(
+                CONDITIONAL_EXPRESSION,
+                EQUALITY_OPERATOR_EXPRESSION
+        ).withChildrenMatching(leftHandSide, equals, endsWithInteger);
+
+        assertThat(expression, isParseTree(EXPRESSION).withChildrenMatching(equalityExpression, isTerminalNode())
         );
     }
 }
