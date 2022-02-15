@@ -12,7 +12,6 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcher.hasConte
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
 public class ContextMatcherFactory {
-
     @SafeVarargs
     public static ContextMatcherFactory isParseTree(final Class<? extends ParseTree> ... types) {
         return new ContextMatcherFactory(types);

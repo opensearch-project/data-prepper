@@ -24,7 +24,7 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
         return new ContextMatcher(parserRuleContextType, childrenMatchers);
     }
 
-    private final DiagnosingMatcher<ParseTree>[] childrenMatchers;
+    private final DiagnosingMatcher<? extends ParseTree>[] childrenMatchers;
     final Matcher<? extends ParseTree> isParserRuleContextType;
     private final Matcher<Integer> listSizeMatcher;
     @Nullable
@@ -33,7 +33,7 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
     @SafeVarargs
     public ContextMatcher(
             final Class<? extends ParseTree> parserRuleContextType,
-            final DiagnosingMatcher<ParseTree> ... childrenMatchers
+            final DiagnosingMatcher<? extends ParseTree> ... childrenMatchers
     ) {
         this.childrenMatchers = childrenMatchers;
         isParserRuleContextType = isA(parserRuleContextType);
@@ -44,7 +44,7 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
         if (listSizeMatcher.matches(ctx.getChildCount())) {
             for (int i = 0; i < childrenMatchers.length; i++) {
                 final ParseTree child = ctx.getChild(i);
-                final DiagnosingMatcher<ParseTree> matcher = childrenMatchers[i];
+                final DiagnosingMatcher<? extends ParseTree> matcher = childrenMatchers[i];
 
                 if (!matcher.matches(child)) {
                     mismatch.appendDescriptionOf(matcher)
