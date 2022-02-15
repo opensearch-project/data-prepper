@@ -15,7 +15,44 @@ import javax.annotation.Nullable;
 import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.core.IsEqual.equalTo;
 
+/**
+ * @since 1.3
+ *
+ * <p>
+ *     ContextMatcher is a custom Hamcrest matcher to assert if a {@link ParseTree} is an instance of the expected
+ *     context and assert child node types and count. Should be used with {@link TerminalNodeMatcher}.
+ * </p>
+ * <p>
+ *     <b>Example</b><br>
+ *     Given tree:
+ *     <pre>
+ *     Expression<br>
+ *     ├─ ConditionalExpression<br>
+ *     │  ├─ EqualityOperatorExpression<br>
+ *     ├─ &lt;EOF&gt;<br>
+ *     </pre>
+ *
+ *     Matcher Assertion
+ *     <pre>
+ *         assertThat(parseTree, hasContext(Expression,<br>
+ *             hasContext(ConditionalExpression, hasContext(EqualityOperatorExpression)),<br>
+ *             hasContext(isTerminalNode())<br>
+ *         ))
+ *     </pre>
+ * </p>
+ */
 public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
+    /**
+     * @since 1.3
+     * <p>Shortcut for constructor matching Hamcrest standard.</p>
+     * <p>
+     *     <b>Syntax</b><br>
+     *     <pre>assertThat(parseTree, hasContext(Expression, [child assertions]))</pre>
+     * </p>
+     * @param parserRuleContextType used to assert ParseTree branch is instance of parserRuleContextType
+     * @param childrenMatchers assertions to be used on child nodes. Matcher will also assert order and count
+     * @return matcher instance
+     */
     @SafeVarargs
     public static DiagnosingMatcher<ParseTree> hasContext(
             final Class<? extends ParseTree> parserRuleContextType,
@@ -40,6 +77,14 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
         listSizeMatcher = equalTo(childrenMatchers.length);
     }
 
+    /**
+     * @since 1.3
+     * Asserts number of children equal to the number of childMatchers and, in order each child matches the
+     * corresponding matcher.
+     * @param ctx ParseTree branch to get children from
+     * @param mismatch Description used for printing Hamcrest mismatch messages
+     * @return true if all assertions pass
+     */
     private boolean matchChildren(final ParseTree ctx, final Description mismatch) {
         if (listSizeMatcher.matches(ctx.getChildCount())) {
             for (int i = 0; i < childrenMatchers.length; i++) {
@@ -66,6 +111,13 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
         }
     }
 
+    /**
+     * @since 1.3
+     * Asserts ParseTree branch matches assertion and all children match assertions, if any.
+     * @param item ParseTree branch to assert against
+     * @param mismatch Description used for printing Hamcrest mismatch messages
+     * @return true if all assertions pass
+     */
     public boolean matches(final Object item, final Description mismatch) {
         if (isParserRuleContextType.matches(item)) {
             final ParseTree ctx = (ParseTree) item;
@@ -80,6 +132,11 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
         }
     }
 
+    /**
+     * @since 1.3
+     * Called by Hamcrest when match fails to print useful mismatch error message
+     * @param description Where output is collected
+     */
     @Override
     public void describeTo(final Description description) {
         if (failedAssertion != null)
