@@ -134,6 +134,10 @@ public class ModelConvertingLogstashVisitor extends LogstashBaseVisitor {
 
         AttributeInformation info = getAttributeInformation(hashentryContext.value());
 
+        if(info.value == null) {
+            info.value = normalizeText(hashentryContext.value().getText());
+        }
+
         return info.value;
     }
 
@@ -181,6 +185,7 @@ public class ModelConvertingLogstashVisitor extends LogstashBaseVisitor {
             info.logstashValueType = LogstashValueType.STRING;
             info.value = normalizeText(value.getText());
         }
+
         return info;
     }
 }
