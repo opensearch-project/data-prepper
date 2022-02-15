@@ -16,10 +16,10 @@ import java.util.Map;
 class AggregateGroupManager {
 
     private final Map<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> allGroups = Maps.newConcurrentMap();
-    private final Duration windowDuration;
+    private final Duration groupDuration;
 
-    AggregateGroupManager(final int windowDuration) {
-        this.windowDuration = Duration.ofSeconds(windowDuration);
+    AggregateGroupManager(final int groupDuration) {
+        this.groupDuration = Duration.ofSeconds(groupDuration);
     }
 
     AggregateGroup getAggregateGroup(final AggregateIdentificationKeysHasher.IdentificationHash identificationHash) {
@@ -37,7 +37,7 @@ class AggregateGroupManager {
     }
 
     private boolean shouldConcludeGroup(final AggregateGroup aggregateGroup) {
-        return Duration.between(aggregateGroup.getGroupStart(), Instant.now()).compareTo(windowDuration) >= 0;
+        return Duration.between(aggregateGroup.getGroupStart(), Instant.now()).compareTo(groupDuration) >= 0;
     }
 
     void closeGroup(final AggregateIdentificationKeysHasher.IdentificationHash hash, final AggregateGroup group) {
@@ -47,5 +47,9 @@ class AggregateGroupManager {
 
     void putGroupWithHash(final AggregateIdentificationKeysHasher.IdentificationHash hash, final AggregateGroup group) {
         allGroups.put(hash, group);
+    }
+
+    long getAllGroupsSize() {
+        return allGroups.size();
     }
 }

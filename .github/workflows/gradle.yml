@@ -24,8 +24,6 @@ jobs:
         java-version: ${{ matrix.java }}
     - name: Checkout Data-Prepper
       uses: actions/checkout@v2
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
     - name: Build with Gradle
       run: ./gradlew build
     - name: Upload Coverage Report

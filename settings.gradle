@@ -50,4 +50,4 @@ include 'e2e-test:log'
 include 'data-prepper-test-common'
 include 'performance-test'
 include 'data-prepper-plugins:date-processor'
-
+include 'data-prepper-expression'

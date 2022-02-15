@@ -43,7 +43,7 @@ When run, the processor will parse the message into the following output:
 * `entries` - (required) - A list of entries to add to an event
   * `key` - (required) - The key of the new entry to be added
   * `value` - (required) - The value of the new entry to be added. Strings, booleans, numbers, null, nested objects, and arrays containing the aforementioned data types are valid to use
-  * `overwrite_if_key_exists` - (optional) - When set to `true`, if `key` already exists in the event, then the existing value will be overwritten. The default is `false`.
+  * `overwrite_if_key_exists` - (optional) - When set to `true`, if `key` already exists in the event, then the existing value will be overwritten. The default is `false`. 
 
 ___
 
@@ -85,9 +85,9 @@ When run, the processor will parse the message into the following output:
 
 ### Configuration
 * `entries` - (required) - A list of entries to be copied in an event
-  * `from_key` - (required) - The key of the entry to be copied
-  * `to_key` - (required) - The key of the new entry to be added
-  * `overwrite_if_to_key_exists` - (optional) - When set to `true`, if `to_key` already exists in the event, then the existing value will be overwritten. The default is `false`.
+    * `from_key` - (required) - The key of the entry to be copied
+    * `to_key` - (required) - The key of the new entry to be added
+    * `overwrite_if_to_key_exists` - (optional) - When set to `true`, if `to_key` already exists in the event, then the existing value will be overwritten. The default is `false`.
 
 ___
 
@@ -167,9 +167,9 @@ When run, the processor will parse the message into the following output:
 
 ### Configuration
 * `entries` - (required) - A list of entries to rename in an event
-  * `from_key` - (required) - The key of the entry to be renamed
-  * `to_key` - (required) - The new key of the entry
-  * `overwrite_if_to_key_exists` - (optional) - When set to `true`, if `to_key` already exists in the event, then the existing value will be overwritten. The default is `false`.
+    * `from_key` - (required) - The key of the entry to be renamed
+    * `to_key` - (required) - The new key of the entry
+    * `overwrite_if_to_key_exists` - (optional) - When set to `true`, if `to_key` already exists in the event, then the existing value will be overwritten. The default is `false`.
 
 ### Special Consideration
 The renaming operation occurs in the order defined. This means that chaining is implicit with the RenameKeyProcessor. Take the following `piplines.yaml` for example:
