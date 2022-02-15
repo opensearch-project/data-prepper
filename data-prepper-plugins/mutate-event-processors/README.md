@@ -94,7 +94,7 @@ ___
 ## DeleteEntryProcessor
 A processor that deletes entries in an event
 
-###Basic Usage
+### Basic Usage
 To get started, create the following `pipeline.yaml`.
 ```yaml
 pipeline:
