@@ -12,7 +12,8 @@ import org.hamcrest.Matcher;
 
 import javax.annotation.Nullable;
 
-import static org.hamcrest.CoreMatchers.isA;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.core.IsEqual.equalTo;
 
 /**
@@ -73,7 +74,7 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
             final DiagnosingMatcher<? extends ParseTree> ... childrenMatchers
     ) {
         this.childrenMatchers = childrenMatchers;
-        isParserRuleContextType = isA(parserRuleContextType);
+        isParserRuleContextType = is(instanceOf(parserRuleContextType));
         listSizeMatcher = equalTo(childrenMatchers.length);
     }
 

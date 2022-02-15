@@ -8,8 +8,8 @@ package org.opensearch.dataprepper.expression.util;
 import org.antlr.v4.runtime.Token;
 import org.junit.jupiter.api.Test;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -39,8 +39,8 @@ class MockTokenStreamHelperTest {
     void testLT() {
         final MockTokenStreamHelper helper = new MockTokenStreamHelper(0);
 
-        assertThat((Token) helper.LT(null), isA(Token.class));
-        assertThat((Token) helper.LT(null), isA(Token.class));
+        assertThat((Token) helper.LT(null), is(instanceOf(Token.class)));
+        assertThat((Token) helper.LT(null), is(instanceOf(Token.class)));
 
         helper.consume(null);
         assertThrows(RuntimeException.class, () -> helper.LT(null));
@@ -50,8 +50,8 @@ class MockTokenStreamHelperTest {
     void testLA() {
         final MockTokenStreamHelper helper = new MockTokenStreamHelper(0);
 
-        assertThat((Integer) helper.LA(null), isA(Integer.class));
-        assertThat((Integer) helper.LA(null), isA(Integer.class));
+        assertThat((Integer) helper.LA(null), is(instanceOf(Integer.class)));
+        assertThat((Integer) helper.LA(null), is(instanceOf(Integer.class)));
 
         helper.consume(null);
         assertThrows(RuntimeException.class, () -> helper.LA(null));
