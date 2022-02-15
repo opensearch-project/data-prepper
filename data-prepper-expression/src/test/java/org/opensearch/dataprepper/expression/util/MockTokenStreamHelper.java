@@ -17,7 +17,6 @@ import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -51,9 +50,6 @@ public class MockTokenStreamHelper {
             LOG.info("token.getType() -> {}", type);
             return type;
         }).when(token).getType();
-
-        doReturn("Type " + type)
-                .when(token).toString();
 
         tokenQueue.add(token);
     }
