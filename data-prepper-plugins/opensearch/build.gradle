@@ -71,7 +71,7 @@ dependencies {
     testImplementation('junit:junit:4.13.2') {
         exclude group:'org.hamcrest' // workaround for jarHell
     }
-    testImplementation "org.awaitility:awaitility:4.1.0"
+    testImplementation "org.awaitility:awaitility:4.1.1"
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
     testImplementation "commons-io:commons-io:2.11.0"
     testImplementation 'net.bytebuddy:byte-buddy:1.11.20'
