@@ -27,12 +27,17 @@ import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isT
 public class ParserTest {
     private static final Class<? extends ParseTree> EXPRESSION = DataPrepperExpressionParser.ExpressionContext.class;
     private static final Class<? extends ParseTree> CONDITIONAL_EXPRESSION = DataPrepperExpressionParser.ConditionalExpressionContext.class;
-    private static final Class<? extends ParseTree> EQUALITY_OPERATOR_EXPRESSION = DataPrepperExpressionParser.EqualityOperatorExpressionContext.class;
+    private static final Class<? extends ParseTree> EQUALITY_OPERATOR_EXPRESSION =
+            DataPrepperExpressionParser.EqualityOperatorExpressionContext.class;
     private static final Class<? extends ParseTree> EQUALITY_OPERATOR = DataPrepperExpressionParser.EqualityOperatorContext.class;
-    private static final Class<? extends ParseTree> REGEX_OPERATOR_EXPRESSION = DataPrepperExpressionParser.RegexOperatorExpressionContext.class;
-    private static final Class<? extends ParseTree> RELATIONAL_OPERATOR_EXPRESSION = DataPrepperExpressionParser.RelationalOperatorExpressionContext.class;
-    private static final Class<? extends ParseTree> SET_OPERATOR_EXPRESSION = DataPrepperExpressionParser.SetOperatorExpressionContext.class;
-    private static final Class<? extends ParseTree> UNARY_OPERATOR_EXPRESSION = DataPrepperExpressionParser.UnaryOperatorExpressionContext.class;
+    private static final Class<? extends ParseTree> REGEX_OPERATOR_EXPRESSION =
+            DataPrepperExpressionParser.RegexOperatorExpressionContext.class;
+    private static final Class<? extends ParseTree> RELATIONAL_OPERATOR_EXPRESSION =
+            DataPrepperExpressionParser.RelationalOperatorExpressionContext.class;
+    private static final Class<? extends ParseTree> SET_OPERATOR_EXPRESSION =
+            DataPrepperExpressionParser.SetOperatorExpressionContext.class;
+    private static final Class<? extends ParseTree> UNARY_OPERATOR_EXPRESSION =
+            DataPrepperExpressionParser.UnaryOperatorExpressionContext.class;
     private static final Class<? extends ParseTree> PRIMARY = DataPrepperExpressionParser.PrimaryContext.class;
     private static final Class<? extends ParseTree> LITERAL = DataPrepperExpressionParser.LiteralContext.class;
 
