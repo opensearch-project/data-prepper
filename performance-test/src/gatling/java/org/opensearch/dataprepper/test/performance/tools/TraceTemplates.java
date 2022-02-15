@@ -16,17 +16,20 @@ import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 import io.opentelemetry.proto.trace.v1.Status;
-import org.apache.commons.lang3.RandomStringUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 public class TraceTemplates {
     private static final JsonFormat.Printer PRINTER = JsonFormat.printer().omittingInsignificantWhitespace();
     private static final Random RANDOM = new Random();
+    private static final List<String> SERVICE_NAMES = Arrays.asList("SERVICE_A", "SERVICE_B", "SERVICE_C", "SERVICE_D", "SERVICE_E");
+    private static final List<String> SPAN_NAMES = Arrays.asList("SPAN_A", "SPAN_B", "SPAN_C", "SPAN_D", "SPAN_E");
 
     public static List<String> exportTraceServiceRequestJsons(final int peerListSize, final int batchSize) {
         return getExportTraceServiceRequests(peerListSize, batchSize).stream().map(exportTraceServiceRequest -> {
@@ -58,11 +61,14 @@ public class TraceTemplates {
         final ArrayList<ResourceSpans> spansList = new ArrayList<>();
         final byte[] traceId = getRandomBytes(16);
         final byte[] rootSpanId = getRandomBytes(8);
+        final ThreadLocalRandom threadLocalRandom = ThreadLocalRandom.current();
         for(int i = 0; i < traceGroupSize; i++) {
             final byte[] parentId = (i == 0? null : rootSpanId);
             final byte[] spanId = (i == 0? rootSpanId : getRandomBytes(8));
-            final String serviceName = RandomStringUtils.randomAlphabetic(10);
-            final String spanName = RandomStringUtils.randomAlphabetic(10);
+            final int randomServiceIndex = threadLocalRandom.nextInt(SERVICE_NAMES.size());
+            final int randomSpanNameIndex = threadLocalRandom.nextInt(SPAN_NAMES.size());
+            final String serviceName = SERVICE_NAMES.get(randomServiceIndex);
+            final String spanName = SPAN_NAMES.get(randomSpanNameIndex);
             final Span.SpanKind spanKind = Span.SpanKind.SPAN_KIND_SERVER;
             final long endTime = System.currentTimeMillis() * 1000000;
             final long durationInNanos = 100000 + RANDOM.nextInt(500000);
