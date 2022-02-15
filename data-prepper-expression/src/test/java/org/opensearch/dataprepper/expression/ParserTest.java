@@ -23,28 +23,16 @@ import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isT
 
 @ExtendWith(MockitoExtension.class)
 public class ParserTest {
-    private static final Class<? extends ParseTree> Expression = DataPrepperExpressionParser.ExpressionContext.class;
-    private static final Class<? extends ParseTree> ConditionalExpression = DataPrepperExpressionParser.ConditionalExpressionContext.class;
-    private static final Class<? extends ParseTree> ConditionalOperator = DataPrepperExpressionParser.ConditionalOperatorContext.class;
-    private static final Class<? extends ParseTree> EqualityOperatorExpression = DataPrepperExpressionParser.EqualityOperatorExpressionContext.class;
-    private static final Class<? extends ParseTree> EqualityOperator = DataPrepperExpressionParser.EqualityOperatorContext.class;
-    private static final Class<? extends ParseTree> RegexOperatorExpression = DataPrepperExpressionParser.RegexOperatorExpressionContext.class;
-    private static final Class<? extends ParseTree> RegexEqualityOperator = DataPrepperExpressionParser.RegexEqualityOperatorContext.class;
-    private static final Class<? extends ParseTree> RelationalOperatorExpression = DataPrepperExpressionParser.RelationalOperatorExpressionContext.class;
-    private static final Class<? extends ParseTree> RelationalOperator = DataPrepperExpressionParser.RelationalOperatorContext.class;
-    private static final Class<? extends ParseTree> SetOperatorExpression = DataPrepperExpressionParser.SetOperatorExpressionContext.class;
-    private static final Class<? extends ParseTree> SetOperator = DataPrepperExpressionParser.SetOperatorContext.class;
-    private static final Class<? extends ParseTree> UnaryOperatorExpression = DataPrepperExpressionParser.UnaryOperatorExpressionContext.class;
-    private static final Class<? extends ParseTree> ParenthesisExpression = DataPrepperExpressionParser.ParenthesisExpressionContext.class;
-    private static final Class<? extends ParseTree> RegexPattern = DataPrepperExpressionParser.RegexPatternContext.class;
-    private static final Class<? extends ParseTree> SetInitializer = DataPrepperExpressionParser.SetInitializerContext.class;
-    private static final Class<? extends ParseTree> UnaryNotOperatorExpression = DataPrepperExpressionParser.UnaryNotOperatorExpressionContext.class;
-    private static final Class<? extends ParseTree> UnaryOperator = DataPrepperExpressionParser.UnaryOperatorContext.class;
-    private static final Class<? extends ParseTree> Primary = DataPrepperExpressionParser.PrimaryContext.class;
-    private static final Class<? extends ParseTree> JsonPointer = DataPrepperExpressionParser.JsonPointerContext.class;
-    private static final Class<? extends ParseTree> VariableIdentifier = DataPrepperExpressionParser.VariableIdentifierContext.class;
-    private static final Class<? extends ParseTree> VariableName = DataPrepperExpressionParser.VariableNameContext.class;
-    private static final Class<? extends ParseTree> Literal = DataPrepperExpressionParser.LiteralContext.class;
+    private static final Class<? extends ParseTree> EXPRESSION = DataPrepperExpressionParser.ExpressionContext.class;
+    private static final Class<? extends ParseTree> CONDITIONAL_EXPRESSION = DataPrepperExpressionParser.ConditionalExpressionContext.class;
+    private static final Class<? extends ParseTree> EQUALITY_OPERATOR_EXPRESSION = DataPrepperExpressionParser.EqualityOperatorExpressionContext.class;
+    private static final Class<? extends ParseTree> EQUALITY_OPERATOR = DataPrepperExpressionParser.EqualityOperatorContext.class;
+    private static final Class<? extends ParseTree> REGEX_OPERATOR_EXPRESSION = DataPrepperExpressionParser.RegexOperatorExpressionContext.class;
+    private static final Class<? extends ParseTree> RELATIONAL_OPERATOR_EXPRESSION = DataPrepperExpressionParser.RelationalOperatorExpressionContext.class;
+    private static final Class<? extends ParseTree> SET_OPERATOR_EXPRESSION = DataPrepperExpressionParser.SetOperatorExpressionContext.class;
+    private static final Class<? extends ParseTree> UNARY_OPERATOR_EXPRESSION = DataPrepperExpressionParser.UnaryOperatorExpressionContext.class;
+    private static final Class<? extends ParseTree> PRIMARY = DataPrepperExpressionParser.PrimaryContext.class;
+    private static final Class<? extends ParseTree> LITERAL = DataPrepperExpressionParser.LiteralContext.class;
 
     @Mock
     private TokenStream tokenStream;
@@ -70,30 +58,30 @@ public class ParserTest {
                 DataPrepperExpressionParser.EOF
         );
 
-        final DataPrepperExpressionParser.ExpressionContext expression = parser.expression();
+        final ParseTree expression = parser.expression();
 
-        assertThat(expression, isParseTree(Expression).withChildrenMatching(
+        assertThat(expression, isParseTree(EXPRESSION).withChildrenMatching(
                 isParseTree(
-                        ConditionalExpression,
-                        EqualityOperatorExpression
+                        CONDITIONAL_EXPRESSION,
+                        EQUALITY_OPERATOR_EXPRESSION
                 ).withChildrenMatching(
                         isParseTree(
-                                EqualityOperatorExpression,
-                                RegexOperatorExpression,
-                                RelationalOperatorExpression,
-                                SetOperatorExpression,
-                                UnaryOperatorExpression,
-                                Primary,
-                                Literal
+                                EQUALITY_OPERATOR_EXPRESSION,
+                                REGEX_OPERATOR_EXPRESSION,
+                                RELATIONAL_OPERATOR_EXPRESSION,
+                                SET_OPERATOR_EXPRESSION,
+                                UNARY_OPERATOR_EXPRESSION,
+                                PRIMARY,
+                                LITERAL
                         ).containingTerminalNode(),
-                        isParseTree(EqualityOperator).containingTerminalNode(),
+                        isParseTree(EQUALITY_OPERATOR).containingTerminalNode(),
                                 isParseTree(
-                                        RegexOperatorExpression,
-                                        RelationalOperatorExpression,
-                                        SetOperatorExpression,
-                                        UnaryOperatorExpression,
-                                        Primary,
-                                        Literal
+                                        REGEX_OPERATOR_EXPRESSION,
+                                        RELATIONAL_OPERATOR_EXPRESSION,
+                                        SET_OPERATOR_EXPRESSION,
+                                        UNARY_OPERATOR_EXPRESSION,
+                                        PRIMARY,
+                                        LITERAL
                                 ).containingTerminalNode()
                 ),
                 isTerminalNode())
