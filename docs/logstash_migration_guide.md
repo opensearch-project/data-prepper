@@ -26,7 +26,7 @@ As of Data Prepper 1.2 release, the following plugins from the Logstash configur
 2. Run the Docker image pulled in Step 1 by supplying your `logstash.conf`
 
 ```
-docker run --name data-prepper -p 4900:4900 -v ${PWD}/logstash.conf:/usr/share/data-prepper/pipelines.conf opensearchproject/opensearch-data-prepper:latest pipelines.conf
+docker run --name data-prepper -p 4900:4900 -v ${PWD}/logstash.conf:/usr/share/data-prepper/pipelines.conf opensearchproject/data-prepper:latest pipelines.conf
 ```
 
 
