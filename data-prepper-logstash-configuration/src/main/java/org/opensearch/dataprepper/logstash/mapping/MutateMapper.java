@@ -4,6 +4,7 @@ import com.amazon.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -13,8 +14,8 @@ import java.util.Objects;
 
 public class MutateMapper {
     public static class AddEntryConfig {
-        public String key;
-        public Object value;
+        public final String key;
+        public final Object value;
 
         public AddEntryConfig(String key, Object value) {
             this.key = key;
@@ -22,11 +23,11 @@ public class MutateMapper {
         }
     }
 
-    public static class RenameConfig {
-        public String from_key;
-        public String to_key;
+    public static class RenameCopyConfig {
+        public final String from_key;
+        public final String to_key;
 
-        public RenameConfig(String fromKey, String toKey) {
+        public RenameCopyConfig(String fromKey, String toKey) {
             this.from_key = fromKey;
             this.to_key = toKey;
         }
@@ -35,34 +36,69 @@ public class MutateMapper {
     public List<PluginModel> getModels(LogstashPlugin logstashPlugin) {
         List<PluginModel> models = new LinkedList<>();
         List<AddEntryConfig> adds = new LinkedList<>();
-        List<RenameConfig> renames = new LinkedList<>();
+        List<RenameCopyConfig> renames = new LinkedList<>();
+        List<ArrayList<String>> deletes = new LinkedList<>();
+        List<RenameCopyConfig> copies = new LinkedList<>();
 
         for(LogstashAttribute attr : logstashPlugin.getAttributes()) {
-            if(Objects.equals(attr.getAttributeName(), "add_field")) {
-                adds.add(new AddEntryConfig(((LinkedHashMap)attr.getAttributeValue().getValue()).keySet().toArray()[0].toString(), ((LinkedHashMap)attr.getAttributeValue().getValue()).values().toArray()[0]));
-            } else if(Objects.equals(attr.getAttributeName(), "rename")) {
-                renames.add(new RenameConfig(((LinkedHashMap)attr.getAttributeValue().getValue()).keySet().toArray()[0].toString(), ((LinkedHashMap)attr.getAttributeValue().getValue()).values().toArray()[0].toString()));
+            final String name = attr.getAttributeName();
+            if(Objects.equals(name, "add_field")) {
+                ((Map<String, Object>)attr.getAttributeValue().getValue()).entrySet().forEach(entry -> {
+                    adds.add(new AddEntryConfig(entry.getKey(), entry.getValue()));
+                });
+            } else if(Objects.equals(name, "rename")) {
+                ((Map<String, String>)attr.getAttributeValue().getValue()).entrySet().forEach(entry -> {
+                    renames.add(new RenameCopyConfig(entry.getKey(), entry.getValue()));
+                });
+            } else if(Objects.equals(name, "remove_field")) {
+                deletes.add((ArrayList<String>)attr.getAttributeValue().getValue());
+            } else if(Objects.equals(name, "copy")) {
+                ((Map<String, String>)attr.getAttributeValue().getValue()).entrySet().forEach(entry -> {
+                    copies.add(new RenameCopyConfig(entry.getKey(), entry.getValue()));
+                });
             }
         }
 
-        Map<String, Object> add_map = new HashMap<>();
-        add_map.put("entries", adds);
-
-        Map<String, Object> rename_map = new HashMap<>();
-        rename_map.put("entries", renames);
-
-        PluginModel addModel = new PluginModel("add_entries", add_map);
-        PluginModel renameModel = new PluginModel("rename_keys", rename_map);
-
         if(adds.size() > 0) {
+            Map<String, Object> add_map = new HashMap<>();
+            add_map.put("entries", adds);
+
+            PluginModel addModel = new PluginModel("add_entries", add_map);
+
             models.add(addModel);
         }
 
         if(renames.size() > 0) {
+            Map<String, Object> rename_map = new HashMap<>();
+            rename_map.put("entries", renames);
+
+            PluginModel renameModel = new PluginModel("rename_keys", rename_map);
+
             models.add(renameModel);
         }
 
+        if(deletes.size() > 0) {
+            List<String> flatList = new LinkedList<>();
+            for(ArrayList<String> list : deletes) {
+                flatList.addAll(list);
+            }
 
+            Map<String, Object> delete_map = new HashMap<>();
+            delete_map.put("with_keys", flatList);
+
+            PluginModel deleteModel = new PluginModel("delete_entries", delete_map);
+
+            models.add(deleteModel);
+        }
+
+        if(copies.size() > 0) {
+            Map<String, Object> copy_map = new HashMap<>();
+            copy_map.put("entries", copies);
+
+            PluginModel renameModel = new PluginModel("copy_values", copy_map);
+
+            models.add(renameModel);
+        }
 
         return models;
     }

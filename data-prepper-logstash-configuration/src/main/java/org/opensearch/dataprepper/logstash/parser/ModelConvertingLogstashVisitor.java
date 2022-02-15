@@ -80,52 +80,19 @@ public class ModelConvertingLogstashVisitor extends LogstashBaseVisitor {
                 .build();
     }
 
-    @Override
-    public Object visitAttribute(final LogstashParser.AttributeContext attributeContext) {
+    private class AttributeInformation {
         LogstashValueType logstashValueType = null;
         Object value = null;
+    }
 
-        if(attributeContext.value() == null)
-            return null;
-
-        if (attributeContext.value().getChild(0) instanceof LogstashParser.ArrayContext) {
-            logstashValueType = LogstashValueType.ARRAY;
-            value = visitArray(attributeContext.value().array());
-        }
-        else if (attributeContext.value().getChild(0) instanceof LogstashParser.HashContext) {
-            logstashValueType = LogstashValueType.HASH;
-            value = visitHash(attributeContext.value().hash());
-        }
-        else if (attributeContext.value().getChild(0) instanceof LogstashParser.PluginContext) {
-            throw new LogstashParsingException("plugins are not supported in an attribute");
-        }
-        else if (attributeContext.value().NUMBER() != null && attributeContext.value().getText().equals(attributeContext.value().NUMBER().toString())) {
-            logstashValueType = LogstashValueType.NUMBER;
-            try {
-                value = Integer.parseInt(attributeContext.value().getText());
-            } catch (NumberFormatException e) {
-                try {
-                    value = Double.parseDouble(attributeContext.value().getText());
-                } catch (NumberFormatException exception) {
-                    throw new LogstashParsingException("NUMBER types must be either Integer or Double");
-                }
-            }
-        }
-        else if (attributeContext.value().BAREWORD() != null && attributeContext.value().getText().equals(attributeContext.value().BAREWORD().toString())) {
-            logstashValueType = LogstashValueType.BAREWORD;
-            value = attributeContext.value().getText();
-            if (value.toString().equals("true") || value.toString().equals("false")) {
-                value = Boolean.parseBoolean(value.toString());
-            }
-        }
-        else if (attributeContext.value().STRING() != null && attributeContext.value().getText().equals(attributeContext.value().STRING().toString())) {
-            logstashValueType = LogstashValueType.STRING;
-            value = normalizeText(attributeContext.value().getText());
-        }
+    @Override
+    public Object visitAttribute(final LogstashParser.AttributeContext attributeContext) {
+        AttributeInformation info = getAttributeInformation(attributeContext.value());
+        if (info == null) return null;
 
         final LogstashAttributeValue logstashAttributeValue =  LogstashAttributeValue.builder()
-                .attributeValueType(logstashValueType)
-                .value(value)
+                .attributeValueType(info.logstashValueType)
+                .value(info.value)
                 .build();
 
         return LogstashAttribute.builder()
@@ -165,10 +132,55 @@ public class ModelConvertingLogstashVisitor extends LogstashBaseVisitor {
         if (hashentryContext.value().getChild(0) instanceof LogstashParser.ArrayContext)
             return visitArray(hashentryContext.value().array());
 
-        return normalizeText(hashentryContext.value().getText());
+        AttributeInformation info = getAttributeInformation(hashentryContext.value());
+
+        return info.value;
     }
 
     private String normalizeText(final String unNormalizedLogstashText) {
         return unNormalizedLogstashText.replaceAll("^\"|\"$|^'|'$", "");
+    }
+
+    private AttributeInformation getAttributeInformation(LogstashParser.ValueContext value) {
+        AttributeInformation info = new AttributeInformation();
+
+        if(value == null)
+            return null;
+
+        if (value.getChild(0) instanceof LogstashParser.ArrayContext) {
+            info.logstashValueType = LogstashValueType.ARRAY;
+            info.value = visitArray(value.array());
+        }
+        else if (value.getChild(0) instanceof LogstashParser.HashContext) {
+            info.logstashValueType = LogstashValueType.HASH;
+            info.value = visitHash(value.hash());
+        }
+        else if (value.getChild(0) instanceof LogstashParser.PluginContext) {
+            throw new LogstashParsingException("plugins are not supported in an attribute");
+        }
+        else if (value.NUMBER() != null && value.getText().equals(value.NUMBER().toString())) {
+            info.logstashValueType = LogstashValueType.NUMBER;
+            try {
+                info.value = Integer.parseInt(value.getText());
+            } catch (NumberFormatException e) {
+                try {
+                    info.value = Double.parseDouble(value.getText());
+                } catch (NumberFormatException exception) {
+                    throw new LogstashParsingException("NUMBER types must be either Integer or Double");
+                }
+            }
+        }
+        else if (value.BAREWORD() != null && value.getText().equals(value.BAREWORD().toString())) {
+            info.logstashValueType = LogstashValueType.BAREWORD;
+            info.value = value.getText();
+            if (info.value.toString().equals("true") || info.value.toString().equals("false")) {
+                info.value = Boolean.parseBoolean(info.value.toString());
+            }
+        }
+        else if (value.STRING() != null && value.getText().equals(value.STRING().toString())) {
+            info.logstashValueType = LogstashValueType.STRING;
+            info.value = normalizeText(value.getText());
+        }
+        return info;
     }
 }

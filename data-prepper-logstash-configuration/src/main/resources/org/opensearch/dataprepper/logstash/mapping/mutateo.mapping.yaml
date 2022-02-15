@@ -1,0 +1,2 @@
+pluginName: noop
+attributesMapperClass: org.opensearch.dataprepper.logstash.mapping.MutateLogstashPluginAttributesMapper
