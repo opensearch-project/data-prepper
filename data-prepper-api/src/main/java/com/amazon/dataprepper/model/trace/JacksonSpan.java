@@ -435,18 +435,18 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         private void validateParameters() {
             REQUIRED_KEYS.forEach(key -> {
-                checkState(data.containsKey(key), String.format("%s need to be assigned", key));
+                checkState(data.containsKey(key), key + " need to be assigned");
             });
 
             REQUIRED_NON_EMPTY_KEYS.forEach(key -> {
                 final String value = (String) data.get(key);
-                checkNotNull(value, String.format("%s cannot be null", key));
-                checkArgument(!value.isEmpty(),  String.format("%s cannot be an empty string", key));
+                checkNotNull(value, key + " cannot be null");
+                checkArgument(!value.isEmpty(),  key + " cannot be an empty string");
             });
 
             REQUIRED_NON_NULL_KEYS.forEach(key -> {
                 final Object value = data.get(key);
-                checkNotNull(value, String.format("%s cannot be null", key));
+                checkNotNull(value, key + " cannot be null");
             });
         }
 
