@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.expression.util;
 
 import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.TokenStream;
 import org.mockito.invocation.InvocationOnMock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,11 +20,7 @@ import static org.mockito.Mockito.mock;
 public class MockTokenStreamHelper {
     private static final Logger LOG = LoggerFactory.getLogger(MockTokenStreamHelper.class);
 
-    final TokenStream tokenStream = mock(TokenStream.class);
     final Queue<Token> tokenQueue = new LinkedBlockingQueue<>();
-
-    public MockTokenStreamHelper() {
-    }
 
     public MockTokenStreamHelper(final Integer ... types) {
         for (final Integer type : types) {
