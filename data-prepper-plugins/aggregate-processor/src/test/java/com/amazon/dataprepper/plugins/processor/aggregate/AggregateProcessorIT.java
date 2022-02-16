@@ -12,8 +12,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -26,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -38,7 +36,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsIn.in;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 /**
@@ -59,7 +56,7 @@ public class AggregateProcessorIT {
     private PluginMetrics pluginMetrics;
 
     private Collection<Record<Event>> eventBatch;
-    private ConcurrentLinkedDeque<Map<String, Object>> aggregatedResult;
+    private ConcurrentLinkedQueue<Map<String, Object>> aggregatedResult;
     private Set<Map<String, Object>> uniqueEventMaps;
 
     @Mock
@@ -67,7 +64,7 @@ public class AggregateProcessorIT {
 
     @BeforeEach
     void setup() {
-        aggregatedResult = new ConcurrentLinkedDeque<>();
+        aggregatedResult = new ConcurrentLinkedQueue<>();
         uniqueEventMaps = new HashSet<>();
 
         final List<String> identificationKeys = new ArrayList<>();
@@ -128,7 +125,6 @@ public class AggregateProcessorIT {
 
     @RepeatedTest(value = 2)
     void aggregateWithConcludingGroupsOnceReturnsExpectedResult() throws InterruptedException {
-        final AggregateAction spyAction = spy(aggregateAction);
         aggregateConfigMap.put("group_duration", GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE);
         final AggregateProcessor objectUnderTest = createObjectUnderTest();
 
