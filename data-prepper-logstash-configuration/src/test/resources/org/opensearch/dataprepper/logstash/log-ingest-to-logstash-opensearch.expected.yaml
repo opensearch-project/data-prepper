@@ -14,9 +14,10 @@ logstash-converted-pipeline:
         locale: "en_US"
         timezone: "UTC"
         match:
-          timestamp:
-            - "yyyy-MM-dd HH:mm:ss"
-            - "yyyy MMM dd HH:mm"
+          - key: "timestamp"
+            patterns:
+              - "yyyy-MM-dd HH:mm:ss"
+              - "yyyy MMM dd HH:mm"
   sink:
     - opensearch:
         hosts:
