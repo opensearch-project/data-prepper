@@ -65,9 +65,6 @@ public class AggregateProcessorIT {
     @Mock
     private PluginFactory pluginFactory;
 
-    @Captor
-    private ArgumentCaptor<AggregateActionInput> groupCaptor;
-
     @BeforeEach
     void setup() {
         aggregatedResult = new ConcurrentLinkedDeque<>();
