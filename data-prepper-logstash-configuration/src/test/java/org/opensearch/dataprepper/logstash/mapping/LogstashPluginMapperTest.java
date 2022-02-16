@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.logstash.mapping;
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.opensearch.dataprepper.logstash.exception.LogstashMappingException;
 import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
 
@@ -23,12 +24,15 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class LogstashPluginMapperTest {
 
     private AttributesMapperProvider attributesMapperProvider;
     private LogstashPluginAttributesMapper logstashPluginAttributesMapper;
+    private CustomPluginMapperCreator creator;
 
     @BeforeEach
     void setUp() {
@@ -38,10 +42,11 @@ class LogstashPluginMapperTest {
         when(attributesMapperProvider.getAttributesMapper(any(LogstashMappingModel.class)))
                 .thenReturn(logstashPluginAttributesMapper);
 
+        creator = mock(CustomPluginMapperCreator.class);
     }
 
     LogstashPluginMapper createObjectUnderTest() {
-        return new LogstashPluginMapper(attributesMapperProvider);
+        return new LogstashPluginMapper(attributesMapperProvider, creator);
     }
 
     @Test
@@ -72,6 +77,18 @@ class LogstashPluginMapperTest {
         String actualMessage = exception.getMessage();
 
         assertThat(expectedMessage, equalTo(actualMessage));
+    }
+
+    @Test
+    void mapPlugin_with_custom_plugin_mapper_produces_plugins() {
+        final LogstashPlugin logstashPlugin = mock(LogstashPlugin.class);
+        when(logstashPlugin.getPluginName()).thenReturn("mutate");
+        when(creator.createMapperClass(any(String.class))).thenReturn(new MutateMapper());
+
+        final LogstashPluginMapper objectUnderTest = createObjectUnderTest();
+        final List<PluginModel> pluginModels = objectUnderTest.mapPlugin(logstashPlugin);
+
+        assertThat(pluginModels, notNullValue());
     }
 
     @Test

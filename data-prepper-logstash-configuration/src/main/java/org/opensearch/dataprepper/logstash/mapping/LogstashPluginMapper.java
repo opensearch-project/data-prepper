@@ -13,11 +13,9 @@ import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Constructor;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * Converts Logstash plugin model to Data Prepper plugin model using mapping file
@@ -28,13 +26,15 @@ import java.util.Objects;
 class LogstashPluginMapper {
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
     private final AttributesMapperProvider attributesMapperProvider;
+    private final CustomPluginMapperCreator creator;
 
     public LogstashPluginMapper() {
-        this(new AttributesMapperProvider());
+        this(new AttributesMapperProvider(), new CustomPluginMapperCreator());
     }
 
-    LogstashPluginMapper(final AttributesMapperProvider attributesMapperProvider) {
+    public LogstashPluginMapper(final AttributesMapperProvider attributesMapperProvider, final CustomPluginMapperCreator creator) {
         this.attributesMapperProvider = attributesMapperProvider;
+        this.creator = creator;
     }
 
     public List<PluginModel> mapPlugin(LogstashPlugin logstashPlugin) {
@@ -54,12 +54,8 @@ class LogstashPluginMapper {
         }
 
         if(logstashMappingModel.getCustomPluginMapperClass() != null) {
-            final CustomPluginMapperCreator creator = new CustomPluginMapperCreator();
             final CustomPluginMapper mapper = creator.createMapperClass(logstashMappingModel.getCustomPluginMapperClass());
-
-            if(mapper != null) {
-                return mapper.mapPlugin(logstashPlugin);
-            }
+            return mapper.mapPlugin(logstashPlugin);
         }
 
         if (logstashMappingModel.getPluginName() == null) {

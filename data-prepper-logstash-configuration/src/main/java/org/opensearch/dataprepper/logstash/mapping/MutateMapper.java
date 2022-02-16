@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.logstash.mapping;
 
 import com.amazon.dataprepper.model.configuration.PluginModel;
@@ -11,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class MutateMapper implements CustomPluginMapper {
+class MutateMapper implements CustomPluginMapper {
     public static class AddEntryConfig {
         public final String key;
         public final Object value;

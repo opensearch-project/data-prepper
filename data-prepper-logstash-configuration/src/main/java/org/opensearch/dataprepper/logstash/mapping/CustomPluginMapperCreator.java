@@ -1,10 +1,15 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.logstash.mapping;
 
 import org.opensearch.dataprepper.logstash.exception.LogstashMappingException;
 
 import java.lang.reflect.Constructor;
 
-public class CustomPluginMapperCreator {
+class CustomPluginMapperCreator {
     CustomPluginMapper createMapperClass(final String attributesMapperClassName) {
         final Class<?> attributesMapperClass;
         try {

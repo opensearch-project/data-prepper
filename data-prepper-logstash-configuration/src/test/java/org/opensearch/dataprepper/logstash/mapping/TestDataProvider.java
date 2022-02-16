@@ -64,6 +64,12 @@ public class TestDataProvider {
                 .attributes(Arrays.asList(getArrayTypeAttribute(), getStringTypeAttribute())).build();
     }
 
+    public static LogstashPlugin mutatePlugin() {
+        return LogstashPlugin.builder()
+                .pluginName("mutate")
+                .attributes(Collections.singletonList(getArrayTypeAttribute())).build();
+    }
+
     private static LogstashAttribute getArrayTypeAttribute() {
         LogstashAttributeValue logstashAttributeValue = LogstashAttributeValue.builder()
                 .attributeValueType(LogstashValueType.ARRAY)
