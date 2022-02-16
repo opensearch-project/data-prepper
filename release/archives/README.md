@@ -3,7 +3,6 @@
 **Supported Platform**
 
 * Linux - x64
-* MacOS - x64
 
 ### General Instructions
 
