@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.expression.util;
 
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.hamcrest.DiagnosingMatcher;
+import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import static org.opensearch.dataprepper.expression.util.ContextMatcher.hasContext;
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
@@ -46,6 +47,20 @@ public class ContextMatcherFactory {
     @SafeVarargs
     public static ContextMatcherFactory isParseTree(final Class<? extends ParseTree> ... types) {
         return new ContextMatcherFactory(types);
+    }
+
+    public static DiagnosingMatcher<ParseTree> isPrimaryLiteral() {
+        return isParseTree(
+                DataPrepperExpressionParser.PrimaryContext.class,
+                DataPrepperExpressionParser.LiteralContext.class
+        ).containingTerminalNode();
+    }
+
+    public static DiagnosingMatcher<ParseTree> isRegexJsonPointer() {
+        return isParseTree(
+                DataPrepperExpressionParser.RegexPatternContext.class,
+                DataPrepperExpressionParser.JsonPointerContext.class
+        ).containingTerminalNode();
     }
 
     final Class<? extends ParseTree>[] types;

@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.expression.util;
 
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.hamcrest.Description;
 import org.hamcrest.DiagnosingMatcher;
@@ -26,7 +27,7 @@ public class ContextMatcherTest {
     @Test
     void testMatchesParseTree() {
         final ContextMatcher matcher = new ContextMatcher(ParseTree.class);
-        assertThat(matcher.matches(mock(ParseTree.class)), is(true));
+        assertThat(matcher.matches(mock(ParserRuleContext.class)), is(true));
     }
 
     @Test
@@ -51,7 +52,7 @@ public class ContextMatcherTest {
 
         final ContextMatcher matcher = new ContextMatcher(ParseTree.class, childMatcher);
 
-        final ParseTree parseTree = mock(ParseTree.class);
+        final ParseTree parseTree = mock(ParserRuleContext.class);
         doReturn(1)
                 .doReturn(0)
                 .when(parseTree)
@@ -66,6 +67,6 @@ public class ContextMatcherTest {
     @Test
     void testStaticConstructor() {
         final DiagnosingMatcher<ParseTree> matcher = hasContext(ParseTree.class);
-        assertThat(matcher.matches(mock(ParseTree.class)), is(true));
+        assertThat(matcher.matches(mock(ParserRuleContext.class)), is(true));
     }
 }

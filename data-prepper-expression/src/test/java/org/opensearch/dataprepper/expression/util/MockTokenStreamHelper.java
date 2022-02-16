@@ -55,19 +55,11 @@ public class MockTokenStreamHelper {
         tokens.add(token);
     }
 
-    /**
-     * Simulates consuming a token from the stream
-     * @param invocation Context from {@link Mockito#doAnswer(Answer)}
-     * @return null to match {@link TokenStream#consume()} method signature
-     */
-    public Object consume(final InvocationOnMock invocation) {
-        if (!tokens.isEmpty()) {
-            position++;
-        }
-        else {
-            LOG.warn("Consumed empty queue!");
-        }
-        return null;
+    public Object seek(final InvocationOnMock invocation) {
+        final Integer prev = position;
+        position = invocation.getArgument(0);
+        LOG.trace("Seek {} -> {}", prev, position);
+        return position;
     }
 
     /**

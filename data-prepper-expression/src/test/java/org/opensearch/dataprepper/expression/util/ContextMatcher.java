@@ -5,16 +5,21 @@
 
 package org.opensearch.dataprepper.expression.util;
 
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.hamcrest.Description;
 import org.hamcrest.DiagnosingMatcher;
 import org.hamcrest.Matcher;
+import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import javax.annotation.Nullable;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.core.IsEqual.equalTo;
+import static org.opensearch.dataprepper.expression.util.ParseRuleContextExceptionMatcher.isNotValid;
+import static org.opensearch.dataprepper.expression.util.ParseRuleContextExceptionMatcher.isValid;
+import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
 /**
  * @since 1.3
@@ -62,9 +67,22 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
         return new ContextMatcher(parserRuleContextType, childrenMatchers);
     }
 
+    public static DiagnosingMatcher<ParseTree> isLiteral() {
+        return hasContext(DataPrepperExpressionParser.LiteralContext.class, isTerminalNode());
+    }
+
+    public static DiagnosingMatcher<ParseTree> isRegexString() {
+        return hasContext(DataPrepperExpressionParser.RegexPatternContext.class, isTerminalNode());
+    }
+
+    public static DiagnosingMatcher<ParseTree> isOperator(final Class<? extends ParseTree> operatorType) {
+        return hasContext(operatorType, isTerminalNode());
+    }
+
     private final DiagnosingMatcher<? extends ParseTree>[] childrenMatchers;
     final Matcher<? extends ParseTree> isParserRuleContextType;
     private final Matcher<Integer> listSizeMatcher;
+    final Matcher<ParserRuleContext> hasExceptionMatcher;
     @Nullable
     private Matcher<?> failedAssertion;
 
@@ -73,9 +91,11 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
             final Class<? extends ParseTree> parserRuleContextType,
             final DiagnosingMatcher<? extends ParseTree> ... childrenMatchers
     ) {
+
         this.childrenMatchers = childrenMatchers;
         isParserRuleContextType = is(instanceOf(parserRuleContextType));
         listSizeMatcher = equalTo(childrenMatchers.length);
+        hasExceptionMatcher = isNotValid();
     }
 
     /**
@@ -106,6 +126,11 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
         else {
             mismatch.appendDescriptionOf(listSizeMatcher)
                     .appendText(" ");
+            ParseTree current = ctx;
+            while (current != null) {
+                mismatch.appendText("\nin context " + ctx.getClass());
+                current = current.getParent();
+            }
             listSizeMatcher.describeMismatch(ctx.getChildCount(), mismatch);
             failedAssertion = listSizeMatcher;
             return false;
@@ -122,7 +147,17 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
     public boolean matches(final Object item, final Description mismatch) {
         if (isParserRuleContextType.matches(item)) {
             final ParseTree ctx = (ParseTree) item;
-            return matchChildren(ctx, mismatch);
+            final boolean matches = isValid().matches(ctx);
+            if (hasExceptionMatcher.matches(ctx)) {
+                mismatch.appendDescriptionOf(hasExceptionMatcher)
+                                .appendText(" ");
+                hasExceptionMatcher.describeTo(mismatch);
+                failedAssertion = hasExceptionMatcher;
+                return false;
+            }
+            else {
+                return matchChildren(ctx, mismatch);
+            }
         }
         else {
             mismatch.appendDescriptionOf(isParserRuleContextType)
