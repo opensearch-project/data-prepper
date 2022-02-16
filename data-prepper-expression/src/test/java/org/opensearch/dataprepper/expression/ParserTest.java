@@ -6,40 +6,25 @@
 package org.opensearch.dataprepper.expression;
 
 import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CodePointCharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.Lexer;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.hamcrest.DiagnosingMatcher;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionLexer;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
-import org.opensearch.dataprepper.expression.util.MockTokenStreamHelper;
-import org.opensearch.dataprepper.expression.util.StubCommonTokenStream;
-import org.opensearch.dataprepper.expression.util.TokenStreamSpy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.doAnswer;
 import static org.opensearch.dataprepper.expression.util.ContextMatcher.hasContext;
 import static org.opensearch.dataprepper.expression.util.ContextMatcher.isOperator;
 import static org.opensearch.dataprepper.expression.util.ContextMatcher.isRegexString;
 import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.isParseTree;
 import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.isPrimaryLiteral;
 import static org.opensearch.dataprepper.expression.util.ParseRuleContextExceptionMatcher.isNotValid;
-import static org.opensearch.dataprepper.expression.util.StubCommonTokenStream.stubTokenStream;
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
-@ExtendWith(MockitoExtension.class)
 public class ParserTest {
-    private static final Logger LOG = LoggerFactory.getLogger(ParserTest.class);
-
     //region ParseTree child classes
     private static final Class<? extends ParseTree> EXPRESSION = DataPrepperExpressionParser.ExpressionContext.class;
     private static final Class<? extends ParseTree> CONDITIONAL_EXPRESSION = DataPrepperExpressionParser.ConditionalExpressionContext.class;
@@ -70,41 +55,19 @@ public class ParserTest {
     private static final Class<? extends ParseTree> LITERAL = DataPrepperExpressionParser.LiteralContext.class;
     //endregion
 
-    @Mock
-    private CommonTokenStream tokenStream;
-    @InjectMocks
     private DataPrepperExpressionParser parser;
-    MockTokenStreamHelper ref = null;
 
-    private void withTokenStream(final Integer ... types) {
-        final MockTokenStreamHelper helper = new MockTokenStreamHelper(types);
-        ref = helper;
+    private void setExpression(final String expression) {
+        final CodePointCharStream stream = CharStreams.fromString(expression);
+        final DataPrepperExpressionLexer lexer = new DataPrepperExpressionLexer(stream);
+        final CommonTokenStream tokenStream = new CommonTokenStream(lexer);
 
-        doAnswer(helper::seek).when(tokenStream).seek(anyInt());
-        doAnswer(helper::LT).when(tokenStream).LT(anyInt());
-        doAnswer(helper::LA).when(tokenStream).LA(anyInt());
-
-        final Lexer lexer = new DataPrepperExpressionLexer(CharStreams.fromString("5==5"));
-        final CommonTokenStream tokenStream = new TokenStreamSpy(lexer);
-
-        parser.setInputStream(tokenStream);
+        parser = new DataPrepperExpressionParser(tokenStream);
     }
 
     @Test
     void testEqualityExpression() {
-//        withTokenStream(
-//                DataPrepperExpressionParser.Integer,
-//                DataPrepperExpressionParser.EQUAL,
-//                DataPrepperExpressionParser.Integer,
-//                DataPrepperExpressionParser.EOF
-//        );
-        final StubCommonTokenStream input = stubTokenStream();
-        parser.setInputStream(input);
-
-        input.addToken(DataPrepperExpressionParser.Integer);
-        input.addToken(DataPrepperExpressionParser.EQUAL);
-        input.addToken(DataPrepperExpressionParser.Integer);
-        input.addToken(DataPrepperExpressionParser.EOF);
+        setExpression("5==5");
 
         final ParserRuleContext expression = parser.expression();
 
@@ -129,14 +92,7 @@ public class ParserTest {
 
     @Test
     void testGivenOperandIsNotStringWhenEvaluateThenErrorPresent() {
-        withTokenStream(
-                DataPrepperExpressionParser.LPAREN,
-                DataPrepperExpressionParser.Boolean,
-                DataPrepperExpressionParser.RPAREN,
-                DataPrepperExpressionParser.MATCH_REGEX_PATTERN,
-                DataPrepperExpressionParser.String,
-                DataPrepperExpressionParser.EOF
-        );
+        setExpression("(true) =~ \"Hello?\"");
 
         final ParserRuleContext expression = parser.expression();
 
@@ -145,26 +101,8 @@ public class ParserTest {
 
     @Test
     void testParenthesisExpression() {
-        withTokenStream(
-                DataPrepperExpressionParser.LPAREN,
-                DataPrepperExpressionParser.String,
-                DataPrepperExpressionParser.MATCH_REGEX_PATTERN,
-                DataPrepperExpressionParser.String,
-                DataPrepperExpressionParser.RPAREN,
-                DataPrepperExpressionParser.OR,
-                DataPrepperExpressionParser.Integer,
-                DataPrepperExpressionParser.IN_SET,
-                DataPrepperExpressionParser.LBRACE,
-                DataPrepperExpressionParser.Integer,
-                DataPrepperExpressionParser.SET_SEPARATOR,
-                DataPrepperExpressionParser.String,
-                DataPrepperExpressionParser.SET_SEPARATOR,
-                DataPrepperExpressionParser.Float,
-                DataPrepperExpressionParser.SET_SEPARATOR,
-                DataPrepperExpressionParser.Boolean,
-                DataPrepperExpressionParser.RBRACE,
-                DataPrepperExpressionParser.EOF
-        );
+        setExpression("(\"string\" =~ \"Hello?\") or 5 in {1, \"Hello\", 3.14, true}");
+
         final ParserRuleContext expression = parser.expression();
 
         //region Build Parse Tree Assertion
@@ -172,7 +110,7 @@ public class ParserTest {
                 CONDITIONAL_EXPRESSION,
                 EQUALITY_OPERATOR_EXPRESSION,
                 REGEX_OPERATOR_EXPRESSION
-        ).withChildrenMatching(isRegexString(), isOperator(REGEX_OPERATOR_EXPRESSION), isRegexString());
+        ).withChildrenMatching(isRegexString(), isOperator(REGEX_EQUALITY_OPERATOR), isRegexString());
         final DiagnosingMatcher<ParseTree> parenthesisExpression = isParseTree(
                 CONDITIONAL_EXPRESSION,
                 EQUALITY_OPERATOR_EXPRESSION,
@@ -221,13 +159,4 @@ public class ParserTest {
         assertThat(expression, hasContext(EXPRESSION, conditionalExpression, isTerminalNode()));
 
     }
-
-//    @Test
-//    void foo() {
-//        final Lexer lexer = new DataPrepperExpressionLexer(CharStreams.fromString("(\"hi\" =~ \"hello\") or 5 in {1, \"foo\", 3.14, false}"));
-//        final CommonTokenStream tokenStream = new TokenStreamSpy(lexer);
-//        final DataPrepperExpressionParser expressionParser = new DataPrepperExpressionParser(tokenStream);
-//        final ParserRuleContext expression = expressionParser.expression();
-//        assertThat(expression, isValid());
-//    }
 }
