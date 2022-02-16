@@ -119,12 +119,11 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<Span>, Record<Sp
      */
     private List<Span> processRootSpan(final Span parentSpan) {
         final TraceGroup traceGroup = new TraceGroup.TraceGroupBuilder().setFromSpan(parentSpan).build();
-        traceIdTraceGroupCache.put(parentSpan.getTraceId(), traceGroup);
+        final String parentSpanTraceId = parentSpan.getTraceId();
+        traceIdTraceGroupCache.put(parentSpanTraceId, traceGroup);
 
         final List<Span> recordsToFlush = new LinkedList<>();
         recordsToFlush.add(parentSpan);
-
-        final String parentSpanTraceId = parentSpan.getTraceId();
 
         final SpanSet spanSet = traceIdSpanSetMap.get(parentSpanTraceId);
         if (spanSet != null) {
@@ -150,7 +149,8 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<Span>, Record<Sp
      * @return Optional containing childSpan if its traceGroup is in memory, otherwise an empty Optional
      */
     private Optional<Span> processChildSpan(final Span childSpan) {
-        final TraceGroup traceGroup = traceIdTraceGroupCache.getIfPresent(childSpan.getTraceId());
+        final String childSpanTraceId = childSpan.getTraceId();
+        final TraceGroup traceGroup = traceIdTraceGroupCache.getIfPresent(childSpanTraceId);
 
         if (traceGroup != null) {
             final Span newChildSpan = JacksonSpan.builder().fromSpan(childSpan)
@@ -159,7 +159,7 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<Span>, Record<Sp
                     .build();
             return Optional.of(newChildSpan);
         } else {
-            traceIdSpanSetMap.compute(childSpan.getTraceId(), (traceId, spanSet) -> {
+            traceIdSpanSetMap.compute(childSpanTraceId, (traceId, spanSet) -> {
                 if (spanSet == null) {
                     spanSet = new SpanSet();
                 }
