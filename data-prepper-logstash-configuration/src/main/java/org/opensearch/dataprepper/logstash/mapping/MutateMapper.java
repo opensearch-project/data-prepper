@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class MutateMapper {
+public class MutateMapper implements CustomPluginMapper {
     public static class AddEntryConfig {
         public final String key;
         public final Object value;
@@ -32,7 +32,7 @@ public class MutateMapper {
         }
     }
 
-    public List<PluginModel> getModels(LogstashPlugin logstashPlugin) {
+    public List<PluginModel> mapPlugin(LogstashPlugin logstashPlugin) {
         List<PluginModel> models = new LinkedList<>();
         List<AddEntryConfig> adds = new LinkedList<>();
         List<RenameCopyConfig> renames = new LinkedList<>();
@@ -58,22 +58,31 @@ public class MutateMapper {
             }
         }
 
-        if(adds.size() > 0) {
-            Map<String, Object> add_map = new HashMap<>();
-            add_map.put("entries", adds);
-
-            PluginModel addModel = new PluginModel("add_entries", add_map);
-
-            models.add(addModel);
-        }
-
         if(renames.size() > 0) {
-            Map<String, Object> rename_map = new HashMap<>();
-            rename_map.put("entries", renames);
+            Map<String, Object> renameMap = new HashMap<>();
+            renameMap.put("entries", renames);
 
-            PluginModel renameModel = new PluginModel("rename_keys", rename_map);
+            PluginModel renameModel = new PluginModel("rename_keys", renameMap);
 
             models.add(renameModel);
+        }
+
+        if(copies.size() > 0) {
+            Map<String, Object> copyMap = new HashMap<>();
+            copyMap.put("entries", copies);
+
+            PluginModel renameModel = new PluginModel("copy_values", copyMap);
+
+            models.add(renameModel);
+        }
+
+        if(adds.size() > 0) {
+            Map<String, Object> addMap = new HashMap<>();
+            addMap.put("entries", adds);
+
+            PluginModel addModel = new PluginModel("add_entries", addMap);
+
+            models.add(addModel);
         }
 
         if(deletes.size() > 0) {
@@ -82,21 +91,12 @@ public class MutateMapper {
                 flatList.addAll(list);
             }
 
-            Map<String, Object> delete_map = new HashMap<>();
-            delete_map.put("with_keys", flatList);
+            Map<String, Object> deleteMap = new HashMap<>();
+            deleteMap.put("with_keys", flatList);
 
-            PluginModel deleteModel = new PluginModel("delete_entries", delete_map);
+            PluginModel deleteModel = new PluginModel("delete_entries", deleteMap);
 
             models.add(deleteModel);
-        }
-
-        if(copies.size() > 0) {
-            Map<String, Object> copy_map = new HashMap<>();
-            copy_map.put("entries", copies);
-
-            PluginModel renameModel = new PluginModel("copy_values", copy_map);
-
-            models.add(renameModel);
         }
 
         return models;

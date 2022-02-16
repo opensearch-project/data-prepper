@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Constructor;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -37,11 +38,7 @@ class LogstashPluginMapper {
     }
 
     public List<PluginModel> mapPlugin(LogstashPlugin logstashPlugin) {
-        if(Objects.equals(logstashPlugin.getPluginName(), "mutate")) {
-            return (new MutateMapper()).getModels(logstashPlugin);
-        }
-
-        String mappingResourceName = logstashPlugin.getPluginName() + ".mapping.yaml";
+        final String mappingResourceName = logstashPlugin.getPluginName() + ".mapping.yaml";
 
         final InputStream inputStream = this.getClass().getResourceAsStream(mappingResourceName);
         if (inputStream == null) {
@@ -54,6 +51,15 @@ class LogstashPluginMapper {
         }
         catch(IOException ex) {
             throw new LogstashMappingException("Unable to parse mapping file " + mappingResourceName, ex);
+        }
+
+        if(logstashMappingModel.getCustomPluginMapperClass() != null) {
+            final CustomPluginMapperCreator creator = new CustomPluginMapperCreator();
+            final CustomPluginMapper mapper = creator.createMapperClass(logstashMappingModel.getCustomPluginMapperClass());
+
+            if(mapper != null) {
+                return mapper.mapPlugin(logstashPlugin);
+            }
         }
 
         if (logstashMappingModel.getPluginName() == null) {
