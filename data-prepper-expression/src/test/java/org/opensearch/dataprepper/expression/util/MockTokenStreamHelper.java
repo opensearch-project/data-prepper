@@ -13,8 +13,8 @@ import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Queue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -27,7 +27,8 @@ import static org.mockito.Mockito.mock;
 public class MockTokenStreamHelper {
     private static final Logger LOG = LoggerFactory.getLogger(MockTokenStreamHelper.class);
 
-    final Queue<Token> tokenQueue = new LinkedBlockingQueue<>();
+    final List<Token> tokens = new ArrayList<>();
+    Integer position = 0;
 
     /**
      * Initialize mock with list of tokens from types
@@ -51,7 +52,7 @@ public class MockTokenStreamHelper {
             return type;
         }).when(token).getType();
 
-        tokenQueue.add(token);
+        tokens.add(token);
     }
 
     /**
@@ -60,9 +61,8 @@ public class MockTokenStreamHelper {
      * @return null to match {@link TokenStream#consume()} method signature
      */
     public Object consume(final InvocationOnMock invocation) {
-        if (!tokenQueue.isEmpty()) {
-            final Token token = tokenQueue.remove();
-            LOG.warn("Popped token {} -> {}, queue has {} items remaining", token, token.getType(), tokenQueue.size());
+        if (!tokens.isEmpty()) {
+            position++;
         }
         else {
             LOG.warn("Consumed empty queue!");
@@ -77,14 +77,23 @@ public class MockTokenStreamHelper {
      * @return current token from the queue
      */
     public Object LT(final InvocationOnMock invocation) {
-        if (tokenQueue.isEmpty()) {
-            LOG.info("_input.LA() with empty queue");
-            throw new RuntimeException("_input.LA() with empty queue");
+        final Integer k = invocation.<Integer>getArgument(0);
+        try {
+            if (k > 1) {
+                LOG.warn("Hello");
+            }
+            if (k >= 1) {
+                return tokens.get(Math.min(position, tokens.size() -1));
+            }
+            else if (k == -1) {
+                return tokens.get(position + k);
+            }
+            else {
+                throw new RuntimeException("Unexpected K = " + k);
+            }
         }
-        else {
-            final Token token = tokenQueue.peek();
-            LOG.info("_input.LT() -> {}", token);
-            return token;
+        catch (final IndexOutOfBoundsException e) {
+            return null;
         }
     }
 
@@ -95,6 +104,12 @@ public class MockTokenStreamHelper {
      * @return current token type from the queue
      */
     public Object LA(final InvocationOnMock invocation) {
-        return ((Token) LT(invocation)).getType();
+        final Object token = LT(invocation);
+        if (token == null) {
+            return null;
+        }
+        else {
+            return ((Token) token).getType();
+        }
     }
 }

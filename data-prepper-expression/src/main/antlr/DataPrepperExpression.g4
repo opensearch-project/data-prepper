@@ -35,7 +35,7 @@ equalityOperator
     ;
 
 regexOperatorExpression
-    : regexOperatorExpression regexEqualityOperator regexPattern
+    : regexPattern regexEqualityOperator regexPattern
     | relationalOperatorExpression
     ;
 
