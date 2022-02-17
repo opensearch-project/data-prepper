@@ -17,7 +17,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionLexer;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
-import org.opensearch.dataprepper.expression.util.ContextMatcherFactory;
 import org.opensearch.dataprepper.expression.util.ErrorListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +32,7 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcher.isUnaryT
 import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.isParseTree;
 import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.isPrimaryLiteral;
 import static org.opensearch.dataprepper.expression.util.LiteralMatcher.isUnaryTree;
+import static org.opensearch.dataprepper.expression.util.ParenthesesExpressionMatcher.isParenthesesExpression;
 import static org.opensearch.dataprepper.expression.util.ParseRuleContextExceptionMatcher.isNotValid;
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
@@ -304,26 +304,9 @@ public class ParserTest {
     void testMultipleParentheses() {
         final ParserRuleContext expression = parseExpression("(1==4)or((2)!=(3==3))");
 
-
-        final ContextMatcherFactory parenthesesExpression = isParseTree(
-                EQUALITY_OPERATOR_EXPRESSION,
-                REGEX_OPERATOR_EXPRESSION,
-                RELATIONAL_OPERATOR_EXPRESSION,
-                SET_OPERATOR_EXPRESSION,
-                UNARY_OPERATOR_EXPRESSION,
-                PARENTHESES_EXPRESSION
-        );
-        final DiagnosingMatcher<ParseTree> threeEqualThree = isParseTree(
-                REGEX_OPERATOR_EXPRESSION,
-                RELATIONAL_OPERATOR_EXPRESSION,
-                SET_OPERATOR_EXPRESSION,
-                UNARY_OPERATOR_EXPRESSION,
-                PARENTHESES_EXPRESSION
-        ).withChildrenMatching(
-                isTerminalNode(),
+        final DiagnosingMatcher<ParseTree> threeEqualThree = isParenthesesExpression(
                 isParseTree(CONDITIONAL_EXPRESSION, EQUALITY_OPERATOR_EXPRESSION)
-                        .withChildrenMatching(isUnaryTree(), isOperator(EQUALITY_OPERATOR), isUnaryTree()),
-                isTerminalNode()
+                .withChildrenMatching(isUnaryTree(), isOperator(EQUALITY_OPERATOR), isUnaryTree())
         );
 
         final DiagnosingMatcher<ParseTree> lhsEqualityExpression = isParseTree(
@@ -333,14 +316,14 @@ public class ParserTest {
 
         final DiagnosingMatcher<ParseTree> lhsExpression = hasContext(
                 CONDITIONAL_EXPRESSION,
-                parenthesesExpression.withChildrenMatching(isTerminalNode(), lhsEqualityExpression, isTerminalNode())
+                isParenthesesExpression(lhsEqualityExpression)
         );
 
         final DiagnosingMatcher<ParseTree> rhsNotEqualExpression = isParseTree(
                 CONDITIONAL_EXPRESSION,
                 EQUALITY_OPERATOR_EXPRESSION
         ).withChildrenMatching(
-                parenthesesExpression.withChildrenMatching(isTerminalNode(), isUnaryTree(), isTerminalNode()),
+                isParenthesesExpression(isUnaryTree()),
                 isOperator(EQUALITY_OPERATOR),
                 threeEqualThree
         );
@@ -349,7 +332,7 @@ public class ParserTest {
                 CONDITIONAL_EXPRESSION,
                 lhsExpression,
                 isOperator(CONDITIONAL_OPERATOR),
-                parenthesesExpression.withChildrenMatching(isTerminalNode(), rhsNotEqualExpression, isTerminalNode())
+                isParenthesesExpression(rhsNotEqualExpression)
                 )));
         assertThat(errorListener.isErrorFound(), is(false));
     }
