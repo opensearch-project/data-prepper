@@ -31,7 +31,6 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcher.isOperat
 import static org.opensearch.dataprepper.expression.util.ContextMatcher.isRegexString;
 import static org.opensearch.dataprepper.expression.util.ContextMatcher.isUnaryTreeSet;
 import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.isParseTree;
-import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.isPrimaryLiteral;
 import static org.opensearch.dataprepper.expression.util.JsonPointerMatcher.isJsonPointerUnaryTree;
 import static org.opensearch.dataprepper.expression.util.LiteralMatcher.isUnaryTree;
 import static org.opensearch.dataprepper.expression.util.ParenthesesExpressionMatcher.isParenthesesExpression;
@@ -68,7 +67,6 @@ public class ParserTest {
             DataPrepperExpressionParser.UnaryNotOperatorExpressionContext.class;
     private static final Class<? extends ParseTree> UNARY_OPERATOR = DataPrepperExpressionParser.UnaryOperatorContext.class;
     private static final Class<? extends ParseTree> PRIMARY = DataPrepperExpressionParser.PrimaryContext.class;
-    private static final Class<? extends ParseTree> JSON_POINTER = DataPrepperExpressionParser.JsonPointerContext.class;
     private static final Class<? extends ParseTree> LITERAL = DataPrepperExpressionParser.LiteralContext.class;
     //endregion
 
@@ -109,22 +107,12 @@ public class ParserTest {
     void testEqualityExpression() {
         final ParserRuleContext expression = parseExpression("5==5");
 
-        final DiagnosingMatcher<ParseTree> equals = isParseTree(EQUALITY_OPERATOR).containingTerminalNode();
-        final DiagnosingMatcher<ParseTree> endsWithInteger = isParseTree(
-                REGEX_OPERATOR_EXPRESSION,
-                RELATIONAL_OPERATOR_EXPRESSION,
-                SET_OPERATOR_EXPRESSION,
-                UNARY_OPERATOR_EXPRESSION,
-                PRIMARY,
-                LITERAL
-        ).containingTerminalNode();
-        final DiagnosingMatcher<ParseTree> leftHandSide = hasContext(EQUALITY_OPERATOR_EXPRESSION, endsWithInteger);
         final DiagnosingMatcher<ParseTree> equalityExpression = isParseTree(
                 CONDITIONAL_EXPRESSION,
                 EQUALITY_OPERATOR_EXPRESSION
-        ).withChildrenMatching(leftHandSide, equals, endsWithInteger);
+        ).withChildrenMatching(isUnaryTree(), isOperator(EQUALITY_OPERATOR), isUnaryTree());
 
-        assertThat(expression, isParseTree(EXPRESSION).withChildrenMatching(equalityExpression, isTerminalNode()));
+        assertThat(expression, isExpression(equalityExpression));
         assertThat(errorListener.isErrorFound(), is(false));
     }
 
@@ -140,56 +128,27 @@ public class ParserTest {
     void testParenthesesExpression() {
         final ParserRuleContext expression = parseExpression("(\"string\" =~ \"Hello?\") or 5 in {1, \"Hello\", 3.14, true}");
 
-        //region Build Parse Tree Assertion
         final DiagnosingMatcher<ParseTree> regexExpression = isParseTree(
                 CONDITIONAL_EXPRESSION,
                 EQUALITY_OPERATOR_EXPRESSION,
                 REGEX_OPERATOR_EXPRESSION
         ).withChildrenMatching(isRegexString(), isOperator(REGEX_EQUALITY_OPERATOR), isRegexString());
-        final DiagnosingMatcher<ParseTree> parenthesesExpression = isParseTree(
-                CONDITIONAL_EXPRESSION,
-                EQUALITY_OPERATOR_EXPRESSION,
-                REGEX_OPERATOR_EXPRESSION,
-                RELATIONAL_OPERATOR_EXPRESSION,
-                SET_OPERATOR_EXPRESSION,
-                UNARY_OPERATOR_EXPRESSION,
-                PARENTHESES_EXPRESSION
-        ).withChildrenMatching(
-                isTerminalNode(),
-                regexExpression,
-                isTerminalNode()
-        );
-        final DiagnosingMatcher<ParseTree> setOperatorLhs = isParseTree(SET_OPERATOR_EXPRESSION, UNARY_OPERATOR_EXPRESSION)
-                .withChildrenMatching(isPrimaryLiteral());
-        final DiagnosingMatcher<ParseTree> set = hasContext(
-                SET_INITIALIZER,
-                isTerminalNode(),
-                isPrimaryLiteral(),
-                isTerminalNode(),
-                isPrimaryLiteral(),
-                isTerminalNode(),
-                isPrimaryLiteral(),
-                isTerminalNode(),
-                isPrimaryLiteral(),
-                isTerminalNode()
-        );
         final DiagnosingMatcher<ParseTree> setOperatorExpression = isParseTree(
                 EQUALITY_OPERATOR_EXPRESSION,
                 REGEX_OPERATOR_EXPRESSION,
                 RELATIONAL_OPERATOR_EXPRESSION,
                 SET_OPERATOR_EXPRESSION
         ).withChildrenMatching(
-                setOperatorLhs,
+                isUnaryTree(),
                 isOperator(SET_OPERATOR),
-                set
+                isUnaryTreeSet(4)
         );
         final DiagnosingMatcher<ParseTree> conditionalExpression = hasContext(
                 CONDITIONAL_EXPRESSION,
-                parenthesesExpression,
+                isParenthesesExpression(regexExpression),
                 isOperator(CONDITIONAL_OPERATOR),
                 setOperatorExpression
         );
-        //endregion
 
         assertThat(expression, hasContext(EXPRESSION, conditionalExpression, isTerminalNode()));
         assertThat(errorListener.isErrorFound(), is(false));
