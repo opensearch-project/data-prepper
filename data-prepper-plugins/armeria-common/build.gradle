@@ -8,5 +8,5 @@ dependencies {
     implementation project(':data-prepper-api')
     implementation 'com.linecorp.armeria:armeria:1.9.2'
     implementation "com.linecorp.armeria:armeria-grpc:1.9.2"
-    testImplementation 'com.linecorp.armeria:armeria-junit5:1.13.4'
+    testImplementation 'com.linecorp.armeria:armeria-junit5:1.14.0'
 }
