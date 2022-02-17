@@ -9,6 +9,7 @@ import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
+import io.micrometer.core.instrument.Counter;
 import org.apache.commons.lang3.LocaleUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,9 @@ import java.util.UUID;
 
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -47,6 +51,13 @@ class DateProcessorTests {
 
     @Mock
     private DateProcessorConfig.DateMatch mockDateMatch;
+
+    @Mock
+    private Counter dateProcessingMatchSuccessCounter;
+
+    @Mock
+    private Counter dateProcessingMatchFailureCounter;
+
     private DateProcessor dateProcessor;
     private Map<String, Object> testData;
     private LocalDateTime expectedDateTime;
@@ -62,6 +73,8 @@ class DateProcessorTests {
     void setup() {
         final DateProcessorConfig dateProcessorConfig = new DateProcessorConfig();
         lenient().when(mockDateProcessorConfig.getDestination()).thenReturn(dateProcessorConfig.getDestination());
+        lenient().when(pluginMetrics.counter(DateProcessor.DATE_PROCESSING_MATCH_SUCCESS)).thenReturn(dateProcessingMatchSuccessCounter);
+        lenient().when(pluginMetrics.counter(DateProcessor.DATE_PROCESSING_MATCH_FAILURE)).thenReturn(dateProcessingMatchFailureCounter);
 
         expectedDateTime = LocalDateTime.now();
     }
@@ -73,6 +86,7 @@ class DateProcessorTests {
     @Test
     void from_time_received_with_default_destination_test() {
         when(mockDateProcessorConfig.getFromTimeReceived()).thenReturn(true);
+        when(mockDateProcessorConfig.getDestinationZoneId()).thenReturn(ZoneId.systemDefault());
 
         expectedInstant = Instant.now();
         dateProcessor = createObjectUnderTest();
@@ -90,6 +104,7 @@ class DateProcessorTests {
         ZonedDateTime actualZonedDateTime = processedRecords.get(0).getData().get(TIMESTAMP_KEY, ZonedDateTime.class);
 
         Assertions.assertEquals(0, actualZonedDateTime.toInstant().compareTo(expectedInstant.truncatedTo(ChronoUnit.MILLIS)));
+        verifyNoInteractions(dateProcessingMatchSuccessCounter, dateProcessingMatchFailureCounter);
     }
 
     @Test
@@ -97,6 +112,7 @@ class DateProcessorTests {
         String destination = "new_field";
         when(mockDateProcessorConfig.getFromTimeReceived()).thenReturn(true);
         when(mockDateProcessorConfig.getDestination()).thenReturn(destination);
+        when(mockDateProcessorConfig.getDestinationZoneId()).thenReturn(ZoneId.systemDefault());
 
         expectedInstant = Instant.now();
         dateProcessor = createObjectUnderTest();
@@ -114,6 +130,7 @@ class DateProcessorTests {
         ZonedDateTime actualZonedDateTime = processedRecords.get(0).getData().get(destination, ZonedDateTime.class);
 
         Assertions.assertEquals(0, actualZonedDateTime.toInstant().compareTo(expectedInstant.truncatedTo(ChronoUnit.MILLIS)));
+        verifyNoInteractions(dateProcessingMatchSuccessCounter, dateProcessingMatchFailureCounter);
     }
 
     @Test
@@ -124,7 +141,8 @@ class DateProcessorTests {
         List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
 
         when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
-        when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
+        when(mockDateProcessorConfig.getSourceZoneId()).thenReturn(ZoneId.systemDefault());
+        when(mockDateProcessorConfig.getDestinationZoneId()).thenReturn(ZoneId.systemDefault());
         when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
 
         dateProcessor = createObjectUnderTest();
@@ -135,7 +153,9 @@ class DateProcessorTests {
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
-        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getZonedId(), TIMESTAMP_KEY);
+        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getSourceZoneId(), TIMESTAMP_KEY);
+        verify(dateProcessingMatchSuccessCounter, times(1)).increment();
+        verifyNoInteractions(dateProcessingMatchFailureCounter);
     }
 
     @Test
@@ -147,7 +167,8 @@ class DateProcessorTests {
         List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
         when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
         when(mockDateProcessorConfig.getDestination()).thenReturn(destination);
-        when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
+        when(mockDateProcessorConfig.getSourceZoneId()).thenReturn(ZoneId.of("UTC"));
+        when(mockDateProcessorConfig.getDestinationZoneId()).thenReturn(ZoneId.systemDefault());
         when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
 
         dateProcessor = createObjectUnderTest();
@@ -158,7 +179,9 @@ class DateProcessorTests {
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
-        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getZonedId(), destination);
+        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getSourceZoneId(), destination);
+        verify(dateProcessingMatchSuccessCounter, times(1)).increment();
+        verifyNoInteractions(dateProcessingMatchFailureCounter);
     }
 
     @Test
@@ -168,7 +191,8 @@ class DateProcessorTests {
 
         List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
         when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
-        when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
+        when(mockDateProcessorConfig.getSourceZoneId()).thenReturn(ZoneId.of("UTC"));
+        when(mockDateProcessorConfig.getDestinationZoneId()).thenReturn(ZoneId.systemDefault());
         when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
 
         dateProcessor = createObjectUnderTest();
@@ -184,6 +208,8 @@ class DateProcessorTests {
         ZonedDateTime expectedZonedDateTime = localDate.atStartOfDay().atZone(ZoneId.of("UTC"));
 
         Assertions.assertTrue(actualZonedDateTime.isEqual(expectedZonedDateTime));
+        verify(dateProcessingMatchSuccessCounter, times(1)).increment();
+        verifyNoInteractions(dateProcessingMatchFailureCounter);
     }
 
     @Test
@@ -194,7 +220,7 @@ class DateProcessorTests {
         List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
         when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
         when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
-        when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
+        when(mockDateProcessorConfig.getSourceZoneId()).thenReturn(ZoneId.of("UTC"));
 
         dateProcessor = createObjectUnderTest();
 
@@ -205,6 +231,8 @@ class DateProcessorTests {
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
         Assertions.assertFalse(processedRecords.get(0).getData().containsKey(TIMESTAMP_KEY));
+        verify(dateProcessingMatchFailureCounter, times(1)).increment();
+        verifyNoInteractions(dateProcessingMatchSuccessCounter);
     }
 
     @ParameterizedTest
@@ -215,7 +243,8 @@ class DateProcessorTests {
 
         List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
         when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
-        when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of(timezone));
+        when(mockDateProcessorConfig.getSourceZoneId()).thenReturn(ZoneId.of(timezone));
+        when(mockDateProcessorConfig.getDestinationZoneId()).thenReturn(ZoneId.systemDefault());
         when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
 
         dateProcessor = createObjectUnderTest();
@@ -226,7 +255,9 @@ class DateProcessorTests {
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
-        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getZonedId(), TIMESTAMP_KEY);
+        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getSourceZoneId(), TIMESTAMP_KEY);
+        verify(dateProcessingMatchSuccessCounter, times(1)).increment();
+        verifyNoInteractions(dateProcessingMatchFailureCounter);
     }
 
     @ParameterizedTest
@@ -238,7 +269,8 @@ class DateProcessorTests {
         List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
         when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
         when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.forLanguageTag(locale));
-        when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
+        when(mockDateProcessorConfig.getSourceZoneId()).thenReturn(ZoneId.of("UTC"));
+        when(mockDateProcessorConfig.getDestinationZoneId()).thenReturn(ZoneId.systemDefault());
 
         dateProcessor = createObjectUnderTest();
 
@@ -248,7 +280,9 @@ class DateProcessorTests {
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
-        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getZonedId(), TIMESTAMP_KEY);
+        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getSourceZoneId(), TIMESTAMP_KEY);
+        verify(dateProcessingMatchSuccessCounter, times(1)).increment();
+        verifyNoInteractions(dateProcessingMatchFailureCounter);
     }
 
     @ParameterizedTest
@@ -260,7 +294,8 @@ class DateProcessorTests {
         List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
         when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
         when(mockDateProcessorConfig.getSourceLocale()).thenReturn(LocaleUtils.toLocale(locale));
-        when(mockDateProcessorConfig.getZonedId()).thenReturn(ZoneId.of("UTC"));
+        when(mockDateProcessorConfig.getSourceZoneId()).thenReturn(ZoneId.of("UTC"));
+        when(mockDateProcessorConfig.getDestinationZoneId()).thenReturn(ZoneId.systemDefault());
 
         dateProcessor = createObjectUnderTest();
 
@@ -270,7 +305,9 @@ class DateProcessorTests {
         final Record<Event> record = buildRecordWithEvent(testData);
         final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
 
-        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getZonedId(), TIMESTAMP_KEY);
+        assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getSourceZoneId(), TIMESTAMP_KEY);
+        verify(dateProcessingMatchSuccessCounter, times(1)).increment();
+        verifyNoInteractions(dateProcessingMatchFailureCounter);
     }
 
     static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
