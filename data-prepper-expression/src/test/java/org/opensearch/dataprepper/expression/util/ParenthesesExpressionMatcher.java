@@ -65,4 +65,9 @@ public class ParenthesesExpressionMatcher extends SimpleExpressionMatcher {
             return true;
         }
     }
+
+    @Override
+    public void describeTo(final Description description) {
+        description.appendText("Expected ParenthesesExpressionContext");
+    }
 }

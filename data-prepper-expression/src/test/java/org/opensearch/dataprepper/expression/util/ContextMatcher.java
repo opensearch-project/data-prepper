@@ -49,6 +49,20 @@ import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isT
  * </p>
  */
 public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
+    public static void describeContextTo(final ParseTree ctx, final Description mismatch) {
+        if (ctx != null) {
+            final StringBuilder context = new StringBuilder(ctx.getText());
+            ParseTree parent = ctx.getParent();
+
+            while (parent != null) {
+                context.insert(0, parent.getText() + " -> ");
+                parent = parent.getParent();
+            }
+
+            mismatch.appendText("\n\t\t" + context + "\n\t\t");
+        }
+    }
+
     /**
      * @since 1.3
      * <p>Shortcut for constructor matching Hamcrest standard.</p>
@@ -127,8 +141,8 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
                 final DiagnosingMatcher<? extends ParseTree> matcher = childrenMatchers[i];
 
                 if (!matcher.matches(child)) {
-                    mismatch.appendDescriptionOf(matcher)
-                            .appendText(" ");
+                    mismatch.appendDescriptionOf(matcher);
+                    describeContextTo(ctx, mismatch);
                     matcher.describeMismatch(child, mismatch);
                     failedAssertion = matcher;
                     return false;
@@ -138,30 +152,19 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
             return true;
         }
         else {
-            mismatch.appendDescriptionOf(listSizeMatcher)
-                    .appendText(" ");
-            ParseTree current = ctx;
-            while (current != null) {
-                mismatch.appendText("\nin context " + ctx.getClass());
-                current = current.getParent();
-            }
+            mismatch.appendDescriptionOf(listSizeMatcher);
+            describeContextTo(ctx, mismatch);
+
             listSizeMatcher.describeMismatch(ctx.getChildCount(), mismatch);
             failedAssertion = listSizeMatcher;
+
             return false;
         }
     }
 
     private void describeContext(final ParseTree ctx, final Description mismatch) {
-        String context = ctx.getText();
-        ParseTree parent = ctx.getParent();
-
-        while (parent != null) {
-            context = parent.getText() + " -> " + context;
-            parent = parent.getParent();
-        }
-
-        mismatch.appendDescriptionOf(isParserRuleContextType)
-                .appendText("\n\t\t" + context + "\n\t\t");
+        mismatch.appendDescriptionOf(isParserRuleContextType);
+        describeContextTo(ctx, mismatch);
     }
 
     /**

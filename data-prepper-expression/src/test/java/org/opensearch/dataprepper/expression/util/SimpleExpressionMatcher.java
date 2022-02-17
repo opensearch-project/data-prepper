@@ -9,45 +9,65 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.hamcrest.Description;
 import org.hamcrest.DiagnosingMatcher;
 import org.hamcrest.Matcher;
-import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import java.util.List;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.opensearch.dataprepper.expression.util.ContextMatcher.describeContextTo;
 
 public abstract class SimpleExpressionMatcher extends DiagnosingMatcher<ParseTree> {
     private static final Matcher<Integer> childCountMatcher = is(1);
 
     protected final List<Class<? extends ParseTree>> validRuleOrder;
+    protected final Class<? extends ParseTree> lastNodeClass;
 
     protected SimpleExpressionMatcher(final List<Class<? extends ParseTree>> validRuleOrder) {
         this.validRuleOrder = validRuleOrder;
+        this.lastNodeClass = validRuleOrder.get(validRuleOrder.size() - 1);
     }
 
-    private boolean isValidRuleOrder(final ParseTree current, final ParseTree next) {
+    private boolean isValidRuleOrder(final ParseTree current, final ParseTree next, final Description mismatchDescription) {
         final int index = validRuleOrder.indexOf(current.getClass());
         if (index < 0 || index >= validRuleOrder.size() - 1) {
+            mismatchDescription.appendText(current.getClass() + " is not a valid context ");
             return false;
         }
         else {
-            return validRuleOrder.get(index + 1).isInstance(next);
+            if (validRuleOrder.get(index + 1).isInstance(next)) {
+                return true;
+            }
+            else {
+                mismatchDescription.appendText(current.getClass() + " -> " + next.getClass() + " not valid rule order");
+                describeContextTo(current, mismatchDescription);
+                return false;
+            }
         }
     }
 
     protected abstract boolean baseCase(final ParseTree item, final Description mismatchDescription);
 
-    private boolean matchesParseTree(final ParseTree item, final Description mismatchDescription) {
-        if (item instanceof DataPrepperExpressionParser.ParenthesesExpressionContext) {
-            return baseCase(item, mismatchDescription);
+    private boolean matchesParseTree(final ParseTree item, final Description mismatch) {
+        if (lastNodeClass.isInstance(item)) {
+            if (baseCase(item, mismatch)) {
+                return true;
+            }
+            else {
+                describeContextTo(item, mismatch);
+                return false;
+            }
         }
         else if (childCountMatcher.matches(item.getChildCount())) {
             final ParseTree child = item.getChild(0);
-            return isValidRuleOrder(item, child) && matchesParseTree(child, mismatchDescription);
+            if (!isValidRuleOrder(item, child, mismatch)) {
+                describeTo(mismatch);
+                return false;
+            }
+            return isValidRuleOrder(item, child, mismatch) && matchesParseTree(child, mismatch);
         }
         else {
-            mismatchDescription.appendText("Unexpected terminal node " + item.getText());
+            mismatch.appendText("Unexpected terminal node " + item.getText());
             if (item.getParent() != null) {
-                mismatchDescription.appendText(", child of parent node " + item.getParent().getText());
+                mismatch.appendText(", child of parent node " + item.getParent().getText());
             }
             return false;
         }
@@ -61,10 +81,5 @@ public abstract class SimpleExpressionMatcher extends DiagnosingMatcher<ParseTre
         else {
             return false;
         }
-    }
-
-    @Override
-    public void describeTo(final Description description) {
-
     }
 }

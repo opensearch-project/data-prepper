@@ -14,12 +14,10 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.hamcrest.CoreMatchers.is;
 import static org.opensearch.dataprepper.expression.util.ContextMatcher.hasContext;
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
-public class LiteralMatcher extends DiagnosingMatcher<ParseTree> {
-    private final Matcher<Integer> childCountMatcher = is(1);
+public class LiteralMatcher extends SimpleExpressionMatcher {
     private final Matcher<ParseTree> literalMatcher = isLiteral();
 
     private static final List<Class<? extends ParseTree>> VALID_LITERAL_RULE_ORDER = Arrays.asList(
@@ -34,53 +32,31 @@ public class LiteralMatcher extends DiagnosingMatcher<ParseTree> {
             DataPrepperExpressionParser.LiteralContext.class
     );
 
+    protected LiteralMatcher(final List<Class<? extends ParseTree>> validRuleOrder) {
+        super(validRuleOrder);
+    }
+
     public static DiagnosingMatcher<ParseTree> isLiteral() {
         return hasContext(DataPrepperExpressionParser.LiteralContext.class, isTerminalNode());
     }
 
     public static DiagnosingMatcher<ParseTree> isUnaryTree() {
-        return new LiteralMatcher();
+        return new LiteralMatcher(VALID_LITERAL_RULE_ORDER);
     }
 
-    private boolean isValidRuleOrder(final ParseTree current, final ParseTree next) {
-        final int index = VALID_LITERAL_RULE_ORDER.indexOf(current.getClass());
-        if (index < 0 || index >= VALID_LITERAL_RULE_ORDER.size() - 1) {
-            return false;
+    protected boolean baseCase(final ParseTree item, final Description mismatchDescription) {
+        if (literalMatcher.matches(item)) {
+            return true;
         }
         else {
-            return VALID_LITERAL_RULE_ORDER.get(index + 1).isInstance(next);
-        }
-    }
-
-    private boolean matchesParseTree(final ParseTree item, final Description mismatchDescription) {
-        if (item instanceof DataPrepperExpressionParser.LiteralContext) {
-            return literalMatcher.matches(item);
-        }
-        else if (childCountMatcher.matches(item.getChildCount())) {
-            final ParseTree child = item.getChild(0);
-            return isValidRuleOrder(item, child) && matchesParseTree(child, mismatchDescription);
-        }
-        else {
-            mismatchDescription.appendText("Unexpected terminal node " + item.getText());
-            if (item.getParent() != null) {
-                mismatchDescription.appendText(", child of parent node " + item.getParent().getText());
-            }
-            return false;
-        }
-    }
-
-    @Override
-    protected boolean matches(final Object item, final Description mismatchDescription) {
-        if (item instanceof ParseTree) {
-            return matchesParseTree((ParseTree) item, mismatchDescription);
-        }
-        else {
+            literalMatcher.describeTo(mismatchDescription);
+            mismatchDescription.appendText("\n\t\texpected LiteralContext but found " + item);
             return false;
         }
     }
 
     @Override
     public void describeTo(final Description description) {
-
+        description.appendText("Expected LiteralContext");
     }
 }
