@@ -67,16 +67,16 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
         return new ContextMatcher(parserRuleContextType, childrenMatchers);
     }
 
-    public static DiagnosingMatcher<ParseTree> isLiteral() {
-        return hasContext(DataPrepperExpressionParser.LiteralContext.class, isTerminalNode());
-    }
-
     public static DiagnosingMatcher<ParseTree> isRegexString() {
         return hasContext(DataPrepperExpressionParser.RegexPatternContext.class, isTerminalNode());
     }
 
     public static DiagnosingMatcher<ParseTree> isOperator(final Class<? extends ParseTree> operatorType) {
         return hasContext(operatorType, isTerminalNode());
+    }
+
+    public static DiagnosingMatcher<ParseTree> isExpression(final DiagnosingMatcher<ParseTree> lhs) {
+        return hasContext(DataPrepperExpressionParser.ExpressionContext.class, lhs, isTerminalNode());
     }
 
     private final DiagnosingMatcher<? extends ParseTree>[] childrenMatchers;
