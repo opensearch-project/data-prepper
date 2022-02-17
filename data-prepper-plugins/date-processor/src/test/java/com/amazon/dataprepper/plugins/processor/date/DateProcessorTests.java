@@ -11,6 +11,7 @@ import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
 import io.micrometer.core.instrument.Counter;
 import org.apache.commons.lang3.LocaleUtils;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 
 @ExtendWith(MockitoExtension.class)
@@ -79,6 +80,11 @@ class DateProcessorTests {
         expectedDateTime = LocalDateTime.now();
     }
 
+    @AfterEach
+    void cleanup() {
+        verifyNoMoreInteractions(dateProcessingMatchSuccessCounter, dateProcessingMatchFailureCounter);
+    }
+
     private DateProcessor createObjectUnderTest() {
         return new DateProcessor(pluginMetrics, mockDateProcessorConfig);
     }
@@ -104,7 +110,6 @@ class DateProcessorTests {
         ZonedDateTime actualZonedDateTime = processedRecords.get(0).getData().get(TIMESTAMP_KEY, ZonedDateTime.class);
 
         Assertions.assertEquals(0, actualZonedDateTime.toInstant().compareTo(expectedInstant.truncatedTo(ChronoUnit.MILLIS)));
-        verifyNoInteractions(dateProcessingMatchSuccessCounter, dateProcessingMatchFailureCounter);
     }
 
     @Test
@@ -130,7 +135,6 @@ class DateProcessorTests {
         ZonedDateTime actualZonedDateTime = processedRecords.get(0).getData().get(destination, ZonedDateTime.class);
 
         Assertions.assertEquals(0, actualZonedDateTime.toInstant().compareTo(expectedInstant.truncatedTo(ChronoUnit.MILLIS)));
-        verifyNoInteractions(dateProcessingMatchSuccessCounter, dateProcessingMatchFailureCounter);
     }
 
     @Test
@@ -155,7 +159,6 @@ class DateProcessorTests {
 
         assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getSourceZoneId(), TIMESTAMP_KEY);
         verify(dateProcessingMatchSuccessCounter, times(1)).increment();
-        verifyNoInteractions(dateProcessingMatchFailureCounter);
     }
 
     @Test
@@ -181,7 +184,6 @@ class DateProcessorTests {
 
         assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getSourceZoneId(), destination);
         verify(dateProcessingMatchSuccessCounter, times(1)).increment();
-        verifyNoInteractions(dateProcessingMatchFailureCounter);
     }
 
     @Test
@@ -209,7 +211,6 @@ class DateProcessorTests {
 
         Assertions.assertTrue(actualZonedDateTime.isEqual(expectedZonedDateTime));
         verify(dateProcessingMatchSuccessCounter, times(1)).increment();
-        verifyNoInteractions(dateProcessingMatchFailureCounter);
     }
 
     @Test
@@ -232,7 +233,6 @@ class DateProcessorTests {
 
         Assertions.assertFalse(processedRecords.get(0).getData().containsKey(TIMESTAMP_KEY));
         verify(dateProcessingMatchFailureCounter, times(1)).increment();
-        verifyNoInteractions(dateProcessingMatchSuccessCounter);
     }
 
     @ParameterizedTest
@@ -257,7 +257,6 @@ class DateProcessorTests {
 
         assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getSourceZoneId(), TIMESTAMP_KEY);
         verify(dateProcessingMatchSuccessCounter, times(1)).increment();
-        verifyNoInteractions(dateProcessingMatchFailureCounter);
     }
 
     @ParameterizedTest
@@ -282,7 +281,6 @@ class DateProcessorTests {
 
         assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getSourceZoneId(), TIMESTAMP_KEY);
         verify(dateProcessingMatchSuccessCounter, times(1)).increment();
-        verifyNoInteractions(dateProcessingMatchFailureCounter);
     }
 
     @ParameterizedTest
@@ -307,7 +305,6 @@ class DateProcessorTests {
 
         assertTimestampsAreEqual(processedRecords.get(0), mockDateProcessorConfig.getSourceZoneId(), TIMESTAMP_KEY);
         verify(dateProcessingMatchSuccessCounter, times(1)).increment();
-        verifyNoInteractions(dateProcessingMatchFailureCounter);
     }
 
     static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {

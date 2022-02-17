@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 @DataPrepperPlugin(name = "date", pluginType = Processor.class, pluginConfigurationType = DateProcessorConfig.class)
 public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(DateProcessor.class);
-    static final String OUTPUT_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
+    private static final String OUTPUT_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
 
     static final String DATE_PROCESSING_MATCH_SUCCESS = "dateProcessingMatchSuccess";
     static final String DATE_PROCESSING_MATCH_FAILURE = "dateProcessingMatchFailure";
