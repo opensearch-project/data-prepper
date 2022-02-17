@@ -3,7 +3,8 @@ attributesMapperClass: org.opensearch.dataprepper.logstash.mapping.DateLogstashP
 mappedAttributeNames:
   match: match
   target: destination
-  timezone: timezone
+  timezone: source_timezone
   locale: locale
 additionalAttributes:
   from_time_received: false
+  destination_timezone: "UTC"

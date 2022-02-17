@@ -10,9 +10,10 @@ logstash-converted-pipeline:
             - "%{COMBINEDAPACHELOG}"
     - date:
         from_time_received: false
+        destination_timezone: "UTC"
         destination: "@timestamp"
         locale: "en_US"
-        timezone: "UTC"
+        source_timezone: "UTC"
         match:
           - key: "timestamp"
             patterns:
