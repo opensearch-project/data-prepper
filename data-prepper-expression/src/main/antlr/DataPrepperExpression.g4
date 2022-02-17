@@ -88,7 +88,7 @@ setInitializer
     ;
 
 unaryNotOperatorExpression
-    : unaryOperator primary
+    : unaryOperator conditionalExpression
     ;
 
 unaryOperator

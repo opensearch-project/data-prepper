@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionLexer;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
+import org.opensearch.dataprepper.expression.util.ContextMatcherFactory;
 import org.opensearch.dataprepper.expression.util.ErrorListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,7 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcher.isRegexS
 import static org.opensearch.dataprepper.expression.util.ContextMatcher.isUnaryTreeSet;
 import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.isParseTree;
 import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.isPrimaryLiteral;
+import static org.opensearch.dataprepper.expression.util.JsonPointerMatcher.isJsonPointerUnaryTree;
 import static org.opensearch.dataprepper.expression.util.LiteralMatcher.isUnaryTree;
 import static org.opensearch.dataprepper.expression.util.ParenthesesExpressionMatcher.isParenthesesExpression;
 import static org.opensearch.dataprepper.expression.util.ParseRuleContextExceptionMatcher.isNotValid;
@@ -271,7 +273,7 @@ public class ParserTest {
     }
 
     @Test
-    void test() {
+    void testInSetOperator() {
         final ParserRuleContext expression = parseExpression("2 in {\"1\", 2, 3}");
 
         final DiagnosingMatcher<ParseTree> setOperatorExpression = isParseTree(
@@ -337,66 +339,206 @@ public class ParserTest {
         assertThat(errorListener.isErrorFound(), is(false));
     }
 
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("/a/b/c == true");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("\"Hello World\" == 42");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("\"Hello \\\"World\\\"\" == 42");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("\"/a b/\\\"c~d\\\"/\\/\"");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("1 < 2");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("1 < 2 or 3 <= 4 or 5 > 6 or 7 >= 8");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("1 in 1");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("3 > 1 or (/status_code == 500)");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("3>1or(/status_code==500)");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("/ABCDEFGHIJKLMNOPQRSTUVWXYZ/ambcdefghijklmnopqrstuvwxyz/0123456789/_");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("\"Hello, this \\\"is\\\" a 'complex' ~ string with numbers! 0123\"");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("\"foo\"=~\"[A-Z]*\"");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("\"foo\"!~\"[A-Z]*\"");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("3.14159");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("\"foo\"=~3.14");
-//    }
+    @Test
+    void testJsonPointer() {
+        final ParserRuleContext expression = parseExpression("/a/b/c == true");
+
+        assertThat(expression, isExpression(isParseTree(
+                        CONDITIONAL_EXPRESSION,
+                        EQUALITY_OPERATOR_EXPRESSION
+                ).withChildrenMatching(
+                        isJsonPointerUnaryTree(),
+                        isOperator(EQUALITY_OPERATOR),
+                        isUnaryTree()
+                )
+        ));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void testSimpleString() {
+        final ParserRuleContext expression = parseExpression("\"Hello World\" == 42");
+
+        assertThat(expression, isExpression(isParseTree(
+                CONDITIONAL_EXPRESSION,
+                EQUALITY_OPERATOR_EXPRESSION
+        ).withChildrenMatching(
+                isUnaryTree(),
+                isOperator(EQUALITY_OPERATOR),
+                isUnaryTree()
+        )));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void testStringEscapeCharacters() {
+        final ParserRuleContext expression = parseExpression("\"Hello \\\"World\\\"\" == 42");
+
+        assertThat(expression, isExpression(isParseTree(
+                CONDITIONAL_EXPRESSION,
+                EQUALITY_OPERATOR_EXPRESSION
+        ).withChildrenMatching(
+                isUnaryTree(),
+                isOperator(EQUALITY_OPERATOR),
+                isUnaryTree()
+        )));
+        assertThat(errorListener.isErrorFound(), is(false));
+
+    }
+
+    @Test
+    void testJsonPointerEscapeCharacters() {
+        final ParserRuleContext expression = parseExpression("\"/a b/\\\"c~d\\\"/\\/\"");
+        assertThat(expression, isExpression(isJsonPointerUnaryTree()));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void testRelationalExpression() {
+        final ParserRuleContext expression = parseExpression("1 < 2");
+
+        assertThat(expression, isExpression(isParseTree(
+                CONDITIONAL_EXPRESSION,
+                EQUALITY_OPERATOR_EXPRESSION,
+                REGEX_OPERATOR_EXPRESSION,
+                RELATIONAL_OPERATOR_EXPRESSION
+        ).withChildrenMatching(
+                isUnaryTree(),
+                isOperator(RELATIONAL_OPERATOR),
+                isUnaryTree()
+        )));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void testNestedConditionalExpression() {
+        final ParserRuleContext expression = parseExpression("1 < 2 or 3 <= 4 or 5 > 6 or 7 >= 8");
+
+        final DiagnosingMatcher<ParseTree> relationalOperatorExpression = isParseTree(
+                EQUALITY_OPERATOR_EXPRESSION,
+                REGEX_OPERATOR_EXPRESSION,
+                RELATIONAL_OPERATOR_EXPRESSION
+        ).withChildrenMatching(
+                isUnaryTree(),
+                isOperator(RELATIONAL_OPERATOR),
+                isUnaryTree()
+        );
+        final DiagnosingMatcher<ParseTree> firstConditional = hasContext(
+                CONDITIONAL_EXPRESSION,
+                hasContext(CONDITIONAL_EXPRESSION, relationalOperatorExpression),
+                isOperator(CONDITIONAL_OPERATOR),
+                relationalOperatorExpression
+        );
+        final DiagnosingMatcher<ParseTree> secondConditional = hasContext(
+                CONDITIONAL_EXPRESSION,
+                firstConditional,
+                isOperator(CONDITIONAL_OPERATOR),
+                relationalOperatorExpression
+        );
+        final DiagnosingMatcher<ParseTree> thirdConditional = hasContext(
+                CONDITIONAL_EXPRESSION,
+                secondConditional,
+                isOperator(CONDITIONAL_OPERATOR),
+                relationalOperatorExpression
+        );
+
+        assertThat(expression, isExpression(thirdConditional));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void testInvalidSetOperator() {
+        assertThatHasParseError("1 in 1");
+    }
+
+    @Test
+    void testNestedJsonPointer() {
+        final ParserRuleContext expression = parseExpression("3 > 1 or (/status_code == 500)");
+
+        final DiagnosingMatcher<ParseTree> relationalOperatorExpression = isParseTree(
+                CONDITIONAL_EXPRESSION,
+                EQUALITY_OPERATOR_EXPRESSION,
+                REGEX_OPERATOR_EXPRESSION,
+                RELATIONAL_OPERATOR_EXPRESSION
+        ).withChildrenMatching(
+                isUnaryTree(),
+                isOperator(RELATIONAL_OPERATOR),
+                isUnaryTree()
+        );
+        final DiagnosingMatcher<ParseTree> parenthesesExpression = isParenthesesExpression(isParseTree(
+                CONDITIONAL_EXPRESSION,
+                EQUALITY_OPERATOR_EXPRESSION
+        ).withChildrenMatching(
+                isJsonPointerUnaryTree(),
+                isOperator(EQUALITY_OPERATOR),
+                isUnaryTree()
+        ));
+
+        assertThat(expression, isExpression(hasContext(
+                CONDITIONAL_EXPRESSION,
+                relationalOperatorExpression,
+                isOperator(CONDITIONAL_OPERATOR),
+                parenthesesExpression
+        )));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void testSpaceInsignificant() {
+        final ParserRuleContext expression = parseExpression("3or1");
+        assertThat(expression, isExpression(hasContext(
+                CONDITIONAL_EXPRESSION,
+                isUnaryTree(),
+                isOperator(CONDITIONAL_OPERATOR),
+                isUnaryTree()
+        )));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void testValidJsonPointerCharacterSet() {
+        final ParserRuleContext expression = parseExpression(
+                "/ABCDEFGHIJKLMNOPQRSTUVWXYZ/ambcdefghijklmnopqrstuvwxyz/0123456789/_");
+        assertThat(expression, isExpression(isJsonPointerUnaryTree()));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void testRegexMatchOperator() {
+        final ParserRuleContext expression = parseExpression("\"foo\"=~\"[A-Z]*\"");
+
+        assertThat(expression, isExpression(isParseTree(
+                CONDITIONAL_EXPRESSION,
+                EQUALITY_OPERATOR_EXPRESSION,
+                REGEX_OPERATOR_EXPRESSION
+        ).withChildrenMatching(
+                hasContext(REGEX_PATTERN, isTerminalNode()),
+                isOperator(REGEX_EQUALITY_OPERATOR),
+                hasContext(REGEX_PATTERN, isTerminalNode())
+        )));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void testRegexNotMatchOperator() {
+        final ParserRuleContext expression = parseExpression("\"foo\"!~\"[A-Z]*\"");
+
+        assertThat(expression, isExpression(isParseTree(
+                CONDITIONAL_EXPRESSION,
+                EQUALITY_OPERATOR_EXPRESSION,
+                REGEX_OPERATOR_EXPRESSION
+        ).withChildrenMatching(
+                hasContext(REGEX_PATTERN, isTerminalNode()),
+                isOperator(REGEX_EQUALITY_OPERATOR),
+                hasContext(REGEX_PATTERN, isTerminalNode())
+        )));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void testInvalidRegexOperand() {
+        assertThatHasParseError("\"foo\"=~3.14");
+    }
 
     @Test
     void testInvalidFloatParsingRules() {
@@ -434,20 +576,49 @@ public class ParserTest {
         );
     }
 
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("\"Hello \\\"world\\\", 'this' is a \\\\ string.\"");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("5==");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("==");
-//    }
-//    @Test
-//    void test() {
-//        final ParserRuleContext expression = parseExpression("not (5 not in [1]) or not \"in\"");
-//    }
+    @Test
+    void testInvalidNumberOfOperands() {
+        assertThatHasParseError("5==");
+        assertThatHasParseError("==");
+        assertThatHasParseError("not");
+    }
+
+    @Test
+    void testNotTokenFound() {
+        final ParserRuleContext expression = parseExpression("not (5 not in {1}) or not \"in\"");
+
+        final DiagnosingMatcher<ParseTree> setOperatorExpressoin = isParseTree(
+                CONDITIONAL_EXPRESSION,
+                EQUALITY_OPERATOR_EXPRESSION,
+                REGEX_OPERATOR_EXPRESSION,
+                RELATIONAL_OPERATOR_EXPRESSION,
+                SET_OPERATOR_EXPRESSION
+        ).withChildrenMatching(isUnaryTree(), isOperator(SET_OPERATOR), isUnaryTreeSet(1));
+        final ContextMatcherFactory notContext = isParseTree(
+                EQUALITY_OPERATOR_EXPRESSION,
+                REGEX_OPERATOR_EXPRESSION,
+                RELATIONAL_OPERATOR_EXPRESSION,
+                SET_OPERATOR_EXPRESSION,
+                UNARY_OPERATOR_EXPRESSION,
+                UNARY_NOT_OPERATOR_EXPRESSION
+        );
+        final DiagnosingMatcher<ParseTree> notInString = notContext.withChildrenMatching(
+                isOperator(UNARY_OPERATOR),
+                isUnaryTree()
+        );
+        final DiagnosingMatcher<ParseTree> orExpression = hasContext(
+                CONDITIONAL_EXPRESSION,
+                isParenthesesExpression(setOperatorExpressoin),
+                isOperator(CONDITIONAL_OPERATOR),
+                notInString
+        );
+
+        assertThat(expression, isExpression(hasContext(
+                CONDITIONAL_EXPRESSION,
+                notContext.withChildrenMatching(
+                        isOperator(UNARY_OPERATOR),
+                        orExpression
+                )
+        )));
+    }
 }

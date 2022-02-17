@@ -19,9 +19,14 @@ import java.util.BitSet;
 
 public class ErrorListener extends DataPrepperExpressionBaseListener implements ANTLRErrorListener {
     private boolean errorFound = false;
+    private boolean warningFound = false;
 
     public boolean isErrorFound() {
         return errorFound;
+    }
+
+    public boolean isWarningFound() {
+        return warningFound;
     }
 
     @Override
@@ -46,7 +51,7 @@ public class ErrorListener extends DataPrepperExpressionBaseListener implements 
             final BitSet ambigAlts,
             final ATNConfigSet configs
     ) {
-        errorFound = true;
+        warningFound = true;
     }
 
     @Override
@@ -58,7 +63,7 @@ public class ErrorListener extends DataPrepperExpressionBaseListener implements 
             final BitSet conflictingAlts,
             final ATNConfigSet configs
     ) {
-        errorFound = true;
+        warningFound = true;
     }
 
     @Override
@@ -70,7 +75,7 @@ public class ErrorListener extends DataPrepperExpressionBaseListener implements 
             final int prediction,
             final ATNConfigSet configs
     ) {
-        errorFound = true;
+        warningFound = true;
     }
 
     @Override
