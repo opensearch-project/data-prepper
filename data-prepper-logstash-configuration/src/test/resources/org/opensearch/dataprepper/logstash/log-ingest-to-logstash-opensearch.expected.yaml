@@ -14,5 +14,5 @@ logstash-converted-pipeline:
           - "fakedomain.us-east-1.es.amazonaws.com"
         username: "myuser"
         password: "mypassword"
-        index: "my-index"
         insecure: false
+        index: "my-index"
