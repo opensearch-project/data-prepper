@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.logstash.exception.LogstashConfigurationExcept
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -16,18 +17,26 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 class OpenSearchPluginAttributesMapper extends AbstractLogstashPluginAttributesMapper {
+
+    private static final Map<Character, Character> PATTERN_CONVERTER_MAP;
+    static {
+        PATTERN_CONVERTER_MAP = new HashMap<>();
+        PATTERN_CONVERTER_MAP.put('y', 'u');
+        PATTERN_CONVERTER_MAP.put('Y', 'y');
+        PATTERN_CONVERTER_MAP.put('x', 'Y');
+    }
     protected static final String LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME = "index";
-    protected static final String REGEX_EXTRACTING_DATETIME_PATTERN = "%\\{(.*?)\\}";
+    protected static final String REGEX_EXTRACTING_DATETIME_PATTERN = "%\\{([+].*?)\\}";
 
     @Override
-    protected void mapCustomAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings, Map<String, Object> pluginSettings) {
+    protected void mapCustomAttributes(final List<LogstashAttribute> logstashAttributes, final LogstashAttributesMappings logstashAttributesMappings, final Map<String, Object> pluginSettings) {
 
         final LogstashAttribute logstashIndexAttribute = logstashAttributes.stream()
                 .filter(a -> a.getAttributeName().equals(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME))
                 .findFirst()
                 .orElseThrow(() -> new LogstashConfigurationException("Index attribute not found"));
 
-        final String convertedIndexPatternValue = convertIndexDateTimePattern(logstashIndexAttribute);
+        final String convertedIndexPatternValue = findAndMatchDateTimePattern(logstashIndexAttribute);
 
         pluginSettings.put(logstashAttributesMappings.getMappedAttributeNames().get(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME),
                 convertedIndexPatternValue);
@@ -39,33 +48,28 @@ class OpenSearchPluginAttributesMapper extends AbstractLogstashPluginAttributesM
         return new HashSet<>(Collections.singletonList(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME));
     }
 
-    private String convertIndexDateTimePattern(LogstashAttribute logstashAttribute) {
+    private String findAndMatchDateTimePattern(LogstashAttribute logstashAttribute) {
 
         final String logstashIndexAttributeValue = logstashAttribute.getAttributeValue().getValue().toString();
-        final Pattern pattern = Pattern.compile(REGEX_EXTRACTING_DATETIME_PATTERN);
-        final Matcher dateTimePatternMatcher = pattern.matcher(logstashIndexAttributeValue);
-
-        final StringBuilder updatedDateTimePattern = new StringBuilder();
-        String updatedIndexAttributeValue = "";
+        final Pattern dateTimeRegexPattern = Pattern.compile(REGEX_EXTRACTING_DATETIME_PATTERN);
+        final Matcher dateTimePatternMatcher = dateTimeRegexPattern.matcher(logstashIndexAttributeValue);
 
         if (dateTimePatternMatcher.find()) {
             final String dateTimePattern = dateTimePatternMatcher.group(0);
-
-            for (char character: dateTimePattern.toCharArray()) {
-                if (character == '+') {
-                    continue;
-                } else if (character == 'y') {
-                    updatedDateTimePattern.append('u');
-                } else if (character == 'Y') {
-                    updatedDateTimePattern.append('y');
-                } else if (character == 'x') {
-                    updatedDateTimePattern.append('Y');
-                } else {
-                    updatedDateTimePattern.append(character);
-                }
-            }
-            updatedIndexAttributeValue = logstashIndexAttributeValue.replace(dateTimePattern, updatedDateTimePattern);
+            return logstashIndexAttributeValue.replace(dateTimePattern, convertDateTimePattern(dateTimePattern));
         }
-        return updatedIndexAttributeValue;
+        return logstashIndexAttributeValue;
+    }
+
+    private String convertDateTimePattern(final String dateTimePattern) {
+
+        final StringBuilder updatedDateTimePattern = new StringBuilder();
+        for (final char character : dateTimePattern.toCharArray()) {
+            if (character != '+') {
+                final char converterChar = PATTERN_CONVERTER_MAP.getOrDefault(character, character);
+                updatedDateTimePattern.append(converterChar);
+            }
+        }
+        return updatedDateTimePattern.toString();
     }
 }
