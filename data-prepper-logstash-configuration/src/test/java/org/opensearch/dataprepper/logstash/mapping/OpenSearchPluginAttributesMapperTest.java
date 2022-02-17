@@ -13,121 +13,60 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.logstash.mapping.OpenSearchPluginAttributesMapper.LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.Arguments;
+
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 import org.opensearch.dataprepper.logstash.model.LogstashAttributeValue;
 import org.opensearch.dataprepper.logstash.model.LogstashValueType;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.stream.Stream;
 
 class OpenSearchPluginAttributesMapperTest {
+
+    private static final String DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE = "index";
 
     private OpenSearchPluginAttributesMapper createObjectUnderTest() {
         return new OpenSearchPluginAttributesMapper();
     }
 
-    @Test
-    void convert_logstash_index_date_time_pattern() {
-        final String dataPrepperIndexAttribute = "index";
-        final String value = "my-application-index";
+    @ParameterizedTest
+    @ArgumentsSource(JodaToJava8IndicesArgumentsProvider.class)
+    void convert_logstashIndexPattern_joda_to_dataPrepperIndexPattern_java8(final String logstashIndex, final String expectedIndex) {
 
-        final LogstashAttribute logstashAttribute = mock(LogstashAttribute.class);
-        final LogstashAttributeValue logstashAttributeValue = mock(LogstashAttributeValue.class);
-        when(logstashAttributeValue.getValue()).thenReturn(value);
-        when(logstashAttribute.getAttributeName()).thenReturn("index");
-        when(logstashAttribute.getAttributeValue()).thenReturn(logstashAttributeValue);
+        final LogstashAttribute logstashAttribute = createLogstashIndexAttribute(logstashIndex);
 
         final LogstashAttributesMappings logstashAttributesMappings = mock(LogstashAttributesMappings.class);
-        when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME, dataPrepperIndexAttribute));
+        when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME, DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE));
 
-
-        final Map<String, Object> pluginSettings =
-                createObjectUnderTest().mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings);
+        final Map<String, Object> pluginSettings = createObjectUnderTest()
+                .mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings);
 
         assertThat(pluginSettings, notNullValue());
         assertThat(pluginSettings.size(), equalTo(1));
-        assertThat(pluginSettings, hasKey(dataPrepperIndexAttribute));
+        assertThat(pluginSettings, hasKey(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE));
+        assertThat(pluginSettings.get(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE), equalTo(expectedIndex));
     }
 
-    @Test
-    void convert_logstashIndexPattern_joda_year_to_dataPrepperIndexPattern_java_year() {
-
-        final LogstashAttribute logstashAttribute = createIndexAttributeValue("logstash-%{+yyyy.MM.dd}");
-
-        final String dataPrepperIndexAttribute = "index";
-        final LogstashAttributesMappings logstashAttributesMappings = mock(LogstashAttributesMappings.class);
-        when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME, dataPrepperIndexAttribute));
-
-        final Map<String, Object> pluginSettings =
-                createObjectUnderTest().mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings);
-
-        final String expectedIndexPattern = "logstash-%{uuuu.MM.dd}";
-
-        assertThat(pluginSettings, notNullValue());
-        assertThat(pluginSettings, hasKey(dataPrepperIndexAttribute));
-        assertThat(pluginSettings.get(dataPrepperIndexAttribute), equalTo(expectedIndexPattern));
+    static class JodaToJava8IndicesArgumentsProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(final ExtensionContext extensionContext) {
+            return Stream.of(
+                    Arguments.arguments("logstash-%{+yyyy.MM.dd}", "logstash-%{uuuu.MM.dd}"),
+                    Arguments.arguments("logstash-index-%{+YYYY.MM.dd}", "logstash-index-%{yyyy.MM.dd}"),
+                    Arguments.arguments("logstash-%{+xxxx.ww}", "logstash-%{YYYY.ww}"),
+                    Arguments.arguments("my-index-name-%{+YYYY.MM.dd.HH}", "my-index-name-%{yyyy.MM.dd.HH}"),
+                    Arguments.arguments("logstash", "logstash")
+            );
+        }
     }
 
-    @Test
-    void convert_logstashIndexPattern_joda_yearOfEra_to_dataPrepperIndexPattern_java_yearOfEra() {
-
-        final LogstashAttribute logstashAttribute = createIndexAttributeValue("logstash-index-%{+YYYY.MM.dd}");
-
-        final String dataPrepperIndexAttribute = "index";
-        final LogstashAttributesMappings logstashAttributesMappings = mock(LogstashAttributesMappings.class);
-        when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME, dataPrepperIndexAttribute));
-
-        final Map<String, Object> pluginSettings =
-                createObjectUnderTest().mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings);
-
-        final String expectedIndexPattern = "logstash-index-%{yyyy.MM.dd}";
-
-        assertThat(pluginSettings, notNullValue());
-        assertThat(pluginSettings, hasKey(dataPrepperIndexAttribute));
-        assertThat(pluginSettings.get(dataPrepperIndexAttribute), equalTo(expectedIndexPattern));
-    }
-
-    @Test
-    void convert_logstashIndexPattern_joda_weekyear_to_dataPrepperIndexPattern_java_weekyear() {
-
-        final LogstashAttribute logstashAttribute = createIndexAttributeValue("logstash-%{+xxxx.ww}");
-
-        final String dataPrepperIndexAttribute = "index";
-        final LogstashAttributesMappings logstashAttributesMappings = mock(LogstashAttributesMappings.class);
-        when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME, dataPrepperIndexAttribute));
-
-        final Map<String, Object> pluginSettings =
-                createObjectUnderTest().mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings);
-
-        final String expectedIndexPattern = "logstash-%{YYYY.ww}";
-
-        assertThat(pluginSettings, notNullValue());
-        assertThat(pluginSettings, hasKey(dataPrepperIndexAttribute));
-        assertThat(pluginSettings.get(dataPrepperIndexAttribute), equalTo(expectedIndexPattern));
-    }
-
-    @Test
-    void convert_logstashIndexPattern_time_to_dataPrepperIndexPattern_java_time() {
-
-        final LogstashAttribute logstashAttribute = createIndexAttributeValue("my-index-name-%{+YYYY.MM.dd.HH}");
-
-        final String dataPrepperIndexAttribute = "index";
-        final LogstashAttributesMappings logstashAttributesMappings = mock(LogstashAttributesMappings.class);
-        when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME, dataPrepperIndexAttribute));
-
-        final Map<String, Object> pluginSettings =
-                createObjectUnderTest().mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings);
-
-        final String expectedIndexPattern = "my-index-name-%{yyyy.MM.dd.HH}";
-
-        assertThat(pluginSettings, notNullValue());
-        assertThat(pluginSettings, hasKey(dataPrepperIndexAttribute));
-        assertThat(pluginSettings.get(dataPrepperIndexAttribute), equalTo(expectedIndexPattern));
-    }
-
-
-    private LogstashAttribute createIndexAttributeValue(final String index) {
+    private LogstashAttribute createLogstashIndexAttribute(final String index) {
         final LogstashAttribute logstashAttribute = mock(LogstashAttribute.class);
         final LogstashAttributeValue logstashAttributeValue = mock(LogstashAttributeValue.class);
 
