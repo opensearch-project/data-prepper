@@ -82,7 +82,6 @@ public class ParserTest {
         final CommonTokenStream tokenStream = new CommonTokenStream(lexer);
         final DataPrepperExpressionParser parser = new DataPrepperExpressionParser(tokenStream);
         parser.addErrorListener(errorListener);
-        parser.setTrace(true);
 
         final ParserRuleContext context = parser.expression();
 
