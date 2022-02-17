@@ -5,32 +5,22 @@
 
 package org.opensearch.dataprepper.expression;
 
-import org.antlr.v4.runtime.ANTLRErrorListener;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CodePointCharStream;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.Parser;
 import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.RecognitionException;
-import org.antlr.v4.runtime.Recognizer;
-import org.antlr.v4.runtime.atn.ATNConfigSet;
-import org.antlr.v4.runtime.dfa.DFA;
-import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.ParseTreeListener;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.hamcrest.DiagnosingMatcher;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
-import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionBaseListener;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionLexer;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
+import org.opensearch.dataprepper.expression.util.ContextMatcherFactory;
+import org.opensearch.dataprepper.expression.util.ErrorListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.BitSet;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -39,6 +29,7 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcher.hasConte
 import static org.opensearch.dataprepper.expression.util.ContextMatcher.isExpression;
 import static org.opensearch.dataprepper.expression.util.ContextMatcher.isOperator;
 import static org.opensearch.dataprepper.expression.util.ContextMatcher.isRegexString;
+import static org.opensearch.dataprepper.expression.util.ContextMatcher.isUnaryTreeSet;
 import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.isParseTree;
 import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.isPrimaryLiteral;
 import static org.opensearch.dataprepper.expression.util.LiteralMatcher.isUnaryTree;
@@ -68,7 +59,7 @@ public class ParserTest {
     private static final Class<? extends ParseTree> SET_OPERATOR = DataPrepperExpressionParser.SetOperatorContext.class;
     private static final Class<? extends ParseTree> UNARY_OPERATOR_EXPRESSION =
             DataPrepperExpressionParser.UnaryOperatorExpressionContext.class;
-    private static final Class<? extends ParseTree> PARENTHESIS_EXPRESSION = DataPrepperExpressionParser.ParenthesisExpressionContext.class;
+    private static final Class<? extends ParseTree> PARENTHESES_EXPRESSION = DataPrepperExpressionParser.ParenthesesExpressionContext.class;
     private static final Class<? extends ParseTree> REGEX_PATTERN = DataPrepperExpressionParser.RegexPatternContext.class;
     private static final Class<? extends ParseTree> SET_INITIALIZER = DataPrepperExpressionParser.SetInitializerContext.class;
     private static final Class<? extends ParseTree> UNARY_NOT_OPERATOR_EXPRESSION =
@@ -79,114 +70,42 @@ public class ParserTest {
     private static final Class<? extends ParseTree> LITERAL = DataPrepperExpressionParser.LiteralContext.class;
     //endregion
 
-    final ANTLRErrorListener errorListener = new ANTLRErrorListener() {
-        @Override
-        public void syntaxError(
-                final Recognizer<?, ?> recognizer,
-                final Object offendingSymbol,
-                final int line,
-                final int charPositionInLine,
-                final String msg,
-                final RecognitionException e
-        ) {
-            LOG.error("Syntax Error! syntaxError");
-            foundErrorNode = true;
-        }
+    private ErrorListener errorListener;
 
-        @Override
-        public void reportAmbiguity(
-                final Parser recognizer,
-                final DFA dfa,
-                final int startIndex,
-                final int stopIndex,
-                final boolean exact,
-                final BitSet ambigAlts,
-                final ATNConfigSet configs
-        ) {
-            LOG.error("Syntax Error! reportAmbiguity");
-            foundErrorNode = true;
-        }
+    private ParserRuleContext parseExpression(final String expression) {
+        errorListener = new ErrorListener();
 
-        @Override
-        public void reportAttemptingFullContext(
-                final Parser recognizer,
-                final DFA dfa,
-                final int startIndex,
-                final int stopIndex,
-                final BitSet conflictingAlts,
-                final ATNConfigSet configs
-        ) {
-            LOG.error("Syntax Error! reportAttemptingFullContext");
-            foundErrorNode = true;
-        }
-
-        @Override
-        public void reportContextSensitivity(
-                final Parser recognizer,
-                final DFA dfa,
-                final int startIndex,
-                final int stopIndex,
-                final int prediction,
-                final ATNConfigSet configs
-        ) {
-            LOG.error("Syntax Error! reportContextSensitivity");
-            foundErrorNode = true;
-        }
-    };
-
-    final ParseTreeListener listener = new DataPrepperExpressionBaseListener() {
-        @Override
-        public void enterEveryRule(final ParserRuleContext ctx) {
-            LOG.trace("Enter Rule {}", ctx.getText());
-            if (ctx.exception != null) {
-                foundErrorNode = true;
-            }
-        }
-
-        @Override
-        public void visitErrorNode(final ErrorNode node) {
-            foundErrorNode = true;
-        }
-    };
-
-    private DataPrepperExpressionLexer lexer;
-    private DataPrepperExpressionParser parser;
-    private final ParseTreeWalker walker = new ParseTreeWalker();
-    private boolean foundErrorNode = false;
-
-    @BeforeEach
-    public void beforeEach() {
-        foundErrorNode = false;
-
-        lexer = new DataPrepperExpressionLexer(EMPTY_STREAM);
+        final CodePointCharStream stream = CharStreams.fromString(expression);
+        final DataPrepperExpressionLexer lexer = new DataPrepperExpressionLexer(stream);
         lexer.addErrorListener(errorListener);
 
         final CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-        parser = new DataPrepperExpressionParser(tokenStream);
+        final DataPrepperExpressionParser parser = new DataPrepperExpressionParser(tokenStream);
         parser.addErrorListener(errorListener);
         parser.setTrace(true);
-    }
-
-    private ParserRuleContext parseExpression(final String expression) {
-        foundErrorNode = false;
-
-        final CodePointCharStream stream = CharStreams.fromString(expression);
-        lexer.setInputStream(stream);
-
-        final CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-        parser.setTokenStream(tokenStream);
 
         final ParserRuleContext context = parser.expression();
-        walker.walk(listener, context);
+
+        final ParseTreeWalker walker = new ParseTreeWalker();
+        walker.walk(errorListener, context);
 
         return context;
     }
 
+    private Executable assertThatHasParseError(final String statement) {
+        return () -> {
+            parseExpression(statement);
+            assertThat(
+                    "\"" + statement + "\" should have parsing errors",
+                    errorListener.isErrorFound(),
+                    is(true)
+            );
+        };
+    }
+
     @Test
     void testEqualityExpression() {
-        parseExpression("5==5");
-
-        final ParserRuleContext expression = parser.expression();
+        final ParserRuleContext expression = parseExpression("5==5");
 
         final DiagnosingMatcher<ParseTree> equals = isParseTree(EQUALITY_OPERATOR).containingTerminalNode();
         final DiagnosingMatcher<ParseTree> endsWithInteger = isParseTree(
@@ -203,24 +122,21 @@ public class ParserTest {
                 EQUALITY_OPERATOR_EXPRESSION
         ).withChildrenMatching(leftHandSide, equals, endsWithInteger);
 
-        assertThat(expression, isParseTree(EXPRESSION).withChildrenMatching(equalityExpression, isTerminalNode())
-        );
+        assertThat(expression, isParseTree(EXPRESSION).withChildrenMatching(equalityExpression, isTerminalNode()));
+        assertThat(errorListener.isErrorFound(), is(false));
     }
 
     @Test
     void testGivenOperandIsNotStringWhenEvaluateThenErrorPresent() {
-        parseExpression("(true) =~ \"Hello?\"");
-
-        final ParserRuleContext expression = parser.expression();
+        final ParserRuleContext expression = parseExpression("(true) =~ \"Hello?\"");
 
         assertThat(expression, isNotValid());
+        assertThat(errorListener.isErrorFound(), is(true));
     }
 
     @Test
-    void testParenthesisExpression() {
-        parseExpression("(\"string\" =~ \"Hello?\") or 5 in {1, \"Hello\", 3.14, true}");
-
-        final ParserRuleContext expression = parser.expression();
+    void testParenthesesExpression() {
+        final ParserRuleContext expression = parseExpression("(\"string\" =~ \"Hello?\") or 5 in {1, \"Hello\", 3.14, true}");
 
         //region Build Parse Tree Assertion
         final DiagnosingMatcher<ParseTree> regexExpression = isParseTree(
@@ -228,14 +144,14 @@ public class ParserTest {
                 EQUALITY_OPERATOR_EXPRESSION,
                 REGEX_OPERATOR_EXPRESSION
         ).withChildrenMatching(isRegexString(), isOperator(REGEX_EQUALITY_OPERATOR), isRegexString());
-        final DiagnosingMatcher<ParseTree> parenthesisExpression = isParseTree(
+        final DiagnosingMatcher<ParseTree> parenthesesExpression = isParseTree(
                 CONDITIONAL_EXPRESSION,
                 EQUALITY_OPERATOR_EXPRESSION,
                 REGEX_OPERATOR_EXPRESSION,
                 RELATIONAL_OPERATOR_EXPRESSION,
                 SET_OPERATOR_EXPRESSION,
                 UNARY_OPERATOR_EXPRESSION,
-                PARENTHESIS_EXPRESSION
+                PARENTHESES_EXPRESSION
         ).withChildrenMatching(
                 isTerminalNode(),
                 regexExpression,
@@ -267,19 +183,19 @@ public class ParserTest {
         );
         final DiagnosingMatcher<ParseTree> conditionalExpression = hasContext(
                 CONDITIONAL_EXPRESSION,
-                parenthesisExpression,
+                parenthesesExpression,
                 isOperator(CONDITIONAL_OPERATOR),
                 setOperatorExpression
         );
         //endregion
 
         assertThat(expression, hasContext(EXPRESSION, conditionalExpression, isTerminalNode()));
+        assertThat(errorListener.isErrorFound(), is(false));
     }
 
     @Test
     void testEquality() {
-        parseExpression("true==false");
-        final ParserRuleContext expression = parser.expression();
+        final ParserRuleContext expression = parseExpression("true==false");
 
         final DiagnosingMatcher<ParseTree> equalityExpression = isParseTree(
                 CONDITIONAL_EXPRESSION,
@@ -287,98 +203,217 @@ public class ParserTest {
         ).withChildrenMatching(isUnaryTree(), isOperator(EQUALITY_OPERATOR), isUnaryTree());
 
         assertThat(expression, isExpression(equalityExpression));
+        assertThat(errorListener.isErrorFound(), is(false));
     }
-//    @Test
-//    void test() {
-//        setExpression("false and true");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("false and true or true");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("false and (false or true)");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("2 in {\"1\", 2, 3}");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("true not in {false, true or false}");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("(1==4)or((2)!=(3==3))");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("/a/b/c == true");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("\"Hello World\" == 42");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("\"Hello \\\"World\\\"\" == 42");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("\"/a b/\\\"c~d\\\"/\\/\"");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("1 < 2");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("1 < 2 or 3 <= 4 or 5 > 6 or 7 >= 8");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("1 in 1");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("3 > 1 or (/status_code == 500)");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("3>1or(/status_code==500)");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("/ABCDEFGHIJKLMNOPQRSTUVWXYZ/ambcdefghijklmnopqrstuvwxyz/0123456789/_");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("\"Hello, this \\\"is\\\" a 'complex' ~ string with numbers! 0123\"");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("\"foo\"=~\"[A-Z]*\"");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("\"foo\"!~\"[A-Z]*\"");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("3.14159");
-//    }
-//    @Test
-//    void test() {
-//        setExpression("\"foo\"=~3.14");
-//    }
+    
+    @Test
+    void testConditionalExpression() {
+        final ParserRuleContext expression = parseExpression("false and true");
 
-    private Executable assertThatHasParseError(final String statement) {
-        return () -> {
-            final ParserRuleContext expression = parseExpression(statement);
-            assertThat("\"" + statement + "\" should have parsing errors", foundErrorNode, is(true));
-        };
+        assertThat(expression, isExpression(hasContext(
+                CONDITIONAL_EXPRESSION,
+                isUnaryTree(),
+                isOperator(CONDITIONAL_OPERATOR),
+                isUnaryTree()
+        )));
+        assertThat(errorListener.isErrorFound(), is(false));
     }
+    
+    @Test
+    void testMultipleConditionExpressions() {
+        final ParserRuleContext expression = parseExpression("false and true or true");
+        assertThat(expression, isExpression(hasContext(
+                CONDITIONAL_EXPRESSION,
+                hasContext(
+                        CONDITIONAL_EXPRESSION,
+                        isUnaryTree(),
+                        isOperator(CONDITIONAL_OPERATOR),
+                        isUnaryTree()
+                ),
+                isOperator(CONDITIONAL_OPERATOR),
+                isUnaryTree()
+        )));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void testParenthesesAndConditionExpression() {
+        final ParserRuleContext expression = parseExpression("false and (false or true)");
+
+
+        final DiagnosingMatcher<ParseTree> conditionalExpression = hasContext(
+                CONDITIONAL_EXPRESSION,
+                isUnaryTree(),
+                isOperator(CONDITIONAL_OPERATOR),
+                isUnaryTree()
+        );
+
+        final DiagnosingMatcher<ParseTree> parenthesesExpression = isParseTree(
+                EQUALITY_OPERATOR_EXPRESSION,
+                REGEX_OPERATOR_EXPRESSION,
+                RELATIONAL_OPERATOR_EXPRESSION,
+                SET_OPERATOR_EXPRESSION,
+                UNARY_OPERATOR_EXPRESSION,
+                PARENTHESES_EXPRESSION
+        ).withChildrenMatching(
+                isTerminalNode(),
+                conditionalExpression,
+                isTerminalNode()
+        );
+
+        assertThat(expression, isExpression(hasContext(
+                CONDITIONAL_EXPRESSION,
+                isUnaryTree(),
+                isOperator(CONDITIONAL_OPERATOR),
+                parenthesesExpression
+        )));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void test() {
+        final ParserRuleContext expression = parseExpression("2 in {\"1\", 2, 3}");
+
+        final DiagnosingMatcher<ParseTree> setOperatorExpression = isParseTree(
+                CONDITIONAL_EXPRESSION,
+                EQUALITY_OPERATOR_EXPRESSION,
+                REGEX_OPERATOR_EXPRESSION,
+                RELATIONAL_OPERATOR_EXPRESSION,
+                SET_OPERATOR_EXPRESSION
+        ).withChildrenMatching(
+                isUnaryTree(),
+                isOperator(SET_OPERATOR),
+                isUnaryTreeSet(3)
+        );
+
+        assertThat(expression, isExpression(setOperatorExpression));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void testInvalidSetItem() {
+        assertAll(
+                assertThatHasParseError("{true or false}"),
+                assertThatHasParseError("{(5)}"),
+                assertThatHasParseError("{5 == 5}"),
+                assertThatHasParseError("{/node =~ \"[A-Z]*\"}")
+        );
+    }
+
+    @Test
+    void testMultipleParentheses() {
+        final ParserRuleContext expression = parseExpression("(1==4)or((2)!=(3==3))");
+
+
+        final ContextMatcherFactory parenthesesExpression = isParseTree(
+                EQUALITY_OPERATOR_EXPRESSION,
+                REGEX_OPERATOR_EXPRESSION,
+                RELATIONAL_OPERATOR_EXPRESSION,
+                SET_OPERATOR_EXPRESSION,
+                UNARY_OPERATOR_EXPRESSION,
+                PARENTHESES_EXPRESSION
+        );
+        final DiagnosingMatcher<ParseTree> threeEqualThree = isParseTree(
+                REGEX_OPERATOR_EXPRESSION,
+                RELATIONAL_OPERATOR_EXPRESSION,
+                SET_OPERATOR_EXPRESSION,
+                UNARY_OPERATOR_EXPRESSION,
+                PARENTHESES_EXPRESSION
+        ).withChildrenMatching(
+                isTerminalNode(),
+                isParseTree(CONDITIONAL_EXPRESSION, EQUALITY_OPERATOR_EXPRESSION)
+                        .withChildrenMatching(isUnaryTree(), isOperator(EQUALITY_OPERATOR), isUnaryTree()),
+                isTerminalNode()
+        );
+
+        final DiagnosingMatcher<ParseTree> lhsEqualityExpression = isParseTree(
+                CONDITIONAL_EXPRESSION,
+                EQUALITY_OPERATOR_EXPRESSION
+        ).withChildrenMatching(isUnaryTree(), isOperator(EQUALITY_OPERATOR), isUnaryTree());
+
+        final DiagnosingMatcher<ParseTree> lhsExpression = hasContext(
+                CONDITIONAL_EXPRESSION,
+                parenthesesExpression.withChildrenMatching(isTerminalNode(), lhsEqualityExpression, isTerminalNode())
+        );
+
+        final DiagnosingMatcher<ParseTree> rhsNotEqualExpression = isParseTree(
+                CONDITIONAL_EXPRESSION,
+                EQUALITY_OPERATOR_EXPRESSION
+        ).withChildrenMatching(
+                parenthesesExpression.withChildrenMatching(isTerminalNode(), isUnaryTree(), isTerminalNode()),
+                isOperator(EQUALITY_OPERATOR),
+                threeEqualThree
+        );
+
+        assertThat(expression, isExpression(hasContext(
+                CONDITIONAL_EXPRESSION,
+                lhsExpression,
+                isOperator(CONDITIONAL_OPERATOR),
+                parenthesesExpression.withChildrenMatching(isTerminalNode(), rhsNotEqualExpression, isTerminalNode())
+                )));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+//    @Test
+//    void test() {
+//        final ParserRuleContext expression = parseExpression("/a/b/c == true");
+//    }
+//    @Test
+//    void test() {
+//        final ParserRuleContext expression = parseExpression("\"Hello World\" == 42");
+//    }
+//    @Test
+//    void test() {
+//        final ParserRuleContext expression = parseExpression("\"Hello \\\"World\\\"\" == 42");
+//    }
+//    @Test
+//    void test() {
+//        final ParserRuleContext expression = parseExpression("\"/a b/\\\"c~d\\\"/\\/\"");
+//    }
+//    @Test
+//    void test() {
+//        final ParserRuleContext expression = parseExpression("1 < 2");
+//    }
+//    @Test
+//    void test() {
+//        final ParserRuleContext expression = parseExpression("1 < 2 or 3 <= 4 or 5 > 6 or 7 >= 8");
+//    }
+//    @Test
+//    void test() {
+//        final ParserRuleContext expression = parseExpression("1 in 1");
+//    }
+//    @Test
+//    void test() {
+//        final ParserRuleContext expression = parseExpression("3 > 1 or (/status_code == 500)");
+//    }
+//    @Test
+//    void test() {
+//        final ParserRuleContext expression = parseExpression("3>1or(/status_code==500)");
+//    }
+//    @Test
+//    void test() {
+//        final ParserRuleContext expression = parseExpression("/ABCDEFGHIJKLMNOPQRSTUVWXYZ/ambcdefghijklmnopqrstuvwxyz/0123456789/_");
+//    }
+//    @Test
+//    void test() {
+//        final ParserRuleContext expression = parseExpression("\"Hello, this \\\"is\\\" a 'complex' ~ string with numbers! 0123\"");
+//    }
+//    @Test
+//    void test() {
+//        final ParserRuleContext expression = parseExpression("\"foo\"=~\"[A-Z]*\"");
+//    }
+//    @Test
+//    void test() {
+//        final ParserRuleContext expression = parseExpression("\"foo\"!~\"[A-Z]*\"");
+//    }
+//    @Test
+//    void test() {
+//        final ParserRuleContext expression = parseExpression("3.14159");
+//    }
+//    @Test
+//    void test() {
+//        final ParserRuleContext expression = parseExpression("\"foo\"=~3.14");
+//    }
 
     @Test
     void testInvalidFloatParsingRules() {
@@ -399,7 +434,11 @@ public class ParserTest {
                     literal,
                     isExpression(isUnaryTree())
             );
-            assertThat("Statement \"" + statement + "\" should have no errors", foundErrorNode, is(false));
+            assertThat(
+                    "Statement \"" + statement + "\" should have no errors",
+                    errorListener.isErrorFound(),
+                    is(false)
+            );
         };
     }
 
@@ -414,18 +453,18 @@ public class ParserTest {
 
 //    @Test
 //    void test() {
-//        setExpression("\"Hello \\\"world\\\", 'this' is a \\\\ string.\"");
+//        final ParserRuleContext expression = parseExpression("\"Hello \\\"world\\\", 'this' is a \\\\ string.\"");
 //    }
 //    @Test
 //    void test() {
-//        setExpression("5==");
+//        final ParserRuleContext expression = parseExpression("5==");
 //    }
 //    @Test
 //    void test() {
-//        setExpression("==");
+//        final ParserRuleContext expression = parseExpression("==");
 //    }
 //    @Test
 //    void test() {
-//        setExpression("not (5 not in [1]) or not \"in\"");
+//        final ParserRuleContext expression = parseExpression("not (5 not in [1]) or not \"in\"");
 //    }
 }

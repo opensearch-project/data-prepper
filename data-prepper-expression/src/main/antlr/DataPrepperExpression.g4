@@ -70,11 +70,11 @@ unaryOperatorExpression
     : primary
     | setInitializer
     | regexPattern
-    | parenthesisExpression
+    | parenthesesExpression
     | unaryNotOperatorExpression
     ;
 
-parenthesisExpression
+parenthesesExpression
     : '(' conditionalExpression ')'
     ;
 

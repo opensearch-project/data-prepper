@@ -17,6 +17,7 @@ import javax.annotation.Nullable;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.core.IsEqual.equalTo;
+import static org.opensearch.dataprepper.expression.util.LiteralMatcher.isUnaryTree;
 import static org.opensearch.dataprepper.expression.util.ParseRuleContextExceptionMatcher.isNotValid;
 import static org.opensearch.dataprepper.expression.util.ParseRuleContextExceptionMatcher.isValid;
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
@@ -79,6 +80,19 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
         return hasContext(DataPrepperExpressionParser.ExpressionContext.class, lhs, isTerminalNode());
     }
 
+    public static DiagnosingMatcher<ParseTree> isUnaryTreeSet(final Integer size) {
+        final DiagnosingMatcher<ParseTree>[] children = new DiagnosingMatcher[2 * size + 1];
+        for (int i = 0; i < children.length; i++) {
+            if (i % 2 == 0) {
+                children[i] = isTerminalNode();
+            }
+            else {
+                children[i] = isUnaryTree();
+            }
+        }
+        return hasContext(DataPrepperExpressionParser.SetInitializerContext.class, children);
+    }
+
     private final DiagnosingMatcher<? extends ParseTree>[] childrenMatchers;
     final Matcher<? extends ParseTree> isParserRuleContextType;
     private final Matcher<Integer> listSizeMatcher;
@@ -137,6 +151,19 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
         }
     }
 
+    private void describeContext(final ParseTree ctx, final Description mismatch) {
+        String context = ctx.getText();
+        ParseTree parent = ctx.getParent();
+
+        while (parent != null) {
+            context = parent.getText() + " -> " + context;
+            parent = parent.getParent();
+        }
+
+        mismatch.appendDescriptionOf(isParserRuleContextType)
+                .appendText("\n\t\t" + context + "\n\t\t");
+    }
+
     /**
      * @since 1.3
      * Asserts ParseTree branch matches assertion and all children match assertions, if any.
@@ -160,8 +187,9 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
             }
         }
         else {
-            mismatch.appendDescriptionOf(isParserRuleContextType)
-                    .appendText("\n\t\tfinally ");
+            if (item instanceof ParseTree) {
+                describeContext((ParseTree) item, mismatch);
+            }
             isParserRuleContextType.describeMismatch(item, mismatch);
             failedAssertion = isParserRuleContextType;
             return false;

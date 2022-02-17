@@ -15,13 +15,14 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.opensearch.dataprepper.expression.util.ContextMatcher.hasContext;
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
 public class LiteralMatcher extends DiagnosingMatcher<ParseTree> {
     private final Matcher<Integer> childCountMatcher = is(1);
     private final Matcher<ParseTree> literalMatcher = isLiteral();
 
-    private static final List<Class<? extends ParseTree>> VALID_RULE_ORDER = Arrays.asList(
+    private static final List<Class<? extends ParseTree>> VALID_LITERAL_RULE_ORDER = Arrays.asList(
             DataPrepperExpressionParser.ExpressionContext.class,
             DataPrepperExpressionParser.ConditionalExpressionContext.class,
             DataPrepperExpressionParser.EqualityOperatorExpressionContext.class,
@@ -42,12 +43,12 @@ public class LiteralMatcher extends DiagnosingMatcher<ParseTree> {
     }
 
     private boolean isValidRuleOrder(final ParseTree current, final ParseTree next) {
-        final int index = VALID_RULE_ORDER.indexOf(current.getClass());
-        if (index < 0 || index >= VALID_RULE_ORDER.size() - 1) {
+        final int index = VALID_LITERAL_RULE_ORDER.indexOf(current.getClass());
+        if (index < 0 || index >= VALID_LITERAL_RULE_ORDER.size() - 1) {
             return false;
         }
         else {
-            return VALID_RULE_ORDER.get(index + 1).isInstance(next);
+            return VALID_LITERAL_RULE_ORDER.get(index + 1).isInstance(next);
         }
     }
 
@@ -60,6 +61,10 @@ public class LiteralMatcher extends DiagnosingMatcher<ParseTree> {
             return isValidRuleOrder(item, child) && matchesParseTree(child, mismatchDescription);
         }
         else {
+            mismatchDescription.appendText("Unexpected terminal node " + item.getText());
+            if (item.getParent() != null) {
+                mismatchDescription.appendText(", child of parent node " + item.getParent().getText());
+            }
             return false;
         }
     }
