@@ -26,8 +26,17 @@ public abstract class SimpleExpressionMatcher extends DiagnosingMatcher<ParseTre
         this.lastNodeClass = validRuleOrder.get(validRuleOrder.size() - 1);
     }
 
+    private int getRuleIndex(final ParseTree item) {
+        for (int x = 0; x < validRuleOrder.size(); x++) {
+            if (validRuleOrder.get(x).isInstance(item)) {
+                return x;
+            }
+        }
+        return -1;
+    }
+
     private boolean isValidRuleOrder(final ParseTree current, final ParseTree next, final Description mismatchDescription) {
-        final int index = validRuleOrder.indexOf(current.getClass());
+        final int index = getRuleIndex(current);
         if (index < 0 || index >= validRuleOrder.size() - 1) {
             mismatchDescription.appendText(current.getClass() + " is not a valid context ");
             return false;

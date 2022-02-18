@@ -77,7 +77,7 @@ public class ContextMatcherTest {
     void testIsUnaryTreeSet() {
         final ParseTree parseTree = mock(DataPrepperExpressionParser.SetInitializerContext.class, "Parse Tree");
         final ParseTree terminal = mock(TerminalNode.class, "Terminal Node");
-        final ParseTree literal = mock(DataPrepperExpressionParser.LiteralContext.class, "Literal Node");
+        final ParseTree literal = mock(DataPrepperExpressionParser.LiteralContext.class, "LiteralNode");
         doReturn(7)
                 .when(parseTree)
                 .getChildCount();

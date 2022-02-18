@@ -20,6 +20,7 @@ import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isT
 public class LiteralMatcher extends SimpleExpressionMatcher {
     private final Matcher<ParseTree> literalMatcher = isLiteral();
 
+    //region valid rule order
     private static final List<Class<? extends ParseTree>> VALID_LITERAL_RULE_ORDER = Arrays.asList(
             DataPrepperExpressionParser.ExpressionContext.class,
             DataPrepperExpressionParser.ConditionalExpressionContext.class,
@@ -31,6 +32,7 @@ public class LiteralMatcher extends SimpleExpressionMatcher {
             DataPrepperExpressionParser.PrimaryContext.class,
             DataPrepperExpressionParser.LiteralContext.class
     );
+    //endregion
 
     protected LiteralMatcher(final List<Class<? extends ParseTree>> validRuleOrder) {
         super(validRuleOrder);
