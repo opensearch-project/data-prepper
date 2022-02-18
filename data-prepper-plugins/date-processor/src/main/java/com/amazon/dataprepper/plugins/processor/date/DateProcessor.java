@@ -42,7 +42,7 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private final Counter dateProcessingMatchFailureCounter;
 
     @DataPrepperPluginConstructor
-    protected DateProcessor(PluginMetrics pluginMetrics, final DateProcessorConfig dateProcessorConfig) {
+    public DateProcessor(PluginMetrics pluginMetrics, final DateProcessorConfig dateProcessorConfig) {
         super(pluginMetrics);
         this.dateProcessorConfig = dateProcessorConfig;
 
