@@ -24,6 +24,14 @@ public class DateProcessorConfig {
         @JsonProperty("patterns")
         private List<String> patterns;
 
+        public DateMatch() {
+        }
+
+        public DateMatch(String key, List<String> patterns) {
+            this.key = key;
+            this.patterns = patterns;
+        }
+
         public String getKey() {
             return key;
         }
