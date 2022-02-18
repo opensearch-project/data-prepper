@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.logstash.mapping;
 
-import org.opensearch.dataprepper.logstash.exception.LogstashConfigurationException;
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 
 import java.util.Collections;
@@ -31,16 +30,14 @@ class OpenSearchPluginAttributesMapper extends AbstractLogstashPluginAttributesM
     @Override
     protected void mapCustomAttributes(final List<LogstashAttribute> logstashAttributes, final LogstashAttributesMappings logstashAttributesMappings, final Map<String, Object> pluginSettings) {
 
-        final LogstashAttribute logstashIndexAttribute = logstashAttributes.stream()
+        logstashAttributes.stream()
                 .filter(a -> a.getAttributeName().equals(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME))
+                .map(logstashIndexAttribute -> findAndMatchDateTimePattern(logstashIndexAttribute))
                 .findFirst()
-                .orElseThrow(() -> new LogstashConfigurationException("Index attribute not found"));
-
-        final String convertedIndexPatternValue = findAndMatchDateTimePattern(logstashIndexAttribute);
-
-        pluginSettings.put(logstashAttributesMappings.getMappedAttributeNames().get(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME),
-                convertedIndexPatternValue);
-
+                .ifPresent(convertedIndexAttributeValue -> {
+                    pluginSettings.put(logstashAttributesMappings.getMappedAttributeNames().get(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME),
+                            convertedIndexAttributeValue);
+                });
     }
 
     @Override
