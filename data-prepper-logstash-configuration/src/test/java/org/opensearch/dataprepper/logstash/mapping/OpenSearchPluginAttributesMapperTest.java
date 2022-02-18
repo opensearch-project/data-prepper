@@ -39,13 +39,20 @@ class OpenSearchPluginAttributesMapperTest {
     @Test
     void convert_missing_indexAttribute_to_return_empty_pluginSettings() {
 
-        final LogstashAttribute logstashAttribute = mock(LogstashAttribute.class);
-        final LogstashAttributeValue logstashAttributeValue = mock(LogstashAttributeValue.class);
+        final LogstashAttributesMappings logstashAttributesMappings = mock(LogstashAttributesMappings.class);
+        when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.emptyMap());
 
-        when(logstashAttribute.getAttributeName()).thenReturn("");
-        when(logstashAttribute.getAttributeValue()).thenReturn(logstashAttributeValue);
-        when(logstashAttributeValue.getAttributeValueType()).thenReturn(LogstashValueType.STRING);
-        when(logstashAttributeValue.getValue()).thenReturn("");
+        final Map<String, Object> pluginSettings = createObjectUnderTest()
+                .mapAttributes(Collections.emptyList(), logstashAttributesMappings);
+
+        assertThat(pluginSettings.size(), equalTo(0));
+        assertThat(pluginSettings, not(hasKey(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE)));
+    }
+
+    @Test
+    void convert_emptyString_indexAttribute_to_return_pluginSettings_with_no_index_key() {
+
+        final LogstashAttribute logstashAttribute = createLogstashIndexAttribute("");
 
         final LogstashAttributesMappings logstashAttributesMappings = mock(LogstashAttributesMappings.class);
         when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.emptyMap());
@@ -53,7 +60,7 @@ class OpenSearchPluginAttributesMapperTest {
         final Map<String, Object> pluginSettings = createObjectUnderTest()
                 .mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings);
 
-        assertThat(pluginSettings.size(), equalTo(0));
+        assertThat(pluginSettings.size(), equalTo(1));
         assertThat(pluginSettings, not(hasKey(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE)));
     }
 
