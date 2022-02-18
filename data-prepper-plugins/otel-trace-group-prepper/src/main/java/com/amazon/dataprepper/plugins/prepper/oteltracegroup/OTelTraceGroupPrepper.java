@@ -17,7 +17,6 @@ import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
-import com.amazon.dataprepper.model.trace.JacksonSpan;
 import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.model.trace.TraceGroupFields;
 import com.amazon.dataprepper.plugins.prepper.oteltracegroup.model.TraceGroup;
