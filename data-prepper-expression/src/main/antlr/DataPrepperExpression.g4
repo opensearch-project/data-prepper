@@ -35,7 +35,7 @@ equalityOperator
     ;
 
 regexOperatorExpression
-    : regexOperatorExpression regexEqualityOperator regexPattern
+    : regexPattern regexEqualityOperator regexPattern
     | relationalOperatorExpression
     ;
 
@@ -70,11 +70,11 @@ unaryOperatorExpression
     : primary
     | setInitializer
     | regexPattern
-    | parenthesisExpression
+    | parenthesesExpression
     | unaryNotOperatorExpression
     ;
 
-parenthesisExpression
+parenthesesExpression
     : '(' conditionalExpression ')'
     ;
 
@@ -88,7 +88,7 @@ setInitializer
     ;
 
 unaryNotOperatorExpression
-    : unaryOperator primary
+    : unaryOperator conditionalExpression
     ;
 
 unaryOperator
