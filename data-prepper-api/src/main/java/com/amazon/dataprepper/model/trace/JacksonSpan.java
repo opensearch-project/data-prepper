@@ -28,8 +28,6 @@ import static com.google.common.base.Preconditions.checkState;
  */
 public class JacksonSpan extends JacksonEvent implements Span {
 
-    public static final String TRACE_GROUP_KEY = "traceGroup";
-    public static final String TRACE_GROUP_FIELDS_KEY = "traceGroupFields";
     private static final String TRACE_ID_KEY = "traceId";
     private static final String SPAN_ID_KEY = "spanId";
     private static final String TRACE_STATE_KEY = "traceState";
@@ -45,7 +43,9 @@ public class JacksonSpan extends JacksonEvent implements Span {
     private static final String LINKS_KEY = "links";
     private static final String DROPPED_LINKS_COUNT_KEY = "droppedLinksCount";
     private static final String SERVICE_NAME_KEY = "serviceName";
+    private static final String TRACE_GROUP_KEY = "traceGroup";
     private static final String DURATION_IN_NANOS_KEY = "durationInNanos";
+    private static final String TRACE_GROUP_FIELDS_KEY = "traceGroupFields";
 
     private static final List<String> REQUIRED_KEYS = Arrays.asList(TRACE_GROUP_KEY);
     private static final List<String>
@@ -148,6 +148,16 @@ public class JacksonSpan extends JacksonEvent implements Span {
     @Override
     public String getServiceName() {
         return this.get(SERVICE_NAME_KEY, String.class);
+    }
+
+    @Override
+    public void setTraceGroup(final String traceGroup) {
+        this.put(TRACE_GROUP_KEY, traceGroup);
+    }
+
+    @Override
+    public void setTraceGroupFields(final TraceGroupFields traceGroupFields) {
+        this.put(TRACE_GROUP_FIELDS_KEY, traceGroupFields);
     }
 
     private void checkAndSetDefaultValues() {

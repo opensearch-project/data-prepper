@@ -124,8 +124,8 @@ public class OTelTraceGroupPrepper extends AbstractPrepper<Record<Span>, Record<
     }
 
     private void fillInTraceGroupInfo(final Span span, final TraceGroup traceGroup) {
-        span.put(JacksonSpan.TRACE_GROUP_KEY, traceGroup.getTraceGroup());
-        span.put(JacksonSpan.TRACE_GROUP_FIELDS_KEY, traceGroup.getTraceGroupFields());
+        span.setTraceGroup(traceGroup.getTraceGroup());
+        span.setTraceGroupFields(traceGroup.getTraceGroupFields());
     }
 
     private Map<String, TraceGroup> searchTraceGroupByTraceIds(final Collection<String> traceIds) {

@@ -139,4 +139,8 @@ public interface Span extends Event {
      * @since 1.3
      */
     String getServiceName();
+
+    void setTraceGroup(String traceGroup);
+
+    void setTraceGroupFields(TraceGroupFields traceGroupFields);
 }
