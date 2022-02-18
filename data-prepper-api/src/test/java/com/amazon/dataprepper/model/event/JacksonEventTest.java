@@ -177,6 +177,11 @@ public class JacksonEventTest {
     }
 
     @Test
+    public void testGetList_Missing() {
+        assertThat(event.getList("missingKey", Object.class), is(nullValue()));
+    }
+
+    @Test
     public void testGet_withEmptyEvent() {
         final String key = "foo/bar";
 
