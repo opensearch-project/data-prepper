@@ -43,6 +43,20 @@ import static org.hamcrest.core.IsEqual.equalTo;
  * </p>
  */
 public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
+    public static void describeContextTo(final ParseTree ctx, final Description mismatch) {
+        if (ctx != null) {
+            final StringBuilder context = new StringBuilder(ctx.getText());
+            ParseTree parent = ctx.getParent();
+
+            while (parent != null) {
+                context.insert(0, parent.getText() + " -> ");
+                parent = parent.getParent();
+            }
+
+            mismatch.appendText("\n\t\t" + context + "\n\t\t");
+        }
+    }
+
     /**
      * @since 1.3
      * <p>Shortcut for constructor matching Hamcrest standard.</p>
