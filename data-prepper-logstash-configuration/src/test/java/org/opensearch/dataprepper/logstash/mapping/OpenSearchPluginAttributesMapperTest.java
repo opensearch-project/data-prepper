@@ -100,14 +100,14 @@ class OpenSearchPluginAttributesMapperTest {
         }
     }
 
-    private LogstashAttribute createLogstashIndexAttribute(final String index) {
+    private LogstashAttribute createLogstashIndexAttribute(final String indexAttributeValue) {
         final LogstashAttribute logstashAttribute = mock(LogstashAttribute.class);
         final LogstashAttributeValue logstashAttributeValue = mock(LogstashAttributeValue.class);
 
         when(logstashAttribute.getAttributeName()).thenReturn(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME);
         when(logstashAttribute.getAttributeValue()).thenReturn(logstashAttributeValue);
         when(logstashAttributeValue.getAttributeValueType()).thenReturn(LogstashValueType.STRING);
-        when(logstashAttributeValue.getValue()).thenReturn(index);
+        when(logstashAttributeValue.getValue()).thenReturn(indexAttributeValue);
 
         return logstashAttribute;
     }
