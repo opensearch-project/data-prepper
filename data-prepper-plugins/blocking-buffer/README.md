@@ -14,7 +14,7 @@ buffer:
 - buffer_size => An `int` representing max number of unchecked records the buffer accepts (num of unchecked records = num of records written into the buffer + num of in-flight records not yet checked by the Checkpointing API). Default is `512`.
 - batch_size => An `int` representing max number of records the buffer returns on read. Default is `8`.
 
-##Metrics
+## Metrics
 This plugin inherits the common metrics defined in [AbstractBuffer](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/buffer/AbstractBuffer.java)
 
 ## Developer Guide
