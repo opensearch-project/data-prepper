@@ -140,7 +140,17 @@ public interface Span extends Event {
      */
     String getServiceName();
 
+    /**
+     * Sets the trace group's name for this span.
+     * @param traceGroup trace group's name
+     * @since 1.3
+     */
     void setTraceGroup(String traceGroup);
 
+    /**
+     * Sets the {@link com.amazon.dataprepper.model.trace.TraceGroupFields} for this span.
+     * @param traceGroupFields trace group related fields
+     * @since 1.3
+     */
     void setTraceGroupFields(TraceGroupFields traceGroupFields);
 }
