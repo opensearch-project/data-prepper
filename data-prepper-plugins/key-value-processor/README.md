@@ -28,7 +28,7 @@ When run, the processor will parse the message into the following output:
 {"message": "key1=value&key2=value2", "parsed_message": {"key1": "value1", "key2": "value2"}}
 ```
 
-##Configuration
+## Configuration
 * `source` - The field in the message that will be parsed. 
   * Default: `message`
 * `destination` - The field the parsed source will be output to. This will overwrite any preexisting data for that key.
@@ -62,4 +62,4 @@ When run, the processor will parse the message into the following output:
 ## Developer Guide
 This plugin is compatible with Java 14. See
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
-- [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/readme/monitoring.md)
+- [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)
