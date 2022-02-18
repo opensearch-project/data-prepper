@@ -20,21 +20,21 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 
 public class GrammarLexerTest {
 
-    private List<? extends Token> getTokens(final String statement) {
-        final Lexer lexer = new DataPrepperExpressionLexer(CharStreams.fromString(statement));
+    private List<? extends Token> getTokens(final String expression) {
+        final Lexer lexer = new DataPrepperExpressionLexer(CharStreams.fromString(expression));
         final CommonTokenStream tokenStream = new CommonTokenStream(lexer);
         tokenStream.fill();
         return tokenStream.getTokens();
     }
 
-    private void assertToken(final String statement, final int type) {
-        final List<? extends Token> tokens = getTokens(statement);
+    private void assertToken(final String expression, final int type) {
+        final List<? extends Token> tokens = getTokens(expression);
 
         assertThat(tokens.size(), is(2));
 
         assertAll(
                 () -> assertThat(tokens.get(0).getType(), is(type)),
-                () -> assertThat(tokens.get(0).getText(), is(statement)),
+                () -> assertThat(tokens.get(0).getText(), is(expression)),
                 () -> assertThat(tokens.get(1).getType(), is(DataPrepperExpressionLexer.EOF))
         );
     }
@@ -166,8 +166,8 @@ public class GrammarLexerTest {
 
     @Test
     void testSpaceInsignificant() {
-        final String statement = " ";
-        final List<? extends Token> tokens = getTokens(statement);
+        final String expression = " ";
+        final List<? extends Token> tokens = getTokens(expression);
 
         assertThat(tokens.size(), is(1));
         assertAll(

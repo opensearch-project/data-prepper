@@ -15,10 +15,11 @@ import org.hamcrest.TypeSafeMatcher;
 import static org.hamcrest.CoreMatchers.not;
 
 public class ParseRuleContextExceptionMatcher extends TypeSafeMatcher<ParserRuleContext> {
-    public static Matcher<ParserRuleContext> isValid() {
-        return new ParseRuleContextExceptionMatcher();
-    }
 
+    /**
+     * Creates a matcher to assert errors are present in a ParserRuleContext node
+     * @return Matcher
+     */
     public static Matcher<ParserRuleContext> isNotValid() {
         return not(new ParseRuleContextExceptionMatcher());
     }

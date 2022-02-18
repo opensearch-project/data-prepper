@@ -18,7 +18,7 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcher.hasConte
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
 public class LiteralMatcher extends SimpleExpressionMatcher {
-    private final Matcher<ParseTree> literalMatcher = isLiteral();
+    private final Matcher<ParseTree> literalMatcher = hasContext(DataPrepperExpressionParser.LiteralContext.class, isTerminalNode());
 
     //region valid rule order
     private static final List<Class<? extends ParseTree>> VALID_LITERAL_RULE_ORDER = Arrays.asList(
@@ -38,10 +38,12 @@ public class LiteralMatcher extends SimpleExpressionMatcher {
         super(validRuleOrder);
     }
 
-    public static DiagnosingMatcher<ParseTree> isLiteral() {
-        return hasContext(DataPrepperExpressionParser.LiteralContext.class, isTerminalNode());
-    }
-
+    /**
+     * Creates a matcher to check if a nodes is a unary tree with all nodes in a valid order that ends in a terminal node
+     * @return DiagnosingMatcher
+     *
+     * @see TerminalNodeMatcher#isTerminalNode()
+     */
     public static DiagnosingMatcher<ParseTree> isUnaryTree() {
         return new LiteralMatcher(VALID_LITERAL_RULE_ORDER);
     }

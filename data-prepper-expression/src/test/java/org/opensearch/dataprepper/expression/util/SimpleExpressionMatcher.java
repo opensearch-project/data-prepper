@@ -15,7 +15,10 @@ import java.util.List;
 import static org.hamcrest.CoreMatchers.is;
 import static org.opensearch.dataprepper.expression.util.ContextMatcher.describeContextTo;
 
-public abstract class SimpleExpressionMatcher extends DiagnosingMatcher<ParseTree> {
+/**
+ * Base class for Matcher that asserts a unary tree ending in a node that matches {@link SimpleExpressionMatcher#lastNodeClass}
+ */
+abstract class SimpleExpressionMatcher extends DiagnosingMatcher<ParseTree> {
     private static final Matcher<Integer> childCountMatcher = is(1);
 
     protected final List<Class<? extends ParseTree>> validRuleOrder;
@@ -53,6 +56,13 @@ public abstract class SimpleExpressionMatcher extends DiagnosingMatcher<ParseTre
         }
     }
 
+    /**
+     * Called when {@link SimpleExpressionMatcher#matchesParseTree(ParseTree, Description)} finds a node matching
+     * {@link SimpleExpressionMatcher#lastNodeClass}
+     * @param item matching node
+     * @param mismatchDescription description to append failed assertion context.
+     * @return if this matcher matches
+     */
     protected abstract boolean baseCase(final ParseTree item, final Description mismatchDescription);
 
     private boolean matchesParseTree(final ParseTree item, final Description mismatch) {

@@ -17,6 +17,9 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionBaseList
 
 import java.util.BitSet;
 
+/**
+ * ErrorListener implements all ANTLR listeners to track if any error event occurred during any phase of parsing
+ */
 public class ErrorListener extends DataPrepperExpressionBaseListener implements ANTLRErrorListener {
     private boolean errorFound = false;
     private boolean warningFound = false;

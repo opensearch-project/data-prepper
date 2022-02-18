@@ -34,7 +34,6 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.i
 import static org.opensearch.dataprepper.expression.util.JsonPointerMatcher.isJsonPointerUnaryTree;
 import static org.opensearch.dataprepper.expression.util.LiteralMatcher.isUnaryTree;
 import static org.opensearch.dataprepper.expression.util.ParenthesesExpressionMatcher.isParenthesesExpression;
-import static org.opensearch.dataprepper.expression.util.ParseRuleContextExceptionMatcher.isNotValid;
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
 public class ParserTest {
@@ -91,11 +90,11 @@ public class ParserTest {
         return context;
     }
 
-    private Executable assertThatHasParseError(final String statement) {
+    private Executable assertThatHasParseError(final String expression) {
         return () -> {
-            parseExpression(statement);
+            parseExpression(expression);
             assertThat(
-                    "\"" + statement + "\" should have parsing errors",
+                    "\"" + expression + "\" should have parsing errors",
                     errorListener.isErrorFound(),
                     is(true)
             );
@@ -117,9 +116,8 @@ public class ParserTest {
 
     @Test
     void testGivenOperandIsNotStringWhenEvaluateThenErrorPresent() {
-        final ParserRuleContext expression = parseExpression("(true) =~ \"Hello?\"");
+        parseExpression("(true) =~ \"Hello?\"");
 
-        assertThat(expression, isNotValid());
         assertThat(errorListener.isErrorFound(), is(true));
     }
 
@@ -509,16 +507,16 @@ public class ParserTest {
         );
     }
 
-    private Executable assertThatIsValidLiteral(final String statement) {
+    private Executable assertThatIsValidLiteral(final String expression) {
         return () -> {
-            final ParserRuleContext literal = parseExpression(statement);
+            final ParserRuleContext literal = parseExpression(expression);
             assertThat(
-                    "\"" + statement + "\" should be valid expression with unary tree child and <EOF> symbol",
+                    "\"" + expression + "\" should be valid expression with unary tree child and <EOF> symbol",
                     literal,
                     isExpression(isUnaryTree())
             );
             assertThat(
-                    "Statement \"" + statement + "\" should have no errors",
+                    "Expression \"" + expression + "\" should have no errors",
                     errorListener.isErrorFound(),
                     is(false)
             );

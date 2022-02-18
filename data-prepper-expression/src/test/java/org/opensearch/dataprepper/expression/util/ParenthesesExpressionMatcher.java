@@ -32,6 +32,13 @@ public class ParenthesesExpressionMatcher extends SimpleExpressionMatcher {
             DataPrepperExpressionParser.ParenthesesExpressionContext.class
     );
 
+    /**
+     * creates a matcher that asserts starting from a given ParseTree down only one child is present and each child is in a valid order
+     * until a {@link DataPrepperExpressionParser.ParenthesesExpressionContext} node is found. Then asserts the node has 3 children. Outer
+     * children must be terminal nodes and <b>childMatcher</b> matches middle child.
+     * @param childMatcher matcher for ParenthesesExpressionContext middle child node
+     * @return DiagnosingMatcher
+     */
     public static DiagnosingMatcher<ParseTree> isParenthesesExpression(final DiagnosingMatcher<? extends ParseTree> childMatcher) {
         return new ParenthesesExpressionMatcher(VALID_PARENTHESES_RULE_ORDER, childMatcher);
     }

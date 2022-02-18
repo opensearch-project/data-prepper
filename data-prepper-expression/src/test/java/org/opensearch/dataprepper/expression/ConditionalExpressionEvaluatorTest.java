@@ -18,12 +18,12 @@ class ConditionalExpressionEvaluatorTest {
     @Mock
     private Evaluator<ParseTree, Event> evaluator;
     @InjectMocks
-    private ConditionalExpressionEvaluator statementEvaluator;
+    private ConditionalExpressionEvaluator expressionEvaluator;
 
     @Test
     void testThrowsNotImplementedException() {
         assertThrows(
                 RuntimeException.class,
-                () -> statementEvaluator.evaluate(null, null));
+                () -> expressionEvaluator.evaluate(null, null));
     }
 }

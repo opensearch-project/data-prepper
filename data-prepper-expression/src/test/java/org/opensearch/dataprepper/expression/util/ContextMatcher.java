@@ -19,7 +19,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.opensearch.dataprepper.expression.util.LiteralMatcher.isUnaryTree;
 import static org.opensearch.dataprepper.expression.util.ParseRuleContextExceptionMatcher.isNotValid;
-import static org.opensearch.dataprepper.expression.util.ParseRuleContextExceptionMatcher.isValid;
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
 /**
@@ -140,8 +139,8 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
      * </pre>
      * </p>
      *
-     * @param size
-     * @return
+     * @param size number of items expected in set
+     * @return DiagnosingMatcher
      */
     public static DiagnosingMatcher<ParseTree> isUnaryTreeSet(final Integer size) {
         final DiagnosingMatcher<ParseTree>[] children = new DiagnosingMatcher[2 * size + 1];
@@ -226,7 +225,6 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
     public boolean matches(final Object item, final Description mismatch) {
         if (isParserRuleContextType.matches(item)) {
             final ParseTree ctx = (ParseTree) item;
-            final boolean matches = isValid().matches(ctx);
             if (hasExceptionMatcher.matches(ctx)) {
                 mismatch.appendDescriptionOf(hasExceptionMatcher)
                                 .appendText(" ");

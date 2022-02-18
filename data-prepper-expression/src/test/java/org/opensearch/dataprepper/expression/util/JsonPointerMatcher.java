@@ -22,10 +22,17 @@ public class JsonPointerMatcher extends SimpleExpressionMatcher {
     private static final Matcher<Integer> childCountMatcher = is(1);
     private static final Matcher<ParseTree> terminalNodeMatcher = isTerminalNode();
 
+    /**
+     * Creates a matcher to check if a nodes is a unary tree with all nodes in a valid order that ends in a json pointer
+     * @return DiagnosingMatcher
+     *
+     * @see TerminalNodeMatcher#isTerminalNode()
+     */
     public static DiagnosingMatcher<ParseTree> isJsonPointerUnaryTree() {
         return new JsonPointerMatcher(VALID_JSON_POINTER_RULE_ORDER);
     }
 
+    //region valid rule order
     private static final List<Class<? extends ParseTree>> VALID_JSON_POINTER_RULE_ORDER = Arrays.asList(
             DataPrepperExpressionParser.ExpressionContext.class,
             DataPrepperExpressionParser.ConditionalExpressionContext.class,
@@ -37,6 +44,7 @@ public class JsonPointerMatcher extends SimpleExpressionMatcher {
             DataPrepperExpressionParser.PrimaryContext.class,
             DataPrepperExpressionParser.JsonPointerContext.class
     );
+    //endregion
 
     private JsonPointerMatcher(final List<Class<? extends ParseTree>> validRuleOrder) {
         super(validRuleOrder);
