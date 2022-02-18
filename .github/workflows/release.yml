@@ -14,9 +14,11 @@ jobs:
         java-version: 14
     - name: Checkout Data-Prepper
       uses: actions/checkout@v2
-    - name: Build
+    - name: Build Jar Files
       run: ./gradlew build
-    - name: Archives
-      run: ./gradlew :release:archives:linux:linuxTar -Prelease
-    - name: Docker
+    - name: Build Archives
+      run: ./gradlew :release:archives:buildArchives -Prelease
+    - name: Build Docker Image
       run: ./gradlew :release:docker:docker -Prelease
+    - name: Build Maven Artifacts
+      run: ./gradlew publish
