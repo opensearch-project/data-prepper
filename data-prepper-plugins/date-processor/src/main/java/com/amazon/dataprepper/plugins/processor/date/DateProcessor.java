@@ -12,12 +12,12 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.processor.AbstractProcessor;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
+import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -29,17 +29,25 @@ import java.util.stream.Collectors;
 @DataPrepperPlugin(name = "date", pluginType = Processor.class, pluginConfigurationType = DateProcessorConfig.class)
 public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(DateProcessor.class);
-    private static final ZoneId OUTPUT_TIMEZONE = ZoneId.systemDefault();
     private static final String OUTPUT_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
+
+    static final String DATE_PROCESSING_MATCH_SUCCESS = "dateProcessingMatchSuccess";
+    static final String DATE_PROCESSING_MATCH_FAILURE = "dateProcessingMatchFailure";
 
     private String keyToParse;
     private List<DateTimeFormatter> dateTimeFormatters;
     private final DateProcessorConfig dateProcessorConfig;
 
+    private final Counter dateProcessingMatchSuccessCounter;
+    private final Counter dateProcessingMatchFailureCounter;
+
     @DataPrepperPluginConstructor
     protected DateProcessor(PluginMetrics pluginMetrics, final DateProcessorConfig dateProcessorConfig) {
         super(pluginMetrics);
         this.dateProcessorConfig = dateProcessorConfig;
+
+        dateProcessingMatchSuccessCounter = pluginMetrics.counter(DATE_PROCESSING_MATCH_SUCCESS);
+        dateProcessingMatchFailureCounter = pluginMetrics.counter(DATE_PROCESSING_MATCH_FAILURE);
 
         if (dateProcessorConfig.getMatch() != null)
             extractKeyAndFormatters();
@@ -53,13 +61,22 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
             if (Boolean.TRUE.equals(dateProcessorConfig.getFromTimeReceived()))
                 zonedDateTime =  getDateTimeFromTimeReceived(record);
 
-            else if (keyToParse != null && !keyToParse.isEmpty())
+            else if (keyToParse != null && !keyToParse.isEmpty()) {
                 zonedDateTime = getDateTimeFromMatch(record);
+                populateDateProcessorMetrics(zonedDateTime);
+            }
 
             if (zonedDateTime != null)
                 record.getData().put(dateProcessorConfig.getDestination(), zonedDateTime);
         }
         return records;
+    }
+
+    private void populateDateProcessorMetrics(final String zonedDateTime) {
+        if (zonedDateTime != null)
+            dateProcessingMatchSuccessCounter.increment();
+        else
+            dateProcessingMatchFailureCounter.increment();
     }
 
     private void extractKeyAndFormatters() {
@@ -70,7 +87,7 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
     }
 
     private DateTimeFormatter getSourceFormatter(final String pattern) {
-        final LocalDate localDateForDefaultValues = LocalDate.now(dateProcessorConfig.getZonedId());
+        final LocalDate localDateForDefaultValues = LocalDate.now(dateProcessorConfig.getSourceZoneId());
 
         return new DateTimeFormatterBuilder()
                 .appendPattern(pattern)
@@ -81,16 +98,16 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
                 .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
                 .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)
                 .toFormatter(dateProcessorConfig.getSourceLocale())
-                .withZone(dateProcessorConfig.getZonedId());
+                .withZone(dateProcessorConfig.getSourceZoneId());
     }
 
     private String getDateTimeFromTimeReceived(final Record<Event> record) {
         final Instant timeReceived = record.getData().getMetadata().getTimeReceived();
-        return timeReceived.atZone(OUTPUT_TIMEZONE).format(getOutputFormatter());
+        return timeReceived.atZone(dateProcessorConfig.getDestinationZoneId()).format(getOutputFormatter());
     }
 
     private String getDateTimeFromMatch(final Record<Event> record) {
-        String sourceTimestamp = getSourceTimestamp(record);
+        final String sourceTimestamp = getSourceTimestamp(record);
         if (sourceTimestamp == null)
             return null;
 
@@ -109,7 +126,7 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private String getFormattedDateTimeString(final String sourceTimestamp) {
         for (DateTimeFormatter formatter : dateTimeFormatters) {
             try {
-                return ZonedDateTime.parse(sourceTimestamp, formatter).format(getOutputFormatter().withZone(OUTPUT_TIMEZONE));
+                return ZonedDateTime.parse(sourceTimestamp, formatter).format(getOutputFormatter().withZone(dateProcessorConfig.getDestinationZoneId()));
             } catch (Exception ignored) {
 
             }
