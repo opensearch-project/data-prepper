@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.expression.util;
 
-import org.antlr.v4.runtime.InputMismatchException;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.RuleContext;
@@ -38,18 +37,15 @@ public class ParseRuleContextExceptionMatcher extends TypeSafeMatcher<ParserRule
         }
         else {
             description.appendText("invalid, exception found: " + exception);
-            if (exception instanceof InputMismatchException) {
-                final InputMismatchException mismatch = (InputMismatchException)exception;
-                RuleContext ctx = mismatch.getCtx();
+            RuleContext ruleContext = exception.getCtx();
 
-                if (mismatch.getOffendingToken() != null) {
-                    description.appendText("\noffending token type = " + mismatch.getOffendingToken().getType());
-                }
+            if (exception.getOffendingToken() != null) {
+                description.appendText("\noffending token type = " + exception.getOffendingToken().getType());
+            }
 
-                while (ctx != null) {
-                    description.appendText("\nin rule type " + ctx.getClass());
-                    ctx = ctx.getParent();
-                }
+            while (ruleContext != null) {
+                description.appendText("\nin rule type " + ruleContext.getClass());
+                ruleContext = ruleContext.getParent();
             }
         }
     }
