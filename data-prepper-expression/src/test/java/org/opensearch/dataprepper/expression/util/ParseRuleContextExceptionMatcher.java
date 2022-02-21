@@ -7,12 +7,11 @@ package org.opensearch.dataprepper.expression.util;
 
 import org.antlr.v4.runtime.InputMismatchException;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.RuleContext;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeMatcher;
-
-import static org.hamcrest.CoreMatchers.not;
 
 public class ParseRuleContextExceptionMatcher extends TypeSafeMatcher<ParserRuleContext> {
 
@@ -21,15 +20,15 @@ public class ParseRuleContextExceptionMatcher extends TypeSafeMatcher<ParserRule
      * @return Matcher
      */
     public static Matcher<ParserRuleContext> isNotValid() {
-        return not(new ParseRuleContextExceptionMatcher());
+        return new ParseRuleContextExceptionMatcher();
     }
 
-    private Exception exception;
+    private RecognitionException exception;
 
     @Override
     protected boolean matchesSafely(final ParserRuleContext item) {
         exception = item.exception;
-        return exception == null;
+        return exception != null;
     }
 
     @Override
