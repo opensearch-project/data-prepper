@@ -61,33 +61,19 @@ public class OTelTraceRawPrepperTest {
     private static final String TEST_TRACE_GROUP_2_CHILD_SPAN_1_JSON_FILE = "trace-group-2-child-span-1.json";
     private static final String TEST_TRACE_GROUP_2_CHILD_SPAN_2_JSON_FILE = "trace-group-2-child-span-2.json";
 
-    private static final Span TEST_TRACE_GROUP_1_ROOT_SPAN = buildSpanFromJsonFile(TEST_TRACE_GROUP_1_ROOT_SPAN_JSON_FILE);
-    private static final Span TEST_TRACE_GROUP_1_CHILD_SPAN_1 = buildSpanFromJsonFile(TEST_TRACE_GROUP_1_CHILD_SPAN_1_JSON_FILE);
-    private static final Span TEST_TRACE_GROUP_1_CHILD_SPAN_2 = buildSpanFromJsonFile(TEST_TRACE_GROUP_1_CHILD_SPAN_2_JSON_FILE);
-    private static final Span TEST_TRACE_GROUP_2_ROOT_SPAN = buildSpanFromJsonFile(TEST_TRACE_GROUP_2_ROOT_SPAN_JSON_FILE);
-    private static final Span TEST_TRACE_GROUP_2_CHILD_SPAN_1 = buildSpanFromJsonFile(TEST_TRACE_GROUP_2_CHILD_SPAN_1_JSON_FILE);
-    private static final Span TEST_TRACE_GROUP_2_CHILD_SPAN_2 = buildSpanFromJsonFile(TEST_TRACE_GROUP_2_CHILD_SPAN_2_JSON_FILE);
+    private Span TEST_TRACE_GROUP_1_ROOT_SPAN;
+    private Span TEST_TRACE_GROUP_1_CHILD_SPAN_1;
+    private Span TEST_TRACE_GROUP_1_CHILD_SPAN_2;
+    private Span TEST_TRACE_GROUP_2_ROOT_SPAN;
+    private Span TEST_TRACE_GROUP_2_CHILD_SPAN_1;
+    private Span TEST_TRACE_GROUP_2_CHILD_SPAN_2;
 
-    private static final List<Record<Span>> TEST_ONE_FULL_TRACE_GROUP_RECORDS = Stream.of(
-            TEST_TRACE_GROUP_1_ROOT_SPAN, TEST_TRACE_GROUP_1_CHILD_SPAN_1, TEST_TRACE_GROUP_1_CHILD_SPAN_2)
-            .map(Record::new).collect(Collectors.toList());
-    private static final List<Record<Span>> TEST_ONE_TRACE_GROUP_MISSING_ROOT_RECORDS = Stream.of(
-                    TEST_TRACE_GROUP_2_CHILD_SPAN_1, TEST_TRACE_GROUP_2_CHILD_SPAN_2)
-            .map(Record::new).collect(Collectors.toList());
-    private static final List<Record<Span>> TEST_TWO_FULL_TRACE_GROUP_RECORDS = Stream.of(
-                    TEST_TRACE_GROUP_1_ROOT_SPAN, TEST_TRACE_GROUP_1_CHILD_SPAN_1, TEST_TRACE_GROUP_1_CHILD_SPAN_2,
-                    TEST_TRACE_GROUP_2_ROOT_SPAN, TEST_TRACE_GROUP_2_CHILD_SPAN_1, TEST_TRACE_GROUP_2_CHILD_SPAN_2)
-            .map(Record::new).collect(Collectors.toList());
-    private static final List<Record<Span>> TEST_TWO_TRACE_GROUP_INTERLEAVED_PART_1_RECORDS = Stream.of(
-                    TEST_TRACE_GROUP_1_ROOT_SPAN, TEST_TRACE_GROUP_2_CHILD_SPAN_1, TEST_TRACE_GROUP_2_CHILD_SPAN_2)
-            .map(Record::new).collect(Collectors.toList());
-    private static final List<Record<Span>> TEST_TWO_TRACE_GROUP_INTERLEAVED_PART_2_RECORDS = Stream.of(
-                    TEST_TRACE_GROUP_2_ROOT_SPAN, TEST_TRACE_GROUP_1_CHILD_SPAN_1, TEST_TRACE_GROUP_1_CHILD_SPAN_2)
-            .map(Record::new).collect(Collectors.toList());
-    private static final List<Record<Span>> TEST_TWO_TRACE_GROUP_MISSING_ROOT_RECORDS = Stream.of(
-                    TEST_TRACE_GROUP_1_CHILD_SPAN_1, TEST_TRACE_GROUP_1_CHILD_SPAN_2,
-                    TEST_TRACE_GROUP_2_CHILD_SPAN_1, TEST_TRACE_GROUP_2_CHILD_SPAN_2)
-            .map(Record::new).collect(Collectors.toList());
+    private List<Record<Span>> TEST_ONE_FULL_TRACE_GROUP_RECORDS;
+    private List<Record<Span>> TEST_ONE_TRACE_GROUP_MISSING_ROOT_RECORDS;
+    private List<Record<Span>> TEST_TWO_FULL_TRACE_GROUP_RECORDS;
+    private List<Record<Span>> TEST_TWO_TRACE_GROUP_INTERLEAVED_PART_1_RECORDS;
+    private List<Record<Span>> TEST_TWO_TRACE_GROUP_INTERLEAVED_PART_2_RECORDS;
+    private List<Record<Span>> TEST_TWO_TRACE_GROUP_MISSING_ROOT_RECORDS;
 
     PluginSetting pluginSetting;
     public OTelTraceRawPrepper oTelTraceRawPrepper;
@@ -95,6 +81,33 @@ public class OTelTraceRawPrepperTest {
 
     @Before
     public void setup() {
+        TEST_TRACE_GROUP_1_ROOT_SPAN = buildSpanFromJsonFile(TEST_TRACE_GROUP_1_ROOT_SPAN_JSON_FILE);
+        TEST_TRACE_GROUP_1_CHILD_SPAN_1 = buildSpanFromJsonFile(TEST_TRACE_GROUP_1_CHILD_SPAN_1_JSON_FILE);
+        TEST_TRACE_GROUP_1_CHILD_SPAN_2 = buildSpanFromJsonFile(TEST_TRACE_GROUP_1_CHILD_SPAN_2_JSON_FILE);
+        TEST_TRACE_GROUP_2_ROOT_SPAN = buildSpanFromJsonFile(TEST_TRACE_GROUP_2_ROOT_SPAN_JSON_FILE);
+        TEST_TRACE_GROUP_2_CHILD_SPAN_1 = buildSpanFromJsonFile(TEST_TRACE_GROUP_2_CHILD_SPAN_1_JSON_FILE);
+        TEST_TRACE_GROUP_2_CHILD_SPAN_2 = buildSpanFromJsonFile(TEST_TRACE_GROUP_2_CHILD_SPAN_2_JSON_FILE);
+        TEST_ONE_FULL_TRACE_GROUP_RECORDS = Stream.of(
+                        TEST_TRACE_GROUP_1_ROOT_SPAN, TEST_TRACE_GROUP_1_CHILD_SPAN_1, TEST_TRACE_GROUP_1_CHILD_SPAN_2)
+                .map(Record::new).collect(Collectors.toList());
+        TEST_ONE_TRACE_GROUP_MISSING_ROOT_RECORDS = Stream.of(
+                        TEST_TRACE_GROUP_2_CHILD_SPAN_1, TEST_TRACE_GROUP_2_CHILD_SPAN_2)
+                .map(Record::new).collect(Collectors.toList());
+        TEST_TWO_FULL_TRACE_GROUP_RECORDS = Stream.of(
+                        TEST_TRACE_GROUP_1_ROOT_SPAN, TEST_TRACE_GROUP_1_CHILD_SPAN_1, TEST_TRACE_GROUP_1_CHILD_SPAN_2,
+                        TEST_TRACE_GROUP_2_ROOT_SPAN, TEST_TRACE_GROUP_2_CHILD_SPAN_1, TEST_TRACE_GROUP_2_CHILD_SPAN_2)
+                .map(Record::new).collect(Collectors.toList());
+        TEST_TWO_TRACE_GROUP_INTERLEAVED_PART_1_RECORDS = Stream.of(
+                        TEST_TRACE_GROUP_1_ROOT_SPAN, TEST_TRACE_GROUP_2_CHILD_SPAN_1, TEST_TRACE_GROUP_2_CHILD_SPAN_2)
+                .map(Record::new).collect(Collectors.toList());
+        TEST_TWO_TRACE_GROUP_INTERLEAVED_PART_2_RECORDS = Stream.of(
+                        TEST_TRACE_GROUP_2_ROOT_SPAN, TEST_TRACE_GROUP_1_CHILD_SPAN_1, TEST_TRACE_GROUP_1_CHILD_SPAN_2)
+                .map(Record::new).collect(Collectors.toList());
+        TEST_TWO_TRACE_GROUP_MISSING_ROOT_RECORDS = Stream.of(
+                        TEST_TRACE_GROUP_1_CHILD_SPAN_1, TEST_TRACE_GROUP_1_CHILD_SPAN_2,
+                        TEST_TRACE_GROUP_2_CHILD_SPAN_1, TEST_TRACE_GROUP_2_CHILD_SPAN_2)
+                .map(Record::new).collect(Collectors.toList());
+
         MetricsTestUtil.initMetrics();
         pluginSetting = new PluginSetting(
                 "OTelTrace",

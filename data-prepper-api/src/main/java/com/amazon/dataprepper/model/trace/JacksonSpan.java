@@ -150,6 +150,16 @@ public class JacksonSpan extends JacksonEvent implements Span {
         return this.get(SERVICE_NAME_KEY, String.class);
     }
 
+    @Override
+    public void setTraceGroup(final String traceGroup) {
+        this.put(TRACE_GROUP_KEY, traceGroup);
+    }
+
+    @Override
+    public void setTraceGroupFields(final TraceGroupFields traceGroupFields) {
+        this.put(TRACE_GROUP_FIELDS_KEY, traceGroupFields);
+    }
+
     private void checkAndSetDefaultValues() {
         if (this.getAttributes() == null ) {
             this.put(ATTRIBUTES_KEY, new HashMap<>());

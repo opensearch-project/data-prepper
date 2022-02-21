@@ -16,7 +16,6 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.prepper.AbstractPrepper;
 import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.model.trace.JacksonSpan;
 import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.SpanSet;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.TraceGroup;
@@ -128,11 +127,8 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<Span>, Record<Sp
         final SpanSet spanSet = traceIdSpanSetMap.get(parentSpanTraceId);
         if (spanSet != null) {
             for (final Span span : spanSet.getSpans()) {
-                final Span newSpan = JacksonSpan.builder().fromSpan(span)
-                        .withTraceGroup(traceGroup.getTraceGroup())
-                        .withTraceGroupFields(traceGroup.getTraceGroupFields())
-                        .build();
-                recordsToFlush.add(newSpan);
+                fillInTraceGroupInfo(span, traceGroup);
+                recordsToFlush.add(span);
             }
 
             traceIdSpanSetMap.remove(parentSpanTraceId);
@@ -153,11 +149,8 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<Span>, Record<Sp
         final TraceGroup traceGroup = traceIdTraceGroupCache.getIfPresent(childSpanTraceId);
 
         if (traceGroup != null) {
-            final Span newChildSpan = JacksonSpan.builder().fromSpan(childSpan)
-                    .withTraceGroup(traceGroup.getTraceGroup())
-                    .withTraceGroupFields(traceGroup.getTraceGroupFields())
-                    .build();
-            return Optional.of(newChildSpan);
+            fillInTraceGroupInfo(childSpan, traceGroup);
+            return Optional.of(childSpan);
         } else {
             traceIdSpanSetMap.compute(childSpanTraceId, (traceId, spanSet) -> {
                 if (spanSet == null) {
@@ -199,11 +192,8 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<Span>, Record<Sp
                             final Set<Span> spans = spanSet.getSpans();
                             if (traceGroup != null) {
                                 spans.forEach(span -> {
-                                    final Span newSpan = JacksonSpan.builder().fromSpan(span)
-                                            .withTraceGroup(traceGroup.getTraceGroup())
-                                            .withTraceGroupFields(traceGroup.getTraceGroupFields())
-                                            .build();
-                                    recordsToFlush.add(newSpan);
+                                    fillInTraceGroupInfo(span, traceGroup);
+                                    recordsToFlush.add(span);
                                 });
                             } else {
                                 spans.forEach(span -> {
@@ -225,6 +215,11 @@ public class OTelTraceRawPrepper extends AbstractPrepper<Record<Span>, Record<Sp
         }
 
         return recordsToFlush;
+    }
+
+    private void fillInTraceGroupInfo(final Span span, final TraceGroup traceGroup) {
+        span.setTraceGroup(traceGroup.getTraceGroup());
+        span.setTraceGroupFields(traceGroup.getTraceGroupFields());
     }
 
     private boolean shouldGarbageCollect() {
