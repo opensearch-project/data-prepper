@@ -15,7 +15,6 @@ import com.amazon.dataprepper.model.source.Source;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.TimeoutException;
 
@@ -28,8 +27,6 @@ import static java.lang.String.format;
  */
 @DataPrepperPlugin(name = "stdin", pluginType = Source.class)
 public class StdInSource implements Source<Record<Event>> {
-    static final String MESSAGE_KEY = "message";
-    static final String EVENT_TYPE = "event";
     private static final Logger LOG = LoggerFactory.getLogger(StdInSource.class);
     private static final String ATTRIBUTE_TIMEOUT = "write_timeout";
     private static final int WRITE_TIMEOUT = 5_000;
@@ -82,11 +79,7 @@ public class StdInSource implements Source<Record<Event>> {
     }
 
     private Record<Event> convertLineIntoEventRecord(final String line) {
-        final Map<String, String> structuredLine = Map.of(MESSAGE_KEY, line);
-        return new Record<>(JacksonEvent
-                .builder()
-                .withEventType(EVENT_TYPE)
-                .withData(structuredLine)
-                .build());
+        final Event event = JacksonEvent.fromMessage(line);
+        return new Record<>(event);
     }
 }
