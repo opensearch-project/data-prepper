@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.logstash.model.LogstashValueType;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -54,10 +55,10 @@ class OpenSearchPluginAttributesMapperTest {
 
         final LogstashAttribute logstashAttribute = mock(LogstashAttribute.class);
         final LogstashAttributeValue logstashAttributeValue = mock(LogstashAttributeValue.class);
-        when(logstashAttribute.getAttributeName()).thenReturn("");
+        when(logstashAttribute.getAttributeName()).thenReturn(UUID.randomUUID().toString());
         when(logstashAttribute.getAttributeValue()).thenReturn(logstashAttributeValue);
         when(logstashAttributeValue.getAttributeValueType()).thenReturn(LogstashValueType.STRING);
-        when(logstashAttributeValue.getValue()).thenReturn("");
+        when(logstashAttributeValue.getValue()).thenReturn(UUID.randomUUID().toString());
 
         final LogstashAttributesMappings logstashAttributesMappings = mock(LogstashAttributesMappings.class);
         when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.emptyMap());
