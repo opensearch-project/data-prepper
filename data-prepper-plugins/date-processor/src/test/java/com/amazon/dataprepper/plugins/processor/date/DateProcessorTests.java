@@ -307,6 +307,60 @@ class DateProcessorTests {
         verify(dateProcessingMatchSuccessCounter, times(1)).increment();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"MMM/dd/uuuu", "yyyy MM dd"})
+    void match_with_different_year_formats_test(String pattern) {
+        when(mockDateMatch.getKey()).thenReturn("logDate");
+        when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(pattern));
+
+        List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+        when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
+        when(mockDateProcessorConfig.getSourceZoneId()).thenReturn(ZoneId.systemDefault());
+        when(mockDateProcessorConfig.getDestinationZoneId()).thenReturn(ZoneId.systemDefault());
+        when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
+
+        dateProcessor = createObjectUnderTest();
+
+        Map<String, Object> testData = getTestData();
+        testData.put("logDate", expectedDateTime.minus(10, ChronoUnit.YEARS).format(DateTimeFormatter.ofPattern(pattern)));
+
+        final Record<Event> record = buildRecordWithEvent(testData);
+        final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
+
+        ZonedDateTime actualZonedDateTime =  record.getData().get(TIMESTAMP_KEY, ZonedDateTime.class);
+        ZonedDateTime expectedZonedDatetime = expectedDateTime.minus(10, ChronoUnit.YEARS).atZone(mockDateProcessorConfig.getSourceZoneId()).truncatedTo(ChronoUnit.SECONDS);
+
+        Assertions.assertTrue(actualZonedDateTime.toLocalDate().isEqual(expectedZonedDatetime.toLocalDate()));
+        verify(dateProcessingMatchSuccessCounter, times(1)).increment();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"MMM/dd", "MM dd"})
+    void match_without_year_test(String pattern) {
+        when(mockDateMatch.getKey()).thenReturn("logDate");
+        when(mockDateMatch.getPatterns()).thenReturn(Collections.singletonList(pattern));
+
+        List<DateProcessorConfig.DateMatch> dateMatches = Collections.singletonList(mockDateMatch);
+        when(mockDateProcessorConfig.getMatch()).thenReturn(dateMatches);
+        when(mockDateProcessorConfig.getSourceZoneId()).thenReturn(ZoneId.systemDefault());
+        when(mockDateProcessorConfig.getDestinationZoneId()).thenReturn(ZoneId.systemDefault());
+        when(mockDateProcessorConfig.getSourceLocale()).thenReturn(Locale.ROOT);
+
+        dateProcessor = createObjectUnderTest();
+
+        Map<String, Object> testData = getTestData();
+        testData.put("logDate", expectedDateTime.format(DateTimeFormatter.ofPattern(pattern)));
+
+        final Record<Event> record = buildRecordWithEvent(testData);
+        final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
+
+        ZonedDateTime actualZonedDateTime =  record.getData().get(TIMESTAMP_KEY, ZonedDateTime.class);
+        ZonedDateTime expectedZonedDatetime = expectedDateTime.atZone(mockDateProcessorConfig.getSourceZoneId()).truncatedTo(ChronoUnit.SECONDS);
+
+        Assertions.assertTrue(actualZonedDateTime.toLocalDate().isEqual(expectedZonedDatetime.toLocalDate()));
+        verify(dateProcessingMatchSuccessCounter, times(1)).increment();
+    }
+
     static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
         return new Record<>(JacksonEvent.builder()
                 .withData(data)
