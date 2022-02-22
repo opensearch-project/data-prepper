@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.logstash.mapping;
 
+import com.amazon.dataprepper.model.configuration.PluginModel;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -126,10 +128,14 @@ class DefaultLogstashPluginAttributesMapperTest {
         when(logstashAttributeValue.getValue()).thenReturn(inputValue);
         when(mappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(logstashAttributeName, dataPrepperAttribute));
 
-        final Map<String, Object> actualPluginSettings = createObjectUnderTest().mapAttributes(logstashAttributes, mappings).get(0).getPluginSettings();
+        final List<PluginModel> actualPluginModel = createObjectUnderTest().mapAttributes(logstashAttributes, mappings);
 
-        assertThat(actualPluginSettings, notNullValue());
-        assertThat(actualPluginSettings.size(), equalTo(1));
-        assertThat(actualPluginSettings.get(dataPrepperAttribute.substring(1)), equalTo(!inputValue));
+        assertThat(actualPluginModel, Matchers.notNullValue());
+        assertThat(actualPluginModel.size(), Matchers.equalTo(1));
+        assertThat(actualPluginModel.get(0), Matchers.notNullValue());
+
+        assertThat(actualPluginModel.get(0).getPluginSettings(), notNullValue());
+        assertThat(actualPluginModel.get(0).getPluginSettings().size(), equalTo(1));
+        assertThat(actualPluginModel.get(0).getPluginSettings().get(dataPrepperAttribute.substring(1)), equalTo(!inputValue));
     }
 }

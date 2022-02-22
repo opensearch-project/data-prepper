@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.logstash.mapping;
 
 import com.amazon.dataprepper.model.configuration.PluginModel;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 import org.opensearch.dataprepper.logstash.model.LogstashAttributeValue;
@@ -50,13 +51,17 @@ class GrokLogstashPluginAttributesMapperTest {
         final LogstashAttributesMappings mappings = mock(LogstashAttributesMappings.class);
         when(mappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(logstashAttributeName, dataPrepperAttribute));
 
-        final Map<String, Object> actualPluginSettings =
-                createObjectUnderTest().mapAttributes(Collections.singletonList(logstashAttribute), mappings).get(0).getPluginSettings();
+        final List<PluginModel> actualPluginModel =
+                createObjectUnderTest().mapAttributes(Collections.singletonList(logstashAttribute), mappings);
 
-        assertThat(actualPluginSettings, notNullValue());
-        assertThat(actualPluginSettings.size(), equalTo(1));
-        assertThat(actualPluginSettings, hasKey(dataPrepperAttribute));
-        assertThat(actualPluginSettings.get(dataPrepperAttribute), equalTo(value));
+        assertThat(actualPluginModel, Matchers.notNullValue());
+        assertThat(actualPluginModel.size(), Matchers.equalTo(1));
+        assertThat(actualPluginModel.get(0), Matchers.notNullValue());
+
+        assertThat(actualPluginModel.get(0).getPluginSettings(), notNullValue());
+        assertThat(actualPluginModel.get(0).getPluginSettings().size(), equalTo(1));
+        assertThat(actualPluginModel.get(0).getPluginSettings(), hasKey(dataPrepperAttribute));
+        assertThat(actualPluginModel.get(0).getPluginSettings().get(dataPrepperAttribute), equalTo(value));
 
     }
 
@@ -113,6 +118,7 @@ class GrokLogstashPluginAttributesMapperTest {
         assertThat(actualPluginModels.size(), equalTo(1));
         assertThat(actualPluginModels.get(0).getPluginSettings(), hasKey(dataPrepperMatchAttribute));
         assertThat(actualPluginModels.get(0).getPluginSettings(), hasKey(dataPrepperPatternDefinitionsAttribute));
+
         final Map<String, String> actualPatternDefinitions = (Map<String, String>) actualPluginModels.get(0).getPluginSettings().get(
                 dataPrepperPatternDefinitionsAttribute);
         assertThat(actualPatternDefinitions, hasKey(handWrittenPatternName));

@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.logstash.mapping;
 
+import com.amazon.dataprepper.model.configuration.PluginModel;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -16,6 +18,7 @@ import org.opensearch.dataprepper.logstash.model.LogstashAttributeValue;
 import org.opensearch.dataprepper.logstash.model.LogstashValueType;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -43,11 +46,15 @@ class OpenSearchPluginAttributesMapperTest {
         final LogstashAttributesMappings logstashAttributesMappings = mock(LogstashAttributesMappings.class);
         when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.emptyMap());
 
-        final Map<String, Object> pluginSettings = createObjectUnderTest()
-                .mapAttributes(Collections.emptyList(), logstashAttributesMappings).get(0).getPluginSettings();
+        final List<PluginModel> actualPluginModel = createObjectUnderTest()
+                .mapAttributes(Collections.emptyList(), logstashAttributesMappings);
 
-        assertThat(pluginSettings.size(), equalTo(0));
-        assertThat(pluginSettings, not(hasKey(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE)));
+        assertThat(actualPluginModel, Matchers.notNullValue());
+        assertThat(actualPluginModel.size(), Matchers.equalTo(1));
+        assertThat(actualPluginModel.get(0), Matchers.notNullValue());
+
+        assertThat(actualPluginModel.get(0).getPluginSettings().size(), equalTo(0));
+        assertThat(actualPluginModel.get(0).getPluginSettings(), not(hasKey(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE)));
     }
 
     @Test
@@ -63,11 +70,15 @@ class OpenSearchPluginAttributesMapperTest {
         final LogstashAttributesMappings logstashAttributesMappings = mock(LogstashAttributesMappings.class);
         when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.emptyMap());
 
-        final Map<String, Object> pluginSettings = createObjectUnderTest()
-                .mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings).get(0).getPluginSettings();
+        final List<PluginModel> actualPluginModel = createObjectUnderTest()
+                .mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings);
 
-        assertThat(pluginSettings.size(), equalTo(0));
-        assertThat(pluginSettings, not(hasKey(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE)));
+        assertThat(actualPluginModel, Matchers.notNullValue());
+        assertThat(actualPluginModel.size(), Matchers.equalTo(1));
+        assertThat(actualPluginModel.get(0), Matchers.notNullValue());
+
+        assertThat(actualPluginModel.get(0).getPluginSettings().size(), equalTo(0));
+        assertThat(actualPluginModel.get(0).getPluginSettings(), not(hasKey(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE)));
     }
 
     @ParameterizedTest
@@ -79,13 +90,17 @@ class OpenSearchPluginAttributesMapperTest {
         final LogstashAttributesMappings logstashAttributesMappings = mock(LogstashAttributesMappings.class);
         when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME, DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE));
 
-        final Map<String, Object> pluginSettings = createObjectUnderTest()
-                .mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings).get(0).getPluginSettings();
+        final List<PluginModel> actualPluginModel = createObjectUnderTest()
+                .mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings);
 
-        assertThat(pluginSettings, notNullValue());
-        assertThat(pluginSettings.size(), equalTo(1));
-        assertThat(pluginSettings, hasKey(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE));
-        assertThat(pluginSettings.get(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE), equalTo(expectedIndex));
+        assertThat(actualPluginModel, Matchers.notNullValue());
+        assertThat(actualPluginModel.size(), Matchers.equalTo(1));
+        assertThat(actualPluginModel.get(0), Matchers.notNullValue());
+
+        assertThat(actualPluginModel.get(0).getPluginSettings(), notNullValue());
+        assertThat(actualPluginModel.get(0).getPluginSettings().size(), equalTo(1));
+        assertThat(actualPluginModel.get(0).getPluginSettings(), hasKey(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE));
+        assertThat(actualPluginModel.get(0).getPluginSettings().get(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE), equalTo(expectedIndex));
     }
 
     static class JodaToJava8IndicesArgumentsProvider implements ArgumentsProvider {
