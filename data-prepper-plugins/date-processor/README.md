@@ -14,8 +14,8 @@ To get started with date processor, create the following `pipeline.yaml`.
   prepper:          
     - date:
         match:
-            - key: timestamp
-              patterns: ["dd/MMM/yyyy:HH:mm:ss"] 
+          - key: timestamp
+            patterns: ["dd/MMM/yyyy:HH:mm:ss"] 
         destination: "@timestamp"
         source_timezone: "America/Los_Angeles"
         destination_timezone: "America/Chicago"
