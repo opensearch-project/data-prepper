@@ -49,7 +49,8 @@ public class DateLogstashPluginAttributesMapper extends AbstractLogstashPluginAt
         if (matchAttribute.getAttributeValue().getAttributeValueType().equals(LogstashValueType.ARRAY)) {
             final List<String> logstashDateMatchCastValue = (List<String>) matchAttribute.getAttributeValue().getValue();
             if (logstashDateMatchCastValue.size() >= 2) {
-                return new DateProcessorConfig.DateMatch(logstashDateMatchCastValue.get(0),
+                String logstashAttributeValue = (String) NestedSyntaxConverterUtil.checkAndConvertLogstashNestedSyntax(logstashDateMatchCastValue.get(0));
+                return new DateProcessorConfig.DateMatch(logstashAttributeValue,
                         logstashDateMatchCastValue.subList(1, logstashDateMatchCastValue.size()));
             }
             else {

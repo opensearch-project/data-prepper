@@ -128,6 +128,29 @@ class GrokLogstashPluginAttributesMapperTest {
         assertThat(actualMatch.get("message").get(0), matchesPattern(String.format("%%\\{(.*?):%s\\}", testNamedCapture)));
     }
 
+    @Test
+    void mapAttributes_converts_nested_syntax_in_mapped_attributes() {
+        final LogstashAttribute matchMultiKeysLogstashAttribute = prepareHashTypeMatchLogstashAttribute(
+                Arrays.asList(Map.entry("[text][message]", "fake message regex 1"), Map.entry("other", "fake other regex")));
+        final LogstashAttribute matchMessageLogstashAttribute2 = prepareArrayTypeMatchLogstashAttribute("[text][message]", "fake message regex 2");
+        final List<LogstashAttribute> matchLogstashAttributes = Arrays.asList(matchMultiKeysLogstashAttribute, matchMessageLogstashAttribute2);
+        final Map<String, Object> expectedMatchSettings = Map.of("/text/message", Arrays.asList("fake message regex 1", "fake message regex 2"),
+                "other", Collections.singletonList("fake other regex"));
+
+        final String dataPrepperMatchAttribute = "match";
+        final LogstashAttributesMappings mappings = mock(LogstashAttributesMappings.class);
+        when(mappings.getMappedAttributeNames()).thenReturn(
+                Collections.singletonMap(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME, dataPrepperMatchAttribute));
+
+        final List<PluginModel> actualPluginModels =
+                createObjectUnderTest().mapAttributes(matchLogstashAttributes, mappings);
+
+        assertThat(actualPluginModels, notNullValue());
+        assertThat(actualPluginModels.size(), equalTo(1));
+        assertThat(actualPluginModels.get(0).getPluginSettings(), hasKey(dataPrepperMatchAttribute));
+        assertThat(actualPluginModels.get(0).getPluginSettings().get(dataPrepperMatchAttribute), equalTo(expectedMatchSettings));
+    }
+
     private LogstashAttribute prepareArrayTypeMatchLogstashAttribute(final String matchKey, final String matchValue) {
         final LogstashAttribute logstashAttribute = mock(LogstashAttribute.class);
         final LogstashAttributeValue logstashAttributeValue = mock(LogstashAttributeValue.class);

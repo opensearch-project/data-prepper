@@ -136,6 +136,35 @@ class DateLogstashPluginAttributesMapperTest {
         assertThat(actualMatchSettings.get(0), nullValue());
     }
 
+    @Test
+    void convert_match_attribute_with_nested_syntax_from_list_to_date_match_list_test() {
+        final LogstashAttribute dateMatchAttribute = buildDateMatchLogstashAttribute(Arrays.asList("[data][logdate]", "yyyy-MM-dd"));
+
+        final String dataPrepperMatchAttribute = "match";
+        final LogstashAttributesMappings mappings = mock(LogstashAttributesMappings.class);
+        when(mappings.getMappedAttributeNames()).thenReturn(
+                Collections.singletonMap(LOGSTASH_DATE_MATCH_ATTRIBUTE_NAME, dataPrepperMatchAttribute));
+
+        final List<PluginModel> actualPluginModel =
+                dateLogstashPluginAttributesMapper.mapAttributes(Collections.singletonList(dateMatchAttribute), mappings);
+
+        assertThat(actualPluginModel, notNullValue());
+        assertThat(actualPluginModel.size(), equalTo(1));
+        assertThat(actualPluginModel.get(0), notNullValue());
+
+        final List<DateProcessorConfig.DateMatch> expectedMatchSettings =
+                Collections.singletonList(new DateProcessorConfig.DateMatch("/data/logdate", Collections.singletonList("yyyy-MM-dd")));
+        final List<DateProcessorConfig.DateMatch> actualMatchSettings =
+                (List<DateProcessorConfig.DateMatch>) actualPluginModel.get(0).getPluginSettings().get(dataPrepperMatchAttribute);
+
+        assertThat(actualMatchSettings, notNullValue());
+        assertThat(actualMatchSettings.size(), equalTo(1));
+        assertThat(actualPluginModel.get(0).getPluginSettings(), hasKey(dataPrepperMatchAttribute));
+        assertThat(actualMatchSettings.get(0).getPatterns().size(), equalTo(1));
+        assertThat(actualMatchSettings.get(0).getKey(), equalTo(expectedMatchSettings.get(0).getKey()));
+        assertThat(actualMatchSettings.get(0).getPatterns(), equalTo(expectedMatchSettings.get(0).getPatterns()));
+    }
+
     private LogstashAttribute buildDateMatchLogstashAttribute(final List<String> match) {
         final LogstashAttribute logstashAttribute = mock(LogstashAttribute.class);
         final LogstashAttributeValue logstashAttributeValue = mock(LogstashAttributeValue.class);

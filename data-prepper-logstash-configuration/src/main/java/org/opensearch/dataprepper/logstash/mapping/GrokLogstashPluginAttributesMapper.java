@@ -66,20 +66,22 @@ class GrokLogstashPluginAttributesMapper extends AbstractLogstashPluginAttribute
             if (logstashGrokMatchValueType.equals(LogstashValueType.HASH)) {
                 final Map<String, String> logstashGrokMatchCastValue = (Map<String, String>) logstashGrokMatchValue;
                 logstashGrokMatchCastValue.forEach((key, val) -> {
-                    if (!dataPrepperGrokMatch.containsKey(key)) {
-                        dataPrepperGrokMatch.put(key, new ArrayList<>());
+                    String grokMatchKey = (String) NestedSyntaxConverterUtil.checkAndConvertLogstashNestedSyntax(key);
+                    if (!dataPrepperGrokMatch.containsKey(grokMatchKey)) {
+                        dataPrepperGrokMatch.put(grokMatchKey, new ArrayList<>());
                     }
-                    dataPrepperGrokMatch.get(key).add(val);
+                    dataPrepperGrokMatch.get(grokMatchKey).add(val);
                 });
             } else if (logstashGrokMatchValueType.equals(LogstashValueType.ARRAY)) {
                 final List<String> logstashGrokMatchCastValue = (List<String>) logstashGrokMatchValue;
                 if (logstashGrokMatchCastValue.size() == 2) {
                     final String key = logstashGrokMatchCastValue.get(0);
                     final String val = logstashGrokMatchCastValue.get(1);
-                    if (!dataPrepperGrokMatch.containsKey(key)) {
-                        dataPrepperGrokMatch.put(key, new ArrayList<>());
+                    String grokMatchKey = (String) NestedSyntaxConverterUtil.checkAndConvertLogstashNestedSyntax(key);
+                    if (!dataPrepperGrokMatch.containsKey(grokMatchKey)) {
+                        dataPrepperGrokMatch.put(grokMatchKey, new ArrayList<>());
                     }
-                    dataPrepperGrokMatch.get(key).add(val);
+                    dataPrepperGrokMatch.get(grokMatchKey).add(val);
                 } else {
                     LOG.warn("logstash grok filter match attribute array should be of size 2");
                 }
