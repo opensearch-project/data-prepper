@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.logstash.mapping;
 
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 import org.opensearch.dataprepper.logstash.model.LogstashAttributeValue;
@@ -50,12 +51,13 @@ class GrokLogstashPluginAttributesMapperTest {
         when(mappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(logstashAttributeName, dataPrepperAttribute));
 
         final Map<String, Object> actualPluginSettings =
-                createObjectUnderTest().mapAttributes(Collections.singletonList(logstashAttribute), mappings);
+                createObjectUnderTest().mapAttributes(Collections.singletonList(logstashAttribute), mappings).get(0).getPluginSettings();
 
         assertThat(actualPluginSettings, notNullValue());
         assertThat(actualPluginSettings.size(), equalTo(1));
         assertThat(actualPluginSettings, hasKey(dataPrepperAttribute));
         assertThat(actualPluginSettings.get(dataPrepperAttribute), equalTo(value));
+
     }
 
     @Test
@@ -72,13 +74,13 @@ class GrokLogstashPluginAttributesMapperTest {
         when(mappings.getMappedAttributeNames()).thenReturn(
                 Collections.singletonMap(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME, dataPrepperMatchAttribute));
 
-        final Map<String, Object> actualPluginSettings =
+        final List<PluginModel> actualPluginModels =
                 createObjectUnderTest().mapAttributes(matchLogstashAttributes, mappings);
 
-        assertThat(actualPluginSettings, notNullValue());
-        assertThat(actualPluginSettings.size(), equalTo(1));
-        assertThat(actualPluginSettings, hasKey(dataPrepperMatchAttribute));
-        assertThat(actualPluginSettings.get(dataPrepperMatchAttribute), equalTo(expectedMatchSettings));
+        assertThat(actualPluginModels, notNullValue());
+        assertThat(actualPluginModels.size(), equalTo(1));
+        assertThat(actualPluginModels.get(0).getPluginSettings(), hasKey(dataPrepperMatchAttribute));
+        assertThat(actualPluginModels.get(0).getPluginSettings().get(dataPrepperMatchAttribute), equalTo(expectedMatchSettings));
     }
 
     @SuppressWarnings("unchecked")
@@ -102,21 +104,21 @@ class GrokLogstashPluginAttributesMapperTest {
                         LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME, dataPrepperPatternDefinitionsAttribute
                 ));
 
-        final Map<String, Object> actualPluginSettings =
+        final List<PluginModel> actualPluginModels =
                 createObjectUnderTest().mapAttributes(
                         Arrays.asList(matchMessageLogstashAttributeWithNamedCaptures, patternDefinitionsLogstashAttribute),
                         mappings);
 
-        assertThat(actualPluginSettings, notNullValue());
-        assertThat(actualPluginSettings.size(), equalTo(2));
-        assertThat(actualPluginSettings, hasKey(dataPrepperMatchAttribute));
-        assertThat(actualPluginSettings, hasKey(dataPrepperPatternDefinitionsAttribute));
-        final Map<String, String> actualPatternDefinitions = (Map<String, String>) actualPluginSettings.get(
+        assertThat(actualPluginModels, notNullValue());
+        assertThat(actualPluginModels.size(), equalTo(1));
+        assertThat(actualPluginModels.get(0).getPluginSettings(), hasKey(dataPrepperMatchAttribute));
+        assertThat(actualPluginModels.get(0).getPluginSettings(), hasKey(dataPrepperPatternDefinitionsAttribute));
+        final Map<String, String> actualPatternDefinitions = (Map<String, String>) actualPluginModels.get(0).getPluginSettings().get(
                 dataPrepperPatternDefinitionsAttribute);
         assertThat(actualPatternDefinitions, hasKey(handWrittenPatternName));
         assertThat(actualPatternDefinitions, hasValue(handWrittenPatternValue));
         assertThat(actualPatternDefinitions, hasValue(testRegex));
-        final Map<String, List<String>> actualMatch = (Map<String, List<String>>) actualPluginSettings.get(dataPrepperMatchAttribute);
+        final Map<String, List<String>> actualMatch = (Map<String, List<String>>) actualPluginModels.get(0).getPluginSettings().get(dataPrepperMatchAttribute);
         assertThat(actualMatch.get("message").get(0), matchesPattern(String.format("%%\\{(.*?):%s\\}", testNamedCapture)));
     }
 

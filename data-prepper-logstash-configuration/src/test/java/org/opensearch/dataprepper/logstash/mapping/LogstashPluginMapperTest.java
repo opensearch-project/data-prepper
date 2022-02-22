@@ -27,23 +27,22 @@ import static org.mockito.Mockito.when;
 
 class LogstashPluginMapperTest {
 
-    private AttributesMapperProvider attributesMapperProvider;
+    private PluginMapperProvider pluginMapperProvider;
     private LogstashPluginAttributesMapper logstashPluginAttributesMapper;
-    private CustomPluginMapperCreator creator;
 
     @BeforeEach
     void setUp() {
-        attributesMapperProvider = mock(AttributesMapperProvider.class);
+        pluginMapperProvider = mock(PluginMapperProvider.class);
 
         logstashPluginAttributesMapper = mock(LogstashPluginAttributesMapper.class);
-        when(attributesMapperProvider.getAttributesMapper(any(LogstashMappingModel.class)))
+        when(logstashPluginAttributesMapper.mapAttributes(any(List.class), any(LogstashAttributesMappings.class)))
+                .thenReturn(Collections.singletonList(new PluginModel("opensearch", null)));
+        when(pluginMapperProvider.getAttributesMapper(any(LogstashMappingModel.class)))
                 .thenReturn(logstashPluginAttributesMapper);
-
-        creator = mock(CustomPluginMapperCreator.class);
     }
 
     LogstashPluginMapper createObjectUnderTest() {
-        return new LogstashPluginMapper(attributesMapperProvider, creator);
+        return new LogstashPluginMapper(pluginMapperProvider);
     }
 
     @Test
@@ -80,7 +79,7 @@ class LogstashPluginMapperTest {
     void mapPlugin_with_custom_plugin_mapper_produces_plugins() {
         final LogstashPlugin logstashPlugin = mock(LogstashPlugin.class);
         when(logstashPlugin.getPluginName()).thenReturn("mutate");
-        when(creator.createMapperClass(any(String.class))).thenReturn(new MutateMapper());
+        when(pluginMapperProvider.getAttributesMapper(any(LogstashMappingModel.class))).thenReturn(new MutateMapper());
 
         final LogstashPluginMapper objectUnderTest = createObjectUnderTest();
         final List<PluginModel> pluginModels = objectUnderTest.mapPlugin(logstashPlugin);
@@ -121,7 +120,7 @@ class LogstashPluginMapperTest {
 
         final Map<String, Object> mappedPluginSettings = Collections.singletonMap(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         when(logstashPluginAttributesMapper.mapAttributes(anyList(), any(LogstashAttributesMappings.class)))
-                .thenReturn(mappedPluginSettings);
+                .thenReturn(Collections.singletonList(new PluginModel("opensearch", mappedPluginSettings)));
 
         final List<PluginModel> pluginModels = createObjectUnderTest().mapPlugin(logstashPlugin);
 

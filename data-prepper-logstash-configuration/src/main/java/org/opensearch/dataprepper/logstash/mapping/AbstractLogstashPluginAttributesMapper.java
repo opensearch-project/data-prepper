@@ -5,11 +5,13 @@
 
 package org.opensearch.dataprepper.logstash.mapping;
 
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.Objects;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +27,7 @@ public abstract class AbstractLogstashPluginAttributesMapper implements Logstash
     private static final Logger LOG = LoggerFactory.getLogger(AbstractLogstashPluginAttributesMapper.class);
 
     @Override
-    public Map<String, Object> mapAttributes(final List<LogstashAttribute> logstashAttributes, final LogstashAttributesMappings logstashAttributesMappings) {
+    public List<PluginModel> mapAttributes(final List<LogstashAttribute> logstashAttributes, final LogstashAttributesMappings logstashAttributesMappings) {
 
         Objects.requireNonNull(logstashAttributes);
         Objects.requireNonNull(logstashAttributesMappings);
@@ -63,7 +65,10 @@ public abstract class AbstractLogstashPluginAttributesMapper implements Logstash
             mapCustomAttributes(logstashAttributes, logstashAttributesMappings, pluginSettings);
         }
 
-        return pluginSettings;
+        List<PluginModel> pluginModels = new LinkedList<>();
+        pluginModels.add(new PluginModel(logstashAttributesMappings.getPluginName(), pluginSettings));
+
+        return pluginModels;
     }
 
     /**

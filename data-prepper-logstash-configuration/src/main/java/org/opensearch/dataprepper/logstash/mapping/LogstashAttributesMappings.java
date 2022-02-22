@@ -34,4 +34,6 @@ public interface LogstashAttributesMappings {
      * @since 1.2
      */
     Map<String, Object> getAdditionalAttributes();
+
+    String getPluginName();
 }

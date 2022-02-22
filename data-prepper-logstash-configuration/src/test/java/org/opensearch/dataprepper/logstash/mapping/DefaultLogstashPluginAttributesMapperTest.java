@@ -95,7 +95,7 @@ class DefaultLogstashPluginAttributesMapperTest {
         when(mappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(logstashAttributeName, dataPrepperAttribute));
 
         final Map<String, Object> actualPluginSettings =
-                createObjectUnderTest().mapAttributes(logstashAttributes, mappings);
+                createObjectUnderTest().mapAttributes(logstashAttributes, mappings).get(0).getPluginSettings();
 
         assertThat(actualPluginSettings, notNullValue());
         assertThat(actualPluginSettings.size(), equalTo(1));
@@ -110,7 +110,7 @@ class DefaultLogstashPluginAttributesMapperTest {
         when(mappings.getAdditionalAttributes()).thenReturn(Collections.singletonMap(additionalAttributeName, additionalAttributeValue));
 
         final Map<String, Object> actualPluginSettings =
-                createObjectUnderTest().mapAttributes(logstashAttributes, mappings);
+                createObjectUnderTest().mapAttributes(logstashAttributes, mappings).get(0).getPluginSettings();
 
         assertThat(actualPluginSettings, notNullValue());
         assertThat(actualPluginSettings.size(), equalTo(1));
@@ -126,7 +126,7 @@ class DefaultLogstashPluginAttributesMapperTest {
         when(logstashAttributeValue.getValue()).thenReturn(inputValue);
         when(mappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(logstashAttributeName, dataPrepperAttribute));
 
-        final Map<String, Object> actualPluginSettings = createObjectUnderTest().mapAttributes(logstashAttributes, mappings);
+        final Map<String, Object> actualPluginSettings = createObjectUnderTest().mapAttributes(logstashAttributes, mappings).get(0).getPluginSettings();
 
         assertThat(actualPluginSettings, notNullValue());
         assertThat(actualPluginSettings.size(), equalTo(1));

@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.logstash.mapping;
 
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
-import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-class MutateMapper implements CustomPluginMapper {
+class MutateMapper implements LogstashPluginAttributesMapper {
     public static class AddEntryConfig {
         public final String key;
         public final Object value;
@@ -37,14 +36,14 @@ class MutateMapper implements CustomPluginMapper {
         }
     }
 
-    public List<PluginModel> mapPlugin(LogstashPlugin logstashPlugin) {
+    public List<PluginModel> mapAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings) {
         List<PluginModel> models = new LinkedList<>();
         List<AddEntryConfig> adds = new LinkedList<>();
         List<RenameCopyConfig> renames = new LinkedList<>();
         List<ArrayList<String>> deletes = new LinkedList<>();
         List<RenameCopyConfig> copies = new LinkedList<>();
 
-        for(LogstashAttribute attr : logstashPlugin.getAttributes()) {
+        for(LogstashAttribute attr : logstashAttributes) {
             final String name = attr.getAttributeName();
             if(Objects.equals(name, "add_field")) {
                 ((Map<String, Object>)attr.getAttributeValue().getValue()).entrySet().forEach(entry -> {
