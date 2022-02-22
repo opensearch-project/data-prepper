@@ -63,7 +63,7 @@ class DateLogstashPluginAttributesMapperTest {
                 Collections.singletonMap(LOGSTASH_DATE_MATCH_ATTRIBUTE_NAME, dataPrepperMatchAttribute));
 
         final Map<String, Object> actualPluginSettings =
-                dateLogstashPluginAttributesMapper.mapAttributes(Collections.singletonList(dateMatchAttribute), mappings);
+                dateLogstashPluginAttributesMapper.mapAttributes(Collections.singletonList(dateMatchAttribute), mappings).get(0).getPluginSettings();
 
         final List<DateProcessorConfig.DateMatch> expectedMatchSettings =
                 Collections.singletonList(new DateProcessorConfig.DateMatch("logdate", Collections.singletonList("yyyy-MM-dd")));
@@ -90,7 +90,7 @@ class DateLogstashPluginAttributesMapperTest {
                 Collections.singletonMap(LOGSTASH_DATE_MATCH_ATTRIBUTE_NAME, dataPrepperMatchAttribute));
 
         final Map<String, Object> actualPluginSettings =
-                dateLogstashPluginAttributesMapper.mapAttributes(Collections.singletonList(dateMatchAttribute), mappings);
+                dateLogstashPluginAttributesMapper.mapAttributes(Collections.singletonList(dateMatchAttribute), mappings).get(0).getPluginSettings();
 
         final List<DateProcessorConfig.DateMatch> expectedMatchSettings =
                 Collections.singletonList(new DateProcessorConfig.DateMatch("logdate", Arrays.asList("yyyy-MM-dd", "yyyy-MM-dd hh:mm:ss")));
@@ -115,7 +115,7 @@ class DateLogstashPluginAttributesMapperTest {
                 Collections.singletonMap(LOGSTASH_DATE_MATCH_ATTRIBUTE_NAME, dataPrepperMatchAttribute));
 
         final Map<String, Object> actualPluginSettings =
-                dateLogstashPluginAttributesMapper.mapAttributes(Collections.singletonList(dateMatchAttribute), mappings);
+                dateLogstashPluginAttributesMapper.mapAttributes(Collections.singletonList(dateMatchAttribute), mappings).get(0).getPluginSettings();
 
         final List<DateProcessorConfig.DateMatch> actualMatchSettings =
                 (List<DateProcessorConfig.DateMatch>) actualPluginSettings.get(dataPrepperMatchAttribute);

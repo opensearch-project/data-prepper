@@ -44,7 +44,7 @@ class OpenSearchPluginAttributesMapperTest {
         when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.emptyMap());
 
         final Map<String, Object> pluginSettings = createObjectUnderTest()
-                .mapAttributes(Collections.emptyList(), logstashAttributesMappings);
+                .mapAttributes(Collections.emptyList(), logstashAttributesMappings).get(0).getPluginSettings();
 
         assertThat(pluginSettings.size(), equalTo(0));
         assertThat(pluginSettings, not(hasKey(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE)));
@@ -64,7 +64,7 @@ class OpenSearchPluginAttributesMapperTest {
         when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.emptyMap());
 
         final Map<String, Object> pluginSettings = createObjectUnderTest()
-                .mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings);
+                .mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings).get(0).getPluginSettings();
 
         assertThat(pluginSettings.size(), equalTo(0));
         assertThat(pluginSettings, not(hasKey(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE)));
@@ -80,7 +80,7 @@ class OpenSearchPluginAttributesMapperTest {
         when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME, DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE));
 
         final Map<String, Object> pluginSettings = createObjectUnderTest()
-                .mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings);
+                .mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings).get(0).getPluginSettings();
 
         assertThat(pluginSettings, notNullValue());
         assertThat(pluginSettings.size(), equalTo(1));
