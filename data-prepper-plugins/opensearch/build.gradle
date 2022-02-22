@@ -74,7 +74,7 @@ dependencies {
     testImplementation "org.awaitility:awaitility:4.1.1"
     testImplementation "org.opensearch.test:framework:${opensearch_version}"
     testImplementation "commons-io:commons-io:2.11.0"
-    testImplementation 'net.bytebuddy:byte-buddy:1.11.20'
+    testImplementation 'net.bytebuddy:byte-buddy:1.12.8'
     testImplementation 'net.bytebuddy:byte-buddy-agent:1.11.20'
 }
 
@@ -84,7 +84,7 @@ compileJava.options.warnings = false
 // Resolve dependency conflict between ES sink and main project
 configurations.all {
     resolutionStrategy {
-        force 'com.amazonaws:aws-java-sdk-core:1.12.67'
+        force 'com.amazonaws:aws-java-sdk-core:1.12.159'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.1'
         force 'com.fasterxml.jackson.core:jackson-annotations:2.13.1'
         force 'com.fasterxml.jackson.core:jackson-databind:2.13.1'

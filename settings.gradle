@@ -17,7 +17,6 @@ if(startParameter.getProjectProperties().containsKey("release")){
     include 'release:docker'
     include 'release:archives'
     include 'release:archives:linux'
-    include 'release:archives:macos'
 }
 include 'data-prepper-api'
 include 'data-prepper-plugins'

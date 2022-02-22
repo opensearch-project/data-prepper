@@ -1,4 +1,5 @@
 pluginName: opensearch
+attributesMapperClass: org.opensearch.dataprepper.logstash.mapping.OpenSearchPluginAttributesMapper
 mappedAttributeNames:
   hosts: hosts
   index: index

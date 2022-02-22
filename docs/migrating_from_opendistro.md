@@ -17,7 +17,7 @@ with Open Distro and ElasticSearch 7.x.
 ### Update Docker Image
 
 The Open Distro Data Prepper Docker image was located at `amazon/opendistro-for-elasticsearch-data-prepper`.
-You will need to change this value to `opensearchproject/opensearch-data-prepper`.
+You will need to change this value to `opensearchproject/data-prepper`.
 
 ## More Information
 
