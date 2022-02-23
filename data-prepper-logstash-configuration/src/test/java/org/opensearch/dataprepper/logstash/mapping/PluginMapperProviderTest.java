@@ -17,7 +17,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class AttributesMapperProviderTest {
+class PluginMapperProviderTest {
 
     private AttributesMapperCreator attributesMapperCreator;
     private LogstashMappingModel logstashMappingModel;
@@ -28,8 +28,8 @@ class AttributesMapperProviderTest {
         logstashMappingModel = mock(LogstashMappingModel.class);
     }
 
-    private AttributesMapperProvider createObjectUnderTest() {
-        return new AttributesMapperProvider(attributesMapperCreator);
+    private PluginMapperProvider createObjectUnderTest() {
+        return new PluginMapperProvider(attributesMapperCreator);
     }
 
     @Test

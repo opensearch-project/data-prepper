@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.logstash.mapping;
 
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.plugins.processor.date.DateProcessorConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -62,17 +62,21 @@ class DateLogstashPluginAttributesMapperTest {
         when(mappings.getMappedAttributeNames()).thenReturn(
                 Collections.singletonMap(LOGSTASH_DATE_MATCH_ATTRIBUTE_NAME, dataPrepperMatchAttribute));
 
-        final Map<String, Object> actualPluginSettings =
+        final List<PluginModel> actualPluginModel =
                 dateLogstashPluginAttributesMapper.mapAttributes(Collections.singletonList(dateMatchAttribute), mappings);
+
+        assertThat(actualPluginModel, notNullValue());
+        assertThat(actualPluginModel.size(), equalTo(1));
+        assertThat(actualPluginModel.get(0), notNullValue());
 
         final List<DateProcessorConfig.DateMatch> expectedMatchSettings =
                 Collections.singletonList(new DateProcessorConfig.DateMatch("logdate", Collections.singletonList("yyyy-MM-dd")));
         final List<DateProcessorConfig.DateMatch> actualMatchSettings =
-                (List<DateProcessorConfig.DateMatch>) actualPluginSettings.get(dataPrepperMatchAttribute);
+                (List<DateProcessorConfig.DateMatch>) actualPluginModel.get(0).getPluginSettings().get(dataPrepperMatchAttribute);
 
         assertThat(actualMatchSettings, notNullValue());
         assertThat(actualMatchSettings.size(), equalTo(1));
-        assertThat(actualPluginSettings, hasKey(dataPrepperMatchAttribute));
+        assertThat(actualPluginModel.get(0).getPluginSettings(), hasKey(dataPrepperMatchAttribute));
         assertThat(actualMatchSettings.get(0).getPatterns().size(), equalTo(1));
         assertThat(actualMatchSettings.get(0).getKey(), equalTo(expectedMatchSettings.get(0).getKey()));
         assertThat(actualMatchSettings.get(0).getPatterns(), equalTo(expectedMatchSettings.get(0).getPatterns()));
@@ -89,18 +93,22 @@ class DateLogstashPluginAttributesMapperTest {
         when(mappings.getMappedAttributeNames()).thenReturn(
                 Collections.singletonMap(LOGSTASH_DATE_MATCH_ATTRIBUTE_NAME, dataPrepperMatchAttribute));
 
-        final Map<String, Object> actualPluginSettings =
+        final List<PluginModel> actualPluginModel =
                 dateLogstashPluginAttributesMapper.mapAttributes(Collections.singletonList(dateMatchAttribute), mappings);
+
+        assertThat(actualPluginModel, notNullValue());
+        assertThat(actualPluginModel.size(), equalTo(1));
+        assertThat(actualPluginModel.get(0), notNullValue());
 
         final List<DateProcessorConfig.DateMatch> expectedMatchSettings =
                 Collections.singletonList(new DateProcessorConfig.DateMatch("logdate", Arrays.asList("yyyy-MM-dd", "yyyy-MM-dd hh:mm:ss")));
         final List<DateProcessorConfig.DateMatch> actualMatchSettings =
-                (List<DateProcessorConfig.DateMatch>) actualPluginSettings.get(dataPrepperMatchAttribute);
+                (List<DateProcessorConfig.DateMatch>) actualPluginModel.get(0).getPluginSettings().get(dataPrepperMatchAttribute);
 
         assertThat(actualMatchSettings, notNullValue());
         assertThat(actualMatchSettings.size(), equalTo(1));
         assertThat(actualMatchSettings.get(0).getPatterns().size(), equalTo(2));
-        assertThat(actualPluginSettings, hasKey(dataPrepperMatchAttribute));
+        assertThat(actualPluginModel.get(0).getPluginSettings(), hasKey(dataPrepperMatchAttribute));
         assertThat(actualMatchSettings.get(0).getKey(), equalTo(expectedMatchSettings.get(0).getKey()));
         assertThat(actualMatchSettings.get(0).getPatterns(), equalTo(expectedMatchSettings.get(0).getPatterns()));
     }
@@ -114,15 +122,17 @@ class DateLogstashPluginAttributesMapperTest {
         when(mappings.getMappedAttributeNames()).thenReturn(
                 Collections.singletonMap(LOGSTASH_DATE_MATCH_ATTRIBUTE_NAME, dataPrepperMatchAttribute));
 
-        final Map<String, Object> actualPluginSettings =
+        final List<PluginModel> actualPluginModel =
                 dateLogstashPluginAttributesMapper.mapAttributes(Collections.singletonList(dateMatchAttribute), mappings);
 
-        final List<DateProcessorConfig.DateMatch> actualMatchSettings =
-                (List<DateProcessorConfig.DateMatch>) actualPluginSettings.get(dataPrepperMatchAttribute);
+        assertThat(actualPluginModel, notNullValue());
+        assertThat(actualPluginModel.size(), equalTo(1));
+        assertThat(actualPluginModel.get(0), notNullValue());
 
-        assertThat(actualMatchSettings, notNullValue());
-        assertThat(actualMatchSettings.size(), equalTo(1));
-        assertThat(actualPluginSettings, hasKey(dataPrepperMatchAttribute));
+        final List<DateProcessorConfig.DateMatch> actualMatchSettings =
+                (List<DateProcessorConfig.DateMatch>) actualPluginModel.get(0).getPluginSettings().get(dataPrepperMatchAttribute);
+
+        assertThat(actualPluginModel.get(0).getPluginSettings(), hasKey(dataPrepperMatchAttribute));
         assertThat(actualMatchSettings.get(0), nullValue());
     }
 

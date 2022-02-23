@@ -5,21 +5,24 @@
 
 package org.opensearch.dataprepper.logstash.mapping;
 
-class AttributesMapperProvider {
+public class PluginMapperProvider {
     private final AttributesMapperCreator attributesMapperCreator;
     private final DefaultLogstashPluginAttributesMapper defaultLogstashPluginAttributesMapper;
 
-    AttributesMapperProvider() {
+    PluginMapperProvider() {
         this(new AttributesMapperCreator());
     }
 
-    AttributesMapperProvider(final AttributesMapperCreator attributesMapperCreator) {
+    PluginMapperProvider(final AttributesMapperCreator attributesMapperCreator) {
         this.attributesMapperCreator = attributesMapperCreator;
         defaultLogstashPluginAttributesMapper = new DefaultLogstashPluginAttributesMapper();
     }
 
     LogstashPluginAttributesMapper getAttributesMapper(final LogstashMappingModel mappingModel) {
-        final String attributesMapperClassName = mappingModel.getAttributesMapperClass();
+        final String attributesMapperClassName = mappingModel.getCustomPluginMapperClass() != null
+                ? mappingModel.getCustomPluginMapperClass()
+                : mappingModel.getAttributesMapperClass();
+
         if(attributesMapperClassName == null) {
             return defaultLogstashPluginAttributesMapper;
         }
