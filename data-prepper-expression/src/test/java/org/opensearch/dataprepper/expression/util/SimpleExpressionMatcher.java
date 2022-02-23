@@ -19,7 +19,7 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcher.describe
  * Base class for Matcher that asserts a unary tree ending in a node that matches {@link SimpleExpressionMatcher#lastNodeClass}
  */
 abstract class SimpleExpressionMatcher extends DiagnosingMatcher<ParseTree> {
-    private static final Matcher<Integer> childCountMatcher = is(1);
+    private static final Matcher<Integer> singleChildMatcher = is(1);
 
     protected final List<Class<? extends ParseTree>> validRuleOrder;
     protected final Class<? extends ParseTree> lastNodeClass;
@@ -75,7 +75,7 @@ abstract class SimpleExpressionMatcher extends DiagnosingMatcher<ParseTree> {
                 return false;
             }
         }
-        else if (childCountMatcher.matches(item.getChildCount())) {
+        else if (singleChildMatcher.matches(item.getChildCount())) {
             final ParseTree child = item.getChild(0);
             if (!isValidRuleOrder(item, child, mismatch)) {
                 describeTo(mismatch);
