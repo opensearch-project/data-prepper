@@ -35,5 +35,11 @@ public interface LogstashAttributesMappings {
      */
     Map<String, Object> getAdditionalAttributes();
 
+    /**
+     * The name of the new plugin 
+     *
+     * @return A String
+     * @since 1.3
+     */
     String getPluginName();
 }

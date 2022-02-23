@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * An interface for a class which is responsible for mapping attributes
- * from a Logstash plugin into Data Prepper plugin settings.
+ * from a Logstash plugin into Data Prepper plugin models.
  *
  * @since 1.2
  */
@@ -22,7 +22,7 @@ public interface LogstashPluginAttributesMapper {
      *
      * @param logstashAttributes All the Logstash logstashAttributes for the plugin
      * @param logstashAttributesMappings The mappings for this Logstash plugin
-     * @return A map of Data Prepper plugin settings.
+     * @return A list of PluginModels
      * @since 1.2
      */
     List<PluginModel> mapAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings);
