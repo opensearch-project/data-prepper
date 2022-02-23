@@ -1,6 +1,6 @@
 # OpenSearch sink
 
-This is the Data Prepper OpenSearch sink plugin that sends records to an OpenSearch cluster via REST client. You can use the sink to send data to OpenSearch, Amazon OpenSearch Service, or Opendistro for Elasticsearch.
+This is the Data Prepper OpenSearch sink plugin that sends records to an OpenSearch cluster via REST client. You can use the sink to send data to OpenSearch or Amazon OpenSearch Service.
 
 ## Usages
 
