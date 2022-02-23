@@ -43,7 +43,7 @@ public class LogstashMapper {
 
         List<LogstashPlugin> logstashPluginList = logstashConfiguration.getPluginSection(logstashPluginType);
         if (logstashPluginList != null)
-            logstashPluginList.forEach(logstashPlugin -> pluginModels.add(pluginMapper.mapPlugin(logstashPlugin)));
+            logstashPluginList.forEach(logstashPlugin -> pluginModels.addAll(pluginMapper.mapPlugin(logstashPlugin)));
 
         return pluginModels;
     }

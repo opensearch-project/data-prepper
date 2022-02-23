@@ -15,6 +15,32 @@ logstash-converted-pipeline:
     - drop_events: {}
     - key_value:
         destination: "test"
+    - rename_keys:
+        entries:
+          - from_key: "messagea"
+            to_key: "newMessage"
+          - from_key: "messageb"
+            to_key: "newMessage2"
+    - copy_values:
+        entries:
+          - from_key: "messagec"
+            to_key: "messaged"
+    - add_entries:
+        entries:
+          - key: "message1"
+            value: 3
+          - key: "message2"
+            value: 4.2
+          - key: "message3"
+            value: "test3"
+          - key: "message4"
+            value: true
+    - delete_entries:
+        with_keys:
+          - "test"
+          - "test2"
+          - "test3"
+          - "test4"
   sink:
     - opensearch:
         hosts:

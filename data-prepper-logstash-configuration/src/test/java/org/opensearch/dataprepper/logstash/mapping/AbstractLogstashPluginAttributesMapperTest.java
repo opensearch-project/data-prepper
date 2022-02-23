@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.logstash.mapping;
 
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -43,9 +44,9 @@ class AbstractLogstashPluginAttributesMapperTest {
 
         when(abstractLogstashPluginAttributesMapper.getCustomMappedAttributeNames()).thenReturn(new HashSet<>());
 
-        Map<String, Object> pluginSettings = abstractLogstashPluginAttributesMapper.mapAttributes(logstashAttributes, mappings);
+        List<PluginModel> pluginModels = abstractLogstashPluginAttributesMapper.mapAttributes(logstashAttributes, mappings);
         verify(abstractLogstashPluginAttributesMapper, never()).mapCustomAttributes(
-                logstashAttributes, mappings, pluginSettings);
+                logstashAttributes, mappings, pluginModels.get(0).getPluginSettings());
     }
 
 
@@ -57,8 +58,8 @@ class AbstractLogstashPluginAttributesMapperTest {
         when(abstractLogstashPluginAttributesMapper.getCustomMappedAttributeNames())
                 .thenReturn(new HashSet<>(Collections.singletonList("customAttribute")));
 
-        Map<String, Object> pluginSettings = abstractLogstashPluginAttributesMapper.mapAttributes(logstashAttributes, mappings);
-        verify(abstractLogstashPluginAttributesMapper).mapCustomAttributes(logstashAttributes, mappings, pluginSettings);
+        List<PluginModel> pluginModels = abstractLogstashPluginAttributesMapper.mapAttributes(logstashAttributes, mappings);
+        verify(abstractLogstashPluginAttributesMapper).mapCustomAttributes(logstashAttributes, mappings, pluginModels.get(0).getPluginSettings());
     }
 
 }

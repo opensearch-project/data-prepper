@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.logstash.exception.LogstashMappingException;
 import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -26,21 +27,22 @@ import static org.mockito.Mockito.when;
 
 class LogstashPluginMapperTest {
 
-    private AttributesMapperProvider attributesMapperProvider;
+    private PluginMapperProvider pluginMapperProvider;
     private LogstashPluginAttributesMapper logstashPluginAttributesMapper;
 
     @BeforeEach
     void setUp() {
-        attributesMapperProvider = mock(AttributesMapperProvider.class);
+        pluginMapperProvider = mock(PluginMapperProvider.class);
 
         logstashPluginAttributesMapper = mock(LogstashPluginAttributesMapper.class);
-        when(attributesMapperProvider.getAttributesMapper(any(LogstashMappingModel.class)))
+        when(logstashPluginAttributesMapper.mapAttributes(any(List.class), any(LogstashAttributesMappings.class)))
+                .thenReturn(Collections.singletonList(new PluginModel("opensearch", null)));
+        when(pluginMapperProvider.getAttributesMapper(any(LogstashMappingModel.class)))
                 .thenReturn(logstashPluginAttributesMapper);
-
     }
 
     LogstashPluginMapper createObjectUnderTest() {
-        return new LogstashPluginMapper(attributesMapperProvider);
+        return new LogstashPluginMapper(pluginMapperProvider);
     }
 
     @Test
@@ -74,6 +76,18 @@ class LogstashPluginMapperTest {
     }
 
     @Test
+    void mapPlugin_with_custom_plugin_mapper_produces_plugins() {
+        final LogstashPlugin logstashPlugin = mock(LogstashPlugin.class);
+        when(logstashPlugin.getPluginName()).thenReturn("mutate");
+        when(pluginMapperProvider.getAttributesMapper(any(LogstashMappingModel.class))).thenReturn(new MutateMapper());
+
+        final LogstashPluginMapper objectUnderTest = createObjectUnderTest();
+        final List<PluginModel> pluginModels = objectUnderTest.mapPlugin(logstashPlugin);
+
+        assertThat(pluginModels, notNullValue());
+    }
+
+    @Test
     void mapPlugin_without_plugin_name_in_mapping_file_throws_logstash_mapping_exception_Test() {
         LogstashPlugin logstashPlugin = TestDataProvider.noPluginNameMappingResourceData();
         String mappingResourceName = logstashPlugin.getPluginName() + ".mapping.yaml";
@@ -93,10 +107,10 @@ class LogstashPluginMapperTest {
         final LogstashPlugin logstashPlugin = mock(LogstashPlugin.class);
         when(logstashPlugin.getPluginName()).thenReturn("amazon_es");
 
-        final PluginModel pluginModel = createObjectUnderTest().mapPlugin(logstashPlugin);
+        final List<PluginModel> pluginModels = createObjectUnderTest().mapPlugin(logstashPlugin);
 
-        assertThat(pluginModel, notNullValue());
-        assertThat(pluginModel.getPluginName(), equalTo("opensearch"));
+        assertThat(pluginModels, notNullValue());
+        assertThat(pluginModels.get(0).getPluginName(), equalTo("opensearch"));
     }
 
     @Test
@@ -106,12 +120,12 @@ class LogstashPluginMapperTest {
 
         final Map<String, Object> mappedPluginSettings = Collections.singletonMap(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         when(logstashPluginAttributesMapper.mapAttributes(anyList(), any(LogstashAttributesMappings.class)))
-                .thenReturn(mappedPluginSettings);
+                .thenReturn(Collections.singletonList(new PluginModel("opensearch", mappedPluginSettings)));
 
-        final PluginModel pluginModel = createObjectUnderTest().mapPlugin(logstashPlugin);
+        final List<PluginModel> pluginModels = createObjectUnderTest().mapPlugin(logstashPlugin);
 
-        assertThat(pluginModel, notNullValue());
-        assertThat(pluginModel.getPluginSettings(), notNullValue());
-        assertThat(pluginModel.getPluginSettings(), equalTo(mappedPluginSettings));
+        assertThat(pluginModels, notNullValue());
+        assertThat(pluginModels.get(0).getPluginSettings(), notNullValue());
+        assertThat(pluginModels.get(0).getPluginSettings(), equalTo(mappedPluginSettings));
     }
 }

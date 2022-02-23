@@ -26,6 +26,9 @@ class LogstashMappingModel implements LogstashAttributesMappings {
     private String attributesMapperClass;
 
     @JsonProperty
+    private String customPluginMapperClass;
+
+    @JsonProperty
     @JsonSetter(nulls = Nulls.AS_EMPTY)
     private Map<String, String> mappedAttributeNames = new HashMap<>();
 
@@ -47,5 +50,9 @@ class LogstashMappingModel implements LogstashAttributesMappings {
 
     public Map<String, Object> getAdditionalAttributes() {
         return additionalAttributes;
+    }
+
+    public String getCustomPluginMapperClass() {
+        return customPluginMapperClass;
     }
 }

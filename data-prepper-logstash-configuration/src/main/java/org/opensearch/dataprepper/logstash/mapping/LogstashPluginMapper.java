@@ -13,29 +13,28 @@ import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Map;
+import java.util.List;
 
 /**
  * Converts Logstash plugin model to Data Prepper plugin model using mapping file
- * {@link #LogstashPluginMapper(AttributesMapperProvider)} is used for unit testing
+ * {@link #LogstashPluginMapper(PluginMapperProvider)} is used for unit testing
  *
  * @since 1.2
  */
 class LogstashPluginMapper {
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory());
-    private final AttributesMapperProvider attributesMapperProvider;
+    private final PluginMapperProvider pluginMapperProvider;
 
     public LogstashPluginMapper() {
-        this(new AttributesMapperProvider());
+        this(new PluginMapperProvider());
     }
 
-    LogstashPluginMapper(final AttributesMapperProvider attributesMapperProvider) {
-        this.attributesMapperProvider = attributesMapperProvider;
+    public LogstashPluginMapper(final PluginMapperProvider pluginMapperProvider) {
+        this.pluginMapperProvider = pluginMapperProvider;
     }
 
-    public PluginModel mapPlugin(LogstashPlugin logstashPlugin) {
-
-        String mappingResourceName = logstashPlugin.getPluginName() + ".mapping.yaml";
+    public List<PluginModel> mapPlugin(LogstashPlugin logstashPlugin) {
+        final String mappingResourceName = logstashPlugin.getPluginName() + ".mapping.yaml";
 
         final InputStream inputStream = this.getClass().getResourceAsStream(mappingResourceName);
         if (inputStream == null) {
@@ -50,14 +49,19 @@ class LogstashPluginMapper {
             throw new LogstashMappingException("Unable to parse mapping file " + mappingResourceName, ex);
         }
 
+        if(logstashMappingModel.getCustomPluginMapperClass() != null) {
+            final LogstashPluginAttributesMapper mapper = pluginMapperProvider.getAttributesMapper(logstashMappingModel);
+            return mapper.mapAttributes(logstashPlugin.getAttributes(), logstashMappingModel);
+        }
+
         if (logstashMappingModel.getPluginName() == null) {
             throw new LogstashMappingException("The mapping file " + mappingResourceName + " has a null value for 'pluginName'.");
         }
 
-        final LogstashPluginAttributesMapper pluginAttributesMapper = attributesMapperProvider.getAttributesMapper(logstashMappingModel);
+        final LogstashPluginAttributesMapper pluginAttributesMapper = pluginMapperProvider.getAttributesMapper(logstashMappingModel);
 
-        final Map<String, Object> pluginSettings = pluginAttributesMapper.mapAttributes(logstashPlugin.getAttributes(), logstashMappingModel);
+        final List<PluginModel> pluginModels = pluginAttributesMapper.mapAttributes(logstashPlugin.getAttributes(), logstashMappingModel);
 
-        return new PluginModel(logstashMappingModel.getPluginName(), pluginSettings);
+        return pluginModels;
     }
 }
