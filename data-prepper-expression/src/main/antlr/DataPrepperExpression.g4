@@ -225,91 +225,28 @@ EscapeSequence
     : '\\' [btnfr"'\\$]
     ;
 
-SET_DELIMITER
-    : ','
-    ;
-
-EQUAL
-    : '=='
-    ;
-
-NOT_EQUAL
-    : '!='
-    ;
-
-LT
-    : '<'
-    ;
-
-GT
-    : '>'
-    ;
-
-LTE
-    : '<='
-    ;
-
-GTE
-    : '>='
-    ;
-
-MATCH_REGEX_PATTERN
-    : '=~'
-    ;
-
-NOT_MATCH_REGEX_PATTERN
-    : '!~'
-    ;
-
-IN_SET
-    : SPACE 'in' SPACE
-    ;
-
-NOT_IN_SET
-    : SPACE 'not in' SPACE
-    ;
-
-AND
-    : SPACE 'and' SPACE
-    ;
-
-OR
-    : SPACE 'or' SPACE
-    ;
-
-NOT
-    : 'not' SPACE
-    ;
-
-LPAREN
-    : '('
-    ;
-
-RPAREN
-    : ')'
-    ;
-
-LBRACE
-    : '{'
-    ;
-
-RBRACE
-    : '}'
-    ;
-
-FORWARDSLASH
-    : '/'
-    ;
-
-DOUBLEQUOTE
-    : '"'
-    ;
+SET_DELIMITER : ',';
+EQUAL : '==';
+NOT_EQUAL : '!=';
+LT : '<';
+GT : '>';
+LTE : '<=';
+GTE : '>=';
+MATCH_REGEX_PATTERN : '=~';
+NOT_MATCH_REGEX_PATTERN : '!~';
+IN_SET : SPACE 'in' SPACE;
+NOT_IN_SET : SPACE 'not in' SPACE;
+AND : SPACE 'and' SPACE;
+OR : SPACE 'or' SPACE;
+NOT : 'not' SPACE;
+LPAREN : '(';
+RPAREN : ')';
+LBRACE : '{';
+RBRACE : '}';
+FORWARDSLASH : '/';
+DOUBLEQUOTE : '"';
 
 fragment
-SPACE
-    : ' '
-    ;
+SPACE : ' ';
 
-SKIP_SPACE
-    : [ \t\r\n] -> skip
-    ;
+SKIP_SPACE : [ \t\r\n] -> skip;

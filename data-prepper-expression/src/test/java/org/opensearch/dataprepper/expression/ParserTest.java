@@ -11,6 +11,8 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionLexer;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import org.opensearch.dataprepper.expression.util.ErrorListener;
@@ -62,12 +64,15 @@ public class ParserTest {
         assertThatHasParseError("(true) =~ \"Hello?\"");
     }
 
-    @Test
-    void testInvalidSetItem() {
-        assertThatHasParseError("{true or false}");
-        assertThatHasParseError("{(5)}");
-        assertThatHasParseError("{5 == 5}");
-        assertThatHasParseError("{/node =~ \"[A-Z]*\"}");
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{true or false}",
+            "{(5)}",
+            "{5 == 5}",
+            "{/node =~ \"[A-Z]*\"}",
+    })
+    void testInvalidSetItem(final String expression) {
+        assertThatHasParseError(expression);
     }
 
     @Test
@@ -80,63 +85,81 @@ public class ParserTest {
         assertThatHasParseError("\"foo\"=~3.14");
     }
 
-    @Test
-    void testInvalidFloatParsingRules() {
-        assertThatHasParseError("0.");
-        assertThatHasParseError("00.");
-        assertThatHasParseError(".00");
-        assertThatHasParseError(".10");
-        assertThatHasParseError("1.10");
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "0.",
+            "00.",
+            ".00",
+            ".10",
+            "1.10",
+    })
+    void testInvalidFloatParsingRules(final String expression) {
+        assertThatHasParseError(expression);
     }
 
-    @Test
-    void testInvalidNumberOfOperands() {
-        assertThatHasParseError("5==");
-        assertThatHasParseError("==");
-        assertThatHasParseError("not");
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "5==",
+            "==",
+            "not",
+    })
+    void testInvalidNumberOfOperands(final String expression) {
+        assertThatHasParseError(expression);
     }
 
-    @Test
-    void testValidOperatorsRequireSpace() {
-        assertThatIsValid("/status in {200}");
-        assertThatIsValid("/a==(/b==200)");
-        assertThatIsValid("/a in {200}");
-        assertThatIsValid("/a not in {400}");
-        assertThatIsValid("/a<300 and /b>200");
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/status in {200}",
+            "/a==(/b==200)",
+            "/a in {200}",
+            "/a not in {400}",
+            "/a<300 and /b>200",
+    })
+    void testValidOperatorsRequireSpace(final String expression) {
+        assertThatIsValid(expression);
     }
 
-    @Test
-    void testInvalidSetOperatorArgs() {
-        assertThatHasParseError("/a in ({200})");
-        assertThatHasParseError("/a in 5");
-        assertThatHasParseError("/a in 3.14");
-        assertThatHasParseError("/a in false");
-        assertThatHasParseError("\"Hello\" not in ({200})");
-        assertThatHasParseError("\"Hello\" not in 5");
-        assertThatHasParseError("\"Hello\" not in 3.14");
-        assertThatHasParseError("\"Hello\" not in false");
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/a in ({200})",
+            "/a in 5",
+            "/a in 3.14",
+            "/a in false",
+            "\"Hello\" not in ({200})",
+            "\"Hello\" not in 5",
+            "\"Hello\" not in 3.14",
+            "\"Hello\" not in false",
+    })
+    void testInvalidSetOperatorArgs(final String expression) {
+        assertThatHasParseError(expression);
     }
 
-    @Test
-    void testInvalidOperatorsRequireSpace() {
-        assertThatHasParseError("/status in{200}");
-        assertThatHasParseError("/status in({200})");
-        assertThatHasParseError("/a in{200, 202}");
-        assertThatHasParseError("/a not in{400}");
-        assertThatHasParseError("/b<300and/b>200");
-        assertThatHasParseError("/a in {200,}");
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/status in{200}",
+            "/status in({200})",
+            "/a in{200, 202}",
+            "/a not in{400}",
+            "/b<300and/b>200",
+            "/a in {200,}",
+    })
+    void testInvalidOperatorsRequireSpace(final String expression) {
+        assertThatHasParseError(expression);
     }
 
-    @Test
-    void testValidOptionalSpaceOperators() {
-        assertThatIsValid("/status < 300");
-        assertThatIsValid("/status>=300");
-        assertThatIsValid("/msg =~ \"^\\\\w*\\$\"");
-        assertThatIsValid("/msg=~\"[A-Za-z]\"");
-        assertThatIsValid("/status == 200");
-        assertThatIsValid("/status_code==200");
-        assertThatIsValid("/a in {200, 202}");
-        assertThatIsValid("/a in {200,202}");
-        assertThatIsValid("/a in {200 , 202}");
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/status < 300",
+            "/status>=300",
+            "/msg =~ \"^\\\\w*\\$\"",
+            "/msg=~\"[A-Za-z]\"",
+            "/status == 200",
+            "/status_code==200",
+            "/a in {200, 202}",
+            "/a in {200,202}",
+            "/a in {200 , 202}",
+    })
+    void testValidOptionalSpaceOperators(final String expression) {
+        assertThatIsValid(expression);
     }
 }
