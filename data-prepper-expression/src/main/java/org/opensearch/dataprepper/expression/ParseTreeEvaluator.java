@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.expression;
 
 import com.amazon.dataprepper.model.event.Event;
+import com.amazon.dataprepper.model.event.JacksonEvent;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.slf4j.Logger;
@@ -13,6 +14,9 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 @Named
 public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
@@ -44,5 +48,18 @@ public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
     public static void main(String[] args) {
         ScriptParser parser = new ScriptParser();
         ParseTree parseTree = parser.parse("true == false");
+        ParseTreeWalker walker = new ParseTreeWalker();
+        List<Operator<?>> operators = Arrays.asList(
+                new AndOperator(), new OrOperator(),
+                new InOperator(), new NotInOperator(),
+                new EqualOperator(), new NotEqualOperator(),
+                new GreaterThanOperator(), new GreaterThanOrEqualOperator(),
+                new LessThanOperator(), new LessThanOrEqualOperator(),
+                new RegexEqualOperator(), new RegexNotEqualOperator(),
+                new NotOperator()
+        );
+        ParseTreeEvaluatorListener listener = new ParseTreeEvaluatorListener(operators, new CoercionService());
+        ParseTreeEvaluator evaluator = new ParseTreeEvaluator(listener, walker);
+        System.out.println(evaluator.evaluate(parseTree, JacksonEvent.builder().withEventType("event").build()));
     }
 }

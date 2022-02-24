@@ -91,15 +91,15 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     @Override
     public void enterConditionalExpression(DataPrepperExpressionParser.ConditionalExpressionContext ctx) {
-        if (!CONDITIONAL_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
-            return;
-        }
-        performSingleOperation(2);
+
     }
 
     @Override
     public void exitConditionalExpression(DataPrepperExpressionParser.ConditionalExpressionContext ctx) {
-
+        if (!CONDITIONAL_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
+            return;
+        }
+        performSingleOperation(2);
     }
 
     @Override
