@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.expression;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class LowerThanOrEqualOperator implements Operator<Boolean> {
+public class LessThanOrEqualOperator implements Operator<Boolean> {
     @Override
     public String getSymbol() {
         return "<=";

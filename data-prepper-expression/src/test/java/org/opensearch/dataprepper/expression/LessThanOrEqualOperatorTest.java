@@ -11,8 +11,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class LowerThanOrEqualOperatorTest {
-    final LowerThanOrEqualOperator objectUnderTest = new LowerThanOrEqualOperator();
+class LessThanOrEqualOperatorTest {
+    final LessThanOrEqualOperator objectUnderTest = new LessThanOrEqualOperator();
 
     @Test
     void testGetSymbol() {
