@@ -43,6 +43,20 @@ import static org.hamcrest.core.IsEqual.equalTo;
  * </p>
  */
 public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
+    public static void describeContextTo(final ParseTree parseTree, final Description mismatch) {
+        if (parseTree != null) {
+            final StringBuilder context = new StringBuilder(parseTree.getText());
+            ParseTree parent = parseTree.getParent();
+
+            while (parent != null) {
+                context.insert(0, parent.getText() + " -> ");
+                parent = parent.getParent();
+            }
+
+            mismatch.appendText("\n\t\t" + context + "\n\t\t");
+        }
+    }
+
     /**
      * @since 1.3
      * <p>Shortcut for constructor matching Hamcrest standard.</p>
@@ -82,14 +96,14 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
      * @since 1.3
      * Asserts number of children equal to the number of childMatchers and, in order each child matches the
      * corresponding matcher.
-     * @param ctx ParseTree branch to get children from
+     * @param parseTree ParseTree branch to get children from
      * @param mismatch Description used for printing Hamcrest mismatch messages
      * @return true if all assertions pass
      */
-    private boolean matchChildren(final ParseTree ctx, final Description mismatch) {
-        if (listSizeMatcher.matches(ctx.getChildCount())) {
+    private boolean matchChildren(final ParseTree parseTree, final Description mismatch) {
+        if (listSizeMatcher.matches(parseTree.getChildCount())) {
             for (int i = 0; i < childrenMatchers.length; i++) {
-                final ParseTree child = ctx.getChild(i);
+                final ParseTree child = parseTree.getChild(i);
                 final DiagnosingMatcher<? extends ParseTree> matcher = childrenMatchers[i];
 
                 if (!matcher.matches(child)) {
@@ -106,7 +120,7 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
         else {
             mismatch.appendDescriptionOf(listSizeMatcher)
                     .appendText(" ");
-            listSizeMatcher.describeMismatch(ctx.getChildCount(), mismatch);
+            listSizeMatcher.describeMismatch(parseTree.getChildCount(), mismatch);
             failedAssertion = listSizeMatcher;
             return false;
         }
@@ -121,8 +135,8 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
      */
     public boolean matches(final Object item, final Description mismatch) {
         if (isParserRuleContextType.matches(item)) {
-            final ParseTree ctx = (ParseTree) item;
-            return matchChildren(ctx, mismatch);
+            final ParseTree parseTree = (ParseTree) item;
+            return matchChildren(parseTree, mismatch);
         }
         else {
             mismatch.appendDescriptionOf(isParserRuleContextType)
