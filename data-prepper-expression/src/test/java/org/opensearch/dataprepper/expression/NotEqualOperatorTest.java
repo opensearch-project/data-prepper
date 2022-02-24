@@ -28,6 +28,9 @@ class NotEqualOperatorTest {
         final TestObject testObject3 = new TestObject("2");
         assertThat(objectUnderTest.eval(testObject1, testObject2), is(false));
         assertThat(objectUnderTest.eval(testObject1, testObject3), is(true));
+        assertThat(objectUnderTest.eval(null, testObject1), is(true));
+        assertThat(objectUnderTest.eval(testObject1, null), is(true));
+        assertThat(objectUnderTest.eval(null, null), is(false));
     }
 
     @Test
