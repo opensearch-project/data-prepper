@@ -65,4 +65,20 @@ class ErrorListenerTest {
         assertThat(errorListener.isWarningFound(), is(false));
         assertThat(errorListener.isErrorFound(), is(true));
     }
+
+    @Test
+    void testMultipleFunctionsCalled() {
+        final ParserRuleContext context = mock(ParserRuleContext.class);
+        context.exception = mock(RecognitionException.class);
+        errorListener.enterEveryRule(context);
+
+        errorListener.syntaxError(null, null, 0, 0, null, null);
+        errorListener.reportAmbiguity(null, null, 0, 0, false, null, null);
+        errorListener.reportAttemptingFullContext(null, null, 0, 0, null, null);
+        errorListener.reportContextSensitivity(null, null, 0, 0, 0, null);
+        errorListener.visitErrorNode(null);
+
+        assertThat(errorListener.isWarningFound(), is(true));
+        assertThat(errorListener.isErrorFound(), is(true));
+    }
 }
