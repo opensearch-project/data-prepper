@@ -96,7 +96,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     @Override
     public void exitConditionalExpression(DataPrepperExpressionParser.ConditionalExpressionContext ctx) {
-        if (!CONDITIONAL_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
+        if (operatorSymbolStack.isEmpty() || !CONDITIONAL_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
             return;
         }
         performSingleOperation(2);
@@ -119,7 +119,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     @Override
     public void exitEqualityOperatorExpression(DataPrepperExpressionParser.EqualityOperatorExpressionContext ctx) {
-        if (!EQUALITY_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
+        if (operatorSymbolStack.isEmpty() || !EQUALITY_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
             return;
         }
         performSingleOperation(2);
@@ -142,7 +142,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     @Override
     public void exitRegexOperatorExpression(DataPrepperExpressionParser.RegexOperatorExpressionContext ctx) {
-        if (!REGEX_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
+        if (operatorSymbolStack.isEmpty() || !REGEX_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
             return;
         }
         performSingleOperation(2);
@@ -165,7 +165,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     @Override
     public void exitRelationalOperatorExpression(DataPrepperExpressionParser.RelationalOperatorExpressionContext ctx) {
-        if (!RELATIONAL_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
+        if (operatorSymbolStack.isEmpty() || !RELATIONAL_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
             return;
         }
         performSingleOperation(2);
@@ -188,7 +188,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     @Override
     public void exitSetOperatorExpression(DataPrepperExpressionParser.SetOperatorExpressionContext ctx) {
-        if (!SET_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
+        if (operatorSymbolStack.isEmpty() || !SET_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
             return;
         }
         performSingleOperation(2);
@@ -251,7 +251,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     @Override
     public void exitUnaryNotOperatorExpression(DataPrepperExpressionParser.UnaryNotOperatorExpressionContext ctx) {
-        if (operatorSymbolStack.peek() != NOT) {
+        if (operatorSymbolStack.isEmpty() || operatorSymbolStack.peek() != NOT) {
             return;
         }
         performSingleOperation(1);
