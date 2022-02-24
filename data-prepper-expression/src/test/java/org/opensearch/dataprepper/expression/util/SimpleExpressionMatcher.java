@@ -18,7 +18,7 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcher.describe
  * {@link RuleClassOrderedList#isInstanceOfLast(ParseTree)}
  */
 abstract class SimpleExpressionMatcher extends DiagnosingMatcher<ParseTree> {
-    private static final Matcher<Integer> singleChildMatcher = is(1);
+    protected static final Matcher<Integer> singleChildMatcher = is(1);
 
     protected final RuleClassOrderedList validRuleOrder;
 
