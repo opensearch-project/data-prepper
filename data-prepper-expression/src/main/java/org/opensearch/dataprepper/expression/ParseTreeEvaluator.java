@@ -40,4 +40,9 @@ public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
             return null;
         }
     }
+
+    public static void main(String[] args) {
+        ScriptParser parser = new ScriptParser();
+        ParseTree parseTree = parser.parse("true == false");
+    }
 }

@@ -215,12 +215,12 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
     }
 
     @Override
-    public void enterParenthesisExpression(DataPrepperExpressionParser.ParenthesisExpressionContext ctx) {
+    public void enterParenthesesExpression(DataPrepperExpressionParser.ParenthesesExpressionContext ctx) {
 
     }
 
     @Override
-    public void exitParenthesisExpression(DataPrepperExpressionParser.ParenthesisExpressionContext ctx) {
+    public void exitParenthesesExpression(DataPrepperExpressionParser.ParenthesesExpressionContext ctx) {
 
     }
 
