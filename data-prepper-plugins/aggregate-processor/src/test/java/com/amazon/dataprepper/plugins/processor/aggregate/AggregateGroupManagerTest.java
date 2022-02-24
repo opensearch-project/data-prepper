@@ -8,6 +8,7 @@ package com.amazon.dataprepper.plugins.processor.aggregate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
@@ -30,7 +31,7 @@ public class AggregateGroupManagerTest {
 
     private AggregateIdentificationKeysHasher.IdentificationHash identificationHash;
 
-    private static final int TEST_GROUP_DURATION = new Random().nextInt(10) + 10;
+    private static final Duration TEST_GROUP_DURATION = Duration.ofSeconds(new Random().nextInt(10) + 10);
 
     @BeforeEach
     void setup() {
@@ -92,11 +93,11 @@ public class AggregateGroupManagerTest {
 
         final AggregateGroup groupToConclude = mock(AggregateGroup.class);
         final AggregateIdentificationKeysHasher.IdentificationHash hashForGroupToConclude = mock(AggregateIdentificationKeysHasher.IdentificationHash.class);
-        when(groupToConclude.getGroupStart()).thenReturn(Instant.now().minusSeconds(TEST_GROUP_DURATION));
+        when(groupToConclude.getGroupStart()).thenReturn(Instant.now().minusSeconds(TEST_GROUP_DURATION.getSeconds()));
 
         final AggregateGroup groupToNotConclude = mock(AggregateGroup.class);
         final AggregateIdentificationKeysHasher.IdentificationHash hashForGroupToNotConclude = mock(AggregateIdentificationKeysHasher.IdentificationHash.class);
-        when(groupToNotConclude.getGroupStart()).thenReturn(Instant.now().plusSeconds(TEST_GROUP_DURATION));
+        when(groupToNotConclude.getGroupStart()).thenReturn(Instant.now().plusSeconds(TEST_GROUP_DURATION.getSeconds()));
 
         aggregateGroupManager.putGroupWithHash(hashForGroupToConclude, groupToConclude);
         aggregateGroupManager.putGroupWithHash(hashForGroupToNotConclude, groupToNotConclude);
