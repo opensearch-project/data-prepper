@@ -73,7 +73,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     public Object getResult() {
         if (argStack.size() != 1 || context == null) {
-            throw new IllegalStateException("The ParseTreeEvaluatorListener has not been initialized or processed by" +
+            throw new IllegalStateException("The ParseTreeEvaluatorListener has not been initialized or processed by " +
                     "ParseTreeWalker.");
         }
         return argStack.peek();
@@ -320,6 +320,9 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
     @Override
     public void visitTerminal(TerminalNode node) {
         final int nodeType = node.getSymbol().getType();
+        if (nodeType == DataPrepperExpressionParser.EOF) {
+            return;
+        }
         if (strategy.containsKey(nodeType) || nodeType == DataPrepperExpressionParser.LPAREN) {
             operatorSymbolStack.push(nodeType);
         } else if (nodeType == DataPrepperExpressionParser.RPAREN) {

@@ -47,7 +47,7 @@ public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
 
     public static void main(String[] args) {
         ScriptParser parser = new ScriptParser();
-        ParseTree parseTree = parser.parse("true == false");
+        ParseTree parseTree = parser.parse("/b == 1");
         ParseTreeWalker walker = new ParseTreeWalker();
         List<Operator<?>> operators = Arrays.asList(
                 new AndOperator(), new OrOperator(),
@@ -60,6 +60,7 @@ public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
         );
         ParseTreeEvaluatorListener listener = new ParseTreeEvaluatorListener(operators, new CoercionService());
         ParseTreeEvaluator evaluator = new ParseTreeEvaluator(listener, walker);
-        System.out.println(evaluator.evaluate(parseTree, JacksonEvent.builder().withEventType("event").build()));
+        JacksonEvent event = JacksonEvent.builder().withEventType("event").withData(Map.of("a", 1)).build();
+        System.out.println(evaluator.evaluate(parseTree, event));
     }
 }
