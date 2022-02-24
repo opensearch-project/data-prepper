@@ -28,6 +28,9 @@ class EqualOperatorTest {
         final TestObject testObject3 = new TestObject("2");
         assertThat(objectUnderTest.eval(testObject1, testObject2), is(true));
         assertThat(objectUnderTest.eval(testObject1, testObject3), is(false));
+        assertThat(objectUnderTest.eval(null, testObject1), is(false));
+        assertThat(objectUnderTest.eval(testObject1, null), is(false));
+        assertThat(objectUnderTest.eval(null, null), is(true));
     }
 
     @Test
