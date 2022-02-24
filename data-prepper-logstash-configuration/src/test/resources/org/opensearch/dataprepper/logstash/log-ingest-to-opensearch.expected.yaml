@@ -14,6 +14,7 @@ logstash-converted-pipeline:
             - "%{COMBINEDAPACHELOG}"
     - drop_events: {}
     - key_value:
+        source: "message"
         destination: "test"
     - rename_keys:
         entries:
