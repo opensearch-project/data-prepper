@@ -44,6 +44,12 @@ Example:
  */
 @Named
 public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener {
+    private static final Set<Integer> CONDITIONAL_OPERATOR_TYPES = Set.of(AND, OR);
+    private static final Set<Integer> EQUALITY_OPERATOR_TYPES = Set.of(EQUAL, NOT_EQUAL);
+    private static final Set<Integer> REGEX_OPERATOR_TYPES = Set.of(MATCH_REGEX_PATTERN, NOT_MATCH_REGEX_PATTERN);
+    private static final Set<Integer> RELATIONAL_OPERATOR_TYPES = Set.of(LT, LTE, GT, GTE);
+    private static final Set<Integer> SET_OPERATOR_TYPES = Set.of(IN_SET, NOT_IN_SET);
+
     private final Map<Integer, Operator<?>> strategy;
     private final CoercionService coercionService;
     private Stack<Integer> operatorSymbolStack = new Stack<>();
@@ -85,7 +91,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     @Override
     public void enterConditionalExpression(DataPrepperExpressionParser.ConditionalExpressionContext ctx) {
-        if (!Set.of(AND, OR).contains(operatorSymbolStack.peek())) {
+        if (!CONDITIONAL_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
             return;
         }
         performSingleOperation(2);
@@ -113,7 +119,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     @Override
     public void exitEqualityOperatorExpression(DataPrepperExpressionParser.EqualityOperatorExpressionContext ctx) {
-        if (Set.of(EQUAL, NOT_EQUAL).contains(operatorSymbolStack.peek())) {
+        if (!EQUALITY_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
             return;
         }
         performSingleOperation(2);
@@ -136,8 +142,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     @Override
     public void exitRegexOperatorExpression(DataPrepperExpressionParser.RegexOperatorExpressionContext ctx) {
-        if (!Set.of(MATCH_REGEX_PATTERN, NOT_MATCH_REGEX_PATTERN)
-                .contains(operatorSymbolStack.peek())) {
+        if (!REGEX_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
             return;
         }
         performSingleOperation(2);
@@ -160,7 +165,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     @Override
     public void exitRelationalOperatorExpression(DataPrepperExpressionParser.RelationalOperatorExpressionContext ctx) {
-        if (!Set.of(LT, LTE, GT, GTE).contains(operatorSymbolStack.peek())) {
+        if (!RELATIONAL_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
             return;
         }
         performSingleOperation(2);
@@ -183,7 +188,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     @Override
     public void exitSetOperatorExpression(DataPrepperExpressionParser.SetOperatorExpressionContext ctx) {
-        if (!Set.of(IN_SET, NOT_IN_SET).contains(operatorSymbolStack.peek())) {
+        if (!SET_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
             return;
         }
         performSingleOperation(2);
