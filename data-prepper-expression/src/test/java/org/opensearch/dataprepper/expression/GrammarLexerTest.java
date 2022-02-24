@@ -111,27 +111,27 @@ public class GrammarLexerTest {
 
     @Test
     void testTokenIN_SET() {
-        assertToken("in", DataPrepperExpressionLexer.IN_SET);
+        assertToken(" in ", DataPrepperExpressionLexer.IN_SET);
     }
 
     @Test
     void testTokenNOT_IN_SET() {
-        assertToken("not in", DataPrepperExpressionLexer.NOT_IN_SET);
+        assertToken(" not in ", DataPrepperExpressionLexer.NOT_IN_SET);
     }
 
     @Test
     void testTokenAND() {
-        assertToken("and", DataPrepperExpressionLexer.AND);
+        assertToken(" and ", DataPrepperExpressionLexer.AND);
     }
 
     @Test
     void testTokenOR() {
-        assertToken("or", DataPrepperExpressionLexer.OR);
+        assertToken(" or ", DataPrepperExpressionLexer.OR);
     }
 
     @Test
     void testTokenNOT() {
-        assertToken("not", DataPrepperExpressionLexer.NOT);
+        assertToken("not ", DataPrepperExpressionLexer.NOT);
     }
 
     @Test
