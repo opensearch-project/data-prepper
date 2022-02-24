@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.logstash.mapping;
 
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -12,7 +13,6 @@ import org.opensearch.dataprepper.logstash.exception.LogstashMappingException;
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -25,7 +25,7 @@ class AttributesMapperCreatorTest {
     public static class NoDefaultConstructor implements LogstashPluginAttributesMapper {
         public NoDefaultConstructor(final String ignored) { }
         @Override
-        public Map<String, Object> mapAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings) {
+        public List<PluginModel> mapAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings) {
             return null;
         }
     }
@@ -35,14 +35,14 @@ class AttributesMapperCreatorTest {
             throw new RuntimeException("Intentional exception for testing.");
         }
         @Override
-        public Map<String, Object> mapAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings) {
+        public List<PluginModel> mapAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings) {
             return null;
         }
     }
 
     public static class ValidMapper implements LogstashPluginAttributesMapper {
         @Override
-        public Map<String, Object> mapAttributes(final List<LogstashAttribute> logstashAttributes, final LogstashAttributesMappings logstashAttributesMappings) {
+        public List<PluginModel> mapAttributes(final List<LogstashAttribute> logstashAttributes, final LogstashAttributesMappings logstashAttributesMappings) {
             return null;
         }
     }

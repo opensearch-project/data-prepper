@@ -5,14 +5,14 @@
 
 package org.opensearch.dataprepper.logstash.mapping;
 
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * An interface for a class which is responsible for mapping attributes
- * from a Logstash plugin into Data Prepper plugin settings.
+ * from a Logstash plugin into Data Prepper plugin models.
  *
  * @since 1.2
  */
@@ -22,8 +22,8 @@ public interface LogstashPluginAttributesMapper {
      *
      * @param logstashAttributes All the Logstash logstashAttributes for the plugin
      * @param logstashAttributesMappings The mappings for this Logstash plugin
-     * @return A map of Data Prepper plugin settings.
+     * @return A list of PluginModels
      * @since 1.2
      */
-    Map<String, Object> mapAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings);
+    List<PluginModel> mapAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings);
 }

@@ -20,8 +20,8 @@ conditionalExpression
     ;
 
 conditionalOperator
-    : 'and'
-    | 'or'
+    : AND
+    | OR
     ;
 
 equalityOperatorExpression
@@ -30,18 +30,18 @@ equalityOperatorExpression
     ;
 
 equalityOperator
-    : '=='
-    | '!='
+    : EQUAL
+    | NOT_EQUAL
     ;
 
 regexOperatorExpression
-    : regexOperatorExpression regexEqualityOperator regexPattern
+    : regexPattern regexEqualityOperator regexPattern
     | relationalOperatorExpression
     ;
 
 regexEqualityOperator
-    : '=~'
-    | '!~'
+    : MATCH_REGEX_PATTERN
+    | NOT_MATCH_REGEX_PATTERN
     ;
 
 relationalOperatorExpression
@@ -50,10 +50,10 @@ relationalOperatorExpression
     ;
 
 relationalOperator
-    : '<'
-    | '<='
-    | '>'
-    | '>='
+    : LT
+    | LTE
+    | GT
+    | GTE
     ;
 
 setOperatorExpression
@@ -62,20 +62,20 @@ setOperatorExpression
     ;
 
 setOperator
-    : 'in'
-    | 'not in'
+    : IN_SET
+    | NOT_IN_SET
     ;
 
 unaryOperatorExpression
     : primary
     | setInitializer
     | regexPattern
-    | parenthesisExpression
+    | parenthesesExpression
     | unaryNotOperatorExpression
     ;
 
-parenthesisExpression
-    : '(' conditionalExpression ')'
+parenthesesExpression
+    : LPAREN conditionalExpression RPAREN
     ;
 
 regexPattern
@@ -84,15 +84,15 @@ regexPattern
     ;
 
 setInitializer
-    : '{' primary (',' primary)* '}'
+    : LBRACE primary (SET_DELIMITER primary)* RBRACE
     ;
 
 unaryNotOperatorExpression
-    : unaryOperator primary
+    : unaryOperator conditionalExpression
     ;
 
 unaryOperator
-    : 'not'
+    : NOT
     ;
 
 primary
@@ -225,6 +225,7 @@ EscapeSequence
     : '\\' [btnfr"'\\$]
     ;
 
+SET_DELIMITER : ',';
 EQUAL : '==';
 NOT_EQUAL : '!=';
 LT : '<';
@@ -233,19 +234,19 @@ LTE : '<=';
 GTE : '>=';
 MATCH_REGEX_PATTERN : '=~';
 NOT_MATCH_REGEX_PATTERN : '!~';
-IN_SET : 'in';
-NOT_IN_SET : 'not in';
-AND : 'and';
-OR : 'or';
-NOT : 'not';
+IN_SET : SPACE 'in' SPACE;
+NOT_IN_SET : SPACE 'not in' SPACE;
+AND : SPACE 'and' SPACE;
+OR : SPACE 'or' SPACE;
+NOT : 'not' SPACE;
 LPAREN : '(';
 RPAREN : ')';
 LBRACE : '{';
 RBRACE : '}';
 FORWARDSLASH : '/';
 DOUBLEQUOTE : '"';
-SET_SEPARATOR : ',';
 
-SPACE
-    : [ \t\r\n] -> skip
-    ;
+fragment
+SPACE : ' ';
+
+SKIP_SPACE : [ \t\r\n] -> skip;
