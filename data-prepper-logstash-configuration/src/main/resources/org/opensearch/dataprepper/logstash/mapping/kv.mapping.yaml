@@ -1,5 +1,6 @@
 pluginName: key_value
 mappedAttributeNames:
+  source: source
   target: destination
   field_split: field_split_characters
   field_split_pattern: field_delimiter_regex
