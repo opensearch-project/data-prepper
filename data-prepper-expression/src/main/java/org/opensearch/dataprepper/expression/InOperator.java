@@ -5,14 +5,16 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
+
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class InOperator implements Operator<Boolean> {
     @Override
-    public String getSymbol() {
-        return "in";
+    public Integer getSymbol() {
+        return DataPrepperExpressionParser.IN_SET;
     }
 
     @Override

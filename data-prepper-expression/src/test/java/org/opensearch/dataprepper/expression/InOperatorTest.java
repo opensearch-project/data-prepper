@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.expression;
 
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import java.util.Collections;
 import java.util.Set;
@@ -19,7 +20,7 @@ class InOperatorTest {
 
     @Test
     void testGetSymbol() {
-        assertThat(objectUnderTest.getSymbol(), is("in"));
+        assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.IN_SET));
     }
 
     @Test

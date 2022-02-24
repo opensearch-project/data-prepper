@@ -5,13 +5,15 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
+
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class EqualOperator implements Operator<Boolean> {
 
     @Override
-    public String getSymbol() {
-        return "==";
+    public Integer getSymbol() {
+        return DataPrepperExpressionParser.EQUAL;
     }
 
     @Override

@@ -5,12 +5,14 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
+
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class AndOperator implements Operator<Boolean> {
     @Override
-    public String getSymbol() {
-        return "and";
+    public Integer getSymbol() {
+        return DataPrepperExpressionParser.AND;
     }
 
     @Override

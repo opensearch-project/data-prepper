@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.expression;
 
 public interface Operator<T> {
-    String getSymbol();
+    Integer getSymbol();
 
     /**
      * @since 1.3

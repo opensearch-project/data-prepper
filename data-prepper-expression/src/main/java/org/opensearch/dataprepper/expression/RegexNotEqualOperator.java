@@ -5,14 +5,16 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
+
 import java.util.regex.PatternSyntaxException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class RegexNotEqualOperator implements Operator<Boolean> {
     @Override
-    public String getSymbol() {
-        return "!~";
+    public Integer getSymbol() {
+        return DataPrepperExpressionParser.NOT_MATCH_REGEX_PATTERN;
     }
 
     @Override

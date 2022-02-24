@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.expression;
 
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import org.opensearch.dataprepper.expression.util.TestObject;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -17,7 +18,7 @@ class NotEqualOperatorTest {
 
     @Test
     void testGetSymbol() {
-        assertThat(objectUnderTest.getSymbol(), is("!="));
+        assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.NOT_EQUAL));
     }
 
     @Test

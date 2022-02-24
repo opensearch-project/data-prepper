@@ -5,12 +5,14 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
+
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class NotOperator implements Operator<Boolean> {
     @Override
-    public String getSymbol() {
-        return "not";
+    public Integer getSymbol() {
+        return DataPrepperExpressionParser.NOT;
     }
 
     @Override

@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.expression;
 
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -16,7 +17,7 @@ class LessThanOperatorTest {
 
     @Test
     void testGetSymbol() {
-        assertThat(objectUnderTest.getSymbol(), is("<"));
+        assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.LT));
     }
 
     @Test

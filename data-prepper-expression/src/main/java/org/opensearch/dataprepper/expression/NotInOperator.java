@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
+
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -12,8 +14,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class NotInOperator implements Operator<Boolean> {
 
     @Override
-    public String getSymbol() {
-        return "not in";
+    public Integer getSymbol() {
+        return DataPrepperExpressionParser.NOT_IN_SET;
     }
 
     @Override
