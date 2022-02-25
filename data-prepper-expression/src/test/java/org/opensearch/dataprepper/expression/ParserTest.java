@@ -136,4 +136,15 @@ public class ParserTest extends GrammarTest {
     void testValidOptionalSpaceOperators(final String expression) {
         assertThatIsValid(expression);
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "falkse and true",
+            "true an true",
+            "2 is in {2}",
+            "2 in {2,,}"
+    })
+    void testTypo(final String expression) {
+        assertThatHasParseError(expression);
+    }
 }

@@ -190,7 +190,7 @@ public class ParseTreeTest extends GrammarTest {
     @Test
     void testValidJsonPointerCharacterSet() {
         final ParserRuleContext expression = parseExpression(
-                "/ABCDEFGHIJKLMNOPQRSTUVWXYZ/ambcdefghijklmnopqrstuvwxyz/0123456789/_");
+                "/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/0123456789/_");
         assertThat(expression, isExpression(isJsonPointerUnaryTree()));
         assertThat(errorListener.isErrorFound(), is(false));
     }
