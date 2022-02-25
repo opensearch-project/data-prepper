@@ -20,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -56,8 +57,10 @@ public class AggregateProcessorIT {
     private static final int NUM_THREADS = 100;
     private static final int GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE = 2;
 
+    @Mock
+    private AggregateProcessorConfig aggregateProcessorConfig;
+
     private AggregateAction aggregateAction;
-    private Map<String, Object> aggregateConfigMap;
     private PluginMetrics pluginMetrics;
 
     private Collection<Record<Event>> eventBatch;
@@ -66,6 +69,9 @@ public class AggregateProcessorIT {
 
     @Mock
     private PluginFactory pluginFactory;
+
+    @Mock
+    private PluginModel actionConfiguration;
 
     @BeforeEach
     void setup() {
@@ -77,27 +83,27 @@ public class AggregateProcessorIT {
         identificationKeys.add("secondRandomNumber");
         identificationKeys.add("thirdRandomNumber");
 
-        aggregateConfigMap = new HashMap<>();
-        aggregateConfigMap.put("identification_keys", identificationKeys);
-        aggregateConfigMap.put("action", new PluginModel(UUID.randomUUID().toString(), Collections.emptyMap()));
-
         aggregateAction = new RemoveDuplicatesAggregateAction();
 
         eventBatch = getBatchOfEvents();
 
         pluginMetrics = PluginMetrics.fromNames(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
+        when(aggregateProcessorConfig.getIdentificationKeys()).thenReturn(identificationKeys);
+        when(aggregateProcessorConfig.getAggregateAction()).thenReturn(actionConfiguration);
+        when(actionConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
+        when(actionConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
                 .thenReturn(aggregateAction);
     }
 
     private AggregateProcessor createObjectUnderTest() {
-        final AggregateProcessorConfig aggregateProcessorConfig = OBJECT_MAPPER.convertValue(aggregateConfigMap, AggregateProcessorConfig.class);
         return new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory);
     }
 
     @RepeatedTest(value = 10)
     void aggregateWithNoConcludingGroupsReturnsExpectedResult() throws InterruptedException {
+        when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(1000));
         final AggregateProcessor objectUnderTest = createObjectUnderTest();
 
         final ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
@@ -130,7 +136,7 @@ public class AggregateProcessorIT {
 
     @RepeatedTest(value = 2)
     void aggregateWithConcludingGroupsOnceReturnsExpectedResult() throws InterruptedException {
-        aggregateConfigMap.put("group_duration", GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE);
+        when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         final AggregateProcessor objectUnderTest = createObjectUnderTest();
 
         final ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);

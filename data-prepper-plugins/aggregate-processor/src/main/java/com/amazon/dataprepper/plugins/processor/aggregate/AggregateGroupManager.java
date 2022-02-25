@@ -18,8 +18,8 @@ class AggregateGroupManager {
     private final Map<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> allGroups = Maps.newConcurrentMap();
     private final Duration groupDuration;
 
-    AggregateGroupManager(final int groupDuration) {
-        this.groupDuration = Duration.ofSeconds(groupDuration);
+    AggregateGroupManager(final Duration groupDuration) {
+        this.groupDuration = groupDuration;
     }
 
     AggregateGroup getAggregateGroup(final AggregateIdentificationKeysHasher.IdentificationHash identificationHash) {
