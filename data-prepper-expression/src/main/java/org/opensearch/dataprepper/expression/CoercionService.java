@@ -21,6 +21,7 @@ public class CoercionService {
             case DataPrepperExpressionParser.JsonPointer:
                 return event.get(node.getText(), Object.class);
             case DataPrepperExpressionParser.EscapedJsonPointer:
+            case DataPrepperExpressionParser.String:
                 return nodeStringValue;
             case DataPrepperExpressionParser.Integer:
                 return Integer.valueOf(nodeStringValue);
@@ -28,8 +29,8 @@ public class CoercionService {
                 return Float.valueOf(nodeStringValue);
             case DataPrepperExpressionParser.Boolean:
                 return Boolean.valueOf(nodeStringValue);
-            case DataPrepperExpressionParser.String:
-                return nodeStringValue;
+            case DataPrepperExpressionParser.LBRACE:
+                return new SetStartMarker();
             default:
                 // TODO: define custom exception type
                 return new IllegalStateException("Unsupported node type: " + nodeType);

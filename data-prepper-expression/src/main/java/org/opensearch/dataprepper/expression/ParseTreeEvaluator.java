@@ -47,7 +47,7 @@ public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
 
     public static void main(String[] args) {
         ScriptParser parser = new ScriptParser();
-        ParseTree parseTree = parser.parse("\"/a\" == 1");
+        ParseTree parseTree = parser.parse("1 in {{1}, {2}, {1,2}}");
         ParseTreeWalker walker = new ParseTreeWalker();
         List<Operator<?>> operators = Arrays.asList(
                 new AndOperator(), new OrOperator(),

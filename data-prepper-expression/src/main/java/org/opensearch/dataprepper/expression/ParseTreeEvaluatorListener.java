@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -323,7 +324,15 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
         if (nodeType == DataPrepperExpressionParser.EOF) {
             return;
         }
-        if (strategy.containsKey(nodeType) || nodeType == DataPrepperExpressionParser.LPAREN) {
+        if (nodeType == DataPrepperExpressionParser.RBRACE) {
+            final Set<Object> currSet = new HashSet<>();
+            while (!(argStack.peek() instanceof SetStartMarker)) {
+                currSet.add(argStack.pop());
+            }
+            // pop SetStartMarker
+            argStack.pop();
+            argStack.push(currSet);
+        } else if (strategy.containsKey(nodeType) || nodeType == DataPrepperExpressionParser.LPAREN) {
             operatorSymbolStack.push(nodeType);
         } else if (nodeType == DataPrepperExpressionParser.RPAREN) {
             // pop LPAREN at operatorSymbolStack top
