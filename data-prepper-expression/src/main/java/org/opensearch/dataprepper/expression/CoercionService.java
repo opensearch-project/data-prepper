@@ -20,6 +20,8 @@ public class CoercionService {
         switch (nodeType) {
             case DataPrepperExpressionParser.JsonPointer:
                 return event.get(node.getText(), Object.class);
+            case DataPrepperExpressionParser.EscapedJsonPointer:
+                return nodeStringValue;
             case DataPrepperExpressionParser.Integer:
                 return Integer.valueOf(nodeStringValue);
             case DataPrepperExpressionParser.Float:
