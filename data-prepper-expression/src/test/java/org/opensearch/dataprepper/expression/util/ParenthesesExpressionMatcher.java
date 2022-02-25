@@ -16,7 +16,7 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcher.hasConte
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
 public class ParenthesesExpressionMatcher extends SimpleExpressionMatcher {
-    private static final Matcher<Integer> childCountMatcher = is(3);
+    private static final Matcher<Integer> THREE_CHILDREN_MATCHER = is(3);
 
     private static final RuleClassOrderedList VALID_PARENTHESES_RULE_ORDER = new RuleClassOrderedList(
             DataPrepperExpressionParser.ExpressionContext.class,
@@ -57,7 +57,7 @@ public class ParenthesesExpressionMatcher extends SimpleExpressionMatcher {
 
     @Override
     protected boolean baseCase(final ParseTree item, final Description mismatchDescription) {
-        if (!childCountMatcher.matches(item.getChildCount())) {
+        if (!THREE_CHILDREN_MATCHER.matches(item.getChildCount())) {
             mismatchDescription.appendText("\n\t\t expected " + item.getText() + " to have 1 child node");
             return false;
         }
