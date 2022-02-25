@@ -18,7 +18,7 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcher.describe
  * {@link RuleClassOrderedList#isInstanceOfLast(ParseTree)}
  */
 abstract class SimpleExpressionMatcher extends DiagnosingMatcher<ParseTree> {
-    private static final Matcher<Integer> singleChildMatcher = is(1);
+    protected static final Matcher<Integer> SINGLE_CHILD_MATCHER = is(1);
 
     protected final RuleClassOrderedList validRuleOrder;
 
@@ -72,7 +72,7 @@ abstract class SimpleExpressionMatcher extends DiagnosingMatcher<ParseTree> {
      * @return if item matches the expected value
      */
     private boolean matchesChildren(final ParseTree item, final Description mismatch) {
-        if (singleChildMatcher.matches(item.getChildCount())) {
+        if (SINGLE_CHILD_MATCHER.matches(item.getChildCount())) {
             final ParseTree child = item.getChild(0);
 
             if (validRuleOrder.isSequentialRules(item, child)) {
@@ -85,7 +85,7 @@ abstract class SimpleExpressionMatcher extends DiagnosingMatcher<ParseTree> {
             }
         }
         else {
-            singleChildMatcher.describeMismatch(item.getChildCount(), mismatch);
+            SINGLE_CHILD_MATCHER.describeMismatch(item.getChildCount(), mismatch);
             describeContextTo(item, mismatch);
             return false;
         }
