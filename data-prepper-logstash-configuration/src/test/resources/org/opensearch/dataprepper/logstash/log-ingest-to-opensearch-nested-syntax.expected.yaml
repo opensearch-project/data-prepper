@@ -15,8 +15,16 @@ logstash-converted-pipeline:
         keys_to_overwrite:
           - "/data/timestamp"
           - "/data/verb"
+    - date:
+        from_time_received: false
+        destination_timezone: "UTC"
+        match:
+          - key: "/data/timestamp"
+            patterns:
+              - "yyyy-MM-dd"
     - key_value:
-        destination: "test"
+        source: "/data/message"
+        destination: "/data/test"
     - rename_keys:
         entries:
           - from_key: "messagea"

@@ -1,4 +1,5 @@
 pluginName: key_value
+attributesMapperClass: org.opensearch.dataprepper.logstash.mapping.KeyValueLogstashPluginAttributesMapper
 mappedAttributeNames:
   source: source
   target: destination

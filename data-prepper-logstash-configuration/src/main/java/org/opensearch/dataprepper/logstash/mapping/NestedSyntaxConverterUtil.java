@@ -9,8 +9,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 class NestedSyntaxConverterUtil {
-    private static final String nestedSyntaxRegex = "\\[([^\\]]+)\\]";
-    private static final Pattern nestedSyntaxPattern = Pattern.compile(nestedSyntaxRegex);
+    private static final String NESTED_SYNTAX_REGEX = "\\[([^\\]]+)\\]";
+    private static final Pattern NESTED_SYNTAX_PATTERN = Pattern.compile(NESTED_SYNTAX_REGEX);
     private NestedSyntaxConverterUtil() {}
 
     public static Object checkAndConvertLogstashNestedSyntax(final Object logstashAttributeValue) {
@@ -22,7 +22,7 @@ class NestedSyntaxConverterUtil {
 
     private static String convertAttributeValueNestedSyntax(final Object attributeValue) {
         StringBuilder convertedAttribute = new StringBuilder();
-        Matcher nestedSyntaxMatcher = nestedSyntaxPattern.matcher(attributeValue.toString());
+        Matcher nestedSyntaxMatcher = NESTED_SYNTAX_PATTERN.matcher(attributeValue.toString());
 
         while (nestedSyntaxMatcher.find()) {
             convertedAttribute.append("/");
