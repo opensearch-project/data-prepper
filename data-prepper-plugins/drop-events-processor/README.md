@@ -24,6 +24,10 @@ Create the following file named `logs_json.log` and replace the `path` in the fi
 
 When run, the processor will filter out and drop all messages.
 
+## Conditional Drop Events
+The `when` parameter can be used to drop selected events. The `when` parameter takes a single String expression. See
+[Data Prepper Expression syntax](../../docs/expression_syntax) for a complete list of features supported by a Data Prepper Expression.
+
 ## Developer Guide
 This plugin is compatible with Java 14. See
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
