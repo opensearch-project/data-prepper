@@ -10,10 +10,12 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 
 import javax.inject.Named;
+import java.time.Duration;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,7 +30,12 @@ class PluginConfigurationConverter {
     private final Validator validator;
 
     PluginConfigurationConverter(final Validator validator) {
-        this.objectMapper = new ObjectMapper().setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+        final SimpleModule simpleModule = new SimpleModule();
+        simpleModule.addDeserializer(Duration.class, new PluginDurationDeserializer());
+
+        this.objectMapper = new ObjectMapper()
+                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                .registerModule(simpleModule);
 
         this.validator = validator;
     }
