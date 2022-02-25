@@ -15,7 +15,7 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcher.hasConte
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
 public class LiteralMatcher extends SimpleExpressionMatcher {
-    private final Matcher<ParseTree> literalMatcher = hasContext(DataPrepperExpressionParser.LiteralContext.class, isTerminalNode());
+    private static final Matcher<ParseTree> LITERAL_MATCHER = hasContext(DataPrepperExpressionParser.LiteralContext.class, isTerminalNode());
 
     //region valid rule order
     private static final RuleClassOrderedList VALID_LITERAL_RULE_ORDER = new RuleClassOrderedList(
@@ -45,12 +45,13 @@ public class LiteralMatcher extends SimpleExpressionMatcher {
         return new LiteralMatcher(VALID_LITERAL_RULE_ORDER);
     }
 
+    @Override
     protected boolean baseCase(final ParseTree item, final Description mismatchDescription) {
-        if (literalMatcher.matches(item)) {
+        if (LITERAL_MATCHER.matches(item)) {
             return true;
         }
         else {
-            literalMatcher.describeTo(mismatchDescription);
+            LITERAL_MATCHER.describeTo(mismatchDescription);
             mismatchDescription.appendText("\n\t\texpected LiteralContext but found " + item);
             return false;
         }
