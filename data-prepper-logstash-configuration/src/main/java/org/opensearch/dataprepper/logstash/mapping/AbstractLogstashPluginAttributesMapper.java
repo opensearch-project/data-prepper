@@ -33,6 +33,7 @@ public abstract class AbstractLogstashPluginAttributesMapper implements Logstash
         Objects.requireNonNull(logstashAttributesMappings);
         Objects.requireNonNull(logstashAttributesMappings.getMappedAttributeNames());
         Objects.requireNonNull(logstashAttributesMappings.getAdditionalAttributes());
+        Objects.requireNonNull(logstashAttributesMappings.getDefaultSettings());
 
         final Map<String, Object> pluginSettings = new LinkedHashMap<>(logstashAttributesMappings.getAdditionalAttributes());
         final Map<String, String> mappedAttributeNames = logstashAttributesMappings.getMappedAttributeNames();
