@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import * as cdk from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import {App} from 'aws-cdk-lib';
+import {Template} from 'aws-cdk-lib/assertions';
 import {StagingResourcesStack} from '../lib/StagingResourcesStack';
 
 test('Creates an ECR Public Repository for Data Prepper', () => {
-  const app = new cdk.App();
+  const app = new App();
 
   const stackUnderTest = new StagingResourcesStack(app, 'TestStack');
 
