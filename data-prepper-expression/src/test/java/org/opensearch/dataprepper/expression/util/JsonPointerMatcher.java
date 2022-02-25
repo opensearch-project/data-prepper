@@ -15,7 +15,7 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcher.describe
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
 public class JsonPointerMatcher extends SimpleExpressionMatcher {
-    private static final Matcher<ParseTree> terminalNodeMatcher = isTerminalNode();
+    private static final Matcher<ParseTree> TERMINAL_NODE_MATCHER = isTerminalNode();
 
     /**
      * Creates a matcher to check if a nodes is a unary tree with all nodes in a valid order that ends in a json pointer
@@ -47,12 +47,12 @@ public class JsonPointerMatcher extends SimpleExpressionMatcher {
 
     @Override
     protected boolean baseCase(final ParseTree item, final Description mismatchDescription) {
-        if (!singleChildMatcher.matches(item.getChildCount())) {
+        if (!SINGLE_CHILD_MATCHER.matches(item.getChildCount())) {
             mismatchDescription.appendText("\n\t\t expected " + item.getText() + " to have 1 child node");
             describeContextTo(item, mismatchDescription);
             return false;
         }
-        else if (!terminalNodeMatcher.matches(item.getChild(0))) {
+        else if (!TERMINAL_NODE_MATCHER.matches(item.getChild(0))) {
             mismatchDescription.appendText("\n\t\t expected " + item.getText() + " child to be of type TerminalNode");
             describeContextTo(item, mismatchDescription);
             return false;
