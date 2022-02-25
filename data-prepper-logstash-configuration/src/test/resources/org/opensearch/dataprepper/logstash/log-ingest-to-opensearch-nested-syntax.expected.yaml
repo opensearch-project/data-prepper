@@ -8,9 +8,13 @@ logstash-converted-pipeline:
     - grok:
         break_on_match: false
         match:
-          /data/log:
+          /data/log1:
             - "%{COMBINEDAPACHELOG}"
-    - drop_events: {}
+          /data/log2:
+            - "%{COMBINEDAPACHELOG}"
+        keys_to_overwrite:
+          - "/data/timestamp"
+          - "/data/verb"
     - key_value:
         destination: "test"
     - rename_keys:

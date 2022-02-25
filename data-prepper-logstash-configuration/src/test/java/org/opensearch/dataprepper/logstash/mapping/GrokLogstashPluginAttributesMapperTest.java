@@ -29,6 +29,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.logstash.mapping.GrokLogstashPluginAttributesMapper.LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.logstash.mapping.GrokLogstashPluginAttributesMapper.LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME;
+import static org.opensearch.dataprepper.logstash.mapping.GrokLogstashPluginAttributesMapper.LOGSTASH_GROK_OVERWRITE_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.logstash.model.LogstashValueType.ARRAY;
 import static org.opensearch.dataprepper.logstash.model.LogstashValueType.HASH;
 
@@ -151,6 +152,26 @@ class GrokLogstashPluginAttributesMapperTest {
         assertThat(actualPluginModels.get(0).getPluginSettings().get(dataPrepperMatchAttribute), equalTo(expectedMatchSettings));
     }
 
+    @Test
+    void mapAttributes_converts_nested_syntax_in_overwrite_mapped_attributes() {
+        final LogstashAttribute matchMultiKeysLogstashAttribute = prepareOverwriteLogstashAttribute(Arrays.asList("[outer][key1]", "[outer][key2]"));
+        final List<LogstashAttribute> grokAttributes = Collections.singletonList(matchMultiKeysLogstashAttribute);
+        final List<String> expectedOverwriteKeys = Arrays.asList("/outer/key1", "/outer/key2");
+
+        final String dataPrepperOverwriteAttribute = "keys_to_overwrite";
+        final LogstashAttributesMappings mappings = mock(LogstashAttributesMappings.class);
+        when(mappings.getMappedAttributeNames()).thenReturn(
+                Collections.singletonMap(LOGSTASH_GROK_OVERWRITE_ATTRIBUTE_NAME, dataPrepperOverwriteAttribute));
+
+        final List<PluginModel> actualPluginModels =
+                createObjectUnderTest().mapAttributes(grokAttributes, mappings);
+
+        assertThat(actualPluginModels, notNullValue());
+        assertThat(actualPluginModels.size(), equalTo(1));
+        assertThat(actualPluginModels.get(0).getPluginSettings(), hasKey(dataPrepperOverwriteAttribute));
+        assertThat(actualPluginModels.get(0).getPluginSettings().get(dataPrepperOverwriteAttribute), equalTo(expectedOverwriteKeys));
+    }
+
     private LogstashAttribute prepareArrayTypeMatchLogstashAttribute(final String matchKey, final String matchValue) {
         final LogstashAttribute logstashAttribute = mock(LogstashAttribute.class);
         final LogstashAttributeValue logstashAttributeValue = mock(LogstashAttributeValue.class);
@@ -182,6 +203,16 @@ class GrokLogstashPluginAttributesMapperTest {
         when(logstashAttributeValue.getAttributeValueType()).thenReturn(HASH);
         when(logstashAttributeValue.getValue()).thenReturn(patternDefinitions);
         when(logstashAttribute.getAttributeName()).thenReturn(LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME);
+        when(logstashAttribute.getAttributeValue()).thenReturn(logstashAttributeValue);
+        return logstashAttribute;
+    }
+
+    private LogstashAttribute prepareOverwriteLogstashAttribute(final List<String> keys) {
+        final LogstashAttribute logstashAttribute = mock(LogstashAttribute.class);
+        final LogstashAttributeValue logstashAttributeValue = mock(LogstashAttributeValue.class);
+        when(logstashAttributeValue.getAttributeValueType()).thenReturn(ARRAY);
+        when(logstashAttributeValue.getValue()).thenReturn(keys);
+        when(logstashAttribute.getAttributeName()).thenReturn(LOGSTASH_GROK_OVERWRITE_ATTRIBUTE_NAME);
         when(logstashAttribute.getAttributeValue()).thenReturn(logstashAttributeValue);
         return logstashAttribute;
     }

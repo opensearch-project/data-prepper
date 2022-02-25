@@ -21,6 +21,7 @@ import java.util.HashSet;
 class GrokLogstashPluginAttributesMapper extends AbstractLogstashPluginAttributesMapper {
     protected static final String LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME = "match";
     protected static final String LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME = "pattern_definitions";
+    protected static final String LOGSTASH_GROK_OVERWRITE_ATTRIBUTE_NAME = "overwrite";
     private static final Logger LOG = LoggerFactory.getLogger(GrokLogstashPluginAttributesMapper.class);
 
     @SuppressWarnings("unchecked")
@@ -28,11 +29,14 @@ class GrokLogstashPluginAttributesMapper extends AbstractLogstashPluginAttribute
     protected void mapCustomAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings, Map<String, Object> pluginSettings) {
         final List<LogstashAttribute> matchAttributes = new ArrayList<>();
         final Map<String, String> patternDefinitions = new HashMap<>();
+        final List<String> keysToOverwrite = new ArrayList<>();
         logstashAttributes.forEach(logstashAttribute -> {
             if (logstashAttribute.getAttributeName().equals(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME)) {
                 matchAttributes.add(logstashAttribute);
             } else if (logstashAttribute.getAttributeName().equals(LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME)) {
                 patternDefinitions.putAll((Map<String, String>) logstashAttribute.getAttributeValue().getValue());
+            } else if (logstashAttribute.getAttributeName().equals(LOGSTASH_GROK_OVERWRITE_ATTRIBUTE_NAME)) {
+                keysToOverwrite.addAll((List<String>) logstashAttribute.getAttributeValue().getValue());
             }
         });
 
@@ -50,11 +54,19 @@ class GrokLogstashPluginAttributesMapper extends AbstractLogstashPluginAttribute
                     patternDefinitions
             );
         }
+        if (!keysToOverwrite.isEmpty()) {
+            pluginSettings.put(
+                    logstashAttributesMappings.getMappedAttributeNames().get(LOGSTASH_GROK_OVERWRITE_ATTRIBUTE_NAME),
+                    keysToOverwrite.stream().map(NestedSyntaxConverterUtil::checkAndConvertLogstashNestedSyntax).collect(Collectors.toList())
+            );
+        }
     }
 
     @Override
     protected HashSet<String> getCustomMappedAttributeNames() {
-        return new HashSet<>(Arrays.asList(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME, LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME));
+        return new HashSet<>(Arrays.asList(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME,
+                LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME,
+                LOGSTASH_GROK_OVERWRITE_ATTRIBUTE_NAME));
     }
 
     @SuppressWarnings("unchecked")
