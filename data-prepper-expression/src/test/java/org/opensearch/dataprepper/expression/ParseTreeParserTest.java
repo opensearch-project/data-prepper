@@ -23,6 +23,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -81,6 +82,8 @@ class ParseTreeParserTest {
         parseTree = parseTreeParser.parse(VALID_STATEMENT);
         assertThat(parseTree, is(expected));
 
+        verify(errorListener).isErrorFound();
+
         // Verify parser.expression() called 1 time
         verify(parser).expression();
     }
@@ -92,6 +95,20 @@ class ParseTreeParserTest {
         doReturn(true).when(errorListener).isErrorFound();
 
         assertThrows(CompositeException.class, () -> parseTreeParser.parse("Error should throw"));
+    }
+
+    @Test
+    void testResetErrorsIsCalled() throws CompositeException {
+        final ParseTree expected = mock(DataPrepperExpressionParser.ExpressionContext.class);
+        doReturn(expected).when(parser).expression();
+
+        ParseTree parseTree = parseTreeParser.parse(VALID_STATEMENT);
+        assertThat(parseTree, is(expected));
+        verify(errorListener).isErrorFound();
+
+        parseTree = parseTreeParser.parse("true == true");
+        assertThat(parseTree, is(expected));
+        verify(errorListener, times(2)).isErrorFound();
     }
 
 }

@@ -47,13 +47,16 @@ class ParseTreeParser implements Parser<ParseTree> {
     /**
      * @since 1.3
      *
-     * Converts an expression to a parse tree base on grammar rules
+     * Converts an expression to a parse tree base on grammar rules. {@link ParserErrorListener#resetErrors()} must be called
+     * before {@link DataPrepperExpressionParser#expression()} to prevent duplicate errors from being reported.
      *
      * @param expression String to be parsed
      * @return ParseTree data structure containing a hierarchy of the tokens found while parsing.
      * @throws CompositeException thrown when ANTLR parser creates an exception event
      */
     private ParseTree createParseTree(final String expression) throws CompositeException {
+        errorListener.resetErrors();
+
         final IntStream input = CharStreams.fromString(expression);
         lexer.setInputStream(input);
 

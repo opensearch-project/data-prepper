@@ -22,7 +22,7 @@ public class CompositeException extends RuntimeException {
 
     public CompositeException(final List<Throwable> exceptions) {
         if (exceptions.isEmpty()) {
-            throw new IllegalArgumentException("errors is empty");
+            throw new IllegalArgumentException("exceptions is empty");
         }
 
         this.exceptions = exceptions.stream()

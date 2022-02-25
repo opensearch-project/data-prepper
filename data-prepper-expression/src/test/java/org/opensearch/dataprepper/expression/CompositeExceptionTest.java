@@ -37,19 +37,21 @@ class CompositeExceptionTest {
     }
 
     @Test
-    void foo() throws CompositeException {
+    void testMultipleExceptionsPrinted() throws CompositeException {
         final CompositeException compositeException = new CompositeException(Arrays.asList(
                 new RuntimeException("Error"),
                 new RuntimeException("Error 2"),
-                new RuntimeException("Error 3")
+                new RuntimeException("Error 3"),
+                null
         ));
 
         assertThat(compositeException.getCause() instanceof ExceptionOverview, is(true));
 
         final String message = compositeException.getCause().getMessage();
-        assertThat(message, containsString("Multiple exceptions (3)"));
+        assertThat(message, containsString("Multiple exceptions (4)"));
         assertThat(message, containsString("|-- java.lang.RuntimeException: Error 3"));
         assertThat(message, containsString("|-- java.lang.RuntimeException: Error 2"));
         assertThat(message, containsString("|-- java.lang.RuntimeException: Error"));
+        assertThat(message, containsString("|-- java.lang.NullPointerException: Throwable was null!"));
     }
 }
