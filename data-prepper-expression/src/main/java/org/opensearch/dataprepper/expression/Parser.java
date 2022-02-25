@@ -8,5 +8,5 @@ interface Parser<T> {
      * @param expression String to be parsed
      * @return Object representing a parsed expression
      */
-    T parse(final String expression) throws ParsingExceptions;
+    T parse(final String expression) throws CompositeException;
 }

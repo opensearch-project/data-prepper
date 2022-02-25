@@ -27,6 +27,8 @@ import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class ParseTreeParserTest {
+    private static final String VALID_STATEMENT = "Valid Statement";
+
     @Mock
     DataPrepperExpressionParser parser;
 
@@ -58,25 +60,25 @@ class ParseTreeParserTest {
     }
 
     @Test
-    void testValidStatement() throws ParsingExceptions {
+    void testValidStatement() throws CompositeException {
         final ParseTree expected = mock(DataPrepperExpressionParser.ExpressionContext.class);
         doReturn(expected).when(parser).expression();
 
-        final ParseTree parseTree = parseTreeParser.parse("Valid Statement");
+        final ParseTree parseTree = parseTreeParser.parse(VALID_STATEMENT);
 
         assertThat(parseTree, is(expected));
         verify(parser).expression();
     }
 
     @Test
-    void testCacheGivenMultipleExpressionCalls() throws ParsingExceptions {
+    void testCacheGivenMultipleExpressionCalls() throws CompositeException {
         final ParseTree expected = mock(DataPrepperExpressionParser.ExpressionContext.class);
         doReturn(expected).when(parser).expression();
 
-        ParseTree parseTree = parseTreeParser.parse("Valid Statement");
+        ParseTree parseTree = parseTreeParser.parse(VALID_STATEMENT);
         assertThat(parseTree, is(expected));
 
-        parseTree = parseTreeParser.parse("Valid Statement");
+        parseTree = parseTreeParser.parse(VALID_STATEMENT);
         assertThat(parseTree, is(expected));
 
         // Verify parser.expression() called 1 time
@@ -89,7 +91,7 @@ class ParseTreeParserTest {
         doReturn(Collections.singletonList(recognitionException)).when(errorListener).getExceptions();
         doReturn(true).when(errorListener).isErrorFound();
 
-        assertThrows(ParsingExceptions.class, () -> parseTreeParser.parse("Error should throw"));
+        assertThrows(CompositeException.class, () -> parseTreeParser.parse("Error should throw"));
     }
 
 }
