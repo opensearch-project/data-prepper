@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
  * Whitespace is ignored and leading zeroes are not allowed.
  * @since 1.3
  */
-public class PluginDurationDeserializer extends StdDeserializer<Duration> {
+class PluginDurationDeserializer extends StdDeserializer<Duration> {
 
     private static final String SIMPLE_DURATION_REGEX = "^([1-9]\\d*)(s|ms)$";
     private static final Pattern SIMPLE_DURATION_PATTERN = Pattern.compile(SIMPLE_DURATION_REGEX);
@@ -39,6 +39,9 @@ public class PluginDurationDeserializer extends StdDeserializer<Duration> {
             duration = Duration.parse(durationString);
         } catch (final DateTimeParseException e) {
             duration = parseSimpleDuration(durationString);
+            if (duration == null) {
+                throw new IllegalArgumentException("Durations must use either ISO 8601 notation or simple notations for seconds (60s) or milliseconds (100ms). Whitespace is ignored.");
+            }
         }
 
         return duration;
@@ -48,7 +51,7 @@ public class PluginDurationDeserializer extends StdDeserializer<Duration> {
         final String durationStringNoSpaces = durationString.replaceAll("\\s", "");
         final Matcher matcher = SIMPLE_DURATION_PATTERN.matcher(durationStringNoSpaces);
         if (!matcher.find()) {
-            throw new IllegalArgumentException("Durations must use either ISO 8601 notation or simple notations for seconds (60s) or milliseconds (100ms). Whitespace is ignored.");
+           return null;
         }
 
         final long durationNumber = Long.parseLong(matcher.group(1));
@@ -64,6 +67,6 @@ public class PluginDurationDeserializer extends StdDeserializer<Duration> {
             case "ms":
                 return Duration.ofMillis(durationNumber);
         }
-        throw new IllegalArgumentException("Simple notation duration only supports seconds (s) and milliseconds (ms).");
+        return null;
     }
 }
