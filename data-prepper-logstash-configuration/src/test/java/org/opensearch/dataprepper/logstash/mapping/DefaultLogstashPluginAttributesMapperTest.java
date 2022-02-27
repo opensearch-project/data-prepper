@@ -141,7 +141,7 @@ class DefaultLogstashPluginAttributesMapperTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"[outer_key][inner_key],/outer_key/inner_key", "[array][0][key], /array/0/key"})
+    @CsvSource({"[outer_key][inner_key],/outer_key/inner_key", "[array][0][key], /array/0/key", "[message], /message"})
     void mapAttributes_with_nested_syntax_value_returns_data_prepper_nested_syntax_test(String input, String output) {
         final String dataPrepperAttribute = UUID.randomUUID().toString();
 
