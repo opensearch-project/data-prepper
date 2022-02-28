@@ -59,10 +59,12 @@ class ParenthesesExpressionMatcherTest {
     void testGivenInvalidParseTreeRootMatcherFails() {
         final DiagnosingMatcher<ParseTree> isParenthesesExpression = isParenthesesExpression(isUnaryTree());
 
-        final ParseTree relationalOperatorExpressionContext =
+        final ParseTree expressionContext =
                 mock(DataPrepperExpressionParser.ExpressionContext.class, "ExpressionContext");
 
-        assertFalse(isParenthesesExpression.matches(relationalOperatorExpressionContext));
+        doReturn("").when(expressionContext).getText();
+
+        assertFalse(isParenthesesExpression.matches(expressionContext));
     }
 
     @Test
@@ -84,6 +86,10 @@ class ParenthesesExpressionMatcherTest {
 
         doReturn(setOperatorExpressionContext).when(relationalOperatorExpressionContext).getChild(eq(0));
         doReturn(unaryOperatorExpressionContext).when(setOperatorExpressionContext).getChild(eq(0));
+        doReturn(parenthesesExpressionContext).when(unaryOperatorExpressionContext).getChild(eq(0));
+
+
+        doReturn("").when(parenthesesExpressionContext).getText();
 
         assertFalse(isParenthesesExpression.matches(relationalOperatorExpressionContext));
     }
