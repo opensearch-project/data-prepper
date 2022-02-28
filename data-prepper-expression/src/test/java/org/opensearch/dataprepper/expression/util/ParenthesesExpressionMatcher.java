@@ -15,6 +15,27 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.opensearch.dataprepper.expression.util.ContextMatcher.hasContext;
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
+/**
+ * @since 1.3
+ * <p>Matcher that asserts a unary tree ending in a Parentheses Expression Context</p>
+ * <p>
+ *     <b>Valid tree order</b><br>
+ *     <pre>
+ *     ExpressionContext<br>
+ *     ├─ ConditionalExpression<br>
+ *        ├─ EqualityOperatorExpression<br>
+ *           ├─ RegexOperatorExpressionContext<br>
+ *              ├─ RelationalOperatorExpressionContext<br>
+ *                 ├─ SetOperatorExpressionContext<br>
+ *                    ├─ UnaryOperatorExpressionContext<br>
+ *                       ├─ ParenthesesExpressionContext<br>
+ *                          ├─ TerminalNode<br>
+ *                          ├─ <i>&lt;childMatcher&gt;</i><br>
+ *                          ├─ TerminalNode<br>
+ *     </pre>
+ *     Note, a valid ParseTree may start at any level within the valid tree order
+ * </p>
+ */
 public class ParenthesesExpressionMatcher extends SimpleExpressionMatcher {
     private static final Matcher<Integer> THREE_CHILDREN_MATCHER = is(3);
 
