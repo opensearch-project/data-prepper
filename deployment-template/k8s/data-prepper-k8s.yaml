@@ -101,7 +101,7 @@ spec:
             - /usr/share/data-prepper/data-prepper.jar
             - /etc/data-prepper/pipelines.yaml
             - /etc/data-prepper/data-prepper-config.yaml
-          image: amazon/opendistro-for-elasticsearch-data-prepper:latest
+          image: opensearchproject/data-prepper:latest
           name: data-prepper
           ports:
             - containerPort: 21890

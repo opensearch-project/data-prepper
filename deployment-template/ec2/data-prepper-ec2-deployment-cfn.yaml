@@ -185,9 +185,9 @@ Resources:
         # Script to download and run Data Prepper
         Fn::Base64: !Sub |
           #!/bin/bash
-          export RELEASE=opendistroforelasticsearch-data-prepper-${DataPrepperVersion}-linux-x64
+          export RELEASE=opensearchproject-data-prepper-${DataPrepperVersion}-linux-x64
           yum install java-11-amazon-corretto-headless -y
-          wget https://github.com/opendistro-for-elasticsearch/data-prepper/releases/download/v${DataPrepperVersion}/$RELEASE.tar.gz -O /tmp/$RELEASE.tar.gz
+          wget https://github.com/opensearch-project/data-prepper/releases/download/v${DataPrepperVersion}/$RELEASE.tar.gz -O /tmp/$RELEASE.tar.gz
           wget_exit_code = $?
           if [ $wget_exit_code -ne 0 ]
           then
