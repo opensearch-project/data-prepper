@@ -27,8 +27,20 @@ class ConditionalExpressionEvaluator implements ExpressionEvaluator<Boolean> {
      * <b>Method not implemented</b>
      */
     @Override
-    public Boolean evaluate(final String statement, final Event context) throws ClassCastException {
-        // TODO: Implement method
-        throw new RuntimeException("Method not implemented");
+    public Boolean evaluate(final String statement, final Event context) throws ExpressionEvaluationException {
+        try {
+            final ParseTree parseTree = parser.parse(statement);
+            final Object result = evaluator.evaluate(parseTree, context);
+
+            if (result instanceof Boolean) {
+                return (Boolean) result;
+            }
+            else {
+                throw new ClassCastException("Unexpected expression return type of " + result.getClass());
+            }
+        }
+        catch (final Exception exception) {
+            throw new ExpressionEvaluationException("Unable to evaluate statement \"" + statement + "\"", exception);
+        }
     }
 }

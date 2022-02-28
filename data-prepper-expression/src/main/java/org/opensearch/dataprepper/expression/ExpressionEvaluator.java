@@ -19,5 +19,5 @@ public interface ExpressionEvaluator<T> {
      *
      * @throws ClassCastException when unable to course statement result to type T
      */
-    T evaluate(final String statement, final Event context) throws ClassCastException;
+    T evaluate(final String statement, final Event context) throws ExpressionEvaluationException;
 }

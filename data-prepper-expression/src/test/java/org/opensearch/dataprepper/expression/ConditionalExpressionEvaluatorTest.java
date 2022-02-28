@@ -8,7 +8,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class ConditionalExpressionEvaluatorTest {
@@ -21,9 +30,62 @@ class ConditionalExpressionEvaluatorTest {
     private ConditionalExpressionEvaluator statementEvaluator;
 
     @Test
-    void testThrowsNotImplementedException() {
-        assertThrows(
-                RuntimeException.class,
-                () -> statementEvaluator.evaluate(null, null));
+    void testGivenValidParametersThenEvaluatorResultReturned() {
+        final String statement = "test statement";
+        final ParseTree parseTree = mock(ParseTree.class);
+        final Event event = mock(Event.class);
+        final Boolean expected = true;
+
+        doReturn(parseTree).when(parser).parse(eq(statement));
+        doReturn(expected).when(evaluator).evaluate(eq(parseTree), eq(event));
+
+        final Boolean actual = statementEvaluator.evaluate(statement, event);
+
+        assertThat(actual, is(expected));
+        verify(parser).parse(eq(statement));
+        verify(evaluator).evaluate(eq(parseTree), eq(event));
+    }
+
+    @Test
+    void testGivenUnexpectedEvaluatorResultTypeThenExceptionThrown() {
+        final String statement = "test statement";
+        final ParseTree parseTree = mock(ParseTree.class);
+        final Event event = mock(Event.class);
+        final Object result = mock(Object.class);
+
+        doReturn(parseTree).when(parser).parse(eq(statement));
+        doReturn(result).when(evaluator).evaluate(eq(parseTree), eq(event));
+
+        assertThrows(ExpressionEvaluationException.class, () -> statementEvaluator.evaluate(statement, event));
+
+        verify(parser).parse(eq(statement));
+        verify(evaluator).evaluate(eq(parseTree), eq(event));
+    }
+
+    @Test
+    void testGivenParserThrowsExceptionThenExceptionThrown() {
+        final String statement = "test statement";
+
+        doThrow(new RuntimeException()).when(parser).parse(eq(statement));
+
+        assertThrows(ExpressionEvaluationException.class, () -> statementEvaluator.evaluate(statement, null));
+
+        verify(parser).parse(eq(statement));
+        verify(evaluator, times(0)).evaluate(any(), any());
+    }
+
+    @Test
+    void testGivenEvaluatorThrowsExceptionThenExceptionThrown() {
+        final String statement = "test statement";
+        final ParseTree parseTree = mock(ParseTree.class);
+        final Event event = mock(Event.class);
+
+        doReturn(parseTree).when(parser).parse(eq(statement));
+        doThrow(new RuntimeException()).when(evaluator).evaluate(eq(parseTree), eq(event));
+
+        assertThrows(ExpressionEvaluationException.class, () -> statementEvaluator.evaluate(statement, event));
+
+        verify(parser).parse(eq(statement));
+        verify(evaluator).evaluate(eq(parseTree), eq(event));
     }
 }
