@@ -61,7 +61,7 @@ class ParseTreeParserTest {
     }
 
     @Test
-    void testValidStatement() throws CompositeException {
+    void testValidStatement() throws ParseTreeCompositeException {
         final ParseTree expected = mock(DataPrepperExpressionParser.ExpressionContext.class);
         doReturn(expected).when(parser).expression();
 
@@ -72,7 +72,7 @@ class ParseTreeParserTest {
     }
 
     @Test
-    void testCacheGivenMultipleExpressionCalls() throws CompositeException {
+    void testCacheGivenMultipleExpressionCalls() throws ParseTreeCompositeException {
         final ParseTree expected = mock(DataPrepperExpressionParser.ExpressionContext.class);
         doReturn(expected).when(parser).expression();
 
@@ -94,11 +94,11 @@ class ParseTreeParserTest {
         doReturn(Collections.singletonList(recognitionException)).when(errorListener).getExceptions();
         doReturn(true).when(errorListener).isErrorFound();
 
-        assertThrows(CompositeException.class, () -> parseTreeParser.parse("Error should throw"));
+        assertThrows(ParseTreeCompositeException.class, () -> parseTreeParser.parse("Error should throw"));
     }
 
     @Test
-    void testResetErrorsIsCalled() throws CompositeException {
+    void testResetErrorsIsCalled() throws ParseTreeCompositeException {
         final ParseTree expected = mock(DataPrepperExpressionParser.ExpressionContext.class);
         doReturn(expected).when(parser).expression();
 
