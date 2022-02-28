@@ -5,41 +5,15 @@
 
 package org.opensearch.dataprepper.expression;
 
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CodePointCharStream;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionLexer;
-import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
-import org.opensearch.dataprepper.expression.util.ErrorListener;
+import org.opensearch.dataprepper.expression.util.GrammarTest;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class ParserTest {
-
-    private ErrorListener errorListener;
-
-    private void parseExpression(final String expression) {
-        errorListener = new ErrorListener();
-
-        final CodePointCharStream stream = CharStreams.fromString(expression);
-        final DataPrepperExpressionLexer lexer = new DataPrepperExpressionLexer(stream);
-        lexer.addErrorListener(errorListener);
-
-        final CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-        final DataPrepperExpressionParser parser = new DataPrepperExpressionParser(tokenStream);
-        parser.addErrorListener(errorListener);
-
-        final ParserRuleContext context = parser.expression();
-
-        final ParseTreeWalker walker = new ParseTreeWalker();
-        walker.walk(errorListener, context);
-    }
+public class ParserTest extends GrammarTest {
 
     private void assertThatIsValid(final String expression) {
         parseExpression(expression);
@@ -161,5 +135,16 @@ public class ParserTest {
     })
     void testValidOptionalSpaceOperators(final String expression) {
         assertThatIsValid(expression);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "falkse and true",
+            "true an true",
+            "2 is in {2}",
+            "2 in {2,,}"
+    })
+    void testTypo(final String expression) {
+        assertThatHasParseError(expression);
     }
 }

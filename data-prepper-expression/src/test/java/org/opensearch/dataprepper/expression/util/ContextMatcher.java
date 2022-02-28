@@ -9,12 +9,14 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.hamcrest.Description;
 import org.hamcrest.DiagnosingMatcher;
 import org.hamcrest.Matcher;
+import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import javax.annotation.Nullable;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.core.IsEqual.equalTo;
+import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
 /**
  * @since 1.3
@@ -55,6 +57,34 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
 
             mismatch.appendText("\n\t\t" + context + "\n\t\t");
         }
+    }
+
+    /**
+     * Creates matcher to check if tree is <b>operatorType</b> with a single child of type TerminalNode
+     * @param operatorType class type of operator to assert
+     * @return DiagnosingMatcher
+     */
+    public static DiagnosingMatcher<ParseTree> isOperator(final Class<? extends ParseTree> operatorType) {
+        return hasContext(operatorType, isTerminalNode());
+    }
+
+    /**
+     * @since 1.3
+     *
+     * <p>Creates a matcher to check for standard ParseTree root.</p>
+     * <pre>
+     * Expression<br>
+     * ├─ {lhs}<br>
+     * ├─ &lt;EOF&gt;<br>
+     * </pre>
+     *
+     * @param lhs matcher to use for the first child of the Expression node
+     * @return DiagnosingMatcher
+     *
+     * @see ContextMatcher#hasContext(Class, DiagnosingMatcher[])
+     */
+    public static DiagnosingMatcher<ParseTree> isExpression(final DiagnosingMatcher<ParseTree> lhs) {
+        return hasContext(DataPrepperExpressionParser.ExpressionContext.class, lhs, isTerminalNode());
     }
 
     /**
