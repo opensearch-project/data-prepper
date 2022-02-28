@@ -16,38 +16,38 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
-class CompositeExceptionTest {
+class ParseTreeCompositeExceptionTest {
 
     @Test
     void testNoCausesThrows() {
-        assertThrows(NullPointerException.class, () -> new CompositeException(null));
+        assertThrows(NullPointerException.class, () -> new ParseTreeCompositeException(null));
     }
 
     @Test
     void testEmptyListThrows() {
-        assertThrows(IllegalArgumentException.class, () -> new CompositeException(Collections.emptyList()));
+        assertThrows(IllegalArgumentException.class, () -> new ParseTreeCompositeException(Collections.emptyList()));
     }
 
     @Test
     void testGivenSingleExceptionThenExceptionIsCause() {
         final RuntimeException mock = mock(RuntimeException.class);
-        final CompositeException compositeException = new CompositeException(Arrays.asList(mock));
+        final ParseTreeCompositeException parseTreeCompositeException = new ParseTreeCompositeException(Arrays.asList(mock));
 
-        assertThat(compositeException.getCause(), is(mock));
+        assertThat(parseTreeCompositeException.getCause(), is(mock));
     }
 
     @Test
-    void testMultipleExceptionsPrinted() throws CompositeException {
-        final CompositeException compositeException = new CompositeException(Arrays.asList(
+    void testMultipleExceptionsPrinted() throws ParseTreeCompositeException {
+        final ParseTreeCompositeException parseTreeCompositeException = new ParseTreeCompositeException(Arrays.asList(
                 new RuntimeException("Error"),
                 new RuntimeException("Error 2"),
                 new RuntimeException("Error 3"),
                 null
         ));
 
-        assertThat(compositeException.getCause() instanceof ExceptionOverview, is(true));
+        assertThat(parseTreeCompositeException.getCause() instanceof ExceptionOverview, is(true));
 
-        final String message = compositeException.getCause().getMessage();
+        final String message = parseTreeCompositeException.getCause().getMessage();
         assertThat(message, containsString("Multiple exceptions (4)"));
         assertThat(message, containsString("|-- java.lang.RuntimeException: Error 3"));
         assertThat(message, containsString("|-- java.lang.RuntimeException: Error 2"));

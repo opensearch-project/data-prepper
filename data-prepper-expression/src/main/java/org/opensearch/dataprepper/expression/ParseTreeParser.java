@@ -52,9 +52,9 @@ class ParseTreeParser implements Parser<ParseTree> {
      *
      * @param expression String to be parsed
      * @return ParseTree data structure containing a hierarchy of the tokens found while parsing.
-     * @throws CompositeException thrown when ANTLR parser creates an exception event
+     * @throws ParseTreeCompositeException thrown when ANTLR parser creates an exception event
      */
-    private ParseTree createParseTree(final String expression) throws CompositeException {
+    private ParseTree createParseTree(final String expression) throws ParseTreeCompositeException {
         errorListener.resetErrors();
 
         final IntStream input = CharStreams.fromString(expression);
@@ -66,7 +66,7 @@ class ParseTreeParser implements Parser<ParseTree> {
         final ParseTree parseTree = parser.expression();
 
         if (errorListener.isErrorFound()) {
-            throw new CompositeException(errorListener.getExceptions());
+            throw new ParseTreeCompositeException(errorListener.getExceptions());
         }
         else {
             return parseTree;
@@ -81,10 +81,10 @@ class ParseTreeParser implements Parser<ParseTree> {
      *
      * @param expression String to be parsed
      * @return ParseTree data structure containing a hierarchy of the tokens found while parsing.
-     * @throws CompositeException thrown when ANTLR parser creates an exception event
+     * @throws ParseTreeCompositeException thrown when ANTLR parser creates an exception event
      */
     @Override
-    public ParseTree parse(final String expression) throws CompositeException {
+    public ParseTree parse(final String expression) throws ParseTreeCompositeException {
         if (cache.containsKey(expression)) {
             return cache.get(expression);
         }

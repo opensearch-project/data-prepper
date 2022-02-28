@@ -15,12 +15,12 @@ import java.util.stream.Collectors;
  * <p>
  * Exception thrown by {@link ParseTreeParser} if ANTLR parse emits error events.
  */
-public class CompositeException extends RuntimeException {
+public class ParseTreeCompositeException extends RuntimeException {
     private static final String SEPARATOR = System.getProperty("line.separator");
 
     private final Set<Throwable> exceptions;
 
-    public CompositeException(final List<Throwable> exceptions) {
+    public ParseTreeCompositeException(final List<Throwable> exceptions) {
         if (exceptions.isEmpty()) {
             throw new IllegalArgumentException("exceptions is empty");
         }
