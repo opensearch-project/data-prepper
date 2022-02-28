@@ -288,12 +288,13 @@ public class OTelProtoCodec {
 
         public ResourceSpans convertToResourceSpans(final Span span) throws UnsupportedEncodingException, DecoderException {
             final ResourceSpans.Builder rsBuilder = ResourceSpans.newBuilder();
-            final Resource resource = constructResource(span.getServiceName(), span.getAttributes());
+            final Map<String, Object> allAttributes = span.getAttributes();
+            final Resource resource = constructResource(span.getServiceName(), allAttributes);
             rsBuilder.setResource(resource);
             final InstrumentationLibrarySpans.Builder instrumentationLibrarySpansBuilder = InstrumentationLibrarySpans.newBuilder();
-            final InstrumentationLibrary instrumentationLibrary = constructInstrumentationLibrary(span.getAttributes());
+            final InstrumentationLibrary instrumentationLibrary = constructInstrumentationLibrary(allAttributes);
             instrumentationLibrarySpansBuilder.setInstrumentationLibrary(instrumentationLibrary);
-            final io.opentelemetry.proto.trace.v1.Span otelProtoSpan = constructSpan(span);
+            final io.opentelemetry.proto.trace.v1.Span otelProtoSpan = constructSpan(span, allAttributes);
             instrumentationLibrarySpansBuilder.addSpans(otelProtoSpan);
             rsBuilder.addInstrumentationLibrarySpans(instrumentationLibrarySpansBuilder);
             return rsBuilder.build();
@@ -409,7 +410,8 @@ public class OTelProtoCodec {
             return builder.build();
         }
 
-        protected io.opentelemetry.proto.trace.v1.Span constructSpan(final Span span) throws DecoderException, UnsupportedEncodingException {
+        protected io.opentelemetry.proto.trace.v1.Span constructSpan(final Span span, final Map<String, Object> allAttributes)
+                throws DecoderException, UnsupportedEncodingException {
             io.opentelemetry.proto.trace.v1.Span.Builder builder = io.opentelemetry.proto.trace.v1.Span.newBuilder()
                     .setSpanId(ByteString.copyFrom(Hex.decodeHex(span.getSpanId())))
                     .setParentSpanId(ByteString.copyFrom(Hex.decodeHex(span.getParentSpanId())))
@@ -422,7 +424,6 @@ public class OTelProtoCodec {
                     .setDroppedAttributesCount(span.getDroppedAttributesCount())
                     .setDroppedEventsCount(span.getDroppedEventsCount())
                     .setDroppedLinksCount(span.getDroppedLinksCount());
-            final Map<String, Object> allAttributes = span.getAttributes();
             builder
                     .setStatus(constructSpanStatus(allAttributes))
                     .addAllAttributes(getSpanAttributes(allAttributes))
