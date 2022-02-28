@@ -11,7 +11,7 @@ import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class InOperator implements Operator<Boolean> {
+class InOperator implements Operator<Boolean> {
     @Override
     public Integer getSymbol() {
         return DataPrepperExpressionParser.IN_SET;

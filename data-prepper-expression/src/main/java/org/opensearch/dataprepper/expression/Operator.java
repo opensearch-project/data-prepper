@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.expression;
 
-public interface Operator<T> {
+interface Operator<T> {
     Integer getSymbol();
 
     /**

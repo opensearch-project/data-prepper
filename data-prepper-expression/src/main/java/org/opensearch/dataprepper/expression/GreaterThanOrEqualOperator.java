@@ -9,7 +9,7 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class GreaterThanOrEqualOperator implements Operator<Boolean> {
+class GreaterThanOrEqualOperator implements Operator<Boolean> {
     @Override
     public Integer getSymbol() {
         return DataPrepperExpressionParser.GTE;

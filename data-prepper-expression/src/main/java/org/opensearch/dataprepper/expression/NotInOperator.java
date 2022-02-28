@@ -11,7 +11,7 @@ import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class NotInOperator implements Operator<Boolean> {
+class NotInOperator implements Operator<Boolean> {
 
     @Override
     public Integer getSymbol() {

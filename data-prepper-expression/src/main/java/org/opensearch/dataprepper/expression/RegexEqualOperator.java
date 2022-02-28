@@ -11,7 +11,7 @@ import java.util.regex.PatternSyntaxException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class RegexEqualOperator implements Operator<Boolean> {
+class RegexEqualOperator implements Operator<Boolean> {
 
     @Override
     public Integer getSymbol() {
