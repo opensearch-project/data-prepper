@@ -71,7 +71,7 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
     @SafeVarargs
     public static DiagnosingMatcher<ParseTree> hasContext(
             final Class<? extends ParseTree> parserRuleContextType,
-            final DiagnosingMatcher<ParseTree>... childrenMatchers
+            final DiagnosingMatcher<? extends ParseTree>... childrenMatchers
     ) {
         return new ContextMatcher(parserRuleContextType, childrenMatchers);
     }
