@@ -17,7 +17,7 @@ class EqualOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean eval(Object... args) {
+    public Boolean evaluate(Object... args) {
         checkArgument(args.length == 2, "Operands length needs to be 2.");
         if ((args[0] == null) || (args[1] == null)) {
             return args[0] == null && args[1] == null;

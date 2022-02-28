@@ -22,17 +22,17 @@ class NotOperatorTest {
 
     @Test
     void testEvalValidArgs() {
-        assertThat(objectUnderTest.eval(true), is(false));
-        assertThat(objectUnderTest.eval(false), is(true));
+        assertThat(objectUnderTest.evaluate(true), is(false));
+        assertThat(objectUnderTest.evaluate(false), is(true));
     }
 
     @Test
     void testEvalInValidArgLength() {
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(true, true));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(true, true));
     }
 
     @Test
     void testEvalInValidArgType() {
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(1));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1));
     }
 }

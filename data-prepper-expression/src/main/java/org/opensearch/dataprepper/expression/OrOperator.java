@@ -17,7 +17,7 @@ class OrOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean eval(Object... args) {
+    public Boolean evaluate(Object... args) {
         checkArgument(args.length == 2, "Operands length needs to be 2.");
         checkArgument(args[0] instanceof Boolean, "Left operand needs to be Boolean.");
         checkArgument(args[1] instanceof Boolean, "Right Operand needs to be Boolean.");

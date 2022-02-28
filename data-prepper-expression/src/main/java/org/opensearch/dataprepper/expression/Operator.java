@@ -15,5 +15,5 @@ interface Operator<T> {
      * @param args operands
      * @return T
      */
-    T eval(final Object... args);
+    T evaluate(final Object... args);
 }

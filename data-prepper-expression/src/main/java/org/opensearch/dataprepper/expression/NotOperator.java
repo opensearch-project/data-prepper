@@ -16,7 +16,7 @@ class NotOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean eval(Object... args) {
+    public Boolean evaluate(Object... args) {
         checkArgument(args.length == 1, "Operands length needs to be 1.");
         checkArgument(args[0] instanceof Boolean, "Operand needs to be Boolean.");
         return !((Boolean) args[0]);

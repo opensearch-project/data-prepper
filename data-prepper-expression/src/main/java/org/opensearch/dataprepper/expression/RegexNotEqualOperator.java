@@ -18,7 +18,7 @@ class RegexNotEqualOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean eval(Object... args) {
+    public Boolean evaluate(Object... args) {
         checkArgument(args.length == 2, "Operands length needs to be 2.");
         checkArgument(args[0] instanceof String, "Left operand needs to be String.");
         checkArgument(args[1] instanceof String, "Right Operand needs to be String.");

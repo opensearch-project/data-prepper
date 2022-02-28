@@ -18,7 +18,7 @@ class InOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean eval(Object... args) {
+    public Boolean evaluate(Object... args) {
         checkArgument(args.length == 2, "Operands length needs to be 2.");
         if (!(args[1] instanceof Set)) {
             throw new IllegalArgumentException(args[1] + " should be Set");

@@ -22,21 +22,21 @@ class OrOperatorTest {
 
     @Test
     void testEvalValidArgs() {
-        assertThat(objectUnderTest.eval(true, true), is(true));
-        assertThat(objectUnderTest.eval(true, false), is(true));
-        assertThat(objectUnderTest.eval(false, true), is(true));
-        assertThat(objectUnderTest.eval(false, false), is(false));
+        assertThat(objectUnderTest.evaluate(true, true), is(true));
+        assertThat(objectUnderTest.evaluate(true, false), is(true));
+        assertThat(objectUnderTest.evaluate(false, true), is(true));
+        assertThat(objectUnderTest.evaluate(false, false), is(false));
     }
 
     @Test
     void testEvalInValidArgLength() {
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(true));
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(true, true, false));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(true));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(true, true, false));
     }
 
     @Test
     void testEvalInValidArgType() {
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(true, 1));
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(1, true));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(true, 1));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1, true));
     }
 }
