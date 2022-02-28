@@ -9,14 +9,21 @@ import 'source-map-support/register';
 import {App} from 'aws-cdk-lib';
 import {GitHubAccessStack} from '../lib/GitHubAccessStack';
 import {StagingResourcesStack} from '../lib/StagingResourcesStack';
+import {GitHubActionsReleaseAccessStack} from '../lib/GitHubActionsReleaseAccessStack';
 
 
 const app = new App();
 
-new GitHubAccessStack(app, 'GitHubAccessStack', {
+const gitHubAccessStack = new GitHubAccessStack(app, 'GitHubAccessStack', {
   stackName: 'GitHubAccess'
 });
 
-new StagingResourcesStack(app, 'StagingResourcesStack', {
+const stagingResourcesStack = new StagingResourcesStack(app, 'StagingResourcesStack', {
   stackName: 'StagingResources'
+});
+
+new GitHubActionsReleaseAccessStack(app, 'GitHubActionsReleaseAccessStack', {
+  stackName: 'GitHubActionsReleaseAccess',
+  gitHubOidcProvider: gitHubAccessStack.gitHubOidcProvider,
+  ecrRepository: stagingResourcesStack.dataPrepperEcrRepository
 });
