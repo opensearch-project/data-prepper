@@ -45,13 +45,36 @@ import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isT
  * </p>
  */
 public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
+
+    /**
+     * Converts long antlr class names to easily read format. Class names without '$' will not be formatted.
+     * @param object source of class name to format
+     * @return formatted string
+     */
+    public static String shortClassString(final Object object) {
+        final String classString = object.getClass().toString();
+        final int endOfPrefix = classString.indexOf('$');
+
+        if (endOfPrefix >= 0) {
+            return classString.substring(endOfPrefix + 1);
+        }
+        else {
+            return classString;
+        }
+    }
+
+    /**
+     * Creates a string of a parse tree and all parent nodes to give context on where in a tree a node is located.
+     * @param parseTree node to generate location from
+     * @param mismatch Hamcrest Description where context will be appended.
+     */
     public static void describeContextTo(final ParseTree parseTree, final Description mismatch) {
         if (parseTree != null) {
-            final StringBuilder context = new StringBuilder(parseTree.getText());
+            final StringBuilder context = new StringBuilder(parseTree.getText() + " | " + shortClassString(parseTree));
             ParseTree parent = parseTree.getParent();
 
             while (parent != null) {
-                context.insert(0, parent.getText() + " -> ");
+                context.insert(0, parent.getText() + " | " + shortClassString(parent) + "\n\t\t-> ");
                 parent = parent.getParent();
             }
 
@@ -137,8 +160,11 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
                 final DiagnosingMatcher<? extends ParseTree> matcher = childrenMatchers[i];
 
                 if (!matcher.matches(child)) {
-                    mismatch.appendDescriptionOf(matcher)
-                            .appendText(" ");
+                    mismatch.appendText("Expected context \"" + child.getText() + "\"");
+                    mismatch.appendText(" | " + shortClassString(child));
+                    mismatch.appendText(" to match ");
+                    mismatch.appendDescriptionOf(matcher);
+                    mismatch.appendText("\n\t\t");
                     matcher.describeMismatch(child, mismatch);
                     failedAssertion = matcher;
                     return false;
