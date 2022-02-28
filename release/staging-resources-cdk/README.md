@@ -16,7 +16,7 @@ You must install CDK and Node.js first.
 
 ### Build
 
-You must ruan all the following commands from the `release/staging/resources-cdk` directory. 
+You must run all the following commands from the `release/staging/resources-cdk` directory. 
 
 The first time you use the CDK, run:
 
