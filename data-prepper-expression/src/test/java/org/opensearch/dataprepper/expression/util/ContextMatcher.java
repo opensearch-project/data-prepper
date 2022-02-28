@@ -51,7 +51,7 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
      * @param object source of class name to format
      * @return formatted string
      */
-    public static String shortClassString(final Object object) {
+    protected static String shortClassString(final Object object) {
         final String classString = object.getClass().toString();
         final int endOfPrefix = classString.indexOf('$');
 
@@ -68,7 +68,7 @@ public class ContextMatcher extends DiagnosingMatcher<ParseTree> {
      * @param parseTree node to generate location from
      * @param mismatch Hamcrest Description where context will be appended.
      */
-    public static void describeContextTo(final ParseTree parseTree, final Description mismatch) {
+    protected static void describeContextTo(final ParseTree parseTree, final Description mismatch) {
         if (parseTree != null) {
             final StringBuilder context = new StringBuilder(parseTree.getText() + " | " + shortClassString(parseTree));
             ParseTree parent = parseTree.getParent();
