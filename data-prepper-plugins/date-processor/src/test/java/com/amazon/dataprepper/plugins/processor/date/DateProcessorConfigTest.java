@@ -123,18 +123,26 @@ class DateProcessorConfigTest {
 
         @ParameterizedTest
         @ValueSource(strings = {"America/New_York", "America/Los_Angeles", "Australia/Adelaide", "Japan"})
-        void isTimezoneValid_should_return_true_if_timezone_is_valid(String timezone) throws NoSuchFieldException, IllegalAccessException {
+        void isSourceTimezoneValid_should_return_true_if_timezone_is_valid(String timezone) throws NoSuchFieldException, IllegalAccessException {
 
-            reflectivelySetField(dateProcessorConfig, "timezone", timezone);
-            assertThat(dateProcessorConfig.isTimezoneValid(), equalTo(true));
+            reflectivelySetField(dateProcessorConfig, "sourceTimezone", timezone);
+            assertThat(dateProcessorConfig.isSourceTimezoneValid(), equalTo(true));
         }
 
         @ParameterizedTest
         @ValueSource(strings = {"invalidZone", "randomZone"})
-        void isTimezoneValid_should_return_false_if_timezone_is_invalid(String timezone) throws NoSuchFieldException, IllegalAccessException {
+        void isSourceTimezoneValid_should_return_false_if_timezone_is_invalid(String timezone) throws NoSuchFieldException, IllegalAccessException {
 
-            reflectivelySetField(dateProcessorConfig, "timezone", timezone);
-            assertThat(dateProcessorConfig.isTimezoneValid(), equalTo(false));
+            reflectivelySetField(dateProcessorConfig, "sourceTimezone", timezone);
+            assertThat(dateProcessorConfig.isSourceTimezoneValid(), equalTo(false));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"America/New_York", "America/Los_Angeles", "Australia/Adelaide", "Japan"})
+        void isTimezoneValid_should_return_true_if_timezone_is_valid(String timezone) throws NoSuchFieldException, IllegalAccessException {
+
+            reflectivelySetField(dateProcessorConfig, "destinationTimezone", timezone);
+            assertThat(dateProcessorConfig.isDestinationTimezoneValid(), equalTo(true));
         }
 
         @ParameterizedTest
@@ -142,7 +150,7 @@ class DateProcessorConfigTest {
         void isLocaleValid_should_return_true_if_locale_is_valid(String locale) throws NoSuchFieldException, IllegalAccessException {
 
             reflectivelySetField(dateProcessorConfig, "locale", locale);
-            assertThat(dateProcessorConfig.isTimezoneValid(), equalTo(true));
+            assertThat(dateProcessorConfig.isSourceTimezoneValid(), equalTo(true));
         }
 
         @ParameterizedTest

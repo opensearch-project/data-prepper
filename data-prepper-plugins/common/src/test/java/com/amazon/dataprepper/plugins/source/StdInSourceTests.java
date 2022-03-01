@@ -22,7 +22,6 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 
-import static com.amazon.dataprepper.plugins.source.StdInSource.MESSAGE_KEY;
 import static java.lang.String.format;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -105,7 +104,7 @@ public class StdInSourceTests {
         final Collection<Record<Event>> recordsFromBuffer = readResult.getKey();
         assertThat(recordsFromBuffer.size(), is(equalTo(1)));
         recordsFromBuffer.forEach(actualRecord -> assertThat(
-                actualRecord.getData().get(MESSAGE_KEY, String.class), is(equalTo(READ_CONTENT))));
+                actualRecord.getData().get("message", String.class), is(equalTo(READ_CONTENT))));
     }
 
     @Test

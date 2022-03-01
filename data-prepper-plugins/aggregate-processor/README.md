@@ -39,7 +39,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
     * [remove_duplicates](#remove_duplicates)
     * [put_all](#put_all)
 ### <a name="group_duration"></a>
-* `group_duration` (Optional): The amount of time, in seconds, that a group should exist before it is concluded automatically. Default value is `180`.
+* `group_duration` (Optional): A `String` that represents the amount of time that a group should exist before it is concluded automatically. Supports ISO_8601 notation Strings ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms"). Default value is `180s`.
 
 ## Available Aggregate Actions
 
@@ -129,4 +129,4 @@ Apart from common metrics in [AbstractProcessor](https://github.com/opensearch-p
 ## Developer Guide
 This plugin is compatible with Java 14. See
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
-- [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/readme/monitoring.md)
+- [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)

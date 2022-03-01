@@ -5,7 +5,7 @@
 
 //preferably try to maintain the alphabetical order
 ext.versionMap = [
-        junitJupiter : '5.7.2',
+        junitJupiter : '5.8.2',
         mockito : '3.11.2',
         opentelemetryProto : '1.0.1-alpha',
         opensearchVersion : '1.1.0'

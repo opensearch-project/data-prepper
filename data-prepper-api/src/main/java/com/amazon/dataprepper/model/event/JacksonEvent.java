@@ -83,7 +83,7 @@ public class JacksonEvent implements Event {
         this.jsonNode = getInitialJsonNode(builder.data);
     }
 
-    static Event fromMessage(String message) {
+    public static Event fromMessage(String message) {
         return JacksonEvent.builder()
                 .withEventType(EVENT_TYPE)
                 .withData(Collections.singletonMap(MESSAGE_KEY, message))

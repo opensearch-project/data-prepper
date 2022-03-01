@@ -16,13 +16,22 @@ import java.util.Locale;
 public class DateProcessorConfig {
     static final Boolean DEFAULT_FROM_TIME_RECEIVED = false;
     static final String DEFAULT_DESTINATION = "@timestamp";
-    static final String DEFAULT_TIMEZONE = "UTC";
+    static final String DEFAULT_SOURCE_TIMEZONE = ZoneId.systemDefault().toString();
+    static final String DEFAULT_DESTINATION_TIMEZONE = ZoneId.systemDefault().toString();
 
     public static class DateMatch {
         @JsonProperty("key")
         private String key;
         @JsonProperty("patterns")
         private List<String> patterns;
+
+        public DateMatch() {
+        }
+
+        public DateMatch(String key, List<String> patterns) {
+            this.key = key;
+            this.patterns = patterns;
+        }
 
         public String getKey() {
             return key;
@@ -42,14 +51,20 @@ public class DateProcessorConfig {
     @JsonProperty("destination")
     private String destination = DEFAULT_DESTINATION;
 
-    @JsonProperty("timezone")
-    private String timezone = DEFAULT_TIMEZONE;
+    @JsonProperty("source_timezone")
+    private String sourceTimezone = DEFAULT_SOURCE_TIMEZONE;
+
+    @JsonProperty("destination_timezone")
+    private String destinationTimezone = DEFAULT_DESTINATION_TIMEZONE;
 
     @JsonProperty("locale")
     private String locale;
 
     @JsonIgnore
-    private ZoneId zoneId;
+    private ZoneId sourceZoneId;
+
+    @JsonIgnore
+    private ZoneId destinationZoneId;
 
     @JsonIgnore
     private Locale sourceLocale;
@@ -66,15 +81,19 @@ public class DateProcessorConfig {
         return destination;
     }
 
-    public ZoneId getZonedId() {
-        return zoneId;
+    public ZoneId getSourceZoneId() {
+        return sourceZoneId;
+    }
+
+    public ZoneId getDestinationZoneId() {
+        return destinationZoneId;
     }
 
     public Locale getSourceLocale() {
         return sourceLocale;
     }
 
-    private ZoneId buildZoneId(String timezone) {
+    private ZoneId buildZoneId(final String timezone) {
         try {
             return ZoneId.of(timezone);
         } catch (Exception e) {
@@ -82,7 +101,7 @@ public class DateProcessorConfig {
         }
     }
 
-    private Locale buildLocale(String locale) {
+    private Locale buildLocale(final String locale) {
         Locale currentLocale;
         if (locale == null || locale.equalsIgnoreCase("ROOT")) {
             return Locale.ROOT;
@@ -133,10 +152,20 @@ public class DateProcessorConfig {
         return true;
     }
 
-    @AssertTrue(message = "Invalid timezone provided.")
-    boolean isTimezoneValid() {
+    @AssertTrue(message = "Invalid source_timezone provided.")
+    boolean isSourceTimezoneValid() {
         try {
-            zoneId = buildZoneId(timezone);
+            sourceZoneId = buildZoneId(sourceTimezone);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @AssertTrue(message = "Invalid destination_timezone provided.")
+    boolean isDestinationTimezoneValid() {
+        try {
+            destinationZoneId = buildZoneId(destinationTimezone);
             return true;
         } catch (Exception e) {
             return false;

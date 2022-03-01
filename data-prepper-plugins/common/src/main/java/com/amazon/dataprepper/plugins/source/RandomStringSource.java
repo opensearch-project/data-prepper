@@ -15,7 +15,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,8 +27,6 @@ import java.util.concurrent.TimeoutException;
 @DataPrepperPlugin(name = "random", pluginType = Source.class)
 public class RandomStringSource implements Source<Record<Event>> {
 
-    static final String MESSAGE_KEY = "message";
-    static final String EVENT_TYPE = "event";
     private static final Logger LOG = LoggerFactory.getLogger(RandomStringSource.class);
 
     private ExecutorService executorService;
@@ -76,12 +73,7 @@ public class RandomStringSource implements Source<Record<Event>> {
     }
 
     private Record<Event> generateRandomStringEventRecord() {
-        final Map<String, String> structuredLine = Map.of(MESSAGE_KEY, UUID.randomUUID().toString());
-        final Event event = JacksonEvent
-                .builder()
-                .withEventType(EVENT_TYPE)
-                .withData(structuredLine)
-                .build();
+        final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         return new Record<>(event);
     }
 }

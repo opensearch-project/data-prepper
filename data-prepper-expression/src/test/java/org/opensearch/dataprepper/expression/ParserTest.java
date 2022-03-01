@@ -5,84 +5,146 @@
 
 package org.opensearch.dataprepper.expression;
 
-import org.antlr.v4.runtime.TokenStream;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.hamcrest.DiagnosingMatcher;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
-import org.opensearch.dataprepper.expression.util.MockTokenStreamHelper;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.opensearch.dataprepper.expression.util.GrammarTest;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.doAnswer;
-import static org.opensearch.dataprepper.expression.util.ContextMatcher.hasContext;
-import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.isParseTree;
-import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
-@ExtendWith(MockitoExtension.class)
-public class ParserTest {
-    private static final Class<? extends ParseTree> EXPRESSION = DataPrepperExpressionParser.ExpressionContext.class;
-    private static final Class<? extends ParseTree> CONDITIONAL_EXPRESSION = DataPrepperExpressionParser.ConditionalExpressionContext.class;
-    private static final Class<? extends ParseTree> EQUALITY_OPERATOR_EXPRESSION =
-            DataPrepperExpressionParser.EqualityOperatorExpressionContext.class;
-    private static final Class<? extends ParseTree> EQUALITY_OPERATOR = DataPrepperExpressionParser.EqualityOperatorContext.class;
-    private static final Class<? extends ParseTree> REGEX_OPERATOR_EXPRESSION =
-            DataPrepperExpressionParser.RegexOperatorExpressionContext.class;
-    private static final Class<? extends ParseTree> RELATIONAL_OPERATOR_EXPRESSION =
-            DataPrepperExpressionParser.RelationalOperatorExpressionContext.class;
-    private static final Class<? extends ParseTree> SET_OPERATOR_EXPRESSION =
-            DataPrepperExpressionParser.SetOperatorExpressionContext.class;
-    private static final Class<? extends ParseTree> UNARY_OPERATOR_EXPRESSION =
-            DataPrepperExpressionParser.UnaryOperatorExpressionContext.class;
-    private static final Class<? extends ParseTree> PRIMARY = DataPrepperExpressionParser.PrimaryContext.class;
-    private static final Class<? extends ParseTree> LITERAL = DataPrepperExpressionParser.LiteralContext.class;
+public class ParserTest extends GrammarTest {
 
-    @Mock
-    private TokenStream tokenStream;
-    @InjectMocks
-    private DataPrepperExpressionParser parser;
+    private void assertThatIsValid(final String expression) {
+        parseExpression(expression);
+        assertThat(
+                "\"" + expression + "\" should not have parsing errors",
+                errorListener.isErrorFound(),
+                is(false)
+        );
+    }
 
-    private void withTokenStream(final Integer ... types) {
-        final MockTokenStreamHelper helper = new MockTokenStreamHelper(types);
-
-        doAnswer(helper::consume).when(tokenStream).consume();
-        doAnswer(helper::LT).when(tokenStream).LT(anyInt());
-        doAnswer(helper::LA).when(tokenStream).LA(anyInt());
-
-        parser.setInputStream(tokenStream);
+    private void assertThatHasParseError(final String expression) {
+        parseExpression(expression);
+        assertThat(
+                "\"" + expression + "\" should have parsing errors",
+                errorListener.isErrorFound(),
+                is(true)
+        );
     }
 
     @Test
-    void testEqualityExpression() {
-        withTokenStream(
-                DataPrepperExpressionParser.Integer,
-                DataPrepperExpressionParser.EQUAL,
-                DataPrepperExpressionParser.Float,
-                DataPrepperExpressionParser.EOF
-        );
+    void testGivenOperandIsNotStringWhenEvaluateThenErrorPresent() {
+        assertThatHasParseError("(true) =~ \"Hello?\"");
+    }
 
-        final ParseTree expression = parser.expression();
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{true or false}",
+            "{(5)}",
+            "{5 == 5}",
+            "{/node =~ \"[A-Z]*\"}",
+    })
+    void testInvalidSetItem(final String expression) {
+        assertThatHasParseError(expression);
+    }
 
-        final DiagnosingMatcher<ParseTree> equals = isParseTree(EQUALITY_OPERATOR).containingTerminalNode();
-        final DiagnosingMatcher<ParseTree> endsWithInteger = isParseTree(
-                REGEX_OPERATOR_EXPRESSION,
-                RELATIONAL_OPERATOR_EXPRESSION,
-                SET_OPERATOR_EXPRESSION,
-                UNARY_OPERATOR_EXPRESSION,
-                PRIMARY,
-                LITERAL
-        ).containingTerminalNode();
-        final DiagnosingMatcher<ParseTree> leftHandSide = hasContext(EQUALITY_OPERATOR_EXPRESSION, endsWithInteger);
-        final DiagnosingMatcher<ParseTree> equalityExpression = isParseTree(
-                CONDITIONAL_EXPRESSION,
-                EQUALITY_OPERATOR_EXPRESSION
-        ).withChildrenMatching(leftHandSide, equals, endsWithInteger);
+    @Test
+    void testInvalidSetOperator() {
+        assertThatHasParseError("1 in 1");
+    }
 
-        assertThat(expression, isParseTree(EXPRESSION).withChildrenMatching(equalityExpression, isTerminalNode())
-        );
+    @Test
+    void testInvalidRegexOperand() {
+        assertThatHasParseError("\"foo\"=~3.14");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "0.",
+            "00.",
+            ".00",
+            ".10",
+            "1.10",
+    })
+    void testInvalidFloatParsingRules(final String expression) {
+        assertThatHasParseError(expression);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "5==",
+            "==",
+            "not",
+    })
+    void testInvalidNumberOfOperands(final String expression) {
+        assertThatHasParseError(expression);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/status in {200}",
+            "/a==(/b==200)",
+            "/a in {200}",
+            "/a not in {400}",
+            "/a<300 and /b>200",
+    })
+    void testValidOperatorsRequireSpace(final String expression) {
+        assertThatIsValid(expression);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/a in ({200})",
+            "/a in 5",
+            "/a in 3.14",
+            "/a in false",
+            "\"Hello\" not in ({200})",
+            "\"Hello\" not in 5",
+            "\"Hello\" not in 3.14",
+            "\"Hello\" not in false",
+    })
+    void testInvalidSetOperatorArgs(final String expression) {
+        assertThatHasParseError(expression);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/status in{200}",
+            "/status in({200})",
+            "/a in{200, 202}",
+            "/a not in{400}",
+            "/b<300and/b>200",
+            "/a in {200,}",
+    })
+    void testInvalidOperatorsRequireSpace(final String expression) {
+        assertThatHasParseError(expression);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/status < 300",
+            "/status>=300",
+            "/msg =~ \"^\\\\w*\\$\"",
+            "/msg=~\"[A-Za-z]\"",
+            "/status == 200",
+            "/status_code==200",
+            "/a in {200, 202}",
+            "/a in {200,202}",
+            "/a in {200 , 202}",
+    })
+    void testValidOptionalSpaceOperators(final String expression) {
+        assertThatIsValid(expression);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "falkse and true",
+            "true an true",
+            "2 is in {2}",
+            "2 in {2,,}"
+    })
+    void testTypo(final String expression) {
+        assertThatHasParseError(expression);
     }
 }

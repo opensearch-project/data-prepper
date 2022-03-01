@@ -7,6 +7,8 @@ package com.amazon.dataprepper.plugins.processor.aggregate;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -15,6 +17,6 @@ public class AggregateProcessorConfigTest {
     public void testDefault() {
         final AggregateProcessorConfig aggregateConfig = new AggregateProcessorConfig();
 
-        assertThat(aggregateConfig.getGroupDuration(), equalTo(AggregateProcessorConfig.DEFAULT_GROUP_DURATION));
+        assertThat(aggregateConfig.getGroupDuration(), equalTo(Duration.ofSeconds(AggregateProcessorConfig.DEFAULT_GROUP_DURATION_SECONDS)));
     }
 }

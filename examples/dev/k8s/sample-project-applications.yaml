@@ -34,9 +34,9 @@ spec:
       containers:
       - env:
         - name: OPENSEARCH_HOSTS
-          value: https://odfe:9200
+          value: https://os:9200
         - name: OPENSEARCH_URL
-          value: https://odfe:9200
+          value: https://os:9200
         image: opensearchproject/opensearch-dashboards:1.0.0
         imagePullPolicy: ""
         name: opensearch-dashboard
@@ -137,7 +137,7 @@ spec:
           value: single-node
         image: opensearchproject/opensearch:1.0.0
         imagePullPolicy: ""
-        name: odfe
+        name: os
         ports:
         - containerPort: 9200
         - containerPort: 9600
