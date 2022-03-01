@@ -19,5 +19,5 @@ public interface ExpressionEvaluator<T> {
      *
      * @throws ExpressionEvaluationException if unable to evaluate or course the statement result to type T
      */
-    T evaluate(final String statement, final Event context) throws ExpressionEvaluationException;
+    T evaluate(final String statement, final Event context);
 }

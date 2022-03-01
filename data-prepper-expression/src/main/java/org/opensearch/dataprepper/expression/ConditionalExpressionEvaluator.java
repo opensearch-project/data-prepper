@@ -30,7 +30,7 @@ class ConditionalExpressionEvaluator implements ExpressionEvaluator<Boolean> {
      * {@inheritDoc}
      */
     @Override
-    public Boolean evaluate(final String statement, final Event context) throws ExpressionEvaluationException {
+    public Boolean evaluate(final String statement, final Event context) {
         try {
             final ParseTree parseTree = parser.parse(statement);
             final Object result = evaluator.evaluate(parseTree, context);

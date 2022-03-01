@@ -32,7 +32,7 @@ class ConditionalExpressionEvaluatorTest {
     private ConditionalExpressionEvaluator statementEvaluator;
 
     @Test
-    void testGivenValidParametersThenEvaluatorResultReturned() throws ExpressionEvaluationException {
+    void testGivenValidParametersThenEvaluatorResultReturned() {
         final String statement = UUID.randomUUID().toString();
         final ParseTree parseTree = mock(ParseTree.class);
         final Event event = mock(Event.class);
