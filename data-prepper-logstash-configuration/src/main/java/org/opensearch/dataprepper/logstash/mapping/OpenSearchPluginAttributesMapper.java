@@ -31,16 +31,12 @@ class OpenSearchPluginAttributesMapper extends AbstractLogstashPluginAttributesM
     @Override
     protected void mapCustomAttributes(final List<LogstashAttribute> logstashAttributes, final LogstashAttributesMappings logstashAttributesMappings, final Map<String, Object> pluginSettings) {
 
-        Optional<String> convertedIndexAttributeValue = logstashAttributes.stream()
+        final Optional<String> convertedIndexAttributeValue = logstashAttributes.stream()
                 .filter(a -> a.getAttributeName().equals(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME))
                 .map(this::findAndMatchDateTimePattern)
                 .findFirst();
 
-        if (convertedIndexAttributeValue.isPresent()) {
-            pluginSettings.put(logstashAttributesMappings.getMappedAttributeNames().get(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME), convertedIndexAttributeValue.get());
-        } else {
-            pluginSettings.put(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME, logstashAttributesMappings.getDefaultSettings().get(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME));
-        }
+        convertedIndexAttributeValue.ifPresent(s -> pluginSettings.put(logstashAttributesMappings.getMappedAttributeNames().get(LOGSTASH_OPENSEARCH_INDEX_ATTRIBUTE_NAME), s));
     }
 
     @Override

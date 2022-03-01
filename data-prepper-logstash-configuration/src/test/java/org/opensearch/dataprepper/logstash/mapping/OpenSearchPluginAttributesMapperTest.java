@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.logstash.mapping;
 
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import org.hamcrest.Matchers;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -35,23 +34,6 @@ class OpenSearchPluginAttributesMapperTest {
 
     private OpenSearchPluginAttributesMapper createObjectUnderTest() {
         return new OpenSearchPluginAttributesMapper();
-    }
-
-    @Test
-    void convert_no_explicit_indexAttribute_to_return_indexAttribute_with_defaultSettings() {
-
-        final LogstashAttributesMappings logstashAttributesMappings = mock(LogstashAttributesMappings.class);
-        when(logstashAttributesMappings.getDefaultSettings()).thenReturn(Collections.singletonMap("index", "logstash-%{uuuu.MM.dd}"));
-
-        final List<PluginModel> actualPluginModel = createObjectUnderTest()
-                .mapAttributes(Collections.emptyList(), logstashAttributesMappings);
-
-        assertThat(actualPluginModel, Matchers.notNullValue());
-        assertThat(actualPluginModel.size(), Matchers.equalTo(1));
-        assertThat(actualPluginModel.get(0), Matchers.notNullValue());
-
-        assertThat(actualPluginModel.get(0).getPluginSettings().size(), equalTo(0));
-        assertThat(actualPluginModel.get(0).getPluginSettings(), (hasKey(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE)));
     }
 
     @ParameterizedTest

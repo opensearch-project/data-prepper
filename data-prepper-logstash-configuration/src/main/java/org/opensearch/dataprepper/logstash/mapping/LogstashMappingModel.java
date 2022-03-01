@@ -37,7 +37,7 @@ class LogstashMappingModel implements LogstashAttributesMappings {
     private Map<String, Object> additionalAttributes = new HashMap<>();
 
     @JsonProperty
-    @JsonSetter
+    @JsonSetter(nulls = Nulls.AS_EMPTY)
     private Map<String, Object> defaultSettings = new HashMap<>();
 
     public String getPluginName() {
@@ -60,5 +60,7 @@ class LogstashMappingModel implements LogstashAttributesMappings {
         return customPluginMapperClass;
     }
 
-    public Map<String, Object> getDefaultSettings() { return defaultSettings; }
+    public Map<String, Object> getDefaultSettings() {
+        return defaultSettings;
+    }
 }
