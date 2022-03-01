@@ -121,8 +121,8 @@ subprojects {
     configurations.all {
         resolutionStrategy.eachDependency { def details ->
             if (details.requested.group == 'io.netty' && !details.requested.name.startsWith('netty-tcnative')) {
-                details.useVersion '4.1.68.Final'
-                details.because 'Fixes CVE-2021-37136 and CVE-2021-37137. See https://netty.io/news/2021/09/09/4-1-68-Final.html'
+                details.useVersion '4.1.74.Final'
+                details.because 'Fixes CVE-2021-43797, CVE-2021-37136 and CVE-2021-37137. See https://netty.io/news/2021/09/09/4-1-68-Final.html'
             }
         }
     }
