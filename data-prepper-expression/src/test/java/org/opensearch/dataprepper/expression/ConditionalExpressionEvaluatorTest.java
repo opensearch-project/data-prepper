@@ -8,6 +8,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.UUID;
+
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -30,8 +32,8 @@ class ConditionalExpressionEvaluatorTest {
     private ConditionalExpressionEvaluator statementEvaluator;
 
     @Test
-    void testGivenValidParametersThenEvaluatorResultReturned() {
-        final String statement = "test statement";
+    void testGivenValidParametersThenEvaluatorResultReturned() throws ExpressionEvaluationException {
+        final String statement = UUID.randomUUID().toString();
         final ParseTree parseTree = mock(ParseTree.class);
         final Event event = mock(Event.class);
         final Boolean expected = true;
@@ -48,7 +50,7 @@ class ConditionalExpressionEvaluatorTest {
 
     @Test
     void testGivenUnexpectedEvaluatorResultTypeThenExceptionThrown() {
-        final String statement = "test statement";
+        final String statement = UUID.randomUUID().toString();
         final ParseTree parseTree = mock(ParseTree.class);
         final Event event = mock(Event.class);
         final Object result = mock(Object.class);
@@ -64,7 +66,7 @@ class ConditionalExpressionEvaluatorTest {
 
     @Test
     void testGivenParserThrowsExceptionThenExceptionThrown() {
-        final String statement = "test statement";
+        final String statement = UUID.randomUUID().toString();
 
         doThrow(new RuntimeException()).when(parser).parse(eq(statement));
 
@@ -76,7 +78,7 @@ class ConditionalExpressionEvaluatorTest {
 
     @Test
     void testGivenEvaluatorThrowsExceptionThenExceptionThrown() {
-        final String statement = "test statement";
+        final String statement = UUID.randomUUID().toString();
         final ParseTree parseTree = mock(ParseTree.class);
         final Event event = mock(Event.class);
 
