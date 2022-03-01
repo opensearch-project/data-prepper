@@ -7,10 +7,12 @@ package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
+import javax.inject.Named;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+@Named
 class InOperator implements Operator<Boolean> {
     @Override
     public Integer getSymbol() {
@@ -18,7 +20,7 @@ class InOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean evaluate(Object... args) {
+    public Boolean evaluate(final Object... args) {
         checkArgument(args.length == 2, "Operands length needs to be 2.");
         if (!(args[1] instanceof Set)) {
             throw new IllegalArgumentException(args[1] + " should be Set");

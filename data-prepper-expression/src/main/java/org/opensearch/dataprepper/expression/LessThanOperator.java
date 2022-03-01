@@ -7,12 +7,14 @@ package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
+import javax.inject.Named;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+@Named
 class LessThanOperator implements Operator<Boolean> {
     private static final Map<String, BiFunction<Object, Object, Boolean>> LESS_THAN_ON =
             new HashMap<String, BiFunction<Object, Object, Boolean>>() {{
@@ -27,7 +29,7 @@ class LessThanOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean evaluate(Object... args) {
+    public Boolean evaluate(final Object... args) {
         checkArgument(args.length == 2, "Operands length needs to be 2.");
         final Object leftValue = args[0];
         final Object rightValue = args[1];

@@ -7,10 +7,12 @@ package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
+import javax.inject.Named;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+@Named
 class NotInOperator implements Operator<Boolean> {
 
     @Override
@@ -19,7 +21,7 @@ class NotInOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean evaluate(Object... args) {
+    public Boolean evaluate(final Object... args) {
         checkArgument(args.length == 2, "Operands length needs to be 2.");
         checkArgument(args[1] instanceof Set, "Right Operand needs to be Set.");
         return !((Set<?>) args[1]).contains(args[0]);
