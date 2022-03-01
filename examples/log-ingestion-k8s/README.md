@@ -27,7 +27,7 @@ docker run -p 2021:2021 -p 4900:4900 --name data-prepper -v ${PWD}/data-prepper-
 2. Setup kubectl and minikube locally
     1. https://kubernetes.io/docs/tasks/tools/install-kubectl/
     2. https://minikube.sigs.k8s.io/docs/start/
-Notice that this demo uses minikube > 1.21.
+Notice that this demo works with minikube version from 1.22.0 to 1.24.0.
 3. Replace the `Host` value in `output-data-prepper.conf` in [fluent-bit-05-configmap.yaml](fluent-bit-05-configmap.yaml) with your Data-Prepper endpoint. For example,
 if the data-prepper is running locally, set `Host` value to be `host.docker.internal` (hostname to access docker host on MacOS/Windows) or 172.17.0.1 (docker host ip on Linux).
 4. `minikube start`
