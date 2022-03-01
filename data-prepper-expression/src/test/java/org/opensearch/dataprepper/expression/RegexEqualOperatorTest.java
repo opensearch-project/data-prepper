@@ -22,24 +22,24 @@ class RegexEqualOperatorTest {
 
     @Test
     void testEvalValidArgs() {
-        assertThat(objectUnderTest.eval("a", "a*"), is(true));
-        assertThat(objectUnderTest.eval("a", "b*"), is(false));
+        assertThat(objectUnderTest.evaluate("a", "a*"), is(true));
+        assertThat(objectUnderTest.evaluate("a", "b*"), is(false));
     }
 
     @Test
     void testEvalInValidArgLength() {
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval("a"));
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval("a", "a", "a*"));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate("a"));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate("a", "a", "a*"));
     }
 
     @Test
     void testEvalInValidArgType() {
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(1, "a*"));
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval("a", 1));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1, "a*"));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate("a", 1));
     }
 
     @Test
     void testEvalInValidPattern() {
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval("a", "*"));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate("a", "*"));
     }
 }

@@ -22,31 +22,31 @@ class LessThanOrEqualOperatorTest {
 
     @Test
     void testEvalValidArgs() {
-        assertThat(objectUnderTest.eval(2, 1), is(false));
-        assertThat(objectUnderTest.eval(1, 2), is(true));
-        assertThat(objectUnderTest.eval(1, 1), is(true));
-        assertThat(objectUnderTest.eval(2f, 1), is(false));
-        assertThat(objectUnderTest.eval(1f, 2), is(true));
-        assertThat(objectUnderTest.eval(1f, 1), is(true));
-        assertThat(objectUnderTest.eval(2, 1f), is(false));
-        assertThat(objectUnderTest.eval(1, 2f), is(true));
-        assertThat(objectUnderTest.eval(1, 1f), is(true));
-        assertThat(objectUnderTest.eval(2f, 1f), is(false));
-        assertThat(objectUnderTest.eval(1f, 2f), is(true));
-        assertThat(objectUnderTest.eval(1f, 1f), is(true));
+        assertThat(objectUnderTest.evaluate(2, 1), is(false));
+        assertThat(objectUnderTest.evaluate(1, 2), is(true));
+        assertThat(objectUnderTest.evaluate(1, 1), is(true));
+        assertThat(objectUnderTest.evaluate(2f, 1), is(false));
+        assertThat(objectUnderTest.evaluate(1f, 2), is(true));
+        assertThat(objectUnderTest.evaluate(1f, 1), is(true));
+        assertThat(objectUnderTest.evaluate(2, 1f), is(false));
+        assertThat(objectUnderTest.evaluate(1, 2f), is(true));
+        assertThat(objectUnderTest.evaluate(1, 1f), is(true));
+        assertThat(objectUnderTest.evaluate(2f, 1f), is(false));
+        assertThat(objectUnderTest.evaluate(1f, 2f), is(true));
+        assertThat(objectUnderTest.evaluate(1f, 1f), is(true));
     }
 
     @Test
     void testEvalInValidArgLength() {
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(1));
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(1, 2, 3));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1, 2, 3));
     }
 
     @Test
     void testEvalInValidArgType() {
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(1L, 1));
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(1.0, 1));
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(1, 1L));
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(1, 1.0));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1L, 1));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1.0, 1));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1, 1L));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1, 1.0));
     }
 }

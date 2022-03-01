@@ -7,26 +7,35 @@ package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.BiFunction;
+
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class GreaterThanOrEqualOperator implements Operator<Boolean> {
+class GreaterThanOrEqualOperator implements Operator<Boolean> {
+    private static final Map<String, BiFunction<Object, Object, Boolean>> GREATER_THAN_OR_EQUAL_ON =
+            new HashMap<String, BiFunction<Object, Object, Boolean>>() {{
+                put(Integer.class.getName() + "_" + Integer.class.getName(), (a, b) -> (Integer) a >= (Integer) b);
+                put(Integer.class.getName() + "_" + Float.class.getName(), (a, b) -> (Integer) a >= (Float) b);
+                put(Float.class.getName() + "_" + Integer.class.getName(), (a, b) -> (Float) a >= (Integer) b);
+                put(Float.class.getName() + "_" + Float.class.getName(), (a, b) -> (Float) a >= (Float) b);}};
+
     @Override
     public Integer getSymbol() {
         return DataPrepperExpressionParser.GTE;
     }
 
     @Override
-    public Boolean eval(Object... args) {
+    public Boolean evaluate(Object... args) {
         checkArgument(args.length == 2, "Operands length needs to be 2.");
-        if ((args[0] instanceof Integer) && (args[1] instanceof Float)) {
-            return ((Integer) args[0]) >= ((Float) args[1]);
-        } else if ((args[0] instanceof Float) && (args[1] instanceof Integer)) {
-            return ((Float) args[0]) >= ((Integer) args[1]);
-        } else if ((args[0] instanceof Integer) && (args[1] instanceof Integer)) {
-            return ((Integer) args[0]) >= ((Integer) args[1]);
-        } else if ((args[0] instanceof Float) && (args[1] instanceof Float)) {
-            return ((Float) args[0]) >= ((Float) args[1]);
+        final Object leftValue = args[0];
+        final Object rightValue = args[1];
+        final BiFunction<Object, Object, Boolean> operation = GREATER_THAN_OR_EQUAL_ON.get(
+                BinaryOperandsKeyFactory.typesKey(leftValue, rightValue));
+        if (operation == null) {
+            throw new IllegalArgumentException(leftValue + " or " + rightValue + " should be either Float or Integer");
         }
-        throw new IllegalArgumentException(args[0] + " or " + args[1] + " should be either Float or Integer");
+        return operation.apply(leftValue, rightValue);
     }
 }

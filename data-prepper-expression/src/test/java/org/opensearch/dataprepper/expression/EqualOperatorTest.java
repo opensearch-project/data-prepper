@@ -26,11 +26,11 @@ class EqualOperatorTest {
         final TestObject testObject1 = new TestObject("1");
         final TestObject testObject2 = new TestObject("1");
         final TestObject testObject3 = new TestObject("2");
-        assertThat(objectUnderTest.eval(testObject1, testObject2), is(true));
-        assertThat(objectUnderTest.eval(testObject1, testObject3), is(false));
-        assertThat(objectUnderTest.eval(null, testObject1), is(false));
-        assertThat(objectUnderTest.eval(testObject1, null), is(false));
-        assertThat(objectUnderTest.eval(null, null), is(true));
+        assertThat(objectUnderTest.evaluate(testObject1, testObject2), is(true));
+        assertThat(objectUnderTest.evaluate(testObject1, testObject3), is(false));
+        assertThat(objectUnderTest.evaluate(null, testObject1), is(false));
+        assertThat(objectUnderTest.evaluate(testObject1, null), is(false));
+        assertThat(objectUnderTest.evaluate(null, null), is(true));
     }
 
     @Test
@@ -38,7 +38,7 @@ class EqualOperatorTest {
         final TestObject testObject1 = new TestObject("1");
         final TestObject testObject2 = new TestObject("1");
         final TestObject testObject3 = new TestObject("2");
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(testObject1));
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(testObject1, testObject2, testObject3));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(testObject1));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(testObject1, testObject2, testObject3));
     }
 }

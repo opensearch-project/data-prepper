@@ -25,17 +25,17 @@ class NotInOperatorTest {
 
     @Test
     void testEvalValidArgs() {
-        assertThat(objectUnderTest.eval(1, Set.of(1)), is(false));
-        assertThat(objectUnderTest.eval(1, Collections.emptySet()), is(true));
+        assertThat(objectUnderTest.evaluate(1, Set.of(1)), is(false));
+        assertThat(objectUnderTest.evaluate(1, Collections.emptySet()), is(true));
     }
 
     @Test
     void testEvalInValidArgLength() {
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(1, 2, Set.of(1, 2)));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1, 2, Set.of(1, 2)));
     }
 
     @Test
     void testEvalInValidArgType() {
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.eval(1, 1));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1, 1));
     }
 }
