@@ -364,7 +364,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
         for (int i = numOfArgs - 1; i >= 0; i--) {
             args[i] = argStack.pop();
         }
-        final Object result = operator.eval(args);
+        final Object result = operator.evaluate(args);
         argStack.push(result);
     }
 }
