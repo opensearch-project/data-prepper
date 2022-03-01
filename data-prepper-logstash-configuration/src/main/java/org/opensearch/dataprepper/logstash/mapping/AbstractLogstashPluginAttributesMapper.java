@@ -11,12 +11,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
-import java.util.Objects;
 import java.util.List;
 import java.util.Map;
-import java.util.LinkedHashMap;
-import java.util.HashSet;
+import java.util.Objects;
 
 /**
  * An abstract class which is responsible for mapping basic attributes
@@ -37,6 +37,7 @@ public abstract class AbstractLogstashPluginAttributesMapper implements Logstash
 
         final Map<String, Object> pluginSettings = new LinkedHashMap<>(logstashAttributesMappings.getAdditionalAttributes());
         final Map<String, String> mappedAttributeNames = logstashAttributesMappings.getMappedAttributeNames();
+        final Map<String, Object> defaultSettings = logstashAttributesMappings.getDefaultSettings();
 
         Collection<String> customMappedAttributeNames = getCustomMappedAttributeNames();
 
@@ -53,6 +54,9 @@ public abstract class AbstractLogstashPluginAttributesMapper implements Logstash
                                     dataPrepperAttributeName.substring(1), !(Boolean) logstashAttribute.getAttributeValue().getValue()
                             );
                         }
+                        else if(defaultSettings.containsKey(logstashAttributeName)) {
+                            pluginSettings.put(dataPrepperAttributeName, defaultSettings.get(dataPrepperAttributeName));
+                        }
                         else {
                             pluginSettings.put(dataPrepperAttributeName, logstashAttribute.getAttributeValue().getValue());
                         }
@@ -60,7 +64,7 @@ public abstract class AbstractLogstashPluginAttributesMapper implements Logstash
                     else {
                         LOG.warn("Attribute name {} is not found in mapping file.", logstashAttributeName);
                     }
-        });
+                });
 
         if (!customMappedAttributeNames.isEmpty()) {
             mapCustomAttributes(logstashAttributes, logstashAttributesMappings, pluginSettings);
@@ -75,10 +79,9 @@ public abstract class AbstractLogstashPluginAttributesMapper implements Logstash
     /**
      * Map custom logstashAttributes from a Logstash plugin.
      *
-     * @param logstashAttributes All the Logstash logstashAttributes for the plugin
+     * @param logstashAttributes         All the Logstash logstashAttributes for the plugin
      * @param logstashAttributesMappings The mappings for this Logstash plugin
-     * @param pluginSettings A map of Data Prepper basic plugin settings.
-     *
+     * @param pluginSettings             A map of Data Prepper basic plugin settings.
      * @since 1.2
      */
     protected abstract void mapCustomAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings, Map<String, Object> pluginSettings);
