@@ -23,8 +23,6 @@ class ConditionalExpressionEvaluator implements ExpressionEvaluator<Boolean> {
 
     /**
      * {@inheritDoc}
-     *
-     * <b>Method not implemented</b>
      */
     @Override
     public Boolean evaluate(final String statement, final Event context) throws ExpressionEvaluationException {
