@@ -41,8 +41,8 @@ public class OperatorFactory {
                     put(Float.class, (lhs, rhs) -> (Integer) lhs > (Float) rhs);}};
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> floatOperations =
                 new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
-                    put(Float.class, (lhs, rhs) -> (Float) lhs > (Integer) rhs);
-                    put(Integer.class, (lhs, rhs) -> (Float) lhs > (Integer) rhs);}};
+                    put(Integer.class, (lhs, rhs) -> (Float) lhs > (Integer) rhs);
+                    put(Float.class, (lhs, rhs) -> (Float) lhs > (Float) rhs);}};
 
         operandsToOperationMap.put(Integer.class, intOperations);
         operandsToOperationMap.put(Float.class, floatOperations);
@@ -60,8 +60,8 @@ public class OperatorFactory {
             put(Float.class, (lhs, rhs) -> (Integer) lhs >= (Float) rhs);}};
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> floatOperations =
                 new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
-                    put(Float.class, (lhs, rhs) -> (Float) lhs >= (Integer) rhs);
-                    put(Integer.class, (lhs, rhs) -> (Float) lhs >= (Integer) rhs);}};
+                    put(Integer.class, (lhs, rhs) -> (Float) lhs >= (Integer) rhs);
+                    put(Float.class, (lhs, rhs) -> (Float) lhs >= (Float) rhs);}};
 
         operandsToOperationMap.put(Integer.class, intOperations);
         operandsToOperationMap.put(Float.class, floatOperations);
@@ -79,8 +79,8 @@ public class OperatorFactory {
                     put(Float.class, (lhs, rhs) -> (Integer) lhs < (Float) rhs);}};
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> floatOperations =
                 new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
-                    put(Float.class, (lhs, rhs) -> (Float) lhs < (Integer) rhs);
-                    put(Integer.class, (lhs, rhs) -> (Float) lhs < (Integer) rhs);}};
+                    put(Integer.class, (lhs, rhs) -> (Float) lhs < (Integer) rhs);
+                    put(Float.class, (lhs, rhs) -> (Float) lhs < (Float) rhs);}};
 
         operandsToOperationMap.put(Integer.class, intOperations);
         operandsToOperationMap.put(Float.class, floatOperations);
@@ -98,8 +98,8 @@ public class OperatorFactory {
                     put(Float.class, (lhs, rhs) -> (Integer) lhs <= (Float) rhs);}};
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> floatOperations =
                 new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
-                    put(Float.class, (lhs, rhs) -> (Float) lhs <= (Integer) rhs);
-                    put(Integer.class, (lhs, rhs) -> (Float) lhs <= (Integer) rhs);}};
+                    put(Integer.class, (lhs, rhs) -> (Float) lhs <= (Integer) rhs);
+                    put(Float.class, (lhs, rhs) -> (Float) lhs <= (Float) rhs);}};
 
         operandsToOperationMap.put(Integer.class, intOperations);
         operandsToOperationMap.put(Float.class, floatOperations);
