@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.expression;
 
 import com.amazon.dataprepper.model.event.Event;
@@ -23,12 +28,22 @@ class ConditionalExpressionEvaluator implements ExpressionEvaluator<Boolean> {
 
     /**
      * {@inheritDoc}
-     *
-     * <b>Method not implemented</b>
      */
     @Override
-    public Boolean evaluate(final String statement, final Event context) throws ClassCastException {
-        // TODO: Implement method
-        throw new RuntimeException("Method not implemented");
+    public Boolean evaluate(final String statement, final Event context) {
+        try {
+            final ParseTree parseTree = parser.parse(statement);
+            final Object result = evaluator.evaluate(parseTree, context);
+
+            if (result instanceof Boolean) {
+                return (Boolean) result;
+            }
+            else {
+                throw new ClassCastException("Unexpected expression return type of " + result.getClass());
+            }
+        }
+        catch (final Exception exception) {
+            throw new ExpressionEvaluationException("Unable to evaluate statement \"" + statement + "\"", exception);
+        }
     }
 }

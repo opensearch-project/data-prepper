@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.expression;
 
 import com.amazon.dataprepper.model.event.Event;
@@ -17,7 +22,7 @@ public interface ExpressionEvaluator<T> {
      * @param context event used to resolve external references in the statement
      * @return coerced result of statement evaluation
      *
-     * @throws ClassCastException when unable to course statement result to type T
+     * @throws ExpressionEvaluationException if unable to evaluate or coerce the statement result to type T
      */
-    T evaluate(final String statement, final Event context) throws ClassCastException;
+    T evaluate(final String statement, final Event context);
 }
