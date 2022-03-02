@@ -1,4 +1,4 @@
-# Kubernetes Logging with Fluent Bit and Data-Prepper
+# Kubernetes Logging with Fluent Bit and Data Prepper
 
 [Fluent Bit](http://fluentbit.io/) is a lightweight and extensible __Log and Metrics Processor__ that comes with full support for Kubernetes:
 
@@ -6,17 +6,17 @@
 * Enrich logs with Kubernetes metadata
 * Deliver logs to third party services.
 
-This example uses [minikube](https://minikube.sigs.k8s.io/docs/) to demo Fluent Bit to Data-Prepper pipeline that collects and ingest logs from `my-app` [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/). 
+This example uses [minikube](https://minikube.sigs.k8s.io/docs/) to demo Fluent Bit to Data Prepper pipeline that collects and ingest logs from `my-app` [namespace](https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/). 
 The service architecture is illustrated as follows:
 ![Architecture](K8-fluentbit-data-prepper.png)
 We deploy two `nginx` [pods](https://kubernetes.io/docs/concepts/workloads/pods/) and expose a `my-nginx` [service](https://kubernetes.io/docs/concepts/services-networking/service/) on top of them in the `my-app` namespace. Then in the `logging` namespace,
-we deploy Fluent Bit as [DaemonSet](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/) that runs in every node in Kubernetes collects and forwards logs to an pre-existing Data-Prepper endpoint, which is located outside 
+we deploy Fluent Bit as [DaemonSet](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/) that runs in every node in Kubernetes collects and forwards logs to an pre-existing Data Prepper endpoint, which is located outside 
 Kubernetes cluster.
 
 ## Getting started
 
 ### Prerequisite
-A Data-Prepper endpoint with [example_log_pipeline.yaml](data-prepper-pipeline-config/example_log_pipeline.yaml) configured. For example, you could run data-prepper via docker:
+A Data Prepper endpoint with [example_log_pipeline.yaml](data-prepper-pipeline-config/example_log_pipeline.yaml) configured. For example, you could run Data Prepper via Docker:
 
 ```
 docker run -p 2021:2021 -p 4900:4900 --name data-prepper -v ${PWD}/data-prepper-pipeline-config/example_log_pipeline.yaml:/usr/share/data-prepper/pipelines.yaml opensearchproject/data-prepper:latest
@@ -28,8 +28,8 @@ docker run -p 2021:2021 -p 4900:4900 --name data-prepper -v ${PWD}/data-prepper-
     1. https://kubernetes.io/docs/tasks/tools/install-kubectl/
     2. https://minikube.sigs.k8s.io/docs/start/
 Notice that this demo works with minikube version from 1.22.0 to 1.24.0.
-3. Replace the `Host` value in `output-data-prepper.conf` in [fluent-bit-05-configmap.yaml](fluent-bit-05-configmap.yaml) with your Data-Prepper endpoint. For example,
-if the data-prepper is running locally, set `Host` value to be `host.docker.internal` (hostname to access docker host on MacOS/Windows) or 172.17.0.1 (docker host ip on Linux).
+3. Replace the `Host` value in `output-data-prepper.conf` in [fluent-bit-05-configmap.yaml](fluent-bit-05-configmap.yaml) with your Data Prepper endpoint. For example,
+if the Data Prepper is running locally, set `Host` value to be `host.docker.internal` (hostname to access docker host on MacOS/Windows) or 172.17.0.1 (docker host ip on Linux).
 4. `minikube start`
 5. You could run `kubectl apply -f .` to deploy everything or run step-by-step as follows:
    1. Deploy two `nginx` pods as sample application in `my-app` namespace and expose them as `my-nginx` service:
@@ -92,13 +92,13 @@ if the data-prepper is running locally, set `Host` value to be `host.docker.inte
    </body>
    </html>
    ```
-The deployed `nginx` pods will generate apache logs accordingly and Fluent Bit DaemonSet will collect, parse, filter and output logs to Data-Prepper backend. 
-8. By configuring `stdout` as sink, the Data-Prepper instance logs should now print out sample records as follows:
+The deployed `nginx` pods will generate Apache logs accordingly and Fluent Bit DaemonSet will collect, parse, filter and output logs to Data Prepper backend. 
+8. By configuring `stdout` as sink, the Data Prepper instance logs should now print out sample records as follows:
 ```
 {"date":1.639425394678687E9,"log":"172.17.0.1 - - [13/Dec/2021:19:56:34 +0000] \"GET / HTTP/1.1\" 200 615 \"-\" \"curl/7.64.1\" \"-\"\n","stream":"stdout","time":"2021-12-13T19:56:34.6786871Z","kubernetes":{"pod_name":"my-nginx-5b56ccd65f-zfvtj","namespace_name":"my-app","pod_id":"2989f623-5a65-4caf-b33a-95154a04f53b","labels":{"pod-template-hash":"5b56ccd65f","run":"my-nginx"},"host":"minikube","container_name":"my-nginx","docker_id":"f827ae8f8ff66175da32776b3875fe10916378e89645288d415edfd22f060fdb","container_hash":"nginx@sha256:9522864dd661dcadfd9958f9e0de192a1fdda2c162a35668ab6ac42b465f0603","container_image":"nginx:latest"},"request":"/","auth":"-","ident":"-","response":"200","bytes":"615","clientip":"172.17.0.1","verb":"GET","httpversion":"1.1","timestamp":"13/Dec/2021:19:56:34 +0000"}
 ```
 
-9. For debugging, one can also pull the logs of the fluentbit pods to check connection to Data-Prepper endpoint and HTTP response status, e.g.
+9. For debugging, one can also pull the logs of the Fluent Bit pods to check connection to Data Prepper endpoint and HTTP response status, e.g.
 ```
 $ kubectl get pods -n logging
 NAME               READY   STATUS    RESTARTS   AGE
