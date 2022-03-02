@@ -41,7 +41,6 @@ subprojects {
         def downloadJDKTask = "download${architecture}JDK"
 
         //This adds two distributions for each supported architecture e.g. linuxarm64DistTar, linuxarm64WithJDKDistTar
-        // incl. linuxarm64DistZip, linuxarm64WithJDKDistZip
         distributions {
             "${distName}" {
                 distributionBaseName = "${project.rootProject.name}-${project.rootProject.version}-${platform}-${architecture}"
@@ -73,10 +72,6 @@ subprojects {
             project.version = ""
         }
 
-        distZip {
-            project.version = ""
-        }
-
         //Adds one task per supported architecture for downloading appropriate JDK e.g. downloadarm64JDK
         tasks.create("${downloadJDKTask}") {
             doLast {
@@ -95,21 +90,10 @@ subprojects {
         archiveExtension = 'tar.gz'
     }
 
-    tasks.withType(Zip) {
-        dependsOn ':release:releasePrerequisites'
-    }
-
     tasks.create("${platform}Tar") {
         supportedArchitectures.each {
             dependsOn "${platform}${it}DistTar"
             dependsOn "${platform}${it}WithJDKDistTar"
-        }
-    }
-
-    tasks.create("${platform}Zip") {
-        supportedArchitectures.each {
-            dependsOn "${platform}${it}DistZip"
-            dependsOn "${platform}${it}WithJDKDistZip"
         }
     }
 
@@ -127,12 +111,9 @@ subprojects {
             def platformWithArchitecture = "${platform}${it}"
             def tarTask = tasks.getByName("${platformWithArchitecture}DistTar")
             def tarWithJDKTask = tasks.getByName("${platformWithArchitecture}WithJDKDistTar")
-            def zipTask = tasks.getByName("${platformWithArchitecture}DistZip")
-            def zipWithJDKTask = tasks.getByName("${platformWithArchitecture}WithJDKDistZip")
             def destinationKeyPath = "${project.rootProject.version}/${project.buildNumber}/archive"
 
             tasks.getByName("${platformWithArchitecture}WithJDKDistTar").dependsOn("download${it}JDK")
-            tasks.getByName("${platformWithArchitecture}WithJDKDistZip").dependsOn("download${it}JDK")
 
             tasks.create(name: "upload${platformWithArchitecture}TarToS3", type: AmazonS3FileUploadTask, dependsOn: createBucket) {
                 dependsOn tarTask.name
@@ -145,33 +126,11 @@ subprojects {
                 objectMetadata = m
             }
 
-            tasks.create(name: "upload${platformWithArchitecture}ZipToS3", type: AmazonS3FileUploadTask, dependsOn: createBucket) {
-                dependsOn zipTask.name
-                file file(zipTask.archiveFile.get().asFile.absolutePath)
-                bucketName awsS3Bucket
-                key "${destinationKeyPath}/${zipTask.archiveName}"
-
-                def m = new ObjectMetadata()
-                m.setCacheControl('no-cache, no-store')
-                objectMetadata = m
-            }
-
             tasks.create(name: "upload${platformWithArchitecture}TarWithJDKToS3", type: AmazonS3FileUploadTask, dependsOn: createBucket) {
                 dependsOn tarWithJDKTask.name
                 file file(tarWithJDKTask.archiveFile.get().asFile.absolutePath)
                 bucketName awsS3Bucket
                 key "${destinationKeyPath}/${tarWithJDKTask.archiveName}"
-
-                def m = new ObjectMetadata()
-                m.setCacheControl('no-cache, no-store')
-                objectMetadata = m
-            }
-
-            tasks.create(name: "upload${platformWithArchitecture}ZipWithJDKToS3", type: AmazonS3FileUploadTask, dependsOn: createBucket) {
-                dependsOn zipWithJDKTask.name
-                file file(zipWithJDKTask.archiveFile.get().asFile.absolutePath)
-                bucketName awsS3Bucket
-                key "${destinationKeyPath}/${zipWithJDKTask.archiveName}"
 
                 def m = new ObjectMetadata()
                 m.setCacheControl('no-cache, no-store')
@@ -222,11 +181,6 @@ task buildTar {
 
 }
 
-task buildZip {
-    subprojects.each { dependsOn ':release:archives:' + it.name + ':' + it.name + 'Zip' }
-}
-
 task buildArchives {
     dependsOn buildTar
-    dependsOn buildZip
 }
