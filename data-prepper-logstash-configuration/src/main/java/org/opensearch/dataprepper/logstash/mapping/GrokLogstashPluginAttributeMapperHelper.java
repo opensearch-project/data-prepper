@@ -9,7 +9,7 @@ import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 
 import java.util.Map;
 
-public interface GrokLogstashPluginAttributeMapperHelper {
+interface GrokLogstashPluginAttributeMapperHelper {
     void populateAttributes(LogstashAttribute logstashAttribute);
     void updatePluginSettings(LogstashAttributesMappings logstashAttributesMappings, Map<String, Object> pluginSettings);
 }

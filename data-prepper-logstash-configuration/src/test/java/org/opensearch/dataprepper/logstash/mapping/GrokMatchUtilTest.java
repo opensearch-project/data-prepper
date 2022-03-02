@@ -27,4 +27,10 @@ class GrokMatchUtilTest {
         assertThat(convertedString, equalTo(convertedMatchPattern));
     }
 
+    @ParameterizedTest
+    @CsvSource({"%{NUMBER:[nested][field][data]:int}, %{NUMBER:/nested/field/data:int}", "%{NUMBER:count:int}, %{NUMBER:count:int}"})
+    void convertGrokMatchPattern_with_nested_fields_including_data_type_should_return_converted_string_Test(String matchPattern, String convertedMatchPattern) {
+        String convertedString = GrokMatchUtil.convertGrokMatchPattern(matchPattern);
+        assertThat(convertedString, equalTo(convertedMatchPattern));
+    }
 }

@@ -13,7 +13,7 @@ logstash-converted-pipeline:
             - "%{NUMBER} %{GREEDYDATA:/nested/field/data1}"
           /data/log2:
             - "%{COMBINEDAPACHELOG}"
-            - "%{NUMBER} %{GREEDYDATA:/nested/field/data2}"
+            - "%{NUMBER:num:int} %{GREEDYDATA:/nested/field/data2}"
         keys_to_overwrite:
           - "/nested/field/data1"
           - "/nested/field/data2"

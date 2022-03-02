@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logstash.mapping.GrokLogstashPluginAttributesMapper.LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME;
 
-public class GrokPatternDefinitionsAttributeHelper implements GrokLogstashPluginAttributeMapperHelper {
+class GrokPatternDefinitionsAttributeHelper implements GrokLogstashPluginAttributeMapperHelper {
     private final Map<String, String> patternDefinitions = new HashMap<>();
 
     @SuppressWarnings("unchecked")

@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logstash.mapping.GrokLogstashPluginAttributesMapper.LOGSTASH_GROK_OVERWRITE_ATTRIBUTE_NAME;
 
-public class GrokOverwriteAttributeHelper implements GrokLogstashPluginAttributeMapperHelper {
+class GrokOverwriteAttributeHelper implements GrokLogstashPluginAttributeMapperHelper {
     final List<String> keysToOverwrite = new ArrayList<>();
 
     @SuppressWarnings("unchecked")

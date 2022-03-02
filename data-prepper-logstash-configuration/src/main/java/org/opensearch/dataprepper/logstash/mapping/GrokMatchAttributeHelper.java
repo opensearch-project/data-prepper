@@ -17,8 +17,8 @@ import java.util.Map;
 
 import static org.opensearch.dataprepper.logstash.mapping.GrokLogstashPluginAttributesMapper.LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME;
 
-public class GrokMatchAttributeHelper implements GrokLogstashPluginAttributeMapperHelper {
-    private static final Logger LOG = LoggerFactory.getLogger(GrokLogstashPluginAttributesMapper.class);
+class GrokMatchAttributeHelper implements GrokLogstashPluginAttributeMapperHelper {
+    private static final Logger LOG = LoggerFactory.getLogger(GrokMatchAttributeHelper.class);
 
     private final List<LogstashAttribute> matchAttributes = new ArrayList<>();
     private final Map<String, List<String>> dataPrepperGrokMatch = new HashMap<>();
