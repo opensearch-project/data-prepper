@@ -13,7 +13,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class RegexNotEqualOperatorTest {
-    final Operator<Boolean> objectUnderTest = new OperatorFactory().regexNotEqualOperator(new RegexEqualOperator());
+    final GenericRegexMatchOperator objectUnderTest = new OperatorFactory().regexNotEqualOperator();
 
     @Test
     void testGetSymbol() {

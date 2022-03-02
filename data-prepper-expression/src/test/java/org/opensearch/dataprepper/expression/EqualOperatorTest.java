@@ -14,7 +14,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class EqualOperatorTest {
-    final EqualOperator objectUnderTest = new EqualOperator();
+    final GenericEqualOperator objectUnderTest = new OperatorFactory().equalOperator();
 
     @Test
     void testGetSymbol() {

@@ -11,25 +11,20 @@ import org.springframework.context.annotation.Bean;
 import javax.inject.Named;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 
 @Named
 public class OperatorFactory {
-
-    @Bean
-    public Operator<Boolean> notEqualOperator(final EqualOperator equalOperator) {
-        return new NegateOperator(DataPrepperExpressionParser.NOT_EQUAL, equalOperator);
-    }
-
-    @Bean
-    public Operator<Boolean> notInOperator(final InOperator inOperator) {
-        return new NegateOperator(DataPrepperExpressionParser.NOT_IN_SET, inOperator);
-    }
-
-    @Bean
-    public Operator<Boolean> regexNotEqualOperator(final RegexEqualOperator regexEqualOperator) {
-        return new NegateOperator(DataPrepperExpressionParser.NOT_MATCH_REGEX_PATTERN, regexEqualOperator);
-    }
+    public final BiPredicate<Object, Object> regexEquals = (x, y) -> ((String) x).matches((String) y);
+    public final BiPredicate<Object, Object> equals = (x, y) -> {
+        if ((x == null) || (y == null)) {
+            return x == null && y == null;
+        }
+        return x.equals(y);
+    };
+    public final BiPredicate<Object, Object> inSet = (x, y) -> ((Set<?>) y).contains(x);
 
     @Bean
     public NumericCompareOperator greaterThanOperator() {
@@ -105,5 +100,35 @@ public class OperatorFactory {
         operandsToOperationMap.put(Float.class, floatOperations);
 
         return new NumericCompareOperator(DataPrepperExpressionParser.LTE, operandsToOperationMap);
+    }
+
+    @Bean
+    public GenericRegexMatchOperator regexEqualOperator() {
+        return new GenericRegexMatchOperator(DataPrepperExpressionParser.MATCH_REGEX_PATTERN, regexEquals);
+    }
+
+    @Bean
+    public GenericRegexMatchOperator regexNotEqualOperator() {
+        return new GenericRegexMatchOperator(DataPrepperExpressionParser.NOT_MATCH_REGEX_PATTERN, regexEquals.negate());
+    }
+
+    @Bean
+    public GenericEqualOperator equalOperator() {
+        return new GenericEqualOperator(DataPrepperExpressionParser.EQUAL, equals);
+    }
+
+    @Bean
+    public GenericEqualOperator notEqualOperator() {
+        return new GenericEqualOperator(DataPrepperExpressionParser.NOT_EQUAL, equals.negate());
+    }
+
+    @Bean
+    public GenericInSetOperator inSetOperator() {
+        return new GenericInSetOperator(DataPrepperExpressionParser.IN_SET, inSet);
+    }
+
+    @Bean
+    public GenericInSetOperator notInSetOperator() {
+        return new GenericInSetOperator(DataPrepperExpressionParser.NOT_IN_SET, inSet.negate());
     }
 }

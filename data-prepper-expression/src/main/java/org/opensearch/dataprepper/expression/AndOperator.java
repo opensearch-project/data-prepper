@@ -13,16 +13,20 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 @Named
 class AndOperator implements Operator<Boolean> {
+    private final static Integer SYMBOL = DataPrepperExpressionParser.AND;
+    private final static String DISPLAY_NAME = DataPrepperExpressionParser.VOCABULARY
+            .getDisplayName(DataPrepperExpressionParser.AND);
+
     @Override
     public Integer getSymbol() {
-        return DataPrepperExpressionParser.AND;
+        return SYMBOL;
     }
 
     @Override
     public Boolean evaluate(final Object... args) {
-        checkArgument(args.length == 2, "Operands length needs to be 2.");
-        checkArgument(args[0] instanceof Boolean, "Left operand needs to be Boolean.");
-        checkArgument(args[1] instanceof Boolean, "Right Operand needs to be Boolean.");
+        checkArgument(args.length == 2, DISPLAY_NAME + " requires operands length to be 2.");
+        checkArgument(args[0] instanceof Boolean, DISPLAY_NAME + " requires left operand to be Boolean.");
+        checkArgument(args[1] instanceof Boolean, DISPLAY_NAME + " requires right operand to be Boolean.");
         return ((Boolean) args[0]) && ((Boolean) args[1]);
     }
 }

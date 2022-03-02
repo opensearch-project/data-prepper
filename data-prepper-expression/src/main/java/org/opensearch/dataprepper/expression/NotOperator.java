@@ -13,15 +13,19 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 @Named
 class NotOperator implements Operator<Boolean> {
+    private final static Integer SYMBOL = DataPrepperExpressionParser.NOT;
+    private final static String DISPLAY_NAME = DataPrepperExpressionParser.VOCABULARY
+            .getDisplayName(DataPrepperExpressionParser.NOT);
+
     @Override
     public Integer getSymbol() {
-        return DataPrepperExpressionParser.NOT;
+        return SYMBOL;
     }
 
     @Override
     public Boolean evaluate(final Object... args) {
-        checkArgument(args.length == 1, "Operands length needs to be 1.");
-        checkArgument(args[0] instanceof Boolean, "Operand needs to be Boolean.");
+        checkArgument(args.length == 1, DISPLAY_NAME + " requires operands length to be 1.");
+        checkArgument(args[0] instanceof Boolean, DISPLAY_NAME + " requires operand to be Boolean.");
         return !((Boolean) args[0]);
     }
 }

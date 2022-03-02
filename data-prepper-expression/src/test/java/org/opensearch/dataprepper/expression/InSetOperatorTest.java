@@ -15,8 +15,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class InOperatorTest {
-    final InOperator objectUnderTest = new InOperator();
+class InSetOperatorTest {
+    final GenericInSetOperator objectUnderTest = new OperatorFactory().inSetOperator();
 
     @Test
     void testGetSymbol() {
