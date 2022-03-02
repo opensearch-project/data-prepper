@@ -54,9 +54,6 @@ public abstract class AbstractLogstashPluginAttributesMapper implements Logstash
                                     dataPrepperAttributeName.substring(1), !(Boolean) logstashAttribute.getAttributeValue().getValue()
                             );
                         }
-                        else if(defaultSettings.containsKey(logstashAttributeName)) {
-                            pluginSettings.put(dataPrepperAttributeName, defaultSettings.get(dataPrepperAttributeName));
-                        }
                         else {
                             pluginSettings.put(dataPrepperAttributeName, logstashAttribute.getAttributeValue().getValue());
                         }
@@ -65,6 +62,12 @@ public abstract class AbstractLogstashPluginAttributesMapper implements Logstash
                         LOG.warn("Attribute name {} is not found in mapping file.", logstashAttributeName);
                     }
                 });
+
+        for(Map.Entry<String, Object> defaultSetting: defaultSettings.entrySet()) {
+            if(!pluginSettings.containsKey(defaultSetting.getKey())) {
+                pluginSettings.put(defaultSetting.getKey(), defaultSetting.getValue());
+            }
+        }
 
         if (!customMappedAttributeNames.isEmpty()) {
             mapCustomAttributes(logstashAttributes, logstashAttributesMappings, pluginSettings);
