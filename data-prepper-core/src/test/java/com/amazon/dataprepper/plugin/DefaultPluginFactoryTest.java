@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.context.ApplicationContext;
+import org.springframework.beans.factory.BeanFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -43,7 +43,7 @@ class DefaultPluginFactoryTest {
     private Class<?> baseClass;
     private String pluginName;
     private PluginSetting pluginSetting;
-    private ApplicationContext applicationContext;
+    private BeanFactory beanFactory;
 
     @BeforeEach
     void setUp() {
@@ -61,11 +61,11 @@ class DefaultPluginFactoryTest {
         pluginSetting = mock(PluginSetting.class);
         given(pluginSetting.getName()).willReturn(pluginName);
 
-        applicationContext = mock(ApplicationContext.class);
+        beanFactory = mock(BeanFactory.class);
     }
 
     private DefaultPluginFactory createObjectUnderTest() {
-        return new DefaultPluginFactory(pluginProviderLoader, pluginCreator, pluginConfigurationConverter, applicationContext);
+        return new DefaultPluginFactory(pluginProviderLoader, pluginCreator, pluginConfigurationConverter, beanFactory);
     }
 
     @Test

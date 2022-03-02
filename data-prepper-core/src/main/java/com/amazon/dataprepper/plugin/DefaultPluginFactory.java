@@ -9,7 +9,7 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.NoPluginFoundException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
-import org.springframework.context.ApplicationContext;
+import org.springframework.beans.factory.BeanFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -31,21 +31,21 @@ public class DefaultPluginFactory implements PluginFactory {
     private final Collection<PluginProvider> pluginProviders;
     private final PluginCreator pluginCreator;
     private final PluginConfigurationConverter pluginConfigurationConverter;
-    private final ApplicationContext applicationContext;
+    private final BeanFactory beanFactory;
 
     @Inject
     DefaultPluginFactory(
             final PluginProviderLoader pluginProviderLoader,
             final PluginCreator pluginCreator,
             final PluginConfigurationConverter pluginConfigurationConverter,
-            final ApplicationContext applicationContext
+            final BeanFactory beanFactory
     ) {
         Objects.requireNonNull(pluginProviderLoader);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
         this.pluginConfigurationConverter = Objects.requireNonNull(pluginConfigurationConverter);
 
         this.pluginProviders = Objects.requireNonNull(pluginProviderLoader.getPluginProviders());
-        this.applicationContext = Objects.requireNonNull(applicationContext);
+        this.beanFactory = Objects.requireNonNull(beanFactory);
 
         if(pluginProviders.isEmpty()) {
             throw new RuntimeException("Data Prepper requires at least one PluginProvider. " +
@@ -100,7 +100,7 @@ public class DefaultPluginFactory implements PluginFactory {
                 .withPluginSetting(pluginSetting)
                 .withPluginConfiguration(configuration)
                 .withPluginFactory(this)
-                .withApplicationContext(applicationContext)
+                .withBeanFactory(beanFactory)
                 .build();
     }
 
