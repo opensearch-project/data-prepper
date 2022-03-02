@@ -8,9 +8,11 @@ package com.amazon.dataprepper.plugin;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PipelineDescription;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import org.springframework.context.ApplicationContext;
 
+import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,12 +25,15 @@ import java.util.function.Supplier;
  */
 class PluginArgumentsContext {
     private final Map<Class<?>, Supplier<Object>> typedArgumentsSuppliers;
+
+    @Nullable
     private final ApplicationContext applicationContext;
 
     private PluginArgumentsContext(final Builder builder) {
         Objects.requireNonNull(builder.pluginSetting,
                 "PluginArgumentsContext received a null Builder object. This is likely an error in the plugin framework.");
-        this.applicationContext = Objects.requireNonNull(builder.applicationContext);
+
+        applicationContext = builder.applicationContext;
 
         typedArgumentsSuppliers = new HashMap<>();
 
@@ -59,8 +64,11 @@ class PluginArgumentsContext {
         if(typedArgumentsSuppliers.containsKey(parameterType)) {
             return typedArgumentsSuppliers.get(parameterType);
         }
-        else {
+        else if (applicationContext != null) {
             return () -> applicationContext.getBean(parameterType);
+        }
+        else {
+            throw new InvalidPluginDefinitionException("Unable to create an argument for required plugin parameter type: " + parameterType);
         }
     }
 
