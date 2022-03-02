@@ -13,8 +13,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 @Named
 class OrOperator implements Operator<Boolean> {
-    private final static Integer SYMBOL = DataPrepperExpressionParser.OR;
-    private final static String DISPLAY_NAME = DataPrepperExpressionParser.VOCABULARY
+    private static final Integer SYMBOL = DataPrepperExpressionParser.OR;
+    private static final String DISPLAY_NAME = DataPrepperExpressionParser.VOCABULARY
             .getDisplayName(DataPrepperExpressionParser.OR);
 
     @Override
