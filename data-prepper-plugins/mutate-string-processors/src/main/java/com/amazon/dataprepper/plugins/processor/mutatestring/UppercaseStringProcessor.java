@@ -24,17 +24,4 @@ public class UppercaseStringProcessor extends WithKeysProcessor {
     {
         recordEvent.put(key, value.toUpperCase(Locale.ROOT));
     }
-
-    @Override
-    public void prepareForShutdown() {
-    }
-
-    @Override
-    public boolean isReadyForShutdown() {
-        return true;
-    }
-
-    @Override
-    public void shutdown() {
-    }
 }
