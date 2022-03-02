@@ -22,7 +22,7 @@ public interface ExpressionEvaluator<T> {
      * @param context event used to resolve external references in the statement
      * @return coerced result of statement evaluation
      *
-     * @throws ExpressionEvaluationException if unable to evaluate or course the statement result to type T
+     * @throws ExpressionEvaluationException if unable to evaluate or coerce the statement result to type T
      */
     T evaluate(final String statement, final Event context);
 }
