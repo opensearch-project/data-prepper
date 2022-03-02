@@ -38,7 +38,7 @@ if the Data Prepper is running locally, set `Host` value to be `host.docker.inte
    $ kubectl create -f my-app-02-service.yaml
    $ kubectl create -f my-app-03-deployment.yaml
    ```
-   2. Deploy FluentBit as DaemonSet in `logging` namespace:
+   2. Deploy Fluent Bit as DaemonSet in `logging` namespace:
    ```
    $ kubectl apply -f fluent-bit-01-ns.yaml
    $ kubectl create -f fluent-bit-02-service-account.yaml
