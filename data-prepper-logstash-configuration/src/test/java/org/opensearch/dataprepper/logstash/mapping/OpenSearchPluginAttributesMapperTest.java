@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.logstash.mapping;
 
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -18,9 +19,11 @@ import org.opensearch.dataprepper.logstash.model.LogstashValueType;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
@@ -35,6 +38,49 @@ class OpenSearchPluginAttributesMapperTest {
     private OpenSearchPluginAttributesMapper createObjectUnderTest() {
         return new OpenSearchPluginAttributesMapper();
     }
+
+    @Test
+    void convert_missing_indexAttribute_to_return_empty_pluginSettings() {
+
+        final LogstashAttributesMappings logstashAttributesMappings = mock(LogstashAttributesMappings.class);
+        when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.emptyMap());
+
+        final List<PluginModel> actualPluginModel = createObjectUnderTest()
+                .mapAttributes(Collections.emptyList(), logstashAttributesMappings);
+
+        assertThat(actualPluginModel, Matchers.notNullValue());
+        assertThat(actualPluginModel.size(), Matchers.equalTo(1));
+        assertThat(actualPluginModel.get(0), Matchers.notNullValue());
+
+        assertThat(actualPluginModel.get(0).getPluginSettings().size(), equalTo(0));
+        assertThat(actualPluginModel.get(0).getPluginSettings(), not(hasKey(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE)));
+    }
+
+    @Test
+    void convert_emptyString_indexAttribute_to_return_pluginSettings_with_no_index_key() {
+
+        final LogstashAttribute logstashAttribute = mock(LogstashAttribute.class);
+        final LogstashAttributeValue logstashAttributeValue = mock(LogstashAttributeValue.class);
+        when(logstashAttribute.getAttributeName()).thenReturn(UUID.randomUUID().toString());
+        when(logstashAttribute.getAttributeValue()).thenReturn(logstashAttributeValue);
+        when(logstashAttributeValue.getAttributeValueType()).thenReturn(LogstashValueType.STRING);
+        when(logstashAttributeValue.getValue()).thenReturn(UUID.randomUUID().toString());
+
+        final LogstashAttributesMappings logstashAttributesMappings = mock(LogstashAttributesMappings.class);
+        when(logstashAttributesMappings.getMappedAttributeNames()).thenReturn(Collections.emptyMap());
+
+        final List<PluginModel> actualPluginModel = createObjectUnderTest()
+                .mapAttributes(Collections.singletonList(logstashAttribute), logstashAttributesMappings);
+
+        assertThat(actualPluginModel, Matchers.notNullValue());
+        assertThat(actualPluginModel.size(), Matchers.equalTo(1));
+        assertThat(actualPluginModel.get(0), Matchers.notNullValue());
+
+        assertThat(actualPluginModel.get(0).getPluginSettings().size(), equalTo(0));
+        assertThat(actualPluginModel.get(0).getPluginSettings(), not(hasKey(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE)));
+    }
+
+
 
     @ParameterizedTest
     @ArgumentsSource(JodaToJava8IndicesArgumentsProvider.class)
