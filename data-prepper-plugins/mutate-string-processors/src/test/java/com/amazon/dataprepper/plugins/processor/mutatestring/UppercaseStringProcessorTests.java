@@ -118,7 +118,7 @@ public class UppercaseStringProcessorTests {
         @Override
         public boolean equals(Object other) {
             if(other instanceof TestObject) {
-                return ((TestObject) other).a == this.a;
+                return ((TestObject) other).a.equals(this.a);
             }
 
             return false;
