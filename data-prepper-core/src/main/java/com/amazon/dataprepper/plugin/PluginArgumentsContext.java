@@ -8,8 +8,9 @@ package com.amazon.dataprepper.plugin;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PipelineDescription;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
+import org.springframework.context.ApplicationContext;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,10 +23,12 @@ import java.util.function.Supplier;
  */
 class PluginArgumentsContext {
     private final Map<Class<?>, Supplier<Object>> typedArgumentsSuppliers;
+    private final ApplicationContext applicationContext;
 
     private PluginArgumentsContext(final Builder builder) {
         Objects.requireNonNull(builder.pluginSetting,
                 "PluginArgumentsContext received a null Builder object. This is likely an error in the plugin framework.");
+        this.applicationContext = Objects.requireNonNull(builder.applicationContext);
 
         typedArgumentsSuppliers = new HashMap<>();
 
@@ -56,8 +59,9 @@ class PluginArgumentsContext {
         if(typedArgumentsSuppliers.containsKey(parameterType)) {
             return typedArgumentsSuppliers.get(parameterType);
         }
-
-        throw new InvalidPluginDefinitionException("Unable to create an argument for required plugin parameter type: " + parameterType);
+        else {
+            return () -> applicationContext.getBean(parameterType);
+        }
     }
 
     static class Builder {
@@ -65,6 +69,7 @@ class PluginArgumentsContext {
         private PluginSetting pluginSetting;
         private PluginFactory pluginFactory;
         private PipelineDescription pipelineDescription;
+        private ApplicationContext applicationContext;
 
         Builder withPluginConfiguration(final Object pluginConfiguration) {
             this.pluginConfiguration = pluginConfiguration;
@@ -83,6 +88,11 @@ class PluginArgumentsContext {
 
         Builder withPipelineDescription(final PipelineDescription pipelineDescription) {
             this.pipelineDescription = pipelineDescription;
+            return this;
+        }
+
+        Builder withApplicationContext(final ApplicationContext applicationContext) {
+            this.applicationContext = applicationContext;
             return this;
         }
 
