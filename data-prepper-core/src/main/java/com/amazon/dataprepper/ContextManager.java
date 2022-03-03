@@ -11,28 +11,46 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.env.SimpleCommandLinePropertySource;
 
+/**
+ * @since 1.3
+ * <p>Creates Spring {@link org.springframework.context.ApplicationContext} hierarchy for Dependency Injection with limited visibility.</p>
+ * <p>
+ *     Application Context Hierarchy
+ *     <pre>
+ *         Public Application Context<br>
+ *         ├─ Core Application Context<br>
+ *         ├─ Shared Plugin Application Context<br>
+ *             ├─ Plugin Isolated Application Context<br>
+ *     </pre>
+ * </p>
+ */
 class ContextManager {
     private static final Logger LOG = LoggerFactory.getLogger(ContextManager.class);
 
-    private final GenericApplicationContext publicContext;
-    private final AnnotationConfigApplicationContext coreContext;
+    private final GenericApplicationContext publicApplicationContext;
+    private final AnnotationConfigApplicationContext coreApplicationContext;
 
     public ContextManager(final String ... args) {
         LOG.trace("Reading args");
         final SimpleCommandLinePropertySource commandLinePropertySource = new SimpleCommandLinePropertySource(args);
 
-        publicContext = new GenericApplicationContext();
-        publicContext.refresh();
+        publicApplicationContext = new GenericApplicationContext();
+        publicApplicationContext.refresh();
 
-        coreContext = new AnnotationConfigApplicationContext();
-        coreContext.setParent(publicContext);
-        coreContext.getEnvironment().getPropertySources().addFirst(commandLinePropertySource);
-        coreContext.register(DataPrepperExecute.class);
+        coreApplicationContext = new AnnotationConfigApplicationContext();
+        coreApplicationContext.setParent(publicApplicationContext);
+        coreApplicationContext.getEnvironment().getPropertySources().addFirst(commandLinePropertySource);
+        coreApplicationContext.register(DataPrepperExecute.class);
 
-        coreContext.refresh();
+        coreApplicationContext.refresh();
     }
 
+    /**
+     * @since 1.3
+     * Retrieves the instance of {@link DataPrepper} singleton
+     * @return {@link DataPrepper} instance
+     */
     public DataPrepper getDataPrepperBean() {
-        return coreContext.getBean(DataPrepper.class);
+        return coreApplicationContext.getBean(DataPrepper.class);
     }
 }
