@@ -14,6 +14,12 @@ import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logstash.mapping.GrokLogstashPluginAttributesMapper.LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME;
 
+/**
+ * A class which is responsible for mapping grok pattern definitions attribute
+ * from Logstash plugin into Data Prepper plugin models.
+ *
+ * @since 1.3
+ */
 class GrokPatternDefinitionsAttributeHelper implements GrokLogstashPluginAttributeMapperHelper {
     private final Map<String, String> patternDefinitions = new HashMap<>();
 

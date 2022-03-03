@@ -17,6 +17,12 @@ import java.util.Map;
 
 import static org.opensearch.dataprepper.logstash.mapping.GrokLogstashPluginAttributesMapper.LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME;
 
+/**
+ * A class which is responsible for mapping grok match attribute
+ * from Logstash plugin into Data Prepper plugin models.
+ *
+ * @since 1.3
+ */
 class GrokMatchAttributeHelper implements GrokLogstashPluginAttributeMapperHelper {
     private static final Logger LOG = LoggerFactory.getLogger(GrokMatchAttributeHelper.class);
 

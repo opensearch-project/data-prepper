@@ -14,6 +14,12 @@ import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logstash.mapping.GrokLogstashPluginAttributesMapper.LOGSTASH_GROK_OVERWRITE_ATTRIBUTE_NAME;
 
+/**
+ * A class which is responsible for mapping grok overwrite attribute
+ * from Logstash plugin into Data Prepper plugin models.
+ *
+ * @since 1.3
+ */
 class GrokOverwriteAttributeHelper implements GrokLogstashPluginAttributeMapperHelper {
     final List<String> keysToOverwrite = new ArrayList<>();
 

@@ -11,13 +11,14 @@ import java.util.regex.Pattern;
 public class GrokMatchUtil {
     private static final String GROK_MATCH_PATTERN_REGEX = "(%\\{)([^{}:]+)(:)?([^{}:]+)?(:)?([a-zA-Z]+)?(}(\\s+)?)";
     private static final Pattern GROK_MATCH_PATTERN = Pattern.compile(GROK_MATCH_PATTERN_REGEX);
+    private static final String SEPARATOR = ":";
 
     private GrokMatchUtil() {
     }
 
     public static String convertGrokMatchPattern(final String matchPattern) {
-        StringBuilder convertedGrokMatchPattern = new StringBuilder();
-        Matcher grokMatchPatternMatcher = GROK_MATCH_PATTERN.matcher(matchPattern);
+        final StringBuilder convertedGrokMatchPattern = new StringBuilder();
+        final Matcher grokMatchPatternMatcher = GROK_MATCH_PATTERN.matcher(matchPattern);
         while(grokMatchPatternMatcher.find()) {
             convertedGrokMatchPattern.append(getConvertedMatchPattern(grokMatchPatternMatcher.group()));
         }
@@ -27,11 +28,10 @@ public class GrokMatchUtil {
         return convertedGrokMatchPattern.toString();
     }
 
-    private static String getConvertedMatchPattern(String matchPatternGroup) {
-        final String SEPARATOR = ":";
-        StringBuilder convertedGrokMatchPatternGroup = new StringBuilder();
-        int firstSeparatorIndex = matchPatternGroup.indexOf(SEPARATOR);
-        int secondSeparatorIndex = matchPatternGroup.lastIndexOf(SEPARATOR);
+    private static String getConvertedMatchPattern(final String matchPatternGroup) {
+        final StringBuilder convertedGrokMatchPatternGroup = new StringBuilder();
+        final int firstSeparatorIndex = matchPatternGroup.indexOf(SEPARATOR);
+        final int secondSeparatorIndex = matchPatternGroup.lastIndexOf(SEPARATOR);
 
         if (firstSeparatorIndex != secondSeparatorIndex) {
             String nestedField = matchPatternGroup.substring(firstSeparatorIndex + 1, secondSeparatorIndex);
