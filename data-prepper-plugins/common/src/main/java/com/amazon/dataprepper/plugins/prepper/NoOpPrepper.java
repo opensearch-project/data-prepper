@@ -21,7 +21,7 @@ public class NoOpPrepper implements Processor<Record<Event>, Record<Event>> {
     }
 
     @Override
-    public Collection<Record<Event>> execute(Collection<Record<Event>> records) {
+    public Collection<Record<Event>> execute(final Collection<Record<Event>> records) {
         return records;
     }
 
