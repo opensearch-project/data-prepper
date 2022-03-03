@@ -42,13 +42,13 @@ public abstract class AbstractStringProcessor<T> extends AbstractProcessor<Recor
                 final Object value = recordEvent.get(key, Object.class);
 
                 if(value instanceof String) {
-                    performKeyAction(recordEvent, key, (String) value);
+                    performKeyAction(recordEvent, entry, (String) value);
                 }
             }
         }
     }
 
-    protected abstract void performKeyAction(final Event recordEvent, final String key, final String value);
+    protected abstract void performKeyAction(final Event recordEvent, final T key, final String value);
 
     protected abstract String getKey(final T entry);
 

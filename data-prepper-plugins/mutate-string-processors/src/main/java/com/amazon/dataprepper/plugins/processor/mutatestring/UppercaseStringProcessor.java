@@ -25,8 +25,8 @@ public class UppercaseStringProcessor extends AbstractStringProcessor<String> {
     }
 
     @Override
-    protected void performKeyAction(final Event recordEvent, final String key, final String value)
+    protected void performKeyAction(final Event recordEvent, final String entry, final String value)
     {
-        recordEvent.put(key, value.toUpperCase(Locale.ROOT));
+        recordEvent.put(entry, value.toUpperCase(Locale.ROOT));
     }
 }
