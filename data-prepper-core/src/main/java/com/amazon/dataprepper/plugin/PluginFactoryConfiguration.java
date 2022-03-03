@@ -22,9 +22,6 @@ public class PluginFactoryConfiguration {
     public ApplicationContext getPluginApplicationContext(final ApplicationContext coreApplicationContext) {
         final ApplicationContext publicApplicationContext = coreApplicationContext.getParent();
         final GenericApplicationContext context = new GenericApplicationContext(publicApplicationContext);
-        LOG.error("Plugin parent public context: {}", publicApplicationContext);
-        LOG.error("Plugin parent core context: {}", coreApplicationContext);
-        LOG.error("Plugin context: {}", context);
         context.refresh();
         return context;
     }
