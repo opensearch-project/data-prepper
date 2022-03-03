@@ -9,8 +9,6 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.NoPluginFoundException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -28,8 +26,6 @@ import java.util.function.Function;
  */
 @Named
 public class DefaultPluginFactory implements PluginFactory {
-    private static final Logger LOG = LoggerFactory.getLogger(DefaultPluginFactory.class);
-
     private final Collection<PluginProvider> pluginProviders;
     private final PluginCreator pluginCreator;
     private final PluginConfigurationConverter pluginConfigurationConverter;

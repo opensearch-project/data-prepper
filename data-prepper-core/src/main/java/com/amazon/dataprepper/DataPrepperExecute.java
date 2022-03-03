@@ -25,6 +25,4 @@ public class DataPrepperExecute {
         LOG.trace("Starting Data Prepper execution");
         dataPrepper.execute();
     }
-
-
 }

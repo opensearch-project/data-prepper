@@ -30,6 +30,12 @@ class ContextManager {
     private final GenericApplicationContext publicApplicationContext;
     private final AnnotationConfigApplicationContext coreApplicationContext;
 
+    /**
+     * @since 1.3
+     * @param args Application command line arguments
+     * 
+     * @see DataPrepperExecute#main(String...) 
+     */
     public ContextManager(final String ... args) {
         LOG.trace("Reading args");
         final SimpleCommandLinePropertySource commandLinePropertySource = new SimpleCommandLinePropertySource(args);
