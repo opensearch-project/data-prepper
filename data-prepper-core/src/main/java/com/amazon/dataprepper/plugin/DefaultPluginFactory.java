@@ -9,7 +9,11 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.NoPluginFoundException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -26,7 +30,9 @@ import java.util.function.Function;
  * @since 1.2
  */
 @Named
+@DependsOn("PluginFactoryConfiguration")
 public class DefaultPluginFactory implements PluginFactory {
+    private static final Logger LOG = LoggerFactory.getLogger(DefaultPluginFactory.class);
 
     private final Collection<PluginProvider> pluginProviders;
     private final PluginCreator pluginCreator;
@@ -38,14 +44,16 @@ public class DefaultPluginFactory implements PluginFactory {
             final PluginProviderLoader pluginProviderLoader,
             final PluginCreator pluginCreator,
             final PluginConfigurationConverter pluginConfigurationConverter,
-            final ApplicationContext applicationContext
+//            final ApplicationContext applicationContext
+            @Qualifier(PluginFactoryConfiguration.PLUGIN_APPLICATION_CONTEXT_NAME) final ApplicationContext pluginApplicationContext
     ) {
         Objects.requireNonNull(pluginProviderLoader);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
         this.pluginConfigurationConverter = Objects.requireNonNull(pluginConfigurationConverter);
 
         this.pluginProviders = Objects.requireNonNull(pluginProviderLoader.getPluginProviders());
-        this.applicationContext = Objects.requireNonNull(applicationContext);
+        this.applicationContext = Objects.requireNonNull(pluginApplicationContext);
+        LOG.error("Plugin context? {}", this.applicationContext);
 
         if(pluginProviders.isEmpty()) {
             throw new RuntimeException("Data Prepper requires at least one PluginProvider. " +

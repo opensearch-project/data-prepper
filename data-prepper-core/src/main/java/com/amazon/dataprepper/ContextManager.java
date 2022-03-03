@@ -8,10 +8,9 @@ package com.amazon.dataprepper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.core.env.SimpleCommandLinePropertySource;
 
-@ComponentScan
+//@ComponentScan
 class ContextManager {
     private static final Logger LOG = LoggerFactory.getLogger(ContextManager.class);
 
@@ -23,11 +22,16 @@ class ContextManager {
         final SimpleCommandLinePropertySource commandLinePropertySource = new SimpleCommandLinePropertySource(args);
 
         publicContext = new AnnotationConfigApplicationContext();
+//        publicContext.register(PluginFactoryConfiguration.class);
+        LOG.error("public context: {}", publicContext);
 
         coreContext = new AnnotationConfigApplicationContext();
+        LOG.error("core context: {}", coreContext);
         coreContext.setParent(publicContext);
         coreContext.getEnvironment().getPropertySources().addFirst(commandLinePropertySource);
         coreContext.register(DataPrepperExecute.class);
+
+        publicContext.refresh();
         coreContext.refresh();
     }
 

@@ -28,13 +28,13 @@ class PluginArgumentsContext {
     private final Map<Class<?>, Supplier<Object>> typedArgumentsSuppliers;
 
     @Nullable
-    private final ApplicationContext applicationContext;
+    private final ApplicationContext pluginApplicationContext;
 
     private PluginArgumentsContext(final Builder builder) {
         Objects.requireNonNull(builder.pluginSetting,
                 "PluginArgumentsContext received a null Builder object. This is likely an error in the plugin framework.");
 
-        applicationContext = builder.pluginApplicationContext;
+        pluginApplicationContext = builder.pluginApplicationContext;
 
         typedArgumentsSuppliers = new HashMap<>();
 
@@ -65,8 +65,8 @@ class PluginArgumentsContext {
         if(typedArgumentsSuppliers.containsKey(parameterType)) {
             return typedArgumentsSuppliers.get(parameterType);
         }
-        else if (applicationContext != null) {
-            return () -> applicationContext.getBean(parameterType);
+        else if (pluginApplicationContext != null) {
+            return () -> pluginApplicationContext.getBean(parameterType);
         }
         else {
             throw new InvalidPluginDefinitionException("Unable to create an argument for required plugin parameter type: " + parameterType);
