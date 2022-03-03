@@ -5,7 +5,7 @@
 
 import {App} from 'aws-cdk-lib';
 import {Template} from 'aws-cdk-lib/assertions';
-import {ArtifactsBucketStack} from '../lib/ArtifactsBucketStack';
+import {ArchivesBucketStack} from '../lib/ArchivesBucketStack';
 
 
 let app: App;
@@ -19,7 +19,7 @@ beforeEach(() => {
 });
 
 test('Creates an S3 Bucket', () => {
-  const stackUnderTest = new ArtifactsBucketStack(app, 'TestStack');
+  const stackUnderTest = new ArchivesBucketStack(app, 'TestStack');
 
   const template = Template.fromStack(stackUnderTest);
 
@@ -40,7 +40,7 @@ test('Creates an S3 Bucket', () => {
 });
 
 test('Configures the S3 Bucket with a retain policy', () => {
-  const stackUnderTest = new ArtifactsBucketStack(app, 'TestStack');
+  const stackUnderTest = new ArchivesBucketStack(app, 'TestStack');
 
   const template = Template.fromStack(stackUnderTest);
 
