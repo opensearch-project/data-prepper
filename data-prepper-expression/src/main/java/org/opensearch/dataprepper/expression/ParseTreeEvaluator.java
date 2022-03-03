@@ -47,15 +47,16 @@ public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
 
     public static void main(String[] args) {
         ScriptParser parser = new ScriptParser();
-        ParseTree parseTree = parser.parse("1 in {{1}, {2}, {1,2}}");
+        ParseTree parseTree = parser.parse("1 > 2 > 3");
         ParseTreeWalker walker = new ParseTreeWalker();
+        OperatorFactory operatorFactory = new OperatorFactory();
         List<Operator<?>> operators = Arrays.asList(
                 new AndOperator(), new OrOperator(),
-                new InOperator(), new NotInOperator(),
-                new EqualOperator(), new NotEqualOperator(),
-                new GreaterThanOperator(), new GreaterThanOrEqualOperator(),
-                new LessThanOperator(), new LessThanOrEqualOperator(),
-                new RegexEqualOperator(), new RegexNotEqualOperator(),
+                operatorFactory.inSetOperator(), operatorFactory.notInSetOperator(),
+                operatorFactory.equalOperator(), operatorFactory.notEqualOperator(),
+                operatorFactory.greaterThanOperator(), operatorFactory.greaterThanOrEqualOperator(),
+                operatorFactory.lessThanOperator(), operatorFactory.lessThanOrEqualOperator(),
+                operatorFactory.regexEqualOperator(), operatorFactory.regexNotEqualOperator(),
                 new NotOperator()
         );
         ParseTreeEvaluatorListener listener = new ParseTreeEvaluatorListener(operators, new CoercionService());
