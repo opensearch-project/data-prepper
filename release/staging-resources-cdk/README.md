@@ -44,7 +44,7 @@ npm run lint
 
 You must have an AWS account and administrator permissions to this account.
 
-Additionally, you must create your own S3 bucket. This stack expects that the bucket exists.
+This stack supports creating an S3 bucket or using an existing S3 bucket.
 
 ### Deploy Steps
 
@@ -52,6 +52,12 @@ The following CDK commands all require defining context. The context variables a
 
 * `archivesBucketName` - The name of the S3 bucket you will use to deploy. This bucket must be in the same region as your stack.
 * `dataPrepperOrganization` - The name of the GitHub organization which has the `data-prepper` repository. This allows you to create staging environments for forks. The default value is `opensearch-project`.
+
+(Optional) If you need a new S3 bucket:
+
+```
+cdk deploy ArtifactsBucketStack --context archivesBucketName={s3-bucket-name} --context dataPrepperOrganization={data-prepper-organization-name}
+```
 
 Deploy the GitHub access stack:
 
