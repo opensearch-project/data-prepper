@@ -16,7 +16,7 @@ import javax.inject.Named;
 /**
  * Application context for internal plugin framework beans.
  */
-@Named("PluginConfigurationValidationConfiguration")
+@Named
 class PluginConfigurationValidationConfiguration {
     @Bean
     Validator validator() {

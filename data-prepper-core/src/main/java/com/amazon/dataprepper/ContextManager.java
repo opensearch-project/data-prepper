@@ -21,20 +21,10 @@ class ContextManager {
         LOG.trace("Reading args");
         final SimpleCommandLinePropertySource commandLinePropertySource = new SimpleCommandLinePropertySource(args);
 
-        publicContext = new GenericApplicationContext() {
-            @Override
-            public String toString() {
-                return "Public Context";
-            }
-        };
+        publicContext = new GenericApplicationContext();
         publicContext.refresh();
 
-        coreContext = new AnnotationConfigApplicationContext() {
-            @Override
-            public String toString() {
-                return "Core Context";
-            }
-        };
+        coreContext = new AnnotationConfigApplicationContext();
         coreContext.setParent(publicContext);
         coreContext.getEnvironment().getPropertySources().addFirst(commandLinePropertySource);
         coreContext.register(DataPrepperExecute.class);

@@ -48,10 +48,6 @@ public class DefaultPluginFactory implements PluginFactory {
 
         this.pluginProviders = Objects.requireNonNull(pluginProviderLoader.getPluginProviders());
         this.pluginBeanFactoryProvider = Objects.requireNonNull(pluginBeanFactoryProvider);
-        LOG.error("PluginBeanFactoryProvider => {}", pluginBeanFactoryProvider);
-        if (!pluginBeanFactoryProvider.toString().equals("Plugin Shared Context!")) {
-            LOG.error("Incorrect pluginBeanFactoryProvider wired, uses context: ({})", pluginBeanFactoryProvider);
-        }
 
         if(pluginProviders.isEmpty()) {
             throw new RuntimeException("Data Prepper requires at least one PluginProvider. " +
