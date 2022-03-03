@@ -7,3 +7,5 @@ mappedAttributeNames:
   password: password
   index: index
   proxy: proxy
+defaultSettings:
+  index: "logstash-%{uuuu.MM.dd}"
