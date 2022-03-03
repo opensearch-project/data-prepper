@@ -15,8 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.beans.factory.BeanFactory;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -36,10 +35,7 @@ class PluginArgumentsContextTest {
     private TestPluginConfiguration testPluginConfiguration;
 
     @Mock
-    private GenericApplicationContext applicationContext;
-
-    @Mock
-    private ConfigurableListableBeanFactory beanFactory;
+    private BeanFactory beanFactory;
 
     private static class TestPluginConfiguration { }
 
@@ -67,12 +63,11 @@ class PluginArgumentsContextTest {
     @Test
     void createArguments_with_single_class_using_bean_factory() {
         final Object mock = mock(Object.class);
-        doReturn(beanFactory).when(applicationContext).getBeanFactory();
         doReturn(mock).when(beanFactory).getBean(eq(Object.class));
 
         final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
-                .withPublicApplicationContext(applicationContext)
+                .withBeanFactory(beanFactory)
                 .build();
 
         assertThat(objectUnderTest.createArguments(new Class[] { Object.class }),
@@ -82,12 +77,12 @@ class PluginArgumentsContextTest {
     @Test
     void createArguments_with_multiple_supplier_sources() {
         final Object mock = mock(Object.class);
-        doReturn(mock).when(applicationContext).getBean(eq(Object.class));
+        doReturn(mock).when(beanFactory).getBean(eq(Object.class));
 
         final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
                 .withPluginConfiguration(testPluginConfiguration)
-                .withPublicApplicationContext(applicationContext)
+                .withBeanFactory(beanFactory)
                 .build();
 
         assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class, Object.class }),

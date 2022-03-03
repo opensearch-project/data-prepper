@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.context.ApplicationContext;
+import org.springframework.beans.factory.BeanFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,6 +31,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 class DefaultPluginFactoryTest {
@@ -43,7 +44,8 @@ class DefaultPluginFactoryTest {
     private Class<?> baseClass;
     private String pluginName;
     private PluginSetting pluginSetting;
-    private ApplicationContext applicationContext;
+    private PluginBeanFactoryProvider beanFactoryProvider;
+    private BeanFactory beanFactory;
 
     @BeforeEach
     void setUp() {
@@ -61,11 +63,12 @@ class DefaultPluginFactoryTest {
         pluginSetting = mock(PluginSetting.class);
         given(pluginSetting.getName()).willReturn(pluginName);
 
-        applicationContext = mock(ApplicationContext.class);
+        beanFactoryProvider = mock(PluginBeanFactoryProvider.class);
+        beanFactory = mock(BeanFactory.class);
     }
 
     private DefaultPluginFactory createObjectUnderTest() {
-        return new DefaultPluginFactory(pluginProviderLoader, pluginCreator, pluginConfigurationConverter, applicationContext);
+        return new DefaultPluginFactory(pluginProviderLoader, pluginCreator, pluginConfigurationConverter, beanFactoryProvider);
     }
 
     @Test
@@ -74,6 +77,7 @@ class DefaultPluginFactoryTest {
 
         assertThrows(NullPointerException.class,
                 this::createObjectUnderTest);
+        verifyNoInteractions(beanFactoryProvider);
     }
 
     @Test
@@ -82,6 +86,7 @@ class DefaultPluginFactoryTest {
 
         assertThrows(NullPointerException.class,
                 this::createObjectUnderTest);
+        verifyNoInteractions(beanFactoryProvider);
     }
 
     @Test
@@ -90,6 +95,7 @@ class DefaultPluginFactoryTest {
 
         assertThrows(RuntimeException.class,
                 this::createObjectUnderTest);
+        verifyNoInteractions(beanFactoryProvider);
     }
 
     @Test
@@ -98,6 +104,7 @@ class DefaultPluginFactoryTest {
 
         assertThrows(NullPointerException.class,
                 this::createObjectUnderTest);
+        verifyNoInteractions(beanFactoryProvider);
     }
 
     @Nested
@@ -113,6 +120,7 @@ class DefaultPluginFactoryTest {
         void loadPlugin_should_throw_if_no_plugin_found() {
             final DefaultPluginFactory objectUnderTest = createObjectUnderTest();
 
+            verifyNoInteractions(beanFactoryProvider);
             assertThrows(NoPluginFoundException.class,
                     () -> objectUnderTest.loadPlugin(baseClass, pluginSetting));
 
@@ -123,6 +131,7 @@ class DefaultPluginFactoryTest {
         void loadPlugins_should_throw_when_no_plugin_found() {
             final DefaultPluginFactory objectUnderTest = createObjectUnderTest();
 
+            verifyNoInteractions(beanFactoryProvider);
             assertThrows(NoPluginFoundException.class,
                     () -> objectUnderTest.loadPlugins(baseClass, pluginSetting,
                             c -> 1));
@@ -157,6 +166,7 @@ class DefaultPluginFactoryTest {
 
             assertThat(createObjectUnderTest().loadPlugin(baseClass, pluginSetting),
                     equalTo(expectedInstance));
+            verify(beanFactoryProvider).get();
         }
 
         @Test
@@ -166,6 +176,7 @@ class DefaultPluginFactoryTest {
             assertThrows(IllegalArgumentException.class, () -> objectUnderTest.loadPlugins(
                     baseClass, pluginSetting, c -> null));
 
+            verifyNoInteractions(beanFactoryProvider);
             verifyNoInteractions(pluginCreator);
         }
 
@@ -177,6 +188,7 @@ class DefaultPluginFactoryTest {
             assertThrows(IllegalArgumentException.class, () -> objectUnderTest.loadPlugins(
                     baseClass, pluginSetting, c -> numberOfInstances));
 
+            verifyNoInteractions(beanFactoryProvider);
             verifyNoInteractions(pluginCreator);
         }
 
@@ -188,6 +200,7 @@ class DefaultPluginFactoryTest {
             assertThat(plugins, notNullValue());
             assertThat(plugins.size(), equalTo(0));
 
+            verify(beanFactoryProvider).get();
             verifyNoInteractions(pluginCreator);
         }
 
@@ -203,6 +216,7 @@ class DefaultPluginFactoryTest {
             final List<?> plugins = createObjectUnderTest().loadPlugins(
                     baseClass, pluginSetting, c -> 1);
 
+            verify(beanFactoryProvider).get();
             assertThat(plugins, notNullValue());
             assertThat(plugins.size(), equalTo(1));
             assertThat(plugins.get(0), equalTo(expectedInstance));
@@ -227,6 +241,7 @@ class DefaultPluginFactoryTest {
             final List<?> plugins = createObjectUnderTest().loadPlugins(
                     baseClass, pluginSetting, c -> 3);
 
+            verify(beanFactoryProvider).get();
             assertThat(plugins, notNullValue());
             assertThat(plugins.size(), equalTo(3));
             assertThat(plugins.get(0), equalTo(expectedInstance1));
