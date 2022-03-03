@@ -42,6 +42,7 @@ public class DefaultPluginFactory implements PluginFactory {
             final PluginProviderLoader pluginProviderLoader,
             final PluginCreator pluginCreator,
             final PluginConfigurationConverter pluginConfigurationConverter,
+            final PluginBeanFactoryProvider pluginBeanFactoryProvider,
             @Qualifier("pluginApplicationContext") final ApplicationContext pluginApplicationContext
     ) {
         Objects.requireNonNull(pluginProviderLoader);
@@ -50,6 +51,7 @@ public class DefaultPluginFactory implements PluginFactory {
 
         this.pluginProviders = Objects.requireNonNull(pluginProviderLoader.getPluginProviders());
         this.applicationContext = Objects.requireNonNull(pluginApplicationContext);
+        LOG.error("PluginBeanFactoryProvider => {}", pluginBeanFactoryProvider);
         if (!pluginApplicationContext.toString().equals("Plugin Context!")) {
             LOG.error("Incorrect context wired ({})", pluginApplicationContext);
         }

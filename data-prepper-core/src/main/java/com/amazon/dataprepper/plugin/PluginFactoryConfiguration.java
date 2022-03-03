@@ -7,19 +7,12 @@ package com.amazon.dataprepper.plugin;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
-import javax.inject.Named;
-
-@Named
 public class PluginFactoryConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(PluginFactoryConfiguration.class);
 
-    @Bean(name = "pluginApplicationContext")
-    @Qualifier("pluginApplicationContext")
     public ApplicationContext pluginApplicationContext(final ApplicationContext coreApplicationContext) {
         if (coreApplicationContext == null || !coreApplicationContext.toString().equals("Core Context")) {
             LOG.error("Unexpected context wired ({})", coreApplicationContext);
@@ -27,7 +20,7 @@ public class PluginFactoryConfiguration {
 
         final ApplicationContext publicApplicationContext = coreApplicationContext.getParent();
 
-        final GenericApplicationContext context = new GenericApplicationContext() {
+        final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext() {
             @Override
             public String toString() {
                 return "Plugin Context!";
@@ -41,6 +34,8 @@ public class PluginFactoryConfiguration {
         else {
             context.setParent(publicApplicationContext);
         }
+
+        context.register(PluginBeanFactoryProvider.class);
         context.refresh();
         return context;
     }
