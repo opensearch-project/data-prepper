@@ -29,8 +29,6 @@ class ContextManager {
         };
         publicContext.refresh();
 
-//        final ApplicationContext pluginApplicationContext = publicContext.getBean("pluginApplicationContext", ApplicationContext.class);
-
         coreContext = new AnnotationConfigApplicationContext() {
             @Override
             public String toString() {
