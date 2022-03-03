@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import javax.inject.Named;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
@@ -18,12 +19,7 @@ import java.util.function.BiPredicate;
 @Named
 public class OperatorFactory {
     public final BiPredicate<Object, Object> regexEquals = (x, y) -> ((String) x).matches((String) y);
-    public final BiPredicate<Object, Object> equals = (x, y) -> {
-        if ((x == null) || (y == null)) {
-            return x == null && y == null;
-        }
-        return x.equals(y);
-    };
+    public final BiPredicate<Object, Object> equals = Objects::equals;
     public final BiPredicate<Object, Object> inSet = (x, y) -> ((Set<?>) y).contains(x);
 
     @Bean
