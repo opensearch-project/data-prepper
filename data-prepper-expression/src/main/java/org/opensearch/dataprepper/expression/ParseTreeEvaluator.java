@@ -47,7 +47,7 @@ public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
 
     public static void main(String[] args) {
         ScriptParser parser = new ScriptParser();
-        ParseTree parseTree = parser.parse("1 > 2 > 3");
+        ParseTree parseTree = parser.parse("1 > (2 > 3)");
         ParseTreeWalker walker = new ParseTreeWalker();
         OperatorFactory operatorFactory = new OperatorFactory();
         List<Operator<?>> operators = Arrays.asList(
