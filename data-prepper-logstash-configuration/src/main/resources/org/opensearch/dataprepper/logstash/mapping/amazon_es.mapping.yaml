@@ -7,3 +7,5 @@ mappedAttributeNames:
 additionalAttributes:
   aws_sigv4: true
   insecure: false
+defaultSettings:
+  index: "logstash-%{yyyy.MM.dd}"

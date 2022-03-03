@@ -42,4 +42,14 @@ public interface LogstashAttributesMappings {
      * @since 1.3
      */
     String getPluginName();
+
+    /**
+     * A map of default settings of Data Prepper attributes.
+     * <p>
+     * This should not return null and should return empty if not defined.
+     *
+     * @return A Map
+     * @since 1.3
+     */
+    Map<String, Object> getDefaultSettings();
 }
