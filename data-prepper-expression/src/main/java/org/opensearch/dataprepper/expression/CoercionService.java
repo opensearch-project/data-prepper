@@ -28,8 +28,6 @@ public class CoercionService {
                 return Float.valueOf(nodeStringValue);
             case DataPrepperExpressionParser.Boolean:
                 return Boolean.valueOf(nodeStringValue);
-            case DataPrepperExpressionParser.LBRACE:
-                return new SetStartMarker();
             default:
                 // TODO: define custom exception type
                 return new IllegalStateException("Unsupported terminal node type: " +

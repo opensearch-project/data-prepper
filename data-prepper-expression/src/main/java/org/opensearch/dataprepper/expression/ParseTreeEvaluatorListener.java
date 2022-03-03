@@ -15,7 +15,6 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,14 +24,10 @@ import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionP
 import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser.EQUAL;
 import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser.GT;
 import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser.GTE;
-import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser.IN_SET;
 import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser.LT;
 import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser.LTE;
-import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser.MATCH_REGEX_PATTERN;
 import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser.NOT;
 import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser.NOT_EQUAL;
-import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser.NOT_IN_SET;
-import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser.NOT_MATCH_REGEX_PATTERN;
 import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser.OR;
 
 /*
@@ -47,9 +42,7 @@ Example:
 public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener {
     private static final Set<Integer> CONDITIONAL_OPERATOR_TYPES = Set.of(AND, OR);
     private static final Set<Integer> EQUALITY_OPERATOR_TYPES = Set.of(EQUAL, NOT_EQUAL);
-    private static final Set<Integer> REGEX_OPERATOR_TYPES = Set.of(MATCH_REGEX_PATTERN, NOT_MATCH_REGEX_PATTERN);
     private static final Set<Integer> RELATIONAL_OPERATOR_TYPES = Set.of(LT, LTE, GT, GTE);
-    private static final Set<Integer> SET_OPERATOR_TYPES = Set.of(IN_SET, NOT_IN_SET);
 
     private final Map<Integer, Operator<?>> strategy;
     private final CoercionService coercionService;
@@ -143,10 +136,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     @Override
     public void exitRegexOperatorExpression(DataPrepperExpressionParser.RegexOperatorExpressionContext ctx) {
-        if (operatorSymbolStack.isEmpty() || !REGEX_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
-            return;
-        }
-        performSingleOperation(2);
+
     }
 
     @Override
@@ -189,10 +179,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     @Override
     public void exitSetOperatorExpression(DataPrepperExpressionParser.SetOperatorExpressionContext ctx) {
-        if (operatorSymbolStack.isEmpty() || !SET_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
-            return;
-        }
-        performSingleOperation(2);
+
     }
 
     @Override
@@ -324,15 +311,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
         if (nodeType == DataPrepperExpressionParser.EOF) {
             return;
         }
-        if (nodeType == DataPrepperExpressionParser.RBRACE) {
-            final Set<Object> currSet = new HashSet<>();
-            while (!(argStack.peek() instanceof SetStartMarker)) {
-                currSet.add(argStack.pop());
-            }
-            // pop SetStartMarker
-            argStack.pop();
-            argStack.push(currSet);
-        } else if (strategy.containsKey(nodeType) || nodeType == DataPrepperExpressionParser.LPAREN) {
+        if (strategy.containsKey(nodeType) || nodeType == DataPrepperExpressionParser.LPAREN) {
             operatorSymbolStack.push(nodeType);
         } else if (nodeType == DataPrepperExpressionParser.RPAREN) {
             // pop LPAREN at operatorSymbolStack top
