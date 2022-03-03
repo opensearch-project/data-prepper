@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -30,7 +29,6 @@ import java.util.function.Function;
  * @since 1.2
  */
 @Named
-@DependsOn("PluginFactoryConfiguration")
 public class DefaultPluginFactory implements PluginFactory {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultPluginFactory.class);
 
@@ -44,7 +42,7 @@ public class DefaultPluginFactory implements PluginFactory {
             final PluginProviderLoader pluginProviderLoader,
             final PluginCreator pluginCreator,
             final PluginConfigurationConverter pluginConfigurationConverter,
-            @Qualifier("PluginApplicationContext") final ApplicationContext pluginApplicationContext
+            @Qualifier("pluginApplicationContext") final ApplicationContext pluginApplicationContext
     ) {
         Objects.requireNonNull(pluginProviderLoader);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
