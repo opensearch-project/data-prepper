@@ -9,8 +9,6 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 
 import javax.inject.Named;
@@ -20,12 +18,6 @@ import javax.inject.Named;
  */
 @Named("PluginConfigurationValidationConfiguration")
 class PluginConfigurationValidationConfiguration {
-    private static final Logger LOG = LoggerFactory.getLogger(PluginConfigurationValidationConfiguration.class);
-
-    public PluginConfigurationValidationConfiguration() {
-        LOG.error("PluginConfigurationValidationConfiguration bean created");
-    }
-
     @Bean
     Validator validator() {
         final ValidatorFactory validationFactory = Validation.byDefaultProvider()
