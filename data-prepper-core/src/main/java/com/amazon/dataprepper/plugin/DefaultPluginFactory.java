@@ -29,7 +29,6 @@ import java.util.function.Function;
  * @since 1.2
  */
 @Named
-//@DependsOn("PluginFactoryConfiguration")
 public class DefaultPluginFactory implements PluginFactory {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultPluginFactory.class);
 
@@ -44,7 +43,6 @@ public class DefaultPluginFactory implements PluginFactory {
             final PluginCreator pluginCreator,
             final PluginConfigurationConverter pluginConfigurationConverter,
             final ApplicationContext pluginApplicationContext
-//            @Qualifier(PluginFactoryConfiguration.PLUGIN_APPLICATION_CONTEXT_NAME) final ApplicationContext pluginApplicationContext
     ) {
         Objects.requireNonNull(pluginProviderLoader);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
