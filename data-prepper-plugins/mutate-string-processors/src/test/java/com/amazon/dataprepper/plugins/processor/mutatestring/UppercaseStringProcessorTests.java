@@ -24,6 +24,7 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,7 +37,7 @@ public class UppercaseStringProcessorTests {
 
     @BeforeEach
     public void setup() {
-        when(config.getWithKeys()).thenReturn(Collections.singletonList("message"));
+        lenient().when(config.getIterativeConfig()).thenReturn(Collections.singletonList("message"));
     }
 
     @Test
@@ -51,7 +52,7 @@ public class UppercaseStringProcessorTests {
 
     @Test
     public void testHappyPathMultiUppercaseStringProcessor() {
-        when(config.getWithKeys()).thenReturn(Arrays.asList("message", "message2"));
+        when(config.getIterativeConfig()).thenReturn(Arrays.asList("message", "message2"));
 
         final UppercaseStringProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -66,7 +67,7 @@ public class UppercaseStringProcessorTests {
 
     @Test
     public void testHappyPathMultiMixedUppercaseStringProcessor() {
-        when(config.getWithKeys()).thenReturn(Arrays.asList("message", "message2"));
+        lenient().when(config.getIterativeConfig()).thenReturn(Arrays.asList("message", "message2"));
 
         final UppercaseStringProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -103,7 +104,7 @@ public class UppercaseStringProcessorTests {
     public void testValueIsObjectUppercaseStringProcessor() {
         final UppercaseStringProcessor processor = createObjectUnderTest();
         final TestObject testObject = new TestObject();
-        testObject.a = "MSG";
+        testObject.a = "msg";
         final Record<Event> record = getEvent(testObject);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
