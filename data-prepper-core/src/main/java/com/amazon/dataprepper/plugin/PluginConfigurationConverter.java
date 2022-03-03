@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Named;
 import java.time.Duration;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
  * and converting it to the plugin model type which should be denoted by {@link DataPrepperPlugin#pluginConfigurationType()}
  */
 @Named
+@DependsOn("PluginConfigurationValidationConfiguration")
 class PluginConfigurationConverter {
     private final ObjectMapper objectMapper;
     private final Validator validator;

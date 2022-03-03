@@ -5,14 +5,15 @@
 
 package com.amazon.dataprepper.plugin;
 
-import com.amazon.dataprepper.DataPrepper;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.NoPluginFoundException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -29,6 +30,7 @@ import java.util.function.Function;
  * @since 1.2
  */
 @Named
+@DependsOn("PluginFactoryConfiguration")
 public class DefaultPluginFactory implements PluginFactory {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultPluginFactory.class);
 
@@ -42,7 +44,7 @@ public class DefaultPluginFactory implements PluginFactory {
             final PluginProviderLoader pluginProviderLoader,
             final PluginCreator pluginCreator,
             final PluginConfigurationConverter pluginConfigurationConverter,
-            final ApplicationContext pluginApplicationContext
+            @Qualifier("PluginApplicationContext") final ApplicationContext pluginApplicationContext
     ) {
         Objects.requireNonNull(pluginProviderLoader);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
@@ -50,11 +52,8 @@ public class DefaultPluginFactory implements PluginFactory {
 
         this.pluginProviders = Objects.requireNonNull(pluginProviderLoader.getPluginProviders());
         this.applicationContext = Objects.requireNonNull(pluginApplicationContext);
-        try {
-            pluginApplicationContext.getBean(DataPrepper.class);
-            LOG.error("Bad Scope");
-        } catch (Exception e) {
-            LOG.warn("I am working!");
+        if (!pluginApplicationContext.toString().equals("Plugin Context!")) {
+            LOG.error("Incorrect context wired ({})", pluginApplicationContext);
         }
 
         if(pluginProviders.isEmpty()) {

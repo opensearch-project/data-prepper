@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper;
 
+import com.amazon.dataprepper.plugin.PluginFactoryConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -20,14 +21,25 @@ class ContextManager {
         LOG.trace("Reading args");
         final SimpleCommandLinePropertySource commandLinePropertySource = new SimpleCommandLinePropertySource(args);
 
-        publicContext = new AnnotationConfigApplicationContext();
+        publicContext = new AnnotationConfigApplicationContext() {
+            @Override
+            public String toString() {
+                return "Public Context";
+            }
+        };
+        publicContext.register(PluginFactoryConfiguration.class);
+        publicContext.refresh();
 
-        coreContext = new AnnotationConfigApplicationContext();
+        coreContext = new AnnotationConfigApplicationContext() {
+            @Override
+            public String toString() {
+                return "Core Context";
+            }
+        };
         coreContext.setParent(publicContext);
         coreContext.getEnvironment().getPropertySources().addFirst(commandLinePropertySource);
         coreContext.register(DataPrepperExecute.class);
 
-        publicContext.refresh();
         coreContext.refresh();
     }
 
