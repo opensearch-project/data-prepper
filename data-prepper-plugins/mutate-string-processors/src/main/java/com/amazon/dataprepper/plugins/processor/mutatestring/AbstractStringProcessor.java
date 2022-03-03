@@ -48,7 +48,7 @@ public abstract class AbstractStringProcessor<T> extends AbstractProcessor<Recor
         }
     }
 
-    protected abstract void performKeyAction(final Event recordEvent, final T key, final String value);
+    protected abstract void performKeyAction(final Event recordEvent, final T entry, final String value);
 
     protected abstract String getKey(final T entry);
 
