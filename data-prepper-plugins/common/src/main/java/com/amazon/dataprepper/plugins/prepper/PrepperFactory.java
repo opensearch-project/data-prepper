@@ -7,7 +7,7 @@ package com.amazon.dataprepper.plugins.prepper;
 
 import com.amazon.dataprepper.model.annotations.SingleThread;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.prepper.Prepper;
+import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.plugins.PluginFactory;
 import com.amazon.dataprepper.plugins.PluginRepository;
 
@@ -24,16 +24,16 @@ import java.util.List;
 @Deprecated
 public class PrepperFactory extends PluginFactory {
 
-    public static List<Prepper> newPreppers(final PluginSetting pluginSetting) {
-        final Class<Prepper> clazz = PluginRepository.getPrepperClass(pluginSetting.getName());
+    public static List<Processor> newPreppers(final PluginSetting pluginSetting) {
+        final Class<Processor> clazz = PluginRepository.getPrepperClass(pluginSetting.getName());
         if (clazz.isAnnotationPresent(SingleThread.class)) {
-            final List<Prepper> preppers = new ArrayList<>();
+            final List<Processor> preppers = new ArrayList<>();
             for (int i = 0; i < pluginSetting.getNumberOfProcessWorkers(); i++) {
-                preppers.add((Prepper) newPlugin(pluginSetting, clazz));
+                preppers.add((Processor) newPlugin(pluginSetting, clazz));
             }
             return preppers;
         } else {
-            return Collections.singletonList((Prepper) newPlugin(pluginSetting, clazz));
+            return Collections.singletonList((Processor) newPlugin(pluginSetting, clazz));
         }
     }
 }
