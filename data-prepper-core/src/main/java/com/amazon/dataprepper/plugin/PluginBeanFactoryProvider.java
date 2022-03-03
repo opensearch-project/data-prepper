@@ -19,28 +19,31 @@ import java.util.Objects;
 @Named
 class PluginBeanFactoryProvider implements Provider<BeanFactory> {
     private static final Logger LOG = LoggerFactory.getLogger(PluginBeanFactoryProvider.class);
-    private final ApplicationContext pluginApplicationContext;
+    private final ApplicationContext sharedPluginApplicationContext;
 
     @Inject
     PluginBeanFactoryProvider(final ApplicationContext coreContext) {
         final ApplicationContext publicContext = Objects.requireNonNull(coreContext.getParent());
-        pluginApplicationContext = new GenericApplicationContext(publicContext) {
+        sharedPluginApplicationContext = new GenericApplicationContext(publicContext) {
             @Override
             public String toString() {
-                return "Plugin Context!";
+                return "Plugin Shared Context!";
             }
         };
-
-        LOG.error("PluginBeanFactoryProvider made with context: {}", coreContext);
     }
 
     public BeanFactory get() {
-        final GenericApplicationContext pluginInstanceContext = new GenericApplicationContext(pluginApplicationContext);
-        return pluginInstanceContext.getBeanFactory();
+        final GenericApplicationContext pluginIsolatedApplicationContext = new GenericApplicationContext(sharedPluginApplicationContext) {
+            @Override
+            public String toString() {
+                return "Plugin Isolated Context!";
+            }
+        };
+        return pluginIsolatedApplicationContext.getBeanFactory();
     }
 
     @Override
     public String toString() {
-        return pluginApplicationContext.toString();
+        return sharedPluginApplicationContext.toString();
     }
 }
