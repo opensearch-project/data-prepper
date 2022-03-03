@@ -13,7 +13,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class GreaterThanOrEqualOperatorTest {
-    final GreaterThanOrEqualOperator objectUnderTest = new GreaterThanOrEqualOperator();
+    final Operator<Boolean> objectUnderTest = new OperatorFactory().greaterThanOrEqualOperator();
 
     @Test
     void testGetSymbol() {

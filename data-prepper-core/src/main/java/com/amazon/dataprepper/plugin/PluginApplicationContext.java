@@ -8,6 +8,7 @@ package com.amazon.dataprepper.plugin;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
+import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -18,7 +19,10 @@ import org.springframework.context.annotation.Configuration;
 class PluginApplicationContext {
     @Bean
     Validator validator() {
-        final ValidatorFactory validationFactory = Validation.buildDefaultValidatorFactory();
+        final ValidatorFactory validationFactory = Validation.byDefaultProvider()
+                .configure()
+                .messageInterpolator(new ParameterMessageInterpolator())
+                .buildValidatorFactory();
         return validationFactory.getValidator();
     }
 }

@@ -13,7 +13,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class LessThanOperatorTest {
-    final LessThanOperator objectUnderTest = new LessThanOperator();
+    final Operator<Boolean> objectUnderTest = new OperatorFactory().lessThanOperator();
 
     @Test
     void testGetSymbol() {

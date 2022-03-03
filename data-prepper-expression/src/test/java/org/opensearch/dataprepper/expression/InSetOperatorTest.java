@@ -15,18 +15,18 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class NotInOperatorTest {
-    final NotInOperator objectUnderTest = new NotInOperator();
+class InSetOperatorTest {
+    final GenericInSetOperator objectUnderTest = new OperatorFactory().inSetOperator();
 
     @Test
     void testGetSymbol() {
-        assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.NOT_IN_SET));
+        assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.IN_SET));
     }
 
     @Test
     void testEvalValidArgs() {
-        assertThat(objectUnderTest.evaluate(1, Set.of(1)), is(false));
-        assertThat(objectUnderTest.evaluate(1, Collections.emptySet()), is(true));
+        assertThat(objectUnderTest.evaluate(1, Set.of(1)), is(true));
+        assertThat(objectUnderTest.evaluate(1, Collections.emptySet()), is(false));
     }
 
     @Test

@@ -26,7 +26,8 @@ subprojects {
 
     ext {
         archiveToTar = this.&archiveToTar
-        awsS3Bucket = project.hasProperty("bucket") ? project.getProperty("bucket") : awsResources.get('default_bucket')
+        awsS3Bucket = project.hasProperty('bucket') ? project.getProperty('bucket') : awsResources.get('default_bucket')
+        buildNumber = project.hasProperty('buildNumber') ? project.getProperty('buildNumber') : 'development'
     }
 
     def supportedArchitectures = architectures.get(it.name) as String[]
@@ -128,6 +129,7 @@ subprojects {
             def tarWithJDKTask = tasks.getByName("${platformWithArchitecture}WithJDKDistTar")
             def zipTask = tasks.getByName("${platformWithArchitecture}DistZip")
             def zipWithJDKTask = tasks.getByName("${platformWithArchitecture}WithJDKDistZip")
+            def destinationKeyPath = "${project.rootProject.version}/${project.buildNumber}/archive"
 
             tasks.getByName("${platformWithArchitecture}WithJDKDistTar").dependsOn("download${it}JDK")
             tasks.getByName("${platformWithArchitecture}WithJDKDistZip").dependsOn("download${it}JDK")
@@ -136,10 +138,10 @@ subprojects {
                 dependsOn tarTask.name
                 file file(tarTask.archiveFile.get().asFile.absolutePath)
                 bucketName awsS3Bucket
-                key "${project.rootProject.version}/${tarTask.archiveName}"
+                key "${destinationKeyPath}/${tarTask.archiveName}"
 
                 def m = new ObjectMetadata()
-                m.setCacheControl("no-cache, no-store")
+                m.setCacheControl('no-cache, no-store')
                 objectMetadata = m
             }
 
@@ -147,10 +149,10 @@ subprojects {
                 dependsOn zipTask.name
                 file file(zipTask.archiveFile.get().asFile.absolutePath)
                 bucketName awsS3Bucket
-                key "${project.rootProject.version}/${zipTask.archiveName}"
+                key "${destinationKeyPath}/${zipTask.archiveName}"
 
                 def m = new ObjectMetadata()
-                m.setCacheControl("no-cache, no-store")
+                m.setCacheControl('no-cache, no-store')
                 objectMetadata = m
             }
 
@@ -158,10 +160,10 @@ subprojects {
                 dependsOn tarWithJDKTask.name
                 file file(tarWithJDKTask.archiveFile.get().asFile.absolutePath)
                 bucketName awsS3Bucket
-                key "${project.rootProject.version}/${tarWithJDKTask.archiveName}"
+                key "${destinationKeyPath}/${tarWithJDKTask.archiveName}"
 
                 def m = new ObjectMetadata()
-                m.setCacheControl("no-cache, no-store")
+                m.setCacheControl('no-cache, no-store')
                 objectMetadata = m
             }
 
@@ -169,10 +171,10 @@ subprojects {
                 dependsOn zipWithJDKTask.name
                 file file(zipWithJDKTask.archiveFile.get().asFile.absolutePath)
                 bucketName awsS3Bucket
-                key "${project.rootProject.version}/${zipWithJDKTask.archiveName}"
+                key "${destinationKeyPath}/${zipWithJDKTask.archiveName}"
 
                 def m = new ObjectMetadata()
-                m.setCacheControl("no-cache, no-store")
+                m.setCacheControl('no-cache, no-store')
                 objectMetadata = m
             }
         }
