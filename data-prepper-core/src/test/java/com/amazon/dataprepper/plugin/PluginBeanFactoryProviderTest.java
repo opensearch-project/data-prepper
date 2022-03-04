@@ -12,6 +12,7 @@ import org.springframework.context.ApplicationContext;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doReturn;
@@ -25,7 +26,7 @@ class PluginBeanFactoryProviderTest {
         final ApplicationContext context = mock(ApplicationContext.class);
         doReturn(context).when(context).getParent();
 
-        final PluginBeanFactoryProvider beanFactoryProvider = new PluginBeanFactoryProvider(context);
+        new PluginBeanFactoryProvider(context);
 
         verify(context).getParent();
     }
@@ -59,9 +60,11 @@ class PluginBeanFactoryProviderTest {
         doReturn(context).when(context).getParent();
 
         final PluginBeanFactoryProvider beanFactoryProvider = new PluginBeanFactoryProvider(context);
+        final BeanFactory isolatedBeanFactoryA = beanFactoryProvider.get();
+        final BeanFactory isolatedBeanFactoryB = beanFactoryProvider.get();
 
         verify(context).getParent();
-        assertThat(beanFactoryProvider.get(), not(is(beanFactoryProvider.get())));
+        assertThat(isolatedBeanFactoryA, not(sameInstance(isolatedBeanFactoryB)));
     }
 
 }
