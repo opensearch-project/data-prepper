@@ -7,8 +7,12 @@ package org.opensearch.dataprepper.expression;
 
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
+import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionLexer;
+import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,12 +49,16 @@ public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
         }
     }
 
-    public static void main(String[] args) {
-        ScriptParser parser = new ScriptParser();
-        ParseTree parseTree = parser.parse("1 > (2 > 3)");
-        ParseTreeWalker walker = new ParseTreeWalker();
-        OperatorFactory operatorFactory = new OperatorFactory();
-        List<Operator<?>> operators = Arrays.asList(
+    public static Boolean testEvaluation(final String statement, final Event event) {
+        final DataPrepperExpressionLexer lexer = new DataPrepperExpressionLexer(CharStreams.fromString(""));
+        final CommonTokenStream tokenStream = new CommonTokenStream(lexer);
+        final DataPrepperExpressionParser expressionParser = new DataPrepperExpressionParser(tokenStream);
+        final ParserErrorListener parserErrorListener = new ParserErrorListener(expressionParser);
+        final ParseTreeParser parseTreeParser = new ParseTreeParser(expressionParser, parserErrorListener);
+        final ParseTreeWalker walker = new ParseTreeWalker();
+        final ParseTree parseTree = parseTreeParser.parse(statement);
+        final OperatorFactory operatorFactory = new OperatorFactory();
+        final List<Operator<?>> operators = Arrays.asList(
                 new AndOperator(), new OrOperator(),
                 operatorFactory.inSetOperator(), operatorFactory.notInSetOperator(),
                 operatorFactory.equalOperator(), operatorFactory.notEqualOperator(),
@@ -61,7 +69,11 @@ public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
         );
         ParseTreeEvaluatorListener listener = new ParseTreeEvaluatorListener(operators, new CoercionService());
         ParseTreeEvaluator evaluator = new ParseTreeEvaluator(listener, walker);
+        return evaluator.evaluate(parseTree, event);
+    }
+
+    public static void main(String[] args) {
         JacksonEvent event = JacksonEvent.builder().withEventType("event").withData(Map.of("a", 1)).build();
-        System.out.println(evaluator.evaluate(parseTree, event));
+        System.out.println(testEvaluation("1 > {2}", event));
     }
 }

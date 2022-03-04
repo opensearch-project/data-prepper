@@ -67,8 +67,8 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     public Object getResult() {
         if (argStack.size() != 1 || context == null) {
-            throw new IllegalStateException("The ParseTreeEvaluatorListener has not been initialized or processed by " +
-                    "ParseTreeWalker.");
+            throw new IllegalStateException("The ParseTreeEvaluatorListener has not been initialized or walked through exactly once " +
+                    "after initialization by a ParseTreeWalker.");
         }
         return argStack.peek();
     }
@@ -317,7 +317,12 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
             // pop LPAREN at operatorSymbolStack top
             operatorSymbolStack.pop();
         } else {
-            argStack.push(coercionService.coerceTerminalNode(node, context));
+            try {
+                final Object arg = coercionService.coerceTerminalNode(node, context);
+                argStack.push(arg);
+            } catch (final CoercionException e) {
+                throw new IllegalStateException(e);
+            }
         }
     }
 

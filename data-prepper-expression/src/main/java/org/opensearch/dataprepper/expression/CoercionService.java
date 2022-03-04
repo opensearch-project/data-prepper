@@ -13,7 +13,7 @@ import javax.inject.Named;
 
 @Named
 public class CoercionService {
-    public Object coerceTerminalNode(final TerminalNode node, final Event event) {
+    public Object coerceTerminalNode(final TerminalNode node, final Event event) throws CoercionException {
         final int nodeType = node.getSymbol().getType();
         final String nodeStringValue = node.getText();
         switch (nodeType) {
@@ -29,8 +29,7 @@ public class CoercionService {
             case DataPrepperExpressionParser.Boolean:
                 return Boolean.valueOf(nodeStringValue);
             default:
-                // TODO: define custom exception type
-                return new IllegalStateException("Unsupported terminal node type: " +
+                throw new CoercionException("Unsupported terminal node type symbol string: " +
                         DataPrepperExpressionParser.VOCABULARY.getDisplayName(nodeType));
         }
     }
