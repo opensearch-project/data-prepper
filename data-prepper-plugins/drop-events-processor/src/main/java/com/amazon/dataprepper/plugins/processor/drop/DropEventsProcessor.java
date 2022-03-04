@@ -35,7 +35,11 @@ public class DropEventsProcessor extends AbstractProcessor<Record<Event>, Record
         final Object whenSetting = pluginSetting.getAttributeFromSettings(WHEN_PLUGIN_SETTING_KEY);
         final Object handleFailedEventsSetting = pluginSetting.getAttributeFromSettings(HANDLE_FAILED_EVENTS_KEY);
 
-        whenCondition = new DropEventsWhenCondition(whenSetting, handleFailedEventsSetting, expressionEvaluator);
+        whenCondition = new DropEventsWhenCondition.Builder()
+                .withWhenSetting(whenSetting)
+                .withHandleFailedEventsSetting(handleFailedEventsSetting)
+                .withExpressionEvaluator(expressionEvaluator)
+                .build();
     }
 
     @Override
