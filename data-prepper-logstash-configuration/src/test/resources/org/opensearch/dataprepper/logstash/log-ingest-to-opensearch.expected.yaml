@@ -42,6 +42,9 @@ logstash-converted-pipeline:
           - "test2"
           - "test3"
           - "test4"
+    - uppercase_string:
+        with_keys:
+          - "uppercaseField"
   sink:
     - opensearch:
         hosts:

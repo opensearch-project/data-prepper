@@ -40,8 +40,9 @@ class MutateMapper implements LogstashPluginAttributesMapper {
         List<PluginModel> models = new LinkedList<>();
         List<AddEntryConfig> adds = new LinkedList<>();
         List<RenameCopyConfig> renames = new LinkedList<>();
-        List<ArrayList<String>> deletes = new LinkedList<>();
+        List<String> deletes = new LinkedList<>();
         List<RenameCopyConfig> copies = new LinkedList<>();
+        List<String> uppercases = new LinkedList<>();
 
         for(LogstashAttribute attr : logstashAttributes) {
             final String name = attr.getAttributeName();
@@ -54,11 +55,13 @@ class MutateMapper implements LogstashPluginAttributesMapper {
                     renames.add(new RenameCopyConfig(entry.getKey(), entry.getValue()));
                 });
             } else if(Objects.equals(name, "remove_field")) {
-                deletes.add((ArrayList<String>)attr.getAttributeValue().getValue());
+                deletes.addAll((ArrayList<String>)attr.getAttributeValue().getValue());
             } else if(Objects.equals(name, "copy")) {
                 ((Map<String, String>)attr.getAttributeValue().getValue()).entrySet().forEach(entry -> {
                     copies.add(new RenameCopyConfig(entry.getKey(), entry.getValue()));
                 });
+            } else if(Objects.equals(name, "uppercase")) {
+                uppercases.addAll((ArrayList<String>)attr.getAttributeValue().getValue());
             }
         }
 
@@ -90,17 +93,21 @@ class MutateMapper implements LogstashPluginAttributesMapper {
         }
 
         if(deletes.size() > 0) {
-            List<String> flatList = new LinkedList<>();
-            for(ArrayList<String> list : deletes) {
-                flatList.addAll(list);
-            }
-
             Map<String, Object> deleteMap = new HashMap<>();
-            deleteMap.put("with_keys", flatList);
+            deleteMap.put("with_keys", deletes);
 
             PluginModel deleteModel = new PluginModel("delete_entries", deleteMap);
 
             models.add(deleteModel);
+        }
+
+        if(uppercases.size() > 0) {
+            Map<String, Object> uppercaseMap = new HashMap<>();
+            uppercaseMap.put("with_keys", uppercases);
+
+            PluginModel uppercaseModel = new PluginModel("uppercase_string", uppercaseMap);
+
+            models.add(uppercaseModel);
         }
 
         return models;
