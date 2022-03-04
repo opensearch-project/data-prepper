@@ -376,7 +376,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
     private String getPartialStatementFromContext(final ParserRuleContext ctx) {
         final Token startToken = ctx.getStart();
         final Token stopToken = ctx.getStop();
-        final String originalStatement = startToken.getInputStream().toString();
-        return originalStatement.substring(startToken.getStartIndex(), stopToken.getStopIndex() + 1);
+        final String fullStatement = startToken.getInputStream().toString();
+        return fullStatement.substring(startToken.getStartIndex(), stopToken.getStopIndex() + 1);
     }
 }
