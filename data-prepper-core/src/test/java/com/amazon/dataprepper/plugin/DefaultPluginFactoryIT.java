@@ -38,11 +38,17 @@ class DefaultPluginFactoryIT {
     }
 
     private DefaultPluginFactory createObjectUnderTest() {
-        final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-        context.scan(DefaultPluginFactory.class.getPackage().getName());
-        context.refresh();
+        final AnnotationConfigApplicationContext publicContext = new AnnotationConfigApplicationContext();
+        publicContext.refresh();
 
-        return context.getBean(DefaultPluginFactory.class);
+        final AnnotationConfigApplicationContext coreContext = new AnnotationConfigApplicationContext();
+        coreContext.setParent(publicContext);
+
+        coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
+        coreContext.register(PluginBeanFactoryProvider.class);
+        coreContext.refresh();
+
+        return coreContext.getBean(DefaultPluginFactory.class);
     }
 
     @Test

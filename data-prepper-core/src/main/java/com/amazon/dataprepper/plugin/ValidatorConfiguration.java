@@ -10,13 +10,14 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+
+import javax.inject.Named;
 
 /**
  * Application context for internal plugin framework beans.
  */
-@Configuration
-class PluginApplicationContext {
+@Named
+class ValidatorConfiguration {
     @Bean
     Validator validator() {
         final ValidatorFactory validationFactory = Validation.byDefaultProvider()
