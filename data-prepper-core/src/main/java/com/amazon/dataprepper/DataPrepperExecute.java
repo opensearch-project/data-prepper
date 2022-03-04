@@ -7,9 +7,7 @@ package com.amazon.dataprepper;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.core.env.SimpleCommandLinePropertySource;
 
 /**
  * Execute entry into Data Prepper.
@@ -21,16 +19,8 @@ public class DataPrepperExecute {
     public static void main(final String ... args) {
         java.security.Security.setProperty("networkaddress.cache.ttl", "60");
 
-        LOG.trace("Reading args");
-        final SimpleCommandLinePropertySource commandLinePropertySource = new SimpleCommandLinePropertySource(args);
-
-        LOG.trace("Creating application context");
-        final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-        context.getEnvironment().getPropertySources().addFirst(commandLinePropertySource);
-        context.register(DataPrepperExecute.class);
-        context.refresh();
-
-        final DataPrepper dataPrepper = context.getBean(DataPrepper.class);
+        final ContextManager contextManager = new ContextManager(args);
+        final DataPrepper dataPrepper = contextManager.getDataPrepperBean();
 
         LOG.trace("Starting Data Prepper execution");
         dataPrepper.execute();
