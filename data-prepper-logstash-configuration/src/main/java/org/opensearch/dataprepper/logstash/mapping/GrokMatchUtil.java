@@ -8,7 +8,7 @@ package org.opensearch.dataprepper.logstash.mapping;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class GrokMatchUtil {
+class GrokMatchUtil {
     private static final String GROK_MATCH_PATTERN_REGEX = "(%\\{)([^{}:]+)(:)?([^{}:]+)?(:)?([a-zA-Z]+)?(}(\\s+)?)";
     private static final Pattern GROK_MATCH_PATTERN = Pattern.compile(GROK_MATCH_PATTERN_REGEX);
     private static final String SEPARATOR = ":";
