@@ -6,7 +6,7 @@
 package com.amazon.dataprepper.plugins.prepper;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.prepper.Prepper;
+import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.plugins.PluginException;
 import com.amazon.dataprepper.plugins.sink.SinkFactory;
 import org.junit.jupiter.api.AfterEach;
@@ -41,10 +41,10 @@ public class PrepperFactoryTests {
 
         final PluginSetting noOpPrepperConfiguration = new PluginSetting("no-op", new HashMap<>());
         noOpPrepperConfiguration.setPipelineName(TEST_PIPELINE);
-        final List<Prepper> actualPrepperSets = PrepperFactory.newPreppers(noOpPrepperConfiguration);
+        final List<Processor> actualPrepperSets = PrepperFactory.newPreppers(noOpPrepperConfiguration);
         assertEquals(1, actualPrepperSets.size());
-        final Prepper actualPrepper = actualPrepperSets.get(0);
-        final Prepper expectedPrepper = new NoOpPrepper();
+        final Processor actualPrepper = actualPrepperSets.get(0);
+        final Processor expectedPrepper = new NoOpPrepper();
         assertThat(actualPrepper, notNullValue());
         assertThat(actualPrepper.getClass().getSimpleName(), is(equalTo(expectedPrepper.getClass().getSimpleName())));
     }
@@ -54,9 +54,9 @@ public class PrepperFactoryTests {
         final PluginSetting testPrepperConfiguration = new PluginSetting("test_prepper", new HashMap<>());
         testPrepperConfiguration.setProcessWorkers(2);
         testPrepperConfiguration.setPipelineName(TEST_PIPELINE);
-        final List<Prepper> actualPrepperSets = PrepperFactory.newPreppers(testPrepperConfiguration);
+        final List<Processor> actualPrepperSets = PrepperFactory.newPreppers(testPrepperConfiguration);
         assertEquals(2, actualPrepperSets.size());
-        final Prepper expectedPrepper = new TestPrepper(testPrepperConfiguration);
+        final Processor expectedPrepper = new TestPrepper(testPrepperConfiguration);
         assertThat(actualPrepperSets.get(0), notNullValue());
         assertThat(actualPrepperSets.get(0).getClass().getSimpleName(), is(equalTo(expectedPrepper.getClass().getSimpleName())));
         assertThat(actualPrepperSets.get(1), notNullValue());
