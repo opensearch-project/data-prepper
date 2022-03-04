@@ -8,19 +8,19 @@ package org.opensearch.dataprepper.logstash.mapping;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class NestedSyntaxConverterUtil {
+class NestedSyntaxConverter {
     private static final String NESTED_SYNTAX_REGEX = "\\[([^\\]]+)\\]";
     private static final Pattern NESTED_SYNTAX_PATTERN = Pattern.compile(NESTED_SYNTAX_REGEX);
-    private NestedSyntaxConverterUtil() {}
+    private NestedSyntaxConverter() {}
 
-    public static Object checkAndConvertLogstashNestedSyntax(final Object logstashAttributeValue) {
+    public static Object convertNestedSyntaxToJsonPath(final Object logstashAttributeValue) {
         if (logstashAttributeValue instanceof String && ((String) logstashAttributeValue).startsWith("[") && ((String) logstashAttributeValue).endsWith("]")) {
-            return convertAttributeValueNestedSyntax(logstashAttributeValue);
+            return convertNestedSyntax(logstashAttributeValue);
         }
         return logstashAttributeValue;
     }
 
-    private static String convertAttributeValueNestedSyntax(final Object attributeValue) {
+    private static String convertNestedSyntax(final Object attributeValue) {
         StringBuilder convertedAttribute = new StringBuilder();
         Matcher nestedSyntaxMatcher = NESTED_SYNTAX_PATTERN.matcher(attributeValue.toString());
 

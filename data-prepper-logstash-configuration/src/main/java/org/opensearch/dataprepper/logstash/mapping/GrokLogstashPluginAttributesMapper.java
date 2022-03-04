@@ -57,7 +57,7 @@ class GrokLogstashPluginAttributesMapper extends AbstractLogstashPluginAttribute
         if (!keysToOverwrite.isEmpty()) {
             pluginSettings.put(
                     logstashAttributesMappings.getMappedAttributeNames().get(LOGSTASH_GROK_OVERWRITE_ATTRIBUTE_NAME),
-                    keysToOverwrite.stream().map(NestedSyntaxConverterUtil::checkAndConvertLogstashNestedSyntax).collect(Collectors.toList())
+                    keysToOverwrite.stream().map(NestedSyntaxConverter::convertNestedSyntaxToJsonPath).collect(Collectors.toList())
             );
         }
     }
@@ -65,8 +65,7 @@ class GrokLogstashPluginAttributesMapper extends AbstractLogstashPluginAttribute
     @Override
     protected HashSet<String> getCustomMappedAttributeNames() {
         return new HashSet<>(Arrays.asList(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME,
-                LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME,
-                LOGSTASH_GROK_OVERWRITE_ATTRIBUTE_NAME));
+                LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME));
     }
 
     @SuppressWarnings("unchecked")
@@ -78,7 +77,7 @@ class GrokLogstashPluginAttributesMapper extends AbstractLogstashPluginAttribute
             if (logstashGrokMatchValueType.equals(LogstashValueType.HASH)) {
                 final Map<String, String> logstashGrokMatchCastValue = (Map<String, String>) logstashGrokMatchValue;
                 logstashGrokMatchCastValue.forEach((key, val) -> {
-                    String grokMatchKey = (String) NestedSyntaxConverterUtil.checkAndConvertLogstashNestedSyntax(key);
+                    String grokMatchKey = (String) NestedSyntaxConverter.convertNestedSyntaxToJsonPath(key);
                     if (!dataPrepperGrokMatch.containsKey(grokMatchKey)) {
                         dataPrepperGrokMatch.put(grokMatchKey, new ArrayList<>());
                     }
@@ -89,7 +88,7 @@ class GrokLogstashPluginAttributesMapper extends AbstractLogstashPluginAttribute
                 if (logstashGrokMatchCastValue.size() == 2) {
                     final String key = logstashGrokMatchCastValue.get(0);
                     final String val = logstashGrokMatchCastValue.get(1);
-                    String grokMatchKey = (String) NestedSyntaxConverterUtil.checkAndConvertLogstashNestedSyntax(key);
+                    String grokMatchKey = (String) NestedSyntaxConverter.convertNestedSyntaxToJsonPath(key);
                     if (!dataPrepperGrokMatch.containsKey(grokMatchKey)) {
                         dataPrepperGrokMatch.put(grokMatchKey, new ArrayList<>());
                     }

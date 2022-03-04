@@ -28,7 +28,7 @@ class GrokNamedCapturesUtil {
         final Map<String, String> mappedPatternDefinitions = new LinkedHashMap<>();
         while (matcher.find()) {
             final String patternRegex = matcher.group(2);
-            final String captureName = (String) NestedSyntaxConverterUtil.checkAndConvertLogstashNestedSyntax(matcher.group(1));
+            final String captureName = (String) NestedSyntaxConverter.convertNestedSyntaxToJsonPath(matcher.group(1));
             final String patternName = GrokNamedCapturesUtil.generateRandomPatternName();
             final String replacementPattern = String.format("%%{%s:%s}", patternName, captureName);
             regexPattern = StringUtils.replaceOnce(regexPattern, matcher.group(0), replacementPattern);

@@ -49,13 +49,14 @@ public abstract class AbstractLogstashPluginAttributesMapper implements Logstash
                     final String dataPrepperAttributeName = mappedAttributeNames.get(logstashAttributeName);
 
                     if (mappedAttributeNames.containsKey(logstashAttributeName)) {
+                        Object logstashAttributeValue = logstashAttribute.getAttributeValue().getValue();
                         if (dataPrepperAttributeName.startsWith("!") && logstashAttribute.getAttributeValue().getValue() instanceof Boolean) {
-                            pluginSettings.put(
-                                    dataPrepperAttributeName.substring(1), !(Boolean) logstashAttribute.getAttributeValue().getValue()
-                            );
+                            pluginSettings.put(dataPrepperAttributeName.substring(1), !(Boolean) logstashAttributeValue);
                         }
                         else {
-                            Object logstashAttributeValue = NestedSyntaxConverterUtil.checkAndConvertLogstashNestedSyntax(logstashAttribute.getAttributeValue().getValue());
+                            if (logstashAttributesMappings.getNestedSyntaxAttributeNames().contains(logstashAttributeName)) {
+                                logstashAttributeValue = NestedSyntaxConverter.convertNestedSyntaxToJsonPath(logstashAttributeValue);
+                            }
                             pluginSettings.put(dataPrepperAttributeName, logstashAttributeValue);
                         }
                     }

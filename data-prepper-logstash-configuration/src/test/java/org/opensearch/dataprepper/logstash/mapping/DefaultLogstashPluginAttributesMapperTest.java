@@ -146,6 +146,7 @@ class DefaultLogstashPluginAttributesMapperTest {
         final String dataPrepperAttribute = UUID.randomUUID().toString();
 
         when(mappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(logstashAttributeName, dataPrepperAttribute));
+        when(mappings.getNestedSyntaxAttributeNames()).thenReturn(Collections.singletonList(logstashAttributeName));
 
         when(logstashAttributeValue.getValue()).thenReturn(input);
         final Map<String, Object> actualPluginSettings =
