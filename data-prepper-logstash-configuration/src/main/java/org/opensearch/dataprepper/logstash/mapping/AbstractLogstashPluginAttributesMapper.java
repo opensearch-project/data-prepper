@@ -55,7 +55,7 @@ public abstract class AbstractLogstashPluginAttributesMapper implements Logstash
                         }
                         else {
                             if (logstashAttributesMappings.getNestedSyntaxAttributeNames().contains(logstashAttributeName)) {
-                                logstashAttributeValue = NestedSyntaxConverter.convertNestedSyntaxToJsonPath(logstashAttributeValue);
+                                logstashAttributeValue = NestedSyntaxConverter.convertNestedSyntaxToJsonPath(logstashAttributeValue.toString());
                             }
                             pluginSettings.put(dataPrepperAttributeName, logstashAttributeValue);
                         }

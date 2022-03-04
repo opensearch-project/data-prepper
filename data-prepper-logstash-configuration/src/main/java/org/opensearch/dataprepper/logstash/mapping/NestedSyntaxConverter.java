@@ -13,10 +13,10 @@ class NestedSyntaxConverter {
     private static final Pattern NESTED_SYNTAX_PATTERN = Pattern.compile(NESTED_SYNTAX_REGEX);
     private NestedSyntaxConverter() {}
 
-    public static Object convertNestedSyntaxToJsonPath(final Object logstashAttributeValue) {
-        Matcher nestedSyntaxMatcher = NESTED_SYNTAX_PATTERN.matcher(logstashAttributeValue.toString());
+    public static String convertNestedSyntaxToJsonPath(final String logstashAttributeValue) {
+        Matcher nestedSyntaxMatcher = NESTED_SYNTAX_PATTERN.matcher(logstashAttributeValue);
         if (nestedSyntaxMatcher.matches()) {
-            return logstashAttributeValue.toString().replace("\\]\\[", "/").replace("[", "/").replace("]", "");
+            return logstashAttributeValue.replace("\\]\\[", "/").replace("[", "/").replace("]", "");
         }
         return logstashAttributeValue;
     }

@@ -14,6 +14,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 class MutateMapper implements LogstashPluginAttributesMapper {
     public static class AddEntryConfig {
@@ -48,19 +49,18 @@ class MutateMapper implements LogstashPluginAttributesMapper {
             final String name = attr.getAttributeName();
             if(Objects.equals(name, "add_field")) {
                 ((Map<String, Object>) attr.getAttributeValue().getValue()).forEach(
-                        (key, value) -> adds.add(new AddEntryConfig((String) NestedSyntaxConverter.convertNestedSyntaxToJsonPath(key), value)));
+                        (key, value) -> adds.add(new AddEntryConfig(NestedSyntaxConverter.convertNestedSyntaxToJsonPath(key), value)));
             } else if(Objects.equals(name, "rename")) {
                 ((Map<String, String>) attr.getAttributeValue().getValue()).forEach(
-                        (key, value) -> renames.add(new RenameCopyConfig((String) NestedSyntaxConverter.convertNestedSyntaxToJsonPath(key),
-                                (String) NestedSyntaxConverter.convertNestedSyntaxToJsonPath(value))));
+                        (key, value) -> renames.add(new RenameCopyConfig(NestedSyntaxConverter.convertNestedSyntaxToJsonPath(key),
+                                NestedSyntaxConverter.convertNestedSyntaxToJsonPath(value))));
             } else if(Objects.equals(name, "remove_field")) {
-                deletes.addAll((ArrayList<String>)attr.getAttributeValue().getValue());
+                deletes.addAll(((List<String>) attr.getAttributeValue().getValue()).stream()
+                        .map(NestedSyntaxConverter::convertNestedSyntaxToJsonPath).collect(Collectors.toList()));
             } else if(Objects.equals(name, "copy")) {
-                ((Map<String, String>) attr.getAttributeValue().getValue()).forEach((key, value) -> copies.add(new RenameCopyConfig((String) NestedSyntaxConverter.convertNestedSyntaxToJsonPath(key),
-                        (String) NestedSyntaxConverter.convertNestedSyntaxToJsonPath(value))));
-                ((Map<String, String>)attr.getAttributeValue().getValue()).entrySet().forEach(entry -> {
-                    copies.add(new RenameCopyConfig(entry.getKey(), entry.getValue()));
-                });
+                ((Map<String, String>) attr.getAttributeValue().getValue()).forEach((key, value) ->
+                        copies.add(new RenameCopyConfig(NestedSyntaxConverter.convertNestedSyntaxToJsonPath(key),
+                        NestedSyntaxConverter.convertNestedSyntaxToJsonPath(value))));
             } else if(Objects.equals(name, "uppercase")) {
                 uppercases.addAll((ArrayList<String>)attr.getAttributeValue().getValue());
             }

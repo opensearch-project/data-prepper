@@ -6,15 +6,17 @@ logstash-converted-pipeline:
       port: 3000
   processor:
     - grok:
-        keys_to_overwrite:
-          - "/data/timestamp"
-          - "/data/verb"
         break_on_match: false
         match:
           /data/log1:
             - "%{COMBINEDAPACHELOG}"
+            - "%{NUMBER} %{GREEDYDATA:/nested/field/data1}"
           /data/log2:
             - "%{COMBINEDAPACHELOG}"
+            - "%{NUMBER} %{GREEDYDATA:/nested/field/data2}"
+        keys_to_overwrite:
+          - "/nested/field/data1"
+          - "/nested/field/data2"
     - date:
         from_time_received: false
         destination_timezone: "UTC"

@@ -132,9 +132,9 @@ class GrokLogstashPluginAttributesMapperTest {
     void mapAttributes_converts_nested_syntax_in_mapped_attributes() {
         final LogstashAttribute matchMultiKeysLogstashAttribute = prepareHashTypeMatchLogstashAttribute(
                 Arrays.asList(Map.entry("[text][message]", "fake message regex 1"), Map.entry("other", "fake other regex")));
-        final LogstashAttribute matchMessageLogstashAttribute2 = prepareArrayTypeMatchLogstashAttribute("[text][message]", "fake message regex 2");
+        final LogstashAttribute matchMessageLogstashAttribute2 = prepareArrayTypeMatchLogstashAttribute("[text][message]", "%{NUMBER} %{GREEDYDATA:[nested][field][data2]}");
         final List<LogstashAttribute> matchLogstashAttributes = Arrays.asList(matchMultiKeysLogstashAttribute, matchMessageLogstashAttribute2);
-        final Map<String, Object> expectedMatchSettings = Map.of("/text/message", Arrays.asList("fake message regex 1", "fake message regex 2"),
+        final Map<String, Object> expectedMatchSettings = Map.of("/text/message", Arrays.asList("fake message regex 1", "%{NUMBER} %{GREEDYDATA:/nested/field/data2}"),
                 "other", Collections.singletonList("fake other regex"));
 
         final String dataPrepperMatchAttribute = "match";
