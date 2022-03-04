@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.expression;
 
 import com.amazon.dataprepper.model.event.Event;
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionListener;
@@ -93,7 +94,12 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
         if (operatorSymbolStack.isEmpty() || !CONDITIONAL_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
             return;
         }
-        performSingleOperation(2);
+        try {
+            performSingleOperation(2);
+        } catch (final Exception e) {
+            // TODO: customize the runtime exception here
+            throw new RuntimeException("Unable to evaluate the part of input statement: " + getPartialStatementFromContext(ctx), e);
+        }
     }
 
     @Override
@@ -116,7 +122,12 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
         if (operatorSymbolStack.isEmpty() || !EQUALITY_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
             return;
         }
-        performSingleOperation(2);
+        try {
+            performSingleOperation(2);
+        } catch (final Exception e) {
+            // TODO: customize the runtime exception here
+            throw new RuntimeException("Unable to evaluate the part of input statement: " + getPartialStatementFromContext(ctx), e);
+        }
     }
 
     @Override
@@ -159,7 +170,12 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
         if (operatorSymbolStack.isEmpty() || !RELATIONAL_OPERATOR_TYPES.contains(operatorSymbolStack.peek())) {
             return;
         }
-        performSingleOperation(2);
+        try {
+            performSingleOperation(2);
+        } catch (final Exception e) {
+            // TODO: customize the runtime exception here
+            throw new RuntimeException("Unable to evaluate the part of input statement: " + getPartialStatementFromContext(ctx), e);
+        }
     }
 
     @Override
@@ -242,7 +258,12 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
         if (operatorSymbolStack.isEmpty() || operatorSymbolStack.peek() != NOT) {
             return;
         }
-        performSingleOperation(1);
+        try {
+            performSingleOperation(1);
+        } catch (final Exception e) {
+            // TODO: customize the runtime exception here
+            throw new RuntimeException("Unable to evaluate the part of input statement: " + getPartialStatementFromContext(ctx), e);
+        }
     }
 
     @Override
@@ -350,5 +371,12 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
         }
         final Object result = operator.evaluate(args);
         argStack.push(result);
+    }
+
+    private String getPartialStatementFromContext(final ParserRuleContext ctx) {
+        final Token startToken = ctx.getStart();
+        final Token stopToken = ctx.getStop();
+        final String originalStatement = startToken.getInputStream().toString();
+        return originalStatement.substring(startToken.getStartIndex(), stopToken.getStopIndex() + 1);
     }
 }

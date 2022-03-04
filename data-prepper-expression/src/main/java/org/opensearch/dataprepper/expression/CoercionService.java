@@ -12,7 +12,7 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import javax.inject.Named;
 
 @Named
-public class CoercionService {
+class CoercionService {
     public Object coerceTerminalNode(final TerminalNode node, final Event event) throws CoercionException {
         final int nodeType = node.getSymbol().getType();
         final String nodeStringValue = node.getText();
@@ -32,5 +32,12 @@ public class CoercionService {
                 throw new CoercionException("Unsupported terminal node type symbol string: " +
                         DataPrepperExpressionParser.VOCABULARY.getDisplayName(nodeType));
         }
+    }
+
+    public <T> T coerce(final Object obj, Class<T> clazz) throws CoercionException {
+        if (obj.getClass().isAssignableFrom(clazz)) {
+            return (T) obj;
+        }
+        throw new CoercionException("Unable to cast " + obj.getClass().getName() + " into " + clazz.getName());
     }
 }

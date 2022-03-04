@@ -28,11 +28,14 @@ public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
 
     private final ParseTreeEvaluatorListener listener;
     private final ParseTreeWalker walker;
+    private final CoercionService coercionService;
 
     @Inject
-    public ParseTreeEvaluator(ParseTreeEvaluatorListener listener, ParseTreeWalker walker) {
+    public ParseTreeEvaluator(final ParseTreeEvaluatorListener listener, final ParseTreeWalker walker,
+                              final CoercionService coercionService) {
         this.listener = listener;
         this.walker = walker;
+        this.coercionService = coercionService;
     }
 
     @Override
@@ -40,8 +43,7 @@ public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
         try {
             listener.initialize(event);
             walker.walk(listener, parseTree);
-            // TODO: check result type
-            return (Boolean) listener.getResult();
+            return coercionService.coerce(listener.getResult(), Boolean.class);
         } catch (final Exception e) {
             // TODO: handle exception based on onEvaluateException config value
             LOG.error("Unable to evaluate event", e);
@@ -68,12 +70,12 @@ public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
                 new NotOperator()
         );
         ParseTreeEvaluatorListener listener = new ParseTreeEvaluatorListener(operators, new CoercionService());
-        ParseTreeEvaluator evaluator = new ParseTreeEvaluator(listener, walker);
+        ParseTreeEvaluator evaluator = new ParseTreeEvaluator(listener, walker, new CoercionService());
         return evaluator.evaluate(parseTree, event);
     }
 
     public static void main(String[] args) {
         JacksonEvent event = JacksonEvent.builder().withEventType("event").withData(Map.of("a", 1)).build();
-        System.out.println(testEvaluation("1 > {2}", event));
+        System.out.println(testEvaluation("true and (1 > (1 > 3 > 4))", event));
     }
 }
