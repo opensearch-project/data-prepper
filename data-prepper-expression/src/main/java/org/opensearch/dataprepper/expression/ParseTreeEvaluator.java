@@ -75,6 +75,6 @@ public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
 
     public static void main(String[] args) {
         JacksonEvent event = JacksonEvent.builder().withEventType("event").withData(Map.of("a", 1)).build();
-        System.out.println(testEvaluation("true and (1 > (1 > 3 > 4))", event));
+        System.out.println(testEvaluation("1", event));
     }
 }

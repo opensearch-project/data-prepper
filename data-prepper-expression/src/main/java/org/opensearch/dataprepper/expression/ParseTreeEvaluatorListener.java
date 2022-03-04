@@ -97,8 +97,8 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
         try {
             performSingleOperation(2);
         } catch (final Exception e) {
-            // TODO: customize the runtime exception here
-            throw new RuntimeException("Unable to evaluate the part of input statement: " + getPartialStatementFromContext(ctx), e);
+            throw new ExpressionEvaluationException("Unable to evaluate the part of input statement: "
+                    + getPartialStatementFromContext(ctx), e);
         }
     }
 
@@ -125,8 +125,8 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
         try {
             performSingleOperation(2);
         } catch (final Exception e) {
-            // TODO: customize the runtime exception here
-            throw new RuntimeException("Unable to evaluate the part of input statement: " + getPartialStatementFromContext(ctx), e);
+            throw new ExpressionEvaluationException("Unable to evaluate the part of input statement: "
+                    + getPartialStatementFromContext(ctx), e);
         }
     }
 
@@ -173,8 +173,8 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
         try {
             performSingleOperation(2);
         } catch (final Exception e) {
-            // TODO: customize the runtime exception here
-            throw new RuntimeException("Unable to evaluate the part of input statement: " + getPartialStatementFromContext(ctx), e);
+            throw new ExpressionEvaluationException("Unable to evaluate the part of input statement: "
+                    + getPartialStatementFromContext(ctx), e);
         }
     }
 
@@ -261,8 +261,8 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
         try {
             performSingleOperation(1);
         } catch (final Exception e) {
-            // TODO: customize the runtime exception here
-            throw new RuntimeException("Unable to evaluate the part of input statement: " + getPartialStatementFromContext(ctx), e);
+            throw new ExpressionEvaluationException("Unable to evaluate the part of input statement: "
+                    + getPartialStatementFromContext(ctx), e);
         }
     }
 
@@ -273,7 +273,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
 
     @Override
     public void exitUnaryOperator(DataPrepperExpressionParser.UnaryOperatorContext ctx) {
-        // TODO: verify unary operator on operatorSymbolStack top
+
     }
 
     @Override
