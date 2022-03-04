@@ -39,15 +39,14 @@ public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
     }
 
     @Override
-    public Boolean evaluate(ParseTree parseTree, Event event) throws ClassCastException {
+    public Boolean evaluate(ParseTree parseTree, Event event) {
         try {
             listener.initialize(event);
             walker.walk(listener, parseTree);
             return coercionService.coerce(listener.getResult(), Boolean.class);
         } catch (final Exception e) {
-            // TODO: handle exception based on onEvaluateException config value
             LOG.error("Unable to evaluate event", e);
-            return null;
+            throw new ExpressionEvaluationException(e.getMessage(), e);
         }
     }
 
