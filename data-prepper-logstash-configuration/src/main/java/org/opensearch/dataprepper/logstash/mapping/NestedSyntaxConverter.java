@@ -13,7 +13,7 @@ class NestedSyntaxConverter {
     private static final Pattern NESTED_SYNTAX_PATTERN = Pattern.compile(NESTED_SYNTAX_REGEX);
     private NestedSyntaxConverter() {}
 
-    public static String convertNestedSyntaxToJsonPath(final String logstashAttributeValue) {
+    public static String convertNestedSyntaxToJsonPointer(final String logstashAttributeValue) {
         Matcher nestedSyntaxMatcher = NESTED_SYNTAX_PATTERN.matcher(logstashAttributeValue);
         if (nestedSyntaxMatcher.matches()) {
             return logstashAttributeValue.replace("\\]\\[", "/").replace("[", "/").replace("]", "");

@@ -45,7 +45,7 @@ class GrokMatchAttributeHelper implements GrokLogstashPluginAttributeMapperHelpe
             if (logstashGrokMatchValueType.equals(LogstashValueType.HASH)) {
                 final Map<String, String> logstashGrokMatchCastValue = (Map<String, String>) logstashGrokMatchValue;
                 logstashGrokMatchCastValue.forEach((key, val) -> {
-                    final String grokMatchKey = NestedSyntaxConverter.convertNestedSyntaxToJsonPath(key);
+                    final String grokMatchKey = NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(key);
                     if (!dataPrepperGrokMatch.containsKey(grokMatchKey)) {
                         dataPrepperGrokMatch.put(grokMatchKey, new ArrayList<>());
                     }
@@ -56,7 +56,7 @@ class GrokMatchAttributeHelper implements GrokLogstashPluginAttributeMapperHelpe
                 if (logstashGrokMatchCastValue.size() == 2) {
                     final String key = logstashGrokMatchCastValue.get(0);
                     final String val = GrokMatchUtil.convertGrokMatchPattern(logstashGrokMatchCastValue.get(1));
-                    String grokMatchKey = NestedSyntaxConverter.convertNestedSyntaxToJsonPath(key);
+                    String grokMatchKey = NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(key);
                     if (!dataPrepperGrokMatch.containsKey(grokMatchKey)) {
                         dataPrepperGrokMatch.put(grokMatchKey, new ArrayList<>());
                     }

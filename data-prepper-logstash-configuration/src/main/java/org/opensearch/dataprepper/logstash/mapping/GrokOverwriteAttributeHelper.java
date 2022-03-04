@@ -28,7 +28,7 @@ class GrokOverwriteAttributeHelper implements GrokLogstashPluginAttributeMapperH
         if (!keysToOverwrite.isEmpty()) {
             pluginSettings.put(
                     logstashAttributesMappings.getMappedAttributeNames().get(LOGSTASH_GROK_OVERWRITE_ATTRIBUTE_NAME),
-                    keysToOverwrite.stream().map(NestedSyntaxConverter::convertNestedSyntaxToJsonPath).collect(Collectors.toList())
+                    keysToOverwrite.stream().map(NestedSyntaxConverter::convertNestedSyntaxToJsonPointer).collect(Collectors.toList())
             );
         }
     }

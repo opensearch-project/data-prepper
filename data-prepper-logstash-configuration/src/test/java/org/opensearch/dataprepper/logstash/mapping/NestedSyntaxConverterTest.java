@@ -16,7 +16,7 @@ class NestedSyntaxConverterTest {
     @ParameterizedTest
     @CsvSource({"[message], /message", "[nested][field], /nested/field"})
     void convertNestedSyntaxToJsonPath_with_nested_field_should_return_json_pointer_test(String nestedField, String expectedJsonPointer) {
-        String actualJsonPointer = NestedSyntaxConverter.convertNestedSyntaxToJsonPath(nestedField);
+        String actualJsonPointer = NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(nestedField);
 
         assertThat(actualJsonPointer, equalTo(expectedJsonPointer));
     }
@@ -24,7 +24,7 @@ class NestedSyntaxConverterTest {
     @ParameterizedTest
     @CsvSource({"message, message", "field, field"})
     void convertNestedSyntaxToJsonPath_with_no_nested_field_should_return_same_string_test(String nestedField, String expectedJsonPointer) {
-        String actualJsonPointer = NestedSyntaxConverter.convertNestedSyntaxToJsonPath(nestedField);
+        String actualJsonPointer = NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(nestedField);
 
         assertThat(actualJsonPointer, equalTo(expectedJsonPointer));
     }

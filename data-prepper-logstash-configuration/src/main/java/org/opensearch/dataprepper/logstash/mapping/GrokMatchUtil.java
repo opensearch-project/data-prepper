@@ -9,29 +9,46 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class GrokMatchUtil {
-    private static final String GROK_MATCH_PATTERN_REGEX = "(?<openingBrackets>%\\{)(?<grokSyntax>[^{}:]+)(?<separator1>:)?" +
-            "(?<grokSemantic>[^{}:]+)?(?<separator2>:)?(?<dataType>[a-zA-Z]+)?(?<closingBrackets>}(\\s+)?)";
+    private static final String GROK_MATCH_PATTERN_REGEX = "(%\\{)([^{}:]+)(:)?([^{}:]+)?(:)?([a-zA-Z]+)?(}(\\s+)?)";
     private static final Pattern GROK_MATCH_PATTERN = Pattern.compile(GROK_MATCH_PATTERN_REGEX);
 
+    private GrokMatchUtil() {
+    }
+
     public static String convertGrokMatchPattern(final String matchPattern) {
-        Matcher grokMatchPatternMatcher = GROK_MATCH_PATTERN.matcher(matchPattern);
         StringBuilder convertedGrokMatchPattern = new StringBuilder();
+        Matcher grokMatchPatternMatcher = GROK_MATCH_PATTERN.matcher(matchPattern);
         while(grokMatchPatternMatcher.find()) {
-            convertedGrokMatchPattern.append(grokMatchPatternMatcher.group("openingBrackets"));
-            convertedGrokMatchPattern.append(grokMatchPatternMatcher.group("grokSyntax"));
-            if (grokMatchPatternMatcher.group("separator1") != null)
-                convertedGrokMatchPattern.append(grokMatchPatternMatcher.group("separator1"));
-            if (grokMatchPatternMatcher.group("grokSemantic") != null)
-                convertedGrokMatchPattern.append(NestedSyntaxConverter.convertNestedSyntaxToJsonPath(grokMatchPatternMatcher.group("grokSemantic")));
-            if (grokMatchPatternMatcher.group("separator2") != null)
-                convertedGrokMatchPattern.append(grokMatchPatternMatcher.group("separator2"));
-            if (grokMatchPatternMatcher.group("dataType") != null)
-                convertedGrokMatchPattern.append(grokMatchPatternMatcher.group("dataType"));
-            convertedGrokMatchPattern.append(grokMatchPatternMatcher.group("closingBrackets"));
+            convertedGrokMatchPattern.append(getConvertedMatchPattern(grokMatchPatternMatcher.group()));
         }
         if (convertedGrokMatchPattern.toString().isEmpty())
             return matchPattern;
 
         return convertedGrokMatchPattern.toString();
+    }
+
+    private static String getConvertedMatchPattern(String matchPatternGroup) {
+        final String SEPARATOR = ":";
+        StringBuilder convertedGrokMatchPatternGroup = new StringBuilder();
+        int firstSeparatorIndex = matchPatternGroup.indexOf(SEPARATOR);
+        int secondSeparatorIndex = matchPatternGroup.lastIndexOf(SEPARATOR);
+
+        if (firstSeparatorIndex != secondSeparatorIndex) {
+            String nestedField = matchPatternGroup.substring(firstSeparatorIndex + 1, secondSeparatorIndex);
+            String convertedMatchPatternGroup = NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(nestedField);
+            convertedGrokMatchPatternGroup.append(matchPatternGroup, 0, firstSeparatorIndex + 1);
+            convertedGrokMatchPatternGroup.append(convertedMatchPatternGroup);
+            convertedGrokMatchPatternGroup.append(matchPatternGroup.substring(secondSeparatorIndex));
+        }
+        else if (firstSeparatorIndex != -1) {
+            String nestedField = matchPatternGroup.substring(firstSeparatorIndex + 1, matchPatternGroup.indexOf("}"));
+            String convertedMatchPatternGroup = NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(nestedField);
+            convertedGrokMatchPatternGroup.append(matchPatternGroup, 0, firstSeparatorIndex + 1);
+            convertedGrokMatchPatternGroup.append(convertedMatchPatternGroup);
+            convertedGrokMatchPatternGroup.append(matchPatternGroup.substring(matchPatternGroup.lastIndexOf("}")));
+        }
+        if (convertedGrokMatchPatternGroup.toString().isEmpty())
+            return matchPatternGroup;
+        return convertedGrokMatchPatternGroup.toString();
     }
 }
