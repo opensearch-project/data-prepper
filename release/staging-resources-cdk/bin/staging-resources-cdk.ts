@@ -8,6 +8,7 @@
 import 'source-map-support/register';
 import {App} from 'aws-cdk-lib';
 import {GitHubAccessStack} from '../lib/GitHubAccessStack';
+import {ArchivesBucketStack} from '../lib/ArchivesBucketStack';
 import {StagingResourcesStack} from '../lib/StagingResourcesStack';
 import {GitHubActionsReleaseAccessStack} from '../lib/GitHubActionsReleaseAccessStack';
 
@@ -16,6 +17,10 @@ const app = new App();
 
 const gitHubAccessStack = new GitHubAccessStack(app, 'GitHubAccessStack', {
   stackName: 'GitHubAccess'
+});
+
+new ArchivesBucketStack(app, 'ArchivesBucketStack', {
+  stackName: 'ArchivesBucketStack'
 });
 
 const stagingResourcesStack = new StagingResourcesStack(app, 'StagingResourcesStack', {
