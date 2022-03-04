@@ -36,9 +36,9 @@ export class GitHubActionsReleaseAccessStack extends Stack {
     const dataPrepperOrganization: string = scope.node.tryGetContext('dataPrepperOrganization') || DEFAULT_ORGANIZATION;
 
     const gitHubPrincipal = new OpenIdConnectPrincipal(props.gitHubOidcProvider, {
-      'ForAllValues:StringEquals': {
+      'ForAllValues:StringLike': {
         'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-        'token.actions.githubusercontent.com:sub': `repo:${dataPrepperOrganization}/data-prepper:ref:refs/heads/main`
+        'token.actions.githubusercontent.com:sub': `repo:${dataPrepperOrganization}/data-prepper:ref:refs/heads/*`
       },
     });
 
