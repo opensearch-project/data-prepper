@@ -5,8 +5,6 @@
 
 package com.amazon.dataprepper.plugin;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.GenericApplicationContext;
@@ -28,7 +26,6 @@ import java.util.Objects;
  */
 @Named
 class PluginBeanFactoryProvider implements Provider<BeanFactory> {
-    private static final Logger LOG = LoggerFactory.getLogger(PluginBeanFactoryProvider.class);
     private final ApplicationContext sharedPluginApplicationContext;
 
     @Inject
@@ -39,12 +36,14 @@ class PluginBeanFactoryProvider implements Provider<BeanFactory> {
 
     /**
      * @since 1.3
-     * Creates a new Application context that inherits from {@link PluginBeanFactoryProvider#sharedPluginApplicationContext} then returns
-     * new context's BeanFactory.
+     * Creates a new isolated application context that inherits from
+     * {@link PluginBeanFactoryProvider#sharedPluginApplicationContext} then returns new context's BeanFactory.
+     * {@link PluginBeanFactoryProvider#sharedPluginApplicationContext} should not be directly accessible to plugins.
+     * instead, a new isolated {@link ApplicationContext} should be created.
      * @return BeanFactory A BeanFactory that inherits from {@link PluginBeanFactoryProvider#sharedPluginApplicationContext}
      */
     public BeanFactory get() {
-        final GenericApplicationContext pluginIsolatedApplicationContext = new GenericApplicationContext(sharedPluginApplicationContext);
-        return pluginIsolatedApplicationContext.getBeanFactory();
+        final GenericApplicationContext isolatedPluginApplicationContext = new GenericApplicationContext(sharedPluginApplicationContext);
+        return isolatedPluginApplicationContext.getBeanFactory();
     }
 }
