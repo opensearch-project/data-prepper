@@ -27,7 +27,6 @@ import org.springframework.core.env.SimpleCommandLinePropertySource;
 class ContextManager {
     private static final Logger LOG = LoggerFactory.getLogger(ContextManager.class);
 
-    private final GenericApplicationContext publicApplicationContext;
     private final AnnotationConfigApplicationContext coreApplicationContext;
 
     /**
@@ -40,7 +39,7 @@ class ContextManager {
         LOG.trace("Reading args");
         final SimpleCommandLinePropertySource commandLinePropertySource = new SimpleCommandLinePropertySource(args);
 
-        publicApplicationContext = new GenericApplicationContext();
+        final GenericApplicationContext publicApplicationContext = new GenericApplicationContext();
         publicApplicationContext.refresh();
 
         coreApplicationContext = new AnnotationConfigApplicationContext();
