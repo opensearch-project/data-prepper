@@ -47,16 +47,17 @@ class MutateMapper implements LogstashPluginAttributesMapper {
         for(LogstashAttribute attr : logstashAttributes) {
             final String name = attr.getAttributeName();
             if(Objects.equals(name, "add_field")) {
-                ((Map<String, Object>)attr.getAttributeValue().getValue()).entrySet().forEach(entry -> {
-                    adds.add(new AddEntryConfig(entry.getKey(), entry.getValue()));
-                });
+                ((Map<String, Object>) attr.getAttributeValue().getValue()).forEach(
+                        (key, value) -> adds.add(new AddEntryConfig((String) NestedSyntaxConverter.convertNestedSyntaxToJsonPath(key), value)));
             } else if(Objects.equals(name, "rename")) {
-                ((Map<String, String>)attr.getAttributeValue().getValue()).entrySet().forEach(entry -> {
-                    renames.add(new RenameCopyConfig(entry.getKey(), entry.getValue()));
-                });
+                ((Map<String, String>) attr.getAttributeValue().getValue()).forEach(
+                        (key, value) -> renames.add(new RenameCopyConfig((String) NestedSyntaxConverter.convertNestedSyntaxToJsonPath(key),
+                                (String) NestedSyntaxConverter.convertNestedSyntaxToJsonPath(value))));
             } else if(Objects.equals(name, "remove_field")) {
                 deletes.addAll((ArrayList<String>)attr.getAttributeValue().getValue());
             } else if(Objects.equals(name, "copy")) {
+                ((Map<String, String>) attr.getAttributeValue().getValue()).forEach((key, value) -> copies.add(new RenameCopyConfig((String) NestedSyntaxConverter.convertNestedSyntaxToJsonPath(key),
+                        (String) NestedSyntaxConverter.convertNestedSyntaxToJsonPath(value))));
                 ((Map<String, String>)attr.getAttributeValue().getValue()).entrySet().forEach(entry -> {
                     copies.add(new RenameCopyConfig(entry.getKey(), entry.getValue()));
                 });

@@ -28,30 +28,30 @@ logstash-converted-pipeline:
         destination: "/data/test"
     - rename_keys:
         entries:
-          - from_key: "messagea"
-            to_key: "newMessage"
-          - from_key: "messageb"
-            to_key: "newMessage2"
+          - from_key: "/messages/messagea"
+            to_key: "/newMessage"
+          - from_key: "/messages/messageb"
+            to_key: "/newMessage2"
     - copy_values:
         entries:
-          - from_key: "messagec"
-            to_key: "messaged"
+          - from_key: "/messages/messagec"
+            to_key: "/messaged"
     - add_entries:
         entries:
-          - key: "message1"
+          - key: "/messages/message1"
             value: 3
-          - key: "message2"
+          - key: "/messages/message2"
             value: 4.2
-          - key: "message3"
+          - key: "/messages/message3"
             value: "test3"
-          - key: "message4"
+          - key: "/messages/message4"
             value: true
     - delete_entries:
         with_keys:
-          - "test"
-          - "test2"
-          - "test3"
-          - "test4"
+          - "/messages/test"
+          - "/test2"
+          - "/messages/test3"
+          - "/test4"
   sink:
     - opensearch:
         hosts:
