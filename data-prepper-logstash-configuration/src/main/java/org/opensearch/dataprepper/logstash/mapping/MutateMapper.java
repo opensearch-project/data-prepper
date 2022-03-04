@@ -58,15 +58,16 @@ class MutateMapper implements LogstashPluginAttributesMapper {
                 deletes.addAll(((List<String>) attr.getAttributeValue().getValue()).stream()
                         .map(NestedSyntaxConverter::convertNestedSyntaxToJsonPointer).collect(Collectors.toList()));
             } else if(Objects.equals(name, "copy")) {
-                ((Map<String, String>) attr.getAttributeValue().getValue()).forEach((key, value) ->
-                        copies.add(new RenameCopyConfig(NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(key),
-                        NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(value))));
+                ((Map<String, String>) attr.getAttributeValue().getValue()).forEach(
+                        (key, value) -> copies.add(new RenameCopyConfig(NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(key),
+                                NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(value))));
             } else if(Objects.equals(name, "uppercase")) {
-                uppercases.addAll((ArrayList<String>)attr.getAttributeValue().getValue());
+                uppercases.addAll(((ArrayList<String>) attr.getAttributeValue().getValue()).stream()
+                        .map(NestedSyntaxConverter::convertNestedSyntaxToJsonPointer).collect(Collectors.toList()));
             }
         }
 
-        if(renames.size() > 0) {
+        if(!renames.isEmpty()) {
             Map<String, Object> renameMap = new HashMap<>();
             renameMap.put("entries", renames);
 
@@ -75,7 +76,7 @@ class MutateMapper implements LogstashPluginAttributesMapper {
             models.add(renameModel);
         }
 
-        if(copies.size() > 0) {
+        if(!copies.isEmpty()) {
             Map<String, Object> copyMap = new HashMap<>();
             copyMap.put("entries", copies);
 
@@ -84,7 +85,7 @@ class MutateMapper implements LogstashPluginAttributesMapper {
             models.add(renameModel);
         }
 
-        if(adds.size() > 0) {
+        if(!adds.isEmpty()) {
             Map<String, Object> addMap = new HashMap<>();
             addMap.put("entries", adds);
 
@@ -93,7 +94,7 @@ class MutateMapper implements LogstashPluginAttributesMapper {
             models.add(addModel);
         }
 
-        if(deletes.size() > 0) {
+        if(!deletes.isEmpty()) {
             Map<String, Object> deleteMap = new HashMap<>();
             deleteMap.put("with_keys", deletes);
 
@@ -102,7 +103,7 @@ class MutateMapper implements LogstashPluginAttributesMapper {
             models.add(deleteModel);
         }
 
-        if(uppercases.size() > 0) {
+        if(!uppercases.isEmpty()) {
             Map<String, Object> uppercaseMap = new HashMap<>();
             uppercaseMap.put("with_keys", uppercases);
 
