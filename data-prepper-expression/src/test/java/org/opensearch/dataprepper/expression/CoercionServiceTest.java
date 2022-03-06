@@ -105,7 +105,7 @@ class CoercionServiceTest {
     void testCoerceTerminalNodeEscapedJsonPointerType() throws CoercionException {
         final String testKey = "key";
         final String testValue = "value";
-        final String testEscapedJsonPointerKey = String.format("//%s", testKey);
+        final String testEscapedJsonPointerKey = String.format("\"/%s\"", testKey);
         final Event testEvent = createTestEvent(Map.of(testKey, testValue));
         when(token.getType()).thenReturn(DataPrepperExpressionParser.EscapedJsonPointer);
         when(terminalNode.getText()).thenReturn(testEscapedJsonPointerKey);
