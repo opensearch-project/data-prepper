@@ -6,3 +6,5 @@ mappedAttributeNames:
 additionalAttributes:
   addA: true
   addB: staticValueB
+nestedSyntaxAttributeNames:
+  - valueA

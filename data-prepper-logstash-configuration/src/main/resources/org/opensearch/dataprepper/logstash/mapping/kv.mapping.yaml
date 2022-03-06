@@ -8,3 +8,6 @@ mappedAttributeNames:
   value_split_pattern: key_value_delimiter_regex
   remove_char_key: delete_key_regex
   remove_char_value: delete_value_regex
+nestedSyntaxAttributeNames:
+  - source
+  - target
