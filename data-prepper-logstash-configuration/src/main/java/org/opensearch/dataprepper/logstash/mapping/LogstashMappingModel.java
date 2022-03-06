@@ -9,7 +9,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -40,6 +42,10 @@ class LogstashMappingModel implements LogstashAttributesMappings {
     @JsonSetter(nulls = Nulls.AS_EMPTY)
     private Map<String, Object> defaultSettings = new HashMap<>();
 
+    @JsonProperty
+    @JsonSetter(nulls = Nulls.AS_EMPTY)
+    private List<String> nestedSyntaxAttributeNames = new ArrayList<>();
+
     public String getPluginName() {
         return pluginName;
     }
@@ -62,5 +68,9 @@ class LogstashMappingModel implements LogstashAttributesMappings {
 
     public Map<String, Object> getDefaultSettings() {
         return defaultSettings;
+    }
+
+    public List<String> getNestedSyntaxAttributeNames() {
+        return nestedSyntaxAttributeNames;
     }
 }

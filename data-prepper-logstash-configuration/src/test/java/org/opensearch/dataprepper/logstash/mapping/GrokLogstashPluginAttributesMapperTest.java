@@ -128,6 +128,49 @@ class GrokLogstashPluginAttributesMapperTest {
         assertThat(actualMatch.get("message").get(0), matchesPattern(String.format("%%\\{(.*?):%s\\}", testNamedCapture)));
     }
 
+    @Test
+    void mapAttributes_converts_nested_syntax_in_mapped_attributes() {
+        final LogstashAttribute matchMultiKeysLogstashAttribute = prepareHashTypeMatchLogstashAttribute(
+                Arrays.asList(Map.entry("[text][message]", "fake message regex 1"), Map.entry("other", "fake other regex")));
+        final LogstashAttribute matchMessageLogstashAttribute2 = prepareArrayTypeMatchLogstashAttribute("[text][message]", "%{NUMBER} %{GREEDYDATA:[nested][field][data2]}");
+        final List<LogstashAttribute> matchLogstashAttributes = Arrays.asList(matchMultiKeysLogstashAttribute, matchMessageLogstashAttribute2);
+        final Map<String, Object> expectedMatchSettings = Map.of("/text/message", Arrays.asList("fake message regex 1", "%{NUMBER} %{GREEDYDATA:/nested/field/data2}"),
+                "other", Collections.singletonList("fake other regex"));
+
+        final String dataPrepperMatchAttribute = "match";
+        final LogstashAttributesMappings mappings = mock(LogstashAttributesMappings.class);
+        when(mappings.getMappedAttributeNames()).thenReturn(
+                Collections.singletonMap(LOGSTASH_GROK_MATCH_ATTRIBUTE_NAME, dataPrepperMatchAttribute));
+
+        final List<PluginModel> actualPluginModels =
+                createObjectUnderTest().mapAttributes(matchLogstashAttributes, mappings);
+
+        assertThat(actualPluginModels, notNullValue());
+        assertThat(actualPluginModels.size(), equalTo(1));
+        assertThat(actualPluginModels.get(0).getPluginSettings(), hasKey(dataPrepperMatchAttribute));
+        assertThat(actualPluginModels.get(0).getPluginSettings().get(dataPrepperMatchAttribute), equalTo(expectedMatchSettings));
+    }
+
+    @Test
+    void mapAttributes_converts_nested_syntax_in_overwrite_mapped_attributes() {
+        final LogstashAttribute matchMultiKeysLogstashAttribute = prepareOverwriteLogstashAttribute(Arrays.asList("[outer][key1]", "[outer][key2]"));
+        final List<LogstashAttribute> grokAttributes = Collections.singletonList(matchMultiKeysLogstashAttribute);
+        final List<String> expectedOverwriteKeys = Arrays.asList("/outer/key1", "/outer/key2");
+
+        final String dataPrepperOverwriteAttribute = "keys_to_overwrite";
+        final LogstashAttributesMappings mappings = mock(LogstashAttributesMappings.class);
+        when(mappings.getMappedAttributeNames()).thenReturn(
+                Collections.singletonMap("overwrite", dataPrepperOverwriteAttribute));
+
+        final List<PluginModel> actualPluginModels =
+                createObjectUnderTest().mapAttributes(grokAttributes, mappings);
+
+        assertThat(actualPluginModels, notNullValue());
+        assertThat(actualPluginModels.size(), equalTo(1));
+        assertThat(actualPluginModels.get(0).getPluginSettings(), hasKey(dataPrepperOverwriteAttribute));
+        assertThat(actualPluginModels.get(0).getPluginSettings().get(dataPrepperOverwriteAttribute), equalTo(expectedOverwriteKeys));
+    }
+
     private LogstashAttribute prepareArrayTypeMatchLogstashAttribute(final String matchKey, final String matchValue) {
         final LogstashAttribute logstashAttribute = mock(LogstashAttribute.class);
         final LogstashAttributeValue logstashAttributeValue = mock(LogstashAttributeValue.class);
@@ -159,6 +202,16 @@ class GrokLogstashPluginAttributesMapperTest {
         when(logstashAttributeValue.getAttributeValueType()).thenReturn(HASH);
         when(logstashAttributeValue.getValue()).thenReturn(patternDefinitions);
         when(logstashAttribute.getAttributeName()).thenReturn(LOGSTASH_GROK_PATTERN_DEFINITIONS_ATTRIBUTE_NAME);
+        when(logstashAttribute.getAttributeValue()).thenReturn(logstashAttributeValue);
+        return logstashAttribute;
+    }
+
+    private LogstashAttribute prepareOverwriteLogstashAttribute(final List<String> keys) {
+        final LogstashAttribute logstashAttribute = mock(LogstashAttribute.class);
+        final LogstashAttributeValue logstashAttributeValue = mock(LogstashAttributeValue.class);
+        when(logstashAttributeValue.getAttributeValueType()).thenReturn(ARRAY);
+        when(logstashAttributeValue.getValue()).thenReturn(keys);
+        when(logstashAttribute.getAttributeName()).thenReturn("overwrite");
         when(logstashAttribute.getAttributeValue()).thenReturn(logstashAttributeValue);
         return logstashAttribute;
     }

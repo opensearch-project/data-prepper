@@ -14,6 +14,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 class MutateMapper implements LogstashPluginAttributesMapper {
     public static class AddEntryConfig {
@@ -47,25 +48,26 @@ class MutateMapper implements LogstashPluginAttributesMapper {
         for(LogstashAttribute attr : logstashAttributes) {
             final String name = attr.getAttributeName();
             if(Objects.equals(name, "add_field")) {
-                ((Map<String, Object>)attr.getAttributeValue().getValue()).entrySet().forEach(entry -> {
-                    adds.add(new AddEntryConfig(entry.getKey(), entry.getValue()));
-                });
+                ((Map<String, Object>) attr.getAttributeValue().getValue()).forEach(
+                        (key, value) -> adds.add(new AddEntryConfig(NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(key), value)));
             } else if(Objects.equals(name, "rename")) {
-                ((Map<String, String>)attr.getAttributeValue().getValue()).entrySet().forEach(entry -> {
-                    renames.add(new RenameCopyConfig(entry.getKey(), entry.getValue()));
-                });
+                ((Map<String, String>) attr.getAttributeValue().getValue()).forEach(
+                        (key, value) -> renames.add(new RenameCopyConfig(NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(key),
+                                NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(value))));
             } else if(Objects.equals(name, "remove_field")) {
-                deletes.addAll((ArrayList<String>)attr.getAttributeValue().getValue());
+                deletes.addAll(((List<String>) attr.getAttributeValue().getValue()).stream()
+                        .map(NestedSyntaxConverter::convertNestedSyntaxToJsonPointer).collect(Collectors.toList()));
             } else if(Objects.equals(name, "copy")) {
-                ((Map<String, String>)attr.getAttributeValue().getValue()).entrySet().forEach(entry -> {
-                    copies.add(new RenameCopyConfig(entry.getKey(), entry.getValue()));
-                });
+                ((Map<String, String>) attr.getAttributeValue().getValue()).forEach(
+                        (key, value) -> copies.add(new RenameCopyConfig(NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(key),
+                                NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(value))));
             } else if(Objects.equals(name, "uppercase")) {
-                uppercases.addAll((ArrayList<String>)attr.getAttributeValue().getValue());
+                uppercases.addAll(((ArrayList<String>) attr.getAttributeValue().getValue()).stream()
+                        .map(NestedSyntaxConverter::convertNestedSyntaxToJsonPointer).collect(Collectors.toList()));
             }
         }
 
-        if(renames.size() > 0) {
+        if(!renames.isEmpty()) {
             Map<String, Object> renameMap = new HashMap<>();
             renameMap.put("entries", renames);
 
@@ -74,7 +76,7 @@ class MutateMapper implements LogstashPluginAttributesMapper {
             models.add(renameModel);
         }
 
-        if(copies.size() > 0) {
+        if(!copies.isEmpty()) {
             Map<String, Object> copyMap = new HashMap<>();
             copyMap.put("entries", copies);
 
@@ -83,7 +85,7 @@ class MutateMapper implements LogstashPluginAttributesMapper {
             models.add(renameModel);
         }
 
-        if(adds.size() > 0) {
+        if(!adds.isEmpty()) {
             Map<String, Object> addMap = new HashMap<>();
             addMap.put("entries", adds);
 
@@ -92,7 +94,7 @@ class MutateMapper implements LogstashPluginAttributesMapper {
             models.add(addModel);
         }
 
-        if(deletes.size() > 0) {
+        if(!deletes.isEmpty()) {
             Map<String, Object> deleteMap = new HashMap<>();
             deleteMap.put("with_keys", deletes);
 
@@ -101,7 +103,7 @@ class MutateMapper implements LogstashPluginAttributesMapper {
             models.add(deleteModel);
         }
 
-        if(uppercases.size() > 0) {
+        if(!uppercases.isEmpty()) {
             Map<String, Object> uppercaseMap = new HashMap<>();
             uppercaseMap.put("with_keys", uppercases);
 
