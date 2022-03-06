@@ -127,4 +127,21 @@ public class GrokNamedCapturesUtilTest {
                 patternDefinitionNames.get(1), namedCapturesName, randomSuffix);
         assertThat(result.getMappedRegex().equals(expectedResult), equalTo(true));
     }
+
+    @Test
+    public void testNamedCapturesWithNestedSyntax() {
+        final String namedCapturesPattern =  UUID.randomUUID().toString();
+        final String namedCapturesName = "[foo][bar]";
+        final String regex = String.format("(?<%s>%s)", namedCapturesName, namedCapturesPattern);
+        final GrokNamedCapturesPair result = GrokNamedCapturesUtil.convertRegexNamedCapturesToGrokPatternDefinitions(regex);
+
+
+        assertThat(result.getMappedPatternDefinitions().size(), equalTo(1));
+
+        for (final Map.Entry<String, String> patternDefinition : result.getMappedPatternDefinitions().entrySet()) {
+            assertThat(patternDefinition.getValue().equals(namedCapturesPattern), equalTo(true));
+            final String expectedResult = String.format("%%{%s:%s}", patternDefinition.getKey(), "/foo/bar");
+            assertThat(result.getMappedRegex().equals(expectedResult), equalTo(true));
+        }
+    }
 }

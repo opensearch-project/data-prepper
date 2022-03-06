@@ -2,3 +2,4 @@ pluginName: samplePlugin
 attributesMapperClass: org.opensearch.dataprepper.Placeholder
 mappedAttributeNames: null
 additionalAttributes: null
+nestedSyntaxAttributeNames: null

@@ -10,6 +10,7 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 import org.opensearch.dataprepper.logstash.model.LogstashAttributeValue;
@@ -137,5 +138,23 @@ class DefaultLogstashPluginAttributesMapperTest {
         assertThat(actualPluginModel.get(0).getPluginSettings(), notNullValue());
         assertThat(actualPluginModel.get(0).getPluginSettings().size(), equalTo(1));
         assertThat(actualPluginModel.get(0).getPluginSettings().get(dataPrepperAttribute.substring(1)), equalTo(!inputValue));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"[outer_key][inner_key],/outer_key/inner_key", "[array][0][key], /array/0/key", "[message], /message"})
+    void mapAttributes_with_nested_syntax_value_returns_data_prepper_nested_syntax_test(String input, String output) {
+        final String dataPrepperAttribute = UUID.randomUUID().toString();
+
+        when(mappings.getMappedAttributeNames()).thenReturn(Collections.singletonMap(logstashAttributeName, dataPrepperAttribute));
+        when(mappings.getNestedSyntaxAttributeNames()).thenReturn(Collections.singletonList(logstashAttributeName));
+
+        when(logstashAttributeValue.getValue()).thenReturn(input);
+        final Map<String, Object> actualPluginSettings =
+                createObjectUnderTest().mapAttributes(logstashAttributes, mappings).get(0).getPluginSettings();
+
+        assertThat(actualPluginSettings, notNullValue());
+        assertThat(actualPluginSettings.size(), equalTo(1));
+        assertThat(actualPluginSettings, hasKey(dataPrepperAttribute));
+        assertThat(actualPluginSettings.get(dataPrepperAttribute), equalTo(output));
     }
 }

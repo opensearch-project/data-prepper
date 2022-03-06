@@ -13,6 +13,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
+import java.util.Collections;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -42,6 +43,8 @@ class LogstashMappingModelTest {
         assertThat(logstashMappingModel.getAdditionalAttributes().size(), equalTo(2));
         assertThat(logstashMappingModel.getAdditionalAttributes().get("addA"), equalTo(true));
         assertThat(logstashMappingModel.getAdditionalAttributes().get("addB"), equalTo("staticValueB"));
+        assertThat(logstashMappingModel.getNestedSyntaxAttributeNames(), notNullValue());
+        assertThat(logstashMappingModel.getNestedSyntaxAttributeNames(), equalTo(Collections.singletonList("valueA")));
     }
 
     @ParameterizedTest
@@ -60,5 +63,7 @@ class LogstashMappingModelTest {
         assertThat(logstashMappingModel.getMappedAttributeNames().size(), equalTo(0));
         assertThat(logstashMappingModel.getAdditionalAttributes(), notNullValue());
         assertThat(logstashMappingModel.getAdditionalAttributes().size(), equalTo(0));
+        assertThat(logstashMappingModel.getNestedSyntaxAttributeNames(), notNullValue());
+        assertThat(logstashMappingModel.getNestedSyntaxAttributeNames().size(), equalTo(0));
     }
 }

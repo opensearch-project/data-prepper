@@ -8,3 +8,5 @@ mappedAttributeNames:
 additionalAttributes:
   from_time_received: false
   destination_timezone: "UTC"
+nestedSyntaxAttributeNames:
+  - target
