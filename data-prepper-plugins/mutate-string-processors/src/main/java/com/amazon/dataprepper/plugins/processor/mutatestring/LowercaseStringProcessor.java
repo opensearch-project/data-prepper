@@ -12,6 +12,10 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.processor.Processor;
 import java.util.Locale;
 
+/**
+ * This processor takes in a key and changes its value to a lowercase string. If the value is not a string,
+ * no action is performed.
+ */
 @DataPrepperPlugin(name = "lowercase_string", pluginType = Processor.class, pluginConfigurationType = StringProcessorConfig.class)
 public class LowercaseStringProcessor extends AbstractStringProcessor<String> {
     @DataPrepperPluginConstructor

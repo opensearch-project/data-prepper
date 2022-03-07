@@ -12,6 +12,10 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.processor.Processor;
 import java.util.Locale;
 
+/**
+ * This processor takes in a key and changes its value to an uppercase string. If the value is not a string,
+ * no action is performed.
+ */
 @DataPrepperPlugin(name = "uppercase_string", pluginType = Processor.class, pluginConfigurationType = StringProcessorConfig.class)
 public class UppercaseStringProcessor extends AbstractStringProcessor<String> {
     @DataPrepperPluginConstructor
