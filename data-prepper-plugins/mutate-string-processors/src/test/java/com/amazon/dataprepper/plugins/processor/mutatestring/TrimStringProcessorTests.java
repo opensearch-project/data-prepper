@@ -51,6 +51,16 @@ public class TrimStringProcessorTests {
     }
 
     @Test
+    public void testSpaceInMiddleTrimStringProcessor() {
+        final TrimStringProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent(" this is a message ");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("this is a message"));
+    }
+
+    @Test
     public void testHappyPathMultiTrimStringProcessor() {
         when(config.getIterativeConfig()).thenReturn(Arrays.asList("message", "message2"));
 
