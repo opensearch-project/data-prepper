@@ -53,7 +53,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
     private final Map<Integer, Operator<?>> strategy;
     private final CoercionService coercionService;
     private Stack<Integer> operatorSymbolStack = new Stack<>();
-    private Stack<Object> argStack = new Stack<>();
+    private Stack<Object> operandStack = new Stack<>();
     private Event context;
 
     @Inject
@@ -68,15 +68,15 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
     public void initialize(final Event context) {
         this.context = context;
         operatorSymbolStack = new Stack<>();
-        argStack = new Stack<>();
+        operandStack = new Stack<>();
     }
 
     public Object getResult() {
-        if (argStack.size() != 1 || context == null) {
+        if (operandStack.size() != 1 || context == null) {
             throw new IllegalStateException("The ParseTreeEvaluatorListener has not been initialized or walked through exactly once " +
                     "after initialization by a ParseTreeWalker.");
         }
-        return argStack.peek();
+        return operandStack.peek();
     }
 
     @Override
@@ -345,7 +345,7 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
         } else {
             try {
                 final Object arg = coercionService.coerceTerminalNode(node, context);
-                argStack.push(arg);
+                operandStack.push(arg);
             } catch (final CoercionException e) {
                 throw new IllegalStateException(e);
             }
@@ -372,10 +372,10 @@ public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener
         final Operator<?> operator = strategy.get(operatorType);
         final Object[] args = new Object[numOfArgs];
         for (int i = numOfArgs - 1; i >= 0; i--) {
-            args[i] = argStack.pop();
+            args[i] = operandStack.pop();
         }
         final Object result = operator.evaluate(args);
-        argStack.push(result);
+        operandStack.push(result);
     }
 
     private String getPartialStatementFromContext(final ParserRuleContext ctx) {
