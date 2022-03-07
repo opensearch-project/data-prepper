@@ -325,4 +325,56 @@ public class ParseTreeExpressionTest extends GrammarTest {
         assertThat(expression, isExpression(isJsonPointerUnaryTree()));
         assertThat(errorListener.isErrorFound(), is(false));
     }
+
+    @Test
+    void testNotOperationOrder() {
+        final ParserRuleContext expression = parseExpression("not false or true");
+
+        final DiagnosingMatcher<ParseTree> lhs = isParseTree(
+                CONDITIONAL_EXPRESSION,
+                EQUALITY_OPERATOR_EXPRESSION,
+                REGEX_OPERATOR_EXPRESSION,
+                RELATIONAL_OPERATOR_EXPRESSION,
+                SET_OPERATOR_EXPRESSION,
+                UNARY_OPERATOR_EXPRESSION,
+                UNARY_NOT_OPERATOR_EXPRESSION
+        ).withChildrenMatching(
+                isOperator(UNARY_OPERATOR),
+                isUnaryTree()
+        );
+        final DiagnosingMatcher<ParseTree> rhs = isUnaryTree();
+
+        assertThat(expression, isExpression(hasContext(
+                CONDITIONAL_EXPRESSION,
+                lhs,
+                isOperator(CONDITIONAL_OPERATOR),
+                rhs
+        )));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void testNotPriorityOperationOrder() {
+        final ParserRuleContext expression = parseExpression("not (false or true)");
+
+        final DiagnosingMatcher<ParseTree> parenthesesExpression = isParenthesesExpression(hasContext(
+                CONDITIONAL_EXPRESSION,
+                isUnaryTree(),
+                isOperator(CONDITIONAL_OPERATOR),
+                isUnaryTree()
+        ));
+
+        final DiagnosingMatcher<ParseTree> not = isParseTree(
+                CONDITIONAL_EXPRESSION,
+                EQUALITY_OPERATOR_EXPRESSION,
+                REGEX_OPERATOR_EXPRESSION,
+                RELATIONAL_OPERATOR_EXPRESSION,
+                SET_OPERATOR_EXPRESSION,
+                UNARY_OPERATOR_EXPRESSION,
+                UNARY_NOT_OPERATOR_EXPRESSION
+        ).withChildrenMatching(isOperator(UNARY_OPERATOR), parenthesesExpression);
+
+        assertThat(expression, isExpression(not));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
 }

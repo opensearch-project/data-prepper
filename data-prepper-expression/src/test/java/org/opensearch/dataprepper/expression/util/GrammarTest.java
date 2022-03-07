@@ -33,6 +33,10 @@ public abstract class GrammarTest {
             DataPrepperExpressionParser.SetOperatorExpressionContext.class;
     protected static final Class<? extends ParseTree> UNARY_OPERATOR_EXPRESSION =
             DataPrepperExpressionParser.UnaryOperatorExpressionContext.class;
+    protected static final Class<? extends ParseTree> UNARY_NOT_OPERATOR_EXPRESSION =
+            DataPrepperExpressionParser.UnaryNotOperatorExpressionContext.class;
+    protected static final Class<? extends ParseTree> UNARY_OPERATOR =
+            DataPrepperExpressionParser.UnaryOperatorContext.class;
     protected static final Class<? extends ParseTree> PARENTHESES_EXPRESSION = DataPrepperExpressionParser.ParenthesesExpressionContext.class;
     //endregion
 
