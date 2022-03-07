@@ -35,10 +35,14 @@ class PipelineParserTests {
 
     @BeforeEach
     void setUp() {
-        final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-        context.scan(DefaultPluginFactory.class.getPackage().getName());
-        context.refresh();
-        pluginFactory = context.getBean(DefaultPluginFactory.class);
+        final AnnotationConfigApplicationContext publicContext = new AnnotationConfigApplicationContext();
+        publicContext.refresh();
+
+        final AnnotationConfigApplicationContext coreContext = new AnnotationConfigApplicationContext();
+        coreContext.setParent(publicContext);
+        coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
+        coreContext.refresh();
+        pluginFactory = coreContext.getBean(DefaultPluginFactory.class);
     }
 
     @Test

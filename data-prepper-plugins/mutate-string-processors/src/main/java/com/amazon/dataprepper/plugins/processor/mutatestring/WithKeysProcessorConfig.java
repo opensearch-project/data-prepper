@@ -11,11 +11,16 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
-public abstract class WithKeysProcessorConfig {
+public abstract class WithKeysProcessorConfig implements StringProcessorConfig<String> {
     @NotEmpty
     @NotNull
     @JsonProperty("with_keys")
     private List<String> withKeys;
+
+    @Override
+    public List<String> getIterativeConfig() {
+        return withKeys;
+    }
 
     public List<String> getWithKeys() {
         return withKeys;

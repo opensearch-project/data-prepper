@@ -12,12 +12,15 @@ import com.amazon.dataprepper.model.processor.AbstractProcessor;
 import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
+import java.util.List;
 
-public abstract class AbstractStringProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
+public abstract class AbstractStringProcessor<T> extends AbstractProcessor<Record<Event>, Record<Event>> {
+    private List<T> entries;
 
     @DataPrepperPluginConstructor
-    public AbstractStringProcessor(final PluginMetrics pluginMetrics) {
+    public AbstractStringProcessor(final PluginMetrics pluginMetrics, final StringProcessorConfig<T> config) {
         super(pluginMetrics);
+        this.entries = config.getIterativeConfig();
     }
 
     @Override
@@ -30,7 +33,24 @@ public abstract class AbstractStringProcessor extends AbstractProcessor<Record<E
         return records;
     }
 
-    protected abstract void performStringAction(Event recordEvent);
+    private void performStringAction(final Event recordEvent)
+    {
+        for(T entry : entries) {
+            final String key = getKey(entry);
+
+            if(recordEvent.containsKey(key)) {
+                final Object value = recordEvent.get(key, Object.class);
+
+                if(value instanceof String) {
+                    performKeyAction(recordEvent, entry, (String) value);
+                }
+            }
+        }
+    }
+
+    protected abstract void performKeyAction(final Event recordEvent, final T entry, final String value);
+
+    protected abstract String getKey(final T entry);
 
     @Override
     public void prepareForShutdown() {

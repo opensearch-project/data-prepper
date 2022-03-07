@@ -80,6 +80,8 @@ class OpenSearchPluginAttributesMapperTest {
         assertThat(actualPluginModel.get(0).getPluginSettings(), not(hasKey(DATA_PREPPER_OPENSEARCH_INDEX_ATTRIBUTE)));
     }
 
+
+
     @ParameterizedTest
     @ArgumentsSource(JodaToJava8IndicesArgumentsProvider.class)
     void convert_logstashIndexPattern_joda_to_dataPrepperIndexPattern_java8(final String logstashIndex, final String expectedIndex) {

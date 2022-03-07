@@ -13,15 +13,20 @@ import com.amazon.dataprepper.model.processor.Processor;
 import java.util.Locale;
 
 @DataPrepperPlugin(name = "uppercase_string", pluginType = Processor.class, pluginConfigurationType = WithKeysProcessorConfig.class)
-public class UppercaseStringProcessor extends WithKeysProcessor {
+public class UppercaseStringProcessor extends AbstractStringProcessor<String> {
     @DataPrepperPluginConstructor
-    public UppercaseStringProcessor(final PluginMetrics pluginMetrics, final WithKeysProcessorConfig config) {
+    public UppercaseStringProcessor(final PluginMetrics pluginMetrics, final StringProcessorConfig<String> config) {
         super(pluginMetrics, config);
     }
 
     @Override
-    protected void performKeyAction(Event recordEvent, String key, String value)
+    protected String getKey(final String entry) {
+        return entry;
+    }
+
+    @Override
+    protected void performKeyAction(final Event recordEvent, final String entry, final String value)
     {
-        recordEvent.put(key, value.toUpperCase(Locale.ROOT));
+        recordEvent.put(entry, value.toUpperCase(Locale.ROOT));
     }
 }
