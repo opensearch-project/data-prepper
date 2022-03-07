@@ -1,0 +1,42 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package org.opensearch.dataprepper.logstash.mapping.mutate;
+
+import java.util.ArrayList;
+
+public class AddEntryConversion extends AbstractConversion<AddEntryConversion.AddEntryConfig> {
+    public static class AddEntryConfig {
+        public final String key;
+        public final Object value;
+
+        public AddEntryConfig(String key, Object value) {
+            this.key = key;
+            this.value = value;
+        }
+    }
+
+    public static String getLogstashName() {
+        return "add_field";
+    }
+
+    @Override
+    protected void addKvToEntries(String key, Object value) {
+        entries.add(new AddEntryConfig(key, value));
+    }
+
+    @Override
+    protected void addListToEntries(ArrayList<String> list) { }
+
+    @Override
+    protected String getDataPrepperName() {
+        return "add_entries";
+    }
+
+    @Override
+    protected String getMapKey() {
+        return "entries";
+    }
+}

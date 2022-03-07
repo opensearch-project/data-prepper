@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.logstash.mapping;
 
 import com.amazon.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.logstash.mapping.mutate.AbstractConversion;
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 
 import java.util.ArrayList;
@@ -36,6 +37,15 @@ class MutateMapper implements LogstashPluginAttributesMapper {
         }
     }
 
+    public MutateMapper() {
+        //define map here
+        List<AbstractConversion> converters = new LinkedList<>();
+
+        //reflection finds implementations of AbstractConversion
+        //calls default constructors on each
+        //adds to converters list
+    }
+
     public List<PluginModel> mapAttributes(List<LogstashAttribute> logstashAttributes, LogstashAttributesMappings logstashAttributesMappings) {
         List<PluginModel> models = new LinkedList<>();
         List<AddEntryConfig> adds = new LinkedList<>();
@@ -45,6 +55,8 @@ class MutateMapper implements LogstashPluginAttributesMapper {
         List<String> uppercases = new LinkedList<>();
 
         for(LogstashAttribute attr : logstashAttributes) {
+            //logic to find converter with matching name e.g. "add_field"
+
             final String name = attr.getAttributeName();
             if(Objects.equals(name, "add_field")) {
                 ((Map<String, Object>)attr.getAttributeValue().getValue()).entrySet().forEach(entry -> {
