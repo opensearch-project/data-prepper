@@ -12,7 +12,7 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.processor.Processor;
 import java.util.Locale;
 
-@DataPrepperPlugin(name = "uppercase_string", pluginType = Processor.class, pluginConfigurationType = WithKeysProcessorConfig.class)
+@DataPrepperPlugin(name = "uppercase_string", pluginType = Processor.class, pluginConfigurationType = StringProcessorConfig.class)
 public class UppercaseStringProcessor extends AbstractStringProcessor<String> {
     @DataPrepperPluginConstructor
     public UppercaseStringProcessor(final PluginMetrics pluginMetrics, final StringProcessorConfig<String> config) {

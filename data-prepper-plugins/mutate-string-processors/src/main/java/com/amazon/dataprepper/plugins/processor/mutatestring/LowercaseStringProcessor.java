@@ -12,10 +12,10 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.processor.Processor;
 import java.util.Locale;
 
-@DataPrepperPlugin(name = "lowercase_string", pluginType = Processor.class, pluginConfigurationType = WithKeysProcessorConfig.class)
-public class LowercaseStringProcessor extends WithKeysProcessor {
+@DataPrepperPlugin(name = "lowercase_string", pluginType = Processor.class, pluginConfigurationType = StringProcessorConfig.class)
+public class LowercaseStringProcessor extends AbstractStringProcessor<String> {
     @DataPrepperPluginConstructor
-    public LowercaseStringProcessor(final PluginMetrics pluginMetrics, final WithKeysProcessorConfig config) {
+    public LowercaseStringProcessor(final PluginMetrics pluginMetrics, final StringProcessorConfig<String> config) {
         super(pluginMetrics, config);
     }
 
@@ -23,5 +23,10 @@ public class LowercaseStringProcessor extends WithKeysProcessor {
     protected void performKeyAction(Event recordEvent, String key, String value)
     {
         recordEvent.put(key, value.toLowerCase(Locale.ROOT));
+    }
+
+    @Override
+    protected String getKey(String entry) {
+        return entry;
     }
 }
