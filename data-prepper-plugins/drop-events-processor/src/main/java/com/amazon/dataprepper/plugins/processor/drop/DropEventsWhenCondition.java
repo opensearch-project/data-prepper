@@ -10,6 +10,12 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * @since 1.3
+ *
+ * DropEventsWhenCondition tracks if valid when statement is configured and can evaluate a when statement using a given context.
+ *
+ */
 class DropEventsWhenCondition {
     private static final Logger LOG = LoggerFactory.getLogger(DropEventsWhenCondition.class);
     private static final HandleFailedEventsOption DEFAULT_HANDLE_FAILED_EVENTS = HandleFailedEventsOption.skip;
@@ -24,14 +30,28 @@ class DropEventsWhenCondition {
         expressionEvaluator = builder.expressionEvaluator;
     }
 
+    /**
+     * @since 1.3
+     *
+     * Check if evaluator should be used. On false all records can be dropped.
+     *
+     * @return if {@link DropEventsWhenCondition#isStatementFalseWith(Event)} should be used
+     */
     public boolean shouldEvaluateConditional() {
         return whenSetting != null;
     }
 
+    /**
+     * @since 1.3
+     *
+     * Checks if {@link DropEventsProcessor} when condition evaluates to false using event to resolve Json Pointers
+     *
+     * @param event Source for resolving Json Pointers
+     * @return if the event should proceed to next {@link com.amazon.dataprepper.model.processor.Processor}
+     */
     public boolean isStatementFalseWith(final Event event) {
         try {
             return expressionEvaluator.evaluate(whenSetting, event);
-            // TODO Catch ExpressionEvaluationException
         } catch (final Exception e) {
             switch (handleFailedEventsSetting) {
                 case skip:
@@ -52,6 +72,11 @@ class DropEventsWhenCondition {
         }
     }
 
+    /**
+     * @since 1.3
+     *
+     * Builder for creating {@link DropEventsWhenCondition}
+     */
     static class Builder {
         private String whenSetting;
         private HandleFailedEventsOption handleFailedEventsSetting = DEFAULT_HANDLE_FAILED_EVENTS;
