@@ -9,6 +9,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.hamcrest.Description;
 import org.hamcrest.DiagnosingMatcher;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -67,5 +68,17 @@ public class ContextMatcherTest {
     void testStaticConstructor() {
         final DiagnosingMatcher<ParseTree> matcher = hasContext(ParseTree.class);
         assertThat(matcher.matches(mock(ParseTree.class)), is(true));
+    }
+
+    @Test
+    void testGivenAntlrGeneratedClassNameShortClassString() {
+        final String shortClassName = ContextMatcher.shortClassString(mock(DataPrepperExpressionParser.ExpressionContext.class));
+        assertThat(shortClassName, is("ExpressionContext"));
+    }
+
+    @Test
+    void testGivenStringClassNameShortClassString() {
+        final String shortClassName = ContextMatcher.shortClassString("");
+        assertThat(shortClassName, is("class java.lang.String"));
     }
 }
