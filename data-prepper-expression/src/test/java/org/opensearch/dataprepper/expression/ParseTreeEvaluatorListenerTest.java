@@ -15,7 +15,6 @@ import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionLexer;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
-import org.opensearch.dataprepper.expression.util.TestObject;
 
 import java.util.Arrays;
 import java.util.HashMap;

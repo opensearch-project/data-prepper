@@ -31,13 +31,18 @@ import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionP
 import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser.NOT_EQUAL;
 import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser.OR;
 
-/*
-Example:
-    ParseTreeWalker walker = new ParseTreeWalker();
-    ParseTreeEvaluatorListener listener = new ParseTreeEvaluatorListener(...);
-    listener.initialize(...);
-    walker.walk(listener, ...);
-    final Object result = listener.getResult();
+/**
+ * @since 1.3
+ * This listener implements {@link DataPrepperExpressionListener} to provide callbacks to handle evaluation of
+ * {@link org.antlr.v4.runtime.tree.ParseTree} representation of an expression while {@link org.antlr.v4.runtime.tree.ParseTreeWalker}
+ * traverses through the {@link org.antlr.v4.runtime.tree.ParseTree}.
+ *
+ * Use case:
+ * ParseTreeWalker walker = new ParseTreeWalker();
+ * ParseTreeEvaluatorListener listener = new ParseTreeEvaluatorListener(...);
+ * listener.initialize(...);
+ * walker.walk(listener, ...);
+ * final Object result = listener.getResult();
  */
 @Named
 public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener {
