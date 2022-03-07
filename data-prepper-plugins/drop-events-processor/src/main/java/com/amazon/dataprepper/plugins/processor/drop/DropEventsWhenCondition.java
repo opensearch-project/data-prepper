@@ -33,24 +33,21 @@ class DropEventsWhenCondition {
             return expressionEvaluator.evaluate(whenSetting, event);
             // TODO Catch ExpressionEvaluationException
         } catch (final Exception e) {
-            if (handleFailedEventsSetting == HandleFailedEventsOption.drop) {
-                LOG.warn("An exception occurred resulting in a dropped event while processing when expression for event {}", event, e);
-                return true;
-            }
-            else if (handleFailedEventsSetting == HandleFailedEventsOption.drop_silently) {
-                return true;
-            }
-            else if (handleFailedEventsSetting == HandleFailedEventsOption.skip) {
-                LOG.warn("An exception occurred while processing when expression for event {}", event, e);
-                return false;
-            }
-            else if (handleFailedEventsSetting == HandleFailedEventsOption.skip_silently) {
-                return false;
-            }
-            else {
-                throw new IllegalStateException(
-                        "Pipeline configuration drop_events.handle_failed_events contains invalid value " + handleFailedEventsSetting
-                );
+            switch (handleFailedEventsSetting) {
+                case skip:
+                    LOG.warn("An exception occurred while processing when expression for event {}", event, e);
+                    return false;
+                case skip_silently:
+                    return false;
+                case drop:
+                    LOG.warn("An exception occurred resulting in a dropped event while processing when expression for event {}", event, e);
+                    return true;
+                case drop_silently:
+                    return true;
+                default:
+                    final String exceptionMessage =
+                            "Pipeline configuration drop_events.handle_failed_events contains invalid value " + handleFailedEventsSetting;
+                    throw new IllegalStateException(exceptionMessage, e);
             }
         }
     }

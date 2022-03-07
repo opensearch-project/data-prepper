@@ -51,8 +51,8 @@ class DropEventsWhenConditionTest {
 
     @Test
     void testIsStatementFalseReturnsEvaluatorResult() {
-        String whenStatement = UUID.randomUUID().toString();
-        Event event = mock(Event.class);
+        final String whenStatement = UUID.randomUUID().toString();
+        final Event event = mock(Event.class);
         doReturn(true)
                 .when(evaluator)
                 .evaluate(eq(whenStatement), eq(event));
@@ -79,7 +79,7 @@ class DropEventsWhenConditionTest {
                 .withHandleFailedEventsSetting(option.toString())
                 .withExpressionEvaluator(evaluator)
                 .build();
-        boolean result = whenCondition.isStatementFalseWith(null);
+        final boolean result = whenCondition.isStatementFalseWith(null);
 
         if (Arrays.asList(HandleFailedEventsOption.drop, HandleFailedEventsOption.drop_silently).contains(option)) {
             assertThat(result, is(true));
@@ -135,6 +135,16 @@ class DropEventsWhenConditionTest {
             assertThrows(
                     IllegalArgumentException.class,
                     () -> new DropEventsWhenCondition.Builder().withHandleFailedEventsSetting(new Object())
+            );
+        }
+
+        @Test
+        void testGivenWhenSettingWithoutExpressionEvaluatorThenBuildThrows() {
+            assertThrows(
+                    IllegalStateException.class,
+                    () -> new DropEventsWhenCondition.Builder()
+                            .withWhenSetting(UUID.randomUUID().toString())
+                            .build()
             );
         }
     }

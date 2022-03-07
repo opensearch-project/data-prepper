@@ -111,6 +111,27 @@ public class DropEventsProcessorTests {
     }
 
     @Test
+    void testGivenPrepareForShutdownWhenShutdownIsReadyThenNoExceptionThrown() {
+        pluginSetting = getDefaultPluginSetting();
+        pluginSetting.setPipelineName("dropProcessorPipeline");
+        dropProcessor = new DropEventsProcessor(pluginSetting, null);
+
+        dropProcessor.prepareForShutdown();
+
+        assertThat(dropProcessor.isReadyForShutdown(), is(true));
+    }
+
+    @Test
+    void testGivenIsReadyForShutdownWhenShutdownThenNoExceptionThrown() {
+        pluginSetting = getDefaultPluginSetting();
+        pluginSetting.setPipelineName("dropProcessorPipeline");
+        dropProcessor = new DropEventsProcessor(pluginSetting, null);
+
+        assertThat(dropProcessor.isReadyForShutdown(), is(true));
+        dropProcessor.shutdown();
+    }
+
+    @Test
     void testShutdownIsReady() {
         pluginSetting = getDefaultPluginSetting();
         pluginSetting.setPipelineName("dropProcessorPipeline");
@@ -121,7 +142,7 @@ public class DropEventsProcessorTests {
 
     private PluginSetting getDefaultPluginSetting() {
         final Map<String, Object> settings = new HashMap<>();
-        String PLUGIN_NAME = "drop_events";
+        final String PLUGIN_NAME = "drop_events";
         return new PluginSetting(PLUGIN_NAME, settings);
     }
 
