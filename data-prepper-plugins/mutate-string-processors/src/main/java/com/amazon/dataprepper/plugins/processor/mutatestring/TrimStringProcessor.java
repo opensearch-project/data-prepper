@@ -23,13 +23,13 @@ public class TrimStringProcessor extends AbstractStringProcessor<String> {
     }
 
     @Override
-    protected void performKeyAction(Event recordEvent, String key, String value)
+    protected void performKeyAction(final Event recordEvent, final String key, final String value)
     {
         recordEvent.put(key, value.trim());
     }
 
     @Override
-    protected String getKey(String entry) {
+    protected String getKey(final String entry) {
         return entry;
     }
 }
