@@ -53,9 +53,9 @@ test('Creates Role with the correct assume role if no organization is supplied',
         {
           Action: 'sts:AssumeRoleWithWebIdentity',
           Condition: {
-            'ForAllValues:StringEquals': {
+            'ForAllValues:StringLike': {
               'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-              'token.actions.githubusercontent.com:sub': 'repo:opensearch-project/data-prepper:ref:refs/heads/main'
+              'token.actions.githubusercontent.com:sub': 'repo:opensearch-project/data-prepper:ref:refs/heads/*'
             }
           },
           Effect: 'Allow',
@@ -89,9 +89,9 @@ test('Creates Role with the correct assume role when the organization is provide
         {
           Action: 'sts:AssumeRoleWithWebIdentity',
           Condition: {
-            'ForAllValues:StringEquals': {
+            'ForAllValues:StringLike': {
               'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
-              'token.actions.githubusercontent.com:sub': 'repo:test-organization/data-prepper:ref:refs/heads/main'
+              'token.actions.githubusercontent.com:sub': 'repo:test-organization/data-prepper:ref:refs/heads/*'
             }
           },
           Effect: 'Allow',
