@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 @Named
-public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
+class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
     private static final Logger LOG = LoggerFactory.getLogger(ParseTreeEvaluator.class);
 
     private final ParseTreeEvaluatorListener listener;

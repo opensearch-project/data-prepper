@@ -45,7 +45,7 @@ import static org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionP
  * final Object result = listener.getResult();
  */
 @Named
-public class ParseTreeEvaluatorListener implements DataPrepperExpressionListener {
+class ParseTreeEvaluatorListener implements DataPrepperExpressionListener {
     private static final Set<Integer> CONDITIONAL_OPERATOR_TYPES = Set.of(AND, OR);
     private static final Set<Integer> EQUALITY_OPERATOR_TYPES = Set.of(EQUAL, NOT_EQUAL);
     private static final Set<Integer> RELATIONAL_OPERATOR_TYPES = Set.of(LT, LTE, GT, GTE);

@@ -11,9 +11,9 @@ import org.springframework.context.annotation.Bean;
 import javax.inject.Named;
 
 @Named
-public class ParseTreeWalkerFactory {
+class ParseTreeWalkerFactory {
 
-    @Bean()
+    @Bean
     public ParseTreeWalker parseTreeWalker() {
         return new ParseTreeWalker();
     }
