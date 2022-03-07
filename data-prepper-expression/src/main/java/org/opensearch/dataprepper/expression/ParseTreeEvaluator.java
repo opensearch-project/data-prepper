@@ -49,32 +49,4 @@ public class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
             throw new ExpressionEvaluationException(e.getMessage(), e);
         }
     }
-
-    public static Boolean testEvaluation(final String statement, final Event event) {
-        final DataPrepperExpressionLexer lexer = new DataPrepperExpressionLexer(CharStreams.fromString(""));
-        final CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-        final DataPrepperExpressionParser expressionParser = new DataPrepperExpressionParser(tokenStream);
-        final ParserErrorListener parserErrorListener = new ParserErrorListener(expressionParser);
-        final ParseTreeParser parseTreeParser = new ParseTreeParser(expressionParser, parserErrorListener);
-        final ParseTreeWalker walker = new ParseTreeWalker();
-        final ParseTree parseTree = parseTreeParser.parse(statement);
-        final OperatorFactory operatorFactory = new OperatorFactory();
-        final List<Operator<?>> operators = Arrays.asList(
-                new AndOperator(), new OrOperator(),
-                operatorFactory.inSetOperator(), operatorFactory.notInSetOperator(),
-                operatorFactory.equalOperator(), operatorFactory.notEqualOperator(),
-                operatorFactory.greaterThanOperator(), operatorFactory.greaterThanOrEqualOperator(),
-                operatorFactory.lessThanOperator(), operatorFactory.lessThanOrEqualOperator(),
-                operatorFactory.regexEqualOperator(), operatorFactory.regexNotEqualOperator(),
-                new NotOperator()
-        );
-        ParseTreeEvaluatorListener listener = new ParseTreeEvaluatorListener(operators, new CoercionService());
-        ParseTreeEvaluator evaluator = new ParseTreeEvaluator(listener, walker, new CoercionService());
-        return evaluator.evaluate(parseTree, event);
-    }
-
-    public static void main(String[] args) {
-        JacksonEvent event = JacksonEvent.builder().withEventType("event").withData(Map.of("a", 1)).build();
-        System.out.println(testEvaluation("1", event));
-    }
 }
