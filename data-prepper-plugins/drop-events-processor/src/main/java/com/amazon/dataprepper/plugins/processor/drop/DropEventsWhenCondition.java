@@ -90,8 +90,8 @@ class DropEventsWhenCondition {
         }
 
         public DropEventsWhenCondition build() {
-            if (expressionEvaluator == null) {
-                throw new IllegalStateException("Drop events processor requires valid expression evaluator");
+            if (whenSetting != null && expressionEvaluator == null) {
+                throw new IllegalStateException("Use of drop events processor when setting requires a ExpressionEvaluator bean at runtime");
             }
             return new DropEventsWhenCondition(this);
         }
