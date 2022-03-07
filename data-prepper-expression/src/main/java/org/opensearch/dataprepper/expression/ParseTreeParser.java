@@ -27,6 +27,8 @@ import java.util.Map;
 @Named
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 class ParseTreeParser implements Parser<ParseTree> {
+    private static final String MISSING_PARSER_ERROR_LISTENER_MESSAGE =
+        "Expected DataPrepperExpressionParser to have error listener of type ParserErrorListener but none were found.";
     private final Map<String, ParseTree> cache = new HashMap<>();
     private final ParserErrorListener errorListener;
     private final Lexer lexer;
@@ -39,7 +41,7 @@ class ParseTreeParser implements Parser<ParseTree> {
                 .stream()
                 .filter(errorListener -> errorListener instanceof ParserErrorListener)
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException(""));
+                .orElseThrow(() -> new IllegalStateException(MISSING_PARSER_ERROR_LISTENER_MESSAGE));
 
         final TokenSource tokenSource = parser.getTokenStream().getTokenSource();
         if (tokenSource instanceof Lexer) {
