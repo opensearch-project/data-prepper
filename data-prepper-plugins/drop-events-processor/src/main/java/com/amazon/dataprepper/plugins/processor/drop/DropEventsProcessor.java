@@ -5,31 +5,50 @@
 
 package com.amazon.dataprepper.plugins.processor.drop;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.processor.AbstractProcessor;
 import com.amazon.dataprepper.model.processor.Processor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+
 import java.util.Collection;
 import java.util.Collections;
+import java.util.stream.Collectors;
 
-@DataPrepperPlugin(name = "drop_events", pluginType = Processor.class)
+@DataPrepperPlugin(name = "drop_events", pluginType = Processor.class, pluginConfigurationType = DropEventProcessorConfig.class)
 public class DropEventsProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
+    private static final String WHEN_PLUGIN_SETTING_KEY = "when";
+    private static final String HANDLE_FAILED_EVENTS_KEY = "handle_failed_events";
 
-    private static final Logger LOG = LoggerFactory.getLogger(DropEventsProcessor.class);
+    private final DropEventsWhenCondition whenCondition;
 
     @DataPrepperPluginConstructor
-    public DropEventsProcessor(final PluginSetting pluginSetting) {
-        super(pluginSetting);
+    public DropEventsProcessor(
+            final PluginMetrics pluginMetrics,
+            final DropEventProcessorConfig dropEventProcessorConfig,
+            final ExpressionEvaluator<Boolean> expressionEvaluator
+    ) {
+        super(pluginMetrics);
+
+        whenCondition = new DropEventsWhenCondition.Builder()
+                .withDropEventsProcessorConfig(dropEventProcessorConfig)
+                .withExpressionEvaluator(expressionEvaluator)
+                .build();
     }
 
     @Override
-    public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
-        return Collections.emptyList();
+    public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
+        if (whenCondition.shouldEvaluateConditional()) {
+            return records.stream()
+                    .filter(record -> whenCondition.isStatementFalseWith(record.getData()))
+                    .collect(Collectors.toList());
+        }
+        else {
+            return Collections.emptyList();
+        }
     }
 
     @Override
