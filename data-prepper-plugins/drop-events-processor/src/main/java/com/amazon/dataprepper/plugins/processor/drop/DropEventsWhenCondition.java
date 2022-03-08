@@ -21,7 +21,7 @@ import java.util.Objects;
 class DropEventsWhenCondition {
     private static final Logger LOG = LoggerFactory.getLogger(DropEventsWhenCondition.class);
     private static final HandleFailedEventsOption DEFAULT_HANDLE_FAILED_EVENTS = HandleFailedEventsOption.SKIP;
-    private static final String SHOULD_SKIP_EVALUATING_CONDITIONAL = "true";
+    private static final String SHOULD_SKIP_EVALUATING = "true";
 
     private final String dropWhen;
     private final HandleFailedEventsOption handleFailedEventsSetting;
@@ -41,7 +41,7 @@ class DropEventsWhenCondition {
      * @return if {@link DropEventsWhenCondition#isStatementFalseWith(Event)} should be used
      */
     public boolean shouldEvaluateConditional() {
-        return !Objects.equals(dropWhen, SHOULD_SKIP_EVALUATING_CONDITIONAL);
+        return !Objects.equals(dropWhen, SHOULD_SKIP_EVALUATING);
     }
 
     /**
@@ -81,12 +81,12 @@ class DropEventsWhenCondition {
      */
     static class Builder {
         private String dropWhen;
-        private HandleFailedEventsOption handleFailedEventsSetting = DEFAULT_HANDLE_FAILED_EVENTS;
+        private HandleFailedEventsOption handleFailedEventsSetting;
 
         private ExpressionEvaluator<Boolean> expressionEvaluator;
 
         public Builder withDropEventsProcessorConfig(final DropEventProcessorConfig dropEventProcessorConfig) {
-            this.dropWhen = dropEventProcessorConfig.getDropWhen();
+            this.dropWhen = Objects.requireNonNull(dropEventProcessorConfig.getDropWhen());
             this.handleFailedEventsSetting = Objects.requireNonNull(dropEventProcessorConfig.getHandleFailedEventsOption());
             return this;
         }
@@ -104,7 +104,7 @@ class DropEventsWhenCondition {
                         "for more information"
                 );
             }
-            if (!Objects.equals(dropWhen, SHOULD_SKIP_EVALUATING_CONDITIONAL) && expressionEvaluator == null) {
+            if (!Objects.equals(dropWhen, SHOULD_SKIP_EVALUATING) && expressionEvaluator == null) {
                 throw new IllegalStateException("Use of drop events processor when setting requires a ExpressionEvaluator bean at runtime");
             }
             return new DropEventsWhenCondition(this);

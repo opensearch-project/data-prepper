@@ -1,19 +1,26 @@
 package com.amazon.dataprepper.plugins.processor.drop;
 
 import com.amazon.dataprepper.model.event.Event;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -24,15 +31,12 @@ class DropEventsWhenConditionTest {
     @Mock
     private DropEventProcessorConfig dropEventProcessorConfig;
 
-    @BeforeEach
-    void beforeEach() {
+    @Test
+    void testGivenNullWhenSettingThenShouldEvaluateConditionalReturnFalse() {
         doReturn(HandleFailedEventsOption.SKIP)
                 .when(dropEventProcessorConfig)
                 .getHandleFailedEventsOption();
-    }
 
-    @Test
-    void testGivenNullWhenSettingThenShouldEvaluateConditionalReturnFalse() {
         doReturn("true")
                 .when(dropEventProcessorConfig)
                 .getDropWhen();
@@ -47,6 +51,10 @@ class DropEventsWhenConditionTest {
 
     @Test
     void testGivenNotHardcodedTrueWhenSettingThenShouldEvaluateConditionalReturnFalse() {
+        doReturn(HandleFailedEventsOption.SKIP)
+                .when(dropEventProcessorConfig)
+                .getHandleFailedEventsOption();
+
         doReturn("false")
                 .when(dropEventProcessorConfig)
                 .getDropWhen();
@@ -61,6 +69,10 @@ class DropEventsWhenConditionTest {
 
     @Test
     void testIsStatementFalseReturnsEvaluatorResult() {
+        doReturn(HandleFailedEventsOption.SKIP)
+                .when(dropEventProcessorConfig)
+                .getHandleFailedEventsOption();
+
         final String whenStatement = UUID.randomUUID().toString();
         final Event event = mock(Event.class);
         doReturn(whenStatement)
@@ -81,86 +93,48 @@ class DropEventsWhenConditionTest {
         verify(evaluator).evaluate(eq(whenStatement), eq(event));
     }
 
-    // TODO: I recommend to use @Nested for tests which require some additional common setup. In this case, I'd prefer to have a different
-    //  test suite entirely - DropEventsWhenCondition_BuilderTest
-//    @ParameterizedTest
-//    @EnumSource(HandleFailedEventsOption.class)
-//    void testAllHandleFailedEventsSettingOptions(final HandleFailedEventsOption option) {
-//        doThrow(RuntimeException.class)
-//                .when(evaluator)
-//                .evaluate(any(), any());
-//
-//        final DropEventsWhenCondition whenCondition = new DropEventsWhenCondition.Builder()
-//                .withHandleFailedEventsSetting(option.toString())
-//                .withExpressionEvaluator(evaluator)
-//                .build();
-//        final boolean result = whenCondition.isStatementFalseWith(null);
-//
-//        if (Arrays.asList(HandleFailedEventsOption.DROP, HandleFailedEventsOption.DROP_SILENTLY).contains(option)) {
-//            assertThat(result, is(true));
-//        }
-//        else if (Arrays.asList(HandleFailedEventsOption.SKIP, HandleFailedEventsOption.SKIP_SILENTLY).contains(option)) {
-//            assertThat(result, is(false));
-//        }
-//        else {
-//            throw new RuntimeException("Missing test coverage for enum case " + option);
-//        }
-//    }
 
-//    @Nested
-//    class BuilderTest {
-//        @Test
-//        void testGivenNullParametersThenDropEventsWhenConditionCreated() {
-//            final DropEventsWhenCondition whenCondition = new DropEventsWhenCondition.Builder()
-//                    .withExpressionEvaluator(mock(ExpressionEvaluator.class))
-//                    .build();
-//
-//            assertThat(whenCondition, isA(DropEventsWhenCondition.class));
-//        }
-//
-//        @Test
-//        void testGivenValidParametersThenDropEventsWhenConditionCreated() {
-//            final DropEventsWhenCondition whenCondition = new DropEventsWhenCondition.Builder()
-//                    .withDropEventsProcessorConfig(dropEventProcessorConfig)
-//                    .withHandleFailedEventsSetting("skip")
-//                    .withExpressionEvaluator(mock(ExpressionEvaluator.class))
-//                    .build();
-//
-//            assertThat(whenCondition, isA(DropEventsWhenCondition.class));
-//        }
-//
-//        @Test
-//        void testGivenInvalidHandleEventSettingThenDropEventsWhenConditionThrows() {
-//            assertThrows(
-//                    IllegalArgumentException.class,
-//                    () -> new DropEventsWhenCondition.Builder().withHandleFailedEventsSetting("ice cream")
-//            );
-//        }
-//
-//        @Test
-//        void testGivenUnexpectedWhenSettingParameterTypeThenDropEventsWhenConditionThrows() {
-//            assertThrows(
-//                    IllegalArgumentException.class,
-//                    () ->  new DropEventsWhenCondition.Builder().withWhenSetting(new Object())
-//            );
-//        }
-//
-//        @Test
-//        void testGivenUnexpectedHandleEventSettingParameterTypeThenDropEventsWhenConditionThrows() {
-//            assertThrows(
-//                    IllegalArgumentException.class,
-//                    () -> new DropEventsWhenCondition.Builder().withHandleFailedEventsSetting(new Object())
-//            );
-//        }
-//
-//        @Test
-//        void testGivenWhenSettingWithoutExpressionEvaluatorThenBuildThrows() {
-//            assertThrows(
-//                    IllegalStateException.class,
-//                    () -> new DropEventsWhenCondition.Builder()
-//                            .withWhenSetting(UUID.randomUUID().toString())
-//                            .build()
-//            );
-//        }
-//    }
+    @ParameterizedTest
+    @EnumSource(HandleFailedEventsOption.class)
+    void testAllHandleEventOptions(final HandleFailedEventsOption option) {
+        final String whenStatement = UUID.randomUUID().toString();
+        final DropEventProcessorConfig dropEventProcessorConfig = mock(DropEventProcessorConfig.class);
+
+        doReturn(whenStatement).when(dropEventProcessorConfig).getDropWhen();
+        doReturn(option).when(dropEventProcessorConfig).getHandleFailedEventsOption();
+
+        final DropEventsWhenCondition whenCondition = new DropEventsWhenCondition.Builder()
+                .withDropEventsProcessorConfig(dropEventProcessorConfig)
+                .withExpressionEvaluator(evaluator)
+                .build();
+        assertThat(whenCondition, isA(DropEventsWhenCondition.class));
+    }
+
+    private static Stream<Arguments> provideHandleFailedEventsOptionAndExpectedResult() {
+        return Stream.of(
+                Arguments.of(HandleFailedEventsOption.DROP, true),
+                Arguments.of(HandleFailedEventsOption.DROP_SILENTLY, true),
+                Arguments.of(HandleFailedEventsOption.SKIP, false),
+                Arguments.of(HandleFailedEventsOption.SKIP_SILENTLY, false)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideHandleFailedEventsOptionAndExpectedResult")
+    void test(final HandleFailedEventsOption option, final Boolean isStatementFalseWith) {
+        final String whenStatement = UUID.randomUUID().toString();
+        final DropEventProcessorConfig dropEventProcessorConfig = mock(DropEventProcessorConfig.class);
+
+        doThrow(RuntimeException.class).when(evaluator).evaluate(any(), any());
+        doReturn(whenStatement).when(dropEventProcessorConfig).getDropWhen();
+        doReturn(option).when(dropEventProcessorConfig).getHandleFailedEventsOption();
+
+        final DropEventsWhenCondition whenCondition = new DropEventsWhenCondition.Builder()
+                .withDropEventsProcessorConfig(dropEventProcessorConfig)
+                .withExpressionEvaluator(evaluator)
+                .build();
+
+        final boolean result = whenCondition.isStatementFalseWith(null);
+        assertThat(result, is(isStatementFalseWith));
+    }
 }
