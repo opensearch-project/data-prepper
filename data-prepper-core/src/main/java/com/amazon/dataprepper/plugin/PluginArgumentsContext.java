@@ -10,6 +10,7 @@ import com.amazon.dataprepper.model.configuration.PipelineDescription;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 
 import javax.annotation.Nullable;
@@ -24,6 +25,7 @@ import java.util.function.Supplier;
  * when constructing a new plugin.
  */
 class PluginArgumentsContext {
+    private static final String UNABLE_TO_CREATE_PLUGIN_PARAMETER = "Unable to create an argument for required plugin parameter type: ";
     private final Map<Class<?>, Supplier<Object>> typedArgumentsSuppliers;
 
     @Nullable
@@ -64,11 +66,22 @@ class PluginArgumentsContext {
         if(typedArgumentsSuppliers.containsKey(parameterType)) {
             return typedArgumentsSuppliers.get(parameterType);
         }
-        else if (beanFactory != null) {
-            return () -> beanFactory.getBean(parameterType);
+        else {
+            return createBeanSupplier(parameterType);
+        }
+    }
+
+    private Supplier<Object> createBeanSupplier(final Class<?> parameterType) {
+        if (beanFactory == null) {
+            throw new InvalidPluginDefinitionException(UNABLE_TO_CREATE_PLUGIN_PARAMETER + parameterType);
         }
         else {
-            throw new InvalidPluginDefinitionException("Unable to create an argument for required plugin parameter type: " + parameterType);
+            try {
+                final Object bean = beanFactory.getBean(parameterType);
+                return () -> bean;
+            } catch (final BeansException e) {
+                throw new InvalidPluginDefinitionException(UNABLE_TO_CREATE_PLUGIN_PARAMETER + parameterType, e);
+            }
         }
     }
 
