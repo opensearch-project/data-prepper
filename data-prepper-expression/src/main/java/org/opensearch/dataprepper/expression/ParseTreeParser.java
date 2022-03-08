@@ -13,6 +13,8 @@ import org.antlr.v4.runtime.TokenSource;
 import org.antlr.v4.runtime.TokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Scope;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -23,17 +25,23 @@ import java.util.Map;
  * Handles interaction with ANTLR generated parser and lexer classes and caches results.
  */
 @Named
+@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 class ParseTreeParser implements Parser<ParseTree> {
+    private static final String MISSING_LISTENER_MESSAGE =
+            "Expected DataPrepperExpressionParser to have error listener of type ParserErrorListener but none were found.";
     private final Map<String, ParseTree> cache = new HashMap<>();
     private final ParserErrorListener errorListener;
     private final Lexer lexer;
     private final DataPrepperExpressionParser parser;
 
     @Inject
-    public ParseTreeParser(final DataPrepperExpressionParser parser, final ParserErrorListener errorListener) {
+    public ParseTreeParser(final DataPrepperExpressionParser parser) {
         this.parser = parser;
-        this.errorListener = errorListener;
-        this.parser.addErrorListener(errorListener);
+        this.errorListener = (ParserErrorListener) this.parser.getErrorListeners()
+                .stream()
+                .filter(errorListener -> errorListener instanceof ParserErrorListener)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(MISSING_LISTENER_MESSAGE));
 
         final TokenSource tokenSource = parser.getTokenStream().getTokenSource();
         if (tokenSource instanceof Lexer) {
