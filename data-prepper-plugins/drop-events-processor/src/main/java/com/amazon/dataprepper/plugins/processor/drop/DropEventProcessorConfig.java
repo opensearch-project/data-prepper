@@ -9,15 +9,15 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 
 public class DropEventProcessorConfig {
-    @JsonProperty("when")
+    @JsonProperty("drop_when")
     @NotEmpty
-    private String when;
+    private String dropWhen;
 
     @JsonProperty("handle_failed_events")
     private HandleFailedEventsOption handleFailedEventsOption = HandleFailedEventsOption.SKIP;
 
-    public String getWhen() {
-        return when;
+    public String getDropWhen() {
+        return dropWhen;
     }
 
     public HandleFailedEventsOption getHandleFailedEventsOption() {

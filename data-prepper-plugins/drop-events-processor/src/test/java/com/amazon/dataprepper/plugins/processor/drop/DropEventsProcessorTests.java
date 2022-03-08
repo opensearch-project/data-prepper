@@ -57,7 +57,7 @@ public class DropEventsProcessorTests {
     void testSingleMessageToDropProcessor() {
         doReturn("true")
                 .when(dropEventProcessorConfig)
-                .getWhen();
+                .getDropWhen();
         dropProcessor = new DropEventsProcessor(pluginMetrics, dropEventProcessorConfig, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap<>();
@@ -74,7 +74,7 @@ public class DropEventsProcessorTests {
     void testMultipleMessagesToDropProcessor() {
         doReturn("true")
                 .when(dropEventProcessorConfig)
-                .getWhen();
+                .getDropWhen();
         dropProcessor = new DropEventsProcessor(pluginMetrics, dropEventProcessorConfig, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap<>();
@@ -106,7 +106,7 @@ public class DropEventsProcessorTests {
 
         doReturn(whenSetting)
                 .when(dropEventProcessorConfig)
-                .getWhen();
+                .getDropWhen();
         doReturn(
                 true,
                 true,
@@ -129,7 +129,7 @@ public class DropEventsProcessorTests {
     void testGivenPrepareForShutdownWhenShutdownIsReadyThenNoExceptionThrown() {
         doReturn("true")
                 .when(dropEventProcessorConfig)
-                .getWhen();
+                .getDropWhen();
         dropProcessor = new DropEventsProcessor(pluginMetrics, dropEventProcessorConfig, expressionEvaluator);
 
         dropProcessor.prepareForShutdown();
@@ -141,7 +141,7 @@ public class DropEventsProcessorTests {
     void testGivenIsReadyForShutdownWhenShutdownThenNoExceptionThrown() {
         doReturn("true")
                 .when(dropEventProcessorConfig)
-                .getWhen();
+                .getDropWhen();
         dropProcessor = new DropEventsProcessor(pluginMetrics, dropEventProcessorConfig, expressionEvaluator);
 
         assertThat(dropProcessor.isReadyForShutdown(), is(true));
@@ -152,7 +152,7 @@ public class DropEventsProcessorTests {
     void testShutdownIsReady() {
         doReturn("true")
                 .when(dropEventProcessorConfig)
-                .getWhen();
+                .getDropWhen();
         dropProcessor = new DropEventsProcessor(pluginMetrics, dropEventProcessorConfig, expressionEvaluator);
 
         assertThat(dropProcessor.isReadyForShutdown(), is(true));
