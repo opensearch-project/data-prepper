@@ -1,0 +1,49 @@
+/*
+ *  SPDX-License-Identifier: Apache-2.0
+ *
+ *  The OpenSearch Contributors require contributions made to
+ *  this file be licensed under the Apache-2.0 license or a
+ *  compatible open source license.
+ *
+ *  Modifications Copyright OpenSearch Contributors. See
+ *  GitHub history for details.
+ */
+
+plugins {
+    id 'java'
+}
+
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:common')
+    implementation project(':data-prepper-plugins:blocking-buffer')
+    implementation 'commons-codec:commons-codec:1.15'
+    testImplementation project(':data-prepper-api').sourceSets.test.output
+    implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetryProto}"
+    implementation "commons-io:commons-io:2.11.0"
+    implementation 'com.amazonaws:aws-java-sdk-s3'
+    implementation 'com.amazonaws:aws-java-sdk-acm'
+    implementation 'com.google.protobuf:protobuf-java-util:3.19.1'
+    implementation "com.linecorp.armeria:armeria:1.9.2"
+    implementation "com.linecorp.armeria:armeria-grpc:1.9.2"
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation "org.apache.commons:commons-lang3:3.12.0"
+    implementation "org.bouncycastle:bcprov-jdk15on:1.69"
+    implementation "org.bouncycastle:bcpkix-jdk15on:1.69"
+    testImplementation 'org.assertj:assertj-core:3.21.0'
+    testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
+    testImplementation "org.hamcrest:hamcrest:2.2"
+    testImplementation("commons-io:commons-io:2.10.0")
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule { //in addition to core projects rule
+            limit {
+                minimum = 0.90
+            }
+        }
+    }
+}
