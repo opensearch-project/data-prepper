@@ -15,10 +15,10 @@ import com.amazon.dataprepper.model.processor.Processor;
  * This processor takes in a key and changes its value to a string with the leading and trailing spaces trimmed.
  * If the value is not a string, no action is performed.
  */
-@DataPrepperPlugin(name = "trim_string", pluginType = Processor.class, pluginConfigurationType = StringProcessorConfig.class)
+@DataPrepperPlugin(name = "trim_string", pluginType = Processor.class, pluginConfigurationType = WithKeysConfig.class)
 public class TrimStringProcessor extends AbstractStringProcessor<String> {
     @DataPrepperPluginConstructor
-    public TrimStringProcessor(final PluginMetrics pluginMetrics, final StringProcessorConfig<String> config) {
+    public TrimStringProcessor(final PluginMetrics pluginMetrics, final WithKeysConfig config) {
         super(pluginMetrics, config);
     }
 
