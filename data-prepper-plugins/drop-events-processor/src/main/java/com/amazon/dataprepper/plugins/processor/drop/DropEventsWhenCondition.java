@@ -23,12 +23,12 @@ class DropEventsWhenCondition {
     private static final HandleFailedEventsOption DEFAULT_HANDLE_FAILED_EVENTS = HandleFailedEventsOption.SKIP;
     private static final String SHOULD_SKIP_EVALUATING_CONDITIONAL = "true";
 
-    private final String whenSetting;
+    private final String dropWhen;
     private final HandleFailedEventsOption handleFailedEventsSetting;
     private final ExpressionEvaluator<Boolean> expressionEvaluator;
 
     DropEventsWhenCondition(final Builder builder) {
-        whenSetting = builder.whenSetting;
+        dropWhen = builder.dropWhen;
         handleFailedEventsSetting = builder.handleFailedEventsSetting;
         expressionEvaluator = builder.expressionEvaluator;
     }
@@ -41,7 +41,7 @@ class DropEventsWhenCondition {
      * @return if {@link DropEventsWhenCondition#isStatementFalseWith(Event)} should be used
      */
     public boolean shouldEvaluateConditional() {
-        return !Objects.equals(whenSetting, SHOULD_SKIP_EVALUATING_CONDITIONAL);
+        return !Objects.equals(dropWhen, SHOULD_SKIP_EVALUATING_CONDITIONAL);
     }
 
     /**
@@ -54,7 +54,7 @@ class DropEventsWhenCondition {
      */
     public boolean isStatementFalseWith(final Event event) {
         try {
-            return expressionEvaluator.evaluate(whenSetting, event);
+            return expressionEvaluator.evaluate(dropWhen, event);
         } catch (final Exception e) {
             switch (handleFailedEventsSetting) {
                 case SKIP:
@@ -80,13 +80,13 @@ class DropEventsWhenCondition {
      * Builder for creating {@link DropEventsWhenCondition}
      */
     static class Builder {
-        private String whenSetting;
+        private String dropWhen;
         private HandleFailedEventsOption handleFailedEventsSetting = DEFAULT_HANDLE_FAILED_EVENTS;
 
         private ExpressionEvaluator<Boolean> expressionEvaluator;
 
         public Builder withDropEventsProcessorConfig(final DropEventProcessorConfig dropEventProcessorConfig) {
-            this.whenSetting = dropEventProcessorConfig.getWhen();
+            this.dropWhen = dropEventProcessorConfig.getDropWhen();
             this.handleFailedEventsSetting = Objects.requireNonNull(dropEventProcessorConfig.getHandleFailedEventsOption());
             return this;
         }
@@ -97,14 +97,14 @@ class DropEventsWhenCondition {
         }
 
         public DropEventsWhenCondition build() {
-            if (whenSetting == null) {
+            if (dropWhen == null) {
                 throw new IllegalArgumentException(
                         "Starting in Data Prepper v1.3.0 drop_events processor requires \"when\" option to be specified. See " +
                         "https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/drop-events-processor/README.md " +
                         "for more information"
                 );
             }
-            if (!Objects.equals(whenSetting, SHOULD_SKIP_EVALUATING_CONDITIONAL) && expressionEvaluator == null) {
+            if (!Objects.equals(dropWhen, SHOULD_SKIP_EVALUATING_CONDITIONAL) && expressionEvaluator == null) {
                 throw new IllegalStateException("Use of drop events processor when setting requires a ExpressionEvaluator bean at runtime");
             }
             return new DropEventsWhenCondition(this);

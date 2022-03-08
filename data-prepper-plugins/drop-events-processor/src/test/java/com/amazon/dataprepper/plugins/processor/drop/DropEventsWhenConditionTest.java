@@ -35,7 +35,7 @@ class DropEventsWhenConditionTest {
     void testGivenNullWhenSettingThenShouldEvaluateConditionalReturnFalse() {
         doReturn("true")
                 .when(dropEventProcessorConfig)
-                .getWhen();
+                .getDropWhen();
 
         final DropEventsWhenCondition whenCondition = new DropEventsWhenCondition.Builder()
                 .withDropEventsProcessorConfig(dropEventProcessorConfig)
@@ -49,7 +49,7 @@ class DropEventsWhenConditionTest {
     void testGivenNotHardcodedTrueWhenSettingThenShouldEvaluateConditionalReturnFalse() {
         doReturn("false")
                 .when(dropEventProcessorConfig)
-                .getWhen();
+                .getDropWhen();
 
         final DropEventsWhenCondition whenCondition = new DropEventsWhenCondition.Builder()
                 .withDropEventsProcessorConfig(dropEventProcessorConfig)
@@ -65,7 +65,7 @@ class DropEventsWhenConditionTest {
         final Event event = mock(Event.class);
         doReturn(whenStatement)
                 .when(dropEventProcessorConfig)
-                .getWhen();
+                .getDropWhen();
         doReturn(true)
                 .when(evaluator)
                 .evaluate(eq(whenStatement), eq(event));

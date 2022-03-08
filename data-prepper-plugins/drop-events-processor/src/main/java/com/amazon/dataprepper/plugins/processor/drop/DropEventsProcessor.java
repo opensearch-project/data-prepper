@@ -20,8 +20,6 @@ import java.util.stream.Collectors;
 
 @DataPrepperPlugin(name = "drop_events", pluginType = Processor.class, pluginConfigurationType = DropEventProcessorConfig.class)
 public class DropEventsProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private static final String WHEN_PLUGIN_SETTING_KEY = "when";
-    private static final String HANDLE_FAILED_EVENTS_KEY = "handle_failed_events";
 
     private final DropEventsWhenCondition whenCondition;
 
