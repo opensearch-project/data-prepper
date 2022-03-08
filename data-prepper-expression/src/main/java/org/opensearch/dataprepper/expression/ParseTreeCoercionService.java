@@ -18,7 +18,7 @@ class ParseTreeCoercionService {
         final String nodeStringValue = node.getText();
         switch (nodeType) {
             case DataPrepperExpressionParser.JsonPointer:
-                return event.get(node.getText(), Object.class);
+                return event.get(nodeStringValue, Object.class);
             case DataPrepperExpressionParser.EscapedJsonPointer:
             case DataPrepperExpressionParser.String:
                 return nodeStringValue;
