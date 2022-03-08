@@ -63,6 +63,13 @@ class ParseTreeParserTest {
     }
 
     @Test
+    void testMissingListener() {
+        final DataPrepperExpressionParser mockParser = mock(DataPrepperExpressionParser.class);
+
+        assertThrows(IllegalStateException.class, () -> new ParseTreeParser(mockParser));
+    }
+
+    @Test
     void testValidStatement() throws ParseTreeCompositeException {
         final ParseTree expected = mock(DataPrepperExpressionParser.ExpressionContext.class);
         doReturn(expected).when(parser).expression();
