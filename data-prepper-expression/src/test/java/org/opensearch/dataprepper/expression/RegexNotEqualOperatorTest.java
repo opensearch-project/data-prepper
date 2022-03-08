@@ -16,6 +16,11 @@ class RegexNotEqualOperatorTest {
     final GenericRegexMatchOperator objectUnderTest = new OperatorFactory().regexNotEqualOperator();
 
     @Test
+    void testGetRuleIndex() {
+        assertThat(objectUnderTest.getRuleIndex(), is(DataPrepperExpressionParser.RULE_regexEqualityOperator));
+    }
+
+    @Test
     void testGetSymbol() {
         assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.NOT_MATCH_REGEX_PATTERN));
     }

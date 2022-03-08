@@ -16,6 +16,11 @@ class AndOperatorTest {
     final AndOperator objectUnderTest = new AndOperator();
 
     @Test
+    void testGetRuleIndex() {
+        assertThat(objectUnderTest.getRuleIndex(), is(DataPrepperExpressionParser.RULE_conditionalOperator));
+    }
+
+    @Test
     void testGetSymbol() {
         assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.AND));
     }

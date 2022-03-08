@@ -17,12 +17,17 @@ public class NumericCompareOperator implements Operator<Boolean> {
     private final String displayName;
     private final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>>> operandsToOperationMap;
 
-    public NumericCompareOperator(
-            final Integer symbol,
+    public NumericCompareOperator(final Integer symbol,
             final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>>> operandsToOperationMap) {
         this.symbol = symbol;
         displayName = DataPrepperExpressionParser.VOCABULARY.getDisplayName(symbol);
         this.operandsToOperationMap = operandsToOperationMap;
+    }
+
+
+    @Override
+    public Integer getRuleIndex() {
+        return DataPrepperExpressionParser.RULE_relationalOperator;
     }
 
     @Override

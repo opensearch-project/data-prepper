@@ -18,6 +18,11 @@ class OrOperator implements Operator<Boolean> {
             .getDisplayName(DataPrepperExpressionParser.OR);
 
     @Override
+    public Integer getRuleIndex() {
+        return DataPrepperExpressionParser.RULE_conditionalOperator;
+    }
+
+    @Override
     public Integer getSymbol() {
         return SYMBOL;
     }

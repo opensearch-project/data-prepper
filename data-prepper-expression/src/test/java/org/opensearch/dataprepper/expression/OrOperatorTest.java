@@ -16,6 +16,11 @@ class OrOperatorTest {
     final OrOperator objectUnderTest = new OrOperator();
 
     @Test
+    void testGetRuleIndex() {
+        assertThat(objectUnderTest.getRuleIndex(), is(DataPrepperExpressionParser.RULE_conditionalOperator));
+    }
+
+    @Test
     void testGetSymbol() {
         assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.OR));
     }

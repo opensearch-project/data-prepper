@@ -16,6 +16,11 @@ class LessThanOperatorTest {
     final Operator<Boolean> objectUnderTest = new OperatorFactory().lessThanOperator();
 
     @Test
+    void testGetRuleIndex() {
+        assertThat(objectUnderTest.getRuleIndex(), is(DataPrepperExpressionParser.RULE_relationalOperator));
+    }
+
+    @Test
     void testGetSymbol() {
         assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.LT));
     }

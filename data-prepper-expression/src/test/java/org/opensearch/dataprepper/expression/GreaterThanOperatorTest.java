@@ -16,6 +16,11 @@ class GreaterThanOperatorTest {
     final Operator<Boolean> objectUnderTest = new OperatorFactory().greaterThanOperator();
 
     @Test
+    void testGetRuleIndex() {
+        assertThat(objectUnderTest.getRuleIndex(), is(DataPrepperExpressionParser.RULE_relationalOperator));
+    }
+
+    @Test
     void testGetSymbol() {
         assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.GT));
     }

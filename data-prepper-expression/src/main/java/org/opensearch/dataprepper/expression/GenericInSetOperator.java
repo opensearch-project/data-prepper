@@ -24,6 +24,11 @@ public class GenericInSetOperator implements Operator<Boolean> {
     }
 
     @Override
+    public Integer getRuleIndex() {
+        return DataPrepperExpressionParser.RULE_setOperator;
+    }
+
+    @Override
     public Integer getSymbol() {
         return symbol;
     }

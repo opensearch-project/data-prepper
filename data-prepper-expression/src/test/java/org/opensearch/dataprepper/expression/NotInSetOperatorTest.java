@@ -19,6 +19,11 @@ class NotInSetOperatorTest {
     final GenericInSetOperator objectUnderTest = new OperatorFactory().notInSetOperator();
 
     @Test
+    void testGetRuleIndex() {
+        assertThat(objectUnderTest.getRuleIndex(), is(DataPrepperExpressionParser.RULE_setOperator));
+    }
+
+    @Test
     void testGetSymbol() {
         assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.NOT_IN_SET));
     }

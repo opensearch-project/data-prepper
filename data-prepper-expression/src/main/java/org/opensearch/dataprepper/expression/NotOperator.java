@@ -18,6 +18,11 @@ class NotOperator implements Operator<Boolean> {
             .getDisplayName(DataPrepperExpressionParser.NOT);
 
     @Override
+    public Integer getRuleIndex() {
+        return DataPrepperExpressionParser.RULE_unaryOperator;
+    }
+
+    @Override
     public Integer getSymbol() {
         return SYMBOL;
     }

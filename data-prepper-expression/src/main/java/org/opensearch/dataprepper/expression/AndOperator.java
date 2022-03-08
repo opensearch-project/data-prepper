@@ -18,6 +18,11 @@ class AndOperator implements Operator<Boolean> {
             .getDisplayName(DataPrepperExpressionParser.AND);
 
     @Override
+    public Integer getRuleIndex() {
+        return DataPrepperExpressionParser.RULE_conditionalOperator;
+    }
+
+    @Override
     public Integer getSymbol() {
         return SYMBOL;
     }

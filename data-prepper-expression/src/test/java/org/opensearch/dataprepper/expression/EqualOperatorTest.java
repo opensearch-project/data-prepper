@@ -17,6 +17,11 @@ class EqualOperatorTest {
     final GenericEqualOperator objectUnderTest = new OperatorFactory().equalOperator();
 
     @Test
+    void testGetRuleIndex() {
+        assertThat(objectUnderTest.getRuleIndex(), is(DataPrepperExpressionParser.RULE_equalityOperator));
+    }
+
+    @Test
     void testGetSymbol() {
         assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.EQUAL));
     }

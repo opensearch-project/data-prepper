@@ -23,6 +23,11 @@ public class GenericEqualOperator implements Operator<Boolean> {
     }
 
     @Override
+    public Integer getRuleIndex() {
+        return DataPrepperExpressionParser.RULE_equalityOperator;
+    }
+
+    @Override
     public Integer getSymbol() {
         return symbol;
     }

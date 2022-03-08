@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.expression;
 
 interface Operator<T> {
+    Integer getRuleIndex();
+
     Integer getSymbol();
 
     /**

@@ -19,6 +19,11 @@ class InSetOperatorTest {
     final GenericInSetOperator objectUnderTest = new OperatorFactory().inSetOperator();
 
     @Test
+    void testGetRuleIndex() {
+        assertThat(objectUnderTest.getRuleIndex(), is(DataPrepperExpressionParser.RULE_setOperator));
+    }
+
+    @Test
     void testGetSymbol() {
         assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.IN_SET));
     }

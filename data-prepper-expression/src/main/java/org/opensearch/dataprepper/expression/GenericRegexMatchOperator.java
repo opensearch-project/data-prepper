@@ -24,6 +24,11 @@ public class GenericRegexMatchOperator implements Operator<Boolean> {
     }
 
     @Override
+    public Integer getRuleIndex() {
+        return DataPrepperExpressionParser.RULE_regexEqualityOperator;
+    }
+
+    @Override
     public Integer getSymbol() {
         return symbol;
     }
