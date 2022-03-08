@@ -33,7 +33,7 @@ public class LowercaseStringProcessorTests {
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private StringProcessorConfig<String> config;
+    private WithKeysConfig config;
 
     @BeforeEach
     public void setup() {
