@@ -8,6 +8,10 @@ plugins {
     id 'idea'
 }
 
+ext {
+    antlrGeneratedPackageDirectory = "org/opensearch/dataprepper/expression/antlr/"
+}
+
 dependencies {
     antlr 'org.antlr:antlr4:4.9.2'
     implementation project(':data-prepper-api')
@@ -25,7 +29,7 @@ dependencies {
 }
 
 generateGrammarSource {
-    outputDirectory = new File('build/generated-src/antlr/main/org/opensearch/dataprepper/expression/antlr/')
+    outputDirectory = new File("build/generated-src/antlr/main/${antlrGeneratedPackageDirectory}")
 }
 
 jacocoTestCoverageVerification {
@@ -39,9 +43,7 @@ jacocoTestCoverageVerification {
     }
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it, exclude: [
-                    "org/opensearch/dataprepper/expression/antlr/**"
-            ])
+            fileTree(dir: it, exclude: ["${antlrGeneratedPackageDirectory}/**"])
         }))
     }
 }
