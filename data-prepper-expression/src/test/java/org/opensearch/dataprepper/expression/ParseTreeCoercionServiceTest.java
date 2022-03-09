@@ -116,7 +116,7 @@ class ParseTreeCoercionServiceTest {
     }
 
     @Test
-    void testCoerceTerminalNodeEscapedUnsupportedType() {
+    void testCoerceTerminalNodeUnsupportedType() {
         final Event testEvent = createTestEvent(new HashMap<>());
         when(terminalNode.getSymbol()).thenReturn(token);
         when(token.getType()).thenReturn(-1);
