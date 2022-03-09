@@ -54,4 +54,16 @@ class ParseTreeCompositeExceptionTest {
         assertThat(message, containsString("|-- java.lang.RuntimeException: Error"));
         assertThat(message, containsString("|-- java.lang.NullPointerException: Throwable was null!"));
     }
+
+    @Test
+    void testExceptionWithoutStackTrace() {
+        final Throwable cause = new Throwable();
+        final ParseTreeCompositeException parseTreeCompositeException =
+                new ParseTreeCompositeException(Collections.singletonList(cause));
+
+        assertThat(parseTreeCompositeException.getCause() instanceof ExceptionOverview, is(true));
+        final String message = parseTreeCompositeException.getCause().getMessage();
+        //TODO: Fix test
+        assertThat(message, is("Hello?"));
+    }
 }
