@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.expression;
 
-import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.RuleContext;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import java.util.function.BiPredicate;
@@ -24,7 +24,7 @@ public class GenericEqualOperator implements Operator<Boolean> {
     }
 
     @Override
-    public boolean shouldEvaluate(final ParserRuleContext ctx) {
+    public boolean shouldEvaluate(final RuleContext ctx) {
         return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_equalityOperatorExpression;
     }
 
