@@ -139,6 +139,21 @@ public class ParserTest extends GrammarTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
+            "not false",
+            "not not false",
+            "not /status_code",
+            "not (true)",
+            "-5",
+            "-3.14",
+            "-(5)",
+            "--10",
+    })
+    void testValidUnaryOperators(final String expression) {
+        assertThatIsValid(expression);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
             "falkse and true",
             "true an true",
             "2 is in {2}",

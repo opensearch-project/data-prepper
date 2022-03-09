@@ -16,8 +16,8 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 public abstract class GrammarTest {
     //region ParseTree child classes
-    protected static final Class<? extends ParseTree> EXPRESSION = DataPrepperExpressionParser.ExpressionContext.class;
-    protected static final Class<? extends ParseTree> CONDITIONAL_EXPRESSION = DataPrepperExpressionParser.ConditionalExpressionContext.class;
+    protected static final Class<? extends ParseTree> CONDITIONAL_EXPRESSION =
+            DataPrepperExpressionParser.ConditionalExpressionContext.class;
     protected static final Class<? extends ParseTree> CONDITIONAL_OPERATOR = DataPrepperExpressionParser.ConditionalOperatorContext.class;
     protected static final Class<? extends ParseTree> EQUALITY_OPERATOR_EXPRESSION =
             DataPrepperExpressionParser.EqualityOperatorExpressionContext.class;
@@ -33,11 +33,10 @@ public abstract class GrammarTest {
             DataPrepperExpressionParser.SetOperatorExpressionContext.class;
     protected static final Class<? extends ParseTree> UNARY_OPERATOR_EXPRESSION =
             DataPrepperExpressionParser.UnaryOperatorExpressionContext.class;
-    protected static final Class<? extends ParseTree> UNARY_NOT_OPERATOR_EXPRESSION =
-            DataPrepperExpressionParser.UnaryNotOperatorExpressionContext.class;
     protected static final Class<? extends ParseTree> UNARY_OPERATOR =
             DataPrepperExpressionParser.UnaryOperatorContext.class;
-    protected static final Class<? extends ParseTree> PARENTHESES_EXPRESSION = DataPrepperExpressionParser.ParenthesesExpressionContext.class;
+    protected static final Class<? extends ParseTree> PARENTHESES_EXPRESSION =
+            DataPrepperExpressionParser.ParenthesesExpressionContext.class;
     //endregion
 
     protected ErrorListener errorListener;
