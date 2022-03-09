@@ -5,8 +5,11 @@
 
 plugins {
     id 'antlr'
-    id 'java'
     id 'idea'
+}
+
+ext {
+    antlrGeneratedPackageDirectory = "org/opensearch/dataprepper/expression/antlr/"
 }
 
 dependencies {
@@ -26,9 +29,22 @@ dependencies {
 }
 
 generateGrammarSource {
-    outputDirectory = new File('build/generated-src/antlr/main/org/opensearch/dataprepper/expression/antlr/')
+    outputDirectory = new File("build/generated-src/antlr/main/${antlrGeneratedPackageDirectory}")
 }
 
-test {
-    useJUnitPlatform()
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule { //in addition to core projects rule - this one checks for 100% code coverage for this project
+            limit {
+                minimum = 1.0 //keep this at 100%
+            }
+        }
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: ["${antlrGeneratedPackageDirectory}/**"])
+        }))
+    }
 }
+
