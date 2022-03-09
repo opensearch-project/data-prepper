@@ -6,7 +6,8 @@ This is a processor that drops all messages that are passed into it.
 ### Starting in Data Prepper v1.3.0
 * Added support for new configurations options `drop_when` and `handle_failed_events`. See [Configuration Options](#Configuration-Options).
 
-Upgrade information can be found at [how to upgrade from a pre-release version to 1.3.0](#upgrade-to-1.3.0).
+Upgrade information can be found at 
+[how to upgrade from a pre-release version to 1.3.0](#How-to-upgrade-from-a-pre-release-version-to-130).
 
 
 ## Basic Usage
@@ -63,7 +64,6 @@ This plugin is compatible with Java 14. See
 
 ## How To Upgrade Guides
 
-<a name="upgrade-to-1.3.0"></a>
 ### How to upgrade from a pre-release version to 1.3.0
 
 When upgrading only adding `drop_when: true` is required for compatability with Data Prepper 1.3.0. After adding `drop_when: true`
