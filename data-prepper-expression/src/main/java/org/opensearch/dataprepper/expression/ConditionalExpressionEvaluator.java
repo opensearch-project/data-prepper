@@ -28,6 +28,8 @@ class ConditionalExpressionEvaluator implements ExpressionEvaluator<Boolean> {
 
     /**
      * {@inheritDoc}
+     *
+     * @throws ExpressionEvaluationException if unable to evaluate or coerce the statement result to type T
      */
     @Override
     public Boolean evaluate(final String statement, final Event context) {
