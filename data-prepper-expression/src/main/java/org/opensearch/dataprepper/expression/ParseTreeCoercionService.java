@@ -13,13 +13,14 @@ import javax.inject.Named;
 
 @Named
 class ParseTreeCoercionService {
-    public Object coerceTerminalNode(final TerminalNode node, final Event event) throws ParseTreeCoercionException {
+    public Object coercePrimaryTerminalNode(final TerminalNode node, final Event event) throws ExpressionCoercionException {
         final int nodeType = node.getSymbol().getType();
         final String nodeStringValue = node.getText();
         switch (nodeType) {
+            case DataPrepperExpressionParser.EscapedJsonPointer:
+                return event.get(nodeStringValue.substring(1, nodeStringValue.length() - 1), Object.class);
             case DataPrepperExpressionParser.JsonPointer:
                 return event.get(nodeStringValue, Object.class);
-            case DataPrepperExpressionParser.EscapedJsonPointer:
             case DataPrepperExpressionParser.String:
                 return nodeStringValue;
             case DataPrepperExpressionParser.Integer:
@@ -29,15 +30,15 @@ class ParseTreeCoercionService {
             case DataPrepperExpressionParser.Boolean:
                 return Boolean.valueOf(nodeStringValue);
             default:
-                throw new ParseTreeCoercionException("Unsupported terminal node type symbol string: " +
+                throw new ExpressionCoercionException("Unsupported terminal node type symbol string: " +
                         DataPrepperExpressionParser.VOCABULARY.getDisplayName(nodeType));
         }
     }
 
-    public <T> T coerce(final Object obj, Class<T> clazz) throws ParseTreeCoercionException {
+    public <T> T coerce(final Object obj, Class<T> clazz) throws ExpressionCoercionException {
         if (obj.getClass().isAssignableFrom(clazz)) {
             return (T) obj;
         }
-        throw new ParseTreeCoercionException("Unable to cast " + obj.getClass().getName() + " into " + clazz.getName());
+        throw new ExpressionCoercionException("Unable to cast " + obj.getClass().getName() + " into " + clazz.getName());
     }
 }
