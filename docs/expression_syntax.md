@@ -2,7 +2,7 @@
 As part of a larger feature (#522) to support complex condition statements in data prepper there is a need to define a syntax for conditional statements. A conditional statement is a String that is evaluated at runtime and may reference fields within a record.
 
 **Describe the solution you'd like**
-_Terms used throughout this document are defined in the Definitions section_
+_Terms used throught this document are defined in the Definitions section_
 
 ## Supported Operators
 In order of evaluation priority. _(top to bottom, left to right)_
@@ -11,17 +11,18 @@ In order of evaluation priority. _(top to bottom, left to right)_
 |----------------------|--------------------------|----------------------|
 | `{}`                 | Set Initializer          | 1.4.0                |
 | `()`                 | Priority Expression      | 1.3.0                |
+| `not`                | Not Operator             | 1.3.0                |
 | `in`, `not in`       | Set Operators            | 1.4.0                |
 | `<`, `<=`, `>`, `>=` | Relational Operators     | 1.3.0                |
 | `=~`, `!~`           | Regex Equality Operators | 2.0.0                |
 | `==`, `!=`           | Equality Operators       | 1.3.0                |
-| `and`, `or`, `not`   | Conditional Expression   | 1.3.0                |
+| `and`, `or`          | Conditional Expression   | 1.3.0                |
 | `,`                  | Set Value Delimiter      | 1.4.0                |
 
 ## Reserved for possible future functionality
 Reserved symbol set: `^`, `*`, `/`, `%`, `+`, `-`, `xor`, `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `++`, `--`, `${<text>}`
 
-## Set Initializer
+## Set Initialiser
 Defines a set or term and/or expressions.
 
 Examples
