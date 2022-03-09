@@ -6,11 +6,15 @@
 package org.opensearch.dataprepper.expression;
 
 import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.event.JacksonEvent;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
@@ -19,6 +23,7 @@ import org.opensearch.dataprepper.expression.util.TestObject;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -26,10 +31,14 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ParseTreeCoercionServiceTest {
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     @Mock
     private TerminalNode terminalNode;
@@ -101,15 +110,15 @@ class ParseTreeCoercionServiceTest {
         assertThat(result, nullValue());
     }
 
-    @Test
-    void testCoerceTerminalNodeEscapedJsonPointerType() throws ExpressionCoercionException {
-        final String testKey = "testKey";
+    @ParameterizedTest
+    @MethodSource("provideKeys")
+    void testCoerceTerminalNodeEscapeJsonPointerType(final String testKey, final String testEscapeJsonPointer)
+            throws ExpressionCoercionException {
         final String testValue = "test value";
-        final String testEscapedJsonPointerKey = String.format("\"/%s\"", testKey);
         final Event testEvent = createTestEvent(Map.of(testKey, testValue));
         when(token.getType()).thenReturn(DataPrepperExpressionParser.EscapedJsonPointer);
         when(terminalNode.getSymbol()).thenReturn(token);
-        when(terminalNode.getText()).thenReturn(testEscapedJsonPointerKey);
+        when(terminalNode.getText()).thenReturn(testEscapeJsonPointer);
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
         assertThat(result, instanceOf(String.class));
         assertThat(result, equalTo(testValue));
@@ -138,6 +147,23 @@ class ParseTreeCoercionServiceTest {
     }
 
     private Event createTestEvent(final Object data) {
-        return JacksonEvent.builder().withEventType("event").withData(data).build();
+        final Event event = mock(Event.class);
+        final JsonNode node = mapper.valueToTree(data);
+        when(event.get(anyString(), any())).thenAnswer(invocation -> {
+            Object[] args = invocation.getArguments();
+            final String jsonPointer = (String) args[0];
+            final Class<?> clazz = (Class<?>) args[1];
+            return mapper.treeToValue(node.at(jsonPointer), clazz);
+        });
+        return event;
+    }
+
+    private static Stream<Arguments> provideKeys() {
+        return Stream.of(
+                Arguments.of("test key", "\"/test key\""),
+                Arguments.of("test/key", "\"/test~1key\""),
+                Arguments.of("test\\key", "\"/test\\key\""),
+                Arguments.of("test~0key", "\"/test~00key\"")
+        );
     }
 }
