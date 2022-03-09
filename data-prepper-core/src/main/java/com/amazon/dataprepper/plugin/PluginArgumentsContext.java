@@ -10,6 +10,7 @@ import com.amazon.dataprepper.model.configuration.PipelineDescription;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 
 import javax.annotation.Nullable;
@@ -24,6 +25,7 @@ import java.util.function.Supplier;
  * when constructing a new plugin.
  */
 class PluginArgumentsContext {
+    private static final String UNABLE_TO_CREATE_PLUGIN_PARAMETER = "Unable to create an argument for required plugin parameter type: ";
     private final Map<Class<?>, Supplier<Object>> typedArgumentsSuppliers;
 
     @Nullable
@@ -65,11 +67,31 @@ class PluginArgumentsContext {
             return typedArgumentsSuppliers.get(parameterType);
         }
         else if (beanFactory != null) {
-            return () -> beanFactory.getBean(parameterType);
+            return createBeanSupplier(parameterType, beanFactory);
         }
         else {
-            throw new InvalidPluginDefinitionException("Unable to create an argument for required plugin parameter type: " + parameterType);
+            throw new InvalidPluginDefinitionException(UNABLE_TO_CREATE_PLUGIN_PARAMETER + parameterType);
         }
+    }
+
+    /**
+     * @since 1.3
+     *
+     * Create a supplier to return a bean of type <pre>parameterType</pre> if one is available in <pre>beanFactory</pre>
+     *
+     * @param parameterType type of bean requested
+     * @param beanFactory bean source the generated supplier will use
+     * @return supplier of object type bean
+     * @throws InvalidPluginDefinitionException if no bean is available from beanFactory
+     */
+    private <T> Supplier<T> createBeanSupplier(final Class<? extends T> parameterType, final BeanFactory beanFactory) {
+        return () -> {
+            try {
+                return beanFactory.getBean(parameterType);
+            } catch (final BeansException e) {
+                throw new InvalidPluginDefinitionException(UNABLE_TO_CREATE_PLUGIN_PARAMETER + parameterType, e);
+            }
+        };
     }
 
     static class Builder {
