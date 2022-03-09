@@ -24,8 +24,6 @@ public abstract class GrammarTest {
     protected static final Class<? extends ParseTree> EQUALITY_OPERATOR = DataPrepperExpressionParser.EqualityOperatorContext.class;
     protected static final Class<? extends ParseTree> REGEX_OPERATOR_EXPRESSION =
             DataPrepperExpressionParser.RegexOperatorExpressionContext.class;
-    protected static final Class<? extends ParseTree> REGEX_EQUALITY_OPERATOR =
-            DataPrepperExpressionParser.RegexEqualityOperatorContext.class;
     protected static final Class<? extends ParseTree> RELATIONAL_OPERATOR_EXPRESSION =
             DataPrepperExpressionParser.RelationalOperatorExpressionContext.class;
     protected static final Class<? extends ParseTree> RELATIONAL_OPERATOR = DataPrepperExpressionParser.RelationalOperatorContext.class;
