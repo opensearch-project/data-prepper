@@ -15,13 +15,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 
@@ -72,6 +76,22 @@ class PluginArgumentsContextTest {
 
         assertThat(objectUnderTest.createArguments(new Class[] { Object.class }),
                 equalTo(new Object[] {mock}));
+    }
+
+    @Test
+    void createArguments_given_bean_not_available_with_single_class_using_bean_factory() {
+        doThrow(mock(BeansException.class)).when(beanFactory).getBean((Class<Object>) any());
+
+        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+                .withPluginSetting(pluginSetting)
+                .withBeanFactory(beanFactory)
+                .build();
+
+        final InvalidPluginDefinitionException throwable = assertThrows(
+                InvalidPluginDefinitionException.class,
+                () -> objectUnderTest.createArguments(new Class[]{Object.class})
+        );
+        assertTrue(throwable.getCause() instanceof BeansException);
     }
 
     @Test
