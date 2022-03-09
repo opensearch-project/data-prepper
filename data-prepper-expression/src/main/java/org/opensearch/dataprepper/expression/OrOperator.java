@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.antlr.v4.runtime.RuleContext;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import javax.inject.Named;
@@ -13,12 +14,17 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 @Named
 class OrOperator implements Operator<Boolean> {
-    private static final Integer SYMBOL = DataPrepperExpressionParser.OR;
+    private static final int SYMBOL = DataPrepperExpressionParser.OR;
     private static final String DISPLAY_NAME = DataPrepperExpressionParser.VOCABULARY
             .getDisplayName(DataPrepperExpressionParser.OR);
 
     @Override
-    public Integer getSymbol() {
+    public boolean shouldEvaluate(final RuleContext ctx) {
+        return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_conditionalExpression;
+    }
+
+    @Override
+    public int getSymbol() {
         return SYMBOL;
     }
 
