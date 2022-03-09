@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import java.util.function.BiPredicate;
@@ -13,23 +14,23 @@ import java.util.regex.PatternSyntaxException;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class GenericRegexMatchOperator implements Operator<Boolean> {
-    private final Integer symbol;
+    private final int symbol;
     private final String displayName;
     private final BiPredicate<Object, Object> operation;
 
-    public GenericRegexMatchOperator(final Integer symbol, BiPredicate<Object, Object> operation) {
+    public GenericRegexMatchOperator(final int symbol, BiPredicate<Object, Object> operation) {
         this.symbol = symbol;
         displayName = DataPrepperExpressionParser.VOCABULARY.getDisplayName(symbol);
         this.operation = operation;
     }
 
     @Override
-    public Integer getRuleIndex() {
-        return DataPrepperExpressionParser.RULE_regexEqualityOperator;
+    public boolean shouldEvaluate(final ParserRuleContext ctx) {
+        return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_regexOperatorExpression;
     }
 
     @Override
-    public Integer getSymbol() {
+    public int getSymbol() {
         return symbol;
     }
 

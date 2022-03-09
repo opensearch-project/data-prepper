@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import java.util.Map;
@@ -13,11 +14,11 @@ import java.util.function.BiFunction;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class NumericCompareOperator implements Operator<Boolean> {
-    private final Integer symbol;
+    private final int symbol;
     private final String displayName;
     private final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>>> operandsToOperationMap;
 
-    public NumericCompareOperator(final Integer symbol,
+    public NumericCompareOperator(final int symbol,
             final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>>> operandsToOperationMap) {
         this.symbol = symbol;
         displayName = DataPrepperExpressionParser.VOCABULARY.getDisplayName(symbol);
@@ -26,12 +27,12 @@ public class NumericCompareOperator implements Operator<Boolean> {
 
 
     @Override
-    public Integer getRuleIndex() {
-        return DataPrepperExpressionParser.RULE_relationalOperator;
+    public boolean shouldEvaluate(final ParserRuleContext ctx) {
+        return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_relationalOperatorExpression;
     }
 
     @Override
-    public Integer getSymbol() {
+    public int getSymbol() {
         return symbol;
     }
 

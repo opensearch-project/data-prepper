@@ -10,6 +10,9 @@ import javax.inject.Named;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 @Named
 class OperatorProvider {
@@ -17,13 +20,15 @@ class OperatorProvider {
 
     @Inject
     public OperatorProvider(final List<Operator<?>> operators) {
+        checkArgument(Objects.nonNull(operators) && operators.stream().allMatch(Objects::nonNull),
+                "Input operators should not contain null.");
         symbolToOperators = new HashMap<>();
         for (final Operator<?> operator : operators) {
             symbolToOperators.put(operator.getSymbol(), operator);
         }
     }
 
-    public Operator<?> getOperator(final Integer symbol) {
+    public Operator<?> getOperator(final int symbol) {
         final Operator<?> operator = symbolToOperators.get(symbol);
         if (operator == null) {
             throw new UnsupportedOperationException("Unsupported operator symbol index: " + symbol);

@@ -5,10 +5,12 @@
 
 package org.opensearch.dataprepper.expression;
 
-interface Operator<T> {
-    Integer getRuleIndex();
+import org.antlr.v4.runtime.ParserRuleContext;
 
-    Integer getSymbol();
+interface Operator<T> {
+    boolean shouldEvaluate(final ParserRuleContext ctx);
+
+    int getSymbol();
 
     /**
      * @since 1.3

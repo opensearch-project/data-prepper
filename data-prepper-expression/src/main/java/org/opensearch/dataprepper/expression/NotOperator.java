@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import javax.inject.Named;
@@ -13,17 +14,17 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 @Named
 class NotOperator implements Operator<Boolean> {
-    private static final Integer SYMBOL = DataPrepperExpressionParser.NOT;
+    private static final int SYMBOL = DataPrepperExpressionParser.NOT;
     private static final String DISPLAY_NAME = DataPrepperExpressionParser.VOCABULARY
             .getDisplayName(DataPrepperExpressionParser.NOT);
 
     @Override
-    public Integer getRuleIndex() {
-        return DataPrepperExpressionParser.RULE_unaryOperator;
+    public boolean shouldEvaluate(final ParserRuleContext ctx) {
+        return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_unaryNotOperatorExpression;
     }
 
     @Override
-    public Integer getSymbol() {
+    public int getSymbol() {
         return SYMBOL;
     }
 

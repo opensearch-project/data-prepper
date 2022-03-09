@@ -5,7 +5,11 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import java.util.Collections;
@@ -14,13 +18,21 @@ import java.util.Set;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class NotInSetOperatorTest {
     final GenericInSetOperator objectUnderTest = new OperatorFactory().notInSetOperator();
 
+    @Mock
+    private ParserRuleContext ctx;
+
     @Test
-    void testGetRuleIndex() {
-        assertThat(objectUnderTest.getRuleIndex(), is(DataPrepperExpressionParser.RULE_setOperator));
+    void testShouldEvaluate() {
+        when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_setOperatorExpression);
+        assertThat(objectUnderTest.shouldEvaluate(ctx), is(true));
+        when(ctx.getRuleIndex()).thenReturn(-1);
+        assertThat(objectUnderTest.shouldEvaluate(ctx), is(false));
     }
 
     @Test
