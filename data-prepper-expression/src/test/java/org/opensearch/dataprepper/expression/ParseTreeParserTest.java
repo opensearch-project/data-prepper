@@ -48,16 +48,25 @@ class ParseTreeParserTest {
     void beforeEach() {
         doReturn(tokenStream).when(parser).getTokenStream();
         doReturn(lexer).when(tokenStream).getTokenSource();
+        doReturn(Collections.singletonList(errorListener)).when(parser).getErrorListeners();
 
-        parseTreeParser = new ParseTreeParser(parser, errorListener);
+        parseTreeParser = new ParseTreeParser(parser);
     }
 
     @Test
     void testMissingLexer() {
         final DataPrepperExpressionParser mockParser = mock(DataPrepperExpressionParser.class);
         doReturn(mock(TokenStream.class)).when(mockParser).getTokenStream();
+        doReturn(Collections.singletonList(errorListener)).when(mockParser).getErrorListeners();
 
-        assertThrows(ClassCastException.class, () -> new ParseTreeParser(mockParser, null));
+        assertThrows(ClassCastException.class, () -> new ParseTreeParser(mockParser));
+    }
+
+    @Test
+    void testMissingListener() {
+        final DataPrepperExpressionParser mockParser = mock(DataPrepperExpressionParser.class);
+
+        assertThrows(IllegalStateException.class, () -> new ParseTreeParser(mockParser));
     }
 
     @Test

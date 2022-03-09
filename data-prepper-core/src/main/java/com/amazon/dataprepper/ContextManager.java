@@ -8,7 +8,6 @@ package com.amazon.dataprepper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.env.SimpleCommandLinePropertySource;
 
 /**
@@ -39,7 +38,8 @@ class ContextManager {
         LOG.trace("Reading args");
         final SimpleCommandLinePropertySource commandLinePropertySource = new SimpleCommandLinePropertySource(args);
 
-        final GenericApplicationContext publicApplicationContext = new GenericApplicationContext();
+        final AnnotationConfigApplicationContext publicApplicationContext = new AnnotationConfigApplicationContext();
+        publicApplicationContext.scan("org.opensearch.dataprepper.expression");
         publicApplicationContext.refresh();
 
         coreApplicationContext = new AnnotationConfigApplicationContext();
