@@ -66,23 +66,32 @@ class PluginArgumentsContext {
         if(typedArgumentsSuppliers.containsKey(parameterType)) {
             return typedArgumentsSuppliers.get(parameterType);
         }
+        else if (beanFactory != null) {
+            return createBeanSupplier(parameterType, beanFactory);
+        }
         else {
-            return createBeanSupplier(parameterType);
+            throw new InvalidPluginDefinitionException(UNABLE_TO_CREATE_PLUGIN_PARAMETER + parameterType);
         }
     }
 
-    private Supplier<Object> createBeanSupplier(final Class<?> parameterType) {
-        if (beanFactory == null) {
-            throw new InvalidPluginDefinitionException(UNABLE_TO_CREATE_PLUGIN_PARAMETER + parameterType);
-        }
-        else {
+    /**
+     * @since 1.3
+     *
+     * Create a supplier to return a bean of type <pre>parameterType</pre> if one is available in <pre>beanFactory</pre>
+     *
+     * @param parameterType type of bean requested
+     * @param beanFactory bean source the generated supplier will use
+     * @return supplier of object type bean
+     * @throws InvalidPluginDefinitionException if no bean is available from beanFactory
+     */
+    private <T> Supplier<T> createBeanSupplier(final Class<? extends T> parameterType, final BeanFactory beanFactory) {
+        return () -> {
             try {
-                final Object bean = beanFactory.getBean(parameterType);
-                return () -> bean;
+                return beanFactory.getBean(parameterType);
             } catch (final BeansException e) {
                 throw new InvalidPluginDefinitionException(UNABLE_TO_CREATE_PLUGIN_PARAMETER + parameterType, e);
             }
-        }
+        };
     }
 
     static class Builder {
