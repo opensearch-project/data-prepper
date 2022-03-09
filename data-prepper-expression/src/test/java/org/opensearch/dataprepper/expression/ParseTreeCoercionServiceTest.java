@@ -33,6 +33,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -102,10 +103,11 @@ class ParseTreeCoercionServiceTest {
     @Test
     void testCoerceTerminalNodeJsonPointerTypeMissingKey() throws ExpressionCoercionException {
         final String testMissingKey = "missingKey";
+        final String testJsonPointerKey = "/" + testMissingKey;
         final Event testEvent = createTestEvent(new HashMap<>());
         when(token.getType()).thenReturn(DataPrepperExpressionParser.JsonPointer);
         when(terminalNode.getSymbol()).thenReturn(token);
-        when(terminalNode.getText()).thenReturn(testMissingKey);
+        when(terminalNode.getText()).thenReturn(testJsonPointerKey);
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
         assertThat(result, nullValue());
     }
@@ -149,11 +151,15 @@ class ParseTreeCoercionServiceTest {
     private Event createTestEvent(final Object data) {
         final Event event = mock(Event.class);
         final JsonNode node = mapper.valueToTree(data);
-        when(event.get(anyString(), any())).thenAnswer(invocation -> {
+        lenient().when(event.get(anyString(), any())).thenAnswer(invocation -> {
             Object[] args = invocation.getArguments();
             final String jsonPointer = (String) args[0];
             final Class<?> clazz = (Class<?>) args[1];
-            return mapper.treeToValue(node.at(jsonPointer), clazz);
+            final JsonNode childNode = node.at(jsonPointer);
+            if (childNode.isMissingNode()) {
+                return null;
+            }
+            return mapper.treeToValue(childNode, clazz);
         });
         return event;
     }
