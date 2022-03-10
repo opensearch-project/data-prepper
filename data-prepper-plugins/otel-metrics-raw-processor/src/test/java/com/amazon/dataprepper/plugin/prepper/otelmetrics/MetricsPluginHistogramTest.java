@@ -121,9 +121,9 @@ public class MetricsPluginHistogramTest {
             Map<Object, Object> actualBucket = listOfMaps.get(i);
 
             assertThat(actualBucket)
-                    .contains(entry("lo", expectedBucket.getLowerBound()))
-                    .contains(entry("hi", expectedBucket.getUpperBound()))
-                    .contains(entry("cnt", (int)expectedBucket.getNumberOfObservations()));
+                    .contains(entry("lowerBound", expectedBucket.getLowerBound()))
+                    .contains(entry("upperBound", expectedBucket.getUpperBound()))
+                    .contains(entry("count", (int)expectedBucket.getNumberOfObservations()));
 
         }
     }

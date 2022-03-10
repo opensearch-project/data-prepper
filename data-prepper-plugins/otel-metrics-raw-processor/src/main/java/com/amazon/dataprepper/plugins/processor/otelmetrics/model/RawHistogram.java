@@ -115,17 +115,17 @@ public class RawHistogram {
             this.numberOfObservations = numberOfObservations;
         }
 
-        @JsonProperty("lo")
+        @JsonProperty("lowerBound")
         public double getLowerBound() {
             return lowerBound;
         }
 
-        @JsonProperty("hi")
+        @JsonProperty("upperBound")
         public double getUpperBound() {
             return upperBound;
         }
 
-        @JsonProperty("cnt")
+        @JsonProperty("count")
         public long getNumberOfObservations() {
             return numberOfObservations;
         }
