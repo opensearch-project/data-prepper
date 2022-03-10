@@ -9,8 +9,12 @@ import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -19,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -38,17 +43,18 @@ class SplitStringProcessorTests {
         return new SplitStringProcessor(pluginMetrics, config);
     }
 
-    @Test
-    public void testSingleSplitProcessor() {
+    @ParameterizedTest
+    @ArgumentsSource(SplitStringArgumentsProvider.class)
+    void testSingleSplitProcessor(String message, List<String> splitMessage) {
 
         when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", ",")));
 
         final SplitStringProcessor splitStringProcessor = createObjectUnderTest();
-        final Record<Event> record = createEvent("hello,world");
+        final Record<Event> record = createEvent(message);
         final List<Record<Event>> splitRecords = (List<Record<Event>>) splitStringProcessor.doExecute(Collections.singletonList(record));
 
         assertThat(splitRecords.get(0).getData().get("message", Object.class), notNullValue());
-        assertThat(splitRecords.get(0).getData().get("message", Object.class), equalTo(Arrays.asList("hello", "world")));
+        assertThat(splitRecords.get(0).getData().get("message", Object.class), equalTo(splitMessage));
     }
 
     private SplitStringProcessorConfig.Entry createEntry(final String source, final String delimiter) {
@@ -62,6 +68,18 @@ class SplitStringProcessorTests {
                 .withEventType("event")
                 .withData(eventData)
                 .build());
+    }
+
+    static class SplitStringArgumentsProvider implements ArgumentsProvider {
+
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
+            return Stream.of(
+                    Arguments.arguments("hello,world", Arrays.asList("hello", "world")),
+                    Arguments.arguments("hello,", Arrays.asList("hello")),
+                    Arguments.arguments("hello,world,no-split", Arrays.asList("hello","world", "no-split"))
+            );
+        }
     }
 
 }
