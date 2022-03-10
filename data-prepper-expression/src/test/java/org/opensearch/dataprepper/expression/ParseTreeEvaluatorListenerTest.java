@@ -50,11 +50,8 @@ class ParseTreeEvaluatorListenerTest {
     private ParseTreeEvaluatorListener objectUnderTest;
 
     private ParseTreeParser constructParseTreeParser() {
-        final DataPrepperExpressionLexer lexer = new DataPrepperExpressionLexer(EMPTY_STREAM);
-        final CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-        final DataPrepperExpressionParser expressionParser = new DataPrepperExpressionParser(tokenStream);
-        final ParserErrorListener parserErrorListener = new ParserErrorListener(expressionParser);
-        return new ParseTreeParser(expressionParser, parserErrorListener);
+        final DataPrepperExpressionParser expressionParser = new ParseTreeParserConfiguration().dataPrepperExpressionParser();
+        return new ParseTreeParser(expressionParser);
     }
 
     private ParseTreeEvaluatorListener createObjectUnderTest(final Event event) {
