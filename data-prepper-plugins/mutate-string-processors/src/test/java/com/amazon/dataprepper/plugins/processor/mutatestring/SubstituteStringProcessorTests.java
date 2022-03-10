@@ -120,6 +120,12 @@ public class SubstituteStringProcessorTests {
         assertThat(editedRecords.get(0).getData().get("message", TestObject.class).a, equalTo(testObject.a));
     }
 
+    @Test
+    public void testShutdown() {
+        final SubstituteStringProcessor processor = createObjectUnderTest();
+        assertThat(processor.isReadyForShutdown(), is(true));
+    }
+
     private static class TestObject {
         public String a;
 
