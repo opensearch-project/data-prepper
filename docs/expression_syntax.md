@@ -1,35 +1,30 @@
-**Is your feature request related to a problem? Please describe.**
-As part of a larger feature (#522) to support complex condition statements in data prepper there is a need to define a syntax for conditional statements. A conditional statement is a String that is evaluated at runtime and may reference fields within a record.
-
-**Describe the solution you'd like**
-_Terms used throught this document are defined in the Definitions section_
-
 ## Supported Operators
 In order of evaluation priority. _(top to bottom, left to right)_
 
-| Operator             | Description              | Data Prepper Version |
-|----------------------|--------------------------|----------------------|
-| `{}`                 | Set Initializer          | 1.4.0                |
-| `()`                 | Priority Expression      | 1.3.0                |
-| `not`                | Not Operator             | 1.3.0                |
-| `in`, `not in`       | Set Operators            | 1.4.0                |
-| `<`, `<=`, `>`, `>=` | Relational Operators     | 1.3.0                |
-| `=~`, `!~`           | Regex Equality Operators | 2.0.0                |
-| `==`, `!=`           | Equality Operators       | 1.3.0                |
-| `and`, `or`          | Conditional Expression   | 1.3.0                |
-| `,`                  | Set Value Delimiter      | 1.4.0                |
+| Level | Operator             | Description                                           | Associativity |
+|-------|----------------------|-------------------------------------------------------|---------------|
+| 5     | `()`                 | Priority Expression                                   | left-to-right |
+| 4     | `not`, `+`, `-`      | Unary Logical NOT<br>Unary Positive<br>Unary negative | right-to-left |
+| 3     | `<`, `<=`, `>`, `>=` | Relational Operators                                  | left-to-right |
+| 2     | `==`, `!=`           | Equality Operators                                    | left-to-right |
+| 1     | `and`, `or`          | Conditional Expression                                | left-to-right |
 
 ## Reserved for possible future functionality
 Reserved symbol set: `^`, `*`, `/`, `%`, `+`, `-`, `xor`, `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `++`, `--`, `${<text>}`
 
-## Set Initialiser
+## Set Initializer
 Defines a set or term and/or expressions.
 
 Examples
 ```
-{1, 2, 3}
-{"a", "b", "c"}
-{/people/0/name, /status_code}
+# Http Status Codes
+{200, 201, 202}
+
+# Http respone payloads
+{"Created", "Accepted"}
+
+# Handle multiple event types with different keys
+{/request_payload, /request_message}
 ```
 
 ## Priority Expression
@@ -39,21 +34,6 @@ expression or value, empty parentheses are not supported.
 Examples
 ```
 /is_cool == (/name == "Steven")
-```
-
-## Set Operators
-Tests if a value is in/not in a set. Note, the right-hand side operand must be a set.
-
-Syntax
-```
-<Expression> in <Set>
-<Expression> not in <Set>
-```
-
-Examples
-```
-/status_code in {200, 202}
-/status_code not in {400, 404, 500}
 ```
 
 ## Relational Operators
@@ -70,21 +50,6 @@ Syntax
 Examples
 ```
 /status_code >= 200 and /status_code < 300
-```
-
-## Regex Equality Operators
-Used to test if a String value matches/does not match a Regular Expression. Note, the left-hand side operand must be a string or Json Pointer that resolves to a String. The right hand side operand must be a String that contains a regular expression or a Json Pointer that resolves to a String that contains a regular expression.
-
-Syntax
-```
-<String | Json Pointer> =~ <Regex String | Json Pointer>
-<String | Json Pointer> !~ <Regex String | Json Pointer>
-```
-
-Examples
-```
-/string_property =~ "^[A-Za-z\s]*$"
-"Hello!" !~ /event/regex_matcher
 ```
 
 ## Equality Operators
@@ -137,7 +102,8 @@ Expression String resulting in a return value. Note, an _Expression String_ is n
 The highest level component of the Expression String.
 
 ### Expression
-A generic component that contains a _Primary_ or an _Operator_. Expressions may contain expressions. An expressions imminent children can contains 0-1 _Operators_.
+A generic component that contains a _Primary_ or an _Operator_. Expressions may contain expressions. An expressions imminent children can 
+contains 0-1 _Operators_.
 
 ### Primary
 
@@ -149,7 +115,10 @@ A generic component that contains a _Primary_ or an _Operator_. Expressions may 
 Hard coded token that identifies the operation use in an _Expression_.
 
 ### Json Pointer
-A Literal used to reference a value within the Event provided as context for the _Expression String_. Json Pointers are identified by a leading `/` containing alpha numeric character or underscores, delimited by `/`. Json Pointers can use an extended character set if wrapped in double quotes (`"`) using the escape character `\`. Note, Json Pointer require `~` and `/` that should be used as part of the path and not a delimiter to be escaped.
+A Literal used to reference a value within the Event provided as context for the _Expression String_. Json Pointers are identified by a 
+leading `/` containing alphanumeric character or underscores, delimited by `/`. Json Pointers can use an extended character set if wrapped 
+in double quotes (`"`) using the escape character `\`. Note, Json Pointer require `~` and `/` that should be used as part of the path and 
+not a delimiter to be escaped.
 
 - `~0` representing `~`
 - `~1` representing `/`

@@ -1,15 +1,6 @@
 # Drop Events Processor
 This is a processor that drops all messages that are passed into it.
 
-## Changes
-
-### Starting in Data Prepper v1.3.0
-* Added support for new configurations options `drop_when` and `handle_failed_events`. See [Configuration Options](#Configuration-Options).
-
-Upgrade information can be found at 
-[how to upgrade from a pre-release version to 1.3.0](#How-to-upgrade-from-a-pre-release-version-to-130).
-
-
 ## Basic Usage
 To get started, create the following `pipeline.yaml`.
 ```yaml
@@ -61,25 +52,3 @@ The `drop_when` parameter can be used to drop selected events. The `drop_when` p
 This plugin is compatible with Java 14. See
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
 - [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)
-
-## How To Upgrade Guides
-
-### How to upgrade from a pre-release version to 1.3.0
-
-When upgrading only adding `drop_when: true` is required for compatability with Data Prepper 1.3.0. After adding `drop_when: true`
-upgraded configurations will function exactly as before the updated.
-
-Pre-release pipeline configuration:
-```yaml
-my-pipeline:
-  processor:
-    - drop_events:
-```
-
-Data Prepper 1.3.0 compliant configuration:
-```yaml
-my-pipeline:
-  processor:
-    - drop_events:
-      drop_when: true
-```
