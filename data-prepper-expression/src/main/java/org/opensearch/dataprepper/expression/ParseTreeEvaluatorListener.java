@@ -25,7 +25,6 @@ import java.util.Stack;
  * Use case:
  * ParseTreeWalker walker = new ParseTreeWalker();
  * ParseTreeEvaluatorListener listener = new ParseTreeEvaluatorListener(...);
- * listener.initialize(...);
  * walker.walk(listener, ...);
  * final Object result = listener.getResult();
  */
