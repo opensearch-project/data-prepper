@@ -23,7 +23,7 @@ public class UnaryNumericOperatorConfiguration {
 
         return new UnaryNumericOperator(
                 DataPrepperExpressionParser.NOT,
-                DataPrepperExpressionParser.VOCABULARY.getDisplayName(DataPrepperExpressionParser.NOT),
+                DataPrepperExpressionParser.VOCABULARY.getDisplayName(DataPrepperExpressionParser.SUBTRACT),
                 strategy
         );
     }
