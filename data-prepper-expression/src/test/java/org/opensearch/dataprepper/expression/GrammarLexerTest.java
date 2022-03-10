@@ -165,6 +165,11 @@ public class GrammarLexerTest {
     }
 
     @Test
+    void testTokenSUBTRACT() {
+        assertToken("-", DataPrepperExpressionLexer.SUBTRACT);
+    }
+
+    @Test
     void testSpaceInsignificant() {
         final String statement = " ";
         final List<? extends Token> tokens = getTokens(statement);

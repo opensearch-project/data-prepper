@@ -11,6 +11,8 @@ import org.hamcrest.DiagnosingMatcher;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.expression.util.GrammarTest;
 
+import java.util.function.Function;
+
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.opensearch.dataprepper.expression.util.ContextMatcher.hasContext;
@@ -197,6 +199,37 @@ public class ParseTreeTest extends GrammarTest {
         final ParserRuleContext expression = parseExpression(
                 "/ABCDEFGHIJKLMNOPQRSTUVWXYZ/abcdefghijklmnopqrstuvwxyz/0123456789/_");
         assertThat(expression, isExpression(isJsonPointerUnaryTree()));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void testSubtractOperator() {
+        final ParserRuleContext expression = parseExpression("/status_code == -200");
+
+        final DiagnosingMatcher<ParseTree> lhs = isJsonPointerUnaryTree();
+        final Function<DiagnosingMatcher<ParseTree>, DiagnosingMatcher<ParseTree>> isNegative =
+                rhs -> hasContext(UNARY_OPERATOR_EXPRESSION, isOperator(UNARY_OPERATOR), rhs);
+        final DiagnosingMatcher<ParseTree> doubleNegative200 = isNegative.apply(isUnaryTree());
+
+        final DiagnosingMatcher<ParseTree> rhs = isParseTree(
+                REGEX_OPERATOR_EXPRESSION,
+                RELATIONAL_OPERATOR_EXPRESSION,
+                SET_OPERATOR_EXPRESSION
+        ).withChildrenMatching(
+                doubleNegative200
+        );
+
+        final DiagnosingMatcher<ParseTree> equalsExpression = isParseTree(
+                CONDITIONAL_EXPRESSION,
+                EQUALITY_OPERATOR_EXPRESSION
+        ).withChildrenMatching(
+                lhs,
+                isOperator(EQUALITY_OPERATOR),
+                rhs
+        );
+
+
+        assertThat(expression, isExpression(equalsExpression));
         assertThat(errorListener.isErrorFound(), is(false));
     }
 }

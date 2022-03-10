@@ -336,8 +336,7 @@ public class ParseTreeExpressionTest extends GrammarTest {
                 REGEX_OPERATOR_EXPRESSION,
                 RELATIONAL_OPERATOR_EXPRESSION,
                 SET_OPERATOR_EXPRESSION,
-                UNARY_OPERATOR_EXPRESSION,
-                UNARY_NOT_OPERATOR_EXPRESSION
+                UNARY_OPERATOR_EXPRESSION
         ).withChildrenMatching(
                 isOperator(UNARY_OPERATOR),
                 isUnaryTree()
@@ -370,8 +369,7 @@ public class ParseTreeExpressionTest extends GrammarTest {
                 REGEX_OPERATOR_EXPRESSION,
                 RELATIONAL_OPERATOR_EXPRESSION,
                 SET_OPERATOR_EXPRESSION,
-                UNARY_OPERATOR_EXPRESSION,
-                UNARY_NOT_OPERATOR_EXPRESSION
+                UNARY_OPERATOR_EXPRESSION
         ).withChildrenMatching(isOperator(UNARY_OPERATOR), parenthesesExpression);
 
         assertThat(expression, isExpression(not));
