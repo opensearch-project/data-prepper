@@ -35,4 +35,8 @@ class OperatorProvider {
         }
         return operator;
     }
+
+    public boolean containsOperator(final int symbol) {
+        return symbolToOperators.containsKey(symbol);
+    }
 }

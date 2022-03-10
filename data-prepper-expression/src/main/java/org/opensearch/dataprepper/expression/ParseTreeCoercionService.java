@@ -13,7 +13,7 @@ import javax.inject.Named;
 
 @Named
 class ParseTreeCoercionService {
-    public Object coercePrimaryTerminalNode(final TerminalNode node, final Event event) throws ExpressionCoercionException {
+    public Object coercePrimaryTerminalNode(final TerminalNode node, final Event event) {
         final int nodeType = node.getSymbol().getType();
         final String nodeStringValue = node.getText();
         switch (nodeType) {
