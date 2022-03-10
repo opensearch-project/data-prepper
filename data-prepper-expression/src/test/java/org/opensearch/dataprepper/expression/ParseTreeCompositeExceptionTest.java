@@ -31,7 +31,7 @@ class ParseTreeCompositeExceptionTest {
     @Test
     void testGivenSingleExceptionThenExceptionIsCause() {
         final RuntimeException mock = mock(RuntimeException.class);
-        final ParseTreeCompositeException parseTreeCompositeException = new ParseTreeCompositeException(Arrays.asList(mock));
+        final ParseTreeCompositeException parseTreeCompositeException = new ParseTreeCompositeException(Collections.singletonList(mock));
 
         assertThat(parseTreeCompositeException.getCause(), is(mock));
     }
@@ -57,13 +57,17 @@ class ParseTreeCompositeExceptionTest {
 
     @Test
     void testExceptionWithoutStackTrace() {
-        final Throwable cause = new Throwable();
-        final ParseTreeCompositeException parseTreeCompositeException =
-                new ParseTreeCompositeException(Collections.singletonList(cause));
+        final RuntimeException error1 = new RuntimeException("Error1");
+        error1.setStackTrace(new StackTraceElement[0]);
+        final RuntimeException error2 = new RuntimeException("Error2");
+        error2.setStackTrace(new StackTraceElement[0]);
+        final ParseTreeCompositeException parseTreeCompositeException = new ParseTreeCompositeException(Arrays.asList(error1, error2));
 
         assertThat(parseTreeCompositeException.getCause() instanceof ExceptionOverview, is(true));
         final String message = parseTreeCompositeException.getCause().getMessage();
-        //TODO: Fix test
-        assertThat(message, is("Hello?"));
+        assertThat(message, is("Multiple exceptions (2)\n" +
+                "|-- java.lang.RuntimeException: Error2" +
+                "|-- java.lang.RuntimeException: Error1"
+        ));
     }
 }
