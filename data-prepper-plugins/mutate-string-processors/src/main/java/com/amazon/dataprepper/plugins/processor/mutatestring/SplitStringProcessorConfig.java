@@ -8,6 +8,8 @@ package com.amazon.dataprepper.plugins.processor.mutatestring;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.List;
+
 public class SplitStringProcessorConfig {
     public static class Entry {
 
@@ -30,6 +32,12 @@ public class SplitStringProcessorConfig {
         public Entry(final String source, final String delimiter) {
             this.source = source;
             this.delimiter = delimiter;
+        }
+
+        private List<Entry> entries;
+
+        public List<Entry> getEntries() {
+            return entries;
         }
     }
 }

@@ -17,20 +17,20 @@ public class SplitStringProcessor extends AbstractStringProcessor<SplitStringPro
 
     private final List<SplitStringProcessorConfig.Entry> entries;
 
-    public SplitStringProcessor(PluginMetrics pluginMetrics, StringProcessorConfig<SplitStringProcessorConfig.Entry> config) {
+    public SplitStringProcessor(final PluginMetrics pluginMetrics, final StringProcessorConfig<SplitStringProcessorConfig.Entry> config) {
         super(pluginMetrics, config);
         this.entries = config.getIterativeConfig();
     }
 
     @Override
-    protected void performKeyAction(Event recordEvent, SplitStringProcessorConfig.Entry entry, String value) {
+    protected void performKeyAction(final Event recordEvent, final SplitStringProcessorConfig.Entry entry, final String value) {
 
         String[] splitValue = value.split(entry.getDelimiter());
         recordEvent.put(entry.getSource(), splitValue);
     }
 
     @Override
-    protected String getKey(SplitStringProcessorConfig.Entry entry) {
+    protected String getKey(final SplitStringProcessorConfig.Entry entry) {
         return entry.getSource();
     }
 
