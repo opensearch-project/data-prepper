@@ -104,6 +104,36 @@ opensearch-data-prepper:1.2.0-SNAPSHOT
 ```
 
 
+## Contributing your Code to Data Prepper
+
+When you wish to contribute a change to Data Prepper, please create a GitHub Pull Request (PR). You should create your PR to target `main`.
+
+The Data Prepper maintainers will review your PR and merge it once it is approved.
+
+Some changes contain bug fixes or security fixes. If you believe your
+change should be in a patch release, please read on.
+
+### Branches
+
+The Data Prepper maintainers use the `main` branch for the next upcoming release (major or minor).
+
+Near the time of the next release, we create a release branch for that upcoming
+release (e.g. `1.2`). We perform our release builds from this branch. Any patch
+releases also build from that release branch.
+
+### Backporting
+
+When you create a PR which targets `main` and need this change as a patch to a previous version
+of Data Prepper, use the auto backport GitHub Action. All you need to do is add the label
+`backport <version>` to your PR which is targeting `main`. After the PR is merged, the GitHub
+Action will create a new PR to cherry-pick those changes into the `<version>` branch.
+A Data Prepper maintainer will need to approve and merge the backported code into the target branch.
+
+The auto-generated PR will be on a branch named `backport/backport-<original PR number>-to-<version>`.
+
+In general, only security fixes and bug fixes need to be backported. However, near the time of
+an upcoming release, we may backport new features.
+
 ## Coding Guidance
 
 ### Documentation
