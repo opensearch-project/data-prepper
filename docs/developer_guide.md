@@ -106,12 +106,12 @@ opensearch-data-prepper:1.2.0-SNAPSHOT
 
 ## Contributing your Code to Data Prepper
 
-When you wish to contribute a change to Data Prepper, please create a GitHub Pull Request (PR). You should create your PR to target `main`.
+When you are ready to contribute a change to Data Prepper, please create a GitHub Pull Request (PR). Your PR should target `main`.
 
 The Data Prepper maintainers will review your PR and merge it once it is approved.
 
-Some changes contain bug fixes or security fixes. If you believe your
-change should be in a patch release, please read on.
+Some changes containing bug fixes or security fixes may be eligible for a patch release.
+If you believe your change should be a patch release, please see [Backporting](#backporting)
 
 ### Branches
 
@@ -121,7 +121,7 @@ Near the time of the next release, we create a release branch for that upcoming
 release (e.g. `1.2`). We perform our release builds from this branch. Any patch
 releases also build from that release branch.
 
-### Backporting
+### <a name="identification_keys">Backporting</a>
 
 When you create a PR which targets `main` and need this change as a patch to a previous version
 of Data Prepper, use the auto backport GitHub Action. All you need to do is add the label
@@ -131,8 +131,11 @@ A Data Prepper maintainer will need to approve and merge the backported code int
 
 The auto-generated PR will be on a branch named `backport/backport-<original PR number>-to-<version>`.
 
-In general, only security fixes and bug fixes need to be backported. However, near the time of
-an upcoming release, we may backport new features.
+Data Prepper supports patch releases only on the latest version (e.g. 2.1) and on the last version
+for the previous major release (e.g. 1.4 after 2.0 has been released). These releases are
+only for bug fixes or security fixes. Please use backports only for bug and security fixes
+and only for candidate releases. You can ask the Data Prepper maintainers about backporting a
+change in your PR.
 
 ## Coding Guidance
 
