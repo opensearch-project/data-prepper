@@ -145,8 +145,7 @@ public class ParserTest extends GrammarTest {
             "not (true)",
             "-5",
             "-3.14",
-            "-(5)",
-            "--10",
+            "-(5)"
     })
     void testValidUnaryOperators(final String expression) {
         assertThatIsValid(expression);
