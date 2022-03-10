@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.expression;
 import org.antlr.v4.runtime.RuleContext;
 
 interface Operator<T> {
+    int getNumberOfOperands();
+
     boolean shouldEvaluate(final RuleContext ctx);
 
     int getSymbol();

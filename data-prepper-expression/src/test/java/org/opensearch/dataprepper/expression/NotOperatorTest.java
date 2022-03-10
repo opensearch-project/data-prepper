@@ -25,6 +25,11 @@ class NotOperatorTest {
     private ParserRuleContext ctx;
 
     @Test
+    void testGetNumberOfOperands() {
+        assertThat(objectUnderTest.getNumberOfOperands(), is(1));
+    }
+
+    @Test
     void testShouldEvaluate() {
         when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_unaryNotOperatorExpression);
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(true));
