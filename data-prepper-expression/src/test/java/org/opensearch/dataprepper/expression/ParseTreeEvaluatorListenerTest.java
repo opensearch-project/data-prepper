@@ -7,8 +7,6 @@ package org.opensearch.dataprepper.expression;
 
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
-import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
@@ -28,8 +26,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
 class ParseTreeEvaluatorListenerTest {
-    private static final CharStream EMPTY_STREAM = CharStreams.fromString("");
-
     private final Random random = new Random();
     private final ParseTreeWalker walker = new ParseTreeWalker();
     private final ParseTreeParser parseTreeParser = constructParseTreeParser();

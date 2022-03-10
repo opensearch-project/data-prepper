@@ -66,12 +66,8 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
             // pop LPAREN at operatorSymbolStack top
             operatorSymbolStack.pop();
         } else {
-            try {
-                final Object arg = coercionService.coercePrimaryTerminalNode(node, event);
-                operandStack.push(arg);
-            } catch (final ExpressionCoercionException e) {
-                throw new IllegalStateException(e);
-            }
+            final Object arg = coercionService.coercePrimaryTerminalNode(node, event);
+            operandStack.push(arg);
         }
     }
 

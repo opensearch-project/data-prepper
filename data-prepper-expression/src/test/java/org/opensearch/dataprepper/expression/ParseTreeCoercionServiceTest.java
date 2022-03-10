@@ -50,7 +50,7 @@ class ParseTreeCoercionServiceTest {
     private final ParseTreeCoercionService objectUnderTest = new ParseTreeCoercionService();
 
     @Test
-    void testCoerceTerminalNodeStringType() throws ExpressionCoercionException {
+    void testCoerceTerminalNodeStringType() {
         when(token.getType()).thenReturn(DataPrepperExpressionParser.String);
         final String testString = "test string";
         when(terminalNode.getSymbol()).thenReturn(token);
@@ -62,7 +62,7 @@ class ParseTreeCoercionServiceTest {
     }
 
     @Test
-    void testCoerceTerminalNodeIntegerType() throws ExpressionCoercionException {
+    void testCoerceTerminalNodeIntegerType() {
         when(token.getType()).thenReturn(DataPrepperExpressionParser.Integer);
         final Integer testInteger = new Random().nextInt();
         when(terminalNode.getSymbol()).thenReturn(token);
@@ -74,7 +74,7 @@ class ParseTreeCoercionServiceTest {
     }
 
     @Test
-    void testCoerceTerminalNodeFloatType() throws ExpressionCoercionException {
+    void testCoerceTerminalNodeFloatType() {
         when(token.getType()).thenReturn(DataPrepperExpressionParser.Float);
         final Float testFloat = new Random().nextFloat();
         when(terminalNode.getSymbol()).thenReturn(token);
@@ -86,7 +86,7 @@ class ParseTreeCoercionServiceTest {
     }
 
     @Test
-    void testCoerceTerminalNodeJsonPointerType() throws ExpressionCoercionException {
+    void testCoerceTerminalNodeJsonPointerType() {
         final String testKey1 = "key1";
         final String testKey2 = "key2";
         final String testValue = "value";
@@ -101,7 +101,7 @@ class ParseTreeCoercionServiceTest {
     }
 
     @Test
-    void testCoerceTerminalNodeJsonPointerTypeMissingKey() throws ExpressionCoercionException {
+    void testCoerceTerminalNodeJsonPointerTypeMissingKey() {
         final String testMissingKey = "missingKey";
         final String testJsonPointerKey = "/" + testMissingKey;
         final Event testEvent = createTestEvent(new HashMap<>());
