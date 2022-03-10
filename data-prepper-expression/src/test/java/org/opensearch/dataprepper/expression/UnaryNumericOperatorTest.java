@@ -19,12 +19,12 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import java.util.Map;
 import java.util.Random;
-import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -35,7 +35,6 @@ import static org.mockito.Mockito.verify;
 class UnaryNumericOperatorTest {
     private static final Random RANDOM = new Random();
     private static final int SYMBOL = RANDOM.nextInt();
-    private static final String DISPLAY_NAME = UUID.randomUUID().toString();
 
     @Mock
     private Map<Class<? extends Number>, Function<Number, ? extends Number>> strategy;
@@ -47,7 +46,7 @@ class UnaryNumericOperatorTest {
 
     @BeforeEach
     void beforeEach() {
-        unaryNumericOperator = new UnaryNumericOperator(SYMBOL, DISPLAY_NAME, strategy);
+        unaryNumericOperator = new UnaryNumericOperator(SYMBOL, strategy);
     }
 
     @Test
@@ -56,6 +55,16 @@ class UnaryNumericOperatorTest {
                 .when(ctx)
                 .getRuleIndex();
         assertThat(unaryNumericOperator.shouldEvaluate(ctx), is(true));
+    }
+
+    @Test
+    void testGivenNoArgsThenExceptionThrown() {
+        assertThrows(IllegalArgumentException.class, unaryNumericOperator::evaluate);
+    }
+
+    @Test
+    void testGivenUnexpectedArgTypeThenExceptionThrown() {
+        assertThrows(IllegalArgumentException.class, () -> unaryNumericOperator.evaluate(new Object()));
     }
 
     @ParameterizedTest
@@ -74,7 +83,6 @@ class UnaryNumericOperatorTest {
             DataPrepperExpressionParser.RULE_parenthesesExpression,
             DataPrepperExpressionParser.RULE_regexPattern,
             DataPrepperExpressionParser.RULE_setInitializer,
-            DataPrepperExpressionParser.RULE_unaryNotOperatorExpression,
             DataPrepperExpressionParser.RULE_unaryOperator,
             DataPrepperExpressionParser.RULE_primary,
             DataPrepperExpressionParser.RULE_jsonPointer,

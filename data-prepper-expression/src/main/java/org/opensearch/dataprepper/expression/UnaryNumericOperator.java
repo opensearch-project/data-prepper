@@ -21,11 +21,10 @@ class UnaryNumericOperator implements Operator<Number> {
 
     protected UnaryNumericOperator(
             final int symbol,
-            final String displayName,
             final Map<Class<? extends Number>, Function<Number, ? extends Number>> strategy
     ) {
         this.symbol = symbol;
-        this.displayName = displayName;
+        this.displayName = DataPrepperExpressionParser.VOCABULARY.getDisplayName(symbol);
         this.strategy = strategy;
     }
 
@@ -50,7 +49,7 @@ class UnaryNumericOperator implements Operator<Number> {
                     .stream()
                     .map(Class::getName)
                     .collect(Collectors.joining(", "));
-            throw new RuntimeException(displayName + " requires operand type to be one of the following " + acceptedTypes);
+            throw new IllegalArgumentException(displayName + " requires operand type to be one of the following " + acceptedTypes);
         }
     }
 }

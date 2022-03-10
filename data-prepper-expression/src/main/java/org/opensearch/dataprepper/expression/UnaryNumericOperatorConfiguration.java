@@ -22,8 +22,7 @@ public class UnaryNumericOperatorConfiguration {
         strategy.put(Float.class, arg -> -arg.floatValue());
 
         return new UnaryNumericOperator(
-                DataPrepperExpressionParser.NOT,
-                DataPrepperExpressionParser.VOCABULARY.getDisplayName(DataPrepperExpressionParser.SUBTRACT),
+                DataPrepperExpressionParser.SUBTRACT,
                 strategy
         );
     }
