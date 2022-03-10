@@ -28,6 +28,11 @@ class NotInSetOperatorTest {
     private ParserRuleContext ctx;
 
     @Test
+    void testGetNumberOfOperands() {
+        assertThat(objectUnderTest.getNumberOfOperands(), is(2));
+    }
+
+    @Test
     void testShouldEvaluate() {
         when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_setOperatorExpression);
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(true));
