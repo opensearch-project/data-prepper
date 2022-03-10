@@ -7,25 +7,36 @@ package com.amazon.dataprepper.plugins.processor.mutatestring;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
+import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.processor.Processor;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @DataPrepperPlugin(name = "split_string", pluginType = Processor.class, pluginConfigurationType = SplitStringProcessorConfig.class)
 public class SplitStringProcessor extends AbstractStringProcessor<SplitStringProcessorConfig.Entry> {
 
-    private final List<SplitStringProcessorConfig.Entry> entries;
+    private final Map<String, Pattern> patternMap;
 
+    @DataPrepperPluginConstructor
     public SplitStringProcessor(final PluginMetrics pluginMetrics, final StringProcessorConfig<SplitStringProcessorConfig.Entry> config) {
         super(pluginMetrics, config);
-        this.entries = config.getIterativeConfig();
+
+        patternMap = new HashMap<>();
+        for (SplitStringProcessorConfig.Entry entry: config.getIterativeConfig()) {
+            patternMap.put(entry.getDelimiter(), Pattern.compile(entry.getDelimiter()));
+        }
     }
 
     @Override
     protected void performKeyAction(final Event recordEvent, final SplitStringProcessorConfig.Entry entry, final String value) {
 
-        String[] splitValue = value.split(entry.getDelimiter());
+        final Pattern pattern = patternMap.get(entry.getDelimiter());
+        final String[] splitValue = pattern.split(value);
         recordEvent.put(entry.getSource(), splitValue);
     }
 
