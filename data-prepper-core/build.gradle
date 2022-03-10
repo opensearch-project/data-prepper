@@ -13,6 +13,7 @@ sourceSets {
 
 dependencies {
     implementation project(':data-prepper-api')
+    implementation project(':data-prepper-expression')
     implementation project(':data-prepper-plugins')
     implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-logstash-configuration')
