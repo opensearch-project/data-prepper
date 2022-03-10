@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -35,6 +36,17 @@ class OperatorProviderTest {
         final int testSymbol = 100;
         final List<Operator<?>> operatorsWithNull = Arrays.asList(testOperator, null);
         assertThrows(IllegalArgumentException.class, () -> new OperatorProvider(operatorsWithNull));
+    }
+
+    @Test
+    void testContainsOperatorSymbol() {
+        final int testSymbol = 100;
+        when(testOperator.getSymbol()).thenReturn(testSymbol);
+        final List<Operator<?>> testOperators = Collections.singletonList(testOperator);
+
+        objectUnderTest = new OperatorProvider(testOperators);
+        assertThat(objectUnderTest.containsOperator(testSymbol), is(true));
+        assertThat(objectUnderTest.containsOperator(200), is(false));
     }
 
     @Test
