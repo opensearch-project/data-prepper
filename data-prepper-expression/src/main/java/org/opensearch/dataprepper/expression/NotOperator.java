@@ -25,7 +25,7 @@ class NotOperator implements Operator<Boolean> {
 
     @Override
     public boolean shouldEvaluate(final RuleContext ctx) {
-        return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_unaryNotOperatorExpression;
+        return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_unaryOperatorExpression;
     }
 
     @Override

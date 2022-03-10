@@ -86,6 +86,18 @@ class ParseTreeCoercionServiceTest {
     }
 
     @Test
+    void testCoerceTerminalNodeBooleanType() {
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.Boolean);
+        final Boolean testBoolean = new Random().nextBoolean();
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn(String.valueOf(testBoolean));
+        final Event testEvent = createTestEvent(new HashMap<>());
+        final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
+        assertThat(result, instanceOf(Boolean.class));
+        assertThat(result, equalTo(testBoolean));
+    }
+
+    @Test
     void testCoerceTerminalNodeJsonPointerType() {
         final String testKey1 = "key1";
         final String testKey2 = "key2";

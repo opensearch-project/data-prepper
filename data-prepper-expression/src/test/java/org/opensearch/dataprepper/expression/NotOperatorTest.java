@@ -31,7 +31,7 @@ class NotOperatorTest {
 
     @Test
     void testShouldEvaluate() {
-        when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_unaryNotOperatorExpression);
+        when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_unaryOperatorExpression);
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(true));
         when(ctx.getRuleIndex()).thenReturn(-1);
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(false));
