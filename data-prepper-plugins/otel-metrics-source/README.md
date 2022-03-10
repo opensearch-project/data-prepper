@@ -14,7 +14,7 @@ source:
 
 ## Configurations
 
-* port(Optional) => An `int` represents the port Otel metrics source is running on. Default is ```21890```.
+* port(Optional) => An `int` represents the port Otel metrics source is running on. Default is ```21891```.
 * request_timeout(Optional) => An `int` represents request timeout in millis. Default is ```10_000```.
 * health_check_service(Optional) => A boolean enables a gRPC health check service under ```grpc.health.v1 / Health / Check```. Default is ```false```.
 * proto_reflection_service(Optional) => A boolean enables a reflection service for Protobuf services (see [ProtoReflectionService](https://grpc.github.io/grpc-java/javadoc/io/grpc/protobuf/services/ProtoReflectionService.html) and [gRPC reflection](https://github.com/grpc/grpc-java/blob/master/documentation/server-reflection-tutorial.md) docs). Default is ```false```.

@@ -33,20 +33,20 @@ import java.util.concurrent.Executors;
 @DataPrepperPlugin(name = "otel_metrics_source", pluginType = Source.class)
 public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequest>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsSource.class);
-    private final OTelMetricSourceConfig oTelMetricSourceConfig;
+    private final OTelMetricsSourceConfig oTelMetricSourceConfig;
     private Server server;
     private final PluginMetrics pluginMetrics;
     private final CertificateProviderFactory certificateProviderFactory;
 
     public OTelMetricsSource(final PluginSetting pluginSetting) {
-        oTelMetricSourceConfig = OTelMetricSourceConfig.buildConfig(pluginSetting);
+        oTelMetricSourceConfig = OTelMetricsSourceConfig.buildConfig(pluginSetting);
         pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
         certificateProviderFactory = new CertificateProviderFactory(oTelMetricSourceConfig);
     }
 
     // accessible only in the same package for unit test
     OTelMetricsSource(final PluginSetting pluginSetting, final CertificateProviderFactory certificateProviderFactory) {
-        oTelMetricSourceConfig = OTelMetricSourceConfig.buildConfig(pluginSetting);
+        oTelMetricSourceConfig = OTelMetricsSourceConfig.buildConfig(pluginSetting);
         pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
         this.certificateProviderFactory = certificateProviderFactory;
     }
@@ -139,7 +139,7 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
         LOG.info("Stopped otel_metrics_source.");
     }
 
-    public OTelMetricSourceConfig getoTelMetricSourceConfig() {
+    public OTelMetricsSourceConfig getoTelMetricSourceConfig() {
         return oTelMetricSourceConfig;
     }
 }

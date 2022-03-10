@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.plugins.source.oteltrace.certificate;
+package com.amazon.dataprepper.plugins.source.otelmetrics.certificate;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.acm.ACMCertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.file.FileCertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.s3.S3CertificateProvider;
-import com.amazon.dataprepper.plugins.source.otelmetrics.OTelMetricSourceConfig;
+import com.amazon.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig;
 import com.amazon.dataprepper.plugins.source.otelmetrics.certificate.CertificateProviderFactory;
 
 import org.hamcrest.core.IsInstanceOf;
@@ -25,7 +25,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 @ExtendWith(MockitoExtension.class)
 public class CertificateProviderFactoryTest {
-    private OTelMetricSourceConfig oTelTraceSourceConfig;
+    private OTelMetricsSourceConfig oTelTraceSourceConfig;
     private CertificateProviderFactory certificateProviderFactory;
 
     @Test
@@ -39,7 +39,7 @@ public class CertificateProviderFactoryTest {
 
         final PluginSetting pluginSetting = new PluginSetting(null, settingsMap);
         pluginSetting.setPipelineName("pipeline");
-        oTelTraceSourceConfig = OTelMetricSourceConfig.buildConfig(pluginSetting);
+        oTelTraceSourceConfig = OTelMetricsSourceConfig.buildConfig(pluginSetting);
 
         certificateProviderFactory = new CertificateProviderFactory(oTelTraceSourceConfig);
         final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
@@ -57,7 +57,7 @@ public class CertificateProviderFactoryTest {
 
         final PluginSetting pluginSetting = new PluginSetting(null, settingsMap);
         pluginSetting.setPipelineName("pipeline");
-        oTelTraceSourceConfig = OTelMetricSourceConfig.buildConfig(pluginSetting);
+        oTelTraceSourceConfig = OTelMetricsSourceConfig.buildConfig(pluginSetting);
 
         certificateProviderFactory = new CertificateProviderFactory(oTelTraceSourceConfig);
         final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
@@ -74,7 +74,7 @@ public class CertificateProviderFactoryTest {
 
         final PluginSetting pluginSetting = new PluginSetting(null, settingsMap);
         pluginSetting.setPipelineName("pipeline");
-        oTelTraceSourceConfig = OTelMetricSourceConfig.buildConfig(pluginSetting);
+        oTelTraceSourceConfig = OTelMetricsSourceConfig.buildConfig(pluginSetting);
 
         certificateProviderFactory = new CertificateProviderFactory(oTelTraceSourceConfig);
         final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();

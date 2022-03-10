@@ -9,7 +9,7 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 
 import org.apache.commons.lang3.StringUtils;
 
-public class OTelMetricSourceConfig {
+public class OTelMetricsSourceConfig {
     static final String REQUEST_TIMEOUT = "request_timeout";
     static final String PORT = "port";
     static final String SSL = "ssl";
@@ -26,7 +26,7 @@ public class OTelMetricSourceConfig {
     static final String MAX_CONNECTION_COUNT = "max_connection_count";
     static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
-    static final int DEFAULT_PORT = 21890;
+    static final int DEFAULT_PORT = 21891;
     static final int DEFAULT_THREAD_COUNT = 200;
     static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
     static final boolean DEFAULT_SSL = true;
@@ -50,21 +50,21 @@ public class OTelMetricSourceConfig {
     private final int threadCount;
     private final int maxConnectionCount;
 
-    private OTelMetricSourceConfig(final int requestTimeoutInMillis,
-                                   final int port,
-                                   final boolean healthCheck,
-                                   final boolean protoReflectionService,
-                                   final boolean enableUnframedRequests,
-                                   final boolean isSSL,
-                                   final boolean useAcmCertForSSL,
-                                   final long acmCertIssueTimeOutMillis,
-                                   final String sslKeyCertChainFile,
-                                   final String sslKeyFile,
-                                   final String acmCertificateArn,
-                                   final String acmPrivateKeyPassword,
-                                   final String awsRegion,
-                                   final int threadCount,
-                                   final int maxConnectionCount) {
+    private OTelMetricsSourceConfig(final int requestTimeoutInMillis,
+                                    final int port,
+                                    final boolean healthCheck,
+                                    final boolean protoReflectionService,
+                                    final boolean enableUnframedRequests,
+                                    final boolean isSSL,
+                                    final boolean useAcmCertForSSL,
+                                    final long acmCertIssueTimeOutMillis,
+                                    final String sslKeyCertChainFile,
+                                    final String sslKeyFile,
+                                    final String acmCertificateArn,
+                                    final String acmPrivateKeyPassword,
+                                    final String awsRegion,
+                                    final int threadCount,
+                                    final int maxConnectionCount) {
         this.requestTimeoutInMillis = requestTimeoutInMillis;
         this.port = port;
         this.healthCheck = healthCheck;
@@ -110,8 +110,8 @@ public class OTelMetricSourceConfig {
                 sslKeyFile.toLowerCase().startsWith(S3_PREFIX);
     }
 
-    public static OTelMetricSourceConfig buildConfig(final PluginSetting pluginSetting) {
-        return new OTelMetricSourceConfig(pluginSetting.getIntegerOrDefault(REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT_MS),
+    public static OTelMetricsSourceConfig buildConfig(final PluginSetting pluginSetting) {
+        return new OTelMetricsSourceConfig(pluginSetting.getIntegerOrDefault(REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT_MS),
                 pluginSetting.getIntegerOrDefault(PORT, DEFAULT_PORT),
                 pluginSetting.getBooleanOrDefault(HEALTH_CHECK_SERVICE, false),
                 pluginSetting.getBooleanOrDefault(PROTO_REFLECTION_SERVICE, false),
