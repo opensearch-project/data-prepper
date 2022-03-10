@@ -75,9 +75,13 @@ class SplitStringProcessorTests {
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
             return Stream.of(
+                    Arguments.arguments("hello,world,no-split", Arrays.asList("hello","world","no-split")),
                     Arguments.arguments("hello,world", Arrays.asList("hello", "world")),
+                    Arguments.arguments("hello,,world", Arrays.asList("hello","","world")),
                     Arguments.arguments("hello,", Arrays.asList("hello")),
-                    Arguments.arguments("hello,world,no-split", Arrays.asList("hello","world", "no-split"))
+                    Arguments.arguments("hello,,", Arrays.asList("hello")),
+                    Arguments.arguments(",hello", Arrays.asList("","hello")),
+                    Arguments.arguments(",,hello", Arrays.asList("","","hello"))
             );
         }
     }
