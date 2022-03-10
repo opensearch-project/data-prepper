@@ -5,13 +5,13 @@
 
 package org.opensearch.dataprepper.expression;
 
-import com.google.common.base.Function;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import org.springframework.context.annotation.Bean;
 
 import javax.inject.Named;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 
 @Named
 public class UnaryNumericOperatorConfiguration {

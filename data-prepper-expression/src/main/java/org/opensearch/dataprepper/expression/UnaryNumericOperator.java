@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.expression;
 
-import com.google.common.base.Function;
 import org.antlr.v4.runtime.RuleContext;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
