@@ -60,7 +60,7 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
         if (nodeType == DataPrepperExpressionParser.EOF) {
             return;
         }
-        if (operatorProvider.containsOperatorSymbol(nodeType) || nodeType == DataPrepperExpressionParser.LPAREN) {
+        if (operatorProvider.containsOperator(nodeType) || nodeType == DataPrepperExpressionParser.LPAREN) {
             operatorSymbolStack.push(nodeType);
         } else if (nodeType == DataPrepperExpressionParser.RPAREN) {
             // pop LPAREN at operatorSymbolStack top

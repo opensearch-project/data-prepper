@@ -50,24 +50,23 @@ class ParseTreeEvaluatorTest {
 
     @Test
     void testEvaluateSuccess() throws ExpressionCoercionException {
+        when(coercionService.coerce(any(), any())).thenAnswer(invocation -> {
+            final Object res = invocation.getArgument(0);
+            final Class<Boolean> clazz = invocation.getArgument(1);
+            return clazz.cast(res);
+        });
         try (final MockedConstruction<ParseTreeEvaluatorListener> ignored =
                      mockConstruction(ParseTreeEvaluatorListener.class, (mock, context) -> when(mock.getResult()).thenReturn(true))) {
-            when(coercionService.coerce(any(), any())).thenAnswer(invocation -> {
-                Object[] args = invocation.getArguments();
-                final Object res = args[0];
-                final Class<Boolean> clazz = (Class<Boolean>) args[1];
-                return clazz.cast(res);
-            });
             assertThat(objectUnderTest.evaluate(parseTree, event), is(true));
         }
     }
 
     @Test
     void testEvaluateFailureInWalk() {
+        doThrow(new RuntimeException()).when(parseTreeWalker).walk(
+                any(ParseTreeEvaluatorListener.class), any(ParseTree.class));
         try (final MockedConstruction<ParseTreeEvaluatorListener> ignored =
                      mockConstruction(ParseTreeEvaluatorListener.class)) {
-            doThrow(new RuntimeException()).when(parseTreeWalker).walk(
-                    any(ParseTreeEvaluatorListener.class), any(ParseTree.class));
             assertThrows(ExpressionEvaluationException.class, () -> objectUnderTest.evaluate(parseTree, event));
         }
     }
@@ -83,9 +82,9 @@ class ParseTreeEvaluatorTest {
 
     @Test
     void testEvaluateFailureInCoerce() throws ExpressionCoercionException {
+        when(coercionService.coerce(any(), any())).thenThrow(new ExpressionCoercionException("test message"));
         try (final MockedConstruction<ParseTreeEvaluatorListener> ignored =
                      mockConstruction(ParseTreeEvaluatorListener.class, (mock, context) -> when(mock.getResult()).thenReturn(true))) {
-            when(coercionService.coerce(any(), any())).thenThrow(new ExpressionCoercionException("test message"));
             assertThrows(ExpressionEvaluationException.class, () -> objectUnderTest.evaluate(parseTree, event));
         }
     }

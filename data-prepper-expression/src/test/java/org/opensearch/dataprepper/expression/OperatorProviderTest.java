@@ -45,8 +45,8 @@ class OperatorProviderTest {
         final List<Operator<?>> testOperators = Collections.singletonList(testOperator);
 
         objectUnderTest = new OperatorProvider(testOperators);
-        assertThat(objectUnderTest.containsOperatorSymbol(testSymbol), is(true));
-        assertThat(objectUnderTest.containsOperatorSymbol(200), is(false));
+        assertThat(objectUnderTest.containsOperator(testSymbol), is(true));
+        assertThat(objectUnderTest.containsOperator(200), is(false));
     }
 
     @Test
