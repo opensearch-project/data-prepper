@@ -28,7 +28,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class UppercaseStringProcessorTests {
+public class TrimStringProcessorTests {
     @Mock
     private PluginMetrics pluginMetrics;
 
@@ -41,48 +41,58 @@ public class UppercaseStringProcessorTests {
     }
 
     @Test
-    public void testHappyPathUppercaseStringProcessor() {
-        final UppercaseStringProcessor processor = createObjectUnderTest();
-        final Record<Event> record = getEvent("thisisamessage");
+    public void testHappyPathTrimStringProcessor() {
+        final TrimStringProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent(" thisisamessage ");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
-        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("THISISAMESSAGE"));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
     }
 
     @Test
-    public void testHappyPathMultiUppercaseStringProcessor() {
+    public void testSpaceInMiddleTrimStringProcessor() {
+        final TrimStringProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent(" this is a message ");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("this is a message"));
+    }
+
+    @Test
+    public void testHappyPathMultiTrimStringProcessor() {
         when(config.getIterativeConfig()).thenReturn(Arrays.asList("message", "message2"));
 
-        final UppercaseStringProcessor processor = createObjectUnderTest();
-        final Record<Event> record = getEvent("thisisamessage");
-        record.getData().put("message2", "test2");
+        final TrimStringProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage ");
+        record.getData().put("message2", "test2    ");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
-        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("THISISAMESSAGE"));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
         assertThat(editedRecords.get(0).getData().containsKey("message2"), is(true));
-        assertThat(editedRecords.get(0).getData().get("message2", Object.class), equalTo("TEST2"));
+        assertThat(editedRecords.get(0).getData().get("message2", Object.class), equalTo("test2"));
     }
 
     @Test
-    public void testHappyPathMultiMixedUppercaseStringProcessor() {
+    public void testHappyPathMultiMixedTrimStringProcessor() {
         lenient().when(config.getIterativeConfig()).thenReturn(Arrays.asList("message", "message2"));
 
-        final UppercaseStringProcessor processor = createObjectUnderTest();
-        final Record<Event> record = getEvent("thisisamessage");
+        final TrimStringProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage   ");
         record.getData().put("message2", 3);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
-        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("THISISAMESSAGE"));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
         assertThat(editedRecords.get(0).getData().containsKey("message2"), is(true));
         assertThat(editedRecords.get(0).getData().get("message2", Object.class), equalTo(3));
     }
 
     @Test
-    public void testValueIsNotStringUppercaseStringProcessor() {
-        final UppercaseStringProcessor processor = createObjectUnderTest();
+    public void testValueIsNotStringTrimStringProcessor() {
+        final TrimStringProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent(3);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
@@ -91,8 +101,8 @@ public class UppercaseStringProcessorTests {
     }
 
     @Test
-    public void testValueIsNullUppercaseStringProcessor() {
-        final UppercaseStringProcessor processor = createObjectUnderTest();
+    public void testValueIsNullTrimStringProcessor() {
+        final TrimStringProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent(null);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
@@ -101,8 +111,8 @@ public class UppercaseStringProcessorTests {
     }
 
     @Test
-    public void testValueIsObjectUppercaseStringProcessor() {
-        final UppercaseStringProcessor processor = createObjectUnderTest();
+    public void testValueIsObjectTrimStringProcessor() {
+        final TrimStringProcessor processor = createObjectUnderTest();
         final TestObject testObject = new TestObject();
         testObject.a = "msg";
         final Record<Event> record = getEvent(testObject);
@@ -126,8 +136,8 @@ public class UppercaseStringProcessorTests {
         }
     }
 
-    private UppercaseStringProcessor createObjectUnderTest() {
-        return new UppercaseStringProcessor(pluginMetrics, config);
+    private TrimStringProcessor createObjectUnderTest() {
+        return new TrimStringProcessor(pluginMetrics, config);
     }
 
     private Record<Event> getEvent(Object message) {

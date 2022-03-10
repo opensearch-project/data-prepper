@@ -25,11 +25,14 @@ class RegexEqualOperatorTest {
     private ParserRuleContext ctx;
 
     @Test
+<<<<<<< HEAD
     void testGetNumberOfOperands() {
         assertThat(objectUnderTest.getNumberOfOperands(), is(2));
     }
 
     @Test
+=======
+>>>>>>> main
     void testShouldEvaluate() {
         when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_regexOperatorExpression);
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(true));

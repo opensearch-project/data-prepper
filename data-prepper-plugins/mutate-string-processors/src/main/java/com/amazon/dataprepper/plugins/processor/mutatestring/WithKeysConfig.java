@@ -11,9 +11,10 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
-public abstract class WithKeysProcessorConfig implements StringProcessorConfig<String> {
-    @NotEmpty
+public class WithKeysConfig implements StringProcessorConfig<String> {
+
     @NotNull
+    @NotEmpty
     @JsonProperty("with_keys")
     private List<String> withKeys;
 

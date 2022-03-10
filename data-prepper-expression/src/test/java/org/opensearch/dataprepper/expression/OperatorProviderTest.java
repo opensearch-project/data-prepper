@@ -33,6 +33,7 @@ class OperatorProviderTest {
     @Test
     void testIllegalArgumentsInConstructor() {
         assertThrows(IllegalArgumentException.class, () -> new OperatorProvider(null));
+        final int testSymbol = 100;
         final List<Operator<?>> operatorsWithNull = Arrays.asList(testOperator, null);
         assertThrows(IllegalArgumentException.class, () -> new OperatorProvider(operatorsWithNull));
     }
