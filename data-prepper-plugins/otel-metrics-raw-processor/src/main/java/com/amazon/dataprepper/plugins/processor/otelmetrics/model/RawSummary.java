@@ -8,7 +8,6 @@ package com.amazon.dataprepper.plugins.processor.otelmetrics.model;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
 
 import java.util.List;
 import java.util.Map;
@@ -26,7 +25,7 @@ public class RawSummary {
     private final String time;
     private final String serviceName;
     private final int quantileValuesCount;
-    private final List<SummaryDataPoint.ValueAtQuantile> quantileValuesList;
+    private final List<ValueAtQuantile> quantileValues;
 
     public String getKind() {
         return kind;
@@ -42,7 +41,7 @@ public class RawSummary {
         this.time = builder.getTime();
         this.serviceName = builder.getServiceName();
         this.quantileValuesCount = builder.getQuantileValuesCount();
-        this.quantileValuesList = builder.getQuantileValuesList();
+        this.quantileValues = builder.getQuantileValues();
     }
 
     @JsonAnyGetter
@@ -54,8 +53,8 @@ public class RawSummary {
         return quantileValuesCount;
     }
 
-    public List<SummaryDataPoint.ValueAtQuantile> getQuantileValuesList() {
-        return quantileValuesList;
+    public List<ValueAtQuantile> getQuantileValues() {
+        return quantileValues;
     }
 
     public String getDescription() {
@@ -84,5 +83,23 @@ public class RawSummary {
 
     public String toJson() throws JsonProcessingException {
         return OBJECT_MAPPER.writeValueAsString(this);
+    }
+
+    public static class ValueAtQuantile {
+        private final double quantile;
+        private final double value;
+
+        public ValueAtQuantile(double quantile, double value) {
+            this.quantile = quantile;
+            this.value = value;
+        }
+
+        public double getQuantile() {
+            return quantile;
+        }
+
+        public double getValue() {
+            return value;
+        }
     }
 }

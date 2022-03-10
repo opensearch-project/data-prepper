@@ -123,7 +123,7 @@ public class MetricsPluginHistogramTest {
             assertThat(actualBucket)
                     .contains(entry("lowerBound", expectedBucket.getLowerBound()))
                     .contains(entry("upperBound", expectedBucket.getUpperBound()))
-                    .contains(entry("count", (int)expectedBucket.getNumberOfObservations()));
+                    .contains(entry("count", (int)expectedBucket.getCount()));
 
         }
     }

@@ -13,6 +13,7 @@ import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class RawSummaryBuilder {
 
@@ -26,15 +27,15 @@ public class RawSummaryBuilder {
     private String description;
     private HashMap<String, Object> attributes;
     private int quantileValuesCount;
-    private List<SummaryDataPoint.ValueAtQuantile> quantileValuesList;
+    private List<RawSummary.ValueAtQuantile> quantileValues;
 
 
     public int getQuantileValuesCount() {
         return quantileValuesCount;
     }
 
-    public List<SummaryDataPoint.ValueAtQuantile> getQuantileValuesList() {
-        return quantileValuesList;
+    public List<RawSummary.ValueAtQuantile> getQuantileValues() {
+        return quantileValues;
     }
 
     public String getKind() {
@@ -134,8 +135,10 @@ public class RawSummaryBuilder {
         return this;
     }
 
-    private RawSummaryBuilder setQuantileValues(List<SummaryDataPoint.ValueAtQuantile> quantileValuesList) {
-        this.quantileValuesList = quantileValuesList;
+    private RawSummaryBuilder setQuantileValues(List<SummaryDataPoint.ValueAtQuantile> quantileValues) {
+        this.quantileValues = quantileValues.stream()
+                .map(q -> new RawSummary.ValueAtQuantile(q.getQuantile(), q.getValue()))
+                .collect(Collectors.toList());
         return this;
     }
 

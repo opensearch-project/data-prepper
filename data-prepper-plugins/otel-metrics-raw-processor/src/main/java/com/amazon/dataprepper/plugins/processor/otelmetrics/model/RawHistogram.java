@@ -107,27 +107,24 @@ public class RawHistogram {
 
         private final double lowerBound;
         private final double upperBound;
-        private final long numberOfObservations;
+        private final long count;
 
-        public Bucket(double lowerBound, double upperBound, long numberOfObservations) {
+        public Bucket(double lowerBound, double upperBound, long count) {
             this.lowerBound = lowerBound;
             this.upperBound = upperBound;
-            this.numberOfObservations = numberOfObservations;
+            this.count = count;
         }
 
-        @JsonProperty("lowerBound")
         public double getLowerBound() {
             return lowerBound;
         }
 
-        @JsonProperty("upperBound")
         public double getUpperBound() {
             return upperBound;
         }
 
-        @JsonProperty("count")
-        public long getNumberOfObservations() {
-            return numberOfObservations;
+        public long getCount() {
+            return count;
         }
 
     }

@@ -1,41 +1,34 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
-
 package com.amazon.dataprepper.plugin.prepper.otelmetrics;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
-import io.opentelemetry.proto.metrics.v1.Sum;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.processor.otelmetrics.OTelMetricsStringProcessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
 import io.opentelemetry.proto.metrics.v1.Metric;
-import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.metrics.v1.Summary;
+import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
 import io.opentelemetry.proto.resource.v1.Resource;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.junit.MockitoJUnitRunner;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 
 @RunWith(MockitoJUnitRunner.class)
-public class MetricsPluginSumTest {
+public class MetricsPluginSummaryTest {
 
     OTelMetricsStringProcessor stringPrepper;
 
@@ -47,13 +40,20 @@ public class MetricsPluginSumTest {
     }
 
     @Test
-    public void test() throws JsonProcessingException {
-        NumberDataPoint dataPoint = NumberDataPoint.newBuilder()
-                .setAsInt(3)
+    public void testSummaryProcessing() throws JsonProcessingException {
+        SummaryDataPoint dataPoint = SummaryDataPoint.newBuilder()
+                .addQuantileValues(SummaryDataPoint.ValueAtQuantile.newBuilder()
+                        .setQuantile(0.5)
+                        .setValue(100)
+                        .build())
+                .addQuantileValues(SummaryDataPoint.ValueAtQuantile.newBuilder()
+                        .setQuantile(0.7)
+                        .setValue(250)
+                        .build())
                 .build();
-        Sum sum = Sum.newBuilder().addDataPoints(dataPoint).build();
+        Summary summary = Summary.newBuilder().addDataPoints(dataPoint).build();
         Metric metric = Metric.newBuilder()
-                .setSum(sum)
+                .setSummary(summary)
                 .setUnit("seconds")
                 .setName("whatname")
                 .setDescription("kron")
@@ -86,12 +86,19 @@ public class MetricsPluginSumTest {
     }
 
     private void assertSumProcessing(Map map) {
-        assertThat(map).contains(entry("kind", "sum"));
+        assertThat(map).contains(entry("kind", "summary"));
         assertThat(map).contains(entry("unit", "seconds"));
         assertThat(map).contains(entry("description", "kron"));
         assertThat(map).contains(entry("name", "whatname"));
         assertThat(map).contains(entry("serviceName", "service"));
-        assertThat(map).contains(entry("value", "3"));
-    }
 
+        List<Map<String, Object>> quantileValues = (List<Map<String, Object>>) map.get("quantileValues");
+        assertThat(quantileValues).hasSize(2);
+        Map<String, Object> q1 = quantileValues.get(0);
+        Map<String, Object> q2 = quantileValues.get(1);
+        assertThat(q1).contains(entry("quantile", 0.5));
+        assertThat(q1).contains(entry("value", 100.0));
+        assertThat(q2).contains(entry("quantile", 0.7));
+        assertThat(q2).contains(entry("value", 250.0));
+    }
 }
