@@ -10,6 +10,7 @@ import com.amazon.dataprepper.model.event.JacksonEvent;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
 
 class ParseTreeEvaluatorListenerTest {
     private static final CharStream EMPTY_STREAM = CharStreams.fromString("");
@@ -68,6 +70,15 @@ class ParseTreeEvaluatorListenerTest {
         objectUnderTest = createObjectUnderTest(event);
         walker.walk(objectUnderTest, parseTree);
         return objectUnderTest.getResult();
+    }
+
+    @Test
+    void testVisitErrorNode() {
+        final ErrorNode errorNode = mock(ErrorNode.class);
+        final Event testEvent = createTestEvent(new HashMap<>());
+        objectUnderTest = createObjectUnderTest(testEvent);
+
+        assertThrows(RuntimeException.class, () -> objectUnderTest.visitErrorNode(errorNode));
     }
 
     @Test
