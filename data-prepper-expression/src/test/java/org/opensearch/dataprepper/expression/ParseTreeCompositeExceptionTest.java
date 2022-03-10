@@ -65,9 +65,8 @@ class ParseTreeCompositeExceptionTest {
 
         assertThat(parseTreeCompositeException.getCause() instanceof ExceptionOverview, is(true));
         final String message = parseTreeCompositeException.getCause().getMessage();
-        assertThat(message, is("Multiple exceptions (2)\n" +
-                "|-- java.lang.RuntimeException: Error2" +
-                "|-- java.lang.RuntimeException: Error1"
-        ));
+        assertThat(message, containsString("Multiple exceptions (2)"));
+        assertThat(message, containsString("|-- java.lang.RuntimeException: Error2"));
+        assertThat(message, containsString("|-- java.lang.RuntimeException: Error1"));
     }
 }
