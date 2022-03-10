@@ -12,9 +12,7 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.processor.Processor;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @DataPrepperPlugin(name = "split_string", pluginType = Processor.class, pluginConfigurationType = SplitStringProcessorConfig.class)
