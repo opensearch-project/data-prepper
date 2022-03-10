@@ -12,7 +12,6 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.processor.Processor;
 
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
