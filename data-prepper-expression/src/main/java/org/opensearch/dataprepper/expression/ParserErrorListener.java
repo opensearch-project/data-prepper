@@ -11,7 +11,6 @@ import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.atn.ATNConfigSet;
 import org.antlr.v4.runtime.dfa.DFA;
-import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -24,10 +23,6 @@ import java.util.List;
  */
 class ParserErrorListener implements ANTLRErrorListener {
     private final List<Throwable> exceptions = new ArrayList<>();
-
-    public ParserErrorListener(final DataPrepperExpressionParser parser) {
-        parser.addErrorListener(this);
-    }
 
     /**
      * @since 1.3
