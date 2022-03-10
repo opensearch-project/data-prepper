@@ -20,13 +20,16 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class UnaryNumericOperatorTest {
@@ -94,36 +97,37 @@ class UnaryNumericOperatorTest {
 
     @ParameterizedTest
     @MethodSource("argProvider")
-    void testGivenSingleArgThenEvaluateCallsStrategyFunction(final Number arg, final Class<? extends Number> clazz) {
-        final AtomicBoolean isStrategyFunctionCalled = new AtomicBoolean(false);
+    void testGivenSingleArgThenEvaluateCallsStrategyFunction(final Number arg) {
         final Number expected = RANDOM.nextInt();
-        final Function<Number, ? extends Number> strategyFunction = param -> {
-            isStrategyFunctionCalled.set(true);
-            return expected;
-        };
+
+        final Function<Number, Number> strategyFunction = mock(Function.class);
+
+        doReturn(expected)
+                .when(strategyFunction)
+                .apply(eq(arg));
         doReturn(strategyFunction)
                 .when(strategy)
-                .get(clazz);
+                .get(arg.getClass());
 
         final Number result = unaryNumericOperator.evaluate(arg);
 
-        assertThat(isStrategyFunctionCalled.get(), is(true));
+        verify(strategyFunction).apply(any());
         assertThat(result, is(expected));
     }
 
     private static Stream<Arguments> argProvider() {
         return Stream.of(
-                Arguments.of(-5, Integer.class),
-                Arguments.of(0, Integer.class),
-                Arguments.of(10, Integer.class),
-                Arguments.of(Integer.MIN_VALUE, Integer.class),
-                Arguments.of(Integer.MAX_VALUE, Integer.class),
-                Arguments.of(-42.95f, Float.class),
-                Arguments.of(0.0f, Float.class),
-                Arguments.of(9999.123f, Float.class),
-                Arguments.of(Float.MIN_VALUE, Float.class),
-                Arguments.of(Float.MAX_VALUE, Float.class),
-                Arguments.of(Float.MIN_NORMAL, Float.class)
+                Arguments.of(-5),
+                Arguments.of(0),
+                Arguments.of(10),
+                Arguments.of(Integer.MIN_VALUE),
+                Arguments.of(Integer.MAX_VALUE),
+                Arguments.of(-42.95f),
+                Arguments.of(0.0f),
+                Arguments.of(9999.123f),
+                Arguments.of(Float.MIN_VALUE),
+                Arguments.of(Float.MAX_VALUE),
+                Arguments.of(Float.MIN_NORMAL)
         );
     }
 }
