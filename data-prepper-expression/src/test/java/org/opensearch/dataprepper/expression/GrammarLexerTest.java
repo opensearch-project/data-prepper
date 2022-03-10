@@ -165,11 +165,6 @@ public class GrammarLexerTest {
     }
 
     @Test
-    void testTokenADD() {
-        assertToken("+", DataPrepperExpressionLexer.ADD);
-    }
-
-    @Test
     void testTokenSUBTRACT() {
         assertToken("-", DataPrepperExpressionLexer.SUBTRACT);
     }

@@ -90,7 +90,6 @@ setInitializer
 unaryOperator
     : NOT
     | SUBTRACT
-    | ADD
     ;
 
 primary
@@ -237,7 +236,6 @@ NOT_IN_SET : SPACE 'not in' SPACE;
 AND : SPACE 'and' SPACE;
 OR : SPACE 'or' SPACE;
 NOT : 'not' SPACE;
-ADD : '+';
 SUBTRACT : '-';
 LPAREN : '(';
 RPAREN : ')';
