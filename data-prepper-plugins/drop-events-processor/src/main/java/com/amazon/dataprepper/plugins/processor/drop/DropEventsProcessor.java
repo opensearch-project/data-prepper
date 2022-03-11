@@ -39,7 +39,7 @@ public class DropEventsProcessor extends AbstractProcessor<Record<Event>, Record
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
-        if (whenCondition.shouldEvaluateConditional()) {
+        if (whenCondition.isNotAlwaysTrue()) {
             return records.stream()
                     .filter(record -> whenCondition.isStatementFalseWith(record.getData()))
                     .collect(Collectors.toList());
