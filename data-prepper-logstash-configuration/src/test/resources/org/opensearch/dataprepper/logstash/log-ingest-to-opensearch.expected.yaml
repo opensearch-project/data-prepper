@@ -59,6 +59,10 @@ logstash-converted-pipeline:
           - source: "source2"
             from: "from2"
             to: "to2"
+    - split_string:
+        entries:
+          - source: "hello,world"
+            delimiter: ","
   sink:
     - opensearch:
         hosts:
