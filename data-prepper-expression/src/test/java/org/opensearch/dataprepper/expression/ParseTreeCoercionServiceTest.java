@@ -46,7 +46,10 @@ class ParseTreeCoercionServiceTest {
     @Mock
     private Token token;
 
-    private final ParseTreeCoercionService objectUnderTest = new ParseTreeCoercionService();
+    private final LiteralTypeConversionsConfiguration literalTypeConversionsConfiguration =
+            new LiteralTypeConversionsConfiguration();
+    private final ParseTreeCoercionService objectUnderTest = new ParseTreeCoercionService(
+            literalTypeConversionsConfiguration.literalTypeConversions());
 
     @Test
     void testCoerceTerminalNodeStringType() {

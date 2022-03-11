@@ -9,6 +9,7 @@ import com.amazon.dataprepper.model.event.Event;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
+import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.Serializable;
 import java.util.HashMap;
@@ -17,15 +18,11 @@ import java.util.function.Function;
 
 @Named
 class ParseTreeCoercionService {
-    private static final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypes;
+    private final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypeConversions;
 
-    static {
-        literalTypes = new HashMap<>();
-        literalTypes.put(String.class, Function.identity());
-        literalTypes.put(Boolean.class, Function.identity());
-        literalTypes.put(Integer.class, Function.identity());
-        literalTypes.put(Float.class, Function.identity());
-        literalTypes.put(Double.class, v -> ((Double) v).floatValue());
+    @Inject
+    public ParseTreeCoercionService(final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypeConversions) {
+        this.literalTypeConversions = literalTypeConversions;
     }
 
     public Object coercePrimaryTerminalNode(final TerminalNode node, final Event event) {
@@ -62,8 +59,8 @@ class ParseTreeCoercionService {
         final Object value = event.get(jsonPointer, Object.class);
         if (value == null) {
             return null;
-        } else if (literalTypes.containsKey(value.getClass())) {
-            return literalTypes.get(value.getClass()).apply(value);
+        } else if (literalTypeConversions.containsKey(value.getClass())) {
+            return literalTypeConversions.get(value.getClass()).apply(value);
         } else {
             throw new ExpressionCoercionException("Unsupported type for value " + value);
         }

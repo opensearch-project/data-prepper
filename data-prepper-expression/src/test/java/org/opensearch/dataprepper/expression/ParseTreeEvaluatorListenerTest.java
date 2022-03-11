@@ -30,7 +30,9 @@ class ParseTreeEvaluatorListenerTest {
     private final ParseTreeWalker walker = new ParseTreeWalker();
     private final ParseTreeParser parseTreeParser = constructParseTreeParser();
     private final OperatorFactory operatorFactory = new OperatorFactory();
-    private final ParseTreeCoercionService coercionService = new ParseTreeCoercionService();
+    private final LiteralTypeConversionsConfiguration literalTypeConversionsConfiguration = new LiteralTypeConversionsConfiguration();
+    private final ParseTreeCoercionService coercionService = new ParseTreeCoercionService(
+            literalTypeConversionsConfiguration.literalTypeConversions());
     private final List<Operator<?>> operators = Arrays.asList(
             new AndOperator(), new OrOperator(),
             operatorFactory.inSetOperator(), operatorFactory.notInSetOperator(),
