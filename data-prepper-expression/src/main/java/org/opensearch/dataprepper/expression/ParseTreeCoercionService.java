@@ -12,16 +12,23 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import javax.inject.Named;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 @Named
 class ParseTreeCoercionService {
-    private final List<? extends Class<? extends Serializable>> literalTypes = Arrays.asList(
-            String.class,
-            Boolean.class,
-            Integer.class,
-            Float.class
-    );
+    private static final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypes;
+
+    static {
+        literalTypes = new HashMap<>();
+        literalTypes.put(String.class, Function.identity());
+        literalTypes.put(Boolean.class, Function.identity());
+        literalTypes.put(Integer.class, Function.identity());
+        literalTypes.put(Float.class, Function.identity());
+        literalTypes.put(Double.class, v -> ((Double) v).floatValue());
+    }
 
     public Object coercePrimaryTerminalNode(final TerminalNode node, final Event event) {
         final int nodeType = node.getSymbol().getType();
@@ -56,11 +63,9 @@ class ParseTreeCoercionService {
     private Object resolveJsonPointerValue(final String jsonPointer, final Event event) {
         final Object value = event.get(jsonPointer, Object.class);
         if (value == null) {
-            throw new ExpressionCoercionException("Unsupported type for value " + value);
-        } else if (literalTypes.contains(value.getClass())) {
-            return value;
-        } else if (value instanceof Double) {
-            return ((Double) value).floatValue();
+            return null;
+        } else if (literalTypes.containsKey(value.getClass())) {
+            return literalTypes.get(value.getClass()).apply(value);
         } else {
             throw new ExpressionCoercionException("Unsupported type for value " + value);
         }

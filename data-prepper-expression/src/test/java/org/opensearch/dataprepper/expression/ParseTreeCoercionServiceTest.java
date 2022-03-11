@@ -102,7 +102,8 @@ class ParseTreeCoercionServiceTest {
         final String testKey1 = "key1";
         final String testKey2 = "key2";
         final String testJsonPointerKey = String.format("/%s/%s", testKey1, testKey2);
-        final Event testEvent = createTestEvent(Map.of(testKey1, Map.of(testKey2, testValue)));
+        final Event testEvent = testValue == null ? createTestEvent(new HashMap<>()) :
+                createTestEvent(Map.of(testKey1, Map.of(testKey2, testValue)));
         when(token.getType()).thenReturn(DataPrepperExpressionParser.JsonPointer);
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn(testJsonPointerKey);
@@ -148,7 +149,8 @@ class ParseTreeCoercionServiceTest {
     void testCoerceTerminalNodeEscapeJsonPointerTypeSupportedValues(final Object testValue) {
         final String testKey = "testKey";
         final String testEscapeJsonPointerKey = String.format("\"/%s\"", testKey);
-        final Event testEvent = createTestEvent(Map.of(testKey, testValue));
+        final Event testEvent = testValue == null ? createTestEvent(new HashMap<>()) :
+                createTestEvent(Map.of(testKey, testValue));
         when(token.getType()).thenReturn(DataPrepperExpressionParser.EscapedJsonPointer);
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn(testEscapeJsonPointerKey);
@@ -227,14 +229,12 @@ class ParseTreeCoercionServiceTest {
                 Arguments.of(true),
                 Arguments.of("test value"),
                 Arguments.of(1.1f),
-                Arguments.of(1.1)
+                Arguments.of(1.1),
+                Arguments.of((Object) null)
         );
     }
 
     private static Stream<Arguments> provideUnSupportedJsonPointerValues() {
-        return Stream.of(
-                Arguments.of(Long.MAX_VALUE),
-                Arguments.of((Object) null)
-        );
+        return Stream.of(Arguments.of(Long.MAX_VALUE));
     }
 }
