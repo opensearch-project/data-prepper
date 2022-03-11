@@ -6,15 +6,15 @@
 package org.opensearch.dataprepper.expression;
 
 import java.util.Map;
-import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 
 public class GenericEqualOperator extends BinaryOperator<Boolean> {
-    private final Map<Class<?>, Map<Class<?>, BiFunction<Object, Object, Boolean>>> equalStrategy;
+    private final Map<Class<?>, Map<Class<?>, BiPredicate<Object, Object>>> equalStrategy;
 
     public GenericEqualOperator(
             final int symbol,
             final int shouldEvaluateRuleIndex,
-            final Map<Class<?>, Map<Class<?>, BiFunction<Object, Object, Boolean>>> equalStrategy
+            final Map<Class<?>, Map<Class<?>, BiPredicate<Object, Object>>> equalStrategy
     ) {
         super(symbol, shouldEvaluateRuleIndex);
         this.equalStrategy = equalStrategy;
@@ -28,7 +28,7 @@ public class GenericEqualOperator extends BinaryOperator<Boolean> {
         else if (hasStrategyMatching(lhs, rhs)) {
             return equalStrategy.get(lhs.getClass())
                     .get(rhs.getClass())
-                    .apply(lhs, rhs);
+                    .test(lhs, rhs);
         }
         else {
             return lhs.equals(rhs);

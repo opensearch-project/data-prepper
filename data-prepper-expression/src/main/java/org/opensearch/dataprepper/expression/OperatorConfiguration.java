@@ -118,15 +118,15 @@ public class OperatorConfiguration {
 
     @Bean
     public GenericEqualOperator equalOperator() {
-        final BiFunction<Object, Object, Boolean> floatEquals = (lhs, rhs) -> ((Number)lhs).floatValue() == ((Number) rhs).floatValue();
+        final BiPredicate<Object, Object> floatEquals = (lhs, rhs) -> ((Number)lhs).floatValue() == ((Number) rhs).floatValue();
 
-        final Map<Class<?>, Map<Class<?>, BiFunction<Object, Object, Boolean>>> equalStrategy = new HashMap<>();
+        final Map<Class<?>, Map<Class<?>, BiPredicate<Object, Object>>> equalStrategy = new HashMap<>();
 
-        final Map<Class<?>, BiFunction<Object, Object, Boolean>> intOperations = new HashMap<>();
+        final Map<Class<?>, BiPredicate<Object, Object>> intOperations = new HashMap<>();
         intOperations.put(Integer.class, (lhs, rhs) -> (int) lhs == (int) rhs);
         intOperations.put(Float.class, floatEquals);
 
-        final Map<Class<?>, BiFunction<Object, Object, Boolean>> floatOperations = new HashMap<>();
+        final Map<Class<?>, BiPredicate<Object, Object>> floatOperations = new HashMap<>();
         floatOperations.put(Integer.class, floatEquals);
         floatOperations.put(Float.class, floatEquals);
 
