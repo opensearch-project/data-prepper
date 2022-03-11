@@ -11,9 +11,7 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import javax.inject.Named;
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
