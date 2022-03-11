@@ -1,0 +1,31 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import com.amazonaws.services.s3.model.ObjectMetadata
+import jp.classmethod.aws.gradle.s3.BulkUploadTask
+
+dependencies {
+    /* required to resolve below issue with aws sdk
+      JAXB is unavailable. Will fallback to SDK implementation which may be less performant
+     */
+    implementation 'javax.xml.bind:jaxb-api:2.3.1'
+}
+
+tasks.create(name: 'uploadMavenArtifactsToS3', type: BulkUploadTask) {
+    dependsOn ':release:releasePrerequisites'
+    source = fileTree(dir: mavenPublicationRootFile)
+    bucketName = awsS3Bucket
+    prefix = "${archiveRootKey}/maven/"
+
+    metadataProvider = { bucketName, key, file ->
+        def metadata = new ObjectMetadata()
+        metadata.setCacheControl('no-cache, no-store')
+        return metadata
+    }
+}
+
+task uploadArtifacts {
+    dependsOn 'uploadMavenArtifactsToS3'
+}
