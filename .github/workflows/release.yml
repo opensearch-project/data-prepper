@@ -30,14 +30,19 @@ jobs:
 
     - name: Build Archives
       run: ./gradlew :release:archives:buildArchives -Prelease
-    - name: Upload Archives to Archives Bucket
-      run: ./gradlew :release:archives:uploadArchives -Prelease -Pregion=us-east-1 -Pbucket=${{ secrets.ARCHIVES_BUCKET_NAME }} -Pprofile=default -PbuildNumber=${{ github.run_number }}
 
     - name: Build Maven Artifacts
       run: ./gradlew publish
 
     - name: Build Docker Image
       run: ./gradlew :release:docker:docker -Prelease
+
+    - name: Upload Archives to Archives Bucket
+      run: ./gradlew :release:archives:uploadArchives -Prelease -Pregion=us-east-1 -Pbucket=${{ secrets.ARCHIVES_BUCKET_NAME }} -Pprofile=default -PbuildNumber=${{ github.run_number }}
+
+    - name: Upload Maven Artifacts to Archives Bucket
+      run: ./gradlew :release:maven:uploadArtifacts -Prelease -Pregion=us-east-1 -Pbucket=${{ secrets.ARCHIVES_BUCKET_NAME }} -Pprofile=default -PbuildNumber=${{ github.run_number }}
+
     - name: Log into Amazon ECR Public
       id: login-ecr
       uses: docker/login-action@v1
