@@ -20,7 +20,9 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class NotEqualOperatorTest {
-    final GenericEqualOperator objectUnderTest = new OperatorFactory().notEqualOperator();
+    @Mock
+    private GenericEqualOperator innerOperator;
+    final Operator<Boolean> objectUnderTest = new OperatorFactory().notEqualOperator(innerOperator);
 
     @Mock
     private ParserRuleContext ctx;

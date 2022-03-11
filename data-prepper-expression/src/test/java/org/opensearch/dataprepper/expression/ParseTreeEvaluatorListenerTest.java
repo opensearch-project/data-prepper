@@ -36,7 +36,7 @@ class ParseTreeEvaluatorListenerTest {
     private final List<Operator<?>> operators = Arrays.asList(
             new AndOperator(), new OrOperator(),
             operatorFactory.inSetOperator(), operatorFactory.notInSetOperator(),
-            operatorFactory.equalOperator(), operatorFactory.notEqualOperator(),
+            operatorFactory.equalOperator(), operatorFactory.notEqualOperator(operatorFactory.equalOperator()),
             operatorFactory.greaterThanOperator(), operatorFactory.greaterThanOrEqualOperator(),
             operatorFactory.lessThanOperator(), operatorFactory.lessThanOrEqualOperator(),
             operatorFactory.regexEqualOperator(), operatorFactory.regexNotEqualOperator(),
