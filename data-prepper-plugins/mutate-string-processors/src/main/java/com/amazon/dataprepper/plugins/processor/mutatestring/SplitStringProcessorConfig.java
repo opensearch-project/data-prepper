@@ -34,6 +34,8 @@ public class SplitStringProcessorConfig {
             this.delimiter = delimiter;
         }
 
+        public Entry() {};
+
         private List<Entry> entries;
 
         public List<Entry> getEntries() {
