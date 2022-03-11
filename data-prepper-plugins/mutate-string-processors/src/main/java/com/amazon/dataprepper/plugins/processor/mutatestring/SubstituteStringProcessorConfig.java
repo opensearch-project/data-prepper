@@ -9,9 +9,29 @@ import java.util.List;
 
 public class SubstituteStringProcessorConfig implements StringProcessorConfig<SubstituteStringProcessorConfig.Entry> {
     public static class Entry {
-        public String source;
-        public String from;
-        public String to;
+        private String source;
+        private String from;
+        private String to;
+
+        public String getSource() {
+            return source;
+        }
+
+        public String getFrom() {
+            return from;
+        }
+
+        public String getTo() {
+            return to;
+        }
+
+        public Entry(final String source, final String from, final String to) {
+            this.source = source;
+            this.from = from;
+            this.to = to;
+        }
+
+        public Entry() {}
     }
 
     private List<Entry> entries;

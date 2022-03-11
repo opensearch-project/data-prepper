@@ -20,10 +20,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.PatternSyntaxException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -49,6 +51,16 @@ public class SubstituteStringProcessorTests {
 
         assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
         assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("bbcd"));
+    }
+
+    @Test
+    public void testNoMatchSubstituteStringProcessor() {
+        final SubstituteStringProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("qwerty");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("qwerty"));
     }
 
     @Test
@@ -126,6 +138,14 @@ public class SubstituteStringProcessorTests {
         assertThat(processor.isReadyForShutdown(), is(true));
     }
 
+    @Test
+    void testBothKeyValuesDefinedErrorKeyValueProcessor() {
+        lenient().when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", "[", "b")));
+        lenient().when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", "[", "b")));
+
+        assertThrows(PatternSyntaxException.class, () -> new SubstituteStringProcessor(pluginMetrics, config));
+    }
+
     private static class TestObject {
         public String a;
 
@@ -140,10 +160,7 @@ public class SubstituteStringProcessorTests {
     }
 
     private SubstituteStringProcessorConfig.Entry createEntry(final String source, final String from, final String to) {
-        SubstituteStringProcessorConfig.Entry entry = new SubstituteStringProcessorConfig.Entry();
-        entry.source = source;
-        entry.from = from;
-        entry.to = to;
+        final SubstituteStringProcessorConfig.Entry entry = new SubstituteStringProcessorConfig.Entry(source, from, to);
 
         return entry;
     }

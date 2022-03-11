@@ -22,29 +22,28 @@ import java.util.regex.Pattern;
  */
 @DataPrepperPlugin(name = "substitute_string", pluginType = Processor.class, pluginConfigurationType = SubstituteStringProcessorConfig.class)
 public class SubstituteStringProcessor extends AbstractStringProcessor<SubstituteStringProcessorConfig.Entry> {
-    private Map<String, Pattern> patternMap;
+    private final Map<String, Pattern> patternMap = new HashMap<>();
 
     @DataPrepperPluginConstructor
     public SubstituteStringProcessor(final PluginMetrics pluginMetrics, final SubstituteStringProcessorConfig config) {
         super(pluginMetrics, config);
 
-        patternMap = new HashMap<>();
-        for(SubstituteStringProcessorConfig.Entry entry : config.getEntries()) {
-            patternMap.put(entry.from, Pattern.compile(entry.from));
+        for(final SubstituteStringProcessorConfig.Entry entry : config.getEntries()) {
+            patternMap.put(entry.getFrom(), Pattern.compile(entry.getFrom()));
         }
     }
 
     @Override
     protected void performKeyAction(final Event recordEvent, final SubstituteStringProcessorConfig.Entry entry, final String value)
     {
-        final Pattern pattern = patternMap.get(entry.from);
+        final Pattern pattern = patternMap.get(entry.getFrom());
         final Matcher matcher = pattern.matcher(value);
-        final String newValue = matcher.replaceAll(entry.to);
-        recordEvent.put(entry.source, newValue);
+        final String newValue = matcher.replaceAll(entry.getTo());
+        recordEvent.put(entry.getSource(), newValue);
     }
 
     @Override
     protected String getKey(final SubstituteStringProcessorConfig.Entry entry) {
-        return entry.source;
+        return entry.getSource();
     }
 }
