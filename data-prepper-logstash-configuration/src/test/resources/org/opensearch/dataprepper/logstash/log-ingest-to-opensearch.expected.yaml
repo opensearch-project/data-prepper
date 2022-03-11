@@ -45,6 +45,20 @@ logstash-converted-pipeline:
     - uppercase_string:
         with_keys:
           - "uppercaseField"
+    - lowercase_string:
+        with_keys:
+          - "lowercaseField"
+    - trim_string:
+        with_keys:
+          - "trimField"
+    - substitute_string:
+        entries:
+          - source: "source"
+            from: "from"
+            to: "to"
+          - source: "source2"
+            from: "from2"
+            to: "to2"
   sink:
     - opensearch:
         hosts:
