@@ -1,7 +1,5 @@
 package org.opensearch.dataprepper.expression;
 
-import org.antlr.v4.runtime.RuleContext;
-
 public class GenericNotOperator extends BinaryOperator<Boolean> {
     private final BinaryOperator<Boolean> innerOperator;
 

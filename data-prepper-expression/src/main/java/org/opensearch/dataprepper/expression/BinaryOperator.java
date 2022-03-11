@@ -40,5 +40,5 @@ abstract class BinaryOperator<T> implements Operator<T> {
         return checkedEvaluate(args[0], args[1]);
     }
 
-    abstract protected T checkedEvaluate(final Object lhs, final Object rhs);
+    abstract T checkedEvaluate(final Object lhs, final Object rhs);
 }

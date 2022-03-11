@@ -5,13 +5,8 @@
 
 package org.opensearch.dataprepper.expression;
 
-import org.antlr.v4.runtime.RuleContext;
-import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
-
 import java.util.Map;
 import java.util.function.BiFunction;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 public class GenericEqualOperator extends BinaryOperator<Boolean> {
     private final Map<Class<?>, Map<Class<?>, BiFunction<Object, Object, Boolean>>> equalStrategy;
