@@ -46,7 +46,7 @@ class DropEventsWhenConditionTest {
                 .withExpressionEvaluator(evaluator)
                 .build();
 
-        assertThat(whenCondition.shouldEvaluateConditional(), is(false));
+        assertThat(whenCondition.isNotAlwaysTrue(), is(false));
     }
 
     @Test
@@ -64,7 +64,7 @@ class DropEventsWhenConditionTest {
                 .withExpressionEvaluator(evaluator)
                 .build();
 
-        assertThat(whenCondition.shouldEvaluateConditional(), is(true));
+        assertThat(whenCondition.isNotAlwaysTrue(), is(true));
     }
 
     @Test

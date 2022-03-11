@@ -7,8 +7,6 @@ package com.amazon.dataprepper.plugins.processor.drop;
 
 import com.amazon.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
@@ -19,18 +17,19 @@ import java.util.Objects;
  *
  */
 class DropEventsWhenCondition {
-    private static final Logger LOG = LoggerFactory.getLogger(DropEventsWhenCondition.class);
     private static final HandleFailedEventsOption DEFAULT_HANDLE_FAILED_EVENTS = HandleFailedEventsOption.SKIP;
-    private static final String SHOULD_SKIP_EVALUATING = "true";
+    private static final String HARDCODED_TRUE = "true";
 
     private final String dropWhen;
     private final HandleFailedEventsOption handleFailedEventsSetting;
     private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final boolean notAlwaysTrue;
 
     DropEventsWhenCondition(final Builder builder) {
         dropWhen = builder.dropWhen;
         handleFailedEventsSetting = builder.handleFailedEventsSetting;
         expressionEvaluator = builder.expressionEvaluator;
+        notAlwaysTrue = !Objects.equals(dropWhen, HARDCODED_TRUE);
     }
 
     /**
@@ -40,8 +39,8 @@ class DropEventsWhenCondition {
      *
      * @return if {@link DropEventsWhenCondition#isStatementFalseWith(Event)} should be used
      */
-    public boolean shouldEvaluateConditional() {
-        return !Objects.equals(dropWhen, SHOULD_SKIP_EVALUATING);
+    public boolean isNotAlwaysTrue() {
+        return notAlwaysTrue;
     }
 
     /**
@@ -56,21 +55,7 @@ class DropEventsWhenCondition {
         try {
             return expressionEvaluator.evaluate(dropWhen, event);
         } catch (final Exception e) {
-            switch (handleFailedEventsSetting) {
-                case SKIP:
-                    LOG.warn("An exception occurred while processing when expression for event {}", event, e);
-                    return false;
-                case SKIP_SILENTLY:
-                    return false;
-                case DROP:
-                    LOG.warn("An exception occurred resulting in a dropped event while processing when expression for event {}", event, e);
-                    return true;
-                case DROP_SILENTLY:
-                    return true;
-                default:
-                    final String exceptionMessage = "Data Prepper internal exception, unhandled value " + handleFailedEventsSetting;
-                    throw new IllegalStateException(exceptionMessage, e);
-            }
+            return handleFailedEventsSetting.isDropEventOption(event, e);
         }
     }
 
@@ -104,7 +89,7 @@ class DropEventsWhenCondition {
                         "for more information"
                 );
             }
-            if (!Objects.equals(dropWhen, SHOULD_SKIP_EVALUATING) && expressionEvaluator == null) {
+            if (!Objects.equals(dropWhen, HARDCODED_TRUE) && expressionEvaluator == null) {
                 throw new IllegalStateException("Use of drop events processor when setting requires a ExpressionEvaluator bean at runtime");
             }
             return new DropEventsWhenCondition(this);
