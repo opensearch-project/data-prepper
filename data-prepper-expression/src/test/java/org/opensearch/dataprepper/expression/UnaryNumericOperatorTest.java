@@ -58,6 +58,11 @@ class UnaryNumericOperatorTest {
     }
 
     @Test
+    void testGetNumberOfOperands() {
+        assertThat(unaryNumericOperator.getNumberOfOperands(), is(1));
+    }
+
+    @Test
     void testGivenNoArgsThenExceptionThrown() {
         assertThrows(IllegalArgumentException.class, unaryNumericOperator::evaluate);
     }
