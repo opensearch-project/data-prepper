@@ -86,12 +86,12 @@ class MutateMapper implements LogstashPluginAttributesMapper {
                 trims.addAll(((ArrayList<String>) attr.getAttributeValue().getValue()).stream()
                         .map(NestedSyntaxConverter::convertNestedSyntaxToJsonPointer).collect(Collectors.toList()));
             } else if(Objects.equals(name, "gsub")) {
-                final List<String> array = ((ArrayList<String>) attr.getAttributeValue().getValue()).stream()
+                final List<String> gsubSettings = ((ArrayList<String>) attr.getAttributeValue().getValue()).stream()
                         .map(NestedSyntaxConverter::convertNestedSyntaxToJsonPointer).collect(Collectors.toList());
-                for(int i = 0; i < array.size(); i += 3) {
-                    final String gsubSource = array.get(i);
-                    final String gsubPatternToReplace = array.get(i + 1);
-                    final String gsubStringToReplaceWith = array.get(i + 2);
+                for(int i = 0; i < gsubSettings.size(); i += 3) {
+                    final String gsubSource = gsubSettings.get(i);
+                    final String gsubPatternToReplace = gsubSettings.get(i + 1);
+                    final String gsubStringToReplaceWith = gsubSettings.get(i + 2);
                     final SubstituteConfig newConfig = new SubstituteConfig(gsubSource, gsubPatternToReplace, gsubStringToReplaceWith);
                     substitutes.add(newConfig);
                 }
