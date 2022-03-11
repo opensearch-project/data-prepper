@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class RegexNotEqualOperatorTest {
-    final GenericRegexMatchOperator objectUnderTest = new OperatorFactory().regexNotEqualOperator();
+    final GenericRegexMatchOperator objectUnderTest = new OperatorConfiguration().regexNotEqualOperator();
 
     @Mock
     private ParserRuleContext ctx;

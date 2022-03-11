@@ -12,7 +12,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -22,7 +24,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class InSetOperatorTest {
-    final GenericInSetOperator objectUnderTest = new OperatorFactory().inSetOperator();
+    final GenericInSetOperator objectUnderTest = new OperatorConfiguration().inSetOperator();
 
     @Mock
     private ParserRuleContext ctx;

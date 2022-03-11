@@ -29,17 +29,17 @@ class ParseTreeEvaluatorListenerTest {
     private final Random random = new Random();
     private final ParseTreeWalker walker = new ParseTreeWalker();
     private final ParseTreeParser parseTreeParser = constructParseTreeParser();
-    private final OperatorFactory operatorFactory = new OperatorFactory();
+    private final OperatorConfiguration operatorConfiguration = new OperatorConfiguration();
     private final LiteralTypeConversionsConfiguration literalTypeConversionsConfiguration = new LiteralTypeConversionsConfiguration();
     private final ParseTreeCoercionService coercionService = new ParseTreeCoercionService(
             literalTypeConversionsConfiguration.literalTypeConversions());
     private final List<Operator<?>> operators = Arrays.asList(
             new AndOperator(), new OrOperator(),
-            operatorFactory.inSetOperator(), operatorFactory.notInSetOperator(),
-            operatorFactory.equalOperator(), operatorFactory.notEqualOperator(operatorFactory.equalOperator()),
-            operatorFactory.greaterThanOperator(), operatorFactory.greaterThanOrEqualOperator(),
-            operatorFactory.lessThanOperator(), operatorFactory.lessThanOrEqualOperator(),
-            operatorFactory.regexEqualOperator(), operatorFactory.regexNotEqualOperator(),
+            operatorConfiguration.inSetOperator(), operatorConfiguration.notInSetOperator(),
+            operatorConfiguration.equalOperator(), operatorConfiguration.notEqualOperator(operatorConfiguration.equalOperator()),
+            operatorConfiguration.greaterThanOperator(), operatorConfiguration.greaterThanOrEqualOperator(),
+            operatorConfiguration.lessThanOperator(), operatorConfiguration.lessThanOrEqualOperator(),
+            operatorConfiguration.regexEqualOperator(), operatorConfiguration.regexNotEqualOperator(),
             new NotOperator()
     );
     private final OperatorProvider operatorProvider = new OperatorProvider(operators);

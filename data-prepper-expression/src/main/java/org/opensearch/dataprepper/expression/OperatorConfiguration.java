@@ -17,7 +17,7 @@ import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 @Named
-public class OperatorFactory {
+public class OperatorConfiguration {
     public final BiPredicate<Object, Object> regexEquals = (x, y) -> ((String) x).matches((String) y);
     public final BiPredicate<Object, Object> equals = Objects::equals;
     public final BiPredicate<Object, Object> inSet = (x, y) -> ((Set<?>) y).contains(x);
@@ -118,7 +118,7 @@ public class OperatorFactory {
 
     @Bean
     public GenericEqualOperator equalOperator() {
-        final BiFunction<Object, Object, Boolean> floatEquals = (lhs, rhs) -> (float) lhs == (float) rhs;
+        final BiFunction<Object, Object, Boolean> floatEquals = (lhs, rhs) -> ((Number)lhs).floatValue() == ((Number) rhs).floatValue();
 
         final Map<Class<?>, Map<Class<?>, BiFunction<Object, Object, Boolean>>> equalStrategy = new HashMap<>();
 
@@ -127,8 +127,8 @@ public class OperatorFactory {
         intOperations.put(Float.class, floatEquals);
 
         final Map<Class<?>, BiFunction<Object, Object, Boolean>> floatOperations = new HashMap<>();
-        intOperations.put(Integer.class, floatEquals);
-        intOperations.put(Float.class, floatEquals);
+        floatOperations.put(Integer.class, floatEquals);
+        floatOperations.put(Float.class, floatEquals);
 
         equalStrategy.put(Integer.class, intOperations);
         equalStrategy.put(Float.class, floatOperations);

@@ -6,26 +6,38 @@
 package org.opensearch.dataprepper.expression;
 
 import org.antlr.v4.runtime.ParserRuleContext;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import org.opensearch.dataprepper.expression.util.TestObject;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class NotEqualOperatorTest {
     @Mock
     private GenericEqualOperator innerOperator;
-    final Operator<Boolean> objectUnderTest = new OperatorFactory().notEqualOperator(innerOperator);
 
     @Mock
     private ParserRuleContext ctx;
+
+    private Operator<Boolean> objectUnderTest;
+
+    @BeforeEach
+    void beforeEach() {
+        objectUnderTest = new OperatorConfiguration().notEqualOperator(innerOperator);
+    }
 
     @Test
     void testGetNumberOfOperands() {
@@ -45,16 +57,15 @@ class NotEqualOperatorTest {
         assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.NOT_EQUAL));
     }
 
-    @Test
-    void testEvalValidArgs() {
-        final TestObject testObject1 = new TestObject("1");
-        final TestObject testObject2 = new TestObject("1");
-        final TestObject testObject3 = new TestObject("2");
-        assertThat(objectUnderTest.evaluate(testObject1, testObject2), is(false));
-        assertThat(objectUnderTest.evaluate(testObject1, testObject3), is(true));
-        assertThat(objectUnderTest.evaluate(null, testObject1), is(true));
-        assertThat(objectUnderTest.evaluate(testObject1, null), is(true));
-        assertThat(objectUnderTest.evaluate(null, null), is(false));
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void testEvalValidArgs(final boolean expected) {
+        final Object lhs = mock(Object.class);
+        final Object rhs = mock(Object.class);
+        doReturn(expected)
+                .when(innerOperator)
+                .checkedEvaluate(lhs, rhs);
+        assertThat(objectUnderTest.evaluate(lhs, rhs), not(is(expected)));
     }
 
     @Test
