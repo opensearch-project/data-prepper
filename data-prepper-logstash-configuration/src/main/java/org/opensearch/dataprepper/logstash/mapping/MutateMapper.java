@@ -49,6 +49,17 @@ class MutateMapper implements LogstashPluginAttributesMapper {
         }
     }
 
+    public static class SplitConfig {
+        public final String source;
+        public final String delimiter;
+
+        public SplitConfig(final String source, final String delimiter) {
+            this.source = source;
+            this.delimiter = delimiter;
+
+        }
+    }
+
     public List<PluginModel> mapAttributes(final List<LogstashAttribute> logstashAttributes, final LogstashAttributesMappings logstashAttributesMappings) {
         final List<PluginModel> models = new LinkedList<>();
         final List<AddEntryConfig> adds = new LinkedList<>();
@@ -59,6 +70,7 @@ class MutateMapper implements LogstashPluginAttributesMapper {
         final List<String> lowercases = new LinkedList<>();
         final List<String> trims = new LinkedList<>();
         final List<SubstituteConfig> substitutes = new LinkedList<>();
+        final List<SplitConfig> splits = new LinkedList<>();
 
         for(final LogstashAttribute attr : logstashAttributes) {
             final String name = attr.getAttributeName();
@@ -95,6 +107,10 @@ class MutateMapper implements LogstashPluginAttributesMapper {
                     final SubstituteConfig newConfig = new SubstituteConfig(gsubSource, gsubPatternToReplace, gsubStringToReplaceWith);
                     substitutes.add(newConfig);
                 }
+            } else if(Objects.equals(name, "split_string")) {
+                ((Map<String, String>) attr.getAttributeValue().getValue()).forEach(
+                        (key, value) -> splits.add(new SplitConfig(NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(key),
+                                NestedSyntaxConverter.convertNestedSyntaxToJsonPointer(value))));
             }
         }
 
@@ -168,6 +184,15 @@ class MutateMapper implements LogstashPluginAttributesMapper {
             final PluginModel substituteModel = new PluginModel("substitute_string", substituteMap);
 
             models.add(substituteModel);
+        }
+
+        if(!splits.isEmpty()) {
+            final Map<String, Object> splitStringMap = new HashMap<>();
+            splitStringMap.put("entries", splits);
+
+            final PluginModel splitStringModel = new PluginModel("split_string", splitStringMap);
+
+            models.add(splitStringModel);
         }
 
         return models;
