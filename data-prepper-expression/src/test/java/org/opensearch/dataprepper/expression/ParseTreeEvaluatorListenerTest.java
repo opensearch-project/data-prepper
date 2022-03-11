@@ -115,24 +115,13 @@ class ParseTreeEvaluatorListenerTest {
     }
 
     @Test
-    void testSimpleEqualityOperatorExpressionWithJsonPointerTypeExistingKey() {
+    void testSimpleEqualityOperatorExpressionWithJsonPointerType() {
         final String testKey = "testKey";
         final Integer testValue = random.nextInt(1000);
         final Map<String, Integer> data = Map.of(testKey, testValue);
         final Event testEvent = createTestEvent(data);
         final String equalStatement = String.format("/%s == %d", testKey, testValue);
         final String notEqualStatement = String.format("/%s != %d", testKey, testValue + 1);
-        assertThat(evaluateStatementOnEvent(equalStatement, testEvent), is(true));
-        assertThat(evaluateStatementOnEvent(notEqualStatement, testEvent), is(true));
-    }
-
-    @Test
-    void testSimpleEqualityOperatorExpressionWithJsonPointerTypeMissingKey() {
-        final String testMissingKey1 = "missingKey1";
-        final String testMissingKey2 = "missingKey2";
-        final String equalStatement = String.format("/%s == /%s", testMissingKey1, testMissingKey2);
-        final String notEqualStatement = String.format("/%s != 1", testMissingKey1);
-        final Event testEvent = createTestEvent(new HashMap<>());
         assertThat(evaluateStatementOnEvent(equalStatement, testEvent), is(true));
         assertThat(evaluateStatementOnEvent(notEqualStatement, testEvent), is(true));
     }

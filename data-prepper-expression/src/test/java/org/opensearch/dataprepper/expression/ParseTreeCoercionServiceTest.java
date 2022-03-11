@@ -28,7 +28,6 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -97,36 +96,42 @@ class ParseTreeCoercionServiceTest {
         assertThat(result, equalTo(testBoolean));
     }
 
-    @Test
-    void testCoerceTerminalNodeJsonPointerType() {
+    @ParameterizedTest
+    @MethodSource("provideSupportedJsonPointerValues")
+    void testCoerceTerminalNodeJsonPointerTypeSupportedValues(final Object testValue) {
         final String testKey1 = "key1";
         final String testKey2 = "key2";
-        final String testValue = "value";
         final String testJsonPointerKey = String.format("/%s/%s", testKey1, testKey2);
         final Event testEvent = createTestEvent(Map.of(testKey1, Map.of(testKey2, testValue)));
         when(token.getType()).thenReturn(DataPrepperExpressionParser.JsonPointer);
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn(testJsonPointerKey);
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
-        assertThat(result, instanceOf(String.class));
-        assertThat(result, equalTo(testValue));
+        if (testValue instanceof Double) {
+            assertThat(result, instanceOf(Float.class));
+            assertThat(result, equalTo(((Double) testValue).floatValue()));
+        } else {
+            assertThat(result, equalTo(testValue));
+        }
     }
 
-    @Test
-    void testCoerceTerminalNodeJsonPointerTypeMissingKey() {
-        final String testMissingKey = "missingKey";
-        final String testJsonPointerKey = "/" + testMissingKey;
-        final Event testEvent = createTestEvent(new HashMap<>());
+    @ParameterizedTest
+    @MethodSource("provideUnSupportedJsonPointerValues")
+    void testCoerceTerminalNodeJsonPointerTypeUnSupportedValues(final Object testValue) {
+        final String testKey1 = "key1";
+        final String testKey2 = "key2";
+        final String testJsonPointerKey = String.format("/%s/%s", testKey1, testKey2);
+        final Event testEvent = testValue == null ? createTestEvent(new HashMap<>()) :
+                createTestEvent(Map.of(testKey1, Map.of(testKey2, testValue)));
         when(token.getType()).thenReturn(DataPrepperExpressionParser.JsonPointer);
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn(testJsonPointerKey);
-        final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
-        assertThat(result, nullValue());
+        assertThrows(ExpressionCoercionException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent));
     }
 
     @ParameterizedTest
     @MethodSource("provideKeys")
-    void testCoerceTerminalNodeEscapeJsonPointerType(final String testKey, final String testEscapeJsonPointer)
+    void testCoerceTerminalNodeEscapeJsonPointerTypeWithSpecialCharacters(final String testKey, final String testEscapeJsonPointer)
             throws ExpressionCoercionException {
         final String testValue = "test value";
         final Event testEvent = createTestEvent(Map.of(testKey, testValue));
@@ -136,6 +141,37 @@ class ParseTreeCoercionServiceTest {
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
         assertThat(result, instanceOf(String.class));
         assertThat(result, equalTo(testValue));
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideSupportedJsonPointerValues")
+    void testCoerceTerminalNodeEscapeJsonPointerTypeSupportedValues(final Object testValue) {
+        final String testKey = "testKey";
+        final String testEscapeJsonPointerKey = String.format("\"/%s\"", testKey);
+        final Event testEvent = createTestEvent(Map.of(testKey, testValue));
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.EscapedJsonPointer);
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn(testEscapeJsonPointerKey);
+        final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
+        if (testValue instanceof Double) {
+            assertThat(result, instanceOf(Float.class));
+            assertThat(result, equalTo(((Double) testValue).floatValue()));
+        } else {
+            assertThat(result, equalTo(testValue));
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideUnSupportedJsonPointerValues")
+    void testCoerceTerminalNodeEscapeJsonPointerTypeUnSupportedValues(final Object testValue) {
+        final String testKey = "testKey";
+        final String testEscapeJsonPointerKey = String.format("\"/%s\"", testKey);
+        final Event testEvent = testValue == null ? createTestEvent(new HashMap<>()) :
+                createTestEvent(Map.of(testKey, testValue));
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.EscapedJsonPointer);
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn(testEscapeJsonPointerKey);
+        assertThrows(ExpressionCoercionException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent));
     }
 
     @Test
@@ -182,6 +218,23 @@ class ParseTreeCoercionServiceTest {
                 Arguments.of("test/key", "\"/test~1key\""),
                 Arguments.of("test\\key", "\"/test\\key\""),
                 Arguments.of("test~0key", "\"/test~00key\"")
+        );
+    }
+
+    private static Stream<Arguments> provideSupportedJsonPointerValues() {
+        return Stream.of(
+                Arguments.of(1000),
+                Arguments.of(true),
+                Arguments.of("test value"),
+                Arguments.of(1.1f),
+                Arguments.of(1.1)
+        );
+    }
+
+    private static Stream<Arguments> provideUnSupportedJsonPointerValues() {
+        return Stream.of(
+                Arguments.of(Long.MAX_VALUE),
+                Arguments.of((Object) null)
         );
     }
 }

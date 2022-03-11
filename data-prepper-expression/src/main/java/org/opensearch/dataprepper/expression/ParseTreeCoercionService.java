@@ -10,18 +10,28 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import javax.inject.Named;
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.List;
 
 @Named
 class ParseTreeCoercionService {
+    private final List<? extends Class<? extends Serializable>> literalTypes = Arrays.asList(
+            String.class,
+            Boolean.class,
+            Integer.class,
+            Float.class
+    );
+
     public Object coercePrimaryTerminalNode(final TerminalNode node, final Event event) {
         final int nodeType = node.getSymbol().getType();
         final String nodeStringValue = node.getText();
         switch (nodeType) {
             case DataPrepperExpressionParser.EscapedJsonPointer:
                 final String jsonPointerWithoutQuotes = nodeStringValue.substring(1, nodeStringValue.length() - 1);
-                return event.get(jsonPointerWithoutQuotes, Object.class);
+                return resolveJsonPointerValue(jsonPointerWithoutQuotes, event);
             case DataPrepperExpressionParser.JsonPointer:
-                return event.get(nodeStringValue, Object.class);
+                return resolveJsonPointerValue(nodeStringValue, event);
             case DataPrepperExpressionParser.String:
                 return nodeStringValue;
             case DataPrepperExpressionParser.Integer:
@@ -41,5 +51,18 @@ class ParseTreeCoercionService {
             return (T) obj;
         }
         throw new ExpressionCoercionException("Unable to cast " + obj.getClass().getName() + " into " + clazz.getName());
+    }
+
+    private Object resolveJsonPointerValue(final String jsonPointer, final Event event) {
+        final Object value = event.get(jsonPointer, Object.class);
+        if (value == null) {
+            throw new ExpressionCoercionException("Unsupported type for value " + value);
+        } else if (literalTypes.contains(value.getClass())) {
+            return value;
+        } else if (value instanceof Double) {
+            return ((Double) value).floatValue();
+        } else {
+            throw new ExpressionCoercionException("Unsupported type for value " + value);
+        }
     }
 }
