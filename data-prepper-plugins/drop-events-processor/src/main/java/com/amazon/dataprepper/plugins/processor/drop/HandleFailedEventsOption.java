@@ -8,7 +8,6 @@ package com.amazon.dataprepper.plugins.processor.drop;
 import com.amazon.dataprepper.model.event.Event;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -20,7 +19,6 @@ enum HandleFailedEventsOption {
     SKIP("skip", false, false),
     SKIP_SILENTLY("skip_silently", false, true);
 
-    private static final Logger LOG = LoggerFactory.getLogger(HandleFailedEventsOption.class);
     private static final Map<String, HandleFailedEventsOption> OPTIONS_MAP = Arrays.stream(HandleFailedEventsOption.values())
             .collect(Collectors.toMap(
                     value -> value.option,
@@ -37,9 +35,9 @@ enum HandleFailedEventsOption {
         this.isLogRequired = isLogRequired;
     }
 
-    public boolean isDropEventOption(final Event event, final Throwable cause) {
+    public boolean isDropEventOption(final Event event, final Throwable cause, final Logger log) {
         if (isLogRequired) {
-            LOG.warn("An exception occurred while processing when expression for event {}", event, cause);
+            log.warn("An exception occurred while processing when expression for event {}", event, cause);
         }
         return isDropEventOption;
     }

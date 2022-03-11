@@ -7,6 +7,8 @@ package com.amazon.dataprepper.plugins.processor.drop;
 
 import com.amazon.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
@@ -17,7 +19,7 @@ import java.util.Objects;
  *
  */
 class DropEventsWhenCondition {
-    private static final HandleFailedEventsOption DEFAULT_HANDLE_FAILED_EVENTS = HandleFailedEventsOption.SKIP;
+    private static final Logger LOG = LoggerFactory.getLogger(DropEventsWhenCondition.class);
     private static final String HARDCODED_TRUE = "true";
 
     private final String dropWhen;
@@ -55,7 +57,7 @@ class DropEventsWhenCondition {
         try {
             return expressionEvaluator.evaluate(dropWhen, event);
         } catch (final Exception e) {
-            return handleFailedEventsSetting.isDropEventOption(event, e);
+            return handleFailedEventsSetting.isDropEventOption(event, e, LOG);
         }
     }
 
