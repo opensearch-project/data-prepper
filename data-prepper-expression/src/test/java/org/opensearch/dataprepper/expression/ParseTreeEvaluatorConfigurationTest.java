@@ -1,13 +1,6 @@
 /*
-<<<<<<< HEAD
- *
- *  * Copyright OpenSearch Contributors
- *  * SPDX-License-Identifier: Apache-2.0
- *
-=======
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
->>>>>>> 0f2346ae (Added ParseTreeEvaluatorConfigurationTest)
  */
 
 package org.opensearch.dataprepper.expression;
