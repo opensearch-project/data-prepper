@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GreaterThanOrEqualOperatorTest {
-    final Operator<Boolean> objectUnderTest = new OperatorFactory().greaterThanOrEqualOperator();
+    final Operator<Boolean> objectUnderTest = new OperatorConfiguration().greaterThanOrEqualOperator();
 
     @Mock
     private ParserRuleContext ctx;

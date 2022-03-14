@@ -5,44 +5,39 @@
 
 package org.opensearch.dataprepper.expression;
 
-import org.antlr.v4.runtime.RuleContext;
-import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
-
+import java.util.Map;
 import java.util.function.BiPredicate;
 
-import static com.google.common.base.Preconditions.checkArgument;
+class GenericEqualOperator extends BinaryOperator<Boolean> {
+    private final Map<Class<?>, Map<Class<?>, BiPredicate<Object, Object>>> equalStrategy;
 
-public class GenericEqualOperator implements Operator<Boolean> {
-    private final int symbol;
-    private final String displayName;
-    private final BiPredicate<Object, Object> operation;
-
-    public GenericEqualOperator(final int symbol, BiPredicate<Object, Object> operation) {
-        this.symbol = symbol;
-        displayName = DataPrepperExpressionParser.VOCABULARY.getDisplayName(symbol);
-        this.operation = operation;
+    public GenericEqualOperator(
+            final int symbol,
+            final int shouldEvaluateRuleIndex,
+            final Map<Class<?>, Map<Class<?>, BiPredicate<Object, Object>>> equalStrategy
+    ) {
+        super(symbol, shouldEvaluateRuleIndex);
+        this.equalStrategy = equalStrategy;
     }
 
     @Override
-    public int getNumberOfOperands() {
-        return 2;
+    protected Boolean checkedEvaluate(final Object lhs, final Object rhs) {
+        if (lhs == null || rhs == null) {
+            return lhs == rhs;
+        }
+        else if (hasStrategyMatching(lhs, rhs)) {
+            return equalStrategy.get(lhs.getClass())
+                    .get(rhs.getClass())
+                    .test(lhs, rhs);
+        }
+        else {
+            return lhs.equals(rhs);
+        }
     }
 
-    @Override
-    public boolean shouldEvaluate(final RuleContext ctx) {
-        return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_equalityOperatorExpression;
-    }
-
-    @Override
-    public int getSymbol() {
-        return symbol;
-    }
-
-    @Override
-    public Boolean evaluate(final Object... args) {
-        checkArgument(args.length == 2, displayName + " requires operands length to be 2.");
-        final Object leftOperand = args[0];
-        final Object rightOperand = args[1];
-        return operation.test(leftOperand, rightOperand);
+    private boolean hasStrategyMatching(final Object leftOperand, final Object rightOperand) {
+        return equalStrategy.containsKey(leftOperand.getClass()) &&
+                equalStrategy.get(leftOperand.getClass())
+                        .containsKey(rightOperand.getClass());
     }
 }
