@@ -88,7 +88,7 @@ Other developers who have contributed code are:
 
 --------------------------------------------------------------------------------
 
-9. Group: com.fasterxml.jackson.core  Name: jackson-annotations  Version: 2.13.1
+9. Group: com.fasterxml.jackson.core  Name: jackson-annotations  Version: 2.13.2
 
 Project URL: http://github.com/FasterXML/jackson
 
@@ -303,7 +303,7 @@ Embedded license:
 
 --------------------------------------------------------------------------------
 
-10. Group: com.fasterxml.jackson.core  Name: jackson-core  Version: 2.13.1
+10. Group: com.fasterxml.jackson.core  Name: jackson-core  Version: 2.13.2
 
 Project URL: https://github.com/FasterXML/jackson-core
 
@@ -540,7 +540,7 @@ from the source code management (SCM) system project uses.
 
 --------------------------------------------------------------------------------
 
-11. Group: com.fasterxml.jackson.core  Name: jackson-databind  Version: 2.13.1
+11. Group: com.fasterxml.jackson.core  Name: jackson-databind  Version: 2.13.2
 
 Project URL: http://github.com/FasterXML/jackson
 
@@ -777,7 +777,7 @@ from the source code management (SCM) system project uses.
 
 --------------------------------------------------------------------------------
 
-12. Group: com.fasterxml.jackson.dataformat  Name: jackson-dataformat-cbor  Version: 2.13.1
+12. Group: com.fasterxml.jackson.dataformat  Name: jackson-dataformat-cbor  Version: 2.13.2
 
 Project URL: http://github.com/FasterXML/jackson-dataformats-binary
 
@@ -787,7 +787,7 @@ POM License: The Apache Software License, Version 2.0 - http://www.apache.org/li
 
 --------------------------------------------------------------------------------
 
-13. Group: com.fasterxml.jackson.dataformat  Name: jackson-dataformat-smile  Version: 2.13.1
+13. Group: com.fasterxml.jackson.dataformat  Name: jackson-dataformat-smile  Version: 2.13.2
 
 Project URL: http://github.com/FasterXML/jackson-dataformats-binary
 
@@ -797,7 +797,7 @@ POM License: The Apache Software License, Version 2.0 - http://www.apache.org/li
 
 --------------------------------------------------------------------------------
 
-14. Group: com.fasterxml.jackson.dataformat  Name: jackson-dataformat-yaml  Version: 2.13.1
+14. Group: com.fasterxml.jackson.dataformat  Name: jackson-dataformat-yaml  Version: 2.13.2
 
 Project URL: https://github.com/FasterXML/jackson-dataformats-text
 
@@ -843,7 +843,7 @@ from the source code management (SCM) system project uses.
 
 --------------------------------------------------------------------------------
 
-15. Group: com.fasterxml.jackson.datatype  Name: jackson-datatype-jsr310  Version: 2.13.1
+15. Group: com.fasterxml.jackson.datatype  Name: jackson-datatype-jsr310  Version: 2.13.2
 
 Manifest Project URL: https://github.com/FasterXML/jackson-modules-java8/jackson-datatype-jsr310
 
