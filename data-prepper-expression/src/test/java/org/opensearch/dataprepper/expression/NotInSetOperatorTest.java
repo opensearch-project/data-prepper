@@ -22,7 +22,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class NotInSetOperatorTest {
-    final GenericInSetOperator objectUnderTest = new OperatorFactory().notInSetOperator();
+    final GenericInSetOperator objectUnderTest = new OperatorConfiguration().notInSetOperator();
 
     @Mock
     private ParserRuleContext ctx;

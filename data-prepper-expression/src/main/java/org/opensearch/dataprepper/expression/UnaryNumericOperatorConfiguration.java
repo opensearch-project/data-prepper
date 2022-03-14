@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 @Named
-public class UnaryNumericOperatorConfiguration {
+class UnaryNumericOperatorConfiguration {
     @Bean
     public UnaryNumericOperator subtractUnaryNumericOperator() {
         final Map<Class<? extends Number>, Function<Number, ? extends Number>> strategy = new HashMap<>();

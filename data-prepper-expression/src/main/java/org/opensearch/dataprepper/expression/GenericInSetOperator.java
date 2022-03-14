@@ -13,7 +13,7 @@ import java.util.function.BiPredicate;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class GenericInSetOperator implements Operator<Boolean> {
+class GenericInSetOperator implements Operator<Boolean> {
     private final int symbol;
     private final String displayName;
     private final BiPredicate<Object, Object> operation;
@@ -40,7 +40,7 @@ public class GenericInSetOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean evaluate(final Object... args) {
+    public Boolean evaluate(final Object ... args) {
         checkArgument(args.length == 2, displayName + " requires operands length to be 2.");
         if (!(args[1] instanceof Set)) {
             throw new IllegalArgumentException(displayName + " requires right operand to be Set.");

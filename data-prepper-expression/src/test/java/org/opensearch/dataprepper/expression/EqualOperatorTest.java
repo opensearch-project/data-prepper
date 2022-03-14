@@ -20,7 +20,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class EqualOperatorTest {
-    final GenericEqualOperator objectUnderTest = new OperatorFactory().equalOperator();
+    final GenericEqualOperator objectUnderTest = new OperatorConfiguration().equalOperator();
 
     @Mock
     private ParserRuleContext ctx;

@@ -13,7 +13,7 @@ import java.util.function.BiFunction;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class NumericCompareOperator implements Operator<Boolean> {
+class NumericCompareOperator implements Operator<Boolean> {
     private final int symbol;
     private final String displayName;
     private final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>>> operandsToOperationMap;
@@ -42,7 +42,7 @@ public class NumericCompareOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean evaluate(final Object... args) {
+    public Boolean evaluate(final Object ... args) {
         checkArgument(args.length == 2, displayName + " requires operands length needs to be 2.");
         final Object leftValue = args[0];
         final Object rightValue = args[1];

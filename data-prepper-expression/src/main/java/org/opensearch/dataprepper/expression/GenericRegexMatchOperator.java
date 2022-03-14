@@ -13,7 +13,7 @@ import java.util.regex.PatternSyntaxException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class GenericRegexMatchOperator implements Operator<Boolean> {
+class GenericRegexMatchOperator implements Operator<Boolean> {
     private final int symbol;
     private final String displayName;
     private final BiPredicate<Object, Object> operation;
@@ -40,7 +40,7 @@ public class GenericRegexMatchOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean evaluate(final Object... args) {
+    public Boolean evaluate(final Object ... args) {
         checkArgument(args.length == 2, displayName + " requires operands length needs to be 2.");
         checkArgument(args[0] instanceof String, displayName + " requires left operand to be String.");
         checkArgument(args[1] instanceof String, displayName + " requires right operand to be String.");

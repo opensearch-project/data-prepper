@@ -17,7 +17,7 @@ import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 @Named
-public class OperatorFactory {
+class OperatorConfiguration {
     public final BiPredicate<Object, Object> regexEquals = (x, y) -> ((String) x).matches((String) y);
     public final BiPredicate<Object, Object> equals = Objects::equals;
     public final BiPredicate<Object, Object> inSet = (x, y) -> ((Set<?>) y).contains(x);
@@ -29,11 +29,13 @@ public class OperatorFactory {
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> intOperations =
                 new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
                     put(Integer.class, (lhs, rhs) -> (Integer) lhs > (Integer) rhs);
-                    put(Float.class, (lhs, rhs) -> (Integer) lhs > (Float) rhs);}};
+                    put(Float.class, (lhs, rhs) -> (Integer) lhs > (Float) rhs);
+                }};
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> floatOperations =
                 new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
                     put(Integer.class, (lhs, rhs) -> (Float) lhs > (Integer) rhs);
-                    put(Float.class, (lhs, rhs) -> (Float) lhs > (Float) rhs);}};
+                    put(Float.class, (lhs, rhs) -> (Float) lhs > (Float) rhs);
+                }};
 
         operandsToOperationMap.put(Integer.class, intOperations);
         operandsToOperationMap.put(Float.class, floatOperations);
@@ -47,12 +49,14 @@ public class OperatorFactory {
                 operandsToOperationMap = new HashMap<>();
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> intOperations =
                 new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
-            put(Integer.class, (lhs, rhs) -> (Integer) lhs >= (Integer) rhs);
-            put(Float.class, (lhs, rhs) -> (Integer) lhs >= (Float) rhs);}};
+                    put(Integer.class, (lhs, rhs) -> (Integer) lhs >= (Integer) rhs);
+                    put(Float.class, (lhs, rhs) -> (Integer) lhs >= (Float) rhs);
+                }};
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> floatOperations =
                 new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
                     put(Integer.class, (lhs, rhs) -> (Float) lhs >= (Integer) rhs);
-                    put(Float.class, (lhs, rhs) -> (Float) lhs >= (Float) rhs);}};
+                    put(Float.class, (lhs, rhs) -> (Float) lhs >= (Float) rhs);
+                }};
 
         operandsToOperationMap.put(Integer.class, intOperations);
         operandsToOperationMap.put(Float.class, floatOperations);
@@ -67,11 +71,13 @@ public class OperatorFactory {
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> intOperations =
                 new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
                     put(Integer.class, (lhs, rhs) -> (Integer) lhs < (Integer) rhs);
-                    put(Float.class, (lhs, rhs) -> (Integer) lhs < (Float) rhs);}};
+                    put(Float.class, (lhs, rhs) -> (Integer) lhs < (Float) rhs);
+                }};
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> floatOperations =
                 new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
                     put(Integer.class, (lhs, rhs) -> (Float) lhs < (Integer) rhs);
-                    put(Float.class, (lhs, rhs) -> (Float) lhs < (Float) rhs);}};
+                    put(Float.class, (lhs, rhs) -> (Float) lhs < (Float) rhs);
+                }};
 
         operandsToOperationMap.put(Integer.class, intOperations);
         operandsToOperationMap.put(Float.class, floatOperations);
@@ -86,11 +92,13 @@ public class OperatorFactory {
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> intOperations =
                 new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
                     put(Integer.class, (lhs, rhs) -> (Integer) lhs <= (Integer) rhs);
-                    put(Float.class, (lhs, rhs) -> (Integer) lhs <= (Float) rhs);}};
+                    put(Float.class, (lhs, rhs) -> (Integer) lhs <= (Float) rhs);
+                }};
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> floatOperations =
                 new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
                     put(Integer.class, (lhs, rhs) -> (Float) lhs <= (Integer) rhs);
-                    put(Float.class, (lhs, rhs) -> (Float) lhs <= (Float) rhs);}};
+                    put(Float.class, (lhs, rhs) -> (Float) lhs <= (Float) rhs);
+                }};
 
         operandsToOperationMap.put(Integer.class, intOperations);
         operandsToOperationMap.put(Float.class, floatOperations);
@@ -110,12 +118,35 @@ public class OperatorFactory {
 
     @Bean
     public GenericEqualOperator equalOperator() {
-        return new GenericEqualOperator(DataPrepperExpressionParser.EQUAL, equals);
+        final BiPredicate<Object, Object> floatEquals = (lhs, rhs) -> ((Number)lhs).floatValue() == ((Number) rhs).floatValue();
+
+        final Map<Class<?>, Map<Class<?>, BiPredicate<Object, Object>>> equalStrategy = new HashMap<>();
+
+        final Map<Class<?>, BiPredicate<Object, Object>> intOperations = new HashMap<>();
+        intOperations.put(Integer.class, (lhs, rhs) -> (int) lhs == (int) rhs);
+        intOperations.put(Float.class, floatEquals);
+
+        final Map<Class<?>, BiPredicate<Object, Object>> floatOperations = new HashMap<>();
+        floatOperations.put(Integer.class, floatEquals);
+        floatOperations.put(Float.class, floatEquals);
+
+        equalStrategy.put(Integer.class, intOperations);
+        equalStrategy.put(Float.class, floatOperations);
+
+        return new GenericEqualOperator(
+                DataPrepperExpressionParser.EQUAL,
+                DataPrepperExpressionParser.RULE_equalityOperatorExpression,
+                equalStrategy
+        );
     }
 
     @Bean
-    public GenericEqualOperator notEqualOperator() {
-        return new GenericEqualOperator(DataPrepperExpressionParser.NOT_EQUAL, equals.negate());
+    public Operator<Boolean> notEqualOperator(final GenericEqualOperator equalOperator) {
+        return new GenericNotOperator(
+                DataPrepperExpressionParser.NOT_EQUAL,
+                DataPrepperExpressionParser.RULE_equalityOperatorExpression,
+                equalOperator
+        );
     }
 
     @Bean
