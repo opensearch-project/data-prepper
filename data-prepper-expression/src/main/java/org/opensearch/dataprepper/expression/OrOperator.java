@@ -34,7 +34,7 @@ class OrOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean evaluate(final Object... args) {
+    public Boolean evaluate(final Object ... args) {
         checkArgument(args.length == 2, DISPLAY_NAME + " requires operands length to be 2.");
         checkArgument(args[0] instanceof Boolean, DISPLAY_NAME + " requires left operand to be Boolean.");
         checkArgument(args[1] instanceof Boolean, DISPLAY_NAME + " requires right Operand to be Boolean.");

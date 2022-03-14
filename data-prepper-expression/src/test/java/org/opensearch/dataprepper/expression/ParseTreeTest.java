@@ -22,7 +22,7 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.i
 import static org.opensearch.dataprepper.expression.util.JsonPointerMatcher.isJsonPointerUnaryTree;
 import static org.opensearch.dataprepper.expression.util.LiteralMatcher.isUnaryTree;
 
-public class ParseTreeTest extends GrammarTest {
+class ParseTreeTest extends GrammarTest {
 
     @Test
     void testEqualityExpression() {

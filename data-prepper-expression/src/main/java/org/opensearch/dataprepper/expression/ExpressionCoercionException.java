@@ -9,7 +9,7 @@ package org.opensearch.dataprepper.expression;
  * @since 1.3
  * Exception thrown by {@link ParseTreeCoercionService} methods to indicate type coercion failure.
  */
-public class ExpressionCoercionException extends RuntimeException {
+class ExpressionCoercionException extends RuntimeException {
     public ExpressionCoercionException(final String message) {
         super(message);
     }

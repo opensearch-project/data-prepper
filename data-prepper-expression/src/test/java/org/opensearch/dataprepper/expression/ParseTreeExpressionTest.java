@@ -22,7 +22,7 @@ import static org.opensearch.dataprepper.expression.util.LiteralMatcher.isUnaryT
 import static org.opensearch.dataprepper.expression.util.ParenthesesExpressionMatcher.isParenthesesExpression;
 import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
 
-public class ParseTreeExpressionTest extends GrammarTest {
+class ParseTreeExpressionTest extends GrammarTest {
 
     @Test
     void testEqualityExpression() {

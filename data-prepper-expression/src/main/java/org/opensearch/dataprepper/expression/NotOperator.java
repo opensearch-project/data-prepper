@@ -34,7 +34,7 @@ class NotOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean evaluate(final Object... args) {
+    public Boolean evaluate(final Object ... args) {
         checkArgument(args.length == 1, DISPLAY_NAME + " requires operands length to be 1.");
         checkArgument(args[0] instanceof Boolean, DISPLAY_NAME + " requires operand to be Boolean.");
         return !((Boolean) args[0]);
