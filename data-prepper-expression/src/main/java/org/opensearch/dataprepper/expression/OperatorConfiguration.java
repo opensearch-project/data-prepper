@@ -142,7 +142,7 @@ class OperatorConfiguration {
 
     @Bean
     public Operator<Boolean> notEqualOperator(final GenericEqualOperator equalOperator) {
-        return new GenericNotOperator(
+        return new GenericNotEqualOperator(
                 DataPrepperExpressionParser.NOT_EQUAL,
                 DataPrepperExpressionParser.RULE_equalityOperatorExpression,
                 equalOperator

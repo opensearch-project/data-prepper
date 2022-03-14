@@ -1,9 +1,9 @@
 package org.opensearch.dataprepper.expression;
 
-class GenericNotOperator extends BinaryOperator<Boolean> {
+class GenericNotEqualOperator extends BinaryOperator<Boolean> {
     private final BinaryOperator<Boolean> innerOperator;
 
-    public GenericNotOperator(
+    public GenericNotEqualOperator(
             final int symbol,
             final int shouldEvaluateRuleIndex,
             final BinaryOperator<Boolean> innerOperator
