@@ -6,11 +6,12 @@ apply plugin: DockerRemoteApiPlugin
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
 import com.bmuschko.gradle.docker.DockerRemoteApiPlugin
 import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStopContainer
-import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
 import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
 import com.bmuschko.gradle.docker.tasks.image.DockerPullImage
 import com.bmuschko.gradle.docker.tasks.image.Dockerfile
@@ -159,4 +160,10 @@ dependencies {
     integrationTestImplementation "com.linecorp.armeria:armeria:1.0.0"
     integrationTestImplementation "org.awaitility:awaitility:4.1.1"
     integrationTestImplementation "org.opensearch.client:opensearch-rest-high-level-client:${versionMap.opensearchVersion}"
+}
+
+configurations.all {
+    resolutionStrategy {
+        force 'org.yaml:snakeyaml:1.29'
+    }
 }
