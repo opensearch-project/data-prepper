@@ -14,6 +14,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import java.util.HashMap;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -23,6 +24,12 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ConditionalExpressionEvaluatorIT {
+    /**
+     * {@link JacksonEvent#get(String, Class)} supports a String matching the following regex expression:
+     * ^[A-Za-z0-9]+([A-Za-z0-9.-_][A-Za-z0-9])*$
+     */
+    private static final String ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS =
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ.-_abcdefghijklmnopqrstuvwxyz0123456789";
 
     private AnnotationConfigApplicationContext applicationContext;
 
@@ -58,10 +65,10 @@ class ConditionalExpressionEvaluatorIT {
 
     @ParameterizedTest
     @MethodSource("invalidExpressionArguments")
-    void testConditionalExpressionEvaluatorThrows(final String expression, final Event event, final Class<? extends Throwable> throwable) {
+    void testConditionalExpressionEvaluatorThrows(final String expression, final Event event) {
         final ConditionalExpressionEvaluator evaluator = applicationContext.getBean(ConditionalExpressionEvaluator.class);
 
-        assertThrows(throwable, () -> evaluator.evaluate(expression, event));
+        assertThrows(RuntimeException.class, () -> evaluator.evaluate(expression, event));
     }
 
     private static Stream<Arguments> validExpressionArguments() {
@@ -69,6 +76,7 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("true", event("{}"), true),
                 Arguments.of("/status_code == 200", event("{\"status_code\": 200}"), true),
                 Arguments.of("/status_code != 300", event("{\"status_code\": 200}"), true),
+                Arguments.of("/status_code == 200", event("{}"), false),
                 Arguments.of("/success == /status_code", event("{\"success\": true, \"status_code\": 200}"), false),
                 Arguments.of("/success != /status_code", event("{\"success\": true, \"status_code\": 200}"), true),
                 Arguments.of("/pi == 3.14159", event("{\"pi\": 3.14159}"), true),
@@ -85,29 +93,46 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("/should_drop", event("{\"should_drop\": true}"), true),
                 Arguments.of("/should_drop", event("{\"should_drop\": false}"), false),
                 Arguments.of("/logs/2/should_drop", event("{\"logs\": [{}, {}, {\"should_drop\": true}]}"), true),
-                Arguments.of("\"/\"complex\" ~1~0json~1 'key'\" == true", event("{\"\\\"complex\\\"  /~json/ 'key'\": true}"), true)
+                Arguments.of(
+                        escapedJsonPointer(ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS) + " == true",
+                        complexEvent(ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS, true),
+                        true)
         );
     }
 
     private static Stream<Arguments> invalidExpressionArguments() {
         return Stream.of(
-                Arguments.of("/missing", event("{}"), RuntimeException.class),
-                Arguments.of("/success < /status_code", event("{\"success\": true, \"status_code\": 200}"), RuntimeException.class),
-                Arguments.of("/success <= /status_code", event("{\"success\": true, \"status_code\": 200}"), RuntimeException.class),
-                Arguments.of("/success > /status_code", event("{\"success\": true, \"status_code\": 200}"), RuntimeException.class),
-                Arguments.of("/success >= /status_code", event("{\"success\": true, \"status_code\": 200}"), RuntimeException.class),
-                Arguments.of("not /status_code", event("{\"status_code\": 200}"), RuntimeException.class),
-                Arguments.of("/status_code >= 200 and 3", event("{\"status_code\": 200}"), RuntimeException.class),
-                Arguments.of("", event("{}"), RuntimeException.class),
-                Arguments.of("-false", event("{}"), RuntimeException.class),
-                Arguments.of("not 5", event("{}"), RuntimeException.class),
-                Arguments.of("not/status_code", event("{\"status_code\": 200}"), RuntimeException.class),
-                Arguments.of("trueand/status_code", event("{\"status_code\": 200}"), RuntimeException.class),
-                Arguments.of("trueor/status_code", event("{\"status_code\": 200}"), RuntimeException.class)
+                Arguments.of("/missing", event("{}")),
+                Arguments.of("/success < /status_code", event("{\"success\": true, \"status_code\": 200}")),
+                Arguments.of("/success <= /status_code", event("{\"success\": true, \"status_code\": 200}")),
+                Arguments.of("/success > /status_code", event("{\"success\": true, \"status_code\": 200}")),
+                Arguments.of("/success >= /status_code", event("{\"success\": true, \"status_code\": 200}")),
+                Arguments.of("not /status_code", event("{\"status_code\": 200}")),
+                Arguments.of("/status_code >= 200 and 3", event("{\"status_code\": 200}")),
+                Arguments.of("", event("{}")),
+                Arguments.of("-false", event("{}")),
+                Arguments.of("not 5", event("{}")),
+                Arguments.of("not/status_code", event("{\"status_code\": 200}")),
+                Arguments.of("trueand/status_code", event("{\"status_code\": 200}")),
+                Arguments.of("trueor/status_code", event("{\"status_code\": 200}"))
         );
+    }
+
+    private static String escapedJsonPointer(final String pointer) {
+        return "\"/" + pointer + "\"";
     }
 
     private static Event event(final String data) {
         return JacksonEvent.builder().withEventType("event").withData(data).build();
+    }
+
+    private static <T> Event complexEvent(final String key, final T value) {
+        final HashMap<String, T> data = new HashMap<>();
+        data.put(key, value);
+
+        return JacksonEvent.builder()
+                .withEventType("event")
+                .withData(data)
+                .build();
     }
 }
