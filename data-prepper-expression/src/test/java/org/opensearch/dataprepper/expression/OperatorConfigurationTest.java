@@ -52,6 +52,6 @@ class OperatorConfigurationTest {
         final Operator<Boolean> notEqualOperator = configuration.notEqualOperator(null);
 
         assertThat(notEqualOperator, is(notNullValue()));
-        assertThat(notEqualOperator instanceof GenericNotEqualOperator, is(true));
+        assertThat(notEqualOperator instanceof GenericNotOperator, is(true));
     }
 }
