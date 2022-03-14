@@ -12,11 +12,12 @@ pluginManagement {
 
 rootProject.name = 'opensearch-data-prepper'
 
-if(startParameter.getProjectProperties().containsKey("release")){
+if(startParameter.getProjectProperties().containsKey('release')){
     include 'release'
     include 'release:docker'
     include 'release:archives'
     include 'release:archives:linux'
+    include 'release:maven'
 }
 include 'data-prepper-api'
 include 'data-prepper-plugins'
