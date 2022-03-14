@@ -13,7 +13,7 @@ import org.opensearch.dataprepper.expression.util.GrammarTest;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class ParserTest extends GrammarTest {
+class ParserTest extends GrammarTest {
 
     private void assertThatIsValid(final String expression) {
         parseExpression(expression);

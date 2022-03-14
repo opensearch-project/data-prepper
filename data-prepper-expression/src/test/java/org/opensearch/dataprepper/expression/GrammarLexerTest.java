@@ -18,7 +18,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-public class GrammarLexerTest {
+class GrammarLexerTest {
 
     private List<? extends Token> getTokens(final String statement) {
         final Lexer lexer = new DataPrepperExpressionLexer(CharStreams.fromString(statement));

@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Bean;
 import javax.inject.Named;
 
 @Named
-public class ParseTreeEvaluatorConfiguration {
+class ParseTreeEvaluatorConfiguration {
     @Bean
     public ParseTreeWalker parseTreeWalker() {
         return new ParseTreeWalker();

@@ -1,6 +1,6 @@
 package org.opensearch.dataprepper.expression;
 
-public class GenericNotOperator extends BinaryOperator<Boolean> {
+class GenericNotOperator extends BinaryOperator<Boolean> {
     private final BinaryOperator<Boolean> innerOperator;
 
     public GenericNotOperator(

@@ -17,7 +17,7 @@ import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 
 @Named
-public class OperatorConfiguration {
+class OperatorConfiguration {
     public final BiPredicate<Object, Object> regexEquals = (x, y) -> ((String) x).matches((String) y);
     public final BiPredicate<Object, Object> equals = Objects::equals;
     public final BiPredicate<Object, Object> inSet = (x, y) -> ((Set<?>) y).contains(x);

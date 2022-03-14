@@ -8,7 +8,7 @@ package org.opensearch.dataprepper.expression;
 import java.util.Map;
 import java.util.function.BiPredicate;
 
-public class GenericEqualOperator extends BinaryOperator<Boolean> {
+class GenericEqualOperator extends BinaryOperator<Boolean> {
     private final Map<Class<?>, Map<Class<?>, BiPredicate<Object, Object>>> equalStrategy;
 
     public GenericEqualOperator(

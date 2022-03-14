@@ -13,7 +13,7 @@ import java.util.function.BiFunction;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class NumericCompareOperator implements Operator<Boolean> {
+class NumericCompareOperator implements Operator<Boolean> {
     private final int symbol;
     private final String displayName;
     private final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>>> operandsToOperationMap;

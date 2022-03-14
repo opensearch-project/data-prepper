@@ -13,7 +13,7 @@ import java.util.regex.PatternSyntaxException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class GenericRegexMatchOperator implements Operator<Boolean> {
+class GenericRegexMatchOperator implements Operator<Boolean> {
     private final int symbol;
     private final String displayName;
     private final BiPredicate<Object, Object> operation;

@@ -13,7 +13,7 @@ import java.util.function.BiPredicate;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class GenericInSetOperator implements Operator<Boolean> {
+class GenericInSetOperator implements Operator<Boolean> {
     private final int symbol;
     private final String displayName;
     private final BiPredicate<Object, Object> operation;
