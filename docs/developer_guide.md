@@ -134,8 +134,8 @@ The auto-generated PR will be on a branch named `backport/backport-<original PR 
 Data Prepper supports patch releases only on the latest version (e.g. 2.1) and on the last version
 for the previous major release (e.g. 1.4 after 2.0 has been released). These releases are
 only for bug fixes or security fixes. Please use backports only for bug and security fixes
-and only for candidate releases. You can ask the Data Prepper maintainers about backporting a
-change in your PR.
+and only targeting candidate releases. You can ask about backporting in your PR or by creating a GitHub
+issue to request that a previous change be backported.
 
 ## Coding Guidance
 
