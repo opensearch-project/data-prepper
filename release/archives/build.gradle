@@ -4,8 +4,7 @@
  */
 
 plugins {
-    id "de.undercouch.download" version "4.1.2" apply false
-    id "jp.classmethod.aws.s3" version "0.41" apply false
+    id 'de.undercouch.download' version '4.1.2' apply false
 }
 
 import com.amazonaws.services.s3.model.ObjectMetadata
@@ -15,7 +14,6 @@ import jp.classmethod.aws.gradle.s3.CreateBucketTask
 subprojects {
     apply plugin: 'de.undercouch.download'
     apply plugin: 'distribution'
-    apply plugin: 'jp.classmethod.aws.s3'
 
     dependencies {
         /* required to resolve below issue with aws sdk
@@ -26,8 +24,6 @@ subprojects {
 
     ext {
         archiveToTar = this.&archiveToTar
-        awsS3Bucket = project.hasProperty('bucket') ? project.getProperty('bucket') : awsResources.get('default_bucket')
-        buildNumber = project.hasProperty('buildNumber') ? project.getProperty('buildNumber') : 'development'
     }
 
     def supportedArchitectures = architectures.get(it.name) as String[]
@@ -97,11 +93,6 @@ subprojects {
         }
     }
 
-    aws {
-        profileName = project.hasProperty("profile") ? project.getProperty("profile") : awsResources.get('default_profile')
-        region = project.hasProperty("region") ? project.getProperty("region") : awsResources.get('default_region')
-    }
-
     task createBucket(type: CreateBucketTask) {
         bucketName awsS3Bucket
         ifNotExists true
@@ -111,7 +102,7 @@ subprojects {
             def platformWithArchitecture = "${platform}${it}"
             def tarTask = tasks.getByName("${platformWithArchitecture}DistTar")
             def tarWithJDKTask = tasks.getByName("${platformWithArchitecture}WithJDKDistTar")
-            def destinationKeyPath = "${project.rootProject.version}/${project.buildNumber}/archive"
+            def destinationKeyPath = "${archiveRootKey}/archive"
 
             tasks.getByName("${platformWithArchitecture}WithJDKDistTar").dependsOn("download${it}JDK")
 
