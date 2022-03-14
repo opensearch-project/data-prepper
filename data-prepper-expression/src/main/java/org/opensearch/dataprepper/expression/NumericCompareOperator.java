@@ -42,7 +42,7 @@ class NumericCompareOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean evaluate(final Object... args) {
+    public Boolean evaluate(final Object ... args) {
         checkArgument(args.length == 2, displayName + " requires operands length needs to be 2.");
         final Object leftValue = args[0];
         final Object rightValue = args[1];

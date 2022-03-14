@@ -40,7 +40,7 @@ class GenericRegexMatchOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean evaluate(final Object... args) {
+    public Boolean evaluate(final Object ... args) {
         checkArgument(args.length == 2, displayName + " requires operands length needs to be 2.");
         checkArgument(args[0] instanceof String, displayName + " requires left operand to be String.");
         checkArgument(args[1] instanceof String, displayName + " requires right operand to be String.");
