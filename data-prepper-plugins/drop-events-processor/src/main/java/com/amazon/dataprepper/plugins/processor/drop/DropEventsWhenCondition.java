@@ -55,7 +55,7 @@ class DropEventsWhenCondition {
      */
     public boolean isStatementFalseWith(final Event event) {
         try {
-            return expressionEvaluator.evaluate(dropWhen, event);
+            return !expressionEvaluator.evaluate(dropWhen, event);
         } catch (final Exception e) {
             return handleFailedEventsSetting.isDropEventOption(event, e, LOG);
         }

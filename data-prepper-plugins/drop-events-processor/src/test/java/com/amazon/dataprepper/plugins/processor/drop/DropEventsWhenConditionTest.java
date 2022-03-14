@@ -16,6 +16,7 @@ import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.isA;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -68,17 +69,18 @@ class DropEventsWhenConditionTest {
     }
 
     @Test
-    void testIsStatementFalseReturnsEvaluatorResult() {
+    void testIsStatementFalseReturnsInvertedEvaluatorResult() {
         doReturn(HandleFailedEventsOption.SKIP)
                 .when(dropEventProcessorConfig)
                 .getHandleFailedEventsOption();
 
         final String whenStatement = UUID.randomUUID().toString();
         final Event event = mock(Event.class);
+        final boolean evaluatorResult = true;
         doReturn(whenStatement)
                 .when(dropEventProcessorConfig)
                 .getDropWhen();
-        doReturn(true)
+        doReturn(evaluatorResult)
                 .when(evaluator)
                 .evaluate(eq(whenStatement), eq(event));
 
@@ -89,7 +91,7 @@ class DropEventsWhenConditionTest {
 
         final boolean result = whenCondition.isStatementFalseWith(event);
 
-        assertThat(result, is(true));
+        assertThat(result, not(is(evaluatorResult)));
         verify(evaluator).evaluate(eq(whenStatement), eq(event));
     }
 
