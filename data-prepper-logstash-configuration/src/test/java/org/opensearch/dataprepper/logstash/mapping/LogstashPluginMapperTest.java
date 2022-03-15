@@ -9,6 +9,7 @@ import com.amazon.dataprepper.model.configuration.PluginModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.logstash.exception.LogstashMappingException;
+import org.opensearch.dataprepper.logstash.mapping.mutate.MutateMapper;
 import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
 
 import java.util.Collections;

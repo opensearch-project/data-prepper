@@ -1,1 +1,1 @@
-customPluginMapperClass: org.opensearch.dataprepper.logstash.mapping.MutateMapper
+customPluginMapperClass: org.opensearch.dataprepper.logstash.mapping.mutate.MutateMapper
