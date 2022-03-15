@@ -36,7 +36,7 @@ processor:
   - split_string:
       entries:
         - source: "hello,world"
-            delimiter: ","
+          delimiter: ","
 ```
 
 ### Configuration
