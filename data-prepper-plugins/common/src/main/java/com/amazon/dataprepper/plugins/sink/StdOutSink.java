@@ -41,12 +41,10 @@ public class StdOutSink implements Sink<Record<Object>> {
     // Temporary function to support both trace and log ingestion pipelines.
     // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
     private void checkTypeAndPrintObject(final Object object) {
-        if (object instanceof String) {
-            System.out.println(object);
-        } else if (object instanceof Event) {
+        if (object instanceof Event) {
             System.out.println(((Event) object).toJsonString());
         } else {
-            throw new RuntimeException("Invalid record type. StdOutSink only supports String and Events");
+            System.out.println(object);
         }
     }
 
