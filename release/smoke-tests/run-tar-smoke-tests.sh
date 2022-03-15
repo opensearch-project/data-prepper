@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set -ex
+set -e
 
 function run_smoke_test() {
     export FROM_IMAGE_NAME=$1
@@ -35,10 +35,9 @@ REPO_DIR=$(pwd)
 export DOCKER_FILE_DIR="${REPO_DIR}/release/smoke-tests/data-prepper"
 export FROM_IMAGE_NAME="openjdk"
 export FROM_IMAGE_TAG="14"
-#export NAME="opensearch-data-prepper"
 export DATA_PREPPER_VERSION="1.3.0-SNAPSHOT"
 
-#export NAME="opensearch-data-prepper-jdk"
-
-run_smoke_test "${FROM_IMAGE_NAME}" "${FROM_IMAGE_TAG}" "opensearch-data-prepper"
-#run_smoke_test "${FROM_IMAGE_NAME}" "${FROM_IMAGE_TAG}" "opensearch-data-prepper-jdk"
+run_smoke_test "openjdk" "8" "opensearch-data-prepper"
+run_smoke_test "openjdk" "14" "opensearch-data-prepper"
+run_smoke_test "openjdk" "17" "opensearch-data-prepper"
+run_smoke_test "ubuntu" "latest" "opensearch-data-prepper-jdk"
