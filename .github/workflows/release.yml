@@ -69,3 +69,8 @@ jobs:
         run: |
           docker pull ${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
           ./release/smoke-tests/run-smoke-tests.sh -v ${{ env.version }}-${{ github.run_number }} -i ${{ secrets.ECR_REPOSITORY_URL }}
+
+      - name: Smoke Test Tarball Files
+        run: |
+          docker pull ${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
+          ./release/smoke-tests/run-tarball-files-smoke-tests.sh -v ${{ env.version }}-${{ github.run_number }} -i ${{ secrets.ECR_REPOSITORY_URL }}
