@@ -9,6 +9,7 @@ import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -28,6 +29,7 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,10 +47,10 @@ class SplitStringProcessorTests {
 
     @ParameterizedTest
     @ArgumentsSource(SplitStringArgumentsProvider.class)
-    void testSingleSplitProcessor(String message, List<String> splitMessage) {
+    void testSingleSplitProcessor(final String message, final List<String> splitMessage) {
 
-        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", ",")));
-        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", ",")));
+        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", ",", null)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", ",", null)));
 
         final SplitStringProcessor splitStringProcessor = createObjectUnderTest();
         final Record<Event> record = createEvent(message);
@@ -58,11 +60,43 @@ class SplitStringProcessorTests {
         assertThat(splitRecords.get(0).getData().get("message", Object.class), equalTo(splitMessage));
     }
 
-    private SplitStringProcessorConfig.Entry createEntry(final String source, final String delimiter) {
-        return new SplitStringProcessorConfig.Entry(source, delimiter);
+    @Test
+    public void testBothDefinedThrowsError() {
+        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", ",", "a")));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", ",", "a")));
+
+        assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest());
     }
 
-    private Record<Event> createEvent(String message) {
+    @Test
+    public void testNeitherDefinedThrowsError() {
+        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", null, null)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", null, null)));
+
+        assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest());
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(SplitStringArgumentsProvider.class)
+    void testDelimiterSplitProcessor(final String message, final List<String> splitMessage) {
+
+        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", null, ",")));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", null, ",")));
+
+        final SplitStringProcessor splitStringProcessor = createObjectUnderTest();
+        final Record<Event> record = createEvent(message);
+        final List<Record<Event>> splitRecords = (List<Record<Event>>) splitStringProcessor.doExecute(Collections.singletonList(record));
+
+        assertThat(splitRecords.get(0).getData().get("message", Object.class), notNullValue());
+        assertThat(splitRecords.get(0).getData().get("message", Object.class), equalTo(splitMessage));
+    }
+
+
+    private SplitStringProcessorConfig.Entry createEntry(final String source, final String delimiterRegex, final String delimiter) {
+        return new SplitStringProcessorConfig.Entry(source, delimiterRegex, delimiter);
+    }
+
+    private Record<Event> createEvent(final String message) {
         final Map<String, Object> eventData = new HashMap<>();
         eventData.put("message", message);
         return new Record<>(JacksonEvent.builder()

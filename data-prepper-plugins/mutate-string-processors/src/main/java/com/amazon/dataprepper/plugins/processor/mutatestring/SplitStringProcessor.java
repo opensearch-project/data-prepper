@@ -37,21 +37,8 @@ public class SplitStringProcessor extends AbstractStringProcessor<SplitStringPro
             if(entry.getDelimiterRegex() != null && !entry.getDelimiterRegex().isEmpty()) {
                 patternMap.put(entry.getDelimiterRegex(), Pattern.compile(entry.getDelimiterRegex()));
             } else {
-                if(isRegexChar(entry.getDelimiter())) {
-                    patternMap.put(entry.getDelimiter(), Pattern.compile("\\" + entry.getDelimiter()));
-                } else {
-                    patternMap.put(entry.getDelimiter(), Pattern.compile(entry.getDelimiter()));
-                }
+                patternMap.put(entry.getDelimiter(), Pattern.compile(Pattern.quote(entry.getDelimiter())));
             }
-        }
-    }
-
-    private boolean isRegexChar(final String str) {
-        try {
-            Pattern.compile(str);
-            return false;
-        } catch(PatternSyntaxException e) {
-            return true;
         }
     }
 

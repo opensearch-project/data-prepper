@@ -39,9 +39,10 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
             return delimiter;
         }
 
-        public Entry(final String source, final String delimiterRegex) {
+        public Entry(final String source, final String delimiterRegex, final String delimiter) {
             this.source = source;
             this.delimiterRegex = delimiterRegex;
+            this.delimiter = delimiter;
         }
 
         public Entry() {}
