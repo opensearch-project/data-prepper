@@ -18,18 +18,19 @@ import java.util.Map;
 public abstract class AbstractConversion<T> implements SubMutateAction {
     protected List<T> entries = new LinkedList<>();
 
-    public PluginModel generateModel(final LogstashAttribute attribute) {
+    public void addToModel(final LogstashAttribute attribute) {
         if(attribute.getAttributeValue().getValue() instanceof Map) {
             ((Map<String, Object>) attribute.getAttributeValue().getValue())
                     .forEach(this::addKvToEntries);
         } else if(attribute.getAttributeValue().getValue() instanceof ArrayList) {
             addListToEntries((ArrayList<String>) attribute.getAttributeValue().getValue());
         }
+    }
 
-        Map<String, Object> entryMap = new HashMap<>();
+    public PluginModel generateModel() {
+        final Map<String, Object> entryMap = new HashMap<>();
         entryMap.put(getMapKey(), entries);
-
-        PluginModel model = new PluginModel(getDataPrepperName(), entryMap);
+        final PluginModel model = new PluginModel(getDataPrepperName(), entryMap);
 
         return model;
     }

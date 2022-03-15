@@ -13,5 +13,6 @@ public interface SubMutateAction {
         return "unimplemented";
     }
 
-    PluginModel generateModel(final LogstashAttribute attribute);
+    void addToModel(final LogstashAttribute attribute);
+    PluginModel generateModel();
 }

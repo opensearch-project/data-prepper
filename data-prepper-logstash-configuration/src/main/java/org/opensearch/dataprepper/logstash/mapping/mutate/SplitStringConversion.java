@@ -7,24 +7,24 @@ package org.opensearch.dataprepper.logstash.mapping.mutate;
 
 import java.util.ArrayList;
 
-public class AddEntryConversion extends AbstractConversion<AddEntryConversion.AddEntryConfig> {
-    public static class AddEntryConfig {
-        public final String key;
-        public final Object value;
+public class SplitStringConversion extends AbstractConversion<SplitStringConversion.SplitStringConfig> {
+    public static class SplitStringConfig {
+        public final String source;
+        public final String delimiter;
 
-        public AddEntryConfig(final String key, final Object value) {
-            this.key = key;
-            this.value = value;
+        public SplitStringConfig(final String source, final String delimiter) {
+            this.source = source;
+            this.delimiter = delimiter;
         }
     }
 
     public static String getLogstashName() {
-        return "add_field";
+        return "split";
     }
 
     @Override
     protected void addKvToEntries(final String key, final Object value) {
-        entries.add(new AddEntryConfig(key, value));
+        entries.add(new SplitStringConfig(key, (String) value));
     }
 
     @Override
@@ -32,7 +32,7 @@ public class AddEntryConversion extends AbstractConversion<AddEntryConversion.Ad
 
     @Override
     protected String getDataPrepperName() {
-        return "add_entries";
+        return "split_string";
     }
 
     @Override

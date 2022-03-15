@@ -7,14 +7,13 @@ package org.opensearch.dataprepper.logstash.mapping.mutate;
 
 import java.util.ArrayList;
 
-public class DeleteEntryConversion extends AbstractConversion<String> {
-
+public class UppercaseStringConversion extends AbstractConversion<String> {
     public static String getLogstashName() {
-        return "remove_field";
+        return "uppercase";
     }
 
     @Override
-    protected void addKvToEntries(final String key, final Object value) { }
+    protected void addKvToEntries(final String key, final Object value) {}
 
     @Override
     protected void addListToEntries(final ArrayList<String> list) {
@@ -23,7 +22,7 @@ public class DeleteEntryConversion extends AbstractConversion<String> {
 
     @Override
     protected String getDataPrepperName() {
-        return "delete_entries";
+        return "uppercase_string";
     }
 
     @Override
