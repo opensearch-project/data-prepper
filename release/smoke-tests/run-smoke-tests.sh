@@ -150,6 +150,7 @@ do
     fi
 done
 
+echo -e "\b "
 echo "Data Prepper started!"
 
 sleep 30
