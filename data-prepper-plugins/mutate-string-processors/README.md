@@ -1,6 +1,12 @@
 # Mutate String Processors
 The following is a list of processors to mutate a string.
+* [substitute_string](#substitutestringprocessor)
+* [split_string](#splitstringprocessor)
+* [uppercase_string](#uppercasestringprocessor)
+* [lowercase_string](#lowercasestringprocessor)
+* [trim_string](#trimstringprocessor)
 
+---
 ## SubstituteStringProcessor
 A processor that matches a key's value against a regular expression and replaces all matches with a replacement string.
 
