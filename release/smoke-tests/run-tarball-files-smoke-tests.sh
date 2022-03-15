@@ -7,6 +7,12 @@
 
 set -e
 
+export REPO_DIR
+REPO_DIR=$(pwd)
+
+export DOCKER_FILE_DIR="${REPO_DIR}/release/smoke-tests/data-prepper"
+export DATA_PREPPER_VERSION="1.3.0-SNAPSHOT"
+
 function run_smoke_test() {
     export FROM_IMAGE_NAME=$1
     export FROM_IMAGE_TAG=$2
@@ -28,14 +34,6 @@ function run_smoke_test() {
 
     cd "${CURRENT_DIR}"
 }
-
-export REPO_DIR
-REPO_DIR=$(pwd)
-
-export DOCKER_FILE_DIR="${REPO_DIR}/release/smoke-tests/data-prepper"
-export FROM_IMAGE_NAME="openjdk"
-export FROM_IMAGE_TAG="14"
-export DATA_PREPPER_VERSION="1.3.0-SNAPSHOT"
 
 run_smoke_test "openjdk" "8" "opensearch-data-prepper"
 run_smoke_test "openjdk" "14" "opensearch-data-prepper"
