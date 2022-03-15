@@ -70,6 +70,16 @@ jobs:
           docker pull ${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
           ./release/smoke-tests/run-smoke-tests.sh -v ${{ env.version }}-${{ github.run_number }} -i ${{ secrets.ECR_REPOSITORY_URL }}
 
+  validate-tarball:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout Data-Prepper
+        uses: actions/checkout@v2
+      - name: Get Version
+        run:  grep '^version=' gradle.properties >> $GITHUB_ENV
+
       - name: Smoke Test Tarball Files
         run: |
           docker pull ${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
