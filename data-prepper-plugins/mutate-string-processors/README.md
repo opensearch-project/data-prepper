@@ -4,16 +4,34 @@ The following is a list of processors to mutate a string.
 ## SubstituteStringProcessor
 A processor that matches a key's value against a regular expression and replaces all matches with a replacement string.
 
-### Example
-The following `substitute_string` processor example will replace all ':' with '-' for the `message` key.
-
+### Basic Usage
+To get started, create the following `pipeline.yaml`.
 ```yaml
-processor:
-  - substitute_string:
-      entries:
-        - source: "message"
-          from: ":"
-          to: "-"
+pipeline:
+  source:
+    file:
+      path: "/full/path/to/logs_json.log"
+      record_type: "event"
+      format: "json"
+  processor:
+    - substitute_string:
+        entries:
+          - source: "message"
+            from: ":"
+            to: "-"
+  sink:
+    - stdout:
+```
+
+Create the following file named `logs_json.log` and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
+
+```json
+{"message": "ab:cd:ab:cd"}
+```
+When you run Data Prepper with this `pipeline.yaml`, you should see the following output:
+
+```json
+{"message": "ab-cd-ab-cd"}
 ```
 If `from` regex string does not have a match, the key will be returned as it is.
 
@@ -28,15 +46,33 @@ If `from` regex string does not have a match, the key will be returned as it is.
 ## SplitStringProcessor
 A processor that splits a field into an array using a delimiter character.
 
-### Example
-The following `split_string` processor example will split the key `"hello,world"` into `[hello, world]` array.
-
+### Basic Usage
+To get started, create the following `pipeline.yaml`.
 ```yaml
-processor:
-  - split_string:
-      entries:
-        - source: "hello,world"
-          delimiter: ","
+pipeline:
+  source:
+    file:
+      path: "/full/path/to/logs_json.log"
+      record_type: "event"
+      format: "json"
+  processor:
+    - split_string:
+        entries:
+          - source: "message"
+            delimiter: ","
+  sink:
+    - stdout:
+```
+
+Create the following file named `logs_json.log` and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
+
+```json
+{"message": "hello,world"}
+```
+When you run Data Prepper with this `pipeline.yaml`, you should see the following output:
+
+```json
+{"message":["hello","world"]}
 ```
 
 ### Configuration
@@ -49,14 +85,32 @@ processor:
 ## UppercaseStringProcessor
 A processor that converts a key to its uppercase counterpart.
 
-### Example
-The following `uppercase_string` processor example will convert the key to its uppercase counterpart.
-
+### Basic Usage
+To get started, create the following `pipeline.yaml`.
 ```yaml
-processor:
-  - uppercase_string:
-      with_keys:
-        - "uppercaseField"
+pipeline:
+  source:
+    file:
+      path: "/full/path/to/logs_json.log"
+      record_type: "event"
+      format: "json"
+  processor:
+    - uppercase_string:
+        with_keys:
+          - "uppercaseField"
+  sink:
+    - stdout:
+```
+
+Create the following file named `logs_json.log` and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
+
+```json
+{"uppercaseField": "hello"}
+```
+When you run Data Prepper with this `pipeline.yaml`, you should see the following output:
+
+```json
+{"uppercaseField": "HELLO"}
 ```
 
 ### Configuration
@@ -67,14 +121,32 @@ processor:
 ## LowercaseStringProcessor
 A processor that converts a string to its lowercase counterpart.
 
-### Example
-The following `lowercase_string` processor example will convert the key to its lowercase counterpart.
-
+### Basic Usage
+To get started, create the following `pipeline.yaml`.
 ```yaml
-processor:
-  - lowercase_string:
-      with_keys:
-        - "lowercaseField"
+pipeline:
+  source:
+    file:
+      path: "/full/path/to/logs_json.log"
+      record_type: "event"
+      format: "json"
+  processor:
+    - lowercase_string:
+        with_keys:
+          - "lowercaseField"
+  sink:
+    - stdout:
+```
+
+Create the following file named `logs_json.log` and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
+
+```json
+{"lowercaseField": "TESTmeSSage"}
+```
+When you run Data Prepper with this `pipeline.yaml`, you should see the following output:
+
+```json
+{"lowercaseField": "testmessage"}
 ```
 
 ### Configuration
@@ -83,16 +155,34 @@ processor:
 ---
 
 ## TrimStringProcessor
-A processor that strips whitespace from a string.
+A processor that strips whitespace from the beginning and end of a key.
 
-### Example
-The following `trim_string` processor example will strip whitespace.
-
+### Basic Usage
+To get started, create the following `pipeline.yaml`.
 ```yaml
-processor:
-  - trim_string:
-      with_keys:
-        - "trimField"
+pipeline:
+  source:
+    file:
+      path: "/full/path/to/logs_json.log"
+      record_type: "event"
+      format: "json"
+  processor:
+    - trim_string:
+        with_keys:
+          - "trimField"
+  sink:
+    - stdout:
+```
+
+Create the following file named `logs_json.log` and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
+
+```json
+{"trimField": " Space Ship "}
+```
+When you run Data Prepper with this `pipeline.yaml`, you should see the following output:
+
+```json
+{"trimField": "Space Ship"}
 ```
 
 ### Configuration
