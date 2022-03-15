@@ -52,8 +52,6 @@ public class JacksonSpan extends JacksonEvent implements Span {
         super(builder);
 
         checkArgument(this.getMetadata().getEventType().equals("TRACE"), "eventType must be of type Trace");
-
-        checkAndSetDefaultValues();
     }
 
     @Override
@@ -144,32 +142,6 @@ public class JacksonSpan extends JacksonEvent implements Span {
     @Override
     public String getServiceName() {
         return this.get(SERVICE_NAME_KEY, String.class);
-    }
-
-    private void checkAndSetDefaultValues() {
-        if (this.getAttributes() == null ) {
-            this.put(ATTRIBUTES_KEY, new HashMap<>());
-        }
-
-        if (this.getDroppedAttributesCount() == null) {
-            this.put(DROPPED_ATTRIBUTES_COUNT_KEY, 0);
-        }
-
-        if (this.getLinks() == null) {
-            this.put(LINKS_KEY, new LinkedList<>());
-        }
-
-        if (this.getDroppedLinksCount() == null) {
-            this.put(DROPPED_LINKS_COUNT_KEY, 0);
-        }
-
-        if (this.getEvents() == null) {
-            this.put(EVENTS_KEY, new LinkedList<>());
-        }
-
-        if (this.getDroppedEventsCount() == null) {
-            this.put(DROPPED_EVENTS_COUNT_KEY, 0);
-        }
     }
 
     public static Builder builder() {
@@ -407,6 +379,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          */
         public JacksonSpan build() {
             validateParameters();
+            checkAndSetDefaultValues();
             this.withData(data);
             this.withEventType(EventType.TRACE.toString());
             return new JacksonSpan(this);
@@ -415,14 +388,23 @@ public class JacksonSpan extends JacksonEvent implements Span {
         private void validateParameters() {
             REQUIRED_NON_EMPTY_KEYS.forEach(key -> {
                 final String value = (String) data.get(key);
-                checkNotNull(value, String.format("%s cannot be null", key));
-                checkArgument(!value.isEmpty(),  String.format("%s cannot be an empty string", key));
+                checkNotNull(value, key + " cannot be null");
+                checkArgument(!value.isEmpty(),  key + " cannot be an empty string");
             });
 
             REQUIRED_NON_NULL_KEYS.forEach(key -> {
                 final Object value = data.get(key);
-                checkNotNull(value, String.format("%s cannot be null", key));
+                checkNotNull(value, key + " cannot be null");
             });
+        }
+
+        private void checkAndSetDefaultValues() {
+            data.computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
+            data.putIfAbsent(DROPPED_ATTRIBUTES_COUNT_KEY, 0);
+            data.computeIfAbsent(LINKS_KEY, k -> new LinkedList<>());
+            data.putIfAbsent(DROPPED_LINKS_COUNT_KEY, 0);
+            data.computeIfAbsent(EVENTS_KEY, k -> new LinkedList<>());
+            data.putIfAbsent(DROPPED_EVENTS_COUNT_KEY, 0);
         }
 
     }
