@@ -2,6 +2,9 @@
 
 ---
 
+### Important Deprecation
+* We have updated the pipeline definition to support `processor:` as replacement of `prepper:` which has been deprecated and will be fully removed in 2.0. ([#655](https://github.com/opensearch-project/data-prepper/pull/655), [#667](https://github.com/opensearch-project/data-prepper/pull/667))
+
 ### Features
 * AggregateProcessor for generic stateful aggregation ([#839](https://github.com/opensearch-project/data-prepper/pull/839), [#850](https://github.com/opensearch-project/data-prepper/pull/850), [#931](https://github.com/opensearch-project/data-prepper/pull/931), [#969](https://github.com/opensearch-project/data-prepper/pull/969), [#1022](https://github.com/opensearch-project/data-prepper/pull/1022), [#1046](https://github.com/opensearch-project/data-prepper/pull/1046))
 * DateProcessor to extract dates from fields in events ([#971](https://github.com/opensearch-project/data-prepper/pull/971), [#1014](https://github.com/opensearch-project/data-prepper/pull/1014))
@@ -54,5 +57,4 @@
 * Deprecating Record and RecordMetaData ([#954](https://github.com/opensearch-project/data-prepper/pull/954))
 * FileSink to use Event model ([#750](https://github.com/opensearch-project/data-prepper/pull/750))
 * StringPrepper to use Event model ([#753](https://github.com/opensearch-project/data-prepper/pull/753))
-* Rename Prepper to Processor ([#655](https://github.com/opensearch-project/data-prepper/pull/655), [#667](https://github.com/opensearch-project/data-prepper/pull/667))
 * StdInSource, RandomStringSource to use Event model ([#625](https://github.com/opensearch-project/data-prepper/pull/625))
