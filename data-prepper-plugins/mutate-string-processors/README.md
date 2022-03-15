@@ -2,143 +2,101 @@
 The following is a list of processors to mutate a string.
 
 ## SubstituteStringProcessor
-A processor that matches a field value against a regular expression and replaces all matches with a replacement string.
+A processor that matches a key's value against a regular expression and replaces all matches with a replacement string.
 
-### Basic Usage
-To start using Substitute String Processor with Data Prepper, create the following `pipeline.yaml`.
+### Example
+The following `substitute_string` processor example will replace all ':' with '-' for the `message` key.
 
 ```yaml
-pipeline:
-  source:
-    file:
-      path: "/full/path/to/logs_json.log"
-      record_type: "event"
-      format: "json"
-  processor:
-    - substitute_string:
-        entries:
-          - source: "source"
-            from: "from"
-            to: "to"
-          - source: "source2"
-            from: "from2"
-            to: "to2"
-  sink:
-    - stdout:
+processor:
+  - substitute_string:
+      entries:
+        - source: "message"
+          from: ":"
+          to: "-"
 ```
+If `from` regex string does not have a match, the key will be returned as it is.
 
 ### Configuration
 * `entries` - (required) - A list of entries to add to an event
-    * `source` - (required) - The entry to be modified
-    * `from` - (required) - The string to be replaced
-    * `to` - (required) - The string it will be substituted to
+    * `source` - (required) - The key to be modified
+    * `from` - (required) - The Regex String to be replaced
+    * `to` - (required) - The String to be substituted for each match of `from`
     
 ---
 
 ## SplitStringProcessor
 A processor that splits a field into an array using a delimiter character.
 
-### Basic Usage
-To start using Split String Processor with Data Prepper, create the following `pipeline.yaml`.
+### Example
+The following `split_string` processor example will split the key `"hello,world"` into `[hello, world]` array.
 
 ```yaml
-pipeline:
-  source:
-    file:
-      path: "/full/path/to/logs_json.log"
-      record_type: "event"
-      format: "json"
-  processor:
-    - split_string:
-        entries:
-          - source: "hello,world"
+processor:
+  - split_string:
+      entries:
+        - source: "hello,world"
             delimiter: ","
-  sink:
-    - stdout:
 ```
 
 ### Configuration
 * `entries` - (required) - A list of entries to add to an event
-    * `source` - (required) - The entry to be split
+    * `source` - (required) - The key to be split
     * `delimiter` - (required) - The separator character responsible for the split
 
 ---
 
 ## UppercaseStringProcessor
-A processor that converts a string to its uppercase counterpart.
+A processor that converts a key to its uppercase counterpart.
 
-### Basic Usage
-To start using Uppercase String Processor with Data Prepper, create the following `pipeline.yaml`.
+### Example
+The following `uppercase_string` processor example will convert the key to its uppercase counterpart.
 
 ```yaml
-pipeline:
-  source:
-    file:
-      path: "/full/path/to/logs_json.log"
-      record_type: "event"
-      format: "json"
-  processor:
-    - uppercase_string:
-        with_keys:
-          - "uppercaseField"
-  sink:
-    - stdout:
+processor:
+  - uppercase_string:
+      with_keys:
+        - "uppercaseField"
 ```
 
 ### Configuration
-* `with_keys` - (required) - A list of strings to convert to Uppercase
+* `with_keys` - (required) - A list of keys to convert to Uppercase
 
 ---
 
 ## LowercaseStringProcessor
 A processor that converts a string to its lowercase counterpart.
 
-### Basic Usage
-To start using Lowercase String Processor with Data Prepper, create the following `pipeline.yaml`.
+### Example
+The following `lowercase_string` processor example will convert the key to its lowercase counterpart.
 
 ```yaml
-pipeline:
-  source:
-    file:
-      path: "/full/path/to/logs_json.log"
-      record_type: "event"
-      format: "json"
-  processor:
-    - lowercase_string:
-        with_keys:
-          - "lowercaseField"
-  sink:
-    - stdout:
+processor:
+  - lowercase_string:
+      with_keys:
+        - "lowercaseField"
 ```
 
 ### Configuration
-* `with_keys` - (required) - A list of strings to convert to Lowercase
+* `with_keys` - (required) - A list of keys to convert to Lowercase
 
 ---
 
 ## TrimStringProcessor
 A processor that strips whitespace from a string.
 
-### Basic Usage
-To start using Trim String Processor with Data Prepper, create the following `pipeline.yaml`.
+### Example
+The following `trim_string` processor example will strip whitespace.
 
 ```yaml
-pipeline:
-  source:
-    file:
-      path: "/full/path/to/logs_json.log"
-      record_type: "event"
-      format: "json"
-  processor:
-    - trim_string:
-        with_keys:
-          - "trimField"
-  sink:
-    - stdout:
+processor:
+  - trim_string:
+      with_keys:
+        - "trimField"
 ```
 
 ### Configuration
-* `with_keys` - (required) - A list of strings to trim the whitespace from
+* `with_keys` - (required) - A list of keys to trim the whitespace from
 
 ---
 
