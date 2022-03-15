@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.expression;
 
 import com.amazon.dataprepper.model.event.Event;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Scope;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -16,6 +18,7 @@ import javax.inject.Named;
  * {@link com.amazon.dataprepper.model.sink.Sink} and data-prepper-core objects can use to evaluate statements.
  */
 @Named
+@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 class ConditionalExpressionEvaluator implements ExpressionEvaluator<Boolean> {
     private final Parser<ParseTree> parser;
     private final Evaluator<ParseTree, Event> evaluator;
