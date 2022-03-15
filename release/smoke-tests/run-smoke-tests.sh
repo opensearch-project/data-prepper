@@ -153,7 +153,7 @@ done
 
 echo "Data Prepper started!"
 
-sleep 30s
+sleep 30
 
 echo "Ready to begin smoke tests. Running cURL commands."
 echo ""

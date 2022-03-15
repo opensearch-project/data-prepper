@@ -23,7 +23,7 @@ ENV CONFIG_DIR="${DATA_PREPPER_HOME}/config"
 COPY ${DOCKER_FILE_DIR}/${TAR_FILE} ${INSTALL_DIR}
 RUN tar -xzf "${INSTALL_DIR}/${TAR_FILE}" && rm -f "${INSTALL_DIR}/${TAR_FILE}"
 
-COPY ${DOCKER_FILE_DIR}/pipelines.yaml ${CONFIG_DIR}
-COPY ${DOCKER_FILE_DIR}/data-prepper-config.yaml ${CONFIG_DIR}
+COPY ${DOCKER_FILE_DIR}/config/pipelines.yaml ${CONFIG_DIR}
+COPY ${DOCKER_FILE_DIR}/config/data-prepper-config.yaml ${CONFIG_DIR}
 
 ENTRYPOINT ${DATA_PREPPER_HOME}/data-prepper-tar-install.sh ${CONFIG_DIR}/pipelines.yaml ${CONFIG_DIR}/data-prepper-config.yaml
