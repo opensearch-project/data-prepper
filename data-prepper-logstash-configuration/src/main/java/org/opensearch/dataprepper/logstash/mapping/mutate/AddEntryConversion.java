@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.logstash.mapping.mutate;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public class AddEntryConversion extends AbstractConversion<AddEntryConversion.AddEntryConfig> {
     public static class AddEntryConfig {
@@ -28,7 +28,7 @@ public class AddEntryConversion extends AbstractConversion<AddEntryConversion.Ad
     }
 
     @Override
-    protected void addListToEntries(final ArrayList<String> list) { }
+    protected void addListToEntries(final List<String> list) { }
 
     @Override
     protected String getDataPrepperName() {

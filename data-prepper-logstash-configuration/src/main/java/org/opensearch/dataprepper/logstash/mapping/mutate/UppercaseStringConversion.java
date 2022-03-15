@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.logstash.mapping.mutate;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public class UppercaseStringConversion extends AbstractConversion<String> {
     public static String getLogstashName() {
@@ -16,7 +16,7 @@ public class UppercaseStringConversion extends AbstractConversion<String> {
     protected void addKvToEntries(final String key, final Object value) {}
 
     @Override
-    protected void addListToEntries(final ArrayList<String> list) {
+    protected void addListToEntries(final List<String> list) {
         entries.addAll(list);
     }
 

@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.logstash.mapping.mutate;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public class RenameKeyConversion extends AbstractConversion<RenameKeyConversion.RenameEntryConfig> {
     public static class RenameEntryConfig {
@@ -28,7 +28,7 @@ public class RenameKeyConversion extends AbstractConversion<RenameKeyConversion.
     }
 
     @Override
-    protected void addListToEntries(final ArrayList<String> list) { }
+    protected void addListToEntries(final List<String> list) { }
 
     @Override
     protected String getDataPrepperName() {

@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.logstash.mapping.mutate;
 
-import java.util.ArrayList;
+import java.util.List;
 
 public class SubstituteStringConversion extends AbstractConversion<SubstituteStringConversion.SubstituteStringConfig> {
     public static class SubstituteStringConfig {
@@ -28,7 +28,7 @@ public class SubstituteStringConversion extends AbstractConversion<SubstituteStr
     protected void addKvToEntries(final String key, final Object value) {}
 
     @Override
-    protected void addListToEntries(final ArrayList<String> list) {
+    protected void addListToEntries(final List<String> list) {
         for(int i = 0; i < list.size(); i += 3) {
             final String gsubSource = list.get(i);
             final String gsubPatternToReplace = list.get(i + 1);
