@@ -71,6 +71,6 @@ then
 fi
 
 run_smoke_test "openjdk" "8" "opensearch-data-prepper"
-run_smoke_test "openjdk" "14" "opensearch-data-prepper"
+run_smoke_test "openjdk" "11" "opensearch-data-prepper"
 run_smoke_test "openjdk" "17" "opensearch-data-prepper"
 run_smoke_test "ubuntu" "latest" "opensearch-data-prepper-jdk"
