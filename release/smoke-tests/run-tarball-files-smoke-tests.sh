@@ -3,12 +3,12 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-#set -e
+set -e
 
 export REPO_DIR
 REPO_DIR=$(pwd)
 
-export DOCKER_FILE_DIR="${REPO_DIR}/release/smoke-tests/data-prepper"
+export DOCKER_FILE_DIR="${REPO_DIR}/release/smoke-tests/data-prepper-tar"
 
 function usage() {
     echo ""
