@@ -6,8 +6,11 @@
 package com.amazon.dataprepper.plugins.processor.mutatestring;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
@@ -18,25 +21,30 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
         @NotNull
         private String source;
 
-        @NotEmpty
-        @NotNull
+        @JsonProperty("delimiter_regex")
+        private String delimiterRegex;
+
+        @Size(min = 1, max = 1)
         private String delimiter;
 
         public String getSource() {
             return source;
         }
 
+        public String getDelimiterRegex() {
+            return delimiterRegex;
+        }
+
         public String getDelimiter() {
             return delimiter;
         }
 
-        public Entry(final String source, final String delimiter) {
+        public Entry(final String source, final String delimiterRegex) {
             this.source = source;
-            this.delimiter = delimiter;
+            this.delimiterRegex = delimiterRegex;
         }
 
-        public Entry() {};
-
+        public Entry() {}
     }
 
     @Override
@@ -45,7 +53,7 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
         return entries;
     }
 
-    private List<Entry> entries;
+    private List<@Valid Entry> entries;
 
     public List<Entry> getEntries() {
         return entries;
