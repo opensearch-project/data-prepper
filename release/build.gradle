@@ -3,9 +3,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-apply from: file("build-resources.gradle")
+plugins {
+    id 'jp.classmethod.aws.s3' version '0.41' apply false
+}
+
+apply from: file('build-resources.gradle')
 
 allprojects {
+    apply plugin: 'jp.classmethod.aws.s3'
+
+    ext {
+        awsS3Bucket = project.hasProperty('bucket') ? project.getProperty('bucket') : awsResources.get('default_bucket')
+        buildNumber = project.hasProperty('buildNumber') ? project.getProperty('buildNumber') : 'development'
+        archiveRootKey = "${project.rootProject.version}/${project.buildNumber}"
+    }
+
+    aws {
+        profileName = project.hasProperty('profile') ? project.getProperty('profile') : awsResources.get('default_profile')
+        region = project.hasProperty('region') ? project.getProperty('region') : awsResources.get('default_region')
+    }
+
     dependencies {
         implementation project(':data-prepper-core')
     }

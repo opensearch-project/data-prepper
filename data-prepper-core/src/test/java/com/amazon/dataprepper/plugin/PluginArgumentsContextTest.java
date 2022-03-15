@@ -10,29 +10,38 @@ import com.amazon.dataprepper.model.configuration.PipelineDescription;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanFactory;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 
+@ExtendWith(MockitoExtension.class)
 class PluginArgumentsContextTest {
 
+    @Mock
     private PluginSetting pluginSetting;
+
+    @Mock
     private TestPluginConfiguration testPluginConfiguration;
 
+    @Mock
+    private BeanFactory beanFactory;
+
     private static class TestPluginConfiguration { }
-
-    @BeforeEach
-    void setUp() {
-        pluginSetting = mock(PluginSetting.class);
-
-        testPluginConfiguration = mock(TestPluginConfiguration.class);
-    }
 
     @Test
     void createArguments_with_unavailable_argument_should_throw() {
@@ -53,6 +62,51 @@ class PluginArgumentsContextTest {
 
         assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class }),
                 equalTo(new Object[] { testPluginConfiguration}));
+    }
+
+    @Test
+    void createArguments_with_single_class_using_bean_factory() {
+        final Object mock = mock(Object.class);
+        doReturn(mock).when(beanFactory).getBean(eq(Object.class));
+
+        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+                .withPluginSetting(pluginSetting)
+                .withBeanFactory(beanFactory)
+                .build();
+
+        assertThat(objectUnderTest.createArguments(new Class[] { Object.class }),
+                equalTo(new Object[] {mock}));
+    }
+
+    @Test
+    void createArguments_given_bean_not_available_with_single_class_using_bean_factory() {
+        doThrow(mock(BeansException.class)).when(beanFactory).getBean((Class<Object>) any());
+
+        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+                .withPluginSetting(pluginSetting)
+                .withBeanFactory(beanFactory)
+                .build();
+
+        final InvalidPluginDefinitionException throwable = assertThrows(
+                InvalidPluginDefinitionException.class,
+                () -> objectUnderTest.createArguments(new Class[]{Object.class})
+        );
+        assertTrue(throwable.getCause() instanceof BeansException);
+    }
+
+    @Test
+    void createArguments_with_multiple_supplier_sources() {
+        final Object mock = mock(Object.class);
+        doReturn(mock).when(beanFactory).getBean(eq(Object.class));
+
+        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+                .withPluginSetting(pluginSetting)
+                .withPluginConfiguration(testPluginConfiguration)
+                .withBeanFactory(beanFactory)
+                .build();
+
+        assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class, PluginSetting.class, Object.class }),
+                equalTo(new Object[] {testPluginConfiguration, pluginSetting, mock}));
     }
 
     @Test

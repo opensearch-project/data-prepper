@@ -69,9 +69,8 @@ setOperator
 unaryOperatorExpression
     : primary
     | setInitializer
-    | regexPattern
     | parenthesesExpression
-    | unaryNotOperatorExpression
+    | unaryOperator (primary | unaryOperatorExpression)
     ;
 
 parenthesesExpression
@@ -87,12 +86,10 @@ setInitializer
     : LBRACE primary (SET_DELIMITER primary)* RBRACE
     ;
 
-unaryNotOperatorExpression
-    : unaryOperator conditionalExpression
-    ;
 
 unaryOperator
     : NOT
+    | SUBTRACT
     ;
 
 primary
@@ -239,6 +236,7 @@ NOT_IN_SET : SPACE 'not in' SPACE;
 AND : SPACE 'and' SPACE;
 OR : SPACE 'or' SPACE;
 NOT : 'not' SPACE;
+SUBTRACT : '-';
 LPAREN : '(';
 RPAREN : ')';
 LBRACE : '{';

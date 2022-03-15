@@ -1,7 +1,10 @@
-name: Build Release Artifacts
+name: Release Artifacts
 
 on:
   workflow_dispatch:
+
+permissions:
+  id-token: write
 
 jobs:
   build:
@@ -14,11 +17,55 @@ jobs:
         java-version: 14
     - name: Checkout Data-Prepper
       uses: actions/checkout@v2
+    - name: Get Version
+      run:  grep '^version=' gradle.properties >> $GITHUB_ENV
     - name: Build Jar Files
       run: ./gradlew build
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: ${{ secrets.RELEASE_IAM_ROLE }}
+        aws-region: us-east-1
+
     - name: Build Archives
       run: ./gradlew :release:archives:buildArchives -Prelease
-    - name: Build Docker Image
-      run: ./gradlew :release:docker:docker -Prelease
+
     - name: Build Maven Artifacts
       run: ./gradlew publish
+
+    - name: Build Docker Image
+      run: ./gradlew :release:docker:docker -Prelease
+
+    - name: Upload Archives to Archives Bucket
+      run: ./gradlew :release:archives:uploadArchives -Prelease -Pregion=us-east-1 -Pbucket=${{ secrets.ARCHIVES_BUCKET_NAME }} -Pprofile=default -PbuildNumber=${{ github.run_number }}
+
+    - name: Upload Maven Artifacts to Archives Bucket
+      run: ./gradlew :release:maven:uploadArtifacts -Prelease -Pregion=us-east-1 -Pbucket=${{ secrets.ARCHIVES_BUCKET_NAME }} -Pprofile=default -PbuildNumber=${{ github.run_number }}
+
+    - name: Log into Amazon ECR Public
+      id: login-ecr
+      uses: docker/login-action@v1
+      with:
+        registry: public.ecr.aws
+      env:
+        AWS_REGION: us-east-1
+    - name: Push Image to Staging ECR
+      run: |
+        docker tag opensearch-data-prepper:${{ env.version }} ${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
+        docker push ${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
+
+  validate:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout Data-Prepper
+        uses: actions/checkout@v2
+      - name: Get Version
+        run:  grep '^version=' gradle.properties >> $GITHUB_ENV
+
+      - name: Smoke Test Docker Image
+        run: |
+          docker pull ${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
+          ./release/smoke-tests/run-smoke-tests.sh -v ${{ env.version }}-${{ github.run_number }} -i ${{ secrets.ECR_REPOSITORY_URL }}

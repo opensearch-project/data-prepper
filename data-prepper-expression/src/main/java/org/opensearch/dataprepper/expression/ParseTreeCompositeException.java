@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  * <p>
  * Exception thrown by {@link ParseTreeParser} if ANTLR parse emits error events.
  */
-public class ParseTreeCompositeException extends RuntimeException {
+class ParseTreeCompositeException extends RuntimeException {
     private static final String SEPARATOR = System.getProperty("line.separator");
 
     private final Set<Throwable> exceptions;

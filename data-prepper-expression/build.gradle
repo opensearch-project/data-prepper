@@ -5,8 +5,11 @@
 
 plugins {
     id 'antlr'
-    id 'java'
     id 'idea'
+}
+
+ext {
+    antlrGeneratedPackageDirectory = "org/opensearch/dataprepper/expression/antlr/"
 }
 
 dependencies {
@@ -23,12 +26,25 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.logging.log4j:log4j-slf4j-impl'
     testImplementation 'org.springframework:spring-test:5.3.15'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.13.2'
 }
 
 generateGrammarSource {
-    outputDirectory = new File('build/generated-src/antlr/main/org/opensearch/dataprepper/expression/antlr/')
+    outputDirectory = new File("build/generated-src/antlr/main/${antlrGeneratedPackageDirectory}")
 }
 
-test {
-    useJUnitPlatform()
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule { //in addition to core projects rule - this one checks for 100% code coverage for this project
+            limit {
+                minimum = 0.98 //keep this at 100%
+            }
+        }
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: ["${antlrGeneratedPackageDirectory}/**"])
+        }))
+    }
 }

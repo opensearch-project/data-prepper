@@ -13,7 +13,7 @@ import org.opensearch.dataprepper.expression.util.GrammarTest;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class ParserTest extends GrammarTest {
+class ParserTest extends GrammarTest {
 
     private void assertThatIsValid(final String expression) {
         parseExpression(expression);
@@ -134,6 +134,20 @@ public class ParserTest extends GrammarTest {
             "/a in {200 , 202}",
     })
     void testValidOptionalSpaceOperators(final String expression) {
+        assertThatIsValid(expression);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "not false",
+            "not not false",
+            "not /status_code",
+            "not (true)",
+            "-5",
+            "-3.14",
+            "-(5)"
+    })
+    void testValidUnaryOperators(final String expression) {
         assertThatIsValid(expression);
     }
 
