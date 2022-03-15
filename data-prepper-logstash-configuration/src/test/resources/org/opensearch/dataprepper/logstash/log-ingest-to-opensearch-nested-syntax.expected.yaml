@@ -28,16 +28,6 @@ logstash-converted-pipeline:
     - key_value:
         source: "/data/message"
         destination: "/data/test"
-    - rename_keys:
-        entries:
-          - from_key: "/messages/messagea"
-            to_key: "/newMessage"
-          - from_key: "/messages/messageb"
-            to_key: "/newMessage2"
-    - copy_values:
-        entries:
-          - from_key: "/messages/messagec"
-            to_key: "/messaged"
     - add_entries:
         entries:
           - key: "/messages/message1"
@@ -48,6 +38,16 @@ logstash-converted-pipeline:
             value: "test3"
           - key: "/messages/message4"
             value: true
+    - rename_keys:
+        entries:
+          - from_key: "/messages/messagea"
+            to_key: "/newMessage"
+          - from_key: "/messages/messageb"
+            to_key: "/newMessage2"
+    - copy_values:
+        entries:
+          - from_key: "/messages/messagec"
+            to_key: "/messaged"
     - delete_entries:
         with_keys:
           - "/messages/test"
