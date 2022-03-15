@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.logstash.mapping.mutate;
 
 import java.util.List;
 
-public class CopyValueConversion extends AbstractConversion<CopyValueConversion.CopyValueConfig> {
+class CopyValueConversion extends AbstractConversion<CopyValueConversion.CopyValueConfig> {
     public static class CopyValueConfig {
         public final String from_key;
         public final String to_key;

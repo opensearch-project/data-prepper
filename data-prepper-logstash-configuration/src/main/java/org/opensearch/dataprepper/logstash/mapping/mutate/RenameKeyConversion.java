@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.logstash.mapping.mutate;
 
 import java.util.List;
 
-public class RenameKeyConversion extends AbstractConversion<RenameKeyConversion.RenameEntryConfig> {
+class RenameKeyConversion extends AbstractConversion<RenameKeyConversion.RenameEntryConfig> {
     public static class RenameEntryConfig {
         public final String from_key;
         public final String to_key;

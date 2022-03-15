@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.logstash.mapping.mutate;
 
 import java.util.List;
 
-public class DeleteEntryConversion extends AbstractConversion<String> {
+class DeleteEntryConversion extends AbstractConversion<String> {
 
     public static String getLogstashName() {
         return "remove_field";

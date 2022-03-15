@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.logstash.mapping.mutate;
 
 import java.util.List;
 
-public class TrimStringConversion extends AbstractConversion<String> {
+class TrimStringConversion extends AbstractConversion<String> {
     public static String getLogstashName() {
         return "trim";
     }

@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.logstash.mapping.mutate;
 
 import java.util.List;
 
-public class SubstituteStringConversion extends AbstractConversion<SubstituteStringConversion.SubstituteStringConfig> {
+class SubstituteStringConversion extends AbstractConversion<SubstituteStringConversion.SubstituteStringConfig> {
     public static class SubstituteStringConfig {
         public final String source;
         public final String from;

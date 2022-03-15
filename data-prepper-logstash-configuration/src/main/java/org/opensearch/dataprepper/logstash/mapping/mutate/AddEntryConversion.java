@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.logstash.mapping.mutate;
 
 import java.util.List;
 
-public class AddEntryConversion extends AbstractConversion<AddEntryConversion.AddEntryConfig> {
+class AddEntryConversion extends AbstractConversion<AddEntryConversion.AddEntryConfig> {
     public static class AddEntryConfig {
         public final String key;
         public final Object value;

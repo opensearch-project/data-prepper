@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.logstash.mapping.mutate;
 
 import java.util.List;
 
-public class SplitStringConversion extends AbstractConversion<SplitStringConversion.SplitStringConfig> {
+class SplitStringConversion extends AbstractConversion<SplitStringConversion.SplitStringConfig> {
     public static class SplitStringConfig {
         public final String source;
         public final String delimiter;

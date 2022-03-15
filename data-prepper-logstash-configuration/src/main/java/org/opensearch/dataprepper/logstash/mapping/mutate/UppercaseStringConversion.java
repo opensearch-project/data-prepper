@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.logstash.mapping.mutate;
 
 import java.util.List;
 
-public class UppercaseStringConversion extends AbstractConversion<String> {
+class UppercaseStringConversion extends AbstractConversion<String> {
     public static String getLogstashName() {
         return "uppercase";
     }

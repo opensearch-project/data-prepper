@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.logstash.mapping.mutate;
 
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.logstash.mapping.NestedSyntaxConverter;
-import org.opensearch.dataprepper.logstash.mapping.SubMutateAction;
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 
 import java.util.ArrayList;

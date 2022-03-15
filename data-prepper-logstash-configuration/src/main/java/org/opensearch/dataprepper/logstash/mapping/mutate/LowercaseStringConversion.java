@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.logstash.mapping.mutate;
 
 import java.util.List;
 
-public class LowercaseStringConversion extends AbstractConversion<String> {
+class LowercaseStringConversion extends AbstractConversion<String> {
     public static String getLogstashName() {
         return "lowercase";
     }
