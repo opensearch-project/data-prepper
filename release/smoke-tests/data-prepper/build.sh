@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-set -ex
+set -e
 
 function copy_if_needed() {
     local SOURCE_DIR=$1
@@ -37,8 +37,4 @@ docker build \
 
 rm -f "${DOCKER_FILE_DIR}/${TAR_FILE}"
 
-echo "Build image ${NAME}:${DATA_PREPPER_VERSION}"
-echo "To run use \"docker run --rm -p 2021:2021 --name ${NAME} ${NAME}:${DATA_PREPPER_VERSION}\""
-echo "To run interactively use \"docker run -it --rm -p 2021:2021 --name ${NAME} ${NAME}:${DATA_PREPPER_VERSION} /bin/bash\""
-
-#docker run --rm -p 2021:2021 --name ${NAME} ${NAME}:${DATA_PREPPER_VERSION}
+echo "Image created: \"${NAME}:${DATA_PREPPER_VERSION}\""

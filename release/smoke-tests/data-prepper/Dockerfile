@@ -12,18 +12,17 @@ FROM ${FROM_IMAGE_NAME}:${FROM_IMAGE_TAG}
 ARG DATA_PREPPER_VERSION
 ARG BUILD_NAME
 ARG TAR_FILE
-ARG INSTALL_DIR="/opt/data-prepper"
 
-RUN mkdir ${INSTALL_DIR}
-WORKDIR ${INSTALL_DIR}
+ENV DATA_PREPPER_HOME="/usr/share/data-prepper"
 
-ENV DATA_PREPPER_HOME="${INSTALL_DIR}/${BUILD_NAME}"
-ENV CONFIG_DIR="${DATA_PREPPER_HOME}/config"
+RUN mkdir ${DATA_PREPPER_HOME}
+WORKDIR ${DATA_PREPPER_HOME}
 
-COPY ${DOCKER_FILE_DIR}/${TAR_FILE} ${INSTALL_DIR}
-RUN tar -xzf "${INSTALL_DIR}/${TAR_FILE}" && rm -f "${INSTALL_DIR}/${TAR_FILE}"
+COPY ${DOCKER_FILE_DIR}/${TAR_FILE} ${DATA_PREPPER_HOME}
+RUN tar -xzf "${DATA_PREPPER_HOME}/${TAR_FILE}" -C "${DATA_PREPPER_HOME}" --strip-components=1 \
+    && rm -f "${DATA_PREPPER_HOME}/${TAR_FILE}"
 
 COPY ${DOCKER_FILE_DIR}/config/pipelines.yaml ${CONFIG_DIR}
 COPY ${DOCKER_FILE_DIR}/config/data-prepper-config.yaml ${CONFIG_DIR}
 
-ENTRYPOINT ${DATA_PREPPER_HOME}/data-prepper-tar-install.sh ${CONFIG_DIR}/pipelines.yaml ${CONFIG_DIR}/data-prepper-config.yaml
+ENTRYPOINT ${DATA_PREPPER_HOME}/data-prepper-tar-install.sh ${DATA_PREPPER_HOME}/pipelines.yaml ${DATA_PREPPER_HOME}/data-prepper-config.yaml
