@@ -1,12 +1,29 @@
-FROM ubuntu:latest
+#
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
 
-RUN mkdir /opt/data-prepper
-WORKDIR /opt/data-prepper
+ARG DOCKER_FILE_DIR
+ARG FROM_IMAGE_NAME
+ARG FROM_IMAGE_TAG
 
-COPY /Users/smbayer/code/sbayer55/data-prepper/release/archives/linux/build/distributions/opensearch-data-prepper-jdk-1.3.0-SNAPSHOT-linux-x64.tar.gz /opt/data-prepper/opensearch-data-prepper-jdk-1.3.0-SNAPSHOT-linux-x64.tar.gz
-RUN tar -xzf /opt/data-prepper/opensearch-data-prepper-jdk-1.3.0-SNAPSHOT-linux-x64.tar.gz
+FROM ${FROM_IMAGE_NAME}:${FROM_IMAGE_TAG}
 
-COPY /Users/smbayer/.config/data-prepper/pipeline.yaml /opt/data-prepper/opensearch-data-prepper-jdk-1.3.0-SNAPSHOT-linux-x64/config/pipelines.yaml
-COPY /Users/smbayer/.config/data-prepper/data-prepper-config.yaml /opt/data-prepper/opensearch-data-prepper-jdk-1.3.0-SNAPSHOT-linux-x64/config/data-prepper-config.yaml
+ARG DATA_PREPPER_VERSION
+ARG BUILD_NAME
+ARG TAR_FILE
+ARG INSTALL_DIR="/opt/data-prepper"
 
-ENTRYPOINT /opt/data-prepper/opensearch-data-prepper-jdk-1.3.0-SNAPSHOT-linux-x64/data-prepper-tar-install.sh /opt/data-prepper/opensearch-data-prepper-jdk-1.3.0-SNAPSHOT-linux-x64/config/pipelines.yaml /opt/data-prepper/opensearch-data-prepper-jdk-1.3.0-SNAPSHOT-linux-x64/config/data-prepper-config.yaml
+RUN mkdir ${INSTALL_DIR}
+WORKDIR ${INSTALL_DIR}
+
+ENV DATA_PREPPER_HOME="${INSTALL_DIR}/${BUILD_NAME}"
+ENV CONFIG_DIR="${DATA_PREPPER_HOME}/config"
+
+COPY ${DOCKER_FILE_DIR}/${TAR_FILE} ${INSTALL_DIR}
+RUN tar -xzf "${INSTALL_DIR}/${TAR_FILE}" && rm -f "${INSTALL_DIR}/${TAR_FILE}"
+
+COPY ${DOCKER_FILE_DIR}/pipelines.yaml ${CONFIG_DIR}
+COPY ${DOCKER_FILE_DIR}/data-prepper-config.yaml ${CONFIG_DIR}
+
+ENTRYPOINT ${DATA_PREPPER_HOME}/data-prepper-tar-install.sh ${CONFIG_DIR}/pipelines.yaml ${CONFIG_DIR}/data-prepper-config.yaml

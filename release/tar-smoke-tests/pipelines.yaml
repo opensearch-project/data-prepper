@@ -1,0 +1,12 @@
+simple-pipeline:
+  workers: 4
+  source:
+      http:
+        thread_count: 4
+  prepper:
+    - drop_events:
+        drop_when: '/status_code == 500'
+        handle_failed_events: skip_silently
+  sink:
+    - file:
+        path: /tmp/sink.log
