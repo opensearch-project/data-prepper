@@ -56,9 +56,14 @@ public class StdOutSinkTests {
         stdOutSink.shutdown();
     }
 
+    // TODO: remove with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
     @Test
-    public void testSinkWithString() {
+    public void testSinkWithCustomType() {
         final StdOutSink stdOutSink = new StdOutSink(new PluginSetting(PLUGIN_NAME, new HashMap<>()));
-        stdOutSink.output(Collections.singletonList(new Record<Object>(UUID.randomUUID().toString())));
+        stdOutSink.output(Collections.singletonList(new Record<Object>(new TestObject())));
+    }
+
+    private static class TestObject {
+
     }
 }
