@@ -5,12 +5,13 @@
 
 package com.amazon.dataprepper.plugins.processor.mutatestring;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
-public class SplitStringProcessorConfig {
+public class SplitStringProcessorConfig implements StringProcessorConfig<SplitStringProcessorConfig.Entry> {
     public static class Entry {
 
         @NotEmpty
@@ -36,10 +37,17 @@ public class SplitStringProcessorConfig {
 
         public Entry() {};
 
-        private List<Entry> entries;
+    }
 
-        public List<Entry> getEntries() {
-            return entries;
-        }
+    @Override
+    @JsonIgnore
+    public List<Entry> getIterativeConfig() {
+        return entries;
+    }
+
+    private List<Entry> entries;
+
+    public List<Entry> getEntries() {
+        return entries;
     }
 }
