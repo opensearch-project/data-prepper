@@ -19,7 +19,7 @@ spin[1]="\\"
 spin[2]="|"
 spin[3]="/"
 
-cd ${REPO_ROOT}/release/smoke-tests
+cd "${REPO_ROOT}/release/smoke-tests"
 
 function end_tests () {
     local EXIT_CODE=$1
