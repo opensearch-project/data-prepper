@@ -18,14 +18,13 @@ import java.util.regex.Pattern;
 @DataPrepperPlugin(name = "split_string", pluginType = Processor.class, pluginConfigurationType = SplitStringProcessorConfig.class)
 public class SplitStringProcessor extends AbstractStringProcessor<SplitStringProcessorConfig.Entry> {
 
-    private final Map<String, Pattern> patternMap;
+    private final Map<String, Pattern> patternMap = new HashMap<>();
 
     @DataPrepperPluginConstructor
-    public SplitStringProcessor(final PluginMetrics pluginMetrics, final StringProcessorConfig<SplitStringProcessorConfig.Entry> config) {
+    public SplitStringProcessor(final PluginMetrics pluginMetrics, final SplitStringProcessorConfig config) {
         super(pluginMetrics, config);
 
-        patternMap = new HashMap<>();
-        for (SplitStringProcessorConfig.Entry entry: config.getIterativeConfig()) {
+        for (SplitStringProcessorConfig.Entry entry: config.getEntries()) {
             patternMap.put(entry.getDelimiter(), Pattern.compile(entry.getDelimiter()));
         }
     }

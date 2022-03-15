@@ -37,7 +37,7 @@ class SplitStringProcessorTests {
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private StringProcessorConfig<SplitStringProcessorConfig.Entry> config;
+    private SplitStringProcessorConfig config;
 
     private SplitStringProcessor createObjectUnderTest() {
         return new SplitStringProcessor(pluginMetrics, config);
@@ -48,6 +48,7 @@ class SplitStringProcessorTests {
     void testSingleSplitProcessor(String message, List<String> splitMessage) {
 
         when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", ",")));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", ",")));
 
         final SplitStringProcessor splitStringProcessor = createObjectUnderTest();
         final Record<Event> record = createEvent(message);
