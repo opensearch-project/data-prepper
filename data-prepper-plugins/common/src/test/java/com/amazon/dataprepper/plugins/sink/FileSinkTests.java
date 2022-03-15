@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +79,18 @@ public class FileSinkTests {
         Assert.assertTrue(outputData.contains(TEST_DATA_2));
     }
 
+    // TODO: remove with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
+    @Test
+    public void testValidFilePathCustomTypeRecord() throws IOException {
+        final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
+        final TestObject testObject = new TestObject();
+        fileSink.output(Collections.singleton(new Record<>(testObject)));
+        fileSink.shutdown();
+
+        final String outputData = readDocFromFile(TEST_OUTPUT_FILE);
+        Assert.assertTrue(outputData.contains(testObject.toString()));
+    }
+
     @Test
     public void testValidFilePath() throws IOException {
         final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
@@ -101,5 +114,9 @@ public class FileSinkTests {
             bufferedReader.lines().forEach(jsonBuilder::append);
         }
         return jsonBuilder.toString();
+    }
+
+    private static class TestObject {
+
     }
 }
