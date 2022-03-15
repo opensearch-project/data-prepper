@@ -6,7 +6,7 @@
 set -e
 
 export IMAGE_NAME="opensearch-data-prepper"
-REPO_ROOT=`git rev-parse --show-toplevel`
+REPO_ROOT=$(git rev-parse --show-toplevel)
 export OPENSEARCH_VERSION="1.0.1"
 OPENSEARCH_HOST="localhost:9200"
 OPENSEARCH_GROK_INDEX="test-grok-index"
@@ -52,7 +52,8 @@ function usage() {
 
 function query_hits_gt_zero () {
     local URL=$1
-    local SEARCH_RESPONSE=$(curl -s -k -u 'admin:admin' "${URL}")
+    local SEARCH_RESPONSE
+    SEARCH_RESPONSE=$(curl -s -k -u 'admin:admin' "${URL}")
     local LOG_COUNT=0
 
     if command -v jq &> /dev/null
