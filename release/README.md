@@ -26,12 +26,18 @@ the release branch which you are releasing for. You may select `main` for testin
 Press the "Run workflow" button.
 
 GitHub Actions will perform the release process. Please take note of the workflow run number. You will find this in the text "Release Artifacts #<worflow run number>"
+and use it when promoting to production.
 
-Wait for the job to complete successfully.
+Wait for the job to complete successfully. Once the job completes successfully, you
+have released the artifacts to the Data Prepper staging repository.
 
 ### Promotion to Production
 
-Once you have a completed build, you may update the release Issue you created in the opensearch-build project. Provide the following:
+The Data Prepper staging repository organizes artifacts by build number. Thus to promote any given build, the opensearch-build maintainers need to know the build number to promote.
+When you are ready to promote any given build to production, update the RELEASE Issue you created in the opensearch-build project. The opensearch-build maintainers will
+then run the promotion job for the artifacts you specified.  
+
+Provide the following information as a comment in the RELEASE Issue:
 
 * `VERSION` - The version you are releasing (e.g. `1.3.0`)
 * `DATA_PREPPER_BUILD_NUMBER` - The workflow run number from the GitHub Action which build the artifacts. Do not include the `#`. e.g. `3`
