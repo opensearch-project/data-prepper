@@ -1,7 +1,5 @@
-#
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
-#
 
 ARG DOCKER_FILE_DIR
 ARG FROM_IMAGE_NAME
