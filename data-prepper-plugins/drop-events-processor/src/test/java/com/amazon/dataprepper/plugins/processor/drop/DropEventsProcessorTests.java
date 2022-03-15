@@ -101,7 +101,7 @@ public class DropEventsProcessorTests {
         final Record<Event> record = mock(Record.class);
         final int inputRecordCount = 10;
         final List<Record<Event>> recordsToBeProcessed = Collections.nCopies(inputRecordCount, record);
-        final int numberOfMockedTrueEvaluations = 2;
+        final int numberOfMockedFalseEvaluations = 8;
         final boolean repeatedReturnValue = false;
 
         doReturn(whenSetting)
@@ -121,7 +121,7 @@ public class DropEventsProcessorTests {
 
         final Collection<Record<Event>> results = dropProcessor.doExecute(recordsToBeProcessed);
 
-        assertThat(results.size(), is(numberOfMockedTrueEvaluations));
+        assertThat(results.size(), is(numberOfMockedFalseEvaluations));
         verify(record, times(inputRecordCount)).getData();
     }
 

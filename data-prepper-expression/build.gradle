@@ -38,7 +38,7 @@ jacocoTestCoverageVerification {
     violationRules {
         rule { //in addition to core projects rule - this one checks for 100% code coverage for this project
             limit {
-                minimum = 0.98 //keep this at 100%
+                minimum = 1.0 //keep this at 100%
             }
         }
     }
