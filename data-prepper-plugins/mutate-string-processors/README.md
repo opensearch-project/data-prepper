@@ -84,7 +84,8 @@ When you run Data Prepper with this `pipeline.yaml`, you should see the followin
 ### Configuration
 * `entries` - (required) - A list of entries to add to an event
     * `source` - (required) - The key to be split
-    * `delimiter` - (required) - The separator character responsible for the split
+    * `delimiter` - (optional) - The separator character responsible for the split. Cannot be defined at the same time as `delimiter_regex`. At least `delimiter` or `delimiter_regex` must be defined.
+    * `delimiter_regex` - (optional) - A regex string responsible for the split. Cannot be defined at the same time as `delimiter`. At least `delimiter` or `delimiter_regex` must be defined.
 
 ---
 

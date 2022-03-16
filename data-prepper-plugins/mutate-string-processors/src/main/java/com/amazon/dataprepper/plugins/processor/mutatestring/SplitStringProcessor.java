@@ -14,6 +14,7 @@ import com.amazon.dataprepper.model.processor.Processor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 @DataPrepperPlugin(name = "split_string", pluginType = Processor.class, pluginConfigurationType = SplitStringProcessorConfig.class)
 public class SplitStringProcessor extends AbstractStringProcessor<SplitStringProcessorConfig.Entry> {
@@ -25,14 +26,32 @@ public class SplitStringProcessor extends AbstractStringProcessor<SplitStringPro
         super(pluginMetrics, config);
 
         for (SplitStringProcessorConfig.Entry entry: config.getEntries()) {
-            patternMap.put(entry.getDelimiter(), Pattern.compile(entry.getDelimiter()));
+            if(entry.getDelimiterRegex() != null && !entry.getDelimiterRegex().isEmpty()
+                    && entry.getDelimiter() != null && !entry.getDelimiter().isEmpty()) {
+                throw new IllegalArgumentException("delimiter and delimiter_regex cannot be defined at the same time");
+            } else if((entry.getDelimiterRegex() == null || entry.getDelimiterRegex().isEmpty()) &&
+                    (entry.getDelimiter() == null || entry.getDelimiter().isEmpty())) {
+                throw new IllegalArgumentException("delimiter or delimiter_regex needs to be defined");
+            }
+
+            if(entry.getDelimiterRegex() != null && !entry.getDelimiterRegex().isEmpty()) {
+                patternMap.put(entry.getDelimiterRegex(), Pattern.compile(entry.getDelimiterRegex()));
+            } else {
+                patternMap.put(entry.getDelimiter(), Pattern.compile(Pattern.quote(entry.getDelimiter())));
+            }
         }
     }
 
     @Override
     protected void performKeyAction(final Event recordEvent, final SplitStringProcessorConfig.Entry entry, final String value) {
+        final String lookup;
+        if(entry.getDelimiterRegex() != null && !entry.getDelimiterRegex().isEmpty()) {
+            lookup = entry.getDelimiterRegex();
+        } else {
+            lookup = entry.getDelimiter();
+        }
 
-        final Pattern pattern = patternMap.get(entry.getDelimiter());
+        final Pattern pattern = patternMap.get(lookup);
         final String[] splitValue = pattern.split(value);
         recordEvent.put(entry.getSource(), splitValue);
     }
