@@ -86,5 +86,13 @@ jobs:
           role-to-assume: ${{ secrets.RELEASE_IAM_ROLE }}
           aws-region: us-east-1
 
+      - name: Install AWS CLI
+        run: |
+          apt update
+          apt install -y curl unzip
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          ./aws/install
+
       - name: Smoke Test Tarball Files
         run: ./release/smoke-tests/run-tarball-files-smoke-tests.sh -v ${{ env.version }} -b ${{ secrets.ARCHIVES_BUCKET_NAME }} -n ${{ github.run_number }}
