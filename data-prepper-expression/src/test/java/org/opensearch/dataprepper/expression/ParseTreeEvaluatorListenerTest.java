@@ -86,7 +86,8 @@ class ParseTreeEvaluatorListenerTest {
 
     @Test
     void testSinglePrimaryExpression() {
-        final String testSingleStringStatement = "\"test string\"";
+        final String testStringValue = "test string";
+        final String testSingleStringStatement = String.format("\"%s\"", testStringValue);
         final Integer testInteger = random.nextInt(1000);
         final String testSingleIntegerStatement = String.format("%d", testInteger);
         final Float testFloat = random.nextFloat();
@@ -99,7 +100,7 @@ class ParseTreeEvaluatorListenerTest {
         final String testSingleJsonPointerStatement = String.format("/%s", testKey);
         final String testSingleEscapeJsonPointerStatement = String.format("\"/%s\"", testKey);
 
-        assertThat(evaluateStatementOnEvent(testSingleStringStatement, testEvent), equalTo(testSingleStringStatement));
+        assertThat(evaluateStatementOnEvent(testSingleStringStatement, testEvent), equalTo(testStringValue));
         assertThat(evaluateStatementOnEvent(testSingleIntegerStatement, testEvent), equalTo(testInteger));
         assertThat(evaluateStatementOnEvent(testSingleFloatStatement, testEvent), equalTo(testFloat));
         assertThat(evaluateStatementOnEvent(testSingleBooleanStatement, testEvent), equalTo(true));
