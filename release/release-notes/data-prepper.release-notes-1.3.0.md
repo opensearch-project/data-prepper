@@ -13,6 +13,7 @@
 * DropProcessor to filter out (remove/drop) entire events ([#801](https://github.com/opensearch-project/data-prepper/pull/801))
 
 ### Enhancements
+* Add dependency Injection support for Data Prepper Core and Plugins. ([#815](https://github.com/opensearch-project/data-prepper/pull/815), [#846](https://github.com/opensearch-project/data-prepper/pull/846), [#1140](https://github.com/opensearch-project/data-prepper/pull/1140))
 * Add Data Prepper expression evaluator ([#1024](https://github.com/opensearch-project/data-prepper/pull/1024), [#1027](https://github.com/opensearch-project/data-prepper/pull/1027), [#1090](https://github.com/opensearch-project/data-prepper/pull/1090), [#1065](https://github.com/opensearch-project/data-prepper/pull/1065), [#1153](https://github.com/opensearch-project/data-prepper/pull/1153), [#1155](https://github.com/opensearch-project/data-prepper/pull/1155), [#1157](https://github.com/opensearch-project/data-prepper/pull/1157), [#1169](https://github.com/opensearch-project/data-prepper/pull/1169), [#1177](https://github.com/opensearch-project/data-prepper/pull/1177), [#1178](https://github.com/opensearch-project/data-prepper/pull/1178))
 * Add conditional to DropEventsProcessor ([#1174](https://github.com/opensearch-project/data-prepper/pull/1174))
 * Support for nested syntax in LogStashConfigConverter ([#1088](https://github.com/opensearch-project/data-prepper/pull/1088))
