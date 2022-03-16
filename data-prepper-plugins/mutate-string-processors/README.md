@@ -44,7 +44,8 @@ If `from` regex string does not have a match, the key will be returned as it is.
 ### Configuration
 * `entries` - (required) - A list of entries to add to an event
     * `source` - (required) - The key to be modified
-    * `from` - (required) - The Regex String to be replaced. Special regex characters such as `[` and `]` must be escaped using `\\`.
+    * `from` - (required) - The Regex String to be replaced. Special regex characters such as `[` and `]` 
+must be escaped using `\\` when using double quotes and `\ ` when using single quotes.
     * `to` - (required) - The String to be substituted for each match of `from`
     
 ---
