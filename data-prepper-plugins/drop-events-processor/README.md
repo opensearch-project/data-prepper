@@ -31,7 +31,7 @@ When run, the processor will filter out and drop all messages.
 ### `drop_when`
 **Required**
 
-Accepts a Data Prepper Expression String following the [Data Prepper Expression syntax](../../docs/expression_syntax). Configuring 
+Accepts a Data Prepper Expression String following the [Data Prepper Expression syntax](../../docs/expression_syntax.md). Configuring 
 `drop_events` processor with `drop_when: true` will drop all events received.
 
 ### `handle_failed_events`
@@ -46,7 +46,7 @@ While evaluating an event if an exception occurs `handle_failed_events` specifie
 
 ## Conditional Drop Events
 The `drop_when` parameter can be used to drop selected events. The `drop_when` parameter takes a single String expression. See
-[Data Prepper Expression syntax](../../docs/expression_syntax) for a complete list of features supported by a Data Prepper Expression.
+[Data Prepper Expression syntax](../../docs/expression_syntax.md) for a complete list of features supported by a Data Prepper Expression.
 
 ## Developer Guide
 This plugin is compatible with Java 14. See
