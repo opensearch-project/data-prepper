@@ -34,7 +34,8 @@ class ParseTreeCoercionService {
             case DataPrepperExpressionParser.JsonPointer:
                 return resolveJsonPointerValue(nodeStringValue, event);
             case DataPrepperExpressionParser.String:
-                return nodeStringValue;
+                final String nodeStringValueWithQuotesStripped = nodeStringValue.substring(1, nodeStringValue.length() - 1);
+                return nodeStringValueWithQuotesStripped;
             case DataPrepperExpressionParser.Integer:
                 return Integer.valueOf(nodeStringValue);
             case DataPrepperExpressionParser.Float:
