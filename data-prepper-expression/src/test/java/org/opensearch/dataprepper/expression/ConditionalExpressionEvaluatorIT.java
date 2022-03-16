@@ -96,7 +96,8 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of(
                         escapedJsonPointer(ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS) + " == true",
                         complexEvent(ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS, true),
-                        true)
+                        true),
+                Arguments.of("/response == \"OK\"", event("{\"response\": \"OK\"}"), true)
         );
     }
 

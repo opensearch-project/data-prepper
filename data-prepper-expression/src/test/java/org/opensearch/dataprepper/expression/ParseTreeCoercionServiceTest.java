@@ -55,8 +55,9 @@ class ParseTreeCoercionServiceTest {
     void testCoerceTerminalNodeStringType() {
         when(token.getType()).thenReturn(DataPrepperExpressionParser.String);
         final String testString = "test string";
+        final String testNodeStringValue = String.format("\"%s\"", testString);
         when(terminalNode.getSymbol()).thenReturn(token);
-        when(terminalNode.getText()).thenReturn(testString);
+        when(terminalNode.getText()).thenReturn(testNodeStringValue);
         final Event testEvent = createTestEvent(new HashMap<>());
         final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
         assertThat(result, instanceOf(String.class));
