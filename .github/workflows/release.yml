@@ -80,7 +80,11 @@ jobs:
       - name: Get Version
         run:  grep '^version=' gradle.properties >> $GITHUB_ENV
 
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ secrets.RELEASE_IAM_ROLE }}
+          aws-region: us-east-1
+
       - name: Smoke Test Tarball Files
-        run: |
-          docker pull ${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
-          ./release/smoke-tests/run-tarball-files-smoke-tests.sh -v ${{ env.version }}
+        run: ./release/smoke-tests/run-tarball-files-smoke-tests.sh -v ${{ env.version }}

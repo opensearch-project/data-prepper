@@ -5,23 +5,34 @@
 
 set -e
 
-function copy_if_needed() {
-    local SOURCE_DIR=$1
-    local TARGET_DIR=$2
-    local FILE_NAME=$3
-
-    echo "Checking if file exists: ${TARGET_DIR}/${FILE_NAME}"
-
-    if [ -f "${TARGET_DIR}/${FILE_NAME}" ]; then
-        echo "File already exists, skipping copy"
-    else
-        echo "File missing, starting copy"
-        cp "${SOURCE_DIR}/${FILE_NAME}" "${TARGET_DIR}"
-    fi
-}
-
-
-copy_if_needed "${REPO_DIR}/release/archives/linux/build/distributions" "${DOCKER_FILE_DIR}" "${TAR_FILE}"
+if [ -z "${BUILD_NAME}" ]; then
+    echo -e "build.sh requires environment variable BUILD_NAME to be defined."
+    exit 1
+fi
+if [ -z "${DATA_PREPPER_VERSION}" ]; then
+    echo -e "build.sh requires environment variable DATA_PREPPER_VERSION to be defined."
+    exit 1
+fi
+if [ -z "${DOCKER_FILE_DIR}" ]; then
+    echo -e "build.sh requires environment variable DOCKER_FILE_DIR to be defined."
+    exit 1
+fi
+if [ -z "${FROM_IMAGE_NAME}" ]; then
+    echo -e "build.sh requires environment variable FROM_IMAGE_NAME to be defined."
+    exit 1
+fi
+if [ -z "${FROM_IMAGE_TAG}" ]; then
+    echo -e "build.sh requires environment variable FROM_IMAGE_TAG to be defined."
+    exit 1
+fi
+if [ -z "${TAR_FILE}" ]; then
+    echo -e "build.sh requires environment variable TAR_FILE to be defined."
+    exit 1
+fi
+if [ -z "${NAME}" ]; then
+    echo -e "build.sh requires environment variable NAME to be defined."
+    exit 1
+fi
 
 docker build \
     --build-arg BUILD_NAME="${BUILD_NAME}" \
