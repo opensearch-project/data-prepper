@@ -45,7 +45,7 @@ If `from` regex string does not have a match, the key will be returned as it is.
 * `entries` - (required) - A list of entries to add to an event
     * `source` - (required) - The key to be modified
     * `from` - (required) - The Regex String to be replaced. Special regex characters such as `[` and `]` 
-must be escaped using `\\` when using double quotes and `\ ` when using single quotes.
+must be escaped using `\\` when using double quotes and `\ ` when using single quotes. See [here](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/regex/Pattern.html) for more information.
     * `to` - (required) - The String to be substituted for each match of `from`
     
 ---
