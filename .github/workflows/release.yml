@@ -87,4 +87,4 @@ jobs:
           aws-region: us-east-1
 
       - name: Smoke Test Tarball Files
-        run: ./release/smoke-tests/run-tarball-files-smoke-tests.sh -v ${{ env.version }}
+        run: ./release/smoke-tests/run-tarball-files-smoke-tests.sh -v ${{ env.version }} -b ${{ secrets.ARCHIVES_BUCKET_NAME }} -n ${{ github.run_number }}
