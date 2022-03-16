@@ -10,6 +10,12 @@ REPO_DIR=$(pwd)
 
 export DOCKER_FILE_DIR="${REPO_DIR}/release/smoke-tests/data-prepper-tar"
 
+function invalid_args() {
+    echo -e "Invalid arguments provided"
+    echo -e "Use \"run-tarball-files-smoke-tests.sh -h\" for a list of valid script arguments."
+    exit 1
+}
+
 function is_defined() {
     if [ -z "$1" ]
     then
@@ -28,20 +34,22 @@ function usage() {
     echo -e "Required arguments:"
     echo -e "-v DATA_PREPPER_VERSION\tSpecify the Data Prepper build version to test such as '1.3.0-SNAPSHOT'."
     echo -e ""
-    echo -e "Optional arguments:"
-    echo -e "-b BUCKET\tSpecify an AWS bucket name of bucket containing tarball files to be smoke tested."
-    echo -e "         \tparameter \"-n BUILD_NUMBER\" must also be defined"
-    echo -e "         \tcannot be used in combination with \"-d TARDIR\""
+    echo -e "Only one of the following argument sets can be used:"
+    echo -e "Smoke test local file arguments:"
     echo -e "-d TAR_DIR\tSpecify local directory containing tarball files to be smoke tested."
-    echo -e "         \tcannot be used in combination with \"-b BUCKET\" or \"-n BUILD_NUMBER\""
-    echo -e "-h\t\tPrint this message."
+    echo -e ""
+    echo -e "Smoke test s3 object arguments:"
+    echo -e "-b BUCKET\tSpecify an AWS bucket name of bucket containing tarball files to be smoke tested."
     echo -e "-n BUILD_NUMBER\tSpecify the github build number. Uses with BUCKET to create s3 path for tarball files to be smoke tested."
-    echo -e "         \tparameter \"-b BUCKET\" must also be defined"
-    echo -e "         \tcannot be used in combination with \"-d TARDIR\""
+    echo -e ""
+    echo -e "Smoke test file from url arguments:"
+    echo -e "-n BUILD_NUMBER\tSpecify the github build number. Uses with BUCKET to create s3 path for tarball files to be smoke tested."
+    echo -e "-u BASE_URL\t"
     echo -e "--------------------------------------------------------------------------"
     echo -e "Examples, run from repo root directory"
     echo -e "\t\"./release/smoke-tests/run-tarball-files-smoke-tests.sh -v 1.3.0-SNAPSHOT -d release/archives/linux/build/distributions\""
-    echo -e "\t\"./release/smoke-tests/run-tarball-files-smoke-tests.sh -v 1.3.0-SNAPSHOT -d release/archives/linux/build/distributions\""
+    echo -e "\t\"./release/smoke-tests/run-tarball-files-smoke-tests.sh -v 1.3.0-SNAPSHOT -b staging-bucket -n 1\""
+    echo -e "\t\"./release/smoke-tests/run-tarball-files-smoke-tests.sh -v 1.3.0-SNAPSHOT -u https://staging.opensearch.org -n 1\""
     echo -e ""
     echo -e "--------------------------------------------------------------------------"
     exit 0
@@ -60,57 +68,47 @@ function print_testing_tar() {
     echo -e "\033[0;35mSmoke Testing\033[0m ${1}"
 }
 
-function get_tar() {
+function get_local_tar() {
     local DOCKER_FILE_DIR=${1}
     local TAR_FILE=${2}
+    local TAR_DIR=${3}
+    if [ -f "${TAR_DIR}/${TAR_FILE}" ]; then
+        print_testing_tar "$(pwd)/${TAR_DIR}/${TAR_FILE}"
 
-    if is_defined "${3}" && is_defined "${4}" && is_defined "${5}"
-    then
-        local BUILD_NUMBER=${3}
-        local BASE_URL=${4}
-        local DATA_PREPPER_VERSION=${5}
-
-        local FILE_URL="${BASE_URL}/${DATA_PREPPER_VERSION}/${BUILD_NUMBER}/archive/${TAR_FILE}"
-        print_testing_tar "${FILE_URL}"
-
-        curl "${FILE_URL}" --output "${DOCKER_FILE_DIR}/${TAR_FILE}"
-    elif is_defined "${3}" && is_defined "${4}"
-    then
-        local BUILD_NUMBER=${3}
-        local BUCKET_NAME=${4}
-
-        local S3_KEY="${DATA_PREPPER_VERSION}/${BUILD_NUMBER}/archive/${TAR_FILE}"
-
-        print_testing_tar "s3://${BUCKET_NAME}/${S3_KEY}"
-
-        aws s3 cp "s3://${BUCKET_NAME}/${S3_KEY}" "${DOCKER_FILE_DIR}/${TAR_FILE}"
-    elif is_defined "${3}"
-    then
-        local TAR_DIR=${3}
-
-        if [ -f "${TAR_DIR}/${TAR_FILE}" ]; then
-            print_testing_tar "$(pwd)/${TAR_DIR}/${TAR_FILE}"
-
-            cp "${TAR_DIR}/${TAR_FILE}" "${DOCKER_FILE_DIR}/${TAR_FILE}"
-        else
-            echo -e "Argument \"-d ${TAR_DIR}\" specified but file ${TAR_DIR}/${TAR_FILE} not found."
-            echo -e "Files available in ${TAR_DIR}:"
-            ls "${TAR_DIR}"
-            exit 1
-        fi
+        cp "${TAR_DIR}/${TAR_FILE}" "${DOCKER_FILE_DIR}/${TAR_FILE}"
     else
-        echo -e "Invalid arguments received by get_tar function."
-        echo -e "Valid options:"
-        echo -e "\tget_tar DOCKER_FILE_DIR TAR_FILE TAR_DIR"
-        echo -e "\tget_tar DOCKER_FILE_DIR TAR_FILE BUILD_NUMBER BUCKET_NAME"
-        echo -e "\tget_tar DOCKER_FILE_DIR TAR_FILE BUILD_NUMBER BASE_URL DATA_PREPPER_VERSION"
-        echo -e ""
-        echo -e "Options received:"
-        echo -e "\tget_tar $*"
-        echo -e ""
-        echo -e "Caused by:"
-        missing_tar_source
+        echo -e "Argument \"-d ${TAR_DIR}\" specified but file ${TAR_DIR}/${TAR_FILE} not found."
+        echo -e "Files available in ${TAR_DIR}:"
+        ls "${TAR_DIR}"
+        exit 1
     fi
+}
+
+function get_s3_tar() {
+    local DOCKER_FILE_DIR=${1}
+    local TAR_FILE=${2}
+    local BUILD_NUMBER=${3}
+    local DATA_PREPPER_VERSION=${4}
+    local BUCKET_NAME=${5}
+
+    local S3_KEY="${DATA_PREPPER_VERSION}/${BUILD_NUMBER}/archive/${TAR_FILE}"
+
+    print_testing_tar "s3://${BUCKET_NAME}/${S3_KEY}"
+
+    aws s3 cp "s3://${BUCKET_NAME}/${S3_KEY}" "${DOCKER_FILE_DIR}/${TAR_FILE}"
+}
+
+function get_url_tar() {
+    local DOCKER_FILE_DIR=${1}
+    local TAR_FILE=${2}
+    local BUILD_NUMBER=${3}
+    local DATA_PREPPER_VERSION=${4}
+    local BASE_URL=${5}
+
+    local FILE_URL="${BASE_URL}/${DATA_PREPPER_VERSION}/${BUILD_NUMBER}/archive/${TAR_FILE}"
+    print_testing_tar "${FILE_URL}"
+
+    curl "${FILE_URL}" --output "${DOCKER_FILE_DIR}/${TAR_FILE}"
 }
 
 function run_smoke_test() {
@@ -121,7 +119,18 @@ function run_smoke_test() {
     export BUILD_NAME="${NAME}-${DATA_PREPPER_VERSION}-linux-x64"
     export TAR_FILE="${BUILD_NAME}.tar.gz"
 
-    get_tar "${DOCKER_FILE_DIR}" "${TAR_FILE}" "${4}" "${5}" "${6}"
+    case $TAR_SOURCE_TYPE in
+        "local file") get_local_tar "${DOCKER_FILE_DIR}" "${TAR_FILE}" "${TAR_DIR}";;
+        "s3 object") get_s3_tar "${DOCKER_FILE_DIR}" "${TAR_FILE}" "${BUILD_NUMBER}" "${DATA_PREPPER_VERSION}" "${BUCKET_NAME}";;
+        "url file") get_url_tar "${DOCKER_FILE_DIR}" "${TAR_FILE}" "${BUILD_NUMBER}" "${DATA_PREPPER_VERSION}" "${BASE_URL}";;
+        ?) invalid_args;;
+    esac
+
+    if [ ! -f "${DOCKER_FILE_DIR}/${TAR_FILE}" ]
+    then
+        echo -e "Unable to retrieve tarball file"
+        exit 1
+    fi
 
     echo "Using Docker Image ${FROM_IMAGE_NAME}:${FROM_IMAGE_TAG} as base image"
     eval "${DOCKER_FILE_DIR}/build.sh"
@@ -138,29 +147,13 @@ function run_smoke_test() {
 
 while getopts "b:d:hn:u:v:" arg; do
     case $arg in
-        b)
-            export BUCKET_NAME=$OPTARG
-            ;;
-        d)
-            export TAR_DIR=$OPTARG
-            ;;
-        h)
-            usage
-            ;;
-        n)
-            export BUILD_NUMBER=$OPTARG
-            ;;
-        u)
-            export BASE_URL=$OPTARG
-            ;;
-        v)
-            export DATA_PREPPER_VERSION=$OPTARG
-            ;;
-        ?)
-            echo -e "Invalid option: -${arg}"
-            echo -e "Use \"run-tarball-files-smoke-tests.sh -h\" for a list of valid script arguments."
-            exit 1
-            ;;
+        b) export BUCKET_NAME=$OPTARG;;
+        d) export TAR_DIR=$OPTARG;;
+        h) usage;;
+        n) export BUILD_NUMBER=$OPTARG;;
+        u) export BASE_URL=$OPTARG;;
+        v) export DATA_PREPPER_VERSION=$OPTARG;;
+        ?) invalid_args;;
     esac
 done
 
@@ -171,7 +164,37 @@ then
     exit 1
 fi
 
-run_smoke_test "openjdk" "8" "opensearch-data-prepper" "${BUILD_NUMBER:-${TAR_DIR}}" "${BUCKET_NAME:-${BASE_URL}}" "${DATA_PREPPER_VERSION}"
-run_smoke_test "openjdk" "11" "opensearch-data-prepper" "${BUILD_NUMBER:-${TAR_DIR}}" "${BUCKET_NAME:-${BASE_URL}}" "${DATA_PREPPER_VERSION}"
-run_smoke_test "openjdk" "17" "opensearch-data-prepper" "${BUILD_NUMBER:-${TAR_DIR}}" "${BUCKET_NAME:-${BASE_URL}}" "${DATA_PREPPER_VERSION}"
-run_smoke_test "ubuntu" "latest" "opensearch-data-prepper-jdk" "${BUILD_NUMBER:-${TAR_DIR}}" "${BUCKET_NAME:-${BASE_URL}}" "${DATA_PREPPER_VERSION}"
+if is_defined "${TAR_DIR}"
+then
+    if is_defined "${BUCKET_NAME}" || is_defined "${BASE_URL}" || is_defined "${BUILD_NUMBER}"
+    then
+        invalid_args
+    else
+        export TAR_SOURCE_TYPE="local file"
+    fi
+elif is_defined "${BUCKET_NAME}" && is_defined "${BUILD_NUMBER}"
+then
+    if is_defined "${TAR_DIR}" || is_defined "${BASE_URL}"
+    then
+        invalid_args
+    else
+        export TAR_SOURCE_TYPE="s3 object"
+    fi
+elif is_defined "${BASE_URL}" && is_defined "${BUILD_NUMBER}"
+then
+    if is_defined "${TAR_DIR}" || is_defined "${BUCKET_NAME}"
+    then
+        invalid_args
+    else
+        export TAR_SOURCE_TYPE="url file"
+    fi
+else
+    invalid_args
+fi
+
+echo -e "Using tarball source ${TAR_SOURCE_TYPE}"
+
+run_smoke_test "openjdk" "8" "opensearch-data-prepper"
+run_smoke_test "openjdk" "11" "opensearch-data-prepper"
+run_smoke_test "openjdk" "17" "opensearch-data-prepper"
+run_smoke_test "ubuntu" "latest" "opensearch-data-prepper-jdk"
