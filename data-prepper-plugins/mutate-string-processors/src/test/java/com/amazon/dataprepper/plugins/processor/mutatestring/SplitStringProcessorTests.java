@@ -77,11 +77,11 @@ class SplitStringProcessorTests {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(SplitStringArgumentsProvider.class)
+    @ArgumentsSource(SplitStringDelimiterArgumentsProvider.class)
     void testDelimiterSplitProcessor(final String message, final List<String> splitMessage) {
 
-        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", null, ",")));
-        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", null, ",")));
+        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", null, "?")));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", null, "?")));
 
         final SplitStringProcessor splitStringProcessor = createObjectUnderTest();
         final Record<Event> record = createEvent(message);
@@ -117,6 +117,22 @@ class SplitStringProcessorTests {
                     Arguments.arguments("hello,,", Arrays.asList("hello")),
                     Arguments.arguments(",hello", Arrays.asList("","hello")),
                     Arguments.arguments(",,hello", Arrays.asList("","","hello"))
+            );
+        }
+    }
+
+    static class SplitStringDelimiterArgumentsProvider implements ArgumentsProvider {
+
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
+            return Stream.of(
+                    Arguments.arguments("hello?world?no-split", Arrays.asList("hello","world","no-split")),
+                    Arguments.arguments("hello?world", Arrays.asList("hello", "world")),
+                    Arguments.arguments("hello??world", Arrays.asList("hello","","world")),
+                    Arguments.arguments("hello?", Arrays.asList("hello")),
+                    Arguments.arguments("hello??", Arrays.asList("hello")),
+                    Arguments.arguments("?hello", Arrays.asList("","hello")),
+                    Arguments.arguments("??hello", Arrays.asList("","","hello"))
             );
         }
     }
