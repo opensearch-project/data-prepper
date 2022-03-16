@@ -80,19 +80,5 @@ jobs:
       - name: Get Version
         run:  grep '^version=' gradle.properties >> $GITHUB_ENV
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          role-to-assume: ${{ secrets.RELEASE_IAM_ROLE }}
-          aws-region: us-east-1
-
-      - name: Install AWS CLI
-        run: |
-          apt update
-          apt install -y curl unzip
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          ./aws/install
-
       - name: Smoke Test Tarball Files
         run: ./release/smoke-tests/run-tarball-files-smoke-tests.sh -v ${{ env.version }} -u ${{ secrets.ARCHIVES_PUBLIC_URL }} -n ${{ github.run_number }}
