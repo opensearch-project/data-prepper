@@ -14,7 +14,6 @@ import com.amazon.dataprepper.model.processor.Processor;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 @DataPrepperPlugin(name = "split_string", pluginType = Processor.class, pluginConfigurationType = SplitStringProcessorConfig.class)
 public class SplitStringProcessor extends AbstractStringProcessor<SplitStringProcessorConfig.Entry> {
