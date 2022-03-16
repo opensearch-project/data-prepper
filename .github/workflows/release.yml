@@ -95,4 +95,4 @@ jobs:
           ./aws/install
 
       - name: Smoke Test Tarball Files
-        run: ./release/smoke-tests/run-tarball-files-smoke-tests.sh -v ${{ env.version }} -b ${{ secrets.ARCHIVES_BUCKET_NAME }} -n ${{ github.run_number }}
+        run: ./release/smoke-tests/run-tarball-files-smoke-tests.sh -v ${{ env.version }} -u ${{ secrets.ARCHIVES_PUBLIC_URL }} -n ${{ github.run_number }}
