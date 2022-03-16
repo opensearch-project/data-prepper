@@ -56,18 +56,32 @@ function missing_tar_source() {
     exit 1
 }
 
+function print_testing_tar() {
+    echo -e "\033[0;35mSmoke Testing\033[0m ${1}"
+}
+
 function get_tar() {
     local DOCKER_FILE_DIR=${1}
     local TAR_FILE=${2}
 
-    if is_defined "${3}" && is_defined "${4}"
+    if is_defined "${3}" && is_defined "${4}" && is_defined "${5}"
     then
-        local BUCKET_NAME=${3}
-        local BUILD_NUMBER=${4}
+        local BUILD_NUMBER=${3}
+        local BASE_URL=${4}
+        local DATA_PREPPER_VERSION=${5}
+
+        local FILE_URL="${BASE_URL}/${DATA_PREPPER_VERSION}/${BUILD_NUMBER}/archive/${TAR_FILE}"
+        print_testing_tar "${FILE_URL}"
+
+        curl "${FILE_URL}" --output "${DOCKER_FILE_DIR}/${TAR_FILE}"
+    elif is_defined "${3}" && is_defined "${4}"
+    then
+        local BUILD_NUMBER=${3}
+        local BUCKET_NAME=${4}
 
         local S3_KEY="${DATA_PREPPER_VERSION}/${BUILD_NUMBER}/archive/${TAR_FILE}"
 
-        echo -e "Smoke testing tar file s3://${BUCKET_NAME}/${S3_KEY}"
+        print_testing_tar "s3://${BUCKET_NAME}/${S3_KEY}"
 
         aws s3 cp "s3://${BUCKET_NAME}/${S3_KEY}" "${DOCKER_FILE_DIR}/${TAR_FILE}"
     elif is_defined "${3}"
@@ -75,7 +89,7 @@ function get_tar() {
         local TAR_DIR=${3}
 
         if [ -f "${TAR_DIR}/${TAR_FILE}" ]; then
-            echo -e "Smoke testing tar file ${TAR_DIR}/${TAR_FILE}"
+            print_testing_tar "$(pwd)/${TAR_DIR}/${TAR_FILE}"
 
             cp "${TAR_DIR}/${TAR_FILE}" "${DOCKER_FILE_DIR}/${TAR_FILE}"
         else
@@ -88,7 +102,8 @@ function get_tar() {
         echo -e "Invalid arguments received by get_tar function."
         echo -e "Valid options:"
         echo -e "\tget_tar DOCKER_FILE_DIR TAR_FILE TAR_DIR"
-        echo -e "\tget_tar DOCKER_FILE_DIR TAR_FILE BUCKET_NAME BUILD_NUMBER"
+        echo -e "\tget_tar DOCKER_FILE_DIR TAR_FILE BUILD_NUMBER BUCKET_NAME"
+        echo -e "\tget_tar DOCKER_FILE_DIR TAR_FILE BUILD_NUMBER BASE_URL DATA_PREPPER_VERSION"
         echo -e ""
         echo -e "Options received:"
         echo -e "\tget_tar $*"
@@ -106,20 +121,8 @@ function run_smoke_test() {
     export BUILD_NAME="${NAME}-${DATA_PREPPER_VERSION}-linux-x64"
     export TAR_FILE="${BUILD_NAME}.tar.gz"
 
-    if is_defined "${4}" && is_defined "${5}"
-    then
-        local BUCKET_NAME=${4}
-        local BUILD_NUMBER=${5}
-        get_tar "${DOCKER_FILE_DIR}" "${TAR_FILE}" "${BUCKET_NAME}" "${BUILD_NUMBER}"
-    elif is_defined "${4}"
-    then
-        local TAR_DIR=${4}
-        get_tar "${DOCKER_FILE_DIR}" "${TAR_FILE}" "${TAR_DIR}"
-    else
-        missing_tar_source
-    fi
+    get_tar "${DOCKER_FILE_DIR}" "${TAR_FILE}" "${4}" "${5}" "${6}"
 
-    echo "Smoke testing tar ${TAR_FILE}"
     echo "Using Docker Image ${FROM_IMAGE_NAME}:${FROM_IMAGE_TAG} as base image"
     eval "${DOCKER_FILE_DIR}/build.sh"
 
@@ -133,7 +136,7 @@ function run_smoke_test() {
     cd "${CURRENT_DIR}" || exit
 }
 
-while getopts "b:d:hn:v:" arg; do
+while getopts "b:d:hn:u:v:" arg; do
     case $arg in
         b)
             export BUCKET_NAME=$OPTARG
@@ -146,6 +149,9 @@ while getopts "b:d:hn:v:" arg; do
             ;;
         n)
             export BUILD_NUMBER=$OPTARG
+            ;;
+        u)
+            export BASE_URL=$OPTARG
             ;;
         v)
             export DATA_PREPPER_VERSION=$OPTARG
@@ -165,7 +171,7 @@ then
     exit 1
 fi
 
-run_smoke_test "openjdk" "8" "opensearch-data-prepper" "${BUCKET_NAME:-${TAR_DIR}}" "${BUILD_NUMBER}"
-run_smoke_test "openjdk" "11" "opensearch-data-prepper" "${BUCKET_NAME:-${TAR_DIR}}" "${BUILD_NUMBER}"
-run_smoke_test "openjdk" "17" "opensearch-data-prepper" "${BUCKET_NAME:-${TAR_DIR}}" "${BUILD_NUMBER}"
-run_smoke_test "ubuntu" "latest" "opensearch-data-prepper-jdk" "${BUCKET_NAME:-${TAR_DIR}}" "${BUILD_NUMBER}"
+run_smoke_test "openjdk" "8" "opensearch-data-prepper" "${BUILD_NUMBER:-${TAR_DIR}}" "${BUCKET_NAME:-${BASE_URL}}" "${DATA_PREPPER_VERSION}"
+run_smoke_test "openjdk" "11" "opensearch-data-prepper" "${BUILD_NUMBER:-${TAR_DIR}}" "${BUCKET_NAME:-${BASE_URL}}" "${DATA_PREPPER_VERSION}"
+run_smoke_test "openjdk" "17" "opensearch-data-prepper" "${BUILD_NUMBER:-${TAR_DIR}}" "${BUCKET_NAME:-${BASE_URL}}" "${DATA_PREPPER_VERSION}"
+run_smoke_test "ubuntu" "latest" "opensearch-data-prepper-jdk" "${BUILD_NUMBER:-${TAR_DIR}}" "${BUCKET_NAME:-${BASE_URL}}" "${DATA_PREPPER_VERSION}"
