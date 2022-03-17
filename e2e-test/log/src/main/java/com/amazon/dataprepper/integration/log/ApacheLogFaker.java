@@ -16,64 +16,49 @@ import java.util.Random;
 public class ApacheLogFaker {
     private static final String APACHE_LOG_FORMAT = "%s %s %s [%s] \"%s %s HTTP/1.0\" %s %s \"http://%s\" \"%s\"";
     private static final String VALID_PASSWORD_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    private final String[] HTTP_METHODS = new String[] {"GET", "POST", "DELETE", "PUT"};
-    private final String[] FAKE_URIS = new String[] {"/list", "/explore", "/search/tag/list", "/apps/cart.jsp?appID="};
-    private final String[] FAKE_STATUS = new String[] {"200", "404", "500", "301"};
+    private static final String[] NAMES = new String[] {
+            "rasul",
+            "danny",
+            "juste",
+            "volodislavu",
+            "reilly",
+            "stas",
+            "agapetus",
+            "dev",
+            "kornelie",
+            "mats",
+            "komang",
+            "mandla",
+            "samuil",
+            "eastmund",
+            "mathias",
+            "sion",
+            "margarita",
+            "amata",
+            "klavs",
+            "jude",
+    };
+    private static final String[] URLS = new String[]{
+            "amazon.com",
+            "opensearch.org",
+            "github.com",
+            "wikipedia.com",
+    };
+    private static final String[] USER_AGENTS = new String[] {
+            "Mozilla/4.0 (compatible; MSIE 6.0; AOL 9.0; Windows NT 5.1)",
+            "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322; .NET CLR 2.0.50727)",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36",
+    };
+    private static final String[] HTTP_METHODS = new String[] {"GET", "POST", "DELETE", "PUT"};
+    private static final String[] FAKE_URIS = new String[] {"/list", "/explore", "/search/tag/list", "/apps/cart.jsp?appID="};
+    private static final String[] FAKE_STATUS = new String[] {"200", "404", "500", "301"};
     private final Random random = new Random();
     private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MMM/y:HH:mm:ss Z");
-    private final String[] names;
     private final String[] passwords;
-    private final String[] urls;
-    private final String[] userAgents;
 
     public ApacheLogFaker() {
-        names = staticNameArray();
         passwords = randomPasswprdArray(20, 8);
-        urls = staticUrlArray();
-        userAgents = staticUserAgentArray();
-    }
-
-    private String[] staticNameArray() {
-        return new String[] {
-                "rasul",
-                "danny",
-                "juste",
-                "volodislavu",
-                "reilly",
-                "stas",
-                "agapetus",
-                "dev",
-                "kornelie",
-                "mats",
-                "komang",
-                "mandla",
-                "samuil",
-                "eastmund",
-                "mathias",
-                "sion",
-                "margarita",
-                "amata",
-                "klavs",
-                "jude",
-        };
-    }
-
-    private String[] staticUrlArray() {
-        return new String[]{
-                "amazon.com",
-                "opensearch.org",
-                "github.com",
-                "wikipedia.com",
-        };
-    }
-
-    private String[] staticUserAgentArray() {
-        return new String[] {
-                "Mozilla/4.0 (compatible; MSIE 6.0; AOL 9.0; Windows NT 5.1)",
-                "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322; .NET CLR 2.0.50727)",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36",
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36",
-        };
     }
 
     private String[] randomPasswprdArray(final int passwordCount, final int passwordSize) {
@@ -109,25 +94,19 @@ public class ApacheLogFaker {
     }
 
     public String generateRandomApacheLog() {
-        final String ipV4Address = randomIpV4Address();
-        final String username = getRandomIn(names);
-        final String password = getRandomIn(passwords);
-        final String httpMethod = HTTP_METHODS[random.nextInt(4)];
-        final String uri = FAKE_URIS[random.nextInt(4)];
-        final String status = FAKE_STATUS[random.nextInt(4)];
         final int bytes = random.nextInt(1001) + 4000;
         return String.format(
                 APACHE_LOG_FORMAT,
-                ipV4Address,
-                username,
-                password,
+                randomIpV4Address(),
+                getRandomIn(NAMES),
+                getRandomIn(passwords),
                 randomDate(),
-                httpMethod,
-                uri,
-                status,
+                getRandomIn(HTTP_METHODS),
+                getRandomIn(FAKE_URIS),
+                getRandomIn(FAKE_STATUS),
                 bytes,
-                getRandomIn(urls),
-                getRandomIn(userAgents)
+                getRandomIn(URLS),
+                getRandomIn(USER_AGENTS)
         );
     }
 }
