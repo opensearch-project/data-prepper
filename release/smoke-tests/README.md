@@ -24,6 +24,20 @@ It is also possible to run smoke tests on a locally built image. Here is an exam
 
 If all smoke tests complete successfully the last message printed will be "All smoke tests passed". Failing tests will result in a non-zero exit code.
 
+## Running smoke tests on tarball files
+
+The `run-tarball-files-smoke-tests.sh` script will build the following docker images and test each using the `run-smoke-tests.sh` script.
+1. Data Prepper installed from tarball without JDK on a docker image with OpenJDK 8 installed
+2. Data Prepper installed from tarball without JDK on a docker image with OpenJDK 14 installed
+3. Data Prepper installed from tarball without JDK on a docker image with OpenJDK 17 installed
+4. Data Prepper installed from tarball with JDK included on the latest Ubuntu docker image
+
+To run automated smoke test on all tarball files you can use the following command:
+
+```shell
+./release/smoke-tests/run-tarball-files-smoke-test.sh
+```
+
 ## Troubleshooting smoke tests
 
 If the script is stuck repeating the message "Waiting for Data Prepper to start" try the following steps
