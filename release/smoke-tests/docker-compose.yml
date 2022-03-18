@@ -6,8 +6,8 @@ services:
     image: ${DOCKER_IMAGE}
     working_dir: /usr/share/data-prepper/
     volumes:
-      - ./data-prepper/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
-      - ./data-prepper/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml
+      - ./data-prepper/config/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
+      - ./data-prepper/config/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml
       - ../../shared-config/log4j2.properties:/usr/share/data-prepper/log4j.properties
     depends_on:
       - opensearch

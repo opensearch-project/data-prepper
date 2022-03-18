@@ -1,14 +1,12 @@
 #!/bin/bash
 
-#
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
-#
 
 set -e
 
 export IMAGE_NAME="opensearch-data-prepper"
-REPO_ROOT=`git rev-parse --show-toplevel`
+REPO_ROOT=$(git rev-parse --show-toplevel)
 export OPENSEARCH_VERSION="1.0.1"
 OPENSEARCH_HOST="localhost:9200"
 OPENSEARCH_GROK_INDEX="test-grok-index"
@@ -19,7 +17,7 @@ spin[1]="\\"
 spin[2]="|"
 spin[3]="/"
 
-cd ${REPO_ROOT}/release/smoke-tests
+cd "${REPO_ROOT}/release/smoke-tests"
 
 function end_tests () {
     local EXIT_CODE=$1
@@ -54,7 +52,8 @@ function usage() {
 
 function query_hits_gt_zero () {
     local URL=$1
-    local SEARCH_RESPONSE=$(curl -s -k -u 'admin:admin' "${URL}")
+    local SEARCH_RESPONSE
+    SEARCH_RESPONSE=$(curl -s -k -u 'admin:admin' "${URL}")
     local LOG_COUNT=0
 
     if command -v jq &> /dev/null
@@ -151,9 +150,10 @@ do
     fi
 done
 
+echo -e "\b "
 echo "Data Prepper started!"
 
-sleep 30s
+sleep 30
 
 echo "Ready to begin smoke tests. Running cURL commands."
 echo ""
