@@ -1,15 +1,9 @@
 /*
- *  SPDX-License-Identifier: Apache-2.0
- *  
- *  The OpenSearch Contributors require contributions made to
- *  this file be licensed under the Apache-2.0 license or a
- *  compatible open source license.
- *
- *  Modifications Copyright OpenSearch Contributors. See
- *  GitHub history for details.
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.plugins.prepper.oteltracegroup;
+package com.amazon.dataprepper.plugins.processor.oteltracegroup;
 
 import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
@@ -18,7 +12,7 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
 import com.amazon.dataprepper.model.trace.JacksonSpan;
 import com.amazon.dataprepper.model.trace.Span;
-import com.amazon.dataprepper.plugins.prepper.oteltracegroup.model.TraceGroup;
+import com.amazon.dataprepper.plugins.processor.oteltracegroup.model.TraceGroup;
 import com.amazon.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

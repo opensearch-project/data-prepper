@@ -1,15 +1,9 @@
 /*
- *  SPDX-License-Identifier: Apache-2.0
- *
- *  The OpenSearch Contributors require contributions made to
- *  this file be licensed under the Apache-2.0 license or a
- *  compatible open source license.
- *
- *  Modifications Copyright OpenSearch Contributors. See
- *  GitHub history for details.
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.plugins.prepper.oteltracegroup;
+package com.amazon.dataprepper.plugins.processor.oteltracegroup;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
@@ -19,7 +13,7 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
 import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.model.trace.TraceGroupFields;
-import com.amazon.dataprepper.plugins.prepper.oteltracegroup.model.TraceGroup;
+import com.amazon.dataprepper.plugins.processor.oteltracegroup.model.TraceGroup;
 import com.google.common.base.Strings;
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.action.search.SearchRequest;
