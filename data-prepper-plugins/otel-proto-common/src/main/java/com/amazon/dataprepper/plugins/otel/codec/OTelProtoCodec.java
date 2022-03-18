@@ -41,8 +41,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * OTelProtoCodec is for encoding/decoding between <{@link com.amazon.dataprepper.model.trace}> and <{@link io.opentelemetry.proto}>.
- * <p>
+ * OTelProtoCodec is for encoding/decoding between {@link com.amazon.dataprepper.model.trace} and {@link io.opentelemetry.proto}.
  */
 public class OTelProtoCodec {
     private static final ObjectMapper OBJECT_MAPPER =  new ObjectMapper();
@@ -212,6 +211,8 @@ public class OTelProtoCodec {
          * span.getParentSpanId().isEmpty()? span.getName() : null;
          * <p>
          * Note: The reason this method is part of the codec class is because the trace group definition will be expanded in the future when we support Links in OpenSearch Dashboards Trace Analytics.
+         * @param span opentelemetry-protobuf span
+         * @return TraceGroup string
          */
         protected String getTraceGroup(final io.opentelemetry.proto.trace.v1.Span span) {
             return span.getParentSpanId().isEmpty()? span.getName() : null;
@@ -229,6 +230,8 @@ public class OTelProtoCodec {
          * }
          * <p>
          * Note: The reason this method is part of the codec class is because the trace group definition will be expanded in the future when we support Links in OpenSearch Dashboards Trace Analytics.
+         * @param span opentelemetry-protobuf span
+         * @return TraceGroupFields
          */
         protected TraceGroupFields getTraceGroupFields(final io.opentelemetry.proto.trace.v1.Span span) {
             DefaultTraceGroupFields.Builder traceGroupFieldsBuilder = DefaultTraceGroupFields.builder();
