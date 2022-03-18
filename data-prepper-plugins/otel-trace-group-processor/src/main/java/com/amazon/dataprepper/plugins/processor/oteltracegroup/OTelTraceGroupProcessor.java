@@ -7,8 +7,8 @@ package com.amazon.dataprepper.plugins.processor.oteltracegroup;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.prepper.AbstractPrepper;
-import com.amazon.dataprepper.model.prepper.Prepper;
+import com.amazon.dataprepper.model.processor.AbstractProcessor;
+import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
 import com.amazon.dataprepper.model.trace.Span;
@@ -42,8 +42,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
-@DataPrepperPlugin(name = "otel_trace_group", pluginType = Prepper.class)
-public class OTelTraceGroupProcessor extends AbstractPrepper<Record<Span>, Record<Span>> {
+@DataPrepperPlugin(name = "otel_trace_group", pluginType = Processor.class)
+public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Record<Span>> {
 
     public static final String RECORDS_IN_MISSING_TRACE_GROUP = "recordsInMissingTraceGroup";
     public static final String RECORDS_OUT_FIXED_TRACE_GROUP = "recordsOutFixedTraceGroup";
