@@ -5,9 +5,6 @@
 
 package com.amazon.dataprepper.model.trace;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-
 /**
  * The default implementation of {@link TraceGroupFields}, the attributes associated with an entire trace.
  *
@@ -23,11 +20,6 @@ public class DefaultTraceGroupFields implements TraceGroupFields {
     DefaultTraceGroupFields() {}
 
     private DefaultTraceGroupFields(final Builder builder) {
-
-        checkNotNull(builder.durationInNanos, "durationInNanos cannot be null");
-        checkNotNull(builder.statusCode, "statusCode cannot be null");
-        checkNotNull(builder.endTime, "endTime cannot be null");
-        checkArgument(!builder.endTime.isEmpty(), "endTime cannot be an empty string");
 
         this.endTime = builder.endTime;
         this.durationInNanos = builder.durationInNanos;
