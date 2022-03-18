@@ -40,10 +40,10 @@ When run, the processor will parse the message into the following output:
   * Default: `&`
   * Note: This cannot be defined at the same time as `field_delimiter_regex`
 * `key_value_delimiter_regex` - A regex specifying the delimiter between a key and a value. Special regex characters such as `[` and `]` must be escaped using `\\`.
-  * Default: `=`
+  * There is no default.
   * Note: This cannot be defined at the same time as `value_split_characters`
 * `value_split_characters` - A string of characters to split between keys and values. Special regex characters such as `[` and `]` must be escaped using `\\`.
-  * Default: `&`
+  * Default: `=`
   *   * Note: This cannot be defined at the same time as `key_value_delimiter_regex`
 * `non_match_value` - When a key/value cannot be successfully split, the key/value will be placed in the key field and the specified value in the value field.
   * Default: `null`
