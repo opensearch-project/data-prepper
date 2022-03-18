@@ -70,7 +70,7 @@ public class OTelTraceGroupProcessorTests {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String TEST_PIPELINE_NAME = "testPipelineName";
-    private static final String PLUGIN_NAME = "otel_trace_group_prepper";
+    private static final String PLUGIN_NAME = "otel_trace_group";
     private static final String TEST_TRACE_ID_1 = "6d0ff634d126b6ec2c180391e67b4237";
     private static final TraceGroup TEST_TRACE_GROUP_1 = new TraceGroup.TraceGroupBuilder()
             .setTraceGroup("/test_trace_group_1")
@@ -154,7 +154,7 @@ public class OTelTraceGroupProcessorTests {
         when(testSearchHit2.field(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD))
                 .thenReturn(new DocumentField(
                         TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getTraceGroupFields().getStatusCode())));
-        final PluginSetting testPluginSetting = new PluginSetting("otel_trace_group_prepper", new HashMap<>()) {{
+        final PluginSetting testPluginSetting = new PluginSetting(PLUGIN_NAME, new HashMap<>()) {{
             setPipelineName(TEST_PIPELINE_NAME);
         }};
         otelTraceGroupProcessor = new OTelTraceGroupProcessor(testPluginSetting);
@@ -257,7 +257,7 @@ public class OTelTraceGroupProcessorTests {
     @Test
     public void testTraceGroupProcessMultiWorker() throws IOException, ExecutionException, InterruptedException {
         /*
-         * Note: we only test the threadsafety of the business logic in OtelTraceGroupPrepper. The OpenSearch REST client
+         * Note: we only test the threadsafety of the business logic in OtelTraceGroupProcessor. The OpenSearch REST client
          * itself is thread-safe {https://www.elastic.co/guide/en/elasticsearch/client/java-rest/current/_changing_the_client_8217_s_initialization_code.html}.
          */
         // Arrange
