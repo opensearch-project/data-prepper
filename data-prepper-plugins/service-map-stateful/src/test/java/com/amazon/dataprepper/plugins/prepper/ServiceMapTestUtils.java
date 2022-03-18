@@ -43,13 +43,13 @@ public class ServiceMapTestUtils {
     }
 
     public static Future<Set<ServiceMapRelationship>> startExecuteAsync(ExecutorService threadpool, ServiceMapStatefulPrepper prepper,
-                                                                 Collection<Record<ExportTraceServiceRequest>> records) {
+                                                                 Collection<Record<Object>> records) {
         return threadpool.submit(() -> {
             return prepper.execute(records)
                     .stream()
                     .map(record -> {
                         try {
-                            return OBJECT_MAPPER.readValue(record.getData(), ServiceMapRelationship.class);
+                            return OBJECT_MAPPER.readValue(record.getData().toJsonString(), ServiceMapRelationship.class);
                         } catch (JsonProcessingException e) {
                             throw new RuntimeException(e);
                         }
