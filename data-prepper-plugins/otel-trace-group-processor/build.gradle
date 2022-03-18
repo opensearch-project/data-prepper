@@ -1,0 +1,28 @@
+/*
+ *  SPDX-License-Identifier: Apache-2.0
+ *
+ *  The OpenSearch Contributors require contributions made to
+ *  this file be licensed under the Apache-2.0 license or a
+ *  compatible open source license.
+ *
+ *  Modifications Copyright OpenSearch Contributors. See
+ *  GitHub history for details.
+ */
+
+plugins {
+    id 'java'
+}
+
+ext {
+    opensearch_version = System.getProperty("opensearch.version", "${versionMap.opensearchVersion}")
+}
+
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:opensearch')
+    implementation "org.opensearch.client:opensearch-rest-high-level-client:${opensearch_version}"
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation 'io.micrometer:micrometer-core'
+    testImplementation project(':data-prepper-api').sourceSets.test.output
+}
