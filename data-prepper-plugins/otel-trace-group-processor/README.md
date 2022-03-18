@@ -1,6 +1,6 @@
-# OTel Trace Group Prepper
+# OTel Trace Group Processor
 
-This is a prepper that fills in the missing trace group related fields in the collection of raw span string records output by [otel-trace-raw-prepper](../dataPrepper-plugins/otel-trace-raw-prepper) and then convert them back into a new collection of string records.
+This is a processor that fills in the missing trace group related fields in the collection of [Span](../../data-prepper-api/src/main/java/com/amazon/dataprepper/model/trace/Span.java) records output by [otel-trace-raw-processor](../otel-trace-raw-processor) and then convert them back into a new collection of string records.
 It finds the missing trace group info for a spanId by looking up the relevant fields in its root span stored in OpenSearch or Amazon OpenSearch Service backend that the local data-prepper host ingest into.
 
 ## Usages
@@ -10,8 +10,8 @@ It finds the missing trace group info for a spanId by looking up the relevant fi
 ```
 pipeline:
   ...
-  prepper:
-    - otel-trace-group-prepper:
+  processor:
+    - otel-trace-group:
         hosts: ["https://localhost:9200"]
         cert: path/to/cert
         username: YOUR_USERNAME_HERE
@@ -25,8 +25,8 @@ See [opensearch_security.md](../opensearch/opensearch_security.md) for detailed 
 ```
 pipeline:
   ...
-  prepper:
-    - otel-trace-group-prepper:
+  processor:
+    - otel-trace-group-processor:
         hosts: ["https://your-amazon-opensearch-service-endpoint"]
         aws_sigv4: true
         cert: path/to/cert
