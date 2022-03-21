@@ -1,3 +1,6 @@
+## 2022-03-21 Version 1.3.0
+
+---
 
 * __Fix bug where a group can be concluded twice in the Aggregate Processor (#1229) (#1230)__
 
