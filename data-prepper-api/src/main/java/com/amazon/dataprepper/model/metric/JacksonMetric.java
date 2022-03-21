@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package com.amazon.dataprepper.model.metric;
 
 import com.amazon.dataprepper.model.event.JacksonEvent;
@@ -90,7 +95,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
      *
      * @since 1.4
      */
-    public static abstract class Builder<T extends JacksonEvent.Builder<T>> extends JacksonEvent.Builder<T> {
+    public abstract static class Builder<T extends JacksonEvent.Builder<T>> extends JacksonEvent.Builder<T> {
 
         protected final Map<String, Object> data;
 
