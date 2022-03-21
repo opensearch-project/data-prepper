@@ -8,7 +8,6 @@ package com.amazon.dataprepper.plugins.processor.aggregate;
 import com.google.common.collect.Maps;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,15 +28,11 @@ class AggregateGroupManager {
     List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> getGroupsToConclude() {
         final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> groupsToConclude = new ArrayList<>();
         for (final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry : allGroups.entrySet()) {
-            if (shouldConcludeGroup(groupEntry.getValue())) {
+            if (groupEntry.getValue().shouldConcludeGroup(groupDuration)) {
                 groupsToConclude.add(groupEntry);
             }
         }
         return groupsToConclude;
-    }
-
-    private boolean shouldConcludeGroup(final AggregateGroup aggregateGroup) {
-        return Duration.between(aggregateGroup.getGroupStart(), Instant.now()).compareTo(groupDuration) >= 0;
     }
 
     void closeGroup(final AggregateIdentificationKeysHasher.IdentificationHash hash, final AggregateGroup group) {
@@ -51,5 +46,9 @@ class AggregateGroupManager {
 
     long getAllGroupsSize() {
         return allGroups.size();
+    }
+
+    Duration getGroupDuration() {
+        return this.groupDuration;
     }
 }
