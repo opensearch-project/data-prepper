@@ -18,12 +18,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
+import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -74,8 +76,10 @@ public class AggregateActionSynchronizerTest {
         doNothing().when(concludeGroupLock).unlock();
         doNothing().when(aggregateGroupManager).putGroupWithHash(identificationHash, aggregateGroup);
         doNothing().when(aggregateGroupManager).closeGroup(identificationHash, aggregateGroup);
+        when(aggregateGroupManager.getGroupDuration()).thenReturn(Duration.ZERO);
         when(aggregateGroup.getConcludeGroupLock()).thenReturn(concludeGroupLock);
         when(aggregateGroup.getHandleEventForGroupLock()).thenReturn(handleEventForGroupLock);
+        when(aggregateGroup.shouldConcludeGroup(any(Duration.class))).thenReturn(true);
 
         when(pluginMetrics.counter(AggregateActionSynchronizer.ACTION_HANDLE_EVENTS_PROCESSING_ERRORS)).thenReturn(actionHandleEventsProcessingErrors);
         when(pluginMetrics.counter(AggregateActionSynchronizer.ACTION_CONCLUDE_GROUP_EVENTS_PROCESSING_ERRORS)).thenReturn(actionConcludeGroupEventsProcessingErrors);
@@ -175,4 +179,25 @@ public class AggregateActionSynchronizerTest {
         assertThat(handleEventResponse.getEvent(), equalTo(event));
     }
 
+    @Test
+    void conclude_group_with_should_conclude_group_false_returns_empty_optional() {
+        final AggregateActionSynchronizer objectUnderTest = createObjectUnderTest();
+        when(concludeGroupLock.tryLock()).thenReturn(true);
+        when(aggregateGroup.shouldConcludeGroup(any(Duration.class))).thenReturn(false);
+
+        final Optional<Event> concludeGroupEvent = objectUnderTest.concludeGroup(identificationHash, aggregateGroup);
+
+        final InOrder inOrder = Mockito.inOrder(concludeGroupLock, handleEventForGroupLock, aggregateGroup, aggregateGroupManager);
+        inOrder.verify(concludeGroupLock).tryLock();
+        inOrder.verify(handleEventForGroupLock).lock();
+        inOrder.verify(aggregateGroup).shouldConcludeGroup(any(Duration.class));
+        inOrder.verify(aggregateGroupManager, times(0)).getGroupDuration();
+        inOrder.verify(handleEventForGroupLock).unlock();
+        inOrder.verify(concludeGroupLock).unlock();
+
+        verifyNoInteractions(aggregateAction);
+
+
+        assertThat(concludeGroupEvent, equalTo(Optional.empty()));
+    }
 }

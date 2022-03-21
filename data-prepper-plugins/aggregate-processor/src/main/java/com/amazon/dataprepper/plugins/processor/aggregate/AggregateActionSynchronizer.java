@@ -56,10 +56,13 @@ class AggregateActionSynchronizer {
         Optional<Event> concludeGroupEvent = Optional.empty();
         if (concludeGroupLock.tryLock()) {
             handleEventForGroupLock.lock();
+
             try {
-                LOG.debug("Start critical section in concludeGroup");
-                concludeGroupEvent = aggregateAction.concludeGroup(aggregateGroup);
-                aggregateGroupManager.closeGroup(hash, aggregateGroup);
+                if (aggregateGroup.shouldConcludeGroup(aggregateGroupManager.getGroupDuration())) {
+                    LOG.debug("Start critical section in concludeGroup");
+                    concludeGroupEvent = aggregateAction.concludeGroup(aggregateGroup);
+                    aggregateGroupManager.closeGroup(hash, aggregateGroup);
+                }
             } catch (final Exception e) {
                 LOG.debug("Error while concluding group: ", e);
                 actionConcludeGroupEventsProcessingErrors.increment();
