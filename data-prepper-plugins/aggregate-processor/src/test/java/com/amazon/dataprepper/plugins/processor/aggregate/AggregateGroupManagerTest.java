@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -92,12 +91,12 @@ public class AggregateGroupManagerTest {
         aggregateGroupManager = createObjectUnderTest();
 
         final AggregateGroup groupToConclude = mock(AggregateGroup.class);
+        when(groupToConclude.shouldConcludeGroup(TEST_GROUP_DURATION)).thenReturn(true);
         final AggregateIdentificationKeysHasher.IdentificationHash hashForGroupToConclude = mock(AggregateIdentificationKeysHasher.IdentificationHash.class);
-        when(groupToConclude.getGroupStart()).thenReturn(Instant.now().minusSeconds(TEST_GROUP_DURATION.getSeconds()));
 
         final AggregateGroup groupToNotConclude = mock(AggregateGroup.class);
+        when(groupToNotConclude.shouldConcludeGroup(TEST_GROUP_DURATION)).thenReturn(false);
         final AggregateIdentificationKeysHasher.IdentificationHash hashForGroupToNotConclude = mock(AggregateIdentificationKeysHasher.IdentificationHash.class);
-        when(groupToNotConclude.getGroupStart()).thenReturn(Instant.now().plusSeconds(TEST_GROUP_DURATION.getSeconds()));
 
         aggregateGroupManager.putGroupWithHash(hashForGroupToConclude, groupToConclude);
         aggregateGroupManager.putGroupWithHash(hashForGroupToNotConclude, groupToNotConclude);
