@@ -18,7 +18,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.processor.otelmetrics.OTelMetricsStringProcessor;
+import com.amazon.dataprepper.plugins.processor.otelmetrics.OTelMetricsRawProcessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -37,13 +37,13 @@ import static org.assertj.core.api.Assertions.entry;
 @RunWith(MockitoJUnitRunner.class)
 public class MetricsPluginSumTest {
 
-    OTelMetricsStringProcessor stringPrepper;
+    OTelMetricsRawProcessor rawProcessor;
 
     @Before
     public void init() {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
-        stringPrepper = new OTelMetricsStringProcessor(testsettings);
+        rawProcessor = new OTelMetricsRawProcessor(testsettings);
     }
 
     @Test
@@ -55,8 +55,8 @@ public class MetricsPluginSumTest {
         Metric metric = Metric.newBuilder()
                 .setSum(sum)
                 .setUnit("seconds")
-                .setName("whatname")
-                .setDescription("kron")
+                .setName("name")
+                .setDescription("description")
                 .build();
 
         InstrumentationLibraryMetrics instLib = InstrumentationLibraryMetrics.newBuilder()
@@ -77,7 +77,7 @@ public class MetricsPluginSumTest {
 
         Record record = new Record<>(exportMetricRequest);
 
-        List rec =  (List<Record<String>>) stringPrepper.doExecute(Arrays.asList(record));
+        List rec =  (List<Record<String>>) rawProcessor.doExecute(Arrays.asList(record));
         Record<String> firstRecord = (Record<String>) rec.get(0);
 
         ObjectMapper objectMapper = new ObjectMapper();

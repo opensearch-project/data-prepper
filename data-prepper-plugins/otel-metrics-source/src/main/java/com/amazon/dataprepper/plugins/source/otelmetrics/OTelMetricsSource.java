@@ -38,7 +38,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
-@DataPrepperPlugin(name = "otel_metrics_source", pluginType = Source.class)
+@DataPrepperPlugin(name = "otel_metrics_source", pluginType = Source.class, pluginConfigurationType = OTelMetricsSourceConfig.class)
 public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequest>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsSource.class);
     private final OTelMetricsSourceConfig oTelMetricsSourceConfig;

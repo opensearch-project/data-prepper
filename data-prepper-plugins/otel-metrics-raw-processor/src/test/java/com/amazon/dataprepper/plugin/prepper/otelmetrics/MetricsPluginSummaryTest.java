@@ -1,8 +1,9 @@
 package com.amazon.dataprepper.plugin.prepper.otelmetrics;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.processor.otelmetrics.OTelMetricsStringProcessor;
+import com.amazon.dataprepper.plugins.processor.otelmetrics.OTelMetricsRawProcessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
@@ -30,13 +31,13 @@ import static org.assertj.core.api.Assertions.entry;
 @RunWith(MockitoJUnitRunner.class)
 public class MetricsPluginSummaryTest {
 
-    OTelMetricsStringProcessor stringPrepper;
+    private OTelMetricsRawProcessor rawProcessor;
 
     @Before
     public void init() {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
-        stringPrepper = new OTelMetricsStringProcessor(testsettings);
+        rawProcessor = new OTelMetricsRawProcessor(testsettings);
     }
 
     @Test
@@ -55,8 +56,8 @@ public class MetricsPluginSummaryTest {
         Metric metric = Metric.newBuilder()
                 .setSummary(summary)
                 .setUnit("seconds")
-                .setName("whatname")
-                .setDescription("kron")
+                .setName("name")
+                .setDescription("description")
                 .build();
 
         InstrumentationLibraryMetrics instLib = InstrumentationLibraryMetrics.newBuilder()
@@ -77,22 +78,23 @@ public class MetricsPluginSummaryTest {
 
         Record record = new Record<>(exportMetricRequest);
 
-        List rec =  (List<Record<String>>) stringPrepper.doExecute(Arrays.asList(record));
-        Record<String> firstRecord = (Record<String>) rec.get(0);
+        List<Record<Event>> rec =  (List<Record<Event>>) rawProcessor.doExecute(Arrays.asList(record));
+        Record<Event> firstRecord = rec.get(0);
 
         ObjectMapper objectMapper = new ObjectMapper();
-        Map map = objectMapper.readValue(firstRecord.getData(), Map.class);
+        Map map = objectMapper.readValue(firstRecord.getData().toJsonString(), Map.class);
         assertSumProcessing(map);
     }
 
     private void assertSumProcessing(Map map) {
-        assertThat(map).contains(entry("kind", "summary"));
+        assertThat(map).contains(entry("kind", com.amazon.dataprepper.model.metric.Metric.KIND.SUMMARY.toString()));
         assertThat(map).contains(entry("unit", "seconds"));
-        assertThat(map).contains(entry("description", "kron"));
-        assertThat(map).contains(entry("name", "whatname"));
+        assertThat(map).contains(entry("description", "description"));
+        assertThat(map).contains(entry("name", "name"));
         assertThat(map).contains(entry("serviceName", "service"));
+        assertThat(map).contains(entry("quantileValuesCount", 2));
 
-        List<Map<String, Object>> quantileValues = (List<Map<String, Object>>) map.get("quantileValues");
+        List<Map<String, Object>> quantileValues = (List<Map<String, Object>>) map.get("quantiles");
         assertThat(quantileValues).hasSize(2);
         Map<String, Object> q1 = quantileValues.get(0);
         Map<String, Object> q2 = quantileValues.get(1);

@@ -5,46 +5,44 @@
 
 package com.amazon.dataprepper.plugin.prepper.otelmetrics;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
-
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.metric.JacksonHistogram;
+import com.amazon.dataprepper.model.metric.Metric;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.processor.otelmetrics.OTelMetricsStringProcessor;
-import com.amazon.dataprepper.plugins.processor.otelmetrics.model.RawHistogram;
+import com.amazon.dataprepper.plugins.processor.otelmetrics.OTelMetricsRawProcessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.metrics.v1.Histogram;
 import io.opentelemetry.proto.metrics.v1.HistogramDataPoint;
 import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
-import io.opentelemetry.proto.metrics.v1.Metric;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.junit.MockitoJUnitRunner;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MetricsPluginHistogramTest {
 
-    OTelMetricsStringProcessor stringPrepper;
+    private OTelMetricsRawProcessor rawProcessor;
 
     @Before
     public void init() {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
-        stringPrepper = new OTelMetricsStringProcessor(testsettings);
+        rawProcessor = new OTelMetricsRawProcessor(testsettings);
     }
 
     @Test
@@ -62,32 +60,29 @@ public class MetricsPluginHistogramTest {
                 .addExplicitBounds(bound_1)
                 .addExplicitBounds(bound_2)
                 .setCount(4)
+                .setSum( 1d / 3d)
                 .build();
 
         Histogram histogram = Histogram.newBuilder().addDataPoints(dp).build();
 
-        Record<ExportMetricsServiceRequest> record = new Record<>(fillServiceRequest(histogram));
-
-        List<Record<String>> processedRecords =  (List<Record<String>>) stringPrepper.doExecute(Collections.singletonList(record));
-        Record<String> recor = processedRecords.get(0);
-
+        List<Record<? extends Metric>> processedRecords =  (List<Record<? extends Metric>>) rawProcessor.doExecute(Collections.singletonList(new Record<>(fillServiceRequest(histogram))));
+        Record<? extends Metric> record = processedRecords.get(0);
         ObjectMapper objectMapper = new ObjectMapper();
-        Map<Object, Object> map = objectMapper.readValue(recor.getData(), Map.class);
+        Map<Object, Object> map = objectMapper.readValue(record.getData().toJsonString(), Map.class);
 
-        RawHistogram.Bucket bucket_0 = new RawHistogram.Bucket(0.0, 0.0, 3);
-        RawHistogram.Bucket bucket_1 = new RawHistogram.Bucket(0.0, bound_0, 5);
-        RawHistogram.Bucket bucket_2 = new RawHistogram.Bucket(bound_0, bound_1, 17);
-        RawHistogram.Bucket bucket_3 = new RawHistogram.Bucket(bound_1, bound_2, 33);
-        System.out.println(map);
+        JacksonHistogram.Bucket bucket_0 = new JacksonHistogram.Bucket(0.0, 0.0, 3);
+        JacksonHistogram.Bucket bucket_1 = new JacksonHistogram.Bucket(0.0, bound_0, 5);
+        JacksonHistogram.Bucket bucket_2 = new JacksonHistogram.Bucket(bound_0, bound_1, 17);
+        JacksonHistogram.Bucket bucket_3 = new JacksonHistogram.Bucket(bound_1, bound_2, 33);
         assertHistogramProcessing(map, Arrays.asList(bucket_0, bucket_1, bucket_2, bucket_3));
     }
 
     private ExportMetricsServiceRequest fillServiceRequest(Histogram histogram) {
-        Metric metric = Metric.newBuilder()
+        io.opentelemetry.proto.metrics.v1.Metric metric = io.opentelemetry.proto.metrics.v1.Metric.newBuilder()
                 .setHistogram(histogram)
                 .setUnit("seconds")
-                .setName("whatname")
-                .setDescription("kron")
+                .setName("name")
+                .setDescription("description")
                 .build();
         InstrumentationLibraryMetrics instLib = InstrumentationLibraryMetrics.newBuilder()
                 .addMetrics(metric).build();
@@ -104,20 +99,23 @@ public class MetricsPluginHistogramTest {
         return ExportMetricsServiceRequest.newBuilder().addResourceMetrics(resourceMetrics).build();
     }
 
-    private void assertHistogramProcessing(Map<Object, Object> map, List<RawHistogram.Bucket> expectedBuckets) {
-        assertThat(map).contains(entry("kind", "histogram"));
+    private void assertHistogramProcessing(Map<Object, Object> map, List<JacksonHistogram.Bucket> expectedBuckets) {
+        assertThat(map).contains(entry("kind", Metric.KIND.HISTOGRAM.toString()));
         assertThat(map).contains(entry("unit", "seconds"));
-        assertThat(map).contains(entry("description", "kron"));
-        assertThat(map).contains(entry("name", "whatname"));
+        assertThat(map).contains(entry("description", "description"));
+        assertThat(map).contains(entry("name", "name"));
+        assertThat(map).contains(entry("bucketCounts", 4));
+        assertThat(map).contains(entry("sum",(1d/3d)));
         assertThat(map).contains(entry("serviceName", "service"));
+        assertThat(map).contains(entry("aggregationTemporality", "AGGREGATION_TEMPORALITY_UNSPECIFIED"));
 
-        assertThat(map).containsKey("values");
+        assertThat(map).containsKey("buckets");
 
-        List<Map> listOfMaps = (List<Map>) map.get("values");
+        List<Map> listOfMaps = (List<Map>) map.get("buckets");
         assertThat(listOfMaps).hasSize(expectedBuckets.size());
 
         for (int i = 0; i < expectedBuckets.size(); i++) {
-            RawHistogram.Bucket expectedBucket = expectedBuckets.get(i);
+           JacksonHistogram.Bucket expectedBucket = expectedBuckets.get(i);
             Map<Object, Object> actualBucket = listOfMaps.get(i);
 
             assertThat(actualBucket)

@@ -5,16 +5,22 @@
 
 package com.amazon.dataprepper.plugins.processor.otelmetrics;
 
+import com.amazon.dataprepper.model.metric.JacksonHistogram.Bucket;
+import com.amazon.dataprepper.model.metric.JacksonSummary.SummaryQuantile;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
+import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
 import io.opentelemetry.proto.resource.v1.Resource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +30,7 @@ import java.util.stream.Collectors;
 
 public final class OTelMetricsProtoHelper {
 
+    private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsProtoHelper.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String SERVICE_NAME = "service.name";
     private static final String SPAN_ATTRIBUTES = "metric.attributes";
@@ -120,21 +127,22 @@ public final class OTelMetricsProtoHelper {
     }
 
     /**
-     * Converts a numerical value from the passed {@link NumberDataPoint} into its string representation
+     * Extracts a value from the passed {@link NumberDataPoint} into a double representation
+     * TODO: Documentation
+     * @param ndp The {@link NumberDataPoint} which's data should be turned into a double value
      *
-     * @param ndp The {@link NumberDataPoint} which's data should be stringified
-     *
-     * @return  A string representing the numerical value of the passed {@link NumberDataPoint}. An empty string if
-     *          the underlying data is not numerical (e.g. int or double)
+     * @return  A double representing the numerical value of the passed {@link NumberDataPoint}.
+     * Null if the numerical data point is not present
      */
-    public static String getAsStringValue(final NumberDataPoint ndp) {
-        if (ndp.hasAsInt()) {
-            return Long.toString(ndp.getAsInt());
-        } else if (ndp.hasAsDouble()) {
-            return Double.toString(ndp.getAsDouble());
+    public static Double getValueAsMaybeDouble(final NumberDataPoint ndp) {
+        NumberDataPoint.ValueCase ndpCase = ndp.getValueCase();
+        if (NumberDataPoint.ValueCase.AS_DOUBLE == ndpCase) {
+            return ndp.getAsDouble();
+        } else if (NumberDataPoint.ValueCase.AS_INT == ndpCase) {
+            return (double) ndp.getAsInt();
+        } else  {
+            return null;
         }
-
-        return "";
     }
 
     public static Map<String, Object> getResourceAttributes(final Resource resource) {
@@ -175,5 +183,35 @@ public final class OTelMetricsProtoHelper {
                 .filter(keyValue -> keyValue.getKey().equals(SERVICE_NAME) && !keyValue.getValue().getStringValue().isEmpty())
                 .findFirst()
                 .map(i -> i.getValue().getStringValue());
+    }
+
+
+    public static Map<String, Object> mergeAllAttributes(final Collection<Map<String, Object>> attributes) {
+        return attributes.stream()
+                .flatMap(map -> map.entrySet().stream())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+
+    public static List<SummaryQuantile> getQuantileValues(List<SummaryDataPoint.ValueAtQuantile> quantileValues) {
+        return quantileValues.stream()
+                .map(q -> new SummaryQuantile(q.getQuantile(), q.getValue()))
+                .collect(Collectors.toList());
+    }
+
+    public static List<Bucket> createBuckets(List<Long> bucketCountsList, List<Double> explicitBoundsList) {
+        List<Bucket> buckets = new ArrayList<>();
+        if (bucketCountsList.size() - 1 != explicitBoundsList.size()) {
+            LOG.error("bucket count list not equals to bounds list {} {}", bucketCountsList.size(), explicitBoundsList.size() );
+        } else {
+            double previousBound = 0.0;
+            for (int i = 0; i < bucketCountsList.size(); i++) {
+                Long bucketCount = bucketCountsList.get(i);
+                double bound = i == 0 ? previousBound : explicitBoundsList.get(i - 1);
+                buckets.add(new Bucket(previousBound, bound, bucketCount));
+                previousBound = bound;
+            }
+        }
+        return buckets;
     }
 }
