@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.plugins.processor.aggregate;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -37,6 +38,10 @@ class AggregateGroup implements AggregateActionInput {
 
     Lock getHandleEventForGroupLock() {
         return handleEventForGroupLock;
+    }
+
+    boolean shouldConcludeGroup(final Duration groupDuration) {
+        return Duration.between(groupStart, Instant.now()).compareTo(groupDuration) >= 0;
     }
 
     void resetGroup() {
