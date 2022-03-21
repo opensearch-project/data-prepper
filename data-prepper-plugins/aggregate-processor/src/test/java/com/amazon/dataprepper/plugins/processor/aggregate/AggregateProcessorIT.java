@@ -13,7 +13,6 @@ import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.processor.aggregate.actions.RemoveDuplicatesAggregateAction;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,7 +50,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class AggregateProcessorIT {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final int NUM_EVENTS_PER_BATCH = 200;
     private static final int NUM_UNIQUE_EVENTS_PER_BATCH = 8;
     private static final int NUM_THREADS = 100;
