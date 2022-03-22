@@ -3,13 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.plugin.prepper.otelmetrics;
+package com.amazon.dataprepper.plugins.processor.otelmetrics;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.metric.JacksonHistogram;
 import com.amazon.dataprepper.model.metric.Metric;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.processor.otelmetrics.OTelMetricsRawProcessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;

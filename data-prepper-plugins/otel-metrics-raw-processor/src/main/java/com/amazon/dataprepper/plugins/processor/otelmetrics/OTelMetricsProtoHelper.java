@@ -128,13 +128,13 @@ public final class OTelMetricsProtoHelper {
 
     /**
      * Extracts a value from the passed {@link NumberDataPoint} into a double representation
-     * TODO: Documentation
+     *
      * @param ndp The {@link NumberDataPoint} which's data should be turned into a double value
      *
      * @return  A double representing the numerical value of the passed {@link NumberDataPoint}.
      * Null if the numerical data point is not present
      */
-    public static Double getValueAsMaybeDouble(final NumberDataPoint ndp) {
+    public static Double getValueAsDouble(final NumberDataPoint ndp) {
         NumberDataPoint.ValueCase ndpCase = ndp.getValueCase();
         if (NumberDataPoint.ValueCase.AS_DOUBLE == ndpCase) {
             return ndp.getAsDouble();

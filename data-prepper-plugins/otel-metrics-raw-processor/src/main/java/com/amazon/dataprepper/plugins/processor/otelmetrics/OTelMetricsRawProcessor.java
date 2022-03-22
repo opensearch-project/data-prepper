@@ -78,7 +78,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                         .withStartTime(OTelMetricsProtoHelper.getStartTimeISO8601(dp))
                         .withTime(OTelMetricsProtoHelper.getTimeISO8601(dp))
                         .withServiceName(serviceName)
-                        .withValue(OTelMetricsProtoHelper.getValueAsMaybeDouble(dp))
+                        .withValue(OTelMetricsProtoHelper.getValueAsDouble(dp))
                         .withAttributes(OTelMetricsProtoHelper.mergeAllAttributes(
                                 Arrays.asList(
                                         OTelMetricsProtoHelper.convertKeysOfDataPointAttributes(dp),
@@ -101,7 +101,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                         .withTime(OTelMetricsProtoHelper.getTimeISO8601(dp))
                         .withServiceName(serviceName)
                         .withIsMonotonic(metric.getSum().getIsMonotonic())
-                        .withValue(OTelMetricsProtoHelper.getValueAsMaybeDouble(dp))
+                        .withValue(OTelMetricsProtoHelper.getValueAsDouble(dp))
                         .withAggregationTemporality(metric.getSum().getAggregationTemporality().toString())
                         .withAttributes(OTelMetricsProtoHelper.mergeAllAttributes(
                                 Arrays.asList(
