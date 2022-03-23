@@ -1,12 +1,157 @@
-## 2022-03-15 Version 1.3.0
+## 2022-03-22 Version 1.3.0
 
 ---
+
+* __Updated 1.3.0 release date to Mar 22. (#1233)__
+
+    [David Venable](mailto:dlv@amazon.com) - Tue, 22 Mar 2022 12:49:18 -0500
+    
+    EAD -&gt; refs/heads/ChangeLog, refs/remotes/upstream/main, refs/heads/main
+    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Fix bug where a group can be concluded twice in the Aggregate Processor (#1229)__
+
+    [Taylor Gray](mailto:tylgry@amazon.com) - Mon, 21 Mar 2022 14:03:28 -0500
+    
+    
+    Signed-off-by: Taylor Gray &lt;tylgry@amazon.com&gt;
+
+* __Fix incorrect key-value documentation (#1222)__
+
+    [Taylor Gray](mailto:tylgry@amazon.com) - Fri, 18 Mar 2022 16:41:37 -0500
+    
+    efs/remotes/origin/main, refs/remotes/origin/HEAD, refs/heads/upstream/1.3
+    Signed-off-by: Taylor Gray &lt;tylgry@amazon.com&gt;
+
+* __Smoke test tar (#1200)__
+
+    [Steven Bayer](mailto:smbayer@amazon.com) - Fri, 18 Mar 2022 09:51:18 -0500
+    
+    
+    * Added tar smoke test
+     Signed-off-by: Steven Bayer &lt;smbayer@amazon.com&gt;
+
+* __MAINT: cherry-pick changes on event model from trace migration branch (#1216)__
+
+    [Qi Chen](mailto:19492223+chenqi0805@users.noreply.github.com) - Thu, 17 Mar 2022 19:20:18 -0500
+    
+    
+    * MAINT: remove unused fromSpan
+     Signed-off-by: Qi Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
+    
+    * STY: unnecessary change of import order
+     Signed-off-by: Qi Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
+
+* __Next Data Prepper version: 1.4.0-SNAPSHOT (#1210)__
+
+    [David Venable](mailto:dlv@amazon.com) - Thu, 17 Mar 2022 16:13:01 -0500
+    
+    
+    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Added drop event conditional examples (#1214)__
+
+    [Steven Bayer](mailto:smbayer@amazon.com) - Thu, 17 Mar 2022 14:38:46 -0500
+    
+    
+    Signed-off-by: Steven Bayer &lt;smbayer@amazon.com&gt;
+
+* __Add in clarification sentence (#1208)__
+
+    [David Powers](mailto:37314042+dapowers87@users.noreply.github.com) - Thu, 17 Mar 2022 11:35:04 -0500
+    
+    
+    * Add in clarification sentence
+     Signed-off-by: David Powers &lt;ddpowers@amazon.com&gt;
+
+* __Fixed broken links (#1205)__
+
+    [Steven Bayer](mailto:smbayer@amazon.com) - Wed, 16 Mar 2022 17:29:30 -0500
+    
+    
+    Signed-off-by: Steven Bayer &lt;smbayer@amazon.com&gt;
+
+* __FIX: remove extra quotes in string literal (#1207)__
+
+    [Qi Chen](mailto:19492223+chenqi0805@users.noreply.github.com) - Wed, 16 Mar 2022 16:25:15 -0500
+    
+    
+    * FIX: remove extra quotes in string literal
+     Signed-off-by: Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
+    
+    * FIX: ParseTreeCoercionServiceTest
+     Signed-off-by: Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
+
+* __Fix checkstyle error (#1203)__
+
+    [Shivani Shukla](mailto:67481911+sshivanii@users.noreply.github.com) - Wed, 16 Mar 2022 15:14:24 -0500
+    
+    
+    Signed-off-by: Shivani Shukla &lt;sshkamz@amazon.com&gt;
+
+* __Maintenance: 1.3.0 changelog and release notes (#1201)__
+
+    [Qi Chen](mailto:19492223+chenqi0805@users.noreply.github.com) - Wed, 16 Mar 2022 11:08:01 -0500
+    
+    
+    * MAINT: changelog and release notes
+     Signed-off-by: Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
+    
+    * Nit: highlight pipeline definition change
+     Signed-off-by: Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
+    
+    * MAINT: merge duplicate item
+     Signed-off-by: Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
+    
+    * DOC: add DI
+     Signed-off-by: Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
+    
+    * MAINT: merged conditional into drop processor
+     Signed-off-by: Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
+    
+    * MAINT: add README for all features
+     Signed-off-by: Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
+
+* __add in single char delimiter config (#1202)__
+
+    [David Powers](mailto:37314042+dapowers87@users.noreply.github.com) - Wed, 16 Mar 2022 10:51:50 -0500
+    
+    
+    * add in single char delimiter config
+     Signed-off-by: David Powers &lt;ddpowers@amazon.com&gt;
+    
+
+* __Added instructions for releasing Data Prepper (#1198)__
+
+    [David Venable](mailto:dlv@amazon.com) - Wed, 16 Mar 2022 10:01:54 -0500
+    
+    
+    Updated the release README.md with instructions on performing the release
+    process. Moved the smoke test details to a new README.md in the smoke-tests
+    directory.
+     Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Refactor mutate mapper (#1199)__
+
+    [David Powers](mailto:37314042+dapowers87@users.noreply.github.com) - Tue, 15 Mar 2022 17:38:20 -0500
+    
+    
+    * Refactor MutateMapper
+     Signed-off-by: David Powers &lt;ddpowers@amazon.com&gt;
+    
+
+* __README for Mutate String Processors (#1191)__
+
+    [Shivani Shukla](mailto:67481911+sshivanii@users.noreply.github.com) - Tue, 15 Mar 2022 17:35:21 -0500
+    
+    
+    Signed-off-by: Shivani Shukla &lt;sshkamz@amazon.com&gt;
 
 * __Data Prepper Expression Package Integration Test (#1166)__
 
     [Steven Bayer](mailto:smbayer@amazon.com) - Tue, 15 Mar 2022 11:50:56 -0500
     
-    EAD -&gt; refs/heads/main, refs/remotes/upstream/main
+    efs/heads/BlogBio
     * Added DI test cases
      Signed-off-by: Steven Bayer &lt;smbayer@amazon.com&gt;
 
@@ -1284,7 +1429,7 @@
 
     [Taylor Gray](mailto:33740195+graytaylor0@users.noreply.github.com) - Mon, 7 Feb 2022 16:59:39 -0600
     
-    
+    efs/heads/MetricServerBug
     Signed-off-by: graytaylor0 &lt;tylgry@amazon.com&gt;
 
 * __Added concludeGroup logic to AggregateProcessor, added AggregateActionSynchronizer class to synchronize groupConcluding and eventHandling (#969)__
@@ -1316,7 +1461,7 @@
 
     [Steven Bayer](mailto:sbayer55@gmail.com) - Tue, 1 Feb 2022 12:44:44 -0600
     
-    efs/heads/maint/http-source-unify-timeout
+    
     * Added performance test project
     * Added performance test compile github action
      Signed-off-by: Steven Bayer &lt;smbayer@amazon.com&gt;
