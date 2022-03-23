@@ -12,9 +12,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
-public class ParameterValidator {
+class ParameterValidator {
 
-    public void validate(final List<String> requiredKeys,
+     void validate(final List<String> requiredKeys,
                                 final List<String> requiredNonEmptyKeys,
                                 final List<String> requiredNonNullKeys,
                                 final Map<String, Object> data) {
