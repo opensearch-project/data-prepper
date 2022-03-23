@@ -65,8 +65,8 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
     }
 
     @Override
-    public List<Bucket> getBuckets() {
-        return this.get(BUCKETS_KEY, List.class);
+    public List<? extends Bucket> getBuckets() {
+        return this.getList(BUCKETS_KEY, DefaultBucket.class);
     }
 
     /**
@@ -133,26 +133,6 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          */
         public JacksonHistogram.Builder withBuckets(List<Bucket> buckets) {
             data.put(BUCKETS_KEY, buckets);
-            return this;
-        }
-
-        /**
-         * Sets all attributes by copying over those from another histogram
-         * @param histogram the histogram to copy
-         * @return the builder
-         * @since 1.4
-         */
-        public JacksonHistogram.Builder fromHistogram(final Histogram histogram) {
-            this.withName(histogram.getName())
-                    .withServiceName(histogram.getServiceName())
-                    .withEventKind(histogram.getKind())
-                    .withStartTime(histogram.getStartTime())
-                    .withTime(histogram.getTime())
-                    .withAttributes(histogram.getAttributes())
-                    .withSum(histogram.getSum())
-                    .withUnit(histogram.getUnit())
-                    .withDescription(histogram.getDescription())
-                    .build();
             return this;
         }
 

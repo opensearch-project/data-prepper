@@ -5,8 +5,23 @@
 
 package com.amazon.dataprepper.plugins.processor.otelmetrics;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
+import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.metric.Metric;
+import com.amazon.dataprepper.model.record.Record;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
+import io.opentelemetry.proto.common.v1.AnyValue;
+import io.opentelemetry.proto.common.v1.KeyValue;
+import io.opentelemetry.proto.metrics.v1.Gauge;
+import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
+import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
+import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.resource.v1.Resource;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -14,26 +29,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import com.amazon.dataprepper.model.metric.Metric;
-import io.opentelemetry.proto.metrics.v1.Gauge;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.junit.MockitoJUnitRunner;
-
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.processor.otelmetrics.OTelMetricsRawProcessor;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
-import io.opentelemetry.proto.common.v1.AnyValue;
-import io.opentelemetry.proto.common.v1.KeyValue;
-import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
-import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
-import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
-import io.opentelemetry.proto.resource.v1.Resource;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 
 @RunWith(MockitoJUnitRunner.class)

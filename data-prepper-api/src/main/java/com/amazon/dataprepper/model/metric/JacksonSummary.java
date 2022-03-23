@@ -28,7 +28,7 @@ public class JacksonSummary extends JacksonMetric implements Summary {
 
     private static final List<String> REQUIRED_KEYS = Collections.singletonList(ATTRIBUTES_KEY);
     private static final List<String> REQUIRED_NON_EMPTY_KEYS = Arrays.asList(NAME_KEY, KIND_KEY, TIME_KEY);
-    private static final List<String> REQUIRED_NON_NULL_KEYS = Collections.singletonList(COUNT_KEY);
+    private static final List<String> REQUIRED_NON_NULL_KEYS = Collections.emptyList();
 
 
     protected JacksonSummary(JacksonSummary.Builder builder) {
@@ -42,8 +42,13 @@ public class JacksonSummary extends JacksonMetric implements Summary {
     }
 
     @Override
-    public List<Quantile> getQuantiles() {
-        return this.get(QUANTILES_KEY, List.class);
+    public List<? extends Quantile> getQuantiles() {
+        return this.getList(QUANTILES_KEY, DefaultQuantile.class);
+    }
+
+    @Override
+    public Long getCount() {
+        return this.get(COUNT_KEY, Long.class);
     }
 
     @Override

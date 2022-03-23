@@ -25,7 +25,7 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
     private static final String VALUE_KEY = "value";
 
     private static final List<String> REQUIRED_KEYS = new ArrayList<>();
-    private static final List<String> REQUIRED_NON_EMPTY_KEYS = Arrays.asList(NAME_KEY, KIND_KEY, START_TIME_KEY, TIME_KEY);
+    private static final List<String> REQUIRED_NON_EMPTY_KEYS = Arrays.asList(NAME_KEY, KIND_KEY, TIME_KEY);
     private static final List<String> REQUIRED_NON_NULL_KEYS = Collections.singletonList(VALUE_KEY);
 
 
@@ -64,26 +64,6 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
             if (value != null) {
                 data.put(VALUE_KEY, value);
             }
-            return this;
-        }
-
-        /**
-         * Sets all attributes by copying over those from another gauge
-         * @param gauge the gauge to copy
-         * @since 1.4
-         */
-        public JacksonGauge.Builder fromGauge(final Gauge gauge) {
-            this.withName(gauge.getName())
-                    .withServiceName(gauge.getServiceName())
-                    .withEventKind(gauge.getKind())
-                    .withStartTime(gauge.getStartTime())
-                    .withTime(gauge.getTime())
-                    .withAttributes(gauge.getAttributes())
-                    .withValue(gauge.getValue())
-                    .withUnit(gauge.getUnit())
-                    .withDescription(gauge.getDescription())
-                    .build();
-
             return this;
         }
 

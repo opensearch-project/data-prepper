@@ -12,10 +12,12 @@ package com.amazon.dataprepper.model.metric;
  */
 public class DefaultBucket implements Bucket {
 
-    private final Double min;
-    private final Double max;
-    private final Long count;
+    private Double min;
+    private Double max;
+    private Long count;
 
+    // required for serialization
+    DefaultBucket() {}
 
     public DefaultBucket(Double min, Double max, Long count) {
         this.min = min;

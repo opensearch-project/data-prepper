@@ -11,8 +11,11 @@ package com.amazon.dataprepper.model.metric;
  * @since 1.4
  */
 public class DefaultQuantile implements Quantile {
-    private final Double quantile;
-    private final Double value;
+    private Double quantile;
+    private Double value;
+
+    // required for serialization
+    DefaultQuantile() {}
 
     public DefaultQuantile(Double quantile, Double value) {
         this.quantile = quantile;

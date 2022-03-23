@@ -52,6 +52,6 @@ public interface Histogram extends Metric {
      * @return the buckets
      * @since 1.4
      */
-    List<Bucket> getBuckets();
+    List<? extends Bucket> getBuckets();
 
 }

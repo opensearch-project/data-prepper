@@ -7,17 +7,15 @@ package com.amazon.dataprepper.plugins.processor.otelmetrics;
 
 import com.google.protobuf.ByteString;
 import io.opentelemetry.proto.common.v1.AnyValue;
-import io.opentelemetry.proto.common.v1.ArrayValue;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import org.junit.jupiter.api.Test;
 
-import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * This test exists purely to satisfy the test coverage because OtelMetricsHelper must be merged with

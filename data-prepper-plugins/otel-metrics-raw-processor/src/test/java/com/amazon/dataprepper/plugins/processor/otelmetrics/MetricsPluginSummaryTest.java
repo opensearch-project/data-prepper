@@ -8,7 +8,6 @@ package com.amazon.dataprepper.plugins.processor.otelmetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.processor.otelmetrics.OTelMetricsRawProcessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;

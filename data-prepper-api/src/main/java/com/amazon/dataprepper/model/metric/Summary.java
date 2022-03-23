@@ -18,7 +18,7 @@ public interface Summary extends Metric {
      * @return the quantiles
      * @since 1.4
      */
-    List<Quantile> getQuantiles();
+    List<? extends Quantile> getQuantiles();
 
     /**
      * Gets the number of quantiles for a summary
@@ -33,4 +33,11 @@ public interface Summary extends Metric {
      * @since 1.4
      */
     Double getSum();
+
+    /**
+     * Gets the number of values in the population
+     * @return the number of values
+     * @since 1.4
+     */
+    Long getCount();
 }
