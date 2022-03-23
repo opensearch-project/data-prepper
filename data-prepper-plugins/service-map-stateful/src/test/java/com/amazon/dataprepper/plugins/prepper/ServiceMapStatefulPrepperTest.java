@@ -70,6 +70,7 @@ public class ServiceMapStatefulPrepperTest {
         reflectivelySetField(ServiceMapStatefulPrepper.class, "previousTimestamp", 0);
         reflectivelySetField(ServiceMapStatefulPrepper.class, "windowDurationMillis", 0);
         reflectivelySetField(ServiceMapStatefulPrepper.class, "dbPath", null);
+        reflectivelySetField(ServiceMapStatefulPrepper.class, "clock", null);
         reflectivelySetField(ServiceMapStatefulPrepper.class, "currentWindow", null);
         reflectivelySetField(ServiceMapStatefulPrepper.class, "previousWindow", null);
         reflectivelySetField(ServiceMapStatefulPrepper.class, "currentTraceGroupWindow", null);
