@@ -107,12 +107,14 @@ public class PeerForwarderTest {
     @Test
     public void testLocalIpOnly() {
         final PeerForwarder testPeerForwarder = generatePeerForwarder(Collections.singletonList(LOCAL_IP), 2);
-        final List<Record<ExportTraceServiceRequest>> exportedRecords =
+        final List<Record<Object>> exportedRecords =
                 testPeerForwarder.doExecute(Arrays.asList(new Record<>(REQUEST_1), new Record<>(REQUEST_2)));
         assertTrue(exportedRecords.size() >= 3);
         final List<ResourceSpans> exportedResourceSpans = new ArrayList<>();
-        for (final Record<ExportTraceServiceRequest> record: exportedRecords) {
-            exportedResourceSpans.addAll(record.getData().getResourceSpansList());
+        for (final Record<Object> record: exportedRecords) {
+            final Object recordData = record.getData();
+            assertTrue(recordData instanceof ExportTraceServiceRequest);
+            exportedResourceSpans.addAll(((ExportTraceServiceRequest) recordData).getResourceSpansList());
         }
         final List<ResourceSpans> expectedResourceSpans = Arrays.asList(
                 generateResourceSpans(SPAN_1, SPAN_2),
@@ -143,7 +145,7 @@ public class PeerForwarderTest {
         MetricsTestUtil.initMetrics();
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
 
-        final List<Record<ExportTraceServiceRequest>> exportedRecords = testPeerForwarder
+        final List<Record<Object>> exportedRecords = testPeerForwarder
                 .doExecute(Arrays.asList(new Record<>(REQUEST_1), new Record<>(REQUEST_2)));
 
         final List<ResourceSpans> expectedLocalResourceSpans = Arrays.asList(
@@ -155,7 +157,7 @@ public class PeerForwarderTest {
                 generateResourceSpans(SPAN_4)
         );
         Assert.assertEquals(1, exportedRecords.size());
-        final ExportTraceServiceRequest localRequest = exportedRecords.get(0).getData();
+        final ExportTraceServiceRequest localRequest = (ExportTraceServiceRequest) exportedRecords.get(0).getData();
         final List<ResourceSpans> localResourceSpans = localRequest.getResourceSpansList();
         assertTrue(localResourceSpans.containsAll(expectedLocalResourceSpans));
         assertTrue(expectedLocalResourceSpans.containsAll(localResourceSpans));
@@ -171,13 +173,13 @@ public class PeerForwarderTest {
         final List<String> testIps = generateTestIps(2);
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
 
-        final List<Record<ExportTraceServiceRequest>> exportedRecords = testPeerForwarder
+        final List<Record<Object>> exportedRecords = testPeerForwarder
                 .doExecute(Collections.singletonList(new Record<>(REQUEST_3)));
 
         final List<ResourceSpans> expectedLocalResourceSpans = Collections.singletonList(
                 generateResourceSpans(SPAN_1, SPAN_2, SPAN_3));
         Assert.assertEquals(1, exportedRecords.size());
-        final ExportTraceServiceRequest localRequest = exportedRecords.get(0).getData();
+        final ExportTraceServiceRequest localRequest = (ExportTraceServiceRequest) exportedRecords.get(0).getData();
         final List<ResourceSpans> localResourceSpans = localRequest.getResourceSpansList();
         assertTrue(localResourceSpans.containsAll(expectedLocalResourceSpans));
         assertTrue(expectedLocalResourceSpans.containsAll(localResourceSpans));
@@ -203,7 +205,7 @@ public class PeerForwarderTest {
         MetricsTestUtil.initMetrics();
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
 
-        final List<Record<ExportTraceServiceRequest>> exportedRecords = testPeerForwarder
+        final List<Record<Object>> exportedRecords = testPeerForwarder
                 .doExecute(Collections.singletonList(new Record<>(REQUEST_4)));
 
         final List<ResourceSpans> expectedForwardedResourceSpans = Collections.singletonList(
@@ -252,13 +254,13 @@ public class PeerForwarderTest {
         MetricsTestUtil.initMetrics();
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
 
-        final List<Record<ExportTraceServiceRequest>> exportedRecords = testPeerForwarder
+        final List<Record<Object>> exportedRecords = testPeerForwarder
                 .doExecute(Collections.singletonList(new Record<>(REQUEST_4)));
 
         final List<ResourceSpans> expectedLocalResourceSpans = Collections.singletonList(
                 generateResourceSpans(SPAN_4, SPAN_5, SPAN_6));
         Assert.assertEquals(1, exportedRecords.size());
-        final ExportTraceServiceRequest exportedRequest = exportedRecords.get(0).getData();
+        final ExportTraceServiceRequest exportedRequest = (ExportTraceServiceRequest) exportedRecords.get(0).getData();
         final List<ResourceSpans> forwardedResourceSpans = exportedRequest.getResourceSpansList();
         assertTrue(forwardedResourceSpans.containsAll(expectedLocalResourceSpans));
         assertTrue(expectedLocalResourceSpans.containsAll(forwardedResourceSpans));
