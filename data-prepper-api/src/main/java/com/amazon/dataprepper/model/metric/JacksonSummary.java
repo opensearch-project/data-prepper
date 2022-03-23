@@ -42,7 +42,7 @@ public class JacksonSummary extends JacksonMetric implements Summary {
     }
 
     @Override
-    public List<SummaryQuantile> getQuantiles() {
+    public List<Quantile> getQuantiles() {
         return this.get(QUANTILES_KEY, List.class);
     }
 
@@ -74,7 +74,7 @@ public class JacksonSummary extends JacksonMetric implements Summary {
          * @return the builder
          * @since 1.4
          */
-        public Builder withQuantiles(final List<SummaryQuantile> quantiles) {
+        public Builder withQuantiles(final List<Quantile> quantiles) {
             data.put(QUANTILES_KEY, quantiles);
             return this;
         }
@@ -131,23 +131,5 @@ public class JacksonSummary extends JacksonMetric implements Summary {
             data.computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
         }
 
-    }
-
-    public static class SummaryQuantile {
-        private final double quantile;
-        private final double value;
-
-        public SummaryQuantile(double quantile, double value) {
-            this.quantile = quantile;
-            this.value = value;
-        }
-
-        public double getValue() {
-            return value;
-        }
-
-        public double getQuantile() {
-            return quantile;
-        }
     }
 }

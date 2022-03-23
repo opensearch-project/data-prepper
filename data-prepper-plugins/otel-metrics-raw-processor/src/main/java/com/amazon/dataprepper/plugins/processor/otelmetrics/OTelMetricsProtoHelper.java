@@ -7,7 +7,8 @@ package com.amazon.dataprepper.plugins.processor.otelmetrics;
 
 import com.amazon.dataprepper.model.metric.Bucket;
 import com.amazon.dataprepper.model.metric.DefaultBucket;
-import com.amazon.dataprepper.model.metric.JacksonSummary.SummaryQuantile;
+import com.amazon.dataprepper.model.metric.DefaultQuantile;
+import com.amazon.dataprepper.model.metric.Quantile;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.proto.common.v1.AnyValue;
@@ -194,9 +195,9 @@ public final class OTelMetricsProtoHelper {
     }
 
 
-    public static List<SummaryQuantile> getQuantileValues(List<SummaryDataPoint.ValueAtQuantile> quantileValues) {
+    public static List<Quantile> getQuantileValues(List<SummaryDataPoint.ValueAtQuantile> quantileValues) {
         return quantileValues.stream()
-                .map(q -> new SummaryQuantile(q.getQuantile(), q.getValue()))
+                .map(q -> new DefaultQuantile(q.getQuantile(), q.getValue()))
                 .collect(Collectors.toList());
     }
 

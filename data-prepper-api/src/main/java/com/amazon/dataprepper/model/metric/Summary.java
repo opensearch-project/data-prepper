@@ -18,7 +18,7 @@ public interface Summary extends Metric {
      * @return the quantiles
      * @since 1.4
      */
-    List<JacksonSummary.SummaryQuantile> getQuantiles();
+    List<Quantile> getQuantiles();
 
     /**
      * Gets the number of quantiles for a summary
