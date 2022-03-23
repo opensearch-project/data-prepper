@@ -5,7 +5,8 @@
 
 package com.amazon.dataprepper.plugins.processor.otelmetrics;
 
-import com.amazon.dataprepper.model.metric.JacksonHistogram.Bucket;
+import com.amazon.dataprepper.model.metric.Bucket;
+import com.amazon.dataprepper.model.metric.DefaultBucket;
 import com.amazon.dataprepper.model.metric.JacksonSummary.SummaryQuantile;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -208,7 +209,7 @@ public final class OTelMetricsProtoHelper {
             for (int i = 0; i < bucketCountsList.size(); i++) {
                 Long bucketCount = bucketCountsList.get(i);
                 double bound = i == 0 ? previousBound : explicitBoundsList.get(i - 1);
-                buckets.add(new Bucket(previousBound, bound, bucketCount));
+                buckets.add(new DefaultBucket(previousBound, bound, bucketCount));
                 previousBound = bound;
             }
         }

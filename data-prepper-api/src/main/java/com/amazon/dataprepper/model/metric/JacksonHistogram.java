@@ -176,30 +176,4 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
         }
 
     }
-
-    public static class Bucket {
-
-        private final double lowerBound;
-        private final double upperBound;
-        private final long count;
-
-        public Bucket(double lowerBound, double upperBound, long count) {
-            this.lowerBound = lowerBound;
-            this.upperBound = upperBound;
-            this.count = count;
-        }
-
-        public double getLowerBound() {
-            return lowerBound;
-        }
-
-        public double getUpperBound() {
-            return upperBound;
-        }
-
-        public long getCount() {
-            return count;
-        }
-
-    }
 }

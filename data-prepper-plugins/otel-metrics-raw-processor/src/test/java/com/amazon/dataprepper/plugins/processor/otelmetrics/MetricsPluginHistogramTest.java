@@ -6,7 +6,8 @@
 package com.amazon.dataprepper.plugins.processor.otelmetrics;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.metric.JacksonHistogram;
+import com.amazon.dataprepper.model.metric.Bucket;
+import com.amazon.dataprepper.model.metric.DefaultBucket;
 import com.amazon.dataprepper.model.metric.Metric;
 import com.amazon.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -51,7 +52,7 @@ public class MetricsPluginHistogramTest {
         final double bound_1 = 100.0;
         final double bound_2 = 1000.0;
         HistogramDataPoint dp = HistogramDataPoint.newBuilder()
-                .addBucketCounts(3)
+                .addBucketCounts(0)
                 .addBucketCounts(5)
                 .addBucketCounts(17)
                 .addBucketCounts(33)
@@ -59,20 +60,20 @@ public class MetricsPluginHistogramTest {
                 .addExplicitBounds(bound_1)
                 .addExplicitBounds(bound_2)
                 .setCount(4)
-                .setSum( 1d / 3d)
+                .setSum(1d / 3d)
                 .build();
 
         Histogram histogram = Histogram.newBuilder().addDataPoints(dp).build();
 
-        List<Record<? extends Metric>> processedRecords =  (List<Record<? extends Metric>>) rawProcessor.doExecute(Collections.singletonList(new Record<>(fillServiceRequest(histogram))));
+        List<Record<? extends Metric>> processedRecords = (List<Record<? extends Metric>>) rawProcessor.doExecute(Collections.singletonList(new Record<>(fillServiceRequest(histogram))));
         Record<? extends Metric> record = processedRecords.get(0);
         ObjectMapper objectMapper = new ObjectMapper();
         Map<Object, Object> map = objectMapper.readValue(record.getData().toJsonString(), Map.class);
 
-        JacksonHistogram.Bucket bucket_0 = new JacksonHistogram.Bucket(0.0, 0.0, 3);
-        JacksonHistogram.Bucket bucket_1 = new JacksonHistogram.Bucket(0.0, bound_0, 5);
-        JacksonHistogram.Bucket bucket_2 = new JacksonHistogram.Bucket(bound_0, bound_1, 17);
-        JacksonHistogram.Bucket bucket_3 = new JacksonHistogram.Bucket(bound_1, bound_2, 33);
+        DefaultBucket bucket_0 = new DefaultBucket(0.0, 0.0, 0L);
+        DefaultBucket bucket_1 = new DefaultBucket(0.0, bound_0, 5L);
+        DefaultBucket bucket_2 = new DefaultBucket(bound_0, bound_1, 17L);
+        DefaultBucket bucket_3 = new DefaultBucket(bound_1, bound_2, 33L);
         assertHistogramProcessing(map, Arrays.asList(bucket_0, bucket_1, bucket_2, bucket_3));
     }
 
@@ -98,13 +99,13 @@ public class MetricsPluginHistogramTest {
         return ExportMetricsServiceRequest.newBuilder().addResourceMetrics(resourceMetrics).build();
     }
 
-    private void assertHistogramProcessing(Map<Object, Object> map, List<JacksonHistogram.Bucket> expectedBuckets) {
+    private void assertHistogramProcessing(Map<Object, Object> map, List<DefaultBucket> expectedBuckets) {
         assertThat(map).contains(entry("kind", Metric.KIND.HISTOGRAM.toString()));
         assertThat(map).contains(entry("unit", "seconds"));
         assertThat(map).contains(entry("description", "description"));
         assertThat(map).contains(entry("name", "name"));
         assertThat(map).contains(entry("bucketCounts", 4));
-        assertThat(map).contains(entry("sum",(1d/3d)));
+        assertThat(map).contains(entry("sum", (1d / 3d)));
         assertThat(map).contains(entry("serviceName", "service"));
         assertThat(map).contains(entry("aggregationTemporality", "AGGREGATION_TEMPORALITY_UNSPECIFIED"));
 
@@ -114,13 +115,13 @@ public class MetricsPluginHistogramTest {
         assertThat(listOfMaps).hasSize(expectedBuckets.size());
 
         for (int i = 0; i < expectedBuckets.size(); i++) {
-           JacksonHistogram.Bucket expectedBucket = expectedBuckets.get(i);
+            Bucket expectedBucket = expectedBuckets.get(i);
             Map<Object, Object> actualBucket = listOfMaps.get(i);
 
             assertThat(actualBucket)
-                    .contains(entry("lowerBound", expectedBucket.getLowerBound()))
-                    .contains(entry("upperBound", expectedBucket.getUpperBound()))
-                    .contains(entry("count", (int)expectedBucket.getCount()));
+                    .contains(entry("min", expectedBucket.getMin()))
+                    .contains(entry("max", expectedBucket.getMax()))
+                    .contains(entry("count", expectedBucket.getCount().intValue()));
 
         }
     }
