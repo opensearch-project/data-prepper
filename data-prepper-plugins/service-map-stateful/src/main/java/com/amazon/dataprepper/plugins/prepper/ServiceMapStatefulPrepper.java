@@ -10,8 +10,8 @@ import com.amazon.dataprepper.model.annotations.SingleThread;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
-import com.amazon.dataprepper.model.prepper.AbstractPrepper;
-import com.amazon.dataprepper.model.prepper.Prepper;
+import com.amazon.dataprepper.model.processor.AbstractProcessor;
+import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.plugins.prepper.state.MapDbPrepperState;
@@ -37,8 +37,8 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @SingleThread
-@DataPrepperPlugin(name = "service_map_stateful", pluginType = Prepper.class)
-public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<Object>, Record<Event>> {
+@DataPrepperPlugin(name = "service_map_stateful", pluginType = Processor.class)
+public class ServiceMapStatefulPrepper extends AbstractProcessor<Record<Object>, Record<Event>> {
 
     public static final String SPANS_DB_SIZE = "spansDbSize";
     public static final String TRACE_GROUP_DB_SIZE = "traceGroupDbSize";
