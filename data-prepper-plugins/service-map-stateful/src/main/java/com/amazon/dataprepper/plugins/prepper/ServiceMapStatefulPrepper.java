@@ -130,6 +130,7 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<Object>, R
         final Map<byte[], ServiceMapStateData> batchStateData = new TreeMap<>(SignedBytes.lexicographicalComparator());
         records.forEach(i -> {
             final Object recordData = i.getData();
+            // TODO: remove support for ExportTraceServiceRequest in 2.0
             if (recordData instanceof ExportTraceServiceRequest) {
                 processExportTraceServiceRequest((ExportTraceServiceRequest) recordData, batchStateData);
             } else if (recordData instanceof Span) {
