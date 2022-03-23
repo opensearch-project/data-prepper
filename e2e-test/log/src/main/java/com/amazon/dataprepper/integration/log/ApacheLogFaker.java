@@ -58,10 +58,10 @@ public class ApacheLogFaker {
     private final String[] passwords;
 
     public ApacheLogFaker() {
-        passwords = randomPasswprdArray(20, 8);
+        passwords = randomPasswordArray(20, 8);
     }
 
-    private String[] randomPasswprdArray(final int passwordCount, final int passwordSize) {
+    private String[] randomPasswordArray(final int passwordCount, final int passwordSize) {
         String[] randomPasswords = new String[passwordCount];
         for (int i = 0; i < passwordCount; i++) {
             randomPasswords[i] = "";
