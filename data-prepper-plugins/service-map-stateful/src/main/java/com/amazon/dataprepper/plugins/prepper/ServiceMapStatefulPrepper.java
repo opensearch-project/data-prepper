@@ -330,11 +330,6 @@ public class ServiceMapStatefulPrepper extends AbstractPrepper<Record<Object>, R
         currentTraceGroupWindow.delete();
     }
 
-    // TODO: Temp code, complex instance creation logic should be moved to a separate class
-    static void resetStaticCounters() {
-        preppersCreated.set(0);
-    }
-
 
     /**
      * Rotate windows for prepper state
