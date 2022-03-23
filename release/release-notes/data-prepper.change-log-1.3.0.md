@@ -2,92 +2,82 @@
 
 ---
 
-* __Updated 1.3.0 release date to Mar 22. (#1233)__
+* __Fix bug where a group can be concluded twice in the Aggregate Processor (#1229) (#1230)__
 
-    [David Venable](mailto:dlv@amazon.com) - Tue, 22 Mar 2022 12:49:18 -0500
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Mon, 21 Mar 2022 14:40:35 -0500
     
-    EAD -&gt; refs/heads/ChangeLog, refs/remotes/upstream/main, refs/heads/main
-    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    Signed-off-by: Taylor Gray &lt;tylgry@amazon.com&gt;
+    (cherry picked from commit cbf1082c88acab85f6d7dbac71c6cd6f5932a8d0)
+     Co-authored-by: Taylor Gray &lt;tylgry@amazon.com&gt;
 
-* __Fix bug where a group can be concluded twice in the Aggregate Processor (#1229)__
+* __Fix incorrect key-value documentation (#1222) (#1225)__
 
-    [Taylor Gray](mailto:tylgry@amazon.com) - Mon, 21 Mar 2022 14:03:28 -0500
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Fri, 18 Mar 2022 17:05:17 -0500
     
     
     Signed-off-by: Taylor Gray &lt;tylgry@amazon.com&gt;
+    (cherry picked from commit 3ad35e973f3ccf268dfb90066030b3bb47d0bafd)
+     Co-authored-by: Taylor Gray &lt;tylgry@amazon.com&gt;
 
-* __Fix incorrect key-value documentation (#1222)__
+* __Smoke test tar (#1200) (#1219)__
 
-    [Taylor Gray](mailto:tylgry@amazon.com) - Fri, 18 Mar 2022 16:41:37 -0500
-    
-    efs/remotes/origin/main, refs/remotes/origin/HEAD, refs/heads/upstream/1.3
-    Signed-off-by: Taylor Gray &lt;tylgry@amazon.com&gt;
-
-* __Smoke test tar (#1200)__
-
-    [Steven Bayer](mailto:smbayer@amazon.com) - Fri, 18 Mar 2022 09:51:18 -0500
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Fri, 18 Mar 2022 14:10:36 -0500
     
     
     * Added tar smoke test
      Signed-off-by: Steven Bayer &lt;smbayer@amazon.com&gt;
+    (cherry picked from commit c684f7ca036357566e46bd83dd477bec9b185bcf)
+     Co-authored-by: Steven Bayer &lt;smbayer@amazon.com&gt;
 
-* __MAINT: cherry-pick changes on event model from trace migration branch (#1216)__
+* __Add in clarification sentence (#1208) (#1212)__
 
-    [Qi Chen](mailto:19492223+chenqi0805@users.noreply.github.com) - Thu, 17 Mar 2022 19:20:18 -0500
-    
-    
-    * MAINT: remove unused fromSpan
-     Signed-off-by: Qi Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
-    
-    * STY: unnecessary change of import order
-     Signed-off-by: Qi Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
-
-* __Next Data Prepper version: 1.4.0-SNAPSHOT (#1210)__
-
-    [David Venable](mailto:dlv@amazon.com) - Thu, 17 Mar 2022 16:13:01 -0500
-    
-    
-    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
-
-* __Added drop event conditional examples (#1214)__
-
-    [Steven Bayer](mailto:smbayer@amazon.com) - Thu, 17 Mar 2022 14:38:46 -0500
-    
-    
-    Signed-off-by: Steven Bayer &lt;smbayer@amazon.com&gt;
-
-* __Add in clarification sentence (#1208)__
-
-    [David Powers](mailto:37314042+dapowers87@users.noreply.github.com) - Thu, 17 Mar 2022 11:35:04 -0500
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Fri, 18 Mar 2022 14:07:49 -0500
     
     
     * Add in clarification sentence
      Signed-off-by: David Powers &lt;ddpowers@amazon.com&gt;
+    (cherry picked from commit 63a35eb39b0f3fd2bfebef4e04242a0dfa9820ac)
+     Co-authored-by: David Powers &lt;37314042+dapowers87@users.noreply.github.com&gt;
 
-* __Fixed broken links (#1205)__
+* __Fixed broken links (#1205) (#1211)__
 
-    [Steven Bayer](mailto:smbayer@amazon.com) - Wed, 16 Mar 2022 17:29:30 -0500
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Thu, 17 Mar 2022 12:57:06 -0500
     
     
     Signed-off-by: Steven Bayer &lt;smbayer@amazon.com&gt;
+    (cherry picked from commit 3980c626dc076bfaf2c28e22d8b1da18f3efc8e9)
+     Co-authored-by: Steven Bayer &lt;smbayer@amazon.com&gt;
 
-* __FIX: remove extra quotes in string literal (#1207)__
+* __FIX: remove extra quotes in string literal (#1207) (#1209)__
 
-    [Qi Chen](mailto:19492223+chenqi0805@users.noreply.github.com) - Wed, 16 Mar 2022 16:25:15 -0500
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Wed, 16 Mar 2022 16:44:36 -0500
     
     
     * FIX: remove extra quotes in string literal
-     Signed-off-by: Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
+     Signed-off-by: Qi Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
     
     * FIX: ParseTreeCoercionServiceTest
-     Signed-off-by: Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
+     Signed-off-by: Qi Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
+    (cherry picked from commit 46a08d975ea192be09cf27907b2afa4c939ed288)
+     Co-authored-by: Qi Chen &lt;19492223+chenqi0805@users.noreply.github.com&gt;
 
-* __Fix checkstyle error (#1203)__
+* __Fix checkstyle error (#1203) (#1206)__
 
-    [Shivani Shukla](mailto:67481911+sshivanii@users.noreply.github.com) - Wed, 16 Mar 2022 15:14:24 -0500
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Wed, 16 Mar 2022 15:32:24 -0500
     
     
     Signed-off-by: Shivani Shukla &lt;sshkamz@amazon.com&gt;
+    (cherry picked from commit b93ce866d75176db956e4cfa0073a65ff7ac7f08)
+     Co-authored-by: Shivani Shukla &lt;67481911+sshivanii@users.noreply.github.com&gt;
+    
+    Signed-off-by: Shivani Shukla &lt;67481911+sshivanii@users.noreply.github.com&gt;
+
+* __Updated gradle version to 1.3.0 (#1204)__
+
+    [Asif Sohail Mohammed](mailto:nsifmoh@amazon.com) - Wed, 16 Mar 2022 15:12:33 -0500
+    
+    
+    Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
 
 * __Maintenance: 1.3.0 changelog and release notes (#1201)__
 
