@@ -30,7 +30,7 @@ public class OTelTraceGroupProcessorConfigTests {
         try (MockedStatic<ConnectionConfiguration> connectionConfigurationMockedStatic = Mockito.mockStatic(ConnectionConfiguration.class)) {
             connectionConfigurationMockedStatic.when(() -> ConnectionConfiguration.readConnectionConfiguration(any(PluginSetting.class)))
                     .thenReturn(connectionConfigurationMock);
-            PluginSetting testPluginSetting = new PluginSetting("otel_trace_group_prepper", new HashMap<>());
+            PluginSetting testPluginSetting = new PluginSetting("otel_trace_group", new HashMap<>());
             OTelTraceGroupProcessorConfig otelTraceGroupProcessorConfig = OTelTraceGroupProcessorConfig.buildConfig(testPluginSetting);
             assertEquals(connectionConfigurationMock, otelTraceGroupProcessorConfig.getEsConnectionConfig());
         }
