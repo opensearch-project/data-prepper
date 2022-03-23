@@ -63,7 +63,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
     }
 
     /**
-     * execute the prepper logic which could potentially modify the incoming record. The level to which the record has
+     * execute the processor logic which could potentially modify the incoming record. The level to which the record has
      * been modified depends on the implementation
      *
      * @param records Input records that will be modified/processed
