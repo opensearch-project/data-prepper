@@ -105,6 +105,8 @@ public class PeerForwarder extends AbstractProcessor<Record<Object>, Record<Obje
                 exportTraceServiceRequests.add((ExportTraceServiceRequest) recordData);
             } else if (recordData instanceof Span) {
                 spans.add((Span) recordData);
+            } else {
+                throw new RuntimeException("Unsupported record data type: " + recordData.getClass());
             }
         });
         final List<ExportTraceServiceRequest> requestsToProcessLocally = executeExportTraceServiceRequests(exportTraceServiceRequests);
