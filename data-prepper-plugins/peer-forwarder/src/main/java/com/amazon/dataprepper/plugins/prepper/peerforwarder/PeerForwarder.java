@@ -101,6 +101,7 @@ public class PeerForwarder extends AbstractProcessor<Record<Object>, Record<Obje
         final List<ExportTraceServiceRequest> exportTraceServiceRequests = new ArrayList<>();
         records.forEach(record -> {
             final Object recordData = record.getData();
+            // TODO: remove support for ExportTraceServiceRequest in 2.0
             if (recordData instanceof ExportTraceServiceRequest) {
                 exportTraceServiceRequests.add((ExportTraceServiceRequest) recordData);
             } else if (recordData instanceof Span) {

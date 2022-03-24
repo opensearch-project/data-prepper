@@ -203,6 +203,7 @@ public class PeerForwarderTest {
         }
     }
 
+    // TODO: remove in 2.0
     @Test
     public void testLocalIpOnlyWithExportTraceServiceRequestRecordData() {
         final PeerForwarder testPeerForwarder = generatePeerForwarder(Collections.singletonList(LOCAL_IP), 2);
@@ -237,6 +238,7 @@ public class PeerForwarderTest {
         assertTrue(inputSpans.containsAll(exportedSpans));
     }
 
+    // TODO: remove in 2.0
     @Test
     public void testSingleRemoteIpBothLocalAndForwardedRequestWithExportTraceServiceRequestRecordData() {
         final List<String> testIps = generateTestIps(2);
@@ -320,6 +322,7 @@ public class PeerForwarderTest {
         });
     }
 
+    // TODO: remove in 2.0
     @Test
     public void testSingleRemoteIpLocalRequestOnlyWithExportTraceServiceRequestRecordData() throws Exception {
         final List<String> testIps = generateTestIps(2);
@@ -351,6 +354,7 @@ public class PeerForwarderTest {
         assertTrue(TEST_SPANS_A.containsAll(localSpans));
     }
 
+    // TODO: remove in 2.0
     @Test
     public void testSingleRemoteIpForwardedRequestOnlyWithExportTraceServiceRequestRecordData() throws Exception {
         final List<String> testIps = generateTestIps(2);
@@ -466,6 +470,7 @@ public class PeerForwarderTest {
         assertTrue(forwardRequestLatencyMeasurements.get(2).getValue() > 0.0);
     }
 
+    // TODO: remove in 2.0
     @Test
     public void testSingleRemoteIpForwardRequestClientErrorWithExportTraceServiceRequestRecordData() {
         final List<String> testIps = generateTestIps(2);
