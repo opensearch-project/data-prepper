@@ -16,9 +16,11 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.anEmptyMap;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class JacksonHistogramTest {
 
@@ -38,6 +40,8 @@ class JacksonHistogramTest {
             new DefaultBucket(5.0, 10.0, 5L)
     );
     private static final Integer TEST_BUCKETS_COUNT = 2;
+    private static final Integer TEST_EXPLICIT_BOUNDS_COUNT = 2;
+    private static final String TEST_AGGREGATION_TEMPORALITY = "AGGREGATIONTEMPORALITY";
 
     private JacksonHistogram histogram;
 
@@ -56,7 +60,9 @@ class JacksonHistogramTest {
                 .withServiceName(TEST_SERVICE_NAME)
                 .withSum(TEST_SUM)
                 .withBucketCount(TEST_BUCKETS_COUNT)
-                .withBuckets(TEST_BUCKETS);
+                .withBuckets(TEST_BUCKETS)
+                .withExplicitBoundsCount(TEST_EXPLICIT_BOUNDS_COUNT)
+                .withAggregationTemporality(TEST_AGGREGATION_TEMPORALITY);
 
         histogram = builder.build();
     }
@@ -122,5 +128,38 @@ class JacksonHistogramTest {
     public void testGetBucketCount() {
         final Integer bucketCount = histogram.getBucketCount();
         assertThat(bucketCount, is(equalTo(TEST_BUCKETS_COUNT)));
+    }
+
+    @Test
+    public void testGetExplicitBoundsCount() {
+        final Integer explicitBoundsCount = histogram.getExplicitBoundsCount();
+        assertThat(explicitBoundsCount, is(equalTo(TEST_EXPLICIT_BOUNDS_COUNT)));
+    }
+
+    @Test
+    public void testGetAggregationTemporality() {
+        final String aggregationTemporality = histogram.getAggregationTemporality();
+        assertThat(aggregationTemporality, is(equalTo(TEST_AGGREGATION_TEMPORALITY)));
+    }
+
+    @Test
+    public void testBuilder_missingNonNullParameters_throwsNullPointerException() {
+        final JacksonSum.Builder builder = JacksonSum.builder();
+        builder.withValue(null);
+        assertThrows(NullPointerException.class, builder::build);
+    }
+
+    @Test
+    public void testBuilder_withEmptyTime_throwsIllegalArgumentException() {
+        builder.withTime("");
+        assertThrows(IllegalArgumentException.class, builder::build);
+    }
+
+    @Test
+    public void testGetAttributes_withNull_mustBeEmpty() {
+        builder.withAttributes(null);
+        JacksonHistogram histogram = builder.build();
+        histogram.toJsonString();
+        assertThat(histogram.getAttributes(),is(anEmptyMap()));
     }
 }

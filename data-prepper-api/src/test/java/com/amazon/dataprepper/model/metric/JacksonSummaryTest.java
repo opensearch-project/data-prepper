@@ -15,10 +15,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.anEmptyMap;
 import static org.hamcrest.Matchers.hasKey;
-import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class JacksonSummaryTest {
@@ -75,6 +76,13 @@ public class JacksonSummaryTest {
     }
 
     @Test
+    public void testGeTAttributes_withNull_mustBeEmpty() {
+        builder.withAttributes(null);
+        JacksonSummary summary = builder.build();
+        assertThat(summary.getAttributes(),is(anEmptyMap()));
+    }
+
+    @Test
     public void testGetName() {
         final String name = summary.getName();
         assertThat(name, is(equalTo(TEST_NAME)));
@@ -97,6 +105,13 @@ public class JacksonSummaryTest {
         final String name = summary.getServiceName();
         assertThat(name, is(equalTo(TEST_SERVICE_NAME)));
     }
+
+    @Test
+    public void testGetSum() {
+        final Double sum = summary.getSum();
+        assertThat(sum, is(equalTo(TEST_SUM)));
+    }
+
 
     @Test
     public void testGetCount() {
@@ -134,5 +149,4 @@ public class JacksonSummaryTest {
         builder.withTime("");
         assertThrows(IllegalArgumentException.class, builder::build);
     }
-
 }

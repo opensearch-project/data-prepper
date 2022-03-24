@@ -5,10 +5,13 @@
 
 package com.amazon.dataprepper.model.metric;
 
+import com.amazon.dataprepper.model.event.TestObject;
 import com.google.common.collect.ImmutableMap;
+import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
@@ -21,9 +24,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class JacksonGaugeTest {
 
+    private static final String TEST_KEY2 = UUID.randomUUID().toString();
+    private static final Long TEST_TIME_KEY1 = new Date().getTime();
     private static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
-            "key1", new Date().getTime(),
-            "key2", UUID.randomUUID().toString());
+            "key1", TEST_TIME_KEY1,
+            "key2", TEST_KEY2);
     private static final String TEST_SERVICE_NAME = "service";
     private static final String TEST_NAME = "name";
     private static final String TEST_DESCRIPTION = "description";
@@ -76,7 +81,6 @@ class JacksonGaugeTest {
         assertThat(description, is(equalTo(TEST_DESCRIPTION)));
     }
 
-
     @Test
     public void testGetKind() {
         final String kind = gauge.getKind();
@@ -88,7 +92,6 @@ class JacksonGaugeTest {
         final String name = gauge.getServiceName();
         assertThat(name, is(equalTo(TEST_SERVICE_NAME)));
     }
-
 
     @Test
     public void testGetStartTime() {
@@ -108,7 +111,6 @@ class JacksonGaugeTest {
         assertThat(unit, is(equalTo(TEST_UNIT_NAME)));
     }
 
-
     @Test
     public void testGetValue() {
         final Double value = gauge.getValue();
@@ -126,5 +128,15 @@ class JacksonGaugeTest {
     public void testBuilder_withEmptyTime_throwsIllegalArgumentException() {
         builder.withTime("");
         assertThrows(IllegalArgumentException.class, builder::build);
+    }
+
+   @Test
+    public void testGaugeToJsonString() {
+        gauge.put("foo", "bar");
+        final String value = UUID.randomUUID().toString();
+        gauge.put("testObject", new TestObject(value));
+        gauge.put("list", Arrays.asList(1, 4, 5));
+        final String result = gauge.toJsonString();
+        assertThat(result, CoreMatchers.is(CoreMatchers.equalTo(String.format("{\"unit\":\"unit\",\"kind\":\"GAUGE\",\"name\":\"name\",\"description\":\"description\",\"startTime\":\"%s\",\"time\":\"%s\",\"serviceName\":\"service\",\"value\":1.0,\"foo\":\"bar\",\"testObject\":{\"field1\":\"%s\"},\"list\":[1,4,5],\"key1\":%s,\"key2\":\"%s\"}", TEST_START_TIME, TEST_TIME, value, TEST_TIME_KEY1, TEST_KEY2))));
     }
 }
