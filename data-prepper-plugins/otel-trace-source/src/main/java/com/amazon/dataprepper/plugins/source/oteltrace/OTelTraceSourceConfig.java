@@ -38,7 +38,7 @@ public class OTelTraceSourceConfig {
     static final boolean DEFAULT_PROTO_REFLECTION_SERVICE = false;
     static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
     static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
-    static final String DEFAULT_RECORD_TYPE = RecordType.event.name();
+    static final String DEFAULT_RECORD_TYPE = RecordType.otlp.name();
     private static final String S3_PREFIX = "s3://";
 
     @JsonProperty(REQUEST_TIMEOUT)
