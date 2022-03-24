@@ -18,6 +18,7 @@ import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.amazon.dataprepper.plugins.health.HealthGrpcService;
+import com.amazon.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import com.amazon.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
@@ -26,7 +27,6 @@ import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +38,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
 @DataPrepperPlugin(name = "otel_trace_source", pluginType = Source.class, pluginConfigurationType = OTelTraceSourceConfig.class)
-public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>> {
+public class OTelTraceSource implements Source<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceSource.class);
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
     private Server server;
@@ -58,6 +58,7 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
     // accessible only in the same package for unit test
     OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final CertificateProviderFactory certificateProviderFactory) {
         oTelTraceSourceConfig.validateAndInitializeCertAndKeyFileInS3();
+        oTelTraceSourceConfig.validateRecordType();
         this.oTelTraceSourceConfig = oTelTraceSourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.certificateProviderFactory = certificateProviderFactory;
@@ -65,7 +66,7 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
     }
 
     @Override
-    public void start(Buffer<Record<ExportTraceServiceRequest>> buffer) {
+    public void start(Buffer<Record<Object>> buffer) {
         if (buffer == null) {
             throw new IllegalStateException("Buffer provided is null");
         }
@@ -74,6 +75,8 @@ public class OTelTraceSource implements Source<Record<ExportTraceServiceRequest>
 
             final OTelTraceGrpcService oTelTraceGrpcService = new OTelTraceGrpcService(
                     oTelTraceSourceConfig.getRequestTimeoutInMillis(),
+                    RecordType.valueOf(oTelTraceSourceConfig.getRecordType()),
+                    new OTelProtoCodec.OTelProtoDecoder(),
                     buffer,
                     pluginMetrics
             );

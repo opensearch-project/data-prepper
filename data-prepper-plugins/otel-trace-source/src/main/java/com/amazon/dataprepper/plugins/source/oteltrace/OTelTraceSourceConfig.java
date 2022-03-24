@@ -9,6 +9,8 @@ import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.StringUtils;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 public class OTelTraceSourceConfig {
     static final String REQUEST_TIMEOUT = "request_timeout";
     static final String PORT = "port";
@@ -25,6 +27,7 @@ public class OTelTraceSourceConfig {
     static final String THREAD_COUNT = "thread_count";
     static final String MAX_CONNECTION_COUNT = "max_connection_count";
     static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
+    static final String RECORD_TYPE = "record_type";
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final int DEFAULT_PORT = 21890;
     static final int DEFAULT_THREAD_COUNT = 200;
@@ -35,6 +38,7 @@ public class OTelTraceSourceConfig {
     static final boolean DEFAULT_PROTO_REFLECTION_SERVICE = false;
     static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
     static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
+    static final String DEFAULT_RECORD_TYPE = RecordType.event.name();
     private static final String S3_PREFIX = "s3://";
 
     @JsonProperty(REQUEST_TIMEOUT)
@@ -87,6 +91,9 @@ public class OTelTraceSourceConfig {
     @JsonProperty("authentication")
     private PluginModel authentication;
 
+    @JsonProperty(RECORD_TYPE)
+    private String recordType = DEFAULT_RECORD_TYPE;
+
     public void validateAndInitializeCertAndKeyFileInS3() {
         boolean certAndKeyFileInS3 = false;
         if (useAcmCertForSSL) {
@@ -100,6 +107,10 @@ public class OTelTraceSourceConfig {
             }
         }
         sslCertAndKeyFileInS3 = certAndKeyFileInS3;
+    }
+
+    public void validateRecordType() {
+        checkArgument(RecordType.contains(recordType), "Unsupported record type: " + recordType);
     }
 
     private void validateSSLArgument(final String sslTypeMessage, final String argument, final String argumentName) {
@@ -183,4 +194,8 @@ public class OTelTraceSourceConfig {
     }
 
     public PluginModel getAuthentication() { return authentication; }
+
+    public String getRecordType() {
+        return recordType;
+    }
 }

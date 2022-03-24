@@ -38,13 +38,15 @@ import io.netty.util.AsciiString;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
-import io.opentelemetry.proto.trace.v1.Span;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -63,6 +65,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.SSL;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -122,17 +125,17 @@ public class OTelTraceSourceTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private BlockingBuffer<Record<ExportTraceServiceRequest>> buffer;
+    private BlockingBuffer<Record<Object>> buffer;
 
     private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
             .addResourceSpans(ResourceSpans.newBuilder()
                     .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
-                            .addSpans(Span.newBuilder().setTraceState("SUCCESS").build())).build()).build();
+                            .addSpans(io.opentelemetry.proto.trace.v1.Span.newBuilder().setTraceState("SUCCESS").build())).build()).build();
     private OTelTraceSource SOURCE;
     private static final ExportTraceServiceRequest FAILURE_REQUEST = ExportTraceServiceRequest.newBuilder()
             .addResourceSpans(ResourceSpans.newBuilder()
                     .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
-                            .addSpans(Span.newBuilder().setTraceState("FAILURE").build())).build()).build();
+                            .addSpans(io.opentelemetry.proto.trace.v1.Span.newBuilder().setTraceState("FAILURE").build())).build()).build();
 
     private static void assertStatusCode415AndNoServerHeaders(final AggregatedHttpResponse response, final Throwable throwable) {
         assertThat("Http Status", response.status(), is(HttpStatus.UNSUPPORTED_MEDIA_TYPE));
@@ -146,11 +149,28 @@ public class OTelTraceSourceTest {
         assertThat("Response Header Keys", headerKeys, not(contains("server")));
     }
 
-    private BlockingBuffer<Record<ExportTraceServiceRequest>> getBuffer() {
+    private BlockingBuffer<Record<Object>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 1);
         integerHashMap.put("batch_size", 1);
         return new BlockingBuffer<>(new PluginSetting("blocking_buffer", integerHashMap));
+    }
+
+    private void configureObjectUnderTest(final String recordType) {
+        final Map<String, Object> settingsMap = new HashMap<>();
+        settingsMap.put("record_type", recordType);
+        settingsMap.put("request_timeout", 5);
+        settingsMap.put(SSL, false);
+        pluginSetting = new PluginSetting("otel_trace", settingsMap);
+        pluginSetting.setPipelineName("pipeline");
+        pluginMetrics = PluginMetrics.fromNames("otel_trace", "pipeline");
+
+        oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class);
+        SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory);
+    }
+
+    private static Stream<Arguments> recordTypeArguments() {
+        return Stream.of(Arguments.of(RecordType.otlp.name()), Arguments.of(RecordType.event.name()));
     }
 
     @BeforeEach
@@ -166,20 +186,10 @@ public class OTelTraceSourceTest {
         lenient().when(grpcServiceBuilder.useBlockingTaskExecutor(anyBoolean())).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.build()).thenReturn(grpcService);
 
-        final Map<String, Object> settingsMap = new HashMap<>();
-        settingsMap.put("request_timeout", 5);
-        settingsMap.put(SSL, false);
-        pluginSetting = new PluginSetting("otel_trace", settingsMap);
-        pluginSetting.setPipelineName("pipeline");
-        pluginMetrics = PluginMetrics.fromNames("otel_trace", "pipeline");
-
-        oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class);
-
         final GrpcAuthenticationProvider authenticationProvider = mock(GrpcBasicAuthenticationProvider.class);
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
-
-        SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory);
+        configureObjectUnderTest(RecordType.event.name());
         buffer = getBuffer();
     }
 
@@ -188,8 +198,10 @@ public class OTelTraceSourceTest {
         SOURCE.stop();
     }
 
-    @Test
-    void testHttpFullJson() throws InvalidProtocolBufferException {
+    @ParameterizedTest
+    @MethodSource("recordTypeArguments")
+    void testHttpFullJson(final String recordType) throws InvalidProtocolBufferException {
+        configureObjectUnderTest(recordType);
         SOURCE.start(buffer);
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
@@ -215,10 +227,12 @@ public class OTelTraceSourceTest {
                 .join();
     }
 
-    @Test
-    void testHttpsFullJson() throws InvalidProtocolBufferException {
+    @ParameterizedTest
+    @MethodSource("recordTypeArguments")
+    void testHttpsFullJson(final String recordType) throws InvalidProtocolBufferException {
 
         final Map<String, Object> settingsMap = new HashMap<>();
+        settingsMap.put("record_type", recordType);
         settingsMap.put("request_timeout", 5);
         settingsMap.put(SSL, true);
         settingsMap.put("useAcmCertForSSL", false);
@@ -257,8 +271,10 @@ public class OTelTraceSourceTest {
                 .join();
     }
 
-    @Test
-    void testHttpFullBytes() {
+    @ParameterizedTest
+    @MethodSource("recordTypeArguments")
+    void testHttpFullBytes(final String recordType) {
+        configureObjectUnderTest(recordType);
         SOURCE.start(buffer);
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
@@ -436,6 +452,7 @@ public class OTelTraceSourceTest {
         verify(grpcServiceBuilder, times(1)).useBlockingTaskExecutor(true);
         verify(grpcServiceBuilder, never()).addService(isA(HealthGrpcService.class));
     }
+
 
     @Test
     public void testDoubleStart() {
