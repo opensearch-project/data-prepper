@@ -20,11 +20,11 @@ import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 
 import java.io.UnsupportedEncodingException;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Random;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
@@ -115,7 +115,8 @@ public class ServiceMapTestUtils {
      */
     public static Span getSpan(final String serviceName, final String spanName, final String
             spanId, final String parentId, final String traceId, final io.opentelemetry.proto.trace.v1.Span.SpanKind spanKind) {
-        final String endTime = UUID.randomUUID().toString();
+        final Instant endInstant = Instant.now();
+        final String endTime = endInstant.toString();
         final JacksonSpan.Builder builder = JacksonSpan.builder()
                 .withSpanId(spanId)
                 .withTraceId(traceId)
@@ -124,7 +125,7 @@ public class ServiceMapTestUtils {
                 .withName(spanName)
                 .withServiceName(serviceName)
                 .withKind(spanKind.name())
-                .withStartTime(UUID.randomUUID().toString())
+                .withStartTime(endInstant.minusMillis(1000).toString())
                 .withEndTime(endTime)
                 .withTraceGroup(parentId.isEmpty()? null : spanName)
                 .withDurationInNanos(500L);
