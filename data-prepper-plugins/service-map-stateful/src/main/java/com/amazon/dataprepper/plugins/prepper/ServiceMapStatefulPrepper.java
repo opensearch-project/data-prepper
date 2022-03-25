@@ -45,6 +45,7 @@ public class ServiceMapStatefulPrepper extends AbstractProcessor<Record<Object>,
 
     private static final Logger LOG = LoggerFactory.getLogger(ServiceMapStatefulPrepper.class);
     private static final String EMPTY_SUFFIX = "-empty";
+    private static final String EVENT_TYPE = "event";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Collection<Record<Event>> EMPTY_COLLECTION = Collections.emptySet();
     private static final Integer TO_MILLIS = 1_000;
@@ -284,7 +285,7 @@ public class ServiceMapStatefulPrepper extends AbstractProcessor<Record<Object>,
         if (!RELATIONSHIP_STATE.contains(serviceMapRelationship)) {
             try {
                 final Event destinationRelationshipEvent = JacksonEvent.builder()
-                        .withEventType("event")
+                        .withEventType(EVENT_TYPE)
                         .withData(serviceMapRelationship)
                         .build();
                 serviceDependencyRecords.add(new Record<>(destinationRelationshipEvent));

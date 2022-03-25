@@ -30,7 +30,8 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 public class ServiceMapTestUtils {
-
+    private static final long TEST_DURATION_IN_NANOS = 1000;
+    private static final int TEST_STATUS_CODE = 1;
     private static final Random RANDOM = new Random();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -125,15 +126,15 @@ public class ServiceMapTestUtils {
                 .withName(spanName)
                 .withServiceName(serviceName)
                 .withKind(spanKind.name())
-                .withStartTime(endInstant.minusMillis(1000).toString())
+                .withStartTime(endInstant.minusNanos(TEST_DURATION_IN_NANOS).toString())
                 .withEndTime(endTime)
                 .withTraceGroup(parentId.isEmpty()? null : spanName)
-                .withDurationInNanos(500L);
+                .withDurationInNanos(TEST_DURATION_IN_NANOS);
         if (parentId.isEmpty()) {
             builder.withTraceGroupFields(
                     DefaultTraceGroupFields.builder()
-                            .withStatusCode(1)
-                            .withDurationInNanos(500L)
+                            .withStatusCode(TEST_STATUS_CODE)
+                            .withDurationInNanos(TEST_DURATION_IN_NANOS)
                             .withEndTime(endTime)
                             .build()
             );
