@@ -70,7 +70,7 @@ public class OtelTraceSourceConfigTests {
                 true,
                 TEST_KEY_CERT,
                 TEST_KEY,
-                RecordType.otlp.name(),
+                RecordType.OTLP.toString(),
                 TEST_THREAD_COUNT,
                 TEST_MAX_CONNECTION_COUNT);
 
@@ -103,7 +103,7 @@ public class OtelTraceSourceConfigTests {
                 true,
                 TEST_KEY_CERT_S3,
                 TEST_KEY_S3,
-                RecordType.otlp.name(),
+                RecordType.OTLP.toString(),
                 TEST_THREAD_COUNT,
                 TEST_MAX_CONNECTION_COUNT);
 
@@ -135,7 +135,7 @@ public class OtelTraceSourceConfigTests {
                 false,
                 true, null,
                 TEST_KEY,
-                RecordType.otlp.name(),
+                RecordType.OTLP.toString(),
                 DEFAULT_THREAD_COUNT,
                 DEFAULT_MAX_CONNECTION_COUNT);
 
@@ -158,7 +158,7 @@ public class OtelTraceSourceConfigTests {
                 true,
                 "",
                 TEST_KEY,
-                RecordType.otlp.name(),
+                RecordType.OTLP.toString(),
                 DEFAULT_THREAD_COUNT,
                 DEFAULT_MAX_CONNECTION_COUNT);
 
@@ -181,7 +181,7 @@ public class OtelTraceSourceConfigTests {
                 true,
                 TEST_KEY_CERT,
                 "",
-                RecordType.otlp.name(),
+                RecordType.OTLP.toString(),
                 DEFAULT_THREAD_COUNT,
                 DEFAULT_MAX_CONNECTION_COUNT);
 
@@ -208,7 +208,7 @@ public class OtelTraceSourceConfigTests {
                 TEST_MAX_CONNECTION_COUNT);
 
         final OTelTraceSourceConfig otelTraceSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class);
-        otelTraceSourceConfig.validateRecordType();
+        assertEquals(recordType, otelTraceSourceConfig.getRecordType().toString());
     }
 
     @Test
@@ -227,8 +227,7 @@ public class OtelTraceSourceConfigTests {
                 TEST_THREAD_COUNT,
                 TEST_MAX_CONNECTION_COUNT);
 
-        final OTelTraceSourceConfig otelTraceSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class);
-        assertThrows(IllegalArgumentException.class, otelTraceSourceConfig::validateRecordType);
+        assertThrows(IllegalArgumentException.class, () -> OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class));
     }
 
     private PluginSetting completePluginSettingForOtelTraceSource(final int requestTimeoutInMillis,

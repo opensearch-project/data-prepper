@@ -128,7 +128,7 @@ public class OTelTraceGrpcServiceTest {
 
     @Test
     public void export_Success_responseObserverOnCompleted_withOTLPRecordType() throws Exception {
-        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.otlp);
+        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.OTLP);
         objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
 
         verify(buffer, times(1)).write(recordCaptor.capture(), anyInt());
@@ -143,7 +143,7 @@ public class OTelTraceGrpcServiceTest {
 
     @Test
     public void export_Success_responseObserverOnCompleted_withEventRecordType() throws Exception {
-        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.event);
+        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.EVENT);
         objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
 
         verify(buffer, times(1)).writeAll(recordsCaptor.capture(), anyInt());
@@ -166,7 +166,7 @@ public class OTelTraceGrpcServiceTest {
 
     @Test
     public void export_BufferTimeout_responseObserverOnError_withOTLPRecordType() throws Exception {
-        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.otlp);
+        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.OTLP);
         doThrow(new TimeoutException()).when(buffer).write(any(Record.class), anyInt());
 
         objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
@@ -190,7 +190,7 @@ public class OTelTraceGrpcServiceTest {
 
     @Test
     public void export_BufferTimeout_responseObserverOnError_withEventRecordType() throws Exception {
-        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.event);
+        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.EVENT);
         doThrow(new TimeoutException()).when(buffer).writeAll(any(Collection.class), anyInt());
 
         objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
@@ -217,7 +217,7 @@ public class OTelTraceGrpcServiceTest {
         final String testMessage = "test message";
         final RuntimeException testException = new RuntimeException(testMessage);
         when(mockOTelProtoDecoder.parseExportTraceServiceRequest(any())).thenThrow(testException);
-        objectUnderTest = generateOTelTraceGrpcService(mockOTelProtoDecoder, RecordType.event);
+        objectUnderTest = generateOTelTraceGrpcService(mockOTelProtoDecoder, RecordType.EVENT);
         objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
 
         verifyNoInteractions(buffer);
@@ -242,7 +242,7 @@ public class OTelTraceGrpcServiceTest {
     public void export_RequestTooLarge_responseObserverOnError() throws Exception {
         final String testMessage = "test message";
         doThrow(new SizeOverflowException(testMessage)).when(buffer).writeAll(any(Collection.class), anyInt());
-        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.event);
+        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.EVENT);
         objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
 
         verify(buffer, times(1)).writeAll(any(Collection.class), anyInt());
@@ -266,7 +266,7 @@ public class OTelTraceGrpcServiceTest {
     public void export_BufferInternalException_responseObserverOnError() throws Exception {
         final String testMessage = "test message";
         doThrow(new IOException(testMessage)).when(buffer).writeAll(any(Collection.class), anyInt());
-        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.event);
+        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.EVENT);
         objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
 
         verify(buffer, times(1)).writeAll(any(Collection.class), anyInt());

@@ -5,6 +5,9 @@
 
 package com.amazon.dataprepper.plugins.source.oteltrace;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,13 +18,25 @@ import java.util.Map;
  * TODO: remove in 2.0
  */
 enum RecordType {
-    otlp,
-    event;
+    @JsonProperty("otlp")
+    OTLP("otlp"),
+    @JsonProperty("event")
+    EVENT("event");
 
     private static final Map<String, RecordType> NAMES_MAP = new HashMap<>();
 
     static {
         Arrays.stream(RecordType.values()).forEach(recordType -> NAMES_MAP.put(recordType.name(), recordType));
+    }
+
+    private final String name;
+
+    RecordType(final String name) {
+        this.name = name;
+    }
+
+    public String toString() {
+        return this.name;
     }
 
     public static boolean contains(final String name) {

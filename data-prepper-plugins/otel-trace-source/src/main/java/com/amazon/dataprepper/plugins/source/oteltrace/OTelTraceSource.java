@@ -58,7 +58,6 @@ public class OTelTraceSource implements Source<Record<Object>> {
     // accessible only in the same package for unit test
     OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final CertificateProviderFactory certificateProviderFactory) {
         oTelTraceSourceConfig.validateAndInitializeCertAndKeyFileInS3();
-        oTelTraceSourceConfig.validateRecordType();
         this.oTelTraceSourceConfig = oTelTraceSourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.certificateProviderFactory = certificateProviderFactory;
@@ -75,7 +74,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
 
             final OTelTraceGrpcService oTelTraceGrpcService = new OTelTraceGrpcService(
                     oTelTraceSourceConfig.getRequestTimeoutInMillis(),
-                    RecordType.valueOf(oTelTraceSourceConfig.getRecordType()),
+                    oTelTraceSourceConfig.getRecordType(),
                     new OTelProtoCodec.OTelProtoDecoder(),
                     buffer,
                     pluginMetrics

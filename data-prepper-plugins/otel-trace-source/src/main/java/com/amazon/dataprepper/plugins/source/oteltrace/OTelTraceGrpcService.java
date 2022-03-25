@@ -78,7 +78,7 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
 
     @Override
     public void export(ExportTraceServiceRequest request, StreamObserver<ExportTraceServiceResponse> responseObserver) {
-        if (recordType.equals(RecordType.otlp)) {
+        if (recordType == RecordType.OTLP) {
             requestProcessDuration.record(() -> processRequestWithoutDecoding(request, responseObserver));
         } else {
             requestProcessDuration.record(() -> processRequest(request, responseObserver));

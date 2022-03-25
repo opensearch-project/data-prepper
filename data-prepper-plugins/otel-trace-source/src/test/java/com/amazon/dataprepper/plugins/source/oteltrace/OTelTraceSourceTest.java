@@ -170,7 +170,7 @@ public class OTelTraceSourceTest {
     }
 
     private static Stream<Arguments> recordTypeArguments() {
-        return Stream.of(Arguments.of(RecordType.otlp.name()), Arguments.of(RecordType.event.name()));
+        return Stream.of(Arguments.of(RecordType.OTLP.toString()), Arguments.of(RecordType.EVENT.toString()));
     }
 
     @BeforeEach
@@ -189,7 +189,7 @@ public class OTelTraceSourceTest {
         final GrpcAuthenticationProvider authenticationProvider = mock(GrpcBasicAuthenticationProvider.class);
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
-        configureObjectUnderTest(RecordType.event.name());
+        configureObjectUnderTest(RecordType.EVENT.toString());
         buffer = getBuffer();
     }
 
