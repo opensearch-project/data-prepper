@@ -12,8 +12,15 @@ import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.amazon.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.*;
-import static org.junit.Assert.*;
+import static com.amazon.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_MAX_CONNECTION_COUNT;
+import static com.amazon.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_PORT;
+import static com.amazon.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
+import static com.amazon.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_THREAD_COUNT;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 public class OtelMetricsSourceConfigTests {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
