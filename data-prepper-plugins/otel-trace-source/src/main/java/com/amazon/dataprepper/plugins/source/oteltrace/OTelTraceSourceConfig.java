@@ -25,6 +25,7 @@ public class OTelTraceSourceConfig {
     static final String THREAD_COUNT = "thread_count";
     static final String MAX_CONNECTION_COUNT = "max_connection_count";
     static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
+    static final String RECORD_TYPE = "record_type";
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final int DEFAULT_PORT = 21890;
     static final int DEFAULT_THREAD_COUNT = 200;
@@ -35,6 +36,7 @@ public class OTelTraceSourceConfig {
     static final boolean DEFAULT_PROTO_REFLECTION_SERVICE = false;
     static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
     static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
+    static final RecordType DEFAULT_RECORD_TYPE = RecordType.OTLP;
     private static final String S3_PREFIX = "s3://";
 
     @JsonProperty(REQUEST_TIMEOUT)
@@ -86,6 +88,9 @@ public class OTelTraceSourceConfig {
 
     @JsonProperty("authentication")
     private PluginModel authentication;
+
+    @JsonProperty(RECORD_TYPE)
+    private RecordType recordType = DEFAULT_RECORD_TYPE;
 
     public void validateAndInitializeCertAndKeyFileInS3() {
         boolean certAndKeyFileInS3 = false;
@@ -183,4 +188,8 @@ public class OTelTraceSourceConfig {
     }
 
     public PluginModel getAuthentication() { return authentication; }
+
+    public RecordType getRecordType() {
+        return recordType;
+    }
 }

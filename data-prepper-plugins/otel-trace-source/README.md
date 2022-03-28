@@ -20,6 +20,9 @@ source:
 * thread_count(Optional) => the number of threads to keep in the ScheduledThreadPool. Default is `200`.
 * max_connection_count(Optional) => the maximum allowed number of open connections. Default is `500`. 
 * authentication(Optional) => An authentication configuration. By default, this runs an unauthenticated server. See below for more information.
+* record_type(Optional) => A string represents the supported record data type that will be written into the buffer plugin. Its value takes either `otlp` or `event`. Default is `otlp`.
+  * `otlp`: otel-trace-source will write each incoming ExportTraceServiceRequest as record data type into the buffer.
+  * `event`: otel-trace-source will decode each incoming ExportTraceServiceRequest into collection of Data Prepper internal spans serving as buffer items. To achieve better performance in this mode, it is recommended to set the buffer capacity proportional to the estimated number of spans in the incoming request payload. 
 
 ### Authentication Configurations
 
