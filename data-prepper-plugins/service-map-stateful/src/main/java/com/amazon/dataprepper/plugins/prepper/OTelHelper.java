@@ -10,6 +10,7 @@ import io.opentelemetry.proto.trace.v1.Span;
 
 import java.util.Optional;
 
+// TODO: remove in 2.0
 public class OTelHelper {
 
     static final String SERVICE_NAME_KEY = "service.name";
