@@ -37,8 +37,4 @@ enum RecordType {
     public String toString() {
         return this.name;
     }
-
-    public static boolean contains(final String name) {
-        return NAMES_MAP.containsKey(name);
-    }
 }
