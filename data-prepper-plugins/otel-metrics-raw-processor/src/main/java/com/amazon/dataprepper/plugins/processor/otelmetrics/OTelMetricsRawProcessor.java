@@ -150,6 +150,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                         .withTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
                         .withServiceName(serviceName)
                         .withSum(dp.getSum())
+                        .withCount(dp.getCount())
                         .withBucketCount(dp.getBucketCountsCount())
                         .withExplicitBoundsCount(dp.getExplicitBoundsCount())
                         .withAggregationTemporality(metric.getHistogram().getAggregationTemporality().toString())

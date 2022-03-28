@@ -40,6 +40,7 @@ class JacksonHistogramTest {
             new DefaultBucket(5.0, 10.0, 5L)
     );
     private static final Integer TEST_BUCKETS_COUNT = 2;
+    private static final Long TEST_COUNT = 2L;
     private static final Integer TEST_EXPLICIT_BOUNDS_COUNT = 2;
     private static final String TEST_AGGREGATION_TEMPORALITY = "AGGREGATIONTEMPORALITY";
 
@@ -59,6 +60,7 @@ class JacksonHistogramTest {
                 .withUnit(TEST_UNIT_NAME)
                 .withServiceName(TEST_SERVICE_NAME)
                 .withSum(TEST_SUM)
+                .withCount(TEST_COUNT)
                 .withBucketCount(TEST_BUCKETS_COUNT)
                 .withBuckets(TEST_BUCKETS)
                 .withExplicitBoundsCount(TEST_EXPLICIT_BOUNDS_COUNT)
@@ -99,6 +101,12 @@ class JacksonHistogramTest {
     public void testGetSum() {
         final Double sum = histogram.getSum();
         assertThat(sum, is(equalTo(TEST_SUM)));
+    }
+
+    @Test
+    public void testGetCount() {
+        final Long count = histogram.getCount();
+        assertThat(count, is(equalTo(TEST_COUNT)));
     }
 
     @Test

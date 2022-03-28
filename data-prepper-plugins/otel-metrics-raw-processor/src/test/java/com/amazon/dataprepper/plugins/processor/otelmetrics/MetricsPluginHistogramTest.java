@@ -106,6 +106,7 @@ public class MetricsPluginHistogramTest {
         assertThat(map).contains(entry("name", "name"));
         assertThat(map).contains(entry("bucketCounts", 4));
         assertThat(map).contains(entry("sum", (1d / 3d)));
+        assertThat(map).contains(entry("count", 4));
         assertThat(map).contains(entry("serviceName", "service"));
         assertThat(map).contains(entry("aggregationTemporality", "AGGREGATION_TEMPORALITY_UNSPECIFIED"));
 

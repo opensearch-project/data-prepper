@@ -24,6 +24,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class JacksonHistogram extends JacksonMetric implements Histogram {
 
     private static final String SUM_KEY = "sum";
+    private static final String COUNT_KEY = "count";
     private static final String AGGREGATION_TEMPORALITY_KEY = "aggregationTemporality";
     private static final String BUCKET_COUNTS_KEY = "bucketCounts";
     private static final String EXPLICIT_BOUNDS_COUNT_KEY = "explicitBoundsCount";
@@ -47,6 +48,11 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
     @Override
     public Double getSum() {
         return this.get(SUM_KEY, Double.class);
+    }
+
+    @Override
+    public Long getCount() {
+        return this.get(COUNT_KEY, Long.class);
     }
 
     @Override
@@ -89,6 +95,17 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          */
         public JacksonHistogram.Builder withSum(double sum) {
             data.put(SUM_KEY, sum);
+            return this;
+        }
+
+        /**
+         * Sets the count of the histogram. Must be equal to the sum of the "count" fields in buckets
+         * @param count the number of values in the population
+         * @return the builder
+         * @since 1.4
+         */
+        public JacksonHistogram.Builder withCount(long count) {
+            data.put(COUNT_KEY, count);
             return this;
         }
 
