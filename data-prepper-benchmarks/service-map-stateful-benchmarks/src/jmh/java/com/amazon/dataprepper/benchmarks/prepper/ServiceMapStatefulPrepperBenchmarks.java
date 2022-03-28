@@ -43,7 +43,7 @@ public class ServiceMapStatefulPrepperBenchmarks {
     private static final Random RANDOM = new Random();
     private static final List<String> serviceNames = Arrays.asList("FRONTEND", "BACKEND", "PAYMENT", "CHECKOUT", "DATABASE");
     private static final List<String> traceGroups = Arrays.asList("tg1", "tg2", "tg3", "tg4", "tg5", "tg6", "tg7", "tg8", "tg9");
-    private List<Record<ExportTraceServiceRequest>> batch;
+    private List<Record<Object>> batch;
 
     @Param(value = "100")
     private int batchSize;
