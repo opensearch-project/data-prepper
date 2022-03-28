@@ -29,7 +29,7 @@ FluentBit is tailing to collect logs from.
 4. Now that you understand a bit more about how FluentBit and OpenSearch are set up, run them with:
 
 ```
-docker-compose up -d
+docker-compose --project-name data-prepper up
 ```
 
 ### Data Prepper Setup
@@ -49,7 +49,7 @@ and send the processed logs to a local [OpenSearch sink](../../data-prepper-plug
 FluentBit is able to send logs to the http source of Data Prepper.
 
 ```
-docker run --name data-prepper -v /full/path/to/log_pipeline.yaml:/usr/share/data-prepper/pipelines.yaml --network "log-ingestion_opensearch-net" opensearch-data-prepper:latest
+docker run --name data-prepper -v /full/path/to/log_pipeline.yaml:/usr/share/data-prepper/pipelines.yaml --network "data-prepper_opensearch-net" opensearchproject/data-prepper:latest
 ```
 
 If Data Prepper is running correctly, you should see something similar to the following line as the latest output in your terminal.
