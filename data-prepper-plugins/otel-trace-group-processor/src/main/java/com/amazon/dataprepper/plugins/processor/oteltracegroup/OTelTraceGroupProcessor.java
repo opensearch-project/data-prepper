@@ -165,8 +165,7 @@ public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Rec
                 traceGroupStatusCodeDocField).allMatch(Objects::nonNull)) {
             final String traceId = traceIdDocField.getValue();
             final String traceGroupName = traceGroupNameDocField.getValue();
-            // Restore trailing zeros for thousand, e.g. 2020-08-20T05:40:46.0895568Z -> 2020-08-20T05:40:46.089556800Z
-            final String traceGroupEndTime = Instant.parse(traceGroupEndTimeDocField.getValue()).toString();
+            final String traceGroupEndTime = normalizeDateTime(traceGroupEndTimeDocField.getValue());
             final Number traceGroupDurationInNanos = traceGroupDurationInNanosDocField.getValue();
             final Number traceGroupStatusCode = traceGroupStatusCodeDocField.getValue();
             final TraceGroupFields traceGroupFields = DefaultTraceGroupFields.builder()
@@ -181,6 +180,13 @@ public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Rec
             return Optional.of(new AbstractMap.SimpleEntry<>(traceId, traceGroup));
         }
         return Optional.empty();
+    }
+
+    /**
+     * Restores trailing zeros for thousand, e.g. 2020-08-20T05:40:46.0895568Z -> 2020-08-20T05:40:46.089556800Z
+     */
+    private String normalizeDateTime(String dateTimeString) {
+        return Instant.parse(dateTimeString).toString();
     }
 
     @Override
