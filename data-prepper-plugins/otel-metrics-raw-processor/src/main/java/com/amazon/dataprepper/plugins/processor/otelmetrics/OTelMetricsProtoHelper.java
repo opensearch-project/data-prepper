@@ -55,14 +55,14 @@ public final class OTelMetricsProtoHelper {
     public static final Function<String, String> PREFIX_AND_SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> SPAN_ATTRIBUTES + DOT + i.replace(DOT, AT);
     public static final Function<String, String> PREFIX_AND_RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> RESOURCE_ATTRIBUTES + DOT + i.replace(DOT, AT);
 
-    private OTelMetricsProtoHelper() {}
+    private OTelMetricsProtoHelper() {
+    }
 
 
     /**
      * Converts an {@link AnyValue} into its appropriate data type
      *
      * @param value The value to convert
-     *
      * @return
      */
     public static Object convertAnyValue(final AnyValue value) {
@@ -106,8 +106,7 @@ public final class OTelMetricsProtoHelper {
      * Also, casts the underlying data into its actual type
      *
      * @param numberDataPoint The point to process
-     *
-     * @return  A Map containing all attributes of `numberDataPoint` with keys converted into an OS-friendly format
+     * @return A Map containing all attributes of `numberDataPoint` with keys converted into an OS-friendly format
      */
     public static Map<String, Object> convertKeysOfDataPointAttributes(final NumberDataPoint numberDataPoint) {
         return numberDataPoint.getAttributesList().stream()
@@ -116,12 +115,11 @@ public final class OTelMetricsProtoHelper {
 
     /**
      * Unpacks the List of {@link KeyValue} object into a Map.
-     *
+     * <p>
      * Converts the keys into an os friendly format and casts the underlying data into its actual type?
      *
      * @param attributesList The list of {@link KeyValue} objects to process
-     *
-     * @return  A Map containing unpacked {@link KeyValue} data
+     * @return A Map containing unpacked {@link KeyValue} data
      */
     public static Map<String, Object> unpackKeyValueList(List<KeyValue> attributesList) {
         return attributesList.stream()
@@ -132,8 +130,7 @@ public final class OTelMetricsProtoHelper {
      * Extracts a value from the passed {@link NumberDataPoint} into a double representation
      *
      * @param ndp The {@link NumberDataPoint} which's data should be turned into a double value
-     *
-     * @return  A double representing the numerical value of the passed {@link NumberDataPoint}.
+     * @return A double representing the numerical value of the passed {@link NumberDataPoint}.
      * Null if the numerical data point is not present
      */
     public static Double getValueAsDouble(final NumberDataPoint ndp) {
@@ -142,7 +139,7 @@ public final class OTelMetricsProtoHelper {
             return ndp.getAsDouble();
         } else if (NumberDataPoint.ValueCase.AS_INT == ndpCase) {
             return (double) ndp.getAsInt();
-        } else  {
+        } else {
             return null;
         }
     }
@@ -201,17 +198,52 @@ public final class OTelMetricsProtoHelper {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Create the buckets, see <a href="https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/metrics/v1/metrics.proto">
+     *     the OTel metrics proto spec</a>
+     * <p>
+     * The boundaries for bucket at index i are:
+     * <p>
+     * (-infinity, explicit_bounds[i]) for i == 0
+     * (explicit_bounds[i-1], +infinity) for i == size(explicit_bounds)
+     * (explicit_bounds[i-1], explicit_bounds[i]) for 0 < i < size(explicit_bounds)
+     *
+     * <br/>
+     * <br/>
+     * <b>NOTE:</b> here we map infinity as +/- FLOAT.MAX_VALUE since JSON rfc4627 only supports finite numbers and
+     * OpenSearch maps double values to floats as per default.
+     *
+     * @param bucketCountsList   a list with the bucket counts
+     * @param explicitBoundsList a list with the bounds
+     * @return buckets list
+     */
     public static List<Bucket> createBuckets(List<Long> bucketCountsList, List<Double> explicitBoundsList) {
         List<Bucket> buckets = new ArrayList<>();
+        if (bucketCountsList.isEmpty()) {
+            return buckets;
+        }
         if (bucketCountsList.size() - 1 != explicitBoundsList.size()) {
-            LOG.error("bucket count list not equals to bounds list {} {}", bucketCountsList.size(), explicitBoundsList.size() );
+            LOG.error("bucket count list not equals to bounds list {} {}", bucketCountsList.size(), explicitBoundsList.size());
+            throw new IllegalArgumentException("OpenTelemetry protocol mandates that the number of elements in bucket_counts array must be by one greater than\n" +
+                    "  // the number of elements in explicit_bounds array.");
         } else {
-            double previousBound = 0.0;
             for (int i = 0; i < bucketCountsList.size(); i++) {
-                Long bucketCount = bucketCountsList.get(i);
-                double bound = i == 0 ? previousBound : explicitBoundsList.get(i - 1);
-                buckets.add(new DefaultBucket(previousBound, bound, bucketCount));
-                previousBound = bound;
+                if (i == 0) {
+                    double min = -Float.MAX_VALUE; // "-Infinity"
+                    double max = explicitBoundsList.get(i);
+                    Long bucketCount = bucketCountsList.get(i);
+                    buckets.add(new DefaultBucket(min, max, bucketCount));
+                } else if (i == bucketCountsList.size() - 1) {
+                    double min = explicitBoundsList.get(i - 1);
+                    double max = Float.MAX_VALUE; // "Infinity"
+                    Long bucketCount = bucketCountsList.get(i);
+                    buckets.add(new DefaultBucket(min, max, bucketCount));
+                } else {
+                    double min = explicitBoundsList.get(i - 1);
+                    double max = explicitBoundsList.get(i);
+                    Long bucketCount = bucketCountsList.get(i);
+                    buckets.add(new DefaultBucket(min, max, bucketCount));
+                }
             }
         }
         return buckets;

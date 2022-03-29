@@ -5,7 +5,6 @@
 
 package com.amazon.dataprepper.model.event;
 
-import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -55,8 +54,7 @@ public class JacksonEvent implements Event {
     private static final String SEPARATOR = "/";
 
     private static final ObjectMapper mapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule())
-            .enable(JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN); // No scientific notation for decimals
+            .registerModule(new JavaTimeModule());
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
 

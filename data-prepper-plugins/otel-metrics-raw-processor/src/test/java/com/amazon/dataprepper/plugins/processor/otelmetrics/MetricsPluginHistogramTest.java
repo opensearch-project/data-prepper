@@ -70,10 +70,10 @@ public class MetricsPluginHistogramTest {
         ObjectMapper objectMapper = new ObjectMapper();
         Map<Object, Object> map = objectMapper.readValue(record.getData().toJsonString(), Map.class);
 
-        DefaultBucket bucket_0 = new DefaultBucket(0.0, 0.0, 0L);
-        DefaultBucket bucket_1 = new DefaultBucket(0.0, bound_0, 5L);
-        DefaultBucket bucket_2 = new DefaultBucket(bound_0, bound_1, 17L);
-        DefaultBucket bucket_3 = new DefaultBucket(bound_1, bound_2, 33L);
+        DefaultBucket bucket_0 = new DefaultBucket((double) -Float.MAX_VALUE, bound_0, 0L);
+        DefaultBucket bucket_1 = new DefaultBucket(bound_0, bound_1, 5L);
+        DefaultBucket bucket_2 = new DefaultBucket(bound_1, bound_2, 17L);
+        DefaultBucket bucket_3 = new DefaultBucket(bound_2, (double) Float.MAX_VALUE, 33L);
         assertHistogramProcessing(map, Arrays.asList(bucket_0, bucket_1, bucket_2, bucket_3));
     }
 
