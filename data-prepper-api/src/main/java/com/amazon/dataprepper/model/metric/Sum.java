@@ -12,22 +12,22 @@ package com.amazon.dataprepper.model.metric;
 public interface Sum extends Metric {
 
     /**
-     * Gets the value for a gauge
+     * Gets the value for a sum
      * @return the value
      * @since 1.4
      */
     Double getValue();
 
     /**
-     * Gets the value for a gauge
-     * @return the value
+     * Gets the aggregation temporality for a sum
+     * @return the aggregation temporality
      * @since 1.4
      */
     String getAggregationTemporality();
 
     /**
-     * Gets the value for a gauge
-     * @return the value
+     * Gets if a sum is monotonic
+     * @return if the sum is monotonic or not
      * @since 1.4
      */
     boolean isMonotonic();

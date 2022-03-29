@@ -117,10 +117,10 @@ class JacksonHistogramTest {
 
     @Test
     public void testGetBuckets() {
-        final List<? extends Bucket> quantiles = histogram.getBuckets();
-        assertThat(quantiles.size(), is(equalTo(2)));
-        Bucket firstBucket = quantiles.get(0);
-        Bucket secondBucket = quantiles.get(1);
+        final List<? extends Bucket> buckets = histogram.getBuckets();
+        assertThat(buckets.size(), is(equalTo(2)));
+        Bucket firstBucket = buckets.get(0);
+        Bucket secondBucket = buckets.get(1);
 
         assertThat(firstBucket.getMin(), is(equalTo(0.0)));
         assertThat(firstBucket.getMax(), is(equalTo(5.0)));

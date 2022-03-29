@@ -103,7 +103,7 @@ public class JacksonSum extends JacksonMetric implements Sum {
 
         /**
          * Returns a newly created
-         * @return a JacksonSpan
+         * @return a JacksonSum
          * @since 1.4
          */
         public JacksonSum build() {

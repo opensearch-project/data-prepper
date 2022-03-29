@@ -6,7 +6,6 @@
 package com.amazon.dataprepper.model.metric;
 
 import com.amazon.dataprepper.model.event.EventType;
-import com.amazon.dataprepper.model.trace.JacksonSpan;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -154,8 +153,8 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
         }
 
         /**
-         * Returns a newly created {@link JacksonSpan}
-         * @return a JacksonSpan
+         * Returns a newly created {@link JacksonHistogram}
+         * @return a JacksonHistogram
          * @since 1.4
          */
         public JacksonHistogram build() {
