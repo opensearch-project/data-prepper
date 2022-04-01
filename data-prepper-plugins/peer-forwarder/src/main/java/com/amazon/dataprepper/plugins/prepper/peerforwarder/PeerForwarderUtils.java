@@ -5,16 +5,18 @@
 
 package com.amazon.dataprepper.plugins.prepper.peerforwarder;
 
+import com.amazon.dataprepper.model.trace.Span;
 import com.linecorp.armeria.internal.shaded.bouncycastle.util.encoders.Hex;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
-import io.opentelemetry.proto.trace.v1.Span;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public final class PeerForwarderUtils {
     public static int getResourceSpansSize(final ResourceSpans rs) {
@@ -25,7 +27,7 @@ public final class PeerForwarderUtils {
         final List<Map.Entry<String, ResourceSpans>> result = new ArrayList<>();
         for (final InstrumentationLibrarySpans ils: rs.getInstrumentationLibrarySpansList()) {
             final Map<String, ResourceSpans.Builder> batches = new HashMap<>();
-            for (final Span span: ils.getSpansList()) {
+            for (final io.opentelemetry.proto.trace.v1.Span span: ils.getSpansList()) {
                 final String sTraceId = Hex.toHexString(span.getTraceId().toByteArray());
                 if (!batches.containsKey(sTraceId)) {
                     final ResourceSpans.Builder newRSBuilder = ResourceSpans.newBuilder()
@@ -42,5 +44,9 @@ public final class PeerForwarderUtils {
         }
 
         return result;
+    }
+
+    public static Map<String, List<Span>> splitByTrace(final Collection<Span> spans) {
+        return spans.stream().collect(Collectors.groupingBy(Span::getTraceId));
     }
 }
