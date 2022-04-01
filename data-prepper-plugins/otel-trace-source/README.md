@@ -95,7 +95,6 @@ curl -k -H 'Content-Type: application/json; charset=utf-8'  -d '{"resourceSpans"
 - `requestsReceived`: measures total number of requests received by otel trace source.
 - `successRequests`: measures total number of requests successfully processed by otel trace source plugin.
 - `badRequests`: measures total number of requests with invalid format processed by otel trace source plugin.
-- `requestTimeouts`: measures total number of requests that time out.
 - `requestsTooLarge`: measures total number of requests of which the number of spans in the content is larger than the buffer capacity.
 - `internalServerError`: measures total number of requests processed by otel trace source with custom exception type.
 
