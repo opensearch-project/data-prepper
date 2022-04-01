@@ -84,7 +84,7 @@ compileJava.options.warnings = false
 // Resolve dependency conflict between ES sink and main project
 configurations.all {
     resolutionStrategy {
-        force 'com.amazonaws:aws-java-sdk-core:1.12.159'
+        force 'com.amazonaws:aws-java-sdk-core:1.12.190'
         force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.2'
         force 'com.fasterxml.jackson.core:jackson-annotations:2.13.2'
         force 'com.fasterxml.jackson.core:jackson-databind:2.13.2'
