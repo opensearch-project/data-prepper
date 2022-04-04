@@ -111,8 +111,7 @@ public class EndToEndServiceMapTest {
                 .flatMap(Collection::stream).collect(Collectors.toList());
         possibleEdges.addAll(getPossibleEdges(TEST_TRACEID_2, testDataSet2));
         // Wait for service map prepper by 2 * window_duration
-        Thread.sleep(6000);
-        await().atMost(20, TimeUnit.SECONDS).untilAsserted(
+        await().atLeast(8, TimeUnit.SECONDS).atMost(20, TimeUnit.SECONDS).untilAsserted(
                 () -> {
                     final List<Map<String, Object>> foundSources = getSourcesFromIndex(restHighLevelClient, SERVICE_MAP_INDEX_NAME);
                     foundSources.forEach(source -> source.remove("hashId"));
