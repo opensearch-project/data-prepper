@@ -24,5 +24,8 @@ jobs:
           java-version: ${{ matrix.java }}
       - name: Checkout Data-Prepper
         uses: actions/checkout@v2
-      - name: Run service-map end-to-end tests with Gradle
-        run: ./gradlew :e2e-test:trace:serviceMapEndToEndTest
+        # TODO: Event record type only in 2.0
+      - name: Run service-map OTLP record type end-to-end tests with Gradle
+        run: ./gradlew :e2e-test:trace:serviceMapOTLPEndToEndTest
+      - name: Run service-map OTLP and Event end-to-end tests with Gradle
+        run: ./gradlew :e2e-test:trace:serviceMapOTLPAndEventEndToEndTest

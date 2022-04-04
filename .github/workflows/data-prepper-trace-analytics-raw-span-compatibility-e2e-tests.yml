@@ -24,5 +24,8 @@ jobs:
         java-version: ${{ matrix.java }}
     - name: Checkout Data-Prepper
       uses: actions/checkout@v2
-    - name: Run raw-span compatibility end-to-end tests with Gradle
-      run: ./gradlew :e2e-test:trace:rawSpanCompatibilityEndToEndTest
+      # TODO: Event record type only in 2.0
+    - name: Run raw-span OTLP record type latest release compatibility end-to-end tests with Gradle
+      run: ./gradlew :e2e-test:trace:rawSpanOTLPLatestReleaseCompatibilityEndToEndTest
+    - name: Run raw-span Event record type latest release compatibility end-to-end tests with Gradle
+      run: ./gradlew :e2e-test:trace:rawSpanEventLatestReleaseCompatibilityEndToEndTest
