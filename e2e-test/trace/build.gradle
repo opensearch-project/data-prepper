@@ -154,227 +154,100 @@ task stopOpenSearchDockerContainer(type: DockerStopContainer) {
  * End to end test. Spins up OpenSearch and DataPrepper docker containers, then runs the integ test
  * Stops the docker containers when finished
  */
-task rawSpanEndToEndTest(type: Test) {
-    dependsOn build
-    dependsOn startOpenSearchDockerContainer
-    def createDataPrepper1Task = createDataPrepperDockerContainer(
-            "rawSpanDataPrepper1", "dataprepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_YAML}")
-    def createDataPrepper2Task = createDataPrepperDockerContainer(
-            "rawSpanDataPrepper2", "dataprepper2", 21891, 4901, "/app/${RAW_SPAN_PIPELINE_YAML}")
-    def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
-    def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
-    dependsOn startDataPrepper1Task
-    dependsOn startDataPrepper2Task
-    startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
-    startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
-    // wait for data-preppers to be ready
-    doFirst {
-        sleep(10*1000)
+def createEndToEndTest(final String testName, final String includeTestsMatchPattern,
+                       final DockerCreateContainer createDataPrepper1Task, final DockerCreateContainer createDataPrepper2Task) {
+    return tasks.create(testName, Test) {
+        dependsOn build
+        dependsOn startOpenSearchDockerContainer
+        def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
+        def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
+        dependsOn startDataPrepper1Task
+        dependsOn startDataPrepper2Task
+        startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
+        startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
+        // wait for data-preppers to be ready
+        doFirst {
+            sleep(10*1000)
+        }
+
+        description = 'Runs the raw span integration tests.'
+        group = 'verification'
+        testClassesDirs = sourceSets.integrationTest.output.classesDirs
+        classpath = sourceSets.integrationTest.runtimeClasspath
+
+        filter {
+            includeTestsMatching includeTestsMatchPattern
+        }
+
+        finalizedBy stopOpenSearchDockerContainer
+        def stopDataPrepper1Task = stopDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
+        def stopDataPrepper2Task = stopDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
+        finalizedBy stopDataPrepper1Task
+        finalizedBy stopDataPrepper2Task
+        finalizedBy removeDataPrepperDockerContainer(stopDataPrepper1Task as DockerStopContainer)
+        finalizedBy removeDataPrepperDockerContainer(stopDataPrepper2Task as DockerStopContainer)
+        finalizedBy removeDataPrepperNetwork
     }
-
-    description = 'Runs the raw span integration tests.'
-    group = 'verification'
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-    classpath = sourceSets.integrationTest.runtimeClasspath
-
-    filter {
-        includeTestsMatching "com.amazon.dataprepper.integration.trace.EndToEndRawSpanTest.testPipelineEndToEnd*"
-    }
-
-    finalizedBy stopOpenSearchDockerContainer
-    def stopDataPrepper1Task = stopDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
-    def stopDataPrepper2Task = stopDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
-    finalizedBy stopDataPrepper1Task
-    finalizedBy stopDataPrepper2Task
-    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper1Task as DockerStopContainer)
-    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper2Task as DockerStopContainer)
-    finalizedBy removeDataPrepperNetwork
 }
 
-task rawSpanEndToEndTestEventMigrationCompatibility(type: Test) {
-    dependsOn build
-    dependsOn startOpenSearchDockerContainer
-    def createDataPrepper1Task = createDataPrepperDockerContainer(
-            "rawSpanDataPrepperOTLP", "dataprepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_YAML}")
-    def createDataPrepper2Task = createDataPrepperDockerContainer(
-            "rawSpanDataPrepperEvent", "dataprepper2", 21891, 4901, "/app/${RAW_SPAN_PIPELINE_EVENT_TYPE_YAML}")
-    def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
-    def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
-    dependsOn startDataPrepper1Task
-    dependsOn startDataPrepper2Task
-    startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
-    startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
-    // wait for data-preppers to be ready
-    doFirst {
-        sleep(10*1000)
-    }
+def includeRawSpanTestsMatchPattern = "com.amazon.dataprepper.integration.trace.EndToEndRawSpanTest.testPipelineEndToEnd*"
 
-    description = 'Runs the raw span integration tests.'
-    group = 'verification'
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-    classpath = sourceSets.integrationTest.runtimeClasspath
+def createRawSpanDataPrepperOTLP1Task = createDataPrepperDockerContainer(
+        "rawSpanDataPrepper1", "dataprepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_YAML}")
+def createRawSpanDataPrepperOTLP2Task = createDataPrepperDockerContainer(
+        "rawSpanDataPrepper2", "dataprepper2", 21891, 4901, "/app/${RAW_SPAN_PIPELINE_YAML}")
 
-    filter {
-        includeTestsMatching "com.amazon.dataprepper.integration.trace.EndToEndRawSpanTest.testPipelineEndToEnd*"
-    }
+// TODO: replace with Event type in 2.0
+def rawSpanOTLPEndToEndTest = createEndToEndTest("rawSpanOTLPEndToEndTest", includeRawSpanTestsMatchPattern,
+        createRawSpanDataPrepperOTLP1Task, createRawSpanDataPrepperOTLP2Task)
 
-    finalizedBy stopOpenSearchDockerContainer
-    def stopDataPrepper1Task = stopDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
-    def stopDataPrepper2Task = stopDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
-    finalizedBy stopDataPrepper1Task
-    finalizedBy stopDataPrepper2Task
-    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper1Task as DockerStopContainer)
-    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper2Task as DockerStopContainer)
-    finalizedBy removeDataPrepperNetwork
-}
+def createRawSpanDataPrepperOTLPTask = createDataPrepperDockerContainer(
+        "rawSpanDataPrepperOTLP", "dataprepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_YAML}")
+def createRawSpanDataPrepperEventTask = createDataPrepperDockerContainer(
+        "rawSpanDataPrepperEvent", "dataprepper2", 21891, 4901, "/app/${RAW_SPAN_PIPELINE_EVENT_TYPE_YAML}")
 
-task rawSpanCompatibilityEndToEndTest(type: Test) {
-    dependsOn build
-    dependsOn startOpenSearchDockerContainer
-    def createDataPrepper1Task = createDataPrepperDockerContainer(
-            "rawSpanDataPrepperFromBuild", "dataprepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
-    def createDataPrepper2Task = createDataPrepperDockerContainerFromPullImage(
-            "rawSpanDataPrepperFromPull", "dataprepper2", 21891, 4901, "src/integrationTest/resources/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
-    def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
-    def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
-    dependsOn startDataPrepper1Task
-    dependsOn startDataPrepper2Task
-    startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
-    startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
-    // wait for data-preppers to be ready
-    doFirst {
-        sleep(10*1000)
-    }
+// TODO: remove in 2.0
+def rawSpanOTLPAndEventEndToEndTest = createEndToEndTest("rawSpanOTLPAndEventEndToEndTest", includeRawSpanTestsMatchPattern,
+        createRawSpanDataPrepperOTLPTask, createRawSpanDataPrepperEventTask)
 
-    description = 'Runs the raw span compatibility integration tests.'
-    group = 'verification'
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-    classpath = sourceSets.integrationTest.runtimeClasspath
+def rawSpanDataPrepperOTLPFromBuild = createDataPrepperDockerContainer(
+        "rawSpanDataPrepperOTLPFromBuild", "dataprepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
+def rawSpanDataPrepperOTLPFromPull = createDataPrepperDockerContainerFromPullImage(
+        "rawSpanDataPrepperOTLPFromPull", "dataprepper2", 21891, 4901, "src/integrationTest/resources/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
 
-    filter {
-        includeTestsMatching "com.amazon.dataprepper.integration.trace.EndToEndRawSpanTest.testPipelineEndToEnd*"
-    }
+// TODO: remove in 2.0
+def rawSpanOTLPLatestReleaseCompatibilityEndToEndTest = createEndToEndTest("rawSpanOTLPLatestReleaseCompatibilityEndToEndTest",
+        includeRawSpanTestsMatchPattern,
+        rawSpanDataPrepperOTLPFromBuild, rawSpanDataPrepperOTLPFromPull)
 
-    finalizedBy stopOpenSearchDockerContainer
-    def stopDataPrepper1Task = stopDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
-    def stopDataPrepper2Task = stopDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
-    finalizedBy stopDataPrepper1Task
-    finalizedBy stopDataPrepper2Task
-    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper1Task as DockerStopContainer)
-    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper2Task as DockerStopContainer)
-    finalizedBy removeDataPrepperNetwork
-}
+def rawSpanDataPrepperEventFromBuild = createDataPrepperDockerContainer(
+        "rawSpanDataPrepperEventFromBuild", "dataprepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_PEER_FORWARDER_EVENT_TYPE_YAML}")
+def rawSpanDataPrepperLatestFromPull = createDataPrepperDockerContainerFromPullImage(
+        "rawSpanDataPrepperLatestFromPull", "dataprepper2", 21891, 4901, "src/integrationTest/resources/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
 
-task rawSpanEventMigrationLatestReleaseCompatibilityEndToEndTest(type: Test) {
-    dependsOn build
-    dependsOn startOpenSearchDockerContainer
-    def createDataPrepper1Task = createDataPrepperDockerContainer(
-            "rawSpanDataPrepperEventFromBuild", "dataprepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_PEER_FORWARDER_EVENT_TYPE_YAML}")
-    def createDataPrepper2Task = createDataPrepperDockerContainerFromPullImage(
-            "rawSpanDataPrepperOTLPFromPull", "dataprepper2", 21891, 4901, "src/integrationTest/resources/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
-    def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
-    def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
-    dependsOn startDataPrepper1Task
-    dependsOn startDataPrepper2Task
-    startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
-    startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
-    // wait for data-preppers to be ready
-    doFirst {
-        sleep(10*1000)
-    }
+def rawSpanEventLatestReleaseCompatibilityEndToEndTest = createEndToEndTest("rawSpanEventLatestReleaseCompatibilityEndToEndTest",
+        includeRawSpanTestsMatchPattern,
+        rawSpanDataPrepperEventFromBuild, rawSpanDataPrepperLatestFromPull)
 
-    description = 'Runs the raw span compatibility integration tests.'
-    group = 'verification'
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-    classpath = sourceSets.integrationTest.runtimeClasspath
+def includeServiceMapTestsMatchPattern = "com.amazon.dataprepper.integration.trace.EndToEndServiceMapTest*"
 
-    filter {
-        includeTestsMatching "com.amazon.dataprepper.integration.trace.EndToEndRawSpanTest.testPipelineEndToEnd*"
-    }
+def createServiceMapDataPrepperOTLP1Task = createDataPrepperDockerContainer(
+        "serviceMapDataPrepper1", "dataprepper1", 21890, 4900, "/app/${SERVICE_MAP_PIPELINE_YAML}")
+def createServiceMapDataPrepperOTLP2Task = createDataPrepperDockerContainer(
+        "serviceMapDataPrepper2", "dataprepper2", 21891, 4901, "/app/${SERVICE_MAP_PIPELINE_YAML}")
 
-    finalizedBy stopOpenSearchDockerContainer
-    def stopDataPrepper1Task = stopDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
-    def stopDataPrepper2Task = stopDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
-    finalizedBy stopDataPrepper1Task
-    finalizedBy stopDataPrepper2Task
-    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper1Task as DockerStopContainer)
-    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper2Task as DockerStopContainer)
-    finalizedBy removeDataPrepperNetwork
-}
+// TODO: replace with Event type in 2.0
+def serviceMapOTLPEndToEndTest = createEndToEndTest("serviceMapOTLPEndToEndTest", includeServiceMapTestsMatchPattern,
+        createServiceMapDataPrepperOTLP1Task, createServiceMapDataPrepperOTLP2Task)
 
-task serviceMapEndToEndTest(type: Test) {
-    dependsOn build
-    dependsOn startOpenSearchDockerContainer
-    def createDataPrepper1Task = createDataPrepperDockerContainer(
-            "serviceMapDataPrepper1", "dataprepper1", 21890, 4900, "/app/${SERVICE_MAP_PIPELINE_YAML}")
-    def createDataPrepper2Task = createDataPrepperDockerContainer(
-            "serviceMapDataPrepper2", "dataprepper2", 21891, 4901, "/app/${SERVICE_MAP_PIPELINE_YAML}")
-    def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
-    def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
-    dependsOn startDataPrepper1Task
-    dependsOn startDataPrepper2Task
-    startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
-    startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
-    // wait for data-preppers to be ready
-    doFirst {
-        sleep(10*1000)
-    }
+def serviceMapDataPrepperOTLP = createDataPrepperDockerContainer(
+        "serviceMapDataPrepperOTLP", "dataprepper1", 21890, 4900, "/app/${SERVICE_MAP_PIPELINE_YAML}")
+def serviceMapDataPrepperEvent = createDataPrepperDockerContainer(
+        "serviceMapDataPrepperEvent", "dataprepper2", 21891, 4901, "/app/${SERVICE_MAP_PIPELINE_EVENT_TYPE_YAML}")
 
-    description = 'Runs the service-map integration tests.'
-    group = 'verification'
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-    classpath = sourceSets.integrationTest.runtimeClasspath
-
-    filter {
-        includeTestsMatching "com.amazon.dataprepper.integration.trace.EndToEndServiceMapTest*"
-    }
-
-    finalizedBy stopOpenSearchDockerContainer
-    def stopDataPrepper1Task = stopDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
-    def stopDataPrepper2Task = stopDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
-    finalizedBy stopDataPrepper1Task
-    finalizedBy stopDataPrepper2Task
-    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper1Task as DockerStopContainer)
-    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper2Task as DockerStopContainer)
-    finalizedBy removeDataPrepperNetwork
-}
-
-task serviceMapEndToEndTestEventMigrationCompatibility(type: Test) {
-    dependsOn build
-    dependsOn startOpenSearchDockerContainer
-    def createDataPrepper1Task = createDataPrepperDockerContainer(
-            "serviceMapDataPrepperOTLP", "dataprepper1", 21890, 4900, "/app/${SERVICE_MAP_PIPELINE_YAML}")
-    def createDataPrepper2Task = createDataPrepperDockerContainer(
-            "serviceMapDataPrepperEvent", "dataprepper2", 21891, 4901, "/app/${SERVICE_MAP_PIPELINE_EVENT_TYPE_YAML}")
-    def startDataPrepper1Task = startDataPrepperDockerContainer(createDataPrepper1Task as DockerCreateContainer)
-    def startDataPrepper2Task = startDataPrepperDockerContainer(createDataPrepper2Task as DockerCreateContainer)
-    dependsOn startDataPrepper1Task
-    dependsOn startDataPrepper2Task
-    startDataPrepper1Task.mustRunAfter 'startOpenSearchDockerContainer'
-    startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
-    // wait for data-preppers to be ready
-    doFirst {
-        sleep(10*1000)
-    }
-
-    description = 'Runs the service-map integration tests.'
-    group = 'verification'
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-    classpath = sourceSets.integrationTest.runtimeClasspath
-
-    filter {
-        includeTestsMatching "com.amazon.dataprepper.integration.trace.EndToEndServiceMapTest*"
-    }
-
-    finalizedBy stopOpenSearchDockerContainer
-    def stopDataPrepper1Task = stopDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
-    def stopDataPrepper2Task = stopDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
-    finalizedBy stopDataPrepper1Task
-    finalizedBy stopDataPrepper2Task
-    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper1Task as DockerStopContainer)
-    finalizedBy removeDataPrepperDockerContainer(stopDataPrepper2Task as DockerStopContainer)
-    finalizedBy removeDataPrepperNetwork
-}
+// TODO: remove in 2.0
+def serviceMapOTLPAndEventEndToEndTest = createEndToEndTest("serviceMapOTLPAndEventEndToEndTest", includeServiceMapTestsMatchPattern,
+        serviceMapDataPrepperOTLP, serviceMapDataPrepperEvent)
 
 dependencies {
     integrationTestImplementation project(':data-prepper-plugins:opensearch')
