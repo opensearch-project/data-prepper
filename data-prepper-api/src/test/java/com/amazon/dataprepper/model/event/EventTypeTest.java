@@ -26,4 +26,11 @@ public class EventTypeTest {
         assertThat(trace, is(equalTo(EventType.TRACE)));
         assertThat(trace.toString(), is(equalTo("TRACE")));
     }
+
+    @Test
+    public void testEventTypeGetByName_metric() {
+        final EventType metric = EventType.getByName("metric");
+        assertThat(metric, is(equalTo(EventType.METRIC)));
+        assertThat(metric.toString(), is(equalTo("METRIC")));
+    }
 }
