@@ -17,7 +17,8 @@ import java.util.stream.Collectors;
 public enum EventType {
 
     LOG("LOG"),
-    TRACE("TRACE");
+    TRACE("TRACE"),
+    METRIC("METRIC");
 
     private static final Map<String, EventType> NAMES_MAP = Arrays.stream(EventType.values())
             .collect(Collectors.toMap(EventType::toString, Function.identity()));

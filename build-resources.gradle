@@ -7,7 +7,7 @@
 ext.versionMap = [
         junitJupiter : '5.8.2',
         mockito : '3.11.2',
-        opentelemetryProto : '1.0.1-alpha',
+        opentelemetryProto : '1.7.1-alpha',
         opensearchVersion : '1.1.0'
 ]
 
