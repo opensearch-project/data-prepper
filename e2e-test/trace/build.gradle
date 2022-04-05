@@ -197,7 +197,7 @@ def createRawSpanDataPrepperOTLP1Task = createDataPrepperDockerContainer(
 def createRawSpanDataPrepperOTLP2Task = createDataPrepperDockerContainer(
         "rawSpanDataPrepper2", "dataprepper2", 21891, 4901, "/app/${RAW_SPAN_PIPELINE_YAML}")
 
-// TODO: replace with Event type in 2.0
+// TODO: replace with Event type in 2.0 (https://github.com/opensearch-project/data-prepper/issues/1272)
 def rawSpanOTLPEndToEndTest = createEndToEndTest("rawSpanOTLPEndToEndTest", includeRawSpanTestsMatchPattern,
         createRawSpanDataPrepperOTLP1Task, createRawSpanDataPrepperOTLP2Task)
 
@@ -206,7 +206,7 @@ def createRawSpanDataPrepperOTLPTask = createDataPrepperDockerContainer(
 def createRawSpanDataPrepperEventTask = createDataPrepperDockerContainer(
         "rawSpanDataPrepperEvent", "dataprepper2", 21891, 4901, "/app/${RAW_SPAN_PIPELINE_EVENT_TYPE_YAML}")
 
-// TODO: remove in 2.0
+// TODO: remove in 2.0 (https://github.com/opensearch-project/data-prepper/issues/1272)
 def rawSpanOTLPAndEventEndToEndTest = createEndToEndTest("rawSpanOTLPAndEventEndToEndTest", includeRawSpanTestsMatchPattern,
         createRawSpanDataPrepperOTLPTask, createRawSpanDataPrepperEventTask)
 
@@ -215,7 +215,7 @@ def rawSpanDataPrepperOTLPFromBuild = createDataPrepperDockerContainer(
 def rawSpanDataPrepperOTLPFromPull = createDataPrepperDockerContainerFromPullImage(
         "rawSpanDataPrepperOTLPFromPull", "dataprepper2", 21891, 4901, "src/integrationTest/resources/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
 
-// TODO: remove in 2.0
+// TODO: remove in 2.0 (https://github.com/opensearch-project/data-prepper/issues/1272)
 def rawSpanOTLPLatestReleaseCompatibilityEndToEndTest = createEndToEndTest("rawSpanOTLPLatestReleaseCompatibilityEndToEndTest",
         includeRawSpanTestsMatchPattern,
         rawSpanDataPrepperOTLPFromBuild, rawSpanDataPrepperOTLPFromPull)
@@ -236,7 +236,7 @@ def createServiceMapDataPrepperOTLP1Task = createDataPrepperDockerContainer(
 def createServiceMapDataPrepperOTLP2Task = createDataPrepperDockerContainer(
         "serviceMapDataPrepper2", "dataprepper2", 21891, 4901, "/app/${SERVICE_MAP_PIPELINE_YAML}")
 
-// TODO: replace with Event type in 2.0
+// TODO: replace with Event type in 2.0 (https://github.com/opensearch-project/data-prepper/issues/1272)
 def serviceMapOTLPEndToEndTest = createEndToEndTest("serviceMapOTLPEndToEndTest", includeServiceMapTestsMatchPattern,
         createServiceMapDataPrepperOTLP1Task, createServiceMapDataPrepperOTLP2Task)
 
@@ -245,7 +245,7 @@ def serviceMapDataPrepperOTLP = createDataPrepperDockerContainer(
 def serviceMapDataPrepperEvent = createDataPrepperDockerContainer(
         "serviceMapDataPrepperEvent", "dataprepper2", 21891, 4901, "/app/${SERVICE_MAP_PIPELINE_EVENT_TYPE_YAML}")
 
-// TODO: remove in 2.0
+// TODO: remove in 2.0 (https://github.com/opensearch-project/data-prepper/issues/1272)
 def serviceMapOTLPAndEventEndToEndTest = createEndToEndTest("serviceMapOTLPAndEventEndToEndTest", includeServiceMapTestsMatchPattern,
         serviceMapDataPrepperOTLP, serviceMapDataPrepperEvent)
 

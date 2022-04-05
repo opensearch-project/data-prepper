@@ -17,7 +17,6 @@ raw-pipeline:
       name: "entry-pipeline"
   processor:
     - otel_trace_raw:
-        root_span_flush_delay: 3 # TODO: remove after 1.1 release
         trace_flush_interval: 5
   sink:
     - opensearch:
