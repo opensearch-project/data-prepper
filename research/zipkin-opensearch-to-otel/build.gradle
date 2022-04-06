@@ -33,7 +33,7 @@ dependencies {
     implementation project(':data-prepper-plugins:otel-trace-source')
     implementation project(':data-prepper-plugins:otel-trace-raw-prepper')
     implementation "org.apache.commons:commons-lang3:3.11"
-    implementation "com.linecorp.armeria:armeria:1.0.0"
+    implementation "com.linecorp.armeria:armeria:1.15.0"
     implementation "com.linecorp.armeria:armeria-grpc:1.0.0"
     implementation "org.opensearch.client:opensearch-rest-high-level-client:${versionMap.opensearchVersion}"
     implementation 'com.fasterxml.jackson.core:jackson-databind'
