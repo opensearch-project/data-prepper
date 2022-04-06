@@ -204,12 +204,14 @@ public final class OTelMetricsProtoHelper {
      * <p>
      * The boundaries for bucket at index i are:
      * <p>
+     * <pre>{@code
      * (-infinity, explicit_bounds[i]) for i == 0
      * (explicit_bounds[i-1], +infinity) for i == size(explicit_bounds)
      * (explicit_bounds[i-1], explicit_bounds[i]) for 0 < i < size(explicit_bounds)
+     * }</pre>
      *
-     * <br/>
-     * <br/>
+     * <br>
+     * <br>
      * <b>NOTE:</b> here we map infinity as +/- FLOAT.MAX_VALUE since JSON rfc4627 only supports finite numbers and
      * OpenSearch maps double values to floats as per default.
      *
