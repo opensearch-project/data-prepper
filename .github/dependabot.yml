@@ -17,6 +17,16 @@ updates:
     interval: monthly
 
 - package-ecosystem: gradle
+  directory: "/data-prepper-expression"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-logstash-configuration"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
   directory: "/data-prepper-plugins/aggregate-processor"
   schedule:
     interval: monthly
@@ -62,7 +72,17 @@ updates:
     interval: monthly
 
 - package-ecosystem: gradle
+  directory: "/data-prepper-plugins/otel-trace-raw-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
   directory: "/data-prepper-plugins/otel-trace-raw-prepper"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/otel-trace-group-processor"
   schedule:
     interval: monthly
 
@@ -73,6 +93,16 @@ updates:
 
 - package-ecosystem: gradle
   directory: "/data-prepper-plugins/otel-trace-source"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/otel-metrics-raw-processor"
+  schedule:
+    interval: monthly
+
+- package-ecosystem: gradle
+  directory: "/data-prepper-plugins/otel-metrics-source"
   schedule:
     interval: monthly
 
