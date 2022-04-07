@@ -2,11 +2,7 @@ entry-pipeline:
   source:
     otel_trace_source:
       ssl: false
-  prepper:
-    - peer_forwarder:
-        discovery_mode: "static"
-        static_endpoints: ["dataprepper1", "dataprepper2"]
-        ssl: false
+      record_type: "event"
   sink:
     - pipeline:
         name: "raw-pipeline"
@@ -14,9 +10,13 @@ raw-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  prepper:
-    - otel_trace_raw_prepper:
+  processor:
+    - otel_trace_raw:
         trace_flush_interval: 5
+    - otel_trace_group:
+        hosts: [ "https://node-0.example.com:9200" ]
+        username: "admin"
+        password: "admin"
   sink:
     - opensearch:
         hosts: [ "https://node-0.example.com:9200" ]
