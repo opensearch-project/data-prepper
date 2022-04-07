@@ -2,7 +2,8 @@ entry-pipeline:
   source:
     otel_trace_source:
       ssl: false
-  prepper:
+      record_type: "event"
+  processor:
     - peer_forwarder:
         discovery_mode: "static"
         static_endpoints: ["dataprepper1", "dataprepper2"]
@@ -14,7 +15,7 @@ service-map-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  prepper:
+  processor:
     - service_map_stateful:
         window_duration: 4
   sink:
