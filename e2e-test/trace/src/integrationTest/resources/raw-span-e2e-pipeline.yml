@@ -11,7 +11,6 @@ raw-pipeline:
       name: "entry-pipeline"
   prepper:
     - otel_trace_raw_prepper:
-        root_span_flush_delay: 1 # TODO: remove after 1.1 release
         trace_flush_interval: 5
     - otel_trace_group_prepper:
         hosts: [ "https://node-0.example.com:9200" ]
