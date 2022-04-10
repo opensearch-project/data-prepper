@@ -37,6 +37,7 @@ class JacksonGaugeTest {
     private static final String TEST_TIME = UUID.randomUUID().toString();
     private static final String TEST_EVENT_KIND = Metric.KIND.GAUGE.name();
     private static final Double TEST_VALUE = 1D;
+    private static final String TEST_SCHEMA_URL = "schema";
 
     private JacksonGauge gauge;
 
@@ -53,7 +54,8 @@ class JacksonGaugeTest {
                 .withTime(TEST_TIME)
                 .withUnit(TEST_UNIT_NAME)
                 .withValue(TEST_VALUE)
-                .withServiceName(TEST_SERVICE_NAME);
+                .withServiceName(TEST_SERVICE_NAME)
+                .withSchemaUrl(TEST_SCHEMA_URL);
 
         gauge = builder.build();
 
@@ -137,6 +139,13 @@ class JacksonGaugeTest {
         gauge.put("testObject", new TestObject(value));
         gauge.put("list", Arrays.asList(1, 4, 5));
         final String result = gauge.toJsonString();
-        assertThat(result, CoreMatchers.is(CoreMatchers.equalTo(String.format("{\"unit\":\"unit\",\"kind\":\"GAUGE\",\"name\":\"name\",\"description\":\"description\",\"startTime\":\"%s\",\"time\":\"%s\",\"serviceName\":\"service\",\"value\":1.0,\"foo\":\"bar\",\"testObject\":{\"field1\":\"%s\"},\"list\":[1,4,5],\"key1\":%s,\"key2\":\"%s\"}", TEST_START_TIME, TEST_TIME, value, TEST_TIME_KEY1, TEST_KEY2))));
+        assertThat(result, CoreMatchers.is(CoreMatchers.equalTo(String.format("{\"unit\":\"unit\",\"kind\":\"GAUGE\",\"name\":\"name\",\"description\":\"description\",\"startTime\":\"%s\",\"time\":\"%s\",\"serviceName\":\"service\",\"value\":1.0,\"schemaUrl\":\"%s\",\"foo\":\"bar\",\"testObject\":{\"field1\":\"%s\"},\"list\":[1,4,5],\"key1\":%s,\"key2\":\"%s\"}", TEST_START_TIME, TEST_TIME, TEST_SCHEMA_URL, value, TEST_TIME_KEY1, TEST_KEY2))));
     }
+
+    @Test
+    public void testGetSchemaUrl() {
+        final String url = gauge.getSchemaUrl();
+        assertThat(url, is(equalTo(TEST_SCHEMA_URL)));
+    }
+
 }

@@ -46,17 +46,18 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
 
         for (Record<ExportMetricsServiceRequest> ets : records) {
             for (ResourceMetrics rs : ets.getData().getResourceMetricsList()) {
+                final String schemaUrl = rs.getSchemaUrl();
                 final Map<String, Object> resourceAttributes = OTelMetricsProtoHelper.getResourceAttributes(rs.getResource());
                 final String serviceName = OTelMetricsProtoHelper.getServiceName(rs.getResource()).orElse(null);
 
                 for (InstrumentationLibraryMetrics is : rs.getInstrumentationLibraryMetricsList()) {
                     final Map<String, Object> ils = OTelMetricsProtoHelper.getInstrumentationLibraryAttributes(is.getInstrumentationLibrary());
-                    recordsOut.addAll(processMetricsList(is.getMetricsList(), serviceName, ils, resourceAttributes));
+                    recordsOut.addAll(processMetricsList(is.getMetricsList(), serviceName, ils, resourceAttributes, schemaUrl));
                 }
 
                 for (ScopeMetrics sm : rs.getScopeMetricsList()) {
                     final Map<String, Object> ils = OTelMetricsProtoHelper.getInstrumentationScopeAttributes(sm.getScope());
-                    recordsOut.addAll(processMetricsList(sm.getMetricsList(), serviceName, ils, resourceAttributes));
+                    recordsOut.addAll(processMetricsList(sm.getMetricsList(), serviceName, ils, resourceAttributes, schemaUrl));
                 }
 
             }
@@ -64,23 +65,31 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
         return recordsOut;
     }
 
-    private List<? extends Record<? extends Metric>> processMetricsList(final List<io.opentelemetry.proto.metrics.v1.Metric> metricsList, final String serviceName, final Map<String, Object> ils, final Map<String, Object> resourceAttributes) {
+    private List<? extends Record<? extends Metric>> processMetricsList(final List<io.opentelemetry.proto.metrics.v1.Metric> metricsList,
+                                                                        final String serviceName,
+                                                                        final Map<String, Object> ils,
+                                                                        final Map<String, Object> resourceAttributes,
+                                                                        final String schemaUrl) {
         List<Record<? extends Metric>> recordsOut = new ArrayList<>();
         for (io.opentelemetry.proto.metrics.v1.Metric metric : metricsList) {
             if (metric.hasGauge()) {
-                recordsOut.addAll(mapGauge(metric, serviceName, ils, resourceAttributes));
+                recordsOut.addAll(mapGauge(metric, serviceName, ils, resourceAttributes, schemaUrl));
             } else if (metric.hasSum()) {
-                recordsOut.addAll(mapSum(metric, serviceName, ils, resourceAttributes));
+                recordsOut.addAll(mapSum(metric, serviceName, ils, resourceAttributes, schemaUrl));
             } else if (metric.hasSummary()) {
-                recordsOut.addAll(mapSummary(metric, serviceName, ils, resourceAttributes));
+                recordsOut.addAll(mapSummary(metric, serviceName, ils, resourceAttributes, schemaUrl));
             } else if (metric.hasHistogram()) {
-                recordsOut.addAll(mapHistogram(metric, serviceName, ils, resourceAttributes));
+                recordsOut.addAll(mapHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl));
             }
         }
         return recordsOut;
     }
 
-    private List<Record<Gauge>> mapGauge(io.opentelemetry.proto.metrics.v1.Metric metric, String serviceName, final Map<String, Object> ils, final Map<String, Object> resourceAttributes) {
+    private List<Record<Gauge>> mapGauge(io.opentelemetry.proto.metrics.v1.Metric metric,
+                                         String serviceName,
+                                         final Map<String, Object> ils,
+                                         final Map<String, Object> resourceAttributes,
+                                         final String schemaUrl) {
         return metric.getGauge().getDataPointsList().stream()
                 .map(dp -> (Gauge) JacksonGauge.builder()
                         .withUnit(metric.getUnit())
@@ -97,12 +106,17 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                                         ils
                                 )
                         ))
+                        .withSchemaUrl(schemaUrl)
                         .build())
                 .map(Record::new)
                 .collect(Collectors.toList());
     }
 
-    private List<Record<Sum>> mapSum(io.opentelemetry.proto.metrics.v1.Metric metric, String serviceName, final Map<String, Object> ils, final Map<String, Object> resourceAttributes) {
+    private List<Record<Sum>> mapSum(final io.opentelemetry.proto.metrics.v1.Metric metric,
+                                     final String serviceName,
+                                     final Map<String, Object> ils,
+                                     final Map<String, Object> resourceAttributes,
+                                     final String schemaUrl) {
         return metric.getSum().getDataPointsList().stream()
                 .map(dp -> (Sum) JacksonSum.builder()
                         .withUnit(metric.getUnit())
@@ -121,12 +135,17 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                                         ils
                                 )
                         ))
+                        .withSchemaUrl(schemaUrl)
                         .build())
                 .map(Record::new)
                 .collect(Collectors.toList());
     }
 
-    private List<Record<Summary>> mapSummary(io.opentelemetry.proto.metrics.v1.Metric metric, String serviceName, final Map<String, Object> ils, final Map<String, Object> resourceAttributes) {
+    private List<Record<Summary>> mapSummary(final io.opentelemetry.proto.metrics.v1.Metric metric,
+                                             final String serviceName,
+                                             final Map<String, Object> ils,
+                                             final Map<String, Object> resourceAttributes,
+                                             final String schemaUrl) {
         return metric.getSummary().getDataPointsList().stream()
                 .map(dp -> (Summary) JacksonSummary.builder()
                         .withUnit(metric.getUnit())
@@ -146,12 +165,17 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                                         ils
                                 )
                         ))
+                        .withSchemaUrl(schemaUrl)
                         .build())
                 .map(Record::new)
                 .collect(Collectors.toList());
     }
 
-    private List<Record<Histogram>> mapHistogram(io.opentelemetry.proto.metrics.v1.Metric metric, String serviceName, final Map<String, Object> ils, final Map<String, Object> resourceAttributes) {
+    private List<Record<Histogram>> mapHistogram(final io.opentelemetry.proto.metrics.v1.Metric metric,
+                                                 final String serviceName,
+                                                 final Map<String, Object> ils,
+                                                 final Map<String, Object> resourceAttributes,
+                                                 final String schemaUrl) {
         return metric.getHistogram().getDataPointsList().stream()
                 .map(dp -> (Histogram) JacksonHistogram.builder()
                         .withUnit(metric.getUnit())
@@ -173,6 +197,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                                         ils
                                 )
                         ))
+                        .withSchemaUrl(schemaUrl)
                         .build())
                 .map(Record::new)
                 .collect(Collectors.toList());

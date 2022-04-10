@@ -34,6 +34,7 @@ public class JacksonSumTest {
     private static final String TEST_EVENT_KIND = Metric.KIND.SUM.name();
     private static final boolean TEST_IS_MONOTONIC = true;
     private static final Double TEST_VALUE = 1D;
+    private static final String TEST_SCHEMA_URL = "schema";
 
     private JacksonSum sum;
 
@@ -52,7 +53,8 @@ public class JacksonSumTest {
                 .withUnit(TEST_UNIT_NAME)
                 .withIsMonotonic(TEST_IS_MONOTONIC)
                 .withValue(TEST_VALUE)
-                .withServiceName(TEST_SERVICE_NAME);
+                .withServiceName(TEST_SERVICE_NAME)
+                .withSchemaUrl(TEST_SCHEMA_URL);
 
         sum = builder.build();
 
@@ -124,7 +126,6 @@ public class JacksonSumTest {
         assertThat(monotonic, is(equalTo(TEST_IS_MONOTONIC)));
     }
 
-
     @Test
     public void testGetValue() {
         final Double value = sum.getValue();
@@ -143,4 +144,11 @@ public class JacksonSumTest {
         builder.withTime("");
         assertThrows(IllegalArgumentException.class, builder::build);
     }
+
+    @Test
+    public void testGetSchemaUrl() {
+        final String url = sum.getSchemaUrl();
+        assertThat(url, is(equalTo(TEST_SCHEMA_URL)));
+    }
+
 }

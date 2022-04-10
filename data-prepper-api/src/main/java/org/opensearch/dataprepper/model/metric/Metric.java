@@ -49,7 +49,6 @@ public interface Metric extends Event {
      */
     String getDescription();
 
-
     /**
      * Gets the unit in which the metric value is reported.
      *
@@ -89,5 +88,13 @@ public interface Metric extends Event {
      * @since 1.4
      */
     Map<String, Object> getAttributes();
+
+    /**
+     * Gets the schema url of this metric.
+     *
+     * @return the schemaUrl
+     * @since 1.4
+     */
+    String getSchemaUrl();
 
 }

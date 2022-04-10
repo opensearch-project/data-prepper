@@ -43,6 +43,7 @@ class JacksonHistogramTest {
     private static final Long TEST_COUNT = 2L;
     private static final Integer TEST_EXPLICIT_BOUNDS_COUNT = 2;
     private static final String TEST_AGGREGATION_TEMPORALITY = "AGGREGATIONTEMPORALITY";
+    private static final String TEST_SCHEMA_URL = "schema";
 
     private JacksonHistogram histogram;
 
@@ -64,7 +65,8 @@ class JacksonHistogramTest {
                 .withBucketCount(TEST_BUCKETS_COUNT)
                 .withBuckets(TEST_BUCKETS)
                 .withExplicitBoundsCount(TEST_EXPLICIT_BOUNDS_COUNT)
-                .withAggregationTemporality(TEST_AGGREGATION_TEMPORALITY);
+                .withAggregationTemporality(TEST_AGGREGATION_TEMPORALITY)
+                .withSchemaUrl(TEST_SCHEMA_URL);
 
         histogram = builder.build();
     }

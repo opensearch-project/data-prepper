@@ -28,6 +28,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     protected static final String KIND_KEY = "kind";
     protected static final String UNIT_KEY = "unit";
     protected static final String ATTRIBUTES_KEY = "attributes";
+    protected static final String SCHEMA_URL_KEY = "schemaUrl";
 
     protected JacksonMetric(Builder builder) {
         super(builder);
@@ -88,6 +89,11 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     @Override
     public Map<String, Object> getAttributes() {
         return this.get(ATTRIBUTES_KEY, Map.class);
+    }
+
+    @Override
+    public String getSchemaUrl() {
+        return this.get(SCHEMA_URL_KEY, String.class);
     }
 
     /**
@@ -160,7 +166,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
 
         /**
          * Sets the start time of the gauge
-         * @param startTime
+         * @param startTime the start time
          * @return the builder
          * @since 1.4
          */
@@ -188,6 +194,17 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          */
         public T withServiceName(final String serviceName) {
             data.put(SERVICE_NAME_KEY, serviceName);
+            return getThis();
+        }
+
+        /**
+         * Sets the schema url of the metric event
+         * @param schemaUrl sets the url of the schema
+         * @return the builder
+         * @since 1.4
+         */
+        public T withSchemaUrl(final String schemaUrl) {
+            data.put(SCHEMA_URL_KEY, schemaUrl);
             return getThis();
         }
     }
