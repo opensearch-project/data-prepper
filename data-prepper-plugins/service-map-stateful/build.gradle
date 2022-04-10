@@ -19,7 +19,7 @@ dependencies {
     implementation 'commons-codec:commons-codec:1.15'
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetryProto}"
+    implementation "io.opentelemetry.proto:opentelemetry-proto:${versionMap.opentelemetryProto}"
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
 }
 
