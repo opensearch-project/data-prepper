@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
+import io.opentelemetry.proto.common.v1.InstrumentationScope;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
@@ -39,7 +40,8 @@ public final class OTelMetricsProtoHelper {
     static final String RESOURCE_ATTRIBUTES = "resource.attributes";
     static final String INSTRUMENTATION_LIBRARY_NAME = "instrumentationLibrary.name";
     static final String INSTRUMENTATION_LIBRARY_VERSION = "instrumentationLibrary.version";
-
+    static final String INSTRUMENTATION_SCOPE_NAME = "instrumentationScope.name";
+    static final String INSTRUMENTATION_SCOPE_VERSION = "instrumentationScope.version";
 
     /**
      * To make it ES friendly we will replace '.' in keys with '@' in all the Keys in {@link io.opentelemetry.proto.common.v1.KeyValue}
@@ -164,6 +166,23 @@ public final class OTelMetricsProtoHelper {
         }
         return instrumentationAttr;
     }
+
+    /**
+     * Extracts the name and version of the used instrumentation scope used
+     *
+     * @return A map, containing information about the instrumentation scope
+     */
+    public static Map<String, Object> getInstrumentationScopeAttributes(final InstrumentationScope instrumentationScope) {
+        final Map<String, Object> instrumentationScopeAttr = new HashMap<>();
+        if (!instrumentationScope.getName().isEmpty()) {
+            instrumentationScopeAttr.put(INSTRUMENTATION_SCOPE_NAME, instrumentationScope.getName());
+        }
+        if (!instrumentationScope.getVersion().isEmpty()) {
+            instrumentationScopeAttr.put(INSTRUMENTATION_SCOPE_VERSION, instrumentationScope.getVersion());
+        }
+        return instrumentationScopeAttr;
+    }
+
 
     public static String convertUnixNanosToISO8601(final long unixNano) {
         return Instant.ofEpochSecond(0L, unixNano).toString();
