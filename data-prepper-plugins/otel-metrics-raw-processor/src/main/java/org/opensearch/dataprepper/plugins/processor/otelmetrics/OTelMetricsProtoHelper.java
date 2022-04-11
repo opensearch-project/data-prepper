@@ -14,9 +14,12 @@ import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
 import io.opentelemetry.proto.resource.v1.Resource;
+import org.apache.commons.codec.binary.Hex;
 import org.opensearch.dataprepper.model.metric.Bucket;
 import org.opensearch.dataprepper.model.metric.DefaultBucket;
+import org.opensearch.dataprepper.model.metric.DefaultExemplar;
 import org.opensearch.dataprepper.model.metric.DefaultQuantile;
+import org.opensearch.dataprepper.model.metric.Exemplar;
 import org.opensearch.dataprepper.model.metric.Quantile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,8 +39,9 @@ public final class OTelMetricsProtoHelper {
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsProtoHelper.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String SERVICE_NAME = "service.name";
-    private static final String SPAN_ATTRIBUTES = "metric.attributes";
+    private static final String METRIC_ATTRIBUTES = "metric.attributes";
     static final String RESOURCE_ATTRIBUTES = "resource.attributes";
+    static final String EXEMPLAR_ATTRIBUTES = "exemplar.attributes";
     static final String INSTRUMENTATION_LIBRARY_NAME = "instrumentationLibrary.name";
     static final String INSTRUMENTATION_LIBRARY_VERSION = "instrumentationLibrary.version";
     static final String INSTRUMENTATION_SCOPE_NAME = "instrumentationScope.name";
@@ -51,11 +55,12 @@ public final class OTelMetricsProtoHelper {
     public static final Function<String, String> REPLACE_DOT_WITH_AT = i -> i.replace(DOT, AT);
 
     /**
-     * Span and Resource attributes are essential for kibana so they should not be nested. SO we will prefix them with "span.attributes"
-     * and "resource.attributes".
+     * Span and Resource attributes are essential for kibana so they should not be nested. SO we will prefix them with "metric.attributes"
+     * and "resource.attributes" and "exemplar.attributes".
      */
-    public static final Function<String, String> PREFIX_AND_SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> SPAN_ATTRIBUTES + DOT + i.replace(DOT, AT);
+    public static final Function<String, String> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> METRIC_ATTRIBUTES + DOT + i.replace(DOT, AT);
     public static final Function<String, String> PREFIX_AND_RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> RESOURCE_ATTRIBUTES + DOT + i.replace(DOT, AT);
+    public static final Function<String, String> PREFIX_AND_EXEMPLAR_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> EXEMPLAR_ATTRIBUTES + DOT + i.replace(DOT, AT);
 
     private OTelMetricsProtoHelper() {
     }
@@ -112,7 +117,7 @@ public final class OTelMetricsProtoHelper {
      */
     public static Map<String, Object> convertKeysOfDataPointAttributes(final NumberDataPoint numberDataPoint) {
         return numberDataPoint.getAttributesList().stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+                .collect(Collectors.toMap(i -> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
     }
 
     /**
@@ -125,8 +130,22 @@ public final class OTelMetricsProtoHelper {
      */
     public static Map<String, Object> unpackKeyValueList(List<KeyValue> attributesList) {
         return attributesList.stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+                .collect(Collectors.toMap(i -> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
     }
+
+    /**
+     * Unpacks the List of {@link KeyValue} object into a Map.
+     * <p>
+     * Converts the keys into an os friendly format and casts the underlying data into its actual type?
+     *
+     * @param attributesList The list of {@link KeyValue} objects to process
+     * @return A Map containing unpacked {@link KeyValue} data
+     */
+    public static Map<String, Object> unpackExemplarValueList(List<KeyValue> attributesList) {
+        return attributesList.stream()
+                .collect(Collectors.toMap(i -> PREFIX_AND_EXEMPLAR_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+    }
+
 
     /**
      * Extracts a value from the passed {@link NumberDataPoint} into a double representation
@@ -141,6 +160,24 @@ public final class OTelMetricsProtoHelper {
             return ndp.getAsDouble();
         } else if (NumberDataPoint.ValueCase.AS_INT == ndpCase) {
             return (double) ndp.getAsInt();
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Extracts a value from the passed {@link io.opentelemetry.proto.metrics.v1.Exemplar} into a double representation
+     *
+     * @param exemplar The {@link io.opentelemetry.proto.metrics.v1.Exemplar} which's data should be turned into a double value
+     * @return A double representing the numerical value of the passed {@link io.opentelemetry.proto.metrics.v1.Exemplar}.
+     * Null if the numerical data point is not present
+     */
+    public static Double getExemplarValueAsDouble(final io.opentelemetry.proto.metrics.v1.Exemplar exemplar) {
+        io.opentelemetry.proto.metrics.v1.Exemplar.ValueCase valueCase = exemplar.getValueCase();
+        if (io.opentelemetry.proto.metrics.v1.Exemplar.ValueCase.AS_DOUBLE == valueCase) {
+            return exemplar.getAsDouble();
+        } else if (io.opentelemetry.proto.metrics.v1.Exemplar.ValueCase.AS_INT == valueCase) {
+            return (double) exemplar.getAsInt();
         } else {
             return null;
         }
@@ -185,7 +222,7 @@ public final class OTelMetricsProtoHelper {
 
 
     public static String convertUnixNanosToISO8601(final long unixNano) {
-        return Instant.ofEpochSecond(0L, unixNano).toString();
+        return Instant.ofEpochSecond(unixNano, 0L).toString();
     }
 
     public static String getStartTimeISO8601(final NumberDataPoint numberDataPoint) {
@@ -268,5 +305,22 @@ public final class OTelMetricsProtoHelper {
             }
         }
         return buckets;
+    }
+
+    /**
+     * Converts a List of {@link io.opentelemetry.proto.metrics.v1.Exemplar} values to {@link DefaultExemplar}, the
+     * internal representation for Data Prepper
+     *
+     * @param exemplarsList the List of Exemplars
+     * @return a mapped list of DefaultExemplars
+     */
+    public static List<Exemplar> convertExemplars(List<io.opentelemetry.proto.metrics.v1.Exemplar> exemplarsList) {
+        return exemplarsList.stream().map(exemplar ->
+                        new DefaultExemplar(convertUnixNanosToISO8601(exemplar.getTimeUnixNano()),
+                                getExemplarValueAsDouble(exemplar),
+                                Hex.encodeHexString(exemplar.getSpanId().toByteArray()),
+                                Hex.encodeHexString(exemplar.getTraceId().toByteArray()),
+                                unpackExemplarValueList(exemplar.getFilteredAttributesList())))
+                .collect(Collectors.toList());
     }
 }
