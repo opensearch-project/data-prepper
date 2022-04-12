@@ -41,6 +41,8 @@ class JacksonGaugeTest {
     private static final String TEST_EVENT_KIND = Metric.KIND.GAUGE.name();
     private static final Double TEST_VALUE = 1D;
     private static final String TEST_SCHEMA_URL = "schema";
+    private static final Integer TEST_FLAGS = 1;
+
     private static final List<Exemplar> TEST_EXEMPLARS = Arrays.asList(
             new DefaultExemplar("1970-01-01T00:00:00Z", 2.0, "xsdf", "abcd", Map.of("test", "value")),
             new DefaultExemplar("1971-01-01T00:00:00Z", 5.0, "xsdt", "asdf", Map.of("test", "value"))
@@ -63,7 +65,8 @@ class JacksonGaugeTest {
                 .withValue(TEST_VALUE)
                 .withServiceName(TEST_SERVICE_NAME)
                 .withExemplars(TEST_EXEMPLARS)
-                .withSchemaUrl(TEST_SCHEMA_URL);
+                .withSchemaUrl(TEST_SCHEMA_URL)
+                .withFlags(TEST_FLAGS);
 
         gauge = builder.build();
 
@@ -175,5 +178,11 @@ class JacksonGaugeTest {
     public void testGetSchemaUrl() {
         final String url = gauge.getSchemaUrl();
         assertThat(url, is(equalTo(TEST_SCHEMA_URL)));
+    }
+
+    @Test
+    public void testGetFlags() {
+        final Integer flags = gauge.getFlags();
+        assertThat(flags, is(equalTo(TEST_FLAGS)));
     }
 }

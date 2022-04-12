@@ -71,6 +71,7 @@ public class MetricsPluginSumTest {
         NumberDataPoint dataPoint = NumberDataPoint.newBuilder()
                 .setAsInt(3)
                 .addAllAttributes(Arrays.asList(attribute1, attribute2, attribute3))
+                .setFlags(0)
                 .build();
         Sum sum = Sum.newBuilder().addAllDataPoints(Collections.singletonList(dataPoint)).build();
 
@@ -104,11 +105,11 @@ public class MetricsPluginSumTest {
         Record<Event> firstRecord = rec.get(0);
 
         ObjectMapper objectMapper = new ObjectMapper();
-        Map map = objectMapper.readValue(firstRecord.getData().toJsonString(), Map.class);
+        Map<String, Object> map = objectMapper.readValue(firstRecord.getData().toJsonString(), Map.class);
         assertSumProcessing(map);
     }
 
-    private void assertSumProcessing(Map map) {
+    private void assertSumProcessing(Map<String, Object> map) {
         assertThat(map).contains(entry("kind", org.opensearch.dataprepper.model.metric.Metric.KIND.SUM.toString()));
         assertThat(map).contains(entry("unit", "seconds"));
         assertThat(map).contains(entry("description", "description"));
@@ -124,6 +125,7 @@ public class MetricsPluginSumTest {
         assertThat(map).contains(entry("instrumentationLibrary.version", "v1"));
         assertThat(map).contains(entry("instrumentationLibrary.name", "name"));
         assertThat(map).contains(entry("metric.attributes.aws@details", "[\"asdf\",2000.123,\"{\\\"statement@params\\\":\\\"us-east-1\\\",\\\"statement\\\":1000}\"]"));
+        assertThat(map).contains(entry("flags", 0));
 
     }
 

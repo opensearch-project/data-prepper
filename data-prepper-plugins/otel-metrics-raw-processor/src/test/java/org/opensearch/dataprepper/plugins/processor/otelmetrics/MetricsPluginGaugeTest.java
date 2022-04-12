@@ -183,7 +183,8 @@ public class MetricsPluginGaugeTest {
 
         NumberDataPoint.Builder p1 = NumberDataPoint.newBuilder()
                 .addExemplars(e1)
-                .setAsInt(4);
+                .setAsInt(4)
+                .setFlags(1);
 
         Gauge gauge = Gauge.newBuilder().addDataPoints(p1).build();
 
@@ -233,6 +234,7 @@ public class MetricsPluginGaugeTest {
         assertThat(map).contains(entry("time","1970-01-01T00:00:00Z"));
         assertThat(map).contains(entry("instrumentationScope.name", "smname"));
         assertThat(map).contains(entry("instrumentationScope.version", "smversion"));
+        assertThat(map).contains(entry("flags", 1));
 
         List<Map<String, Object>> exemplars = (List<Map<String, Object>>) map.get("exemplars");
         assertThat(exemplars.size()).isEqualTo(1);

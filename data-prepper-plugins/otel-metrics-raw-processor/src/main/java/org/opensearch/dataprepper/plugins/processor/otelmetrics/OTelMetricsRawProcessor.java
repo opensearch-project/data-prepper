@@ -108,6 +108,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                         ))
                         .withSchemaUrl(schemaUrl)
                         .withExemplars(OTelMetricsProtoHelper.convertExemplars(dp.getExemplarsList()))
+                        .withFlags(dp.getFlags())
                         .build())
                 .map(Record::new)
                 .collect(Collectors.toList());
@@ -138,6 +139,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                         ))
                         .withSchemaUrl(schemaUrl)
                         .withExemplars(OTelMetricsProtoHelper.convertExemplars(dp.getExemplarsList()))
+                        .withFlags(dp.getFlags())
                         .build())
                 .map(Record::new)
                 .collect(Collectors.toList());
@@ -168,6 +170,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                                 )
                         ))
                         .withSchemaUrl(schemaUrl)
+                        .withFlags(dp.getFlags())
                         .build())
                 .map(Record::new)
                 .collect(Collectors.toList());
@@ -201,6 +204,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                         ))
                         .withSchemaUrl(schemaUrl)
                         .withExemplars(OTelMetricsProtoHelper.convertExemplars(dp.getExemplarsList()))
+                        .withFlags(dp.getFlags())
                         .build())
                 .map(Record::new)
                 .collect(Collectors.toList());

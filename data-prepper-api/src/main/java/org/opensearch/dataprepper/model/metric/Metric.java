@@ -106,4 +106,12 @@ public interface Metric extends Event {
      */
     List<? extends Exemplar> getExemplars();
 
+
+    /**
+     * Gets the associated flags for this metric event.
+     *
+     * @return the flags encoded as Integer
+     * @since 1.4
+     */
+    Integer getFlags();
 }

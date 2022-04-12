@@ -61,6 +61,7 @@ public class MetricsPluginHistogramTest {
                 .addExplicitBounds(bound_2)
                 .setCount(4)
                 .setSum(1d / 3d)
+                .setFlags(1)
                 .build();
 
         Histogram histogram = Histogram.newBuilder().addDataPoints(dp).build();
@@ -109,6 +110,7 @@ public class MetricsPluginHistogramTest {
         assertThat(map).contains(entry("count", 4));
         assertThat(map).contains(entry("serviceName", "service"));
         assertThat(map).contains(entry("aggregationTemporality", "AGGREGATION_TEMPORALITY_UNSPECIFIED"));
+        assertThat(map).contains(entry("flags", 1));
 
         assertThat(map).containsKey("buckets");
 

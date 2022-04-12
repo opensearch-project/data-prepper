@@ -31,6 +31,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     protected static final String ATTRIBUTES_KEY = "attributes";
     protected static final String SCHEMA_URL_KEY = "schemaUrl";
     protected static final String EXEMPLARS_KEY = "exemplars";
+    protected static final String FLAGS_KEY = "flags";
 
     protected JacksonMetric(Builder builder) {
         super(builder);
@@ -101,6 +102,11 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     @Override
     public List<? extends Exemplar> getExemplars() {
         return this.getList(EXEMPLARS_KEY, DefaultExemplar.class);
+    }
+
+    @Override
+    public Integer getFlags() {
+        return this.get(FLAGS_KEY, Integer.class);
     }
 
     /**
@@ -223,6 +229,17 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          */
         public T withExemplars(final List<Exemplar> exemplars) {
             data.put(EXEMPLARS_KEY, exemplars);
+            return getThis();
+        }
+
+        /**
+         * Sets the flags that are associated with this metric event
+         * @param flags sets the flags for this metric
+         * @return the builder
+         * @since 1.4
+         */
+        public T withFlags(final Integer flags) {
+            data.put(FLAGS_KEY, flags);
             return getThis();
         }
     }
