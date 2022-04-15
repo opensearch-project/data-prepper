@@ -7,5 +7,6 @@ package com.amazon.dataprepper.parser.model;
 
 public enum MetricRegistryType {
     Prometheus,
-    CloudWatch;
+    CloudWatch,
+    Logging;
 }
