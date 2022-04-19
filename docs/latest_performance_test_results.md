@@ -1,30 +1,48 @@
-# Performance Test Results
+# Latest Performance Test Results
 
-Following the release of Data Prepper 1.3, performance tests were run for each of the new processors that were added, as well as the equivalent Logstash filters. In the performance test results discussed below, the test environments and configurations are identical, except where the same option is not available for all applications.
+This page tracks our latest performance test runs from Data Prepper. We run tests with significant processors, as well as the equivalent Logstash filters. In the performance test results discussed below, the test environments and configurations are identical, except where the same option is not available for all applications.
+
+## Results
+
+Gatling reported the following results for the test that was run for Data Prepper. These results show that `118,104` requests were succesfully sent to Data Prepper. Throughput can be measured as
+`118,104 * 200 (batch size) logs = 23,620,800 logs / 1,200 s = 19,684 logs/s`. The Gatling report also shows a distribution of latency on the side of the `http` source, with an average latency of `101 ms`
+
+![](images/DataPrepperGatling.png)
+
+
+### Logstash
+
+Gatling reported the following results for the test that was run for Data Prepper. These results show that `75,709` requests were succesfully sent to Data Prepper. Throughput can be measured as
+`75,709 * 200 (batch size) logs = 15,141,800 logs / 1,200 s = 12,618 logs/s`. The Gatling report also shows a distribution of latency on the side of the `http` source, with an average latency of `158 ms`
+
+![](images/LogstashGatling.png)
+
+### Conclusion
+Data Prepper has a `56%` higher throughput than Logstash, and an average latency that is `56%` lower than Logstash.
 
 ## Environment Details
 
 ### Data Prepper Environment
 
-![](../../docs/images/PerformanceTestEnvironment.png)
+![](images/PerformanceTestEnvironment.png)
 
 ### Logstash Environment
 
-![](../../docs/images/PerformanceTestEnvironmentLogstash.png)
+![](images/PerformanceTestEnvironmentLogstash.png)
 
 Comparing the performance of the latest release of Data Prepper 1.3 against Logstash 7.13.2, the test was configured to simulate 10 clients to send requests as frequently as possible. Each request was contained a batch of 200 logs. The test ran for 20 minutes, measuring the latency and throughput.
 
 ### AWS Resource Details
 
-| Name                              | EC2 Instance Type | Instance Count | vCPU | Memory (GiB) | JVM Memory Limit (GiB) |
-|-----------------------------------| :---------------- | -------------: |-----:| -----------: |-----------------------:|
-| Data Prepper                      | m5.xlarge         |              1 |    4 |           16 |                      8 |
-| Data Prepper Prometheus + Grafana | m5.xlarge         |              1 |    4 |           16 |                        |
-| Data Prepper OpenSearch Cluster   | i3.xlarge         |              3 |    4 |         30.5 |                        |
-| Logstash                          | m5.xlarge         |              1 |    4 |           16 |                      8 |
-| Logstash Prometheus + Grafana     | m5.xlarge         |              1 |    4 |           16 |                        |
-| Logstash OpenSearch Cluster       | i3.xlarge         |              3 |    4 |         30.5 |                        |
-| Gatling                           | m5.2xlarge        |              1 |    8 |           32 |                        |
+| Name                              | EC2 Instance Type | Instance Count | vCPU | Memory (GiB) | JVM Memory Limit (GiB) | Software Version |
+|-----------------------------------| :---------------- | -------------: |-----:| -----------: |-----------------------:|-----------------:|
+| Data Prepper                      | m5.xlarge         |              1 |    4 |           16 |                      8 |              1.3 |
+| Data Prepper Prometheus + Grafana | m5.xlarge         |              1 |    4 |           16 |                        |              N/A |
+| Data Prepper OpenSearch Cluster   | i3.xlarge         |              3 |    4 |         30.5 |                        |              N/A |
+| Logstash                          | m5.xlarge         |              1 |    4 |           16 |                      8 |           7.13.2 |
+| Logstash Prometheus + Grafana     | m5.xlarge         |              1 |    4 |           16 |                        |              N/A |
+| Logstash OpenSearch Cluster       | i3.xlarge         |              3 |    4 |         30.5 |                        |              N/A |
+| Gatling                           | m5.2xlarge        |              1 |    8 |           32 |                        |              N/A |
 
 ## Configurations
 
@@ -261,25 +279,6 @@ The following changes were made to the `logstash.yml` file in order to replicate
 pipeline.workers: 12
 pipeline.batch.size: 5000
 ```
-
-## Results
-
-### Data Prepper
-
-Gatling reported the following results for the test that was run for Data Prepper. These results show that `118,104` requests were succesfully sent to Data Prepper. Throughput can be measured as 
-`118,104 * 200 (batch size) logs = 23,620,800 logs / 1,200 s = 19,684 logs/s`. The Gatling report also shows a distribution of latency on the side of the `http` source, with an average latency of `101 ms`
-
-![](../../docs/images/DataPrepperGatling.png)
-
-
-### Logstash
-
-Gatling reported the following results for the test that was run for Data Prepper. These results show that `75,709` requests were succesfully sent to Data Prepper. Throughput can be measured as
-`75,709 * 200 (batch size) logs = 15,141,800 logs / 1,200 s = 12,618 logs/s`. The Gatling report also shows a distribution of latency on the side of the `http` source, with an average latency of `158 ms`
-
-![](../../docs/images/LogstashGatling.png)
-
-When comparing these measurements side by side, the test shows that with this configuration, Data Prepper has a `56%` higher throughput than Logstash, and an average latency that is `56%` lower than Logstash.
 
 ## Running tests
 
