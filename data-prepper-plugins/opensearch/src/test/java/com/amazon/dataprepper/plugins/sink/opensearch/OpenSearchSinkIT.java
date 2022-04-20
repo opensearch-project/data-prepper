@@ -28,6 +28,7 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
+import org.hamcrest.MatcherAssert;
 import org.opensearch.client.Request;
 import org.opensearch.client.Response;
 import org.opensearch.client.RestClient;
@@ -67,6 +68,10 @@ import java.util.stream.Collectors;
 
 import static org.apache.http.HttpStatus.SC_OK;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.Matchers.closeTo;
 
 public class OpenSearchSinkIT extends OpenSearchRestTestCase {
   private static final String PLUGIN_NAME = "opensearch";
@@ -91,25 +96,26 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
     Request request = new Request(HttpMethod.HEAD, indexAlias);
     Response response = client().performRequest(request);
-    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
+    MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
     final String index = String.format("%s-000001", indexAlias);
     final Map<String, Object> mappings = getIndexMappings(index);
-    assertNotNull(mappings);
-    assertFalse((boolean) mappings.get("date_detection"));
+    MatcherAssert.assertThat(mappings, notNullValue());
+    MatcherAssert.assertThat((boolean) mappings.get("date_detection"), equalTo(false));
     sink.shutdown();
 
-    if (isOSBundle()) {
-      // Check managed index
-      await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
-        assertEquals(IndexConstants.RAW_ISM_POLICY, getIndexPolicyId(index)); }
-      );
-    }
+      if (isOSBundle()) {
+          // Check managed index
+          await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
+                      MatcherAssert.assertThat(getIndexPolicyId(index), equalTo(IndexConstants.RAW_ISM_POLICY));
+                  }
+          );
+      }
 
     // roll over initial index
     request = new Request(HttpMethod.POST, String.format("%s/_rollover", indexAlias));
     request.setJsonEntity("{ \"conditions\" : { } }\n");
     response = client().performRequest(request);
-    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
+    MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
 
     // Instantiate sink again
     sink = new OpenSearchSink(pluginSetting);
@@ -117,12 +123,12 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final String rolloverIndexName = String.format("%s-000002", indexAlias);
     request = new Request(HttpMethod.GET, rolloverIndexName + "/_alias");
     response = client().performRequest(request);
-    assertEquals(true, checkIsWriteIndex(EntityUtils.toString(response.getEntity()), indexAlias, rolloverIndexName));
+    MatcherAssert.assertThat(checkIsWriteIndex(EntityUtils.toString(response.getEntity()), indexAlias, rolloverIndexName), equalTo(true));
     sink.shutdown();
 
     if (isOSBundle()) {
       // Check managed index
-      assertEquals(IndexConstants.RAW_ISM_POLICY, getIndexPolicyId(rolloverIndexName));
+      MatcherAssert.assertThat(getIndexPolicyId(rolloverIndexName), equalTo(IndexConstants.RAW_ISM_POLICY));
     }
   }
 
@@ -131,7 +137,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final Request request = new Request(HttpMethod.PUT, reservedIndexAlias);
     client().performRequest(request);
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
-    assertThrows(String.format(IndexManager.INDEX_ALIAS_USED_AS_INDEX_ERROR, reservedIndexAlias),
+    Assert.assertThrows(String.format(IndexManager.INDEX_ALIAS_USED_AS_INDEX_ERROR, reservedIndexAlias),
             RuntimeException.class, () -> new OpenSearchSink(pluginSetting));
   }
 
@@ -149,21 +155,21 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
 
     final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
-    assertEquals(2, retSources.size());
-    assertTrue(retSources.containsAll(Arrays.asList(expData1, expData2)));
-    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", (String) expData1.get("spanId")));
+    MatcherAssert.assertThat(retSources.size(), equalTo(2));
+    MatcherAssert.assertThat(retSources.containsAll(Arrays.asList(expData1, expData2)), equalTo(true));
+    MatcherAssert.assertThat(getDocumentCount(expIndexAlias, "_id", (String) expData1.get("spanId")), equalTo(Integer.valueOf(1)));
     sink.shutdown();
 
     // Verify metrics
     final List<Measurement> bulkRequestErrors = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                     .add(OpenSearchSink.BULKREQUEST_ERRORS).toString());
-    assertEquals(1, bulkRequestErrors.size());
+    MatcherAssert.assertThat(bulkRequestErrors.size(), equalTo(1));
     Assert.assertEquals(0.0, bulkRequestErrors.get(0).getValue(), 0);
     final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                     .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
-    assertEquals(3, bulkRequestLatencies.size());
+    MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
     // COUNT
     Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
     // TOTAL_TIME
@@ -173,18 +179,18 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final List<Measurement> documentsSuccessMeasurements = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                     .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
-    assertEquals(1, documentsSuccessMeasurements.size());
-    assertEquals(2.0, documentsSuccessMeasurements.get(0).getValue(), 0);
+    MatcherAssert.assertThat(documentsSuccessMeasurements.size(), equalTo(1));
+    MatcherAssert.assertThat(documentsSuccessMeasurements.get(0).getValue(), closeTo(2.0, 0));
     final List<Measurement> documentsSuccessFirstAttemptMeasurements = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                     .add(BulkRetryStrategy.DOCUMENTS_SUCCESS_FIRST_ATTEMPT).toString());
-    assertEquals(1, documentsSuccessFirstAttemptMeasurements.size());
-    assertEquals(2.0, documentsSuccessFirstAttemptMeasurements.get(0).getValue(), 0);
+    MatcherAssert.assertThat(documentsSuccessFirstAttemptMeasurements.size(), equalTo(1));
+    MatcherAssert.assertThat(documentsSuccessFirstAttemptMeasurements.get(0).getValue(), closeTo(2.0, 0));
     final List<Measurement> documentErrorsMeasurements = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                     .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
-    assertEquals(1, documentErrorsMeasurements.size());
-    assertEquals(0.0, documentErrorsMeasurements.get(0).getValue(), 0);
+    MatcherAssert.assertThat(documentErrorsMeasurements.size(), equalTo(1));
+    MatcherAssert.assertThat(documentErrorsMeasurements.get(0).getValue(), closeTo(0.0, 0));
 
     /**
      * Metrics: Bulk Request Size in Bytes
@@ -192,10 +198,10 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final List<Measurement> bulkRequestSizeBytesMetrics = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                     .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
-    assertEquals(3, bulkRequestSizeBytesMetrics.size());
-    assertEquals(1.0, bulkRequestSizeBytesMetrics.get(0).getValue(), 0);
-    assertEquals(2188.0, bulkRequestSizeBytesMetrics.get(1).getValue(), 0);
-    assertEquals(2188.0, bulkRequestSizeBytesMetrics.get(2).getValue(), 0);
+    MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
+    MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
+    MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(2188.0, 0));
+    MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(2188.0, 0));
   }
 
   public void testOutputRawSpanWithDLQ() throws IOException, InterruptedException {
@@ -218,11 +224,11 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
 
     final StringBuilder content = new StringBuilder();
     Files.lines(Paths.get(expDLQFile)).forEach(content::append);
-    assertTrue(content.toString().contains(testDoc1));
+    MatcherAssert.assertThat(content.toString().contains(testDoc1), equalTo(true));
     final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
-    assertEquals(1, retSources.size());
-    assertEquals(expData, retSources.get(0));
+    MatcherAssert.assertThat(retSources.size(), equalTo(1));
+    MatcherAssert.assertThat(retSources.get(0), equalTo(expData));
 
     // clean up temporary directory
     FileUtils.deleteQuietly(tempDirectory);
@@ -231,13 +237,13 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final List<Measurement> documentsSuccessMeasurements = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                     .add(BulkRetryStrategy.DOCUMENTS_SUCCESS).toString());
-    assertEquals(1, documentsSuccessMeasurements.size());
-    assertEquals(1.0, documentsSuccessMeasurements.get(0).getValue(), 0);
+    MatcherAssert.assertThat(documentsSuccessMeasurements.size(), equalTo(1));
+    MatcherAssert.assertThat(documentsSuccessMeasurements.get(0).getValue(), closeTo(1.0, 0));
     final List<Measurement> documentErrorsMeasurements = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                     .add(BulkRetryStrategy.DOCUMENT_ERRORS).toString());
-    assertEquals(1, documentErrorsMeasurements.size());
-    assertEquals(1.0, documentErrorsMeasurements.get(0).getValue(), 0);
+    MatcherAssert.assertThat(documentErrorsMeasurements.size(), equalTo(1));
+    MatcherAssert.assertThat(documentErrorsMeasurements.get(0).getValue(), closeTo(1.0, 0));
 
     /**
      * Metrics: Bulk Request Size in Bytes
@@ -245,10 +251,10 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final List<Measurement> bulkRequestSizeBytesMetrics = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                     .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
-    assertEquals(3, bulkRequestSizeBytesMetrics.size());
-    assertEquals(1.0, bulkRequestSizeBytesMetrics.get(0).getValue(), 0);
-    assertEquals(2181.0, bulkRequestSizeBytesMetrics.get(1).getValue(), 0);
-    assertEquals(2181.0, bulkRequestSizeBytesMetrics.get(2).getValue(), 0);
+    MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
+    MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
+    MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(2181.0, 0));
+    MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(2181.0, 0));
 
   }
 
@@ -258,15 +264,15 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP);
     final Request request = new Request(HttpMethod.HEAD, indexAlias);
     final Response response = client().performRequest(request);
-    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
+    MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
     final Map<String, Object> mappings = getIndexMappings(indexAlias);
-    assertNotNull(mappings);
-    assertFalse((boolean) mappings.get("date_detection"));
+    MatcherAssert.assertThat(mappings, notNullValue());
+    MatcherAssert.assertThat((boolean) mappings.get("date_detection"), equalTo(false));
     sink.shutdown();
 
     if (isOSBundle()) {
       // Check managed index
-      assertNull(getIndexPolicyId(indexAlias));
+      MatcherAssert.assertThat(getIndexPolicyId(indexAlias), nullValue());
     }
   }
 
@@ -281,18 +287,18 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     sink.output(testRecords);
     final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
-    assertEquals(1, retSources.size());
-    assertEquals(expData, retSources.get(0));
-    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "_id", (String) expData.get("hashId")));
+    MatcherAssert.assertThat(retSources.size(), equalTo(1));
+    MatcherAssert.assertThat(retSources.get(0), equalTo(expData));
+    MatcherAssert.assertThat(getDocumentCount(expIndexAlias, "_id", (String) expData.get("hashId")), equalTo(Integer.valueOf(1)));
     sink.shutdown();
 
     // verify metrics
     final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                     .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
-    assertEquals(3, bulkRequestLatencies.size());
+    MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
     // COUNT
-    Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+    MatcherAssert.assertThat(bulkRequestLatencies.get(0).getValue(), closeTo(1.0, 0));
 
     /**
      * Metrics: Bulk Request Size in Bytes
@@ -300,10 +306,10 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final List<Measurement> bulkRequestSizeBytesMetrics = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                     .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
-    assertEquals(3, bulkRequestSizeBytesMetrics.size());
-    assertEquals(1.0, bulkRequestSizeBytesMetrics.get(0).getValue(), 0);
-    assertEquals(309.0, bulkRequestSizeBytesMetrics.get(1).getValue(), 0);
-    assertEquals(309.0, bulkRequestSizeBytesMetrics.get(2).getValue(), 0);
+    MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
+    MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
+    MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(309.0, 0));
+    MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(309.0, 0));
 
     // Check restart for index already exists
     sink = new OpenSearchSink(pluginSetting);
@@ -318,7 +324,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     final Request request = new Request(HttpMethod.HEAD, testIndexAlias);
     final Response response = client().performRequest(request);
-    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
+    MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
     sink.shutdown();
 
     // Check restart for index already exists
@@ -336,18 +342,18 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     Request request = new Request(HttpMethod.HEAD, indexAlias);
     Response response = client().performRequest(request);
-    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
+    MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
     final String index = String.format("%s-000001", indexAlias);
     final Map<String, Object> mappings = getIndexMappings(index);
-    assertNotNull(mappings);
-    assertFalse((boolean) mappings.get("date_detection"));
+    MatcherAssert.assertThat(mappings, notNullValue());
+    MatcherAssert.assertThat((boolean) mappings.get("date_detection"), equalTo(false));
     sink.shutdown();
 
     String expectedIndexPolicyName = indexAlias + "-policy";
     if (isOSBundle()) {
       // Check managed index
       await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
-        assertEquals(expectedIndexPolicyName, getIndexPolicyId(index)); }
+        MatcherAssert.assertThat(getIndexPolicyId(index), equalTo(expectedIndexPolicyName)); }
       );
     }
 
@@ -355,7 +361,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     request = new Request(HttpMethod.POST, String.format("%s/_rollover", indexAlias));
     request.setJsonEntity("{ \"conditions\" : { } }\n");
     response = client().performRequest(request);
-    assertEquals(SC_OK, response.getStatusLine().getStatusCode());
+    MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
 
     // Instantiate sink again
     sink = new OpenSearchSink(pluginSetting);
@@ -363,12 +369,12 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final String rolloverIndexName = String.format("%s-000002", indexAlias);
     request = new Request(HttpMethod.GET, rolloverIndexName + "/_alias");
     response = client().performRequest(request);
-    assertEquals(true, checkIsWriteIndex(EntityUtils.toString(response.getEntity()), indexAlias, rolloverIndexName));
+    MatcherAssert.assertThat(checkIsWriteIndex(EntityUtils.toString(response.getEntity()), indexAlias, rolloverIndexName), equalTo(true));
     sink.shutdown();
 
     if (isOSBundle()) {
       // Check managed index
-      assertEquals(expectedIndexPolicyName, getIndexPolicyId(rolloverIndexName));
+      MatcherAssert.assertThat(getIndexPolicyId(rolloverIndexName), equalTo(expectedIndexPolicyName));
     }
   }
 
@@ -384,14 +390,14 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
 
     Request getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
     Response getTemplateResponse = client().performRequest(getTemplateRequest);
-    assertEquals(SC_OK, getTemplateResponse.getStatusLine().getStatusCode());
+    MatcherAssert.assertThat(getTemplateResponse.getStatusLine().getStatusCode(), equalTo(SC_OK));
 
     String responseBody = EntityUtils.toString(getTemplateResponse.getEntity());
     @SuppressWarnings("unchecked") final Integer firstResponseVersion =
             (Integer) ((Map<String, Object>) createParser(XContentType.JSON.xContent(),
             responseBody).map().get(expectedIndexTemplateName)).get("version");
 
-    assertEquals(Integer.valueOf(1), firstResponseVersion);
+    MatcherAssert.assertThat(firstResponseVersion, equalTo(Integer.valueOf(1)));
     sink.shutdown();
 
     // Create sink with template version 2
@@ -400,14 +406,14 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
 
     getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
     getTemplateResponse = client().performRequest(getTemplateRequest);
-    assertEquals(SC_OK, getTemplateResponse.getStatusLine().getStatusCode());
+    MatcherAssert.assertThat(getTemplateResponse.getStatusLine().getStatusCode(), equalTo(SC_OK));
 
     responseBody = EntityUtils.toString(getTemplateResponse.getEntity());
     @SuppressWarnings("unchecked") final Integer secondResponseVersion =
             (Integer) ((Map<String, Object>) createParser(XContentType.JSON.xContent(),
             responseBody).map().get(expectedIndexTemplateName)).get("version");
 
-    assertEquals(Integer.valueOf(2), secondResponseVersion);
+    MatcherAssert.assertThat(secondResponseVersion, equalTo(Integer.valueOf(2)));
     sink.shutdown();
 
     // Create sink with template version 1 again
@@ -416,7 +422,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
 
     getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
     getTemplateResponse = client().performRequest(getTemplateRequest);
-    assertEquals(SC_OK, getTemplateResponse.getStatusLine().getStatusCode());
+    MatcherAssert.assertThat(getTemplateResponse.getStatusLine().getStatusCode(), equalTo(SC_OK));
 
     responseBody = EntityUtils.toString(getTemplateResponse.getEntity());
     @SuppressWarnings("unchecked") final Integer thirdResponseVersion =
@@ -424,7 +430,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
             responseBody).map().get(expectedIndexTemplateName)).get("version");
 
     // Assert version 2 was not overwritten by version 1
-    assertEquals(Integer.valueOf(2), thirdResponseVersion);
+    MatcherAssert.assertThat(thirdResponseVersion, equalTo(Integer.valueOf(2)));
     sink.shutdown();
 
   }
@@ -441,15 +447,15 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
-    assertEquals(1, retSources.size());
-    assertEquals(Integer.valueOf(1), getDocumentCount(testIndexAlias, "_id", testId));
+    MatcherAssert.assertThat(retSources.size(), equalTo(1));
+    MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
     sink.shutdown();
 
     // verify metrics
     final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
             new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
                     .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
-    assertEquals(3, bulkRequestLatencies.size());
+    MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
     // COUNT
     Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
   }
@@ -472,9 +478,9 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final Map<String, Object> expectedContent = new HashMap<>();
     expectedContent.put("log", "foobar");
 
-    assertEquals(1, retSources.size());
-    assertTrue(retSources.containsAll(Arrays.asList(expectedContent)));
-    assertEquals(Integer.valueOf(1), getDocumentCount(expIndexAlias, "log", "foobar"));
+    MatcherAssert.assertThat(retSources.size(), equalTo(1));
+    MatcherAssert.assertThat(retSources.containsAll(Arrays.asList(expectedContent)), equalTo(true));
+    MatcherAssert.assertThat(getDocumentCount(expIndexAlias, "log", "foobar"), equalTo(Integer.valueOf(1)));
     sink.shutdown();
   }
 
