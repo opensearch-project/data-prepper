@@ -5,8 +5,7 @@
 
 buildscript {
     ext {
-        opensearch_version = System.getProperty('opensearch.version', "${versionMap.opensearchVersion}")
-        opensearch_group = 'org.opensearch'
+        opensearchVersion = System.getProperty('opensearch.version', "${versionMap.opensearchVersion}")
         distribution = 'oss-zip'
     }
 
@@ -16,7 +15,7 @@ buildscript {
     }
 
     dependencies {
-        classpath "${opensearch_group}.gradle:build-tools:${opensearch_version}"
+        classpath "org.opensearch.gradle:build-tools:${opensearchVersion}"
         constraints {
             classpath('com.netflix.nebula:nebula-core') {
                 version {
@@ -50,7 +49,7 @@ dependencies {
     api project(':data-prepper-api')
     testImplementation project(':data-prepper-api').sourceSets.test.output
     api project(':data-prepper-plugins:common')
-    implementation "org.opensearch.client:opensearch-rest-high-level-client:${opensearch_version}"
+    implementation "org.opensearch.client:opensearch-rest-high-level-client:${opensearchVersion}"
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
@@ -72,7 +71,7 @@ dependencies {
         exclude group:'org.hamcrest' // workaround for jarHell
     }
     testImplementation "org.awaitility:awaitility:4.1.1"
-    testImplementation "org.opensearch.test:framework:${opensearch_version}"
+    testImplementation "org.opensearch.test:framework:${opensearchVersion}"
     testImplementation "commons-io:commons-io:2.11.0"
     testImplementation 'net.bytebuddy:byte-buddy:1.12.8'
     testImplementation 'net.bytebuddy:byte-buddy-agent:1.11.20'

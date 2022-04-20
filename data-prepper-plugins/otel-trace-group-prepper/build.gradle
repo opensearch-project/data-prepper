@@ -8,13 +8,13 @@ plugins {
 }
 
 ext {
-    opensearch_version = System.getProperty("opensearch.version", "${versionMap.opensearchVersion}")
+    opensearchVersion = System.getProperty("opensearch.version", "${versionMap.opensearchVersion}")
 }
 
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:opensearch')
-    implementation "org.opensearch.client:opensearch-rest-high-level-client:${opensearch_version}"
+    implementation "org.opensearch.client:opensearch-rest-high-level-client:${opensearchVersion}"
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'io.micrometer:micrometer-core'
