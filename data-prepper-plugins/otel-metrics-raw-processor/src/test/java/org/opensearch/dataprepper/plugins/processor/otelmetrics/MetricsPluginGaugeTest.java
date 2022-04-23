@@ -38,7 +38,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static com.amazon.dataprepper.plugins.processor.otelmetrics.OTelMetricsProtoHelperTest.getRandomBytes;
+import static org.opensearch.dataprepper.plugins.processor.otelmetrics.OTelMetricsProtoHelperTest.getRandomBytes;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
 

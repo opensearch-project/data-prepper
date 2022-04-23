@@ -12,8 +12,10 @@ import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
 import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.metric.ExponentialHistogram;
 import org.opensearch.dataprepper.model.metric.Gauge;
 import org.opensearch.dataprepper.model.metric.Histogram;
+import org.opensearch.dataprepper.model.metric.JacksonExponentialHistogram;
 import org.opensearch.dataprepper.model.metric.JacksonGauge;
 import org.opensearch.dataprepper.model.metric.JacksonHistogram;
 import org.opensearch.dataprepper.model.metric.JacksonSum;
@@ -80,6 +82,8 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                 recordsOut.addAll(mapSummary(metric, serviceName, ils, resourceAttributes, schemaUrl));
             } else if (metric.hasHistogram()) {
                 recordsOut.addAll(mapHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl));
+            } else if (metric.hasExponentialHistogram()) {
+                recordsOut.addAll(mapExponentialHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl));
             }
         }
         return recordsOut;
@@ -209,6 +213,39 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                 .map(Record::new)
                 .collect(Collectors.toList());
     }
+
+    private List<? extends Record<? extends Metric>> mapExponentialHistogram(io.opentelemetry.proto.metrics.v1.Metric metric, String serviceName, Map<String, Object> ils, Map<String, Object> resourceAttributes, String schemaUrl) {
+        return metric.getExponentialHistogram().getDataPointsList().stream()
+                .map(dp -> (ExponentialHistogram) JacksonExponentialHistogram.builder()
+                        .withUnit(metric.getUnit())
+                        .withName(metric.getName())
+                        .withDescription(metric.getDescription())
+                        .withStartTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                        .withTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
+                        .withServiceName(serviceName)
+                        .withSum(dp.getSum())
+                        .withCount(dp.getCount())
+                        .withZeroCount(dp.getZeroCount())
+                        .withScale(dp.getScale())
+                        .withPositiveBuckets(OTelMetricsProtoHelper.createExponentialBuckets(dp.getPositive(), dp.getScale()))
+                        .withNegativeBuckets(OTelMetricsProtoHelper.createExponentialBuckets(dp.getNegative(), dp.getScale()))
+                        .withAggregationTemporality(metric.getHistogram().getAggregationTemporality().toString())
+                        .withAttributes(OTelMetricsProtoHelper.mergeAllAttributes(
+                                Arrays.asList(
+                                        OTelMetricsProtoHelper.unpackKeyValueList(dp.getAttributesList()),
+                                        resourceAttributes,
+                                        ils
+                                )
+                        ))
+                        .withSchemaUrl(schemaUrl)
+                        .withExemplars(OTelMetricsProtoHelper.convertExemplars(dp.getExemplarsList()))
+                        .withFlags(dp.getFlags())
+                        .build())
+                .map(Record::new)
+                .collect(Collectors.toList());
+
+    }
+
 
     @Override
     public void prepareForShutdown() {

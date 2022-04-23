@@ -24,7 +24,7 @@ public interface Metric extends Event {
      * @see <a href="https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/datamodel.md">
      *     The OpenTelemetry Data Model Spec</a>
      */
-    enum KIND {GAUGE, HISTOGRAM, SUM, SUMMARY}
+    enum KIND {GAUGE, HISTOGRAM, EXPONENTIAL_HISTOGRAM, SUM, SUMMARY}
 
     /**
      * Gets the serviceName of this metric.

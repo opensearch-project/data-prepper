@@ -11,6 +11,7 @@ import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
 import io.opentelemetry.proto.common.v1.InstrumentationScope;
 import io.opentelemetry.proto.common.v1.KeyValue;
+import io.opentelemetry.proto.metrics.v1.ExponentialHistogramDataPoint;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
 import io.opentelemetry.proto.resource.v1.Resource;
@@ -31,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -65,6 +67,7 @@ public final class OTelMetricsProtoHelper {
     private OTelMetricsProtoHelper() {
     }
 
+    private static final Map<Integer, double[]> EXPONENTIAL_BUCKET_BOUNDS = new ConcurrentHashMap<>();
 
     /**
      * Converts an {@link AnyValue} into its appropriate data type
@@ -322,5 +325,40 @@ public final class OTelMetricsProtoHelper {
                                 Hex.encodeHexString(exemplar.getTraceId().toByteArray()),
                                 unpackExemplarValueList(exemplar.getFilteredAttributesList())))
                 .collect(Collectors.toList());
+    }
+
+
+    static double[] calculateBoundaries(int scale) {
+        int len = 1 << Math.abs(scale);
+        double[] boundaries = new double[len + 1];
+        for (int i = 0; i <= len ; i++) {
+            boundaries[i] = scale >=0 ?
+                    Math.pow(2., i / (double) len) :
+                    Math.pow(2., Math.pow(2., i));
+        }
+        return boundaries;
+    }
+
+    /**
+     * Maps a List of {@link io.opentelemetry.proto.metrics.v1.ExponentialHistogramDataPoint.Buckets} to an
+     * internal representation for Data Prepper.
+     * See <a href="https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/datamodel.md#exponential-buckets">data model</a>
+     *
+     * @param buckets the list of buckets
+     * @param scale the scale of the exponential histogram
+     * @return a mapped list of Buckets
+     */
+    public static List<Bucket> createExponentialBuckets(ExponentialHistogramDataPoint.Buckets buckets, int scale) {
+        double[] bucketBounds = EXPONENTIAL_BUCKET_BOUNDS.computeIfAbsent(scale, integer -> calculateBoundaries(scale));
+        List<Bucket> mappedBuckets = new ArrayList<>();
+        int offset = buckets.getOffset();
+        List<Long> bucketsList = buckets.getBucketCountsList();
+        for (int i = 0; i < bucketsList.size(); i++) {
+            Long value = bucketsList.get(i);
+            double lowerBound = bucketBounds[offset + i];
+            double upperBound = bucketBounds[offset + i + 1];
+            mappedBuckets.add(new DefaultBucket(lowerBound, upperBound, value));
+        }
+        return mappedBuckets;
     }
 }
