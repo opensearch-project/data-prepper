@@ -97,7 +97,7 @@ class OpenSearchIntegrationHelper {
 
     /**
      * Copied from OpenSearch test framework
-     * TODO: Consolidate in OpenSearch
+     * Consider consolidating in OpenSearch
      */
     static List<String> getHosts() {
         return Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
@@ -121,7 +121,9 @@ class OpenSearchIntegrationHelper {
     }
 
     /**
-     * Created custom for Data Prepper
+     * Creates an OpenSearch low-level {@link RestClient}.
+     * TODO: Consider using the RestHighLevelClient.
+     * TODO: Consider consolidating with OpenSearch test framework.
      */
     static RestClient createOpenSearchClient() throws IOException {
         final List<String> hosts = getHosts();
@@ -147,8 +149,10 @@ class OpenSearchIntegrationHelper {
     }
 
     /**
+     * Determines if the target in OpenSearch. It appears to be true for OpenDistro as well.
      * Created custom for Data Prepper
-     * TODO: Determine if we need this at all.
+     * TODO: Determine if we need this at all. Can we assume all supported versions of OpenDistro also have the same capabilities?
+     * TODO: It may be possible to remove testing against HTTP after decoupling from the OpenSearch test framework Gradle plugin
      */
     static boolean isOSBundle() {
         final boolean osFlag = Optional.ofNullable(System.getProperty("os"))
@@ -165,6 +169,7 @@ class OpenSearchIntegrationHelper {
 
     /**
      * Created custom for Data Prepper
+     * TODO: It may be possible to remove testing against HTTP after decoupling from the OpenSearch test framework Gradle plugin
      */
     private static String getProtocol() {
         return isOSBundle() ? "https" : "http";
@@ -213,7 +218,7 @@ class OpenSearchIntegrationHelper {
 
     /**
      * Copied from OpenSearch test framework
-     * TODO: Consolidate in OpenSearch
+     * TODO: It may be possible to remove testing against HTTP after decoupling from the OpenSearch test framework Gradle plugin
      */
     private static void configureClient(RestClientBuilder builder, Settings settings) throws IOException {
         String keystorePath = settings.get(TRUSTSTORE_PATH);
