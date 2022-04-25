@@ -38,9 +38,7 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.message.BasicHeader;
-import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
 import org.apache.http.ssl.SSLContextBuilder;
-import org.apache.http.ssl.SSLContexts;
 import org.awaitility.Awaitility;
 import org.opensearch.client.Request;
 import org.opensearch.client.Response;
@@ -48,7 +46,6 @@ import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestClientBuilder;
 import org.opensearch.cluster.ClusterModule;
-import org.opensearch.common.io.PathUtils;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.unit.TimeValue;
 import org.opensearch.common.util.concurrent.ThreadContext;
@@ -59,16 +56,7 @@ import org.opensearch.common.xcontent.XContent;
 import org.opensearch.common.xcontent.XContentParser;
 import org.opensearch.common.xcontent.XContentType;
 
-import javax.net.ssl.SSLContext;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.security.KeyManagementException;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -100,8 +88,8 @@ class OpenSearchIntegrationHelper {
      * Consider consolidating in OpenSearch
      */
     static List<String> getHosts() {
-        return Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
-                .map(ip -> String.format("%s://%s", getProtocol(), ip)).collect(Collectors.toList());
+        return Arrays.stream(System.getProperty("tests.opensearch.host").split(","))
+                .map(ip -> String.format("https://%s", ip)).collect(Collectors.toList());
     }
 
     /**
@@ -138,11 +126,7 @@ class OpenSearchIntegrationHelper {
      */
     private static RestClient buildClient(final Settings settings, final HttpHost[] hosts) throws IOException {
         final RestClientBuilder builder = RestClient.builder(hosts);
-        if (isOSBundle()) {
-            configureHttpsClient(builder, settings);
-        } else {
-            configureClient(builder, settings);
-        }
+        configureHttpsClient(builder, settings);
 
         builder.setStrictDeprecationMode(true);
         return builder.build();
@@ -155,24 +139,16 @@ class OpenSearchIntegrationHelper {
      * TODO: It may be possible to remove testing against HTTP after decoupling from the OpenSearch test framework Gradle plugin
      */
     static boolean isOSBundle() {
-        final boolean osFlag = Optional.ofNullable(System.getProperty("os"))
+        final boolean osFlag = Optional.ofNullable(System.getProperty("tests.opensearch.bundle"))
                 .map("true"::equalsIgnoreCase).orElse(false);
         if (osFlag) {
             // currently only external cluster is supported for security enabled testing
-            if (!Optional.ofNullable(System.getProperty("tests.rest.cluster")).isPresent()) {
+            if (!Optional.ofNullable(System.getProperty("tests.opensearch.host")).isPresent()) {
                 throw new RuntimeException("cluster url should be provided for security enabled OpenSearch testing");
             }
         }
 
         return osFlag;
-    }
-
-    /**
-     * Created custom for Data Prepper
-     * TODO: It may be possible to remove testing against HTTP after decoupling from the OpenSearch test framework Gradle plugin
-     */
-    private static String getProtocol() {
-        return isOSBundle() ? "https" : "http";
     }
 
 
@@ -189,10 +165,10 @@ class OpenSearchIntegrationHelper {
         builder.setDefaultHeaders(defaultHeaders);
         builder.setHttpClientConfigCallback(httpClientBuilder -> {
             final String userName = Optional
-                    .ofNullable(System.getProperty("user"))
+                    .ofNullable(System.getProperty("tests.opensearch.user"))
                     .orElseThrow(() -> new RuntimeException("user name is missing"));
             final String password = Optional
-                    .ofNullable(System.getProperty("password"))
+                    .ofNullable(System.getProperty("tests.opensearch.password"))
                     .orElseThrow(() -> new RuntimeException("password is missing"));
             final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
             credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(userName, password));
@@ -210,50 +186,6 @@ class OpenSearchIntegrationHelper {
         final String socketTimeoutString = settings.get(CLIENT_SOCKET_TIMEOUT);
         final TimeValue socketTimeout = TimeValue
                 .parseTimeValue(socketTimeoutString == null ? "60s" : socketTimeoutString, CLIENT_SOCKET_TIMEOUT);
-        builder.setRequestConfigCallback(conf -> conf.setSocketTimeout(Math.toIntExact(socketTimeout.getMillis())));
-        if (settings.hasValue(CLIENT_PATH_PREFIX)) {
-            builder.setPathPrefix(settings.get(CLIENT_PATH_PREFIX));
-        }
-    }
-
-    /**
-     * Copied from OpenSearch test framework
-     * TODO: It may be possible to remove testing against HTTP after decoupling from the OpenSearch test framework Gradle plugin
-     */
-    private static void configureClient(RestClientBuilder builder, Settings settings) throws IOException {
-        String keystorePath = settings.get(TRUSTSTORE_PATH);
-        if (keystorePath != null) {
-            final String keystorePass = settings.get(TRUSTSTORE_PASSWORD);
-            if (keystorePass == null) {
-                throw new IllegalStateException(TRUSTSTORE_PATH + " is provided but not " + TRUSTSTORE_PASSWORD);
-            }
-            Path path = PathUtils.get(keystorePath);
-            if (!Files.exists(path)) {
-                throw new IllegalStateException(TRUSTSTORE_PATH + " is set but points to a non-existing file");
-            }
-            try {
-                final String keyStoreType = keystorePath.endsWith(".p12") ? "PKCS12" : "jks";
-                KeyStore keyStore = KeyStore.getInstance(keyStoreType);
-                try (InputStream is = Files.newInputStream(path)) {
-                    keyStore.load(is, keystorePass.toCharArray());
-                }
-                SSLContext sslcontext = SSLContexts.custom().loadTrustMaterial(keyStore, null).build();
-                SSLIOSessionStrategy sessionStrategy = new SSLIOSessionStrategy(sslcontext);
-                builder.setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder.setSSLStrategy(sessionStrategy));
-            } catch (KeyStoreException | NoSuchAlgorithmException | KeyManagementException | CertificateException e) {
-                throw new RuntimeException("Error setting up ssl", e);
-            }
-        }
-        Map<String, String> headers = ThreadContext.buildDefaultHeaders(settings);
-        Header[] defaultHeaders = new Header[headers.size()];
-        int i = 0;
-        for (Map.Entry<String, String> entry : headers.entrySet()) {
-            defaultHeaders[i++] = new BasicHeader(entry.getKey(), entry.getValue());
-        }
-        builder.setDefaultHeaders(defaultHeaders);
-        final String socketTimeoutString = settings.get(CLIENT_SOCKET_TIMEOUT);
-        final TimeValue socketTimeout =
-                TimeValue.parseTimeValue(socketTimeoutString == null ? "60s" : socketTimeoutString, CLIENT_SOCKET_TIMEOUT);
         builder.setRequestConfigCallback(conf -> conf.setSocketTimeout(Math.toIntExact(socketTimeout.getMillis())));
         if (settings.hasValue(CLIENT_PATH_PREFIX)) {
             builder.setPathPrefix(settings.get(CLIENT_PATH_PREFIX));

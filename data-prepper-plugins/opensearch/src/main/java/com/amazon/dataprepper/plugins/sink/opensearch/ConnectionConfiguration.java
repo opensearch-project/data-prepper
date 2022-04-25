@@ -68,7 +68,7 @@ public class ConnectionConfiguration {
   /**
    * The valid port range per https://tools.ietf.org/html/rfc6335.
    */
-  private final static ValueRange VALID_PORT_RANGE = ValueRange.of(0, 65535);
+  private static final ValueRange VALID_PORT_RANGE = ValueRange.of(0, 65535);
 
 
   private final List<String> hosts;
