@@ -18,34 +18,21 @@ import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Measurement;
 import org.apache.commons.io.FileUtils;
-import org.apache.http.Header;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.message.BasicHeader;
-import org.apache.http.ssl.SSLContextBuilder;
 import org.apache.http.util.EntityUtils;
 import org.hamcrest.MatcherAssert;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 import org.opensearch.client.Request;
 import org.opensearch.client.Response;
 import org.opensearch.client.RestClient;
-import org.opensearch.client.RestClientBuilder;
 import org.opensearch.common.Strings;
-import org.opensearch.common.settings.Settings;
-import org.opensearch.common.unit.TimeValue;
-import org.opensearch.common.util.concurrent.ThreadContext;
 import org.opensearch.common.xcontent.DeprecationHandler;
 import org.opensearch.common.xcontent.NamedXContentRegistry;
 import org.opensearch.common.xcontent.XContentFactory;
 import org.opensearch.common.xcontent.XContentParser;
 import org.opensearch.common.xcontent.XContentType;
-import org.opensearch.test.rest.OpenSearchRestTestCase;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
@@ -61,11 +48,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createContentParser;
+import static com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createOpenSearchClient;
+import static com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.getHosts;
+import static com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.isOSBundle;
+import static com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.waitForClusterStateUpdatesToFinish;
+import static com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.wipeAllTemplates;
 import static org.apache.http.HttpStatus.SC_OK;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -73,29 +65,39 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.Matchers.closeTo;
 
-public class OpenSearchSinkIT extends OpenSearchRestTestCase {
+public class OpenSearchSinkIT {
   private static final String PLUGIN_NAME = "opensearch";
   private static final String PIPELINE_NAME = "integTestPipeline";
   private static final String TEST_CUSTOM_INDEX_POLICY_FILE = "test-custom-index-policy-file.json";
-  private List<String> HOSTS = Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
-          .map(ip -> String.format("%s://%s", getProtocol(), ip)).collect(Collectors.toList());
   private static final String TEST_TEMPLATE_V1_FILE = "test-index-template.json";
   private static final String TEST_TEMPLATE_V2_FILE = "test-index-template-v2.json";
   private static final String DEFAULT_RAW_SPAN_FILE_1 = "raw-span-1.json";
   private static final String DEFAULT_RAW_SPAN_FILE_2 = "raw-span-2.json";
   private static final String DEFAULT_SERVICE_MAP_FILE = "service-map-1.json";
 
+  private RestClient client;
+
   @Before
-  public void metricsInit() {
+  public void metricsInit() throws IOException {
     MetricsTestUtil.initMetrics();
+
+    client = createOpenSearchClient();
   }
 
+  @After
+  public void cleanOpenSearch() throws Exception {
+    wipeAllOpenSearchIndices();
+    wipeAllTemplates();
+    waitForClusterStateUpdatesToFinish();
+  }
+
+  @Test
   public void testInstantiateSinkRawSpanDefault() throws IOException {
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
     Request request = new Request(HttpMethod.HEAD, indexAlias);
-    Response response = client().performRequest(request);
+    Response response = client.performRequest(request);
     MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
     final String index = String.format("%s-000001", indexAlias);
     final Map<String, Object> mappings = getIndexMappings(index);
@@ -114,7 +116,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     // roll over initial index
     request = new Request(HttpMethod.POST, String.format("%s/_rollover", indexAlias));
     request.setJsonEntity("{ \"conditions\" : { } }\n");
-    response = client().performRequest(request);
+    response = client.performRequest(request);
     MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
 
     // Instantiate sink again
@@ -122,7 +124,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     // Make sure no new write index *-000001 is created under alias
     final String rolloverIndexName = String.format("%s-000002", indexAlias);
     request = new Request(HttpMethod.GET, rolloverIndexName + "/_alias");
-    response = client().performRequest(request);
+    response = client.performRequest(request);
     MatcherAssert.assertThat(checkIsWriteIndex(EntityUtils.toString(response.getEntity()), indexAlias, rolloverIndexName), equalTo(true));
     sink.shutdown();
 
@@ -132,15 +134,17 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     }
   }
 
+  @Test
   public void testInstantiateSinkRawSpanReservedAliasAlreadyUsedAsIndex() throws IOException {
     final String reservedIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
     final Request request = new Request(HttpMethod.PUT, reservedIndexAlias);
-    client().performRequest(request);
+    client.performRequest(request);
     final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
     Assert.assertThrows(String.format(IndexManager.INDEX_ALIAS_USED_AS_INDEX_ERROR, reservedIndexAlias),
             RuntimeException.class, () -> new OpenSearchSink(pluginSetting));
   }
 
+  @Test
   public void testOutputRawSpanDefault() throws IOException, InterruptedException {
     final String testDoc1 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
     final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_2);
@@ -204,6 +208,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(2188.0, 0));
   }
 
+  @Test
   public void testOutputRawSpanWithDLQ() throws IOException, InterruptedException {
     // TODO: write test case
     final String testDoc1 = readDocFromFile("raw-span-error.json");
@@ -258,12 +263,13 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
 
   }
 
+  @Test
   public void testInstantiateSinkServiceMapDefault() throws IOException {
     final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP);
     final Request request = new Request(HttpMethod.HEAD, indexAlias);
-    final Response response = client().performRequest(request);
+    final Response response = client.performRequest(request);
     MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
     final Map<String, Object> mappings = getIndexMappings(indexAlias);
     MatcherAssert.assertThat(mappings, notNullValue());
@@ -276,6 +282,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     }
   }
 
+  @Test
   public void testOutputServiceMapDefault() throws IOException, InterruptedException {
     final String testDoc = readDocFromFile(DEFAULT_SERVICE_MAP_FILE);
     final ObjectMapper mapper = new ObjectMapper();
@@ -316,6 +323,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     sink.shutdown();
   }
 
+  @Test
   public void testInstantiateSinkCustomIndex_NoRollOver() throws IOException {
     final String testIndexAlias = "test-alias";
     final String testTemplateFile = Objects.requireNonNull(
@@ -323,7 +331,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFile);
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     final Request request = new Request(HttpMethod.HEAD, testIndexAlias);
-    final Response response = client().performRequest(request);
+    final Response response = client.performRequest(request);
     MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
     sink.shutdown();
 
@@ -332,6 +340,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     sink.shutdown();
   }
 
+  @Test
   public void testInstantiateSinkCustomIndex_WithIsmPolicy() throws IOException {
     final String indexAlias = "sink-custom-index-ism-test-alias";
     final String testTemplateFile = Objects.requireNonNull(
@@ -341,7 +350,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final PluginSetting pluginSetting = generatePluginSettingByMetadata(metadata);
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     Request request = new Request(HttpMethod.HEAD, indexAlias);
-    Response response = client().performRequest(request);
+    Response response = client.performRequest(request);
     MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
     final String index = String.format("%s-000001", indexAlias);
     final Map<String, Object> mappings = getIndexMappings(index);
@@ -360,7 +369,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     // roll over initial index
     request = new Request(HttpMethod.POST, String.format("%s/_rollover", indexAlias));
     request.setJsonEntity("{ \"conditions\" : { } }\n");
-    response = client().performRequest(request);
+    response = client.performRequest(request);
     MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
 
     // Instantiate sink again
@@ -368,7 +377,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     // Make sure no new write index *-000001 is created under alias
     final String rolloverIndexName = String.format("%s-000002", indexAlias);
     request = new Request(HttpMethod.GET, rolloverIndexName + "/_alias");
-    response = client().performRequest(request);
+    response = client.performRequest(request);
     MatcherAssert.assertThat(checkIsWriteIndex(EntityUtils.toString(response.getEntity()), indexAlias, rolloverIndexName), equalTo(true));
     sink.shutdown();
 
@@ -378,6 +387,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     }
   }
 
+  @Test
   public void testInstantiateSinkDoesNotOverwriteNewerIndexTemplates() throws IOException {
     final String testIndexAlias = "test-alias";
     final String expectedIndexTemplateName = testIndexAlias + "-index-template";
@@ -389,12 +399,12 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
 
     Request getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
-    Response getTemplateResponse = client().performRequest(getTemplateRequest);
+    Response getTemplateResponse = client.performRequest(getTemplateRequest);
     MatcherAssert.assertThat(getTemplateResponse.getStatusLine().getStatusCode(), equalTo(SC_OK));
 
     String responseBody = EntityUtils.toString(getTemplateResponse.getEntity());
     @SuppressWarnings("unchecked") final Integer firstResponseVersion =
-            (Integer) ((Map<String, Object>) createParser(XContentType.JSON.xContent(),
+            (Integer) ((Map<String, Object>) createContentParser(XContentType.JSON.xContent(),
             responseBody).map().get(expectedIndexTemplateName)).get("version");
 
     MatcherAssert.assertThat(firstResponseVersion, equalTo(Integer.valueOf(1)));
@@ -405,12 +415,12 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     sink = new OpenSearchSink(pluginSetting);
 
     getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
-    getTemplateResponse = client().performRequest(getTemplateRequest);
+    getTemplateResponse = client.performRequest(getTemplateRequest);
     MatcherAssert.assertThat(getTemplateResponse.getStatusLine().getStatusCode(), equalTo(SC_OK));
 
     responseBody = EntityUtils.toString(getTemplateResponse.getEntity());
     @SuppressWarnings("unchecked") final Integer secondResponseVersion =
-            (Integer) ((Map<String, Object>) createParser(XContentType.JSON.xContent(),
+            (Integer) ((Map<String, Object>) createContentParser(XContentType.JSON.xContent(),
             responseBody).map().get(expectedIndexTemplateName)).get("version");
 
     MatcherAssert.assertThat(secondResponseVersion, equalTo(Integer.valueOf(2)));
@@ -421,12 +431,12 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     sink = new OpenSearchSink(pluginSetting);
 
     getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
-    getTemplateResponse = client().performRequest(getTemplateRequest);
+    getTemplateResponse = client.performRequest(getTemplateRequest);
     MatcherAssert.assertThat(getTemplateResponse.getStatusLine().getStatusCode(), equalTo(SC_OK));
 
     responseBody = EntityUtils.toString(getTemplateResponse.getEntity());
     @SuppressWarnings("unchecked") final Integer thirdResponseVersion =
-            (Integer) ((Map<String, Object>) createParser(XContentType.JSON.xContent(),
+            (Integer) ((Map<String, Object>) createContentParser(XContentType.JSON.xContent(),
             responseBody).map().get(expectedIndexTemplateName)).get("version");
 
     // Assert version 2 was not overwritten by version 1
@@ -435,6 +445,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
 
   }
 
+  @Test
   public void testOutputCustomIndex() throws IOException, InterruptedException {
     final String testIndexAlias = "test-alias";
     final String testTemplateFile = Objects.requireNonNull(
@@ -460,6 +471,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
   }
 
+  @Test
   public void testEventOutput() throws IOException, InterruptedException {
 
     final Event testEvent = JacksonEvent.builder()
@@ -489,7 +501,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
     final Map<String, Object> metadata = new HashMap<>();
     metadata.put(IndexConfiguration.TRACE_ANALYTICS_RAW_FLAG, isRaw);
     metadata.put(IndexConfiguration.TRACE_ANALYTICS_SERVICE_MAP_FLAG, isServiceMap);
-    metadata.put(ConnectionConfiguration.HOSTS, HOSTS);
+    metadata.put(ConnectionConfiguration.HOSTS, getHosts());
     metadata.put(IndexConfiguration.INDEX_ALIAS, indexAlias);
     metadata.put(IndexConfiguration.TEMPLATE_FILE, templateFilePath);
     final String user = System.getProperty("user");
@@ -535,7 +547,7 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
   }
 
   private Boolean checkIsWriteIndex(final String responseBody, final String aliasName, final String indexName) throws IOException {
-    @SuppressWarnings("unchecked") final Map<String, Object> indexBlob = (Map<String, Object>) createParser(XContentType.JSON.xContent(),
+    @SuppressWarnings("unchecked") final Map<String, Object> indexBlob = (Map<String, Object>) createContentParser(XContentType.JSON.xContent(),
             responseBody).map().get(indexName);
     @SuppressWarnings("unchecked") final Map<String, Object> aliasesBlob = (Map<String, Object>) indexBlob.get("aliases");
     @SuppressWarnings("unchecked") final Map<String, Object> aliasBlob = (Map<String, Object>) aliasesBlob.get(aliasName);
@@ -556,20 +568,20 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
       );
       request.setJsonEntity(jsonEntity);
     }
-    final Response response = client().performRequest(request);
+    final Response response = client.performRequest(request);
     final String responseBody = EntityUtils.toString(response.getEntity());
-    return (Integer) createParser(XContentType.JSON.xContent(), responseBody).map().get("count");
+    return (Integer) createContentParser(XContentType.JSON.xContent(), responseBody).map().get("count");
   }
 
   private List<Map<String, Object>> getSearchResponseDocSources(final String index) throws IOException {
     final Request refresh = new Request(HttpMethod.POST, index + "/_refresh");
-    client().performRequest(refresh);
+    client.performRequest(refresh);
     final Request request = new Request(HttpMethod.GET, index + "/_search");
-    final Response response = client().performRequest(request);
+    final Response response = client.performRequest(request);
     final String responseBody = EntityUtils.toString(response.getEntity());
 
     @SuppressWarnings("unchecked") final List<Object> hits =
-            (List<Object>) ((Map<String, Object>) createParser(XContentType.JSON.xContent(),
+            (List<Object>) ((Map<String, Object>) createContentParser(XContentType.JSON.xContent(),
                     responseBody).map().get("hits")).get("hits");
     @SuppressWarnings("unchecked") final List<Map<String, Object>> sources = hits.stream()
             .map(hit -> (Map<String, Object>) ((Map<String, Object>) hit).get("_source"))
@@ -579,11 +591,11 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
 
   private Map<String, Object> getIndexMappings(final String index) throws IOException {
     final Request request = new Request(HttpMethod.GET, index + "/_mappings");
-    final Response response = client().performRequest(request);
+    final Response response = client.performRequest(request);
     final String responseBody = EntityUtils.toString(response.getEntity());
 
     @SuppressWarnings("unchecked") final Map<String, Object> mappings =
-            (Map<String, Object>) ((Map<String, Object>) createParser(XContentType.JSON.xContent(),
+            (Map<String, Object>) ((Map<String, Object>) createContentParser(XContentType.JSON.xContent(),
                     responseBody).map().get(index)).get("mappings");
     return mappings;
   }
@@ -591,49 +603,18 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
   private String getIndexPolicyId(final String index) throws IOException {
     // TODO: replace with new _opensearch API
     final Request request = new Request(HttpMethod.GET, "/_opendistro/_ism/explain/" + index);
-    final Response response = client().performRequest(request);
+    final Response response = client.performRequest(request);
     final String responseBody = EntityUtils.toString(response.getEntity());
 
-    @SuppressWarnings("unchecked") final String policyId = (String) ((Map<String, Object>) createParser(XContentType.JSON.xContent(),
+    @SuppressWarnings("unchecked") final String policyId = (String) ((Map<String, Object>) createContentParser(XContentType.JSON.xContent(),
             responseBody).map().get(index)).get("index.opendistro.index_state_management.policy_id");
     return policyId;
   }
 
-  public static boolean isOSBundle() {
-    final boolean osFlag = Optional.ofNullable(System.getProperty("os"))
-            .map("true"::equalsIgnoreCase).orElse(false);
-    if (osFlag) {
-      // currently only external cluster is supported for security enabled testing
-      if (!Optional.ofNullable(System.getProperty("tests.rest.cluster")).isPresent()) {
-        throw new RuntimeException("cluster url should be provided for security enabled OpenSearch testing");
-      }
-    }
-
-    return osFlag;
-  }
-
-  @Override
-  protected String getProtocol() {
-    return isOSBundle() ? "https" : "http";
-  }
-
-  @Override
-  protected RestClient buildClient(final Settings settings, final HttpHost[] hosts) throws IOException {
-    final RestClientBuilder builder = RestClient.builder(hosts);
-    if (isOSBundle()) {
-      configureHttpsClient(builder, settings);
-    } else {
-      configureClient(builder, settings);
-    }
-
-    builder.setStrictDeprecationMode(true);
-    return builder.build();
-  }
 
   @SuppressWarnings("unchecked")
-  @After
-  protected void wipeAllOpenSearchIndices() throws IOException {
-    final Response response = client().performRequest(new Request("GET", "/_cat/indices?format=json&expand_wildcards=all"));
+  private void wipeAllOpenSearchIndices() throws IOException {
+    final Response response = client.performRequest(new Request("GET", "/_cat/indices?format=json&expand_wildcards=all"));
     final XContentType xContentType = XContentType.fromMediaTypeOrFormat(response.getEntity().getContentType().getValue());
     try (
             XContentParser parser = xContentType
@@ -655,54 +636,9 @@ public class OpenSearchSinkIT extends OpenSearchRestTestCase {
       for (final Map<String, Object> index : parserList) {
         final String indexName = (String) index.get("index");
         if (indexName != null && !".opendistro_security".equals(indexName)) {
-          client().performRequest(new Request("DELETE", "/" + indexName));
+          client.performRequest(new Request("DELETE", "/" + indexName));
         }
       }
     }
-  }
-
-  protected static void configureHttpsClient(final RestClientBuilder builder, final Settings settings) throws IOException {
-    final Map<String, String> headers = ThreadContext.buildDefaultHeaders(settings);
-    final Header[] defaultHeaders = new Header[headers.size()];
-    int i = 0;
-    for (Map.Entry<String, String> entry : headers.entrySet()) {
-      defaultHeaders[i++] = new BasicHeader(entry.getKey(), entry.getValue());
-    }
-    builder.setDefaultHeaders(defaultHeaders);
-    builder.setHttpClientConfigCallback(httpClientBuilder -> {
-      final String userName = Optional
-              .ofNullable(System.getProperty("user"))
-              .orElseThrow(() -> new RuntimeException("user name is missing"));
-      final String password = Optional
-              .ofNullable(System.getProperty("password"))
-              .orElseThrow(() -> new RuntimeException("password is missing"));
-      final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-      credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(userName, password));
-      try {
-        return httpClientBuilder
-                .setDefaultCredentialsProvider(credentialsProvider)
-                // disable the certificate since our testing cluster just uses the default security configuration
-                .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE)
-                .setSSLContext(SSLContextBuilder.create().loadTrustMaterial(null, (chains, authType) -> true).build());
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
-    });
-
-    final String socketTimeoutString = settings.get(CLIENT_SOCKET_TIMEOUT);
-    final TimeValue socketTimeout = TimeValue
-            .parseTimeValue(socketTimeoutString == null ? "60s" : socketTimeoutString, CLIENT_SOCKET_TIMEOUT);
-    builder.setRequestConfigCallback(conf -> conf.setSocketTimeout(Math.toIntExact(socketTimeout.getMillis())));
-    if (settings.hasValue(CLIENT_PATH_PREFIX)) {
-      builder.setPathPrefix(settings.get(CLIENT_PATH_PREFIX));
-    }
-  }
-
-  /**
-   * wipeAllIndices won't work since it cannot delete security index. Use wipeAllOpenSearchIndices instead.
-   */
-  @Override
-  protected boolean preserveIndicesUponCompletion() {
-    return true;
   }
 }
