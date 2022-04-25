@@ -6,8 +6,12 @@
 package org.opensearch.dataprepper.model.metric;
 
 import com.google.common.collect.ImmutableMap;
+import io.micrometer.core.instrument.util.IOUtils;
+import org.json.JSONException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.event.TestObject;
+import org.skyscreamer.jsonassert.JSONAssert;
 
 import java.util.Arrays;
 import java.util.Date;
@@ -20,13 +24,16 @@ import static org.hamcrest.Matchers.anEmptyMap;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class JacksonHistogramTest {
 
+    private static final Long TEST_KEY1_TIME = new Date().getTime();
+    private static final String TEST_KEY2 = UUID.randomUUID().toString();
     private static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
-            "key1", new Date().getTime(),
-            "key2", UUID.randomUUID().toString());
+            "key1", TEST_KEY1_TIME,
+            "key2", TEST_KEY2);
     private static final String TEST_SERVICE_NAME = "service";
     private static final String TEST_NAME = "name";
     private static final String TEST_DESCRIPTION = "description";
@@ -39,6 +46,9 @@ class JacksonHistogramTest {
             new DefaultBucket(0.0, 5.0, 2L),
             new DefaultBucket(5.0, 10.0, 5L)
     );
+
+    private static final List<Long> TEST_BUCKET_COUNTS_LIST = Arrays.asList(1L, 2L, 3L);
+    private static final List<Double> TEST_EXPLICIT_BOUNDS_LIST = Arrays.asList(5D, 10D, 100D);
     private static final Integer TEST_BUCKETS_COUNT = 2;
     private static final Long TEST_COUNT = 2L;
     private static final Integer TEST_EXPLICIT_BOUNDS_COUNT = 2;
@@ -66,7 +76,9 @@ class JacksonHistogramTest {
                 .withBuckets(TEST_BUCKETS)
                 .withExplicitBoundsCount(TEST_EXPLICIT_BOUNDS_COUNT)
                 .withAggregationTemporality(TEST_AGGREGATION_TEMPORALITY)
-                .withSchemaUrl(TEST_SCHEMA_URL);
+                .withSchemaUrl(TEST_SCHEMA_URL)
+                .withExplicitBoundsList(TEST_EXPLICIT_BOUNDS_LIST)
+                .withBucketCountsList(TEST_BUCKET_COUNTS_LIST);
 
         histogram = builder.build();
     }
@@ -135,9 +147,21 @@ class JacksonHistogramTest {
     }
 
     @Test
-    public void testGetBucketCount() {
-        final Integer bucketCount = histogram.getBucketCount();
-        assertThat(bucketCount, is(equalTo(TEST_BUCKETS_COUNT)));
+    public void testGetBucketCountsList() {
+        List<Long> counts = histogram.getBucketCountsList();
+        assertEquals(counts, TEST_BUCKET_COUNTS_LIST);
+    }
+
+    @Test
+    public void testGetExplicitBoundsList() {
+        List<Double> bounds = histogram.getExplicitBoundsList();
+        assertEquals(bounds, TEST_EXPLICIT_BOUNDS_LIST);
+    }
+
+    @Test
+    public void testGetBucketCounts() {
+        Integer count = histogram.getBucketCount();
+        assertEquals(count, TEST_BUCKETS_COUNT);
     }
 
     @Test
@@ -170,6 +194,20 @@ class JacksonHistogramTest {
         builder.withAttributes(null);
         JacksonHistogram histogram = builder.build();
         histogram.toJsonString();
-        assertThat(histogram.getAttributes(),is(anEmptyMap()));
+        assertThat(histogram.getAttributes(), is(anEmptyMap()));
     }
+
+    @Test
+    public void testHistogramToJsonString() throws JSONException {
+        histogram.put("foo", "bar");
+        final String value = UUID.randomUUID().toString();
+        histogram.put("testObject", new TestObject(value));
+        histogram.put("list", Arrays.asList(1, 4, 5));
+        final String result = histogram.toJsonString();
+
+        String file = IOUtils.toString(this.getClass().getResourceAsStream("/testjson/histogram.json"));
+        String expected = String.format(file, TEST_START_TIME, TEST_TIME, value, TEST_KEY1_TIME, TEST_KEY2);
+        JSONAssert.assertEquals(expected, result, false);
+    }
+
 }

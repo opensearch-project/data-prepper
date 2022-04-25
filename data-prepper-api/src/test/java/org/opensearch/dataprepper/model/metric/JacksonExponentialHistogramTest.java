@@ -6,11 +6,17 @@
 package org.opensearch.dataprepper.model.metric;
 
 import com.google.common.collect.ImmutableMap;
+import io.micrometer.core.instrument.util.IOUtils;
+import org.json.JSONException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.event.TestObject;
+import org.skyscreamer.jsonassert.JSONAssert;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -20,13 +26,17 @@ import static org.hamcrest.Matchers.anEmptyMap;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class JacksonExponentialHistogramTest {
 
+    private static final Long TEST_KEY1_TIME = Clock.fixed(Instant.ofEpochMilli(1_700_000), ZoneOffset.UTC).millis();
+    private static final String TEST_KEY2 = UUID.randomUUID().toString();
+
     private static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
-            "key1", new Date().getTime(),
-            "key2", UUID.randomUUID().toString());
+            "key1", TEST_KEY1_TIME,
+            "key2", TEST_KEY2);
     private static final String TEST_SERVICE_NAME = "service";
     private static final String TEST_NAME = "name";
     private static final String TEST_DESCRIPTION = "description";
@@ -44,11 +54,15 @@ public class JacksonExponentialHistogramTest {
             new DefaultBucket(0.0, 5.0, 2L),
             new DefaultBucket(5.0, 10.0, 5L)
     );
+    private static final List<Long> TEST_NEGATIVE = Arrays.asList(1L, 2L, 3L);
+    private static final List<Long> TEST_POSITIVE = Arrays.asList(4L, 5L);
     private static final Long TEST_COUNT = 2L;
     private static final String TEST_AGGREGATION_TEMPORALITY = "AGGREGATIONTEMPORALITY";
     private static final String TEST_SCHEMA_URL = "schema";
     private static final Integer TEST_SCALE = -3;
     private static final Long TEST_ZERO_COUNT = 1L;
+    private static final Integer TEST_NEGATIVE_OFFSET = 2;
+    private static final Integer TEST_POSITIVE_OFFSET = 5;
 
     private JacksonExponentialHistogram histogram;
 
@@ -72,7 +86,11 @@ public class JacksonExponentialHistogramTest {
                 .withAggregationTemporality(TEST_AGGREGATION_TEMPORALITY)
                 .withSchemaUrl(TEST_SCHEMA_URL)
                 .withScale(TEST_SCALE)
-                .withZeroCount(TEST_ZERO_COUNT);
+                .withZeroCount(TEST_ZERO_COUNT)
+                .withPositiveOffset(TEST_POSITIVE_OFFSET)
+                .withNegativeOffset(TEST_NEGATIVE_OFFSET)
+                .withNegative(TEST_NEGATIVE)
+                .withPositive(TEST_POSITIVE);
 
         histogram = builder.build();
     }
@@ -167,6 +185,31 @@ public class JacksonExponentialHistogramTest {
         assertThat(secondBucket.getCount(), is(equalTo(5L)));
     }
 
+    @Test
+    public void testGetNegative() {
+        List<Long> negativeBucketCounts = histogram.getNegative();
+        assertThat(negativeBucketCounts.size(), is(equalTo(3)));
+        assertEquals(negativeBucketCounts, TEST_NEGATIVE);
+    }
+
+    @Test
+    public void testGetPositive() {
+        List<Long> negativeBucketCounts = histogram.getPositive();
+        assertThat(negativeBucketCounts.size(), is(equalTo(2)));
+        assertEquals(negativeBucketCounts, TEST_POSITIVE);
+    }
+
+    @Test
+    public void testGetPositiveOffset() {
+        Integer positiveOffset = histogram.getPositiveOffset();
+        assertThat(positiveOffset, is(TEST_POSITIVE_OFFSET));
+    }
+
+    @Test
+    public void testGetNegativeOffset() {
+        Integer negativeOffset = histogram.getNegativeOffset();
+        assertThat(negativeOffset, is(TEST_NEGATIVE_OFFSET));
+    }
 
     @Test
     public void testGetAggregationTemporality() {
@@ -193,5 +236,18 @@ public class JacksonExponentialHistogramTest {
         JacksonExponentialHistogram histogram = builder.build();
         histogram.toJsonString();
         assertThat(histogram.getAttributes(),is(anEmptyMap()));
+    }
+
+    @Test
+    public void testHistogramToJsonString() throws JSONException {
+        histogram.put("foo", "bar");
+        final String value = UUID.randomUUID().toString();
+        histogram.put("testObject", new TestObject(value));
+        histogram.put("list", Arrays.asList(1, 4, 5));
+        final String result = histogram.toJsonString();
+
+        String file = IOUtils.toString(this.getClass().getResourceAsStream("/testjson/exponentialHistogram.json"));
+        String expected = String.format(file, TEST_START_TIME, TEST_TIME, value, TEST_KEY1_TIME, TEST_KEY2);
+        JSONAssert.assertEquals(expected, result, false);
     }
 }

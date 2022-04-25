@@ -6,23 +6,18 @@
 package org.opensearch.dataprepper.plugins.processor.otelmetrics;
 
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
-
 import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
 import io.opentelemetry.proto.metrics.v1.ScopeMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.metric.ExponentialHistogram;
-import org.opensearch.dataprepper.model.metric.Gauge;
-import org.opensearch.dataprepper.model.metric.Histogram;
 import org.opensearch.dataprepper.model.metric.JacksonExponentialHistogram;
 import org.opensearch.dataprepper.model.metric.JacksonGauge;
 import org.opensearch.dataprepper.model.metric.JacksonHistogram;
 import org.opensearch.dataprepper.model.metric.JacksonSum;
 import org.opensearch.dataprepper.model.metric.JacksonSummary;
 import org.opensearch.dataprepper.model.metric.Metric;
-import org.opensearch.dataprepper.model.metric.Sum;
-import org.opensearch.dataprepper.model.metric.Summary;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -35,17 +30,20 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 
-@DataPrepperPlugin(name = "otel_metrics_raw_processor", pluginType = Processor.class)
+@DataPrepperPlugin(name = "otel_metrics_raw_processor", pluginType = Processor.class, pluginConfigurationType = OtelMetricsRawProcessorConfig.class)
 public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetricsServiceRequest>, Record<? extends Metric>> {
 
-    public OTelMetricsRawProcessor(PluginSetting pluginSetting) {
+    private final OtelMetricsRawProcessorConfig otelMetricsRawProcessorConfig;
+
+    @DataPrepperPluginConstructor
+    public OTelMetricsRawProcessor(PluginSetting pluginSetting, final OtelMetricsRawProcessorConfig otelMetricsRawProcessorConfig) {
         super(pluginSetting);
+        this.otelMetricsRawProcessorConfig = otelMetricsRawProcessorConfig;
     }
 
     @Override
     public Collection<Record<? extends Metric>> doExecute(Collection<Record<ExportMetricsServiceRequest>> records) {
         Collection<Record<? extends Metric>> recordsOut = new ArrayList<>();
-
         for (Record<ExportMetricsServiceRequest> ets : records) {
             for (ResourceMetrics rs : ets.getData().getResourceMetricsList()) {
                 final String schemaUrl = rs.getSchemaUrl();
@@ -89,13 +87,13 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
         return recordsOut;
     }
 
-    private List<Record<Gauge>> mapGauge(io.opentelemetry.proto.metrics.v1.Metric metric,
+    private List<? extends Record<? extends Metric>> mapGauge(io.opentelemetry.proto.metrics.v1.Metric metric,
                                          String serviceName,
                                          final Map<String, Object> ils,
                                          final Map<String, Object> resourceAttributes,
                                          final String schemaUrl) {
         return metric.getGauge().getDataPointsList().stream()
-                .map(dp -> (Gauge) JacksonGauge.builder()
+                .map(dp -> JacksonGauge.builder()
                         .withUnit(metric.getUnit())
                         .withName(metric.getName())
                         .withDescription(metric.getDescription())
@@ -118,13 +116,13 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                 .collect(Collectors.toList());
     }
 
-    private List<Record<Sum>> mapSum(final io.opentelemetry.proto.metrics.v1.Metric metric,
+    private List<? extends Record<? extends Metric>> mapSum(final io.opentelemetry.proto.metrics.v1.Metric metric,
                                      final String serviceName,
                                      final Map<String, Object> ils,
                                      final Map<String, Object> resourceAttributes,
                                      final String schemaUrl) {
         return metric.getSum().getDataPointsList().stream()
-                .map(dp -> (Sum) JacksonSum.builder()
+                .map(dp -> JacksonSum.builder()
                         .withUnit(metric.getUnit())
                         .withName(metric.getName())
                         .withDescription(metric.getDescription())
@@ -149,13 +147,13 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                 .collect(Collectors.toList());
     }
 
-    private List<Record<Summary>> mapSummary(final io.opentelemetry.proto.metrics.v1.Metric metric,
+    private List<? extends Record<? extends Metric>> mapSummary(final io.opentelemetry.proto.metrics.v1.Metric metric,
                                              final String serviceName,
                                              final Map<String, Object> ils,
                                              final Map<String, Object> resourceAttributes,
                                              final String schemaUrl) {
         return metric.getSummary().getDataPointsList().stream()
-                .map(dp -> (Summary) JacksonSummary.builder()
+                .map(dp -> JacksonSummary.builder()
                         .withUnit(metric.getUnit())
                         .withName(metric.getName())
                         .withDescription(metric.getDescription())
@@ -180,70 +178,86 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                 .collect(Collectors.toList());
     }
 
-    private List<Record<Histogram>> mapHistogram(final io.opentelemetry.proto.metrics.v1.Metric metric,
+    private List<? extends Record<? extends Metric>> mapHistogram(final io.opentelemetry.proto.metrics.v1.Metric metric,
                                                  final String serviceName,
                                                  final Map<String, Object> ils,
                                                  final Map<String, Object> resourceAttributes,
                                                  final String schemaUrl) {
         return metric.getHistogram().getDataPointsList().stream()
-                .map(dp -> (Histogram) JacksonHistogram.builder()
-                        .withUnit(metric.getUnit())
-                        .withName(metric.getName())
-                        .withDescription(metric.getDescription())
-                        .withStartTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
-                        .withTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
-                        .withServiceName(serviceName)
-                        .withSum(dp.getSum())
-                        .withCount(dp.getCount())
-                        .withBucketCount(dp.getBucketCountsCount())
-                        .withExplicitBoundsCount(dp.getExplicitBoundsCount())
-                        .withAggregationTemporality(metric.getHistogram().getAggregationTemporality().toString())
-                        .withBuckets(OTelMetricsProtoHelper.createBuckets(dp.getBucketCountsList(), dp.getExplicitBoundsList()))
-                        .withAttributes(OTelMetricsProtoHelper.mergeAllAttributes(
-                                Arrays.asList(
-                                        OTelMetricsProtoHelper.unpackKeyValueList(dp.getAttributesList()),
-                                        resourceAttributes,
-                                        ils
-                                )
-                        ))
-                        .withSchemaUrl(schemaUrl)
-                        .withExemplars(OTelMetricsProtoHelper.convertExemplars(dp.getExemplarsList()))
-                        .withFlags(dp.getFlags())
-                        .build())
+                .map(dp -> {
+                    JacksonHistogram.Builder builder = JacksonHistogram.builder()
+                            .withUnit(metric.getUnit())
+                            .withName(metric.getName())
+                            .withDescription(metric.getDescription())
+                            .withStartTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                            .withTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
+                            .withServiceName(serviceName)
+                            .withSum(dp.getSum())
+                            .withCount(dp.getCount())
+                            .withBucketCount(dp.getBucketCountsCount())
+                            .withExplicitBoundsCount(dp.getExplicitBoundsCount())
+                            .withAggregationTemporality(metric.getHistogram().getAggregationTemporality().toString())
+                            .withBucketCountsList(dp.getBucketCountsList())
+                            .withExplicitBoundsList(dp.getExplicitBoundsList())
+                            .withAttributes(OTelMetricsProtoHelper.mergeAllAttributes(
+                                    Arrays.asList(
+                                            OTelMetricsProtoHelper.unpackKeyValueList(dp.getAttributesList()),
+                                            resourceAttributes,
+                                            ils
+                                    )
+                            ))
+                            .withSchemaUrl(schemaUrl)
+                            .withExemplars(OTelMetricsProtoHelper.convertExemplars(dp.getExemplarsList()))
+                            .withFlags(dp.getFlags());
+                    if (otelMetricsRawProcessorConfig.getCalculateHistogramBuckets()) {
+                        builder.withBuckets(OTelMetricsProtoHelper.createBuckets(dp.getBucketCountsList(), dp.getExplicitBoundsList()));
+                    }
+                    return builder.build();
+
+                })
                 .map(Record::new)
                 .collect(Collectors.toList());
     }
 
     private List<? extends Record<? extends Metric>> mapExponentialHistogram(io.opentelemetry.proto.metrics.v1.Metric metric, String serviceName, Map<String, Object> ils, Map<String, Object> resourceAttributes, String schemaUrl) {
         return metric.getExponentialHistogram().getDataPointsList().stream()
-                .map(dp -> (ExponentialHistogram) JacksonExponentialHistogram.builder()
-                        .withUnit(metric.getUnit())
-                        .withName(metric.getName())
-                        .withDescription(metric.getDescription())
-                        .withStartTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
-                        .withTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
-                        .withServiceName(serviceName)
-                        .withSum(dp.getSum())
-                        .withCount(dp.getCount())
-                        .withZeroCount(dp.getZeroCount())
-                        .withScale(dp.getScale())
-                        .withPositiveBuckets(OTelMetricsProtoHelper.createExponentialBuckets(dp.getPositive(), dp.getScale()))
-                        .withNegativeBuckets(OTelMetricsProtoHelper.createExponentialBuckets(dp.getNegative(), dp.getScale()))
-                        .withAggregationTemporality(metric.getHistogram().getAggregationTemporality().toString())
-                        .withAttributes(OTelMetricsProtoHelper.mergeAllAttributes(
-                                Arrays.asList(
-                                        OTelMetricsProtoHelper.unpackKeyValueList(dp.getAttributesList()),
-                                        resourceAttributes,
-                                        ils
-                                )
-                        ))
-                        .withSchemaUrl(schemaUrl)
-                        .withExemplars(OTelMetricsProtoHelper.convertExemplars(dp.getExemplarsList()))
-                        .withFlags(dp.getFlags())
-                        .build())
+                .map(dp -> {
+                    JacksonExponentialHistogram.Builder builder = JacksonExponentialHistogram.builder()
+                            .withUnit(metric.getUnit())
+                            .withName(metric.getName())
+                            .withDescription(metric.getDescription())
+                            .withStartTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                            .withTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
+                            .withServiceName(serviceName)
+                            .withSum(dp.getSum())
+                            .withCount(dp.getCount())
+                            .withZeroCount(dp.getZeroCount())
+                            .withScale(dp.getScale())
+                            .withPositive(dp.getPositive().getBucketCountsList())
+                            .withPositiveOffset(dp.getPositive().getOffset())
+                            .withNegative(dp.getNegative().getBucketCountsList())
+                            .withNegativeOffset(dp.getNegative().getOffset())
+                            .withAggregationTemporality(metric.getHistogram().getAggregationTemporality().toString())
+                            .withAttributes(OTelMetricsProtoHelper.mergeAllAttributes(
+                                    Arrays.asList(
+                                            OTelMetricsProtoHelper.unpackKeyValueList(dp.getAttributesList()),
+                                            resourceAttributes,
+                                            ils
+                                    )
+                            ))
+                            .withSchemaUrl(schemaUrl)
+                            .withExemplars(OTelMetricsProtoHelper.convertExemplars(dp.getExemplarsList()))
+                            .withFlags(dp.getFlags());
+
+                    if (otelMetricsRawProcessorConfig.getCalculateExponentialHistogramBuckets()) {
+                        builder.withPositiveBuckets(OTelMetricsProtoHelper.createExponentialBuckets(dp.getPositive(), dp.getScale()));
+                        builder.withNegativeBuckets(OTelMetricsProtoHelper.createExponentialBuckets(dp.getNegative(), dp.getScale()));
+                    }
+
+                    return builder.build();
+                })
                 .map(Record::new)
                 .collect(Collectors.toList());
-
     }
 
 

@@ -225,7 +225,7 @@ public final class OTelMetricsProtoHelper {
 
 
     public static String convertUnixNanosToISO8601(final long unixNano) {
-        return Instant.ofEpochSecond(unixNano, 0L).toString();
+        return Instant.ofEpochSecond(0L, unixNano).toString();
     }
 
     public static String getStartTimeISO8601(final NumberDataPoint numberDataPoint) {

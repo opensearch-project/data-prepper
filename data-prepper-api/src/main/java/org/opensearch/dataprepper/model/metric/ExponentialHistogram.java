@@ -49,6 +49,24 @@ public interface ExponentialHistogram extends Metric {
      */
     List<? extends Bucket> getNegativeBuckets();
 
+
+    /**
+     * Gets the positive range of exponential bucket counts
+     *
+     * @return the buckets
+     * @since 1.4
+     */
+    List<Long> getNegative();
+
+
+    /**
+     * Gets the negative range of exponential bucket counts
+     *
+     * @return the buckets
+     * @since 1.4
+     */
+    List<Long> getPositive();
+
     /**
      * Gets the zero count of events
      *
@@ -64,4 +82,21 @@ public interface ExponentialHistogram extends Metric {
      * @since 1.4
      */
     Integer getScale();
+
+    /**
+     * Gets the offset for negative buckets
+     *
+     * @return the offset
+     * @since 1.4
+     */
+    Integer getNegativeOffset();
+
+
+    /**
+     * Gets the offset for positive buckets
+     *
+     * @return the offset
+     * @since 1.4
+     */
+    Integer getPositiveOffset();
 }

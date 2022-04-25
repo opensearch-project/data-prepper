@@ -41,7 +41,7 @@ public class MetricsPluginSummaryTest {
     public void init() {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
-        rawProcessor = new OTelMetricsRawProcessor(testsettings);
+        rawProcessor = new OTelMetricsRawProcessor(testsettings, new OtelMetricsRawProcessorConfig());
     }
 
     @Test

@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.entry;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -110,7 +111,7 @@ public class OTelMetricsProtoHelperTest {
 
     @Test
     void convertExemplars() {
-        long t1 = Instant.now(CLOCK).getEpochSecond();
+        long t1 = TimeUnit.MILLISECONDS.toNanos(Instant.now(CLOCK).toEpochMilli());
         long t2 = t1 + 100_000;
 
         Exemplar e1 = Exemplar.newBuilder()
@@ -149,7 +150,7 @@ public class OTelMetricsProtoHelperTest {
 
         org.opensearch.dataprepper.model.metric.Exemplar conv2 = convertedExemplars.get(1);
         assertThat(conv2.getSpanId(), equalTo(Hex.encodeHexString(e2.getSpanId().toByteArray())));
-        assertThat(conv2.getTime(), equalTo("2023-11-16T02:00:00Z"));
+        assertThat(conv2.getTime(), equalTo("2023-11-14T22:13:20.000100Z"));
         assertThat(conv2.getTraceId(), equalTo(Hex.encodeHexString(e2.getTraceId().toByteArray())));
         assertThat(conv2.getValue(), equalTo(42.0));
         Assertions.assertThat(conv2.getAttributes()).contains(entry("exemplar.attributes.key2", "[\"test\"]"));

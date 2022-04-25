@@ -29,6 +29,10 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
     private static final String ZERO_COUNT_KEY = "zeroCount";
     private static final String POSITIVE_BUCKETS_KEY = "positiveBuckets";
     private static final String NEGATIVE_BUCKETS_KEY = "negativeBuckets";
+    private static final String NEGATIVE_KEY = "negative";
+    private static final String POSITIVE_KEY = "positive";
+    private static final String NEGATIVE_OFFSET_KEY = "negativeOffset";
+    private static final String POSITIVE_OFFSET_KEY = "positiveOffset";
 
     private static final List<String> REQUIRED_KEYS = new ArrayList<>();
     private static final List<String> REQUIRED_NON_EMPTY_KEYS = Arrays.asList(NAME_KEY, KIND_KEY, TIME_KEY);
@@ -71,6 +75,16 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
     }
 
     @Override
+    public List<Long> getNegative() {
+        return this.getList(NEGATIVE_KEY, Long.class);
+    }
+
+    @Override
+    public List<Long> getPositive() {
+        return this.getList(POSITIVE_KEY, Long.class);
+    }
+
+    @Override
     public Long getZeroCount() {
         return this.get(ZERO_COUNT_KEY, Long.class);
     }
@@ -78,6 +92,16 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
     @Override
     public Integer getScale() {
         return this.get(SCALE_KEY, Integer.class);
+    }
+
+    @Override
+    public Integer getNegativeOffset() {
+        return this.get(NEGATIVE_OFFSET_KEY, Integer.class);
+    }
+
+    @Override
+    public Integer getPositiveOffset() {
+        return this.get(POSITIVE_OFFSET_KEY, Integer.class);
     }
 
     /**
@@ -154,15 +178,15 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
         }
 
         /**
-         * Sets the positive range of exponential buckets
+         * Sets the positive range of calculated exponential buckets
          *
          * @param exponentialBuckets a list of buckets
          * @return the builder
          * @since 1.4
          */
-        public Builder withPositiveBuckets(List<Bucket> exponentialBuckets) {
+        public JacksonExponentialHistogram.Builder  withPositiveBuckets(List<Bucket> exponentialBuckets) {
             data.put(POSITIVE_BUCKETS_KEY, exponentialBuckets);
-            return getThis();
+            return this;
         }
 
         /**
@@ -172,9 +196,57 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
          * @return the builder
          * @since 1.4
          */
-        public Builder withNegativeBuckets(List<Bucket> exponentialBuckets) {
+        public JacksonExponentialHistogram.Builder withNegativeBuckets(List<Bucket> exponentialBuckets) {
             data.put(NEGATIVE_BUCKETS_KEY, exponentialBuckets);
-            return getThis();
+            return this;
+        }
+
+        /**
+         * Sets the positive range of exponential bucket counts
+         *
+         * @param bucketCountsList positive bucket value counts
+         * @return the builder
+         * @since 1.4
+         */
+        public JacksonExponentialHistogram.Builder withPositive(List<Long> bucketCountsList) {
+            data.put(POSITIVE_KEY, bucketCountsList);
+            return this;
+        }
+
+        /**
+         * Sets the negative range of exponential bucket counts
+         *
+         * @param bucketCountsList negative bucket value counts
+         * @return the builder
+         * @since 1.4
+         */
+        public JacksonExponentialHistogram.Builder withNegative(List<Long> bucketCountsList) {
+            data.put(NEGATIVE_KEY, bucketCountsList);
+            return this;
+        }
+
+        /**
+         * Sets the offset for the positive buckets
+         *
+         * @param offset the offset
+         * @return the builder
+         * @since 1.4
+         */
+        public JacksonExponentialHistogram.Builder withPositiveOffset(int offset) {
+            data.put(POSITIVE_OFFSET_KEY, offset);
+            return this;
+        }
+
+        /**
+         * Sets the offset for the negative buckets
+         *
+         * @param offset the offset
+         * @return the builder
+         * @since 1.4
+         */
+        public JacksonExponentialHistogram.Builder withNegativeOffset(int offset) {
+            data.put(NEGATIVE_OFFSET_KEY, offset);
+            return this;
         }
 
         /**
@@ -196,6 +268,5 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
         private void checkAndSetDefaultValues() {
             data.computeIfAbsent(ATTRIBUTES_KEY, k -> new HashMap<>());
         }
-
     }
 }

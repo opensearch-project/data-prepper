@@ -37,6 +37,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.opensearch.dataprepper.plugins.processor.otelmetrics.OTelMetricsProtoHelperTest.getRandomBytes;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,7 +53,7 @@ public class MetricsPluginGaugeTest {
     public void init() {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
-        rawProcessor = new OTelMetricsRawProcessor(testsettings);
+        rawProcessor = new OTelMetricsRawProcessor(testsettings, new OtelMetricsRawProcessorConfig());
     }
 
     @Test
@@ -167,7 +168,7 @@ public class MetricsPluginGaugeTest {
 
     @Test
     public void testWithExemplar() throws JsonProcessingException {
-        long t1 = Instant.now(CLOCK).getEpochSecond();
+        long t1 = TimeUnit.MILLISECONDS.toNanos(Instant.now(CLOCK).toEpochMilli());
         byte[] spanId = getRandomBytes(8);
         byte[] traceId = getRandomBytes(8);
 
