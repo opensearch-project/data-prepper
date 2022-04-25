@@ -88,22 +88,41 @@ class OpenSearchIntegrationHelper {
     private static final String CLIENT_SOCKET_TIMEOUT = "client.socket.timeout";
     private static final String CLIENT_PATH_PREFIX = "client.path.prefix";
 
+    /**
+     * Copied from OpenSearch test framework
+     * TODO: Consolidate in OpenSearch
+     */
     private static final NamedXContentRegistry DEFAULT_NAMED_X_CONTENT_REGISTRY =
             new NamedXContentRegistry(ClusterModule.getNamedXWriteables());
 
+    /**
+     * Copied from OpenSearch test framework
+     * TODO: Consolidate in OpenSearch
+     */
     static List<String> getHosts() {
         return Arrays.stream(System.getProperty("tests.rest.cluster").split(","))
                 .map(ip -> String.format("%s://%s", getProtocol(), ip)).collect(Collectors.toList());
     }
 
+    /**
+     * Copied from OpenSearch test framework
+     * TODO: Consolidate in OpenSearch
+     */
     static XContentParser createContentParser(XContent xContent, String data) throws IOException {
         return xContent.createParser(getXContentRegistry(), LoggingDeprecationHandler.INSTANCE, data);
     }
 
+    /**
+     * Copied from OpenSearch test framework
+     * TODO: Consolidate in OpenSearch
+     */
     private static NamedXContentRegistry getXContentRegistry() {
         return DEFAULT_NAMED_X_CONTENT_REGISTRY;
     }
 
+    /**
+     * Created custom for Data Prepper
+     */
     static RestClient createOpenSearchClient() throws IOException {
         final List<String> hosts = getHosts();
         final HttpHost[] httpHosts = new HttpHost[hosts.size()];
@@ -112,6 +131,9 @@ class OpenSearchIntegrationHelper {
         return buildClient(settings, httpHosts);
     }
 
+    /**
+     * Created custom for Data Prepper
+     */
     private static RestClient buildClient(final Settings settings, final HttpHost[] hosts) throws IOException {
         final RestClientBuilder builder = RestClient.builder(hosts);
         if (isOSBundle()) {
@@ -124,6 +146,10 @@ class OpenSearchIntegrationHelper {
         return builder.build();
     }
 
+    /**
+     * Created custom for Data Prepper
+     * TODO: Determine if we need this at all.
+     */
     static boolean isOSBundle() {
         final boolean osFlag = Optional.ofNullable(System.getProperty("os"))
                 .map("true"::equalsIgnoreCase).orElse(false);
@@ -137,11 +163,17 @@ class OpenSearchIntegrationHelper {
         return osFlag;
     }
 
+    /**
+     * Created custom for Data Prepper
+     */
     private static String getProtocol() {
         return isOSBundle() ? "https" : "http";
     }
 
 
+    /**
+     * Created custom for Data Prepper
+     */
     private static void configureHttpsClient(final RestClientBuilder builder, final Settings settings) throws IOException {
         final Map<String, String> headers = ThreadContext.buildDefaultHeaders(settings);
         final Header[] defaultHeaders = new Header[headers.size()];
@@ -179,6 +211,10 @@ class OpenSearchIntegrationHelper {
         }
     }
 
+    /**
+     * Copied from OpenSearch test framework
+     * TODO: Consolidate in OpenSearch
+     */
     private static void configureClient(RestClientBuilder builder, Settings settings) throws IOException {
         String keystorePath = settings.get(TRUSTSTORE_PATH);
         if (keystorePath != null) {
@@ -219,6 +255,10 @@ class OpenSearchIntegrationHelper {
         }
     }
 
+    /**
+     * Copied from OpenSearch test framework
+     * TODO: Consolidate in OpenSearch
+     */
     static void wipeAllTemplates() throws IOException {
         final RestClient openSearchClient = createOpenSearchClient();
         openSearchClient.performRequest(new Request("DELETE", "_template/*"));
@@ -230,6 +270,10 @@ class OpenSearchIntegrationHelper {
         }
     }
 
+    /**
+     * Copied from OpenSearch test framework
+     * TODO: Consolidate in OpenSearch
+     */
     static void waitForClusterStateUpdatesToFinish() throws Exception {
         final RestClient openSearchClient = createOpenSearchClient();
 
@@ -242,6 +286,10 @@ class OpenSearchIntegrationHelper {
                 });
     }
 
+    /**
+     * Copied from OpenSearch test framework
+     * TODO: Consolidate in OpenSearch
+     */
     private static Map<String, Object> entityAsMap(Response response) throws IOException {
         XContentType xContentType = XContentType.fromMediaTypeOrFormat(response.getEntity().getContentType().getValue());
         // EMPTY and THROW are fine here because `.map` doesn't use named x content or deprecation
