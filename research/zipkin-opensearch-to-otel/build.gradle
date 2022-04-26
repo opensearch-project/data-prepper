@@ -29,6 +29,8 @@ run {
 
 dependencies {
     implementation project(':data-prepper-plugins:blocking-buffer')
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-plugins:opensearch')
     implementation project(':data-prepper-plugins:otel-trace-source')
     implementation project(':data-prepper-plugins:otel-trace-raw-prepper')
