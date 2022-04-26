@@ -250,6 +250,8 @@ def serviceMapOTLPAndEventEndToEndTest = createEndToEndTest("serviceMapOTLPAndEv
         serviceMapDataPrepperOTLP, serviceMapDataPrepperEvent)
 
 dependencies {
+    integrationTestImplementation project(':data-prepper-api')
+    integrationTestImplementation project(':data-prepper-plugins:common')
     integrationTestImplementation project(':data-prepper-plugins:opensearch')
     integrationTestImplementation project(':data-prepper-plugins:otel-trace-group-processor')
     integrationTestImplementation "org.awaitility:awaitility:4.1.1"

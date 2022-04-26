@@ -50,14 +50,14 @@ public abstract class IndexManager {
 
     //For matching a string that begins with a "%{" and ends with a "}".
     //For a string like "data-prepper-%{yyyy-MM-dd}", "%{yyyy-MM-dd}" is matched.
-    private final static String TIME_PATTERN_REGULAR_EXPRESSION  = "%\\{.*?\\}";
+    private static final String TIME_PATTERN_REGULAR_EXPRESSION  = "%\\{.*?\\}";
 
     //For matching a string enclosed by "%{" and "}".
     //For a string like "data-prepper-%{yyyy-MM}", "yyyy-MM" is matched.
-    private final static String TIME_PATTERN_INTERNAL_EXTRACTOR_REGULAR_EXPRESSION  = "%\\{(.*?)\\}";
+    private static final String TIME_PATTERN_INTERNAL_EXTRACTOR_REGULAR_EXPRESSION  = "%\\{(.*?)\\}";
 
     private Optional<DateTimeFormatter> indexTimeSuffixFormatter;
-    private final static ZoneId UTC_ZONE_ID = ZoneId.of(TimeZone.getTimeZone("UTC").getID());
+    private static final ZoneId UTC_ZONE_ID = ZoneId.of(TimeZone.getTimeZone("UTC").getID());
 
     protected IndexManager(final RestHighLevelClient restHighLevelClient, final OpenSearchSinkConfiguration openSearchSinkConfiguration){
         checkNotNull(restHighLevelClient);

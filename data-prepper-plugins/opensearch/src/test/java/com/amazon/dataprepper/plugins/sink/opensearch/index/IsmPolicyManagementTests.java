@@ -30,7 +30,7 @@ import static org.mockito.MockitoAnnotations.initMocks;
 public class IsmPolicyManagementTests {
     private IsmPolicyManagement ismPolicyManagementStrategy;
     private final String INDEX_ALIAS = "test-alias-abcd";
-    private final static String POLICY_NAME = "test-policy-name";
+    private static final String POLICY_NAME = "test-policy-name";
 
     @Mock
     private RestHighLevelClient restHighLevelClient;
