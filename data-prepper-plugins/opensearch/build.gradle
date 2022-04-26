@@ -6,7 +6,6 @@
 buildscript {
     ext {
         opensearchVersion = System.getProperty('opensearch.version', "${versionMap.opensearchVersion}")
-        distribution = 'oss-zip'
     }
 
     repositories {
@@ -15,7 +14,6 @@ buildscript {
     }
 
     dependencies {
-        classpath "org.opensearch.gradle:build-tools:${opensearchVersion}"
         constraints {
             classpath('com.netflix.nebula:nebula-core') {
                 version {
@@ -35,20 +33,10 @@ repositories {
     mavenCentral()
 }
 
-apply plugin: 'opensearch.testclusters'
-apply plugin: 'opensearch.build'
-apply plugin: 'opensearch.rest-test'
-
-// To pass OpenSearch plugin check
-ext {
-    licenseFile = rootProject.file('LICENSE')
-    noticeFile = rootProject.file('NOTICE')
-}
-
 dependencies {
-    api project(':data-prepper-api')
+    implementation project(':data-prepper-api')
     testImplementation project(':data-prepper-api').sourceSets.test.output
-    api project(':data-prepper-plugins:common')
+    implementation project(':data-prepper-plugins:common')
     implementation "org.opensearch.client:opensearch-rest-high-level-client:${opensearchVersion}"
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
@@ -58,15 +46,11 @@ dependencies {
     implementation 'software.amazon.awssdk:sdk-core:2.17.15'
     implementation 'software.amazon.awssdk:aws-core:2.17.15'
     implementation 'software.amazon.awssdk:regions:2.17.15'
-    implementation 'software.amazon.awssdk:utils:2.17.15'
+    implementation 'software.amazon.awssdk:utils:2.17.177'
     implementation 'software.amazon.awssdk:sts:2.17.15'
     implementation 'software.amazon.awssdk:url-connection-client:2.17.15'
     implementation 'software.amazon.awssdk:arns:2.17.15'
     implementation 'io.micrometer:micrometer-core:1.7.5'
-    // The OpenSearch build-tools plugin appears to be preventing Gradle's platform
-    // support from working correctly, so we have to specify the JUnit versions here.
-    testImplementation "org.junit.jupiter:junit-jupiter:${versionMap.junitJupiter}"
-    testImplementation "org.junit.vintage:junit-vintage-engine:${versionMap.junitJupiter}"
     testImplementation('junit:junit:4.13.2') {
         exclude group:'org.hamcrest' // workaround for jarHell
     }
@@ -77,64 +61,39 @@ dependencies {
     testImplementation 'net.bytebuddy:byte-buddy-agent:1.11.20'
 }
 
-// Workaround for Werror
-compileJava.options.warnings = false
-
-// Resolve dependency conflict between ES sink and main project
-configurations.all {
-    resolutionStrategy {
-        force 'com.amazonaws:aws-java-sdk-core:1.12.159'
-        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.2'
-        force 'com.fasterxml.jackson.core:jackson-annotations:2.13.2'
-        force 'com.fasterxml.jackson.core:jackson-databind:2.13.2'
-        force 'com.fasterxml.jackson.core:jackson-core:2.13.2'
-        force 'com.fasterxml.jackson:jackson-bom:2.13.2'
-        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor:2.13.2'
-        force 'com.fasterxml.jackson.dataformat:jackson-dataformat-smile:2.13.2'
-        force 'commons-codec:commons-codec:1.15'
-        force 'commons-logging:commons-logging:1.2'
-        force 'org.apache.httpcomponents:httpclient:4.5.13'
-        force 'org.apache.httpcomponents:httpcore:4.4.15'
-        force "org.hdrhistogram:HdrHistogram:2.1.12"
-        force 'joda-time:joda-time:2.10.13'
-        force 'org.yaml:snakeyaml:1.30'
-        force 'com.google.guava:guava:31.0.1-jre'
-        force 'junit:junit:4.13.2'
-        force "org.slf4j:slf4j-api:1.7.36"
-        force 'org.apache.logging.log4j:log4j-api:2.17.1'
-        force 'org.apache.logging.log4j:log4j-core:2.17.1'
-        force 'commons-beanutils:commons-beanutils:1.9.4'
-    }
-    // The OpenSearch plugins appear to provide their own version of Mockito
-    // which is causing problems, so we exclude it.
-    exclude (group: 'org.elasticsearch', module: "securemock");
-}
-
-test {
-    // Workaround: opensearch plugin is not compatible with JUnitPlatform
-    useJUnit()
-
-    if (System.getProperty("os.host") == null) {
-        exclude '**/OpenSearchTests.class'
-    }
-    systemProperty "os.host", System.getProperty("os.host")
-    if (System.getProperty("os.user") != null) {
-        systemProperty "os.user", System.getProperty("os.user")
-        systemProperty "os.password", System.getProperty("os.password")
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+        resources.srcDir file('src/integrationTest/resources')
     }
 }
 
-testClusters.integTest {
-    testDistribution = "INTEG_TEST"
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
 }
 
-integTest {
-    systemProperty 'tests.security.manager', 'false'
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
-    systemProperty "os", System.getProperty("os")
-    systemProperty "user", System.getProperty("user")
-    systemProperty "password", System.getProperty("password")
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    systemProperty 'tests.opensearch.host', System.getProperty('tests.opensearch.host')
+    systemProperty 'tests.opensearch.bundle', System.getProperty('tests.opensearch.bundle')
+    systemProperty 'tests.opensearch.user', System.getProperty('tests.opensearch.user')
+    systemProperty 'tests.opensearch.password', System.getProperty('tests.opensearch.password')
+
+    filter {
+        includeTestsMatching '*IT'
+    }
 }
+
 
 jacocoTestReport {
     dependsOn test
@@ -168,13 +127,3 @@ jacocoTestCoverageVerification {
         }
     }
 }
-
-checkstyleMain.ignoreFailures = true
-checkstyleTest.ignoreFailures = true
-forbiddenApis.ignoreFailures = true
-testingConventions.enabled = false
-licenseHeaders.enabled = false
-dependencyLicenses.enabled = false
-thirdPartyAudit.enabled = false
-loggerUsageCheck.enabled = false
-validateNebulaPom.enabled = false
