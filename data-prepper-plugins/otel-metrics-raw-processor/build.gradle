@@ -19,7 +19,7 @@ dependencies {
     implementation "com.linecorp.armeria:armeria-grpc:1.9.2"
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    implementation group: 'com.google.guava', name: 'guava', version: '31.0.1-jre'
+    implementation group: 'com.google.guava', name: 'guava', version: '31.1-jre'
     testImplementation 'org.assertj:assertj-core:3.21.0'
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
     testImplementation "org.hamcrest:hamcrest:2.2"
