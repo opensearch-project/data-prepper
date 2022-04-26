@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,16 +48,16 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
         for (Record<ExportMetricsServiceRequest> ets : records) {
             for (ResourceMetrics rs : ets.getData().getResourceMetricsList()) {
                 final String schemaUrl = rs.getSchemaUrl();
-                final Map<String, Object> resourceAttributes = OTelMetricsProtoHelper.getResourceAttributes(rs.getResource());
-                final String serviceName = OTelMetricsProtoHelper.getServiceName(rs.getResource()).orElse(null);
+                final Map<String, Object> resourceAttributes = OTelProtoCodec.getResourceAttributes(rs.getResource());
+                final String serviceName = OTelProtoCodec.getServiceName(rs.getResource()).orElse(null);
 
                 for (InstrumentationLibraryMetrics is : rs.getInstrumentationLibraryMetricsList()) {
-                    final Map<String, Object> ils = OTelMetricsProtoHelper.getInstrumentationLibraryAttributes(is.getInstrumentationLibrary());
+                    final Map<String, Object> ils = OTelProtoCodec.getInstrumentationLibraryAttributes(is.getInstrumentationLibrary());
                     recordsOut.addAll(processMetricsList(is.getMetricsList(), serviceName, ils, resourceAttributes, schemaUrl));
                 }
 
                 for (ScopeMetrics sm : rs.getScopeMetricsList()) {
-                    final Map<String, Object> ils = OTelMetricsProtoHelper.getInstrumentationScopeAttributes(sm.getScope());
+                    final Map<String, Object> ils = OTelProtoCodec.getInstrumentationScopeAttributes(sm.getScope());
                     recordsOut.addAll(processMetricsList(sm.getMetricsList(), serviceName, ils, resourceAttributes, schemaUrl));
                 }
 
@@ -97,19 +98,19 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                         .withUnit(metric.getUnit())
                         .withName(metric.getName())
                         .withDescription(metric.getDescription())
-                        .withStartTime(OTelMetricsProtoHelper.getStartTimeISO8601(dp))
-                        .withTime(OTelMetricsProtoHelper.getTimeISO8601(dp))
+                        .withStartTime(OTelProtoCodec.getStartTimeISO8601(dp))
+                        .withTime(OTelProtoCodec.getTimeISO8601(dp))
                         .withServiceName(serviceName)
-                        .withValue(OTelMetricsProtoHelper.getValueAsDouble(dp))
-                        .withAttributes(OTelMetricsProtoHelper.mergeAllAttributes(
+                        .withValue(OTelProtoCodec.getValueAsDouble(dp))
+                        .withAttributes(OTelProtoCodec.mergeAllAttributes(
                                 Arrays.asList(
-                                        OTelMetricsProtoHelper.convertKeysOfDataPointAttributes(dp),
+                                        OTelProtoCodec.convertKeysOfDataPointAttributes(dp),
                                         resourceAttributes,
                                         ils
                                 )
                         ))
                         .withSchemaUrl(schemaUrl)
-                        .withExemplars(OTelMetricsProtoHelper.convertExemplars(dp.getExemplarsList()))
+                        .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
                         .withFlags(dp.getFlags())
                         .build())
                 .map(Record::new)
@@ -126,21 +127,21 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                         .withUnit(metric.getUnit())
                         .withName(metric.getName())
                         .withDescription(metric.getDescription())
-                        .withStartTime(OTelMetricsProtoHelper.getStartTimeISO8601(dp))
-                        .withTime(OTelMetricsProtoHelper.getTimeISO8601(dp))
+                        .withStartTime(OTelProtoCodec.getStartTimeISO8601(dp))
+                        .withTime(OTelProtoCodec.getTimeISO8601(dp))
                         .withServiceName(serviceName)
                         .withIsMonotonic(metric.getSum().getIsMonotonic())
-                        .withValue(OTelMetricsProtoHelper.getValueAsDouble(dp))
+                        .withValue(OTelProtoCodec.getValueAsDouble(dp))
                         .withAggregationTemporality(metric.getSum().getAggregationTemporality().toString())
-                        .withAttributes(OTelMetricsProtoHelper.mergeAllAttributes(
+                        .withAttributes(OTelProtoCodec.mergeAllAttributes(
                                 Arrays.asList(
-                                        OTelMetricsProtoHelper.convertKeysOfDataPointAttributes(dp),
+                                        OTelProtoCodec.convertKeysOfDataPointAttributes(dp),
                                         resourceAttributes,
                                         ils
                                 )
                         ))
                         .withSchemaUrl(schemaUrl)
-                        .withExemplars(OTelMetricsProtoHelper.convertExemplars(dp.getExemplarsList()))
+                        .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
                         .withFlags(dp.getFlags())
                         .build())
                 .map(Record::new)
@@ -157,16 +158,16 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                         .withUnit(metric.getUnit())
                         .withName(metric.getName())
                         .withDescription(metric.getDescription())
-                        .withStartTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
-                        .withTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
+                        .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                        .withTime(OTelProtoCodec.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
                         .withServiceName(serviceName)
                         .withCount(dp.getCount())
                         .withSum(dp.getSum())
-                        .withQuantiles(OTelMetricsProtoHelper.getQuantileValues(dp.getQuantileValuesList()))
+                        .withQuantiles(OTelProtoCodec.getQuantileValues(dp.getQuantileValuesList()))
                         .withQuantilesValueCount(dp.getQuantileValuesCount())
-                        .withAttributes(OTelMetricsProtoHelper.mergeAllAttributes(
+                        .withAttributes(OTelProtoCodec.mergeAllAttributes(
                                 Arrays.asList(
-                                        OTelMetricsProtoHelper.unpackKeyValueList(dp.getAttributesList()),
+                                        OTelProtoCodec.unpackKeyValueList(dp.getAttributesList()),
                                         resourceAttributes,
                                         ils
                                 )
@@ -189,8 +190,8 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                             .withUnit(metric.getUnit())
                             .withName(metric.getName())
                             .withDescription(metric.getDescription())
-                            .withStartTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
-                            .withTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
+                            .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                            .withTime(OTelProtoCodec.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
                             .withServiceName(serviceName)
                             .withSum(dp.getSum())
                             .withCount(dp.getCount())
@@ -199,18 +200,18 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                             .withAggregationTemporality(metric.getHistogram().getAggregationTemporality().toString())
                             .withBucketCountsList(dp.getBucketCountsList())
                             .withExplicitBoundsList(dp.getExplicitBoundsList())
-                            .withAttributes(OTelMetricsProtoHelper.mergeAllAttributes(
+                            .withAttributes(OTelProtoCodec.mergeAllAttributes(
                                     Arrays.asList(
-                                            OTelMetricsProtoHelper.unpackKeyValueList(dp.getAttributesList()),
+                                            OTelProtoCodec.unpackKeyValueList(dp.getAttributesList()),
                                             resourceAttributes,
                                             ils
                                     )
                             ))
                             .withSchemaUrl(schemaUrl)
-                            .withExemplars(OTelMetricsProtoHelper.convertExemplars(dp.getExemplarsList()))
+                            .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
                             .withFlags(dp.getFlags());
                     if (otelMetricsRawProcessorConfig.getCalculateHistogramBuckets()) {
-                        builder.withBuckets(OTelMetricsProtoHelper.createBuckets(dp.getBucketCountsList(), dp.getExplicitBoundsList()));
+                        builder.withBuckets(OTelProtoCodec.createBuckets(dp.getBucketCountsList(), dp.getExplicitBoundsList()));
                     }
                     return builder.build();
 
@@ -226,8 +227,8 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                             .withUnit(metric.getUnit())
                             .withName(metric.getName())
                             .withDescription(metric.getDescription())
-                            .withStartTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
-                            .withTime(OTelMetricsProtoHelper.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
+                            .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(dp.getStartTimeUnixNano()))
+                            .withTime(OTelProtoCodec.convertUnixNanosToISO8601(dp.getTimeUnixNano()))
                             .withServiceName(serviceName)
                             .withSum(dp.getSum())
                             .withCount(dp.getCount())
@@ -238,20 +239,20 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                             .withNegative(dp.getNegative().getBucketCountsList())
                             .withNegativeOffset(dp.getNegative().getOffset())
                             .withAggregationTemporality(metric.getHistogram().getAggregationTemporality().toString())
-                            .withAttributes(OTelMetricsProtoHelper.mergeAllAttributes(
+                            .withAttributes(OTelProtoCodec.mergeAllAttributes(
                                     Arrays.asList(
-                                            OTelMetricsProtoHelper.unpackKeyValueList(dp.getAttributesList()),
+                                            OTelProtoCodec.unpackKeyValueList(dp.getAttributesList()),
                                             resourceAttributes,
                                             ils
                                     )
                             ))
                             .withSchemaUrl(schemaUrl)
-                            .withExemplars(OTelMetricsProtoHelper.convertExemplars(dp.getExemplarsList()))
+                            .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
                             .withFlags(dp.getFlags());
 
                     if (otelMetricsRawProcessorConfig.getCalculateExponentialHistogramBuckets()) {
-                        builder.withPositiveBuckets(OTelMetricsProtoHelper.createExponentialBuckets(dp.getPositive(), dp.getScale()));
-                        builder.withNegativeBuckets(OTelMetricsProtoHelper.createExponentialBuckets(dp.getNegative(), dp.getScale()));
+                        builder.withPositiveBuckets(OTelProtoCodec.createExponentialBuckets(dp.getPositive(), dp.getScale()));
+                        builder.withNegativeBuckets(OTelProtoCodec.createExponentialBuckets(dp.getNegative(), dp.getScale()));
                     }
 
                     return builder.build();

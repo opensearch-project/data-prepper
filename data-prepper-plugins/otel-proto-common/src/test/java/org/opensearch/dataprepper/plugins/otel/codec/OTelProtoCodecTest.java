@@ -16,14 +16,21 @@ import io.opentelemetry.proto.common.v1.ArrayValue;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
 import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.common.v1.KeyValueList;
+import io.opentelemetry.proto.metrics.v1.Exemplar;
+import io.opentelemetry.proto.metrics.v1.ExponentialHistogramDataPoint;
+import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Status;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.metric.Bucket;
 import org.opensearch.dataprepper.model.trace.DefaultLink;
 import org.opensearch.dataprepper.model.trace.DefaultSpanEvent;
 import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
@@ -39,7 +46,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,8 +57,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static org.assertj.core.api.Assertions.entry;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
@@ -64,6 +75,8 @@ public class OTelProtoCodecTest {
     private static final Random RANDOM = new Random();
     private static final String TEST_REQUEST_JSON_FILE = "test-request.json";
     private static final String TEST_SPAN_EVENT_JSON_FILE = "test-span-event.json";
+    private static final Clock CLOCK = Clock.fixed(Instant.ofEpochSecond(1_700_000_000), ZoneOffset.UTC);
+    private static final Double MAX_ERROR = 0.00001;
 
     private final OTelProtoCodec.OTelProtoDecoder decoderUnderTest = new OTelProtoCodec.OTelProtoDecoder();
     private final OTelProtoCodec.OTelProtoEncoder encoderUnderTest = new OTelProtoCodec.OTelProtoEncoder();
@@ -682,5 +695,252 @@ public class OTelProtoCodecTest {
         for (int i = 0; i < spansFirstDec.size(); i++) {
             assertThat(spansFirstDec.get(i).toJsonString(), equalTo(spansSecondDec.get(i).toJsonString()));
         }
+    }
+
+    @Test
+    void getValueAsDouble() {
+        Assertions.assertNull(OTelProtoCodec.getValueAsDouble(NumberDataPoint.newBuilder().build()));
+    }
+
+    @Test
+    public void testCreateBucketsEmpty() {
+        MatcherAssert.assertThat(OTelProtoCodec.createBuckets(new ArrayList<>(), new ArrayList<>()).size(), Matchers.equalTo(0));
+    }
+
+    @Test
+    public void testCreateBuckets() {
+        List<Long> bucketsCountList = List.of(1L, 2L, 3L, 4L);
+        List<Double> explicitBOundsList = List.of(5D, 10D, 25D);
+        List<Bucket> buckets = OTelProtoCodec.createBuckets(bucketsCountList, explicitBOundsList);
+        MatcherAssert.assertThat(buckets.size(), Matchers.equalTo(4));
+        Bucket b1 = buckets.get(0);
+        MatcherAssert.assertThat(b1.getCount(), Matchers.equalTo(1L));
+        MatcherAssert.assertThat(b1.getMin(), Matchers.equalTo((double) -Float.MAX_VALUE));
+        MatcherAssert.assertThat(b1.getMax(), Matchers.equalTo(5D));
+
+        Bucket b2 = buckets.get(1);
+        MatcherAssert.assertThat(b2.getCount(), Matchers.equalTo(2L));
+        MatcherAssert.assertThat(b2.getMin(), Matchers.equalTo(5D));
+        MatcherAssert.assertThat(b2.getMax(), Matchers.equalTo(10D));
+
+        Bucket b3 = buckets.get(2);
+        MatcherAssert.assertThat(b3.getCount(), Matchers.equalTo(3L));
+        MatcherAssert.assertThat(b3.getMin(), Matchers.equalTo(10D));
+        MatcherAssert.assertThat(b3.getMax(), Matchers.equalTo(25D));
+
+        Bucket b4 = buckets.get(3);
+        MatcherAssert.assertThat(b4.getCount(), Matchers.equalTo(4L));
+        MatcherAssert.assertThat(b4.getMin(), Matchers.equalTo(25D));
+        MatcherAssert.assertThat(b4.getMax(), Matchers.equalTo((double) Float.MAX_VALUE));
+    }
+
+    @Test
+    public void testCreateBuckets_illegal_argument() {
+        List<Long> bucketsCountList = List.of(1L, 2L, 3L, 4L);
+        List<Double> boundsList = Collections.emptyList();
+        Assertions.assertThrows(IllegalArgumentException.class, () -> OTelProtoCodec.createBuckets(bucketsCountList, boundsList));
+    }
+
+    @Test
+    public void testConvertAnyValueBool() {
+        Object o = OTelProtoCodec.convertAnyValue(AnyValue.newBuilder().setBoolValue(true).build());
+        MatcherAssert.assertThat(o instanceof Boolean, Matchers.equalTo(true));
+        MatcherAssert.assertThat(((boolean) o), Matchers.equalTo(true));
+    }
+
+    @Test
+    public void testUnsupportedTypeToAnyValue() {
+        Assertions.assertThrows(RuntimeException.class,
+                () -> OTelProtoCodec.convertAnyValue(AnyValue.newBuilder().setBytesValue(ByteString.EMPTY).build()));
+    }
+
+    @Test
+    void convertExemplars() {
+        long t1 = TimeUnit.MILLISECONDS.toNanos(Instant.now(CLOCK).toEpochMilli());
+        long t2 = t1 + 100_000;
+
+        Exemplar e1 = Exemplar.newBuilder()
+                .addFilteredAttributes(KeyValue.newBuilder()
+                        .setKey("key")
+                        .setValue(AnyValue.newBuilder().setBoolValue(true).build()).build())
+                .setAsDouble(3)
+                .setSpanId(ByteString.copyFrom(getRandomBytes(8)))
+                .setTimeUnixNano(t1)
+                .setTraceId(ByteString.copyFrom(getRandomBytes(8)))
+                .build();
+
+
+        Exemplar e2 = Exemplar.newBuilder()
+                .addFilteredAttributes(KeyValue.newBuilder()
+                        .setKey("key2")
+                        .setValue(AnyValue.newBuilder()
+                                .setArrayValue(ArrayValue.newBuilder().addValues(AnyValue.newBuilder().setStringValue("test").build()).build())
+                                .build()).build())
+                .setAsInt(42)
+                .setSpanId(ByteString.copyFrom(getRandomBytes(8)))
+                .setTimeUnixNano(t2)
+                .setTraceId(ByteString.copyFrom(getRandomBytes(8)))
+                .build();
+
+        List<io.opentelemetry.proto.metrics.v1.Exemplar> exemplars = Arrays.asList(e1, e2);
+        List<org.opensearch.dataprepper.model.metric.Exemplar> convertedExemplars = OTelProtoCodec.convertExemplars(exemplars);
+        MatcherAssert.assertThat(convertedExemplars.size(), Matchers.equalTo(2));
+
+        org.opensearch.dataprepper.model.metric.Exemplar conv1 = convertedExemplars.get(0);
+        MatcherAssert.assertThat(conv1.getSpanId(), Matchers.equalTo(Hex.encodeHexString(e1.getSpanId().toByteArray())));
+        MatcherAssert.assertThat(conv1.getTime(), Matchers.equalTo("2023-11-14T22:13:20Z"));
+        MatcherAssert.assertThat(conv1.getTraceId(), Matchers.equalTo(Hex.encodeHexString(e1.getTraceId().toByteArray())));
+        MatcherAssert.assertThat(conv1.getValue(), Matchers.equalTo(3.0));
+        org.assertj.core.api.Assertions.assertThat(conv1.getAttributes()).contains(entry("exemplar.attributes.key", true));
+
+        org.opensearch.dataprepper.model.metric.Exemplar conv2 = convertedExemplars.get(1);
+        MatcherAssert.assertThat(conv2.getSpanId(), Matchers.equalTo(Hex.encodeHexString(e2.getSpanId().toByteArray())));
+        MatcherAssert.assertThat(conv2.getTime(), Matchers.equalTo("2023-11-14T22:13:20.000100Z"));
+        MatcherAssert.assertThat(conv2.getTraceId(), Matchers.equalTo(Hex.encodeHexString(e2.getTraceId().toByteArray())));
+        MatcherAssert.assertThat(conv2.getValue(), Matchers.equalTo(42.0));
+        org.assertj.core.api.Assertions.assertThat(conv2.getAttributes()).contains(entry("exemplar.attributes.key2", "[\"test\"]"));
+
+    }
+
+
+    /**
+     * See: <a href="https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/datamodel.md#exponential-buckets">The example table with scale 3</a>
+     */
+    @Test
+    public void testExponentialHistogram() {
+        List<Bucket> b = OTelProtoCodec.createExponentialBuckets(
+                ExponentialHistogramDataPoint.Buckets.newBuilder()
+                        .addBucketCounts(4)
+                        .addBucketCounts(2)
+                        .addBucketCounts(3)
+                        .addBucketCounts(2)
+                        .addBucketCounts(1)
+                        .addBucketCounts(4)
+                        .addBucketCounts(6)
+                        .addBucketCounts(4)
+                        .setOffset(0)
+                        .build(), 3);
+
+        MatcherAssert.assertThat(b.size(), Matchers.equalTo(8));
+
+        Bucket b1 = b.get(0);
+        MatcherAssert.assertThat(b1.getCount(), Matchers.equalTo(4L));
+        MatcherAssert.assertThat(b1.getMin(), Matchers.equalTo(1D));
+        MatcherAssert.assertThat(b1.getMax(), Matchers.closeTo(1.09051, MAX_ERROR));
+
+        Bucket b2 = b.get(1);
+        MatcherAssert.assertThat(b2.getCount(), Matchers.equalTo(2L));
+        MatcherAssert.assertThat(b2.getMin(), Matchers.closeTo(1.09051, MAX_ERROR));
+        MatcherAssert.assertThat(b2.getMax(), Matchers.closeTo(1.18921, MAX_ERROR));
+
+        Bucket b3 = b.get(2);
+        MatcherAssert.assertThat(b3.getCount(), Matchers.equalTo(3L));
+        MatcherAssert.assertThat(b3.getMin(), Matchers.closeTo(1.18921, MAX_ERROR));
+        MatcherAssert.assertThat(b3.getMax(), Matchers.closeTo(1.29684, MAX_ERROR));
+
+        Bucket b4 = b.get(3);
+        MatcherAssert.assertThat(b4.getCount(), Matchers.equalTo(2L));
+        MatcherAssert.assertThat(b4.getMin(), Matchers.closeTo(1.29684, MAX_ERROR));
+        MatcherAssert.assertThat(b4.getMax(), Matchers.closeTo(1.41421, MAX_ERROR));
+
+        Bucket b5 = b.get(4);
+        MatcherAssert.assertThat(b5.getCount(), Matchers.equalTo(1L));
+        MatcherAssert.assertThat(b5.getMin(), Matchers.closeTo(1.41421, MAX_ERROR));
+        MatcherAssert.assertThat(b5.getMax(), Matchers.closeTo(1.54221, MAX_ERROR));
+
+        Bucket b6 = b.get(5);
+        MatcherAssert.assertThat(b6.getCount(), Matchers.equalTo(4L));
+        MatcherAssert.assertThat(b6.getMin(), Matchers.closeTo(1.54221, MAX_ERROR));
+        MatcherAssert.assertThat(b6.getMax(), Matchers.closeTo(1.68179, MAX_ERROR));
+
+        Bucket b7 = b.get(6);
+        MatcherAssert.assertThat(b7.getCount(), Matchers.equalTo(6L));
+        MatcherAssert.assertThat(b7.getMin(), Matchers.closeTo(1.68179, MAX_ERROR));
+        MatcherAssert.assertThat(b7.getMax(), Matchers.closeTo(1.83401, MAX_ERROR));
+
+        Bucket b8 = b.get(7);
+        MatcherAssert.assertThat(b8.getCount(), Matchers.equalTo(4L));
+        MatcherAssert.assertThat(b8.getMin(), Matchers.closeTo(1.83401, MAX_ERROR));
+        MatcherAssert.assertThat(b8.getMax(), Matchers.closeTo(2, MAX_ERROR));
+    }
+
+    @Test
+    public void testExponentialHistogramWithOffset() {
+        List<Bucket> b = OTelProtoCodec.createExponentialBuckets(
+                ExponentialHistogramDataPoint.Buckets.newBuilder()
+                        .addBucketCounts(4)
+                        .addBucketCounts(2)
+                        .addBucketCounts(3)
+                        .addBucketCounts(2)
+                        .addBucketCounts(1)
+                        .addBucketCounts(4)
+                        .setOffset(2)
+                        .build(), 3);
+
+        MatcherAssert.assertThat(b.size(), Matchers.equalTo(6));
+
+        Bucket b1 = b.get(0);
+        MatcherAssert.assertThat(b1.getCount(), Matchers.equalTo(4L));
+        MatcherAssert.assertThat(b1.getMin(), Matchers.closeTo(1.18920, MAX_ERROR));
+        MatcherAssert.assertThat(b1.getMax(), Matchers.closeTo(1.29684, MAX_ERROR));
+
+        Bucket b2 = b.get(1);
+        MatcherAssert.assertThat(b2.getCount(), Matchers.equalTo(2L));
+        MatcherAssert.assertThat(b2.getMin(), Matchers.closeTo(1.29684, MAX_ERROR));
+        MatcherAssert.assertThat(b2.getMax(), Matchers.closeTo(1.41421, MAX_ERROR));
+
+        Bucket b3 = b.get(2);
+        MatcherAssert.assertThat(b3.getCount(), Matchers.equalTo(3L));
+        MatcherAssert.assertThat(b3.getMin(), Matchers.closeTo(1.41421, MAX_ERROR));
+        MatcherAssert.assertThat(b3.getMax(), Matchers.closeTo(1.54221, MAX_ERROR));
+
+        Bucket b4 = b.get(3);
+        MatcherAssert.assertThat(b4.getCount(), Matchers.equalTo(2L));
+        MatcherAssert.assertThat(b4.getMin(), Matchers.closeTo(1.54221, MAX_ERROR));
+        MatcherAssert.assertThat(b4.getMax(), Matchers.closeTo(1.68179, MAX_ERROR));
+
+        Bucket b5 = b.get(4);
+        MatcherAssert.assertThat(b5.getCount(), Matchers.equalTo(1L));
+        MatcherAssert.assertThat(b5.getMin(), Matchers.closeTo(1.68179, MAX_ERROR));
+        MatcherAssert.assertThat(b5.getMax(), Matchers.closeTo(1.83401, MAX_ERROR));
+
+        Bucket b6 = b.get(5);
+        MatcherAssert.assertThat(b6.getCount(), Matchers.equalTo(4L));
+        MatcherAssert.assertThat(b6.getMin(), Matchers.closeTo(1.83401, MAX_ERROR));
+        MatcherAssert.assertThat(b6.getMax(), Matchers.closeTo(2, MAX_ERROR));
+    }
+
+    @Test
+    public void testExponentialHistogramWithNegativeScale() {
+        List<Bucket> b = OTelProtoCodec.createExponentialBuckets(
+                ExponentialHistogramDataPoint.Buckets.newBuilder()
+                        .addBucketCounts(4)
+                        .addBucketCounts(2)
+                        .addBucketCounts(3)
+                        .addBucketCounts(2)
+                        .setOffset(0)
+                        .build(), -3);
+
+        MatcherAssert.assertThat(b.size(), Matchers.equalTo(4));
+
+        Bucket b1 = b.get(0);
+        MatcherAssert.assertThat(b1.getCount(), Matchers.equalTo(4L));
+        MatcherAssert.assertThat(b1.getMin(), Matchers.closeTo(2, MAX_ERROR));
+        MatcherAssert.assertThat(b1.getMax(), Matchers.closeTo(4, MAX_ERROR));
+
+        Bucket b2 = b.get(1);
+        MatcherAssert.assertThat(b2.getCount(), Matchers.equalTo(2L));
+        MatcherAssert.assertThat(b2.getMin(), Matchers.closeTo(4, MAX_ERROR));
+        MatcherAssert.assertThat(b2.getMax(), Matchers.closeTo(16, MAX_ERROR));
+
+        Bucket b3 = b.get(2);
+        MatcherAssert.assertThat(b3.getCount(), Matchers.equalTo(3L));
+        MatcherAssert.assertThat(b3.getMin(), Matchers.closeTo(16, MAX_ERROR));
+        MatcherAssert.assertThat(b3.getMax(), Matchers.closeTo(256, MAX_ERROR));
+
+        Bucket b4 = b.get(3);
+        MatcherAssert.assertThat(b4.getCount(), Matchers.equalTo(2L));
+        MatcherAssert.assertThat(b4.getMin(), Matchers.closeTo(256, MAX_ERROR));
+        MatcherAssert.assertThat(b4.getMax(), Matchers.closeTo(65536, MAX_ERROR));
     }
 }

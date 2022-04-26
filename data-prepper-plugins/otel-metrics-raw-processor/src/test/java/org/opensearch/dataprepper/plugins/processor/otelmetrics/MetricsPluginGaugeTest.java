@@ -37,6 +37,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import static org.opensearch.dataprepper.plugins.processor.otelmetrics.OTelMetricsProtoHelperTest.getRandomBytes;
@@ -48,6 +49,12 @@ public class MetricsPluginGaugeTest {
 
     private static final Clock CLOCK = Clock.fixed(Instant.ofEpochSecond(1_700_000_000), ZoneOffset.UTC);
     private OTelMetricsRawProcessor rawProcessor;
+    private static final Random RANDOM = new Random();
+    private byte[] getRandomBytes(int len) {
+        byte[] bytes = new byte[len];
+        RANDOM.nextBytes(bytes);
+        return bytes;
+    }
 
     @Before
     public void init() {
