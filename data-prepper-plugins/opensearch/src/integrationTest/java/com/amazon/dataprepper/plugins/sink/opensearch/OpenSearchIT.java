@@ -17,14 +17,15 @@ import java.util.Collections;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class OpenSearchTests {
+public class OpenSearchIT {
     @Test
     public void testOpenSearchConnection() throws IOException {
-        final String host = System.getProperty("os.host");
+        final String host = System.getProperty("tests.opensearch.host");
+        final String hostUrl = "https://" + host;
         final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
-                Collections.singletonList(host));
-        final String user = System.getProperty("os.user");
-        final String password = System.getProperty("os.password");
+                Collections.singletonList(hostUrl));
+        final String user = System.getProperty("tests.opensearch.user");
+        final String password = System.getProperty("tests.opensearch.password");
         if (user != null) {
             builder.withUsername(user);
             builder.withPassword(password);

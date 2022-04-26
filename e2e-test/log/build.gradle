@@ -155,6 +155,8 @@ task basicLogEndToEndTest(type: Test) {
 }
 
 dependencies {
+    integrationTestImplementation project(':data-prepper-api')
+    integrationTestImplementation project(':data-prepper-plugins:common')
     integrationTestImplementation project(':data-prepper-plugins:opensearch')
     integrationTestImplementation "com.linecorp.armeria:armeria:1.0.0"
     integrationTestImplementation "org.awaitility:awaitility:4.1.1"
