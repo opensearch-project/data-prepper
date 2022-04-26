@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  integration_tests:
+  integration-tests:
     strategy:
       matrix:
         java: [14]
@@ -34,3 +34,26 @@ jobs:
         run: |
           ./gradlew :data-prepper-plugins:opensearch:integrationTest --tests "com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchIT" -Dtests.opensearch.host=localhost:9200 -Dtests.opensearch.user=admin -Dtests.opensearch.password=admin
           ./gradlew :data-prepper-plugins:opensearch:integrationTest -Dtests.opensearch.host=localhost:9200 -Dtests.opensearch.user=admin -Dtests.opensearch.password=admin -Dtests.opensearch.bundle=true
+      - name: Upload Unit Test Results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: data-prepper-opensearch-integration-tests-opendistro-${{ matrix.opendistro }}-java-${{ matrix.java }}
+          path: '**/test-results/**/*.xml'
+
+  publish-test-results:
+    name: "Publish Unit Tests Results"
+    needs: integration-tests
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: test-results
+
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: "test-results/**/*.xml"
