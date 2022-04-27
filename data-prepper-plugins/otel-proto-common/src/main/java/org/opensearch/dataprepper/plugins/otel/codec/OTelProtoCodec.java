@@ -491,7 +491,7 @@ public class OTelProtoCodec {
      * Converts an {@link AnyValue} into its appropriate data type
      *
      * @param value The value to convert
-     * @return
+     * @return the converted value as object
      */
     public static Object convertAnyValue(final AnyValue value) {
         switch (value.getValueCase()) {
@@ -612,6 +612,7 @@ public class OTelProtoCodec {
     /**
      * Extracts the name and version of the used instrumentation library used
      *
+     * @param instrumentationLibrary the instrumentation library
      * @return A map, containing information about the instrumentation library
      */
     public static Map<String, Object> getInstrumentationLibraryAttributes(final InstrumentationLibrary instrumentationLibrary) {
@@ -628,6 +629,7 @@ public class OTelProtoCodec {
     /**
      * Extracts the name and version of the used instrumentation scope used
      *
+     * @param  instrumentationScope the instrumentation scope
      * @return A map, containing information about the instrumentation scope
      */
     public static Map<String, Object> getInstrumentationScopeAttributes(final InstrumentationScope instrumentationScope) {
@@ -676,13 +678,14 @@ public class OTelProtoCodec {
      *     the OTel metrics proto spec</a>
      * <p>
      * The boundaries for bucket at index i are:
-     * <p>
+     * </p>
+     * <pre>{@code
      * (-infinity, explicit_bounds[i]) for i == 0
      * (explicit_bounds[i-1], +infinity) for i == size(explicit_bounds)
      * (explicit_bounds[i-1], explicit_bounds[i]) for 0 < i < size(explicit_bounds)
-     *
-     * <br/>
-     * <br/>
+     * }</pre>
+     * <br>
+     * <br>
      * <b>NOTE:</b> here we map infinity as +/- FLOAT.MAX_VALUE since JSON rfc4627 only supports finite numbers and
      * OpenSearch maps double values to floats as per default.
      *
