@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Template to deploy and monitor Data Prepper on ECS Fargate tasks"
+Resources:
+  FargateTask:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      NetworkMode: awsvpc
+      Family: data-prepper-firelens-metrics
+      TaskRoleArn: arn:aws:iam::531516510575:role/ecsTaskExecutionRole
+      ExecutionRoleArn: arn:aws:iam::531516510575:role/ecsTaskExecutionRole
+      Cpu: 1024
+      Memory: 8192
+      RequiresCompatibilities:
+        - "EC2"
+        - "FARGATE"
+      ContainerDefinitions:
+        - Name: data-prepper-poc
+          Image: 531516510575.dkr.ecr.us-west-2.amazonaws.com/data-prepper-poc:METRICS-LOGGING-POC
+          MemoryReservation: 2048
+          Essential: true
+          PortMappings:
+            - ContainerPort: 21890
+              HostPort: 21890
+              Protocol: tcp
+            - ContainerPort: 4900
+              HostPort: 4900
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awsfirelens
+            Options:
+              Name: es
+              Host: search-data-prepper-monitoring-dcgcrtnrrcy2tdn3vormuaopvm.us-west-2.es.amazonaws.com
+              Port: 443
+              HTTP_User: master
+              HTTP_Passwd: Master1!
+              tls: On
+          Command:
+            - /bin/bash
+            - -c
+            - |
+              echo $PIPELINES_YAML | base64 -d - | tee /usr/share/data-prepper/pipelines.yaml
+              echo $DATA_PREPPER_CONFIG_YAML | base64 -d - | tee /usr/share/data-prepper/data-prepper-config.yaml
+              java -jar data-prepper.jar pipelines.yaml data-prepper-config.yaml
+          Environment:
+            - Name: PIPELINES_YAML
+              Value:
+                Fn::Base64: |
+                  entry-pipeline:
+                    source:
+                      otel_trace_source:
+                        ssl: false
+                        unframed_requests: true
+                        health_check_service: true
+                    sink:
+                      - pipeline:
+                          name: "raw-pipeline"
+                  raw-pipeline:
+                    source:
+                      pipeline:
+                        name: "entry-pipeline"
+                    prepper:
+                      - otel_trace_raw_prepper:
+                    sink:
+                      - stdout:
+            - Name: DATA_PREPPER_CONFIG_YAML
+              Value:
+                Fn::Base64: |
+                  ssl: false
+                  metricRegistries:
+                    - "Logging"
+                    - "Prometheus"
+        - Name: log_router
+          Image: 906394416424.dkr.ecr.us-east-1.amazonaws.com/aws-for-fluent-bit:latest
+          MemoryReservation: 50
+          Essential: true
+          FirelensConfiguration:
+            Type: fluentbit
