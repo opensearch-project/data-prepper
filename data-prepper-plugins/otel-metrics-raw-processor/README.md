@@ -10,18 +10,18 @@ processor:
 ```
 
 ## Configuration
-It is possible to create explicit representations of histogram buckets and their boundaries with this plugin. This can be controlled with the following parameters:
+It is possible to create explicit representations of histogram buckets and their boundaries. This feature can be controlled with the following parameters:
 
 ```yaml
   processor:
     - otel_metrics_raw_processor:
-        calculateHistogramBuckets: true
-        calculateExponentialHistogramBuckets: true
+        calculate_histogram_buckets: true
+        calculate_exponential_histogram_buckets: true
 ```
-There are two parameters: `calculateHistogramBuckets` and `calculateExponentialHistogramBuckets`.
-If each parameter is not given it defaults to `false` and buckets are not calculated.
+There are two parameters: `calculate_histogram_buckets` and `calculate_exponential_histogram_buckets`.
+If a parameter is not provided it defaults to `false`.
 
-If `calculateHistogramBuckets` is set to `true`, the following JSON will be added to every histogram JSON:
+If `calculate_histogram_buckets` is set to `true`, the following JSON will be added to every histogram JSON:
 
 ```json
  "buckets": [
@@ -53,7 +53,7 @@ This is an explicit form of the more dense OpenTelemetry representation that is 
 ```
 
 
-If `calculateExponentialHistogramBuckets` is set to `true`, the following JSON will be added to every histogram JSON:
+If `calculate_exponential_histogram_buckets` is set to `true`, the following JSON will be added to every histogram JSON:
 ```json
 
     "negativeBuckets": [
