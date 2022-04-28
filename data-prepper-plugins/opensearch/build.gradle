@@ -50,7 +50,7 @@ dependencies {
     implementation 'software.amazon.awssdk:sts:2.17.15'
     implementation 'software.amazon.awssdk:url-connection-client:2.17.15'
     implementation 'software.amazon.awssdk:arns:2.17.15'
-    implementation 'io.micrometer:micrometer-core:1.7.5'
+    implementation 'io.micrometer:micrometer-core:1.8.5'
     testImplementation 'org.awaitility:awaitility:4.1.1'
     testImplementation "org.opensearch.test:framework:${opensearchVersion}"
     testImplementation 'commons-io:commons-io:2.11.0'
