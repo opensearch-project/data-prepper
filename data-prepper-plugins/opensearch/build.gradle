@@ -44,7 +44,7 @@ dependencies {
     implementation 'software.amazon.awssdk:auth:2.17.15'
     implementation 'software.amazon.awssdk:http-client-spi:2.17.15'
     implementation 'software.amazon.awssdk:sdk-core:2.17.15'
-    implementation 'software.amazon.awssdk:aws-core:2.17.15'
+    implementation 'software.amazon.awssdk:aws-core:2.17.180'
     implementation 'software.amazon.awssdk:regions:2.17.15'
     implementation 'software.amazon.awssdk:utils:2.17.15'
     implementation 'software.amazon.awssdk:sts:2.17.15'
