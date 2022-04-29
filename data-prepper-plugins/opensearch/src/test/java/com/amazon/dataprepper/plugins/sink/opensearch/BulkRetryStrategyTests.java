@@ -50,12 +50,8 @@ public class BulkRetryStrategyTests {
     private BiConsumer<DocWriteRequest<?>, Throwable> logFailureConsumer;
 
     @BeforeEach
-    public void metricsInit() {
-        MetricsTestUtil.initMetrics();
-    }
-
-    @BeforeEach
     public void setUp() {
+        MetricsTestUtil.initMetrics();
         logFailureConsumer = mock(BiConsumer.class);
     }
 
