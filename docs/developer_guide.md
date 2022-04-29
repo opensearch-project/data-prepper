@@ -217,7 +217,7 @@ Testing Guidelines:
 
 ## CI Builds
 
-Before merging in your PR, the Data Prepper continuous integration (CI) builds mush pass. These builds
+Before merging in your PR, the Data Prepper continuous integration (CI) builds must pass. These builds
 run as GitHub Actions.
 
 If an Action is failing, please view the log and determine what is causing your commit to fail. If a test
