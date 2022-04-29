@@ -28,10 +28,7 @@ import org.opensearch.client.Request;
 import org.opensearch.client.Response;
 import org.opensearch.client.RestClient;
 import org.opensearch.common.Strings;
-import org.opensearch.common.xcontent.DeprecationHandler;
-import org.opensearch.common.xcontent.NamedXContentRegistry;
 import org.opensearch.common.xcontent.XContentFactory;
-import org.opensearch.common.xcontent.XContentParser;
 import org.opensearch.common.xcontent.XContentType;
 
 import javax.ws.rs.HttpMethod;
@@ -48,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -614,31 +612,22 @@ public class OpenSearchSinkIT {
 
   @SuppressWarnings("unchecked")
   private void wipeAllOpenSearchIndices() throws IOException {
-    final Response response = client.performRequest(new Request("GET", "/_cat/indices?format=json&expand_wildcards=all"));
-    final XContentType xContentType = XContentType.fromMediaTypeOrFormat(response.getEntity().getContentType().getValue());
-    try (
-            XContentParser parser = xContentType
-                    .xContent()
-                    .createParser(
-                            NamedXContentRegistry.EMPTY,
-                            DeprecationHandler.THROW_UNSUPPORTED_OPERATION,
-                            response.getEntity().getContent()
-                    )
-    ) {
-      final XContentParser.Token token = parser.nextToken();
-      List<Map<String, Object>> parserList = null;
-      if (token == XContentParser.Token.START_ARRAY) {
-        parserList = parser.listOrderedMap().stream().map(obj -> (Map<String, Object>) obj).collect(Collectors.toList());
-      } else {
-        parserList = Collections.singletonList(parser.mapOrdered());
-      }
+    final Response response = client.performRequest(new Request("GET", "/*?expand_wildcards=all"));
 
-      for (final Map<String, Object> index : parserList) {
-        final String indexName = (String) index.get("index");
-        if (indexName != null && !".opendistro_security".equals(indexName)) {
-          client.performRequest(new Request("DELETE", "/" + indexName));
-        }
-      }
-    }
+    final String responseBody = EntityUtils.toString(response.getEntity());
+    final Map<String, Object> indexContent = createContentParser(XContentType.JSON.xContent(), responseBody).map();
+
+    final Set<String> indices = indexContent.keySet();
+
+    indices.stream()
+            .filter(Objects::nonNull)
+            .filter(indexName -> !".opendistro_security".equals(indexName))
+            .forEach(indexName -> {
+              try {
+                client.performRequest(new Request("DELETE", "/" + indexName));
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            });
   }
 }

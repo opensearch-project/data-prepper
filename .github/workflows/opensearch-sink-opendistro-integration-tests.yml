@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         java: [14]
-        opendistro: [1.12.0, 1.13.2]
+        opendistro: [1.6.0, 1.8.0, 1.9.0, 1.11.0, 1.12.0, 1.13.3]
 
     runs-on: ubuntu-latest
 
