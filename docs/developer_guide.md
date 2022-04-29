@@ -215,6 +215,16 @@ Testing Guidelines:
 1. Our Gradle builds use Groovy, so follow our normal Java styles in the build files. For example, use camel case rather than snake case.
 2. Use Gradle strings (single quote) unless you need string interpolation. If you need string interpolation, use a GString (double quotes)
 
+## CI Builds
+
+Before merging in your PR, the Data Prepper continuous integration (CI) builds must pass. These builds
+run as GitHub Actions.
+
+If an Action is failing, please view the log and determine what is causing your commit to fail. If a test
+fails, please check the *Summary* section of that Action. There may be artifacts for the test results. You
+can download these and view the result information. Additionally, many builds have *Unit Test Results* job
+which includes a summary of the results.
+
 ## More Information
 
 We have the following pages for specific development guidance on the topics:
