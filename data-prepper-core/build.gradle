@@ -33,7 +33,7 @@ dependencies {
     implementation('org.springframework:spring-core:5.3.18') {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
-    implementation('org.springframework:spring-context:5.3.18') {
+    implementation('org.springframework:spring-context:5.3.19') {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
     testImplementation 'org.springframework:spring-test:5.3.18'
