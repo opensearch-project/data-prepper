@@ -29,9 +29,9 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.metric.Metric;
 import org.opensearch.dataprepper.model.record.Record;
 
-import java.time.Clock;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -47,9 +47,18 @@ import static org.assertj.core.api.Assertions.entry;
 @RunWith(MockitoJUnitRunner.class)
 public class MetricsPluginGaugeTest {
 
-    private static final Clock CLOCK = Clock.fixed(Instant.ofEpochSecond(1_700_000_000), ZoneOffset.UTC);
+    private static final Long START_TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
+            LocalDateTime.of(2020, 5, 24, 14, 0, 0),
+            ZoneOffset.UTC).toInstant().toEpochMilli());
+
+    private static final Long TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
+            LocalDateTime.of(2020, 5, 24, 14, 1, 0),
+            ZoneOffset.UTC).toInstant().toEpochMilli());
+
+
     private OTelMetricsRawProcessor rawProcessor;
     private static final Random RANDOM = new Random();
+
     private byte[] getRandomBytes(int len) {
         byte[] bytes = new byte[len];
         RANDOM.nextBytes(bytes);
@@ -110,9 +119,8 @@ public class MetricsPluginGaugeTest {
         assertThat(map).contains(entry("resource.attributes.service@name", "service"));
         assertThat(map).contains(entry("description", "description"));
         assertThat(map).contains(entry("value", 4.0D));
-        assertThat(map).contains(entry("startTime","1970-01-01T00:00:00Z"));
-        assertThat(map).contains(entry("time","1970-01-01T00:00:00Z"));
-        assertThat(map).contains(entry("time","1970-01-01T00:00:00Z"));
+        assertThat(map).contains(entry("startTime", "1970-01-01T00:00:00Z"));
+        assertThat(map).contains(entry("time", "1970-01-01T00:00:00Z"));
         assertThat(map).contains(entry("instrumentationLibrary.name", "ilname"));
         assertThat(map).contains(entry("instrumentationLibrary.version", "ilversion"));
 
@@ -165,9 +173,8 @@ public class MetricsPluginGaugeTest {
         assertThat(map).contains(entry("resource.attributes.service@name", "service"));
         assertThat(map).contains(entry("description", "description"));
         assertThat(map).contains(entry("value", 4.0D));
-        assertThat(map).contains(entry("startTime","1970-01-01T00:00:00Z"));
-        assertThat(map).contains(entry("time","1970-01-01T00:00:00Z"));
-        assertThat(map).contains(entry("time","1970-01-01T00:00:00Z"));
+        assertThat(map).contains(entry("startTime", "1970-01-01T00:00:00Z"));
+        assertThat(map).contains(entry("time", "1970-01-01T00:00:00Z"));
         assertThat(map).contains(entry("instrumentationScope.name", "smname"));
         assertThat(map).contains(entry("instrumentationScope.version", "smversion"));
 
@@ -175,7 +182,7 @@ public class MetricsPluginGaugeTest {
 
     @Test
     public void testWithExemplar() throws JsonProcessingException {
-        long t1 = TimeUnit.MILLISECONDS.toNanos(Instant.now(CLOCK).toEpochMilli());
+
         byte[] spanId = getRandomBytes(8);
         byte[] traceId = getRandomBytes(8);
 
@@ -185,12 +192,14 @@ public class MetricsPluginGaugeTest {
                         .setValue(AnyValue.newBuilder().setBoolValue(true).build()).build())
                 .setAsDouble(3)
                 .setSpanId(ByteString.copyFrom(spanId))
-                .setTimeUnixNano(t1)
+                .setTimeUnixNano(TIME)
                 .setTraceId(ByteString.copyFrom(traceId))
                 .build();
 
         NumberDataPoint.Builder p1 = NumberDataPoint.newBuilder()
                 .addExemplars(e1)
+                .setStartTimeUnixNano(START_TIME)
+                .setTimeUnixNano(TIME)
                 .setAsInt(4)
                 .setFlags(1);
 
@@ -238,8 +247,8 @@ public class MetricsPluginGaugeTest {
         assertThat(map).contains(entry("resource.attributes.service@name", "service"));
         assertThat(map).contains(entry("description", "description"));
         assertThat(map).contains(entry("value", 4.0D));
-        assertThat(map).contains(entry("startTime","1970-01-01T00:00:00Z"));
-        assertThat(map).contains(entry("time","1970-01-01T00:00:00Z"));
+        assertThat(map).contains(entry("startTime", "2020-05-24T14:00:00Z"));
+        assertThat(map).contains(entry("time", "2020-05-24T14:01:00Z"));
         assertThat(map).contains(entry("instrumentationScope.name", "smname"));
         assertThat(map).contains(entry("instrumentationScope.version", "smversion"));
         assertThat(map).contains(entry("flags", 1));
@@ -248,11 +257,11 @@ public class MetricsPluginGaugeTest {
         assertThat(exemplars.size()).isEqualTo(1);
         Map<String, Object> eTest = exemplars.get(0);
 
-        assertThat(eTest).contains(entry("time", "2023-11-14T22:13:20Z"));
+        assertThat(eTest).contains(entry("time", "2020-05-24T14:01:00Z"));
         assertThat(eTest).contains(entry("value", 3.0));
         assertThat(eTest).contains(entry("spanId", Hex.encodeHexString(spanId)));
         assertThat(eTest).contains(entry("traceId", Hex.encodeHexString(traceId)));
-        Map<String, Object> atts = (Map<String, Object>)eTest.get("attributes");
+        Map<String, Object> atts = (Map<String, Object>) eTest.get("attributes");
         assertThat(atts).contains(entry("exemplar.attributes.key", true));
     }
 }

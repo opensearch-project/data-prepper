@@ -46,9 +46,10 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
-import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -75,7 +76,15 @@ public class OTelProtoCodecTest {
     private static final Random RANDOM = new Random();
     private static final String TEST_REQUEST_JSON_FILE = "test-request.json";
     private static final String TEST_SPAN_EVENT_JSON_FILE = "test-span-event.json";
-    private static final Clock CLOCK = Clock.fixed(Instant.ofEpochSecond(1_700_000_000), ZoneOffset.UTC);
+
+    private static final Long START_TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
+            LocalDateTime.of(2020, 5, 24, 14, 0, 0),
+            ZoneOffset.UTC).toInstant().toEpochMilli());
+
+    private static final Long TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
+            LocalDateTime.of(2020, 5, 24, 14, 1, 0),
+            ZoneOffset.UTC).toInstant().toEpochMilli());
+
     private static final Double MAX_ERROR = 0.00001;
 
     private final OTelProtoCodec.OTelProtoDecoder decoderUnderTest = new OTelProtoCodec.OTelProtoDecoder();
@@ -98,7 +107,7 @@ public class OTelProtoCodecTest {
     private ExportTraceServiceRequest buildExportTraceServiceRequestFromJsonFile(String requestJsonFileName) throws IOException {
         final StringBuilder jsonBuilder = new StringBuilder();
         try (final InputStream inputStream = Objects.requireNonNull(
-                OTelProtoCodecTest.class.getClassLoader().getResourceAsStream(requestJsonFileName))){
+                OTelProtoCodecTest.class.getClassLoader().getResourceAsStream(requestJsonFileName))) {
             final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
             bufferedReader.lines().forEach(jsonBuilder::append);
         }
@@ -115,7 +124,7 @@ public class OTelProtoCodecTest {
             final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_JSON_FILE);
             final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest);
             assertThat(spans.size(), is(equalTo(3)));
-            for (final Span span: spans) {
+            for (final Span span : spans) {
                 if (span.getParentSpanId().isEmpty()) {
                     assertThat(span.getTraceGroup(), notNullValue());
                     assertThat(span.getTraceGroupFields().getEndTime(), notNullValue());
@@ -629,8 +638,9 @@ public class OTelProtoCodecTest {
         private Span buildSpanFromJsonFile(final String jsonFileName) {
             JacksonSpan.Builder spanBuilder = JacksonSpan.builder();
             try (final InputStream inputStream = Objects.requireNonNull(
-                    OTelProtoCodecTest.class.getClassLoader().getResourceAsStream(jsonFileName))){
-                final Map<String, Object> spanMap = OBJECT_MAPPER.readValue(inputStream, new TypeReference<Map<String, Object>>() {});
+                    OTelProtoCodecTest.class.getClassLoader().getResourceAsStream(jsonFileName))) {
+                final Map<String, Object> spanMap = OBJECT_MAPPER.readValue(inputStream, new TypeReference<Map<String, Object>>() {
+                });
                 final String traceId = (String) spanMap.get("traceId");
                 final String spanId = (String) spanMap.get("spanId");
                 final String parentSpanId = (String) spanMap.get("parentSpanId");
@@ -668,7 +678,8 @@ public class OTelProtoCodecTest {
             return spanBuilder.build();
         }
 
-        private class UnsupportedEncodingClass { }
+        private class UnsupportedEncodingClass {
+        }
     }
 
     @Test
@@ -686,7 +697,7 @@ public class OTelProtoCodecTest {
         final ExportTraceServiceRequest request = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_JSON_FILE);
         final List<Span> spansFirstDec = decoderUnderTest.parseExportTraceServiceRequest(request);
         final List<ResourceSpans> resourceSpansList = new ArrayList<>();
-        for (final Span span: spansFirstDec) {
+        for (final Span span : spansFirstDec) {
             resourceSpansList.add(encoderUnderTest.convertToResourceSpans(span));
         }
         final List<Span> spansSecondDec = resourceSpansList.stream()
@@ -756,16 +767,13 @@ public class OTelProtoCodecTest {
 
     @Test
     void convertExemplars() {
-        long t1 = TimeUnit.MILLISECONDS.toNanos(Instant.now(CLOCK).toEpochMilli());
-        long t2 = t1 + 100_000;
-
         Exemplar e1 = Exemplar.newBuilder()
                 .addFilteredAttributes(KeyValue.newBuilder()
                         .setKey("key")
                         .setValue(AnyValue.newBuilder().setBoolValue(true).build()).build())
                 .setAsDouble(3)
                 .setSpanId(ByteString.copyFrom(getRandomBytes(8)))
-                .setTimeUnixNano(t1)
+                .setTimeUnixNano(TIME)
                 .setTraceId(ByteString.copyFrom(getRandomBytes(8)))
                 .build();
 
@@ -778,7 +786,7 @@ public class OTelProtoCodecTest {
                                 .build()).build())
                 .setAsInt(42)
                 .setSpanId(ByteString.copyFrom(getRandomBytes(8)))
-                .setTimeUnixNano(t2)
+                .setTimeUnixNano(TIME)
                 .setTraceId(ByteString.copyFrom(getRandomBytes(8)))
                 .build();
 
@@ -788,14 +796,14 @@ public class OTelProtoCodecTest {
 
         org.opensearch.dataprepper.model.metric.Exemplar conv1 = convertedExemplars.get(0);
         MatcherAssert.assertThat(conv1.getSpanId(), Matchers.equalTo(Hex.encodeHexString(e1.getSpanId().toByteArray())));
-        MatcherAssert.assertThat(conv1.getTime(), Matchers.equalTo("2023-11-14T22:13:20Z"));
+        MatcherAssert.assertThat(conv1.getTime(), Matchers.equalTo("2020-05-24T14:01:00Z"));
         MatcherAssert.assertThat(conv1.getTraceId(), Matchers.equalTo(Hex.encodeHexString(e1.getTraceId().toByteArray())));
         MatcherAssert.assertThat(conv1.getValue(), Matchers.equalTo(3.0));
         org.assertj.core.api.Assertions.assertThat(conv1.getAttributes()).contains(entry("exemplar.attributes.key", true));
 
         org.opensearch.dataprepper.model.metric.Exemplar conv2 = convertedExemplars.get(1);
         MatcherAssert.assertThat(conv2.getSpanId(), Matchers.equalTo(Hex.encodeHexString(e2.getSpanId().toByteArray())));
-        MatcherAssert.assertThat(conv2.getTime(), Matchers.equalTo("2023-11-14T22:13:20.000100Z"));
+        MatcherAssert.assertThat(conv2.getTime(), Matchers.equalTo("2020-05-24T14:01:00Z"));
         MatcherAssert.assertThat(conv2.getTraceId(), Matchers.equalTo(Hex.encodeHexString(e2.getTraceId().toByteArray())));
         MatcherAssert.assertThat(conv2.getValue(), Matchers.equalTo(42.0));
         org.assertj.core.api.Assertions.assertThat(conv2.getAttributes()).contains(entry("exemplar.attributes.key2", "[\"test\"]"));

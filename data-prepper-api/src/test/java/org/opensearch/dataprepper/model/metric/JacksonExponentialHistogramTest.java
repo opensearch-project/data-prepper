@@ -13,13 +13,14 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.TestObject;
 import org.skyscreamer.jsonassert.JSONAssert;
 
-import java.time.Clock;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anEmptyMap;
@@ -31,7 +32,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class JacksonExponentialHistogramTest {
 
-    private static final Long TEST_KEY1_TIME = Clock.fixed(Instant.ofEpochMilli(1_700_000), ZoneOffset.UTC).millis();
+    private static final Long TEST_KEY1_TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
+            LocalDateTime.of(2020, 5, 24, 14, 0, 0),
+            ZoneOffset.UTC).toInstant().toEpochMilli());
+
     private static final String TEST_KEY2 = UUID.randomUUID().toString();
 
     private static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
@@ -235,7 +239,7 @@ public class JacksonExponentialHistogramTest {
         builder.withAttributes(null);
         JacksonExponentialHistogram histogram = builder.build();
         histogram.toJsonString();
-        assertThat(histogram.getAttributes(),is(anEmptyMap()));
+        assertThat(histogram.getAttributes(), is(anEmptyMap()));
     }
 
     @Test
