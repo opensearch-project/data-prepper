@@ -25,6 +25,10 @@ subprojects {
         }
     }
 
+    tasks.named('processIntegrationTestResources') {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+
     configurations {
         integrationTestImplementation.extendsFrom testImplementation
         integrationTestRuntime.extendsFrom testRuntime
