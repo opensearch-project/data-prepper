@@ -14,8 +14,8 @@ Please read the [Trace Analytics](docs/trace_analytics.md) guide or [Log Analyti
 ## Project Resources
 
 * [Downloads](https://opensearch.org/downloads.html)
-* [Documentation](https://opensearch.org/docs/latest/monitoring-plugins/trace/data-prepper/)
-* [Configuration Reference](https://opensearch.org/docs/latest/monitoring-plugins/trace/data-prepper-reference/)
+* [Documentation](https://opensearch.org/docs/latest/clients/data-prepper/index/)
+* [Configuration Reference](https://opensearch.org/docs/latest/clients/data-prepper/data-prepper-reference/)
 * Need help? Try the [Data Prepper category](https://discuss.opendistrocommunity.dev/c/data-prepper/61) in the OpenSearch forums
 * [Project Principles](https://opensearch.org/#principles)
 
