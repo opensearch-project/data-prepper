@@ -9,7 +9,7 @@ processor:
     - otel_metrics_raw_processor
 ```
 
-## Configuration
+## Configurations
 It is possible to create explicit representations of histogram buckets and their boundaries. This feature can be controlled with the following parameters:
 
 ```yaml
@@ -17,11 +17,14 @@ It is possible to create explicit representations of histogram buckets and their
     - otel_metrics_raw_processor:
         calculate_histogram_buckets: true
         calculate_exponential_histogram_buckets: true
+        exponential_histogram_max_allowed_scale: 10
 ```
-There are two parameters: `calculate_histogram_buckets` and `calculate_exponential_histogram_buckets`.
-If a parameter is not provided it defaults to `false`.
 
-If `calculate_histogram_buckets` is set to `true`, the following JSON will be added to every histogram JSON:
+There are three possible parameters: `calculate_histogram_buckets`, `calculate_exponential_histogram_buckets` and `exponential_histogram_max_allowed_scale`
+If `calculate_histogram_buckets` and `calculate_exponential_histogram_buckets` are not provided they default to `false`. 
+If `exponential_histogram_max_allowed_scale` is not provided it defaults to 10.
+
+If `calculate_histogram_buckets` is not set to `false`, the following JSON will be added to every histogram JSON:
 
 ```json
  "buckets": [
@@ -53,7 +56,7 @@ This is an explicit form of the more dense OpenTelemetry representation that is 
 ```
 
 
-If `calculate_exponential_histogram_buckets` is set to `true`, the following JSON will be added to every histogram JSON:
+If `calculate_exponential_histogram_buckets` is not set to `false`, the following JSON will be added to every histogram JSON:
 ```json
 
     "negativeBuckets": [
@@ -100,6 +103,12 @@ a scale parameter, offset and list of bucket counts:
     "negativeOffset" : 0,
     "positiveOffset : 1
 ```
+
+The `exponential_histogram_max_allowed_scale` parameter defines the maximum allowed scale for the exponential histogram. Increasing this parameter will increase potential
+memory consumption. See [the spec](https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/metrics/v1/metrics.proto) for more information on exponential histograms and their computational complexity.
+All exponential histograms that have a scale that is above 10 (or the configured parameter) will be discarded and logged with error level.
+
+**Note**: the absolute scale value is used for comparison, so a scale of -11 will be treated equally to 11 and thus exceed the configured value of 10 - and be discarded.
 
 ## Metrics
 This plugin uses all common metrics in [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/processor/AbstractProcessor.java), and does not currently introduce custom metrics.

@@ -66,9 +66,31 @@ public class MetricsPluginExponentialHistogramTest {
     }
 
     @Test
-    public void test() throws JsonProcessingException {
-        when(config.getCalculateExponentialHistogramBuckets()).thenReturn(true);
+    public void testWithMaxScaleExceedingConfiguredNegativeScale() {
+        when(config.getExponentialHistogramMaxAllowedScale()).thenReturn(-2);
 
+        ExponentialHistogram histogram = ExponentialHistogram.newBuilder()
+                .addDataPoints(EXPONENTIAL_HISTOGRAM_DATA_POINT).build();
+
+        List<Record<? extends Metric>> processedRecords = (List<Record<? extends Metric>>) rawProcessor.doExecute(Collections.singletonList(new Record<>(fillServiceRequest(histogram))));
+        assertThat(processedRecords).isEmpty();
+    }
+
+    @Test
+    public void testWithMaxScaleExceedingConfiguredPositiveScale() {
+        when(config.getExponentialHistogramMaxAllowedScale()).thenReturn(2);
+
+        ExponentialHistogram histogram = ExponentialHistogram.newBuilder()
+                .addDataPoints(EXPONENTIAL_HISTOGRAM_DATA_POINT).build();
+
+        List<Record<? extends Metric>> processedRecords = (List<Record<? extends Metric>>) rawProcessor.doExecute(Collections.singletonList(new Record<>(fillServiceRequest(histogram))));
+        assertThat(processedRecords).isEmpty();
+    }
+
+    @Test
+    public void test() throws JsonProcessingException {
+        when(config.getExponentialHistogramMaxAllowedScale()).thenReturn(10);
+        when(config.getCalculateExponentialHistogramBuckets()).thenReturn(true);
         ExponentialHistogram histogram = ExponentialHistogram.newBuilder()
                 .addDataPoints(EXPONENTIAL_HISTOGRAM_DATA_POINT).build();
 
@@ -92,6 +114,7 @@ public class MetricsPluginExponentialHistogramTest {
     @Test
     public void testWithHistogramCalculationFlagDisabled() throws JsonProcessingException {
         when(config.getCalculateExponentialHistogramBuckets()).thenReturn(false);
+        when(config.getExponentialHistogramMaxAllowedScale()).thenReturn(10);
 
         ExponentialHistogram histogram = ExponentialHistogram.newBuilder()
                 .addDataPoints(EXPONENTIAL_HISTOGRAM_DATA_POINT).build();

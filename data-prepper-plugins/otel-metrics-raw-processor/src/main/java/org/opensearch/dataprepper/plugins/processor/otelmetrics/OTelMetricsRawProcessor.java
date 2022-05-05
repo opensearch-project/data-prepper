@@ -22,7 +22,8 @@ import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -33,6 +34,8 @@ import java.util.stream.Collectors;
 
 @DataPrepperPlugin(name = "otel_metrics_raw_processor", pluginType = Processor.class, pluginConfigurationType = OtelMetricsRawProcessorConfig.class)
 public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetricsServiceRequest>, Record<? extends Metric>> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsRawProcessor.class);
 
     private final OtelMetricsRawProcessorConfig otelMetricsRawProcessorConfig;
 
@@ -222,6 +225,14 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
 
     private List<? extends Record<? extends Metric>> mapExponentialHistogram(io.opentelemetry.proto.metrics.v1.Metric metric, String serviceName, Map<String, Object> ils, Map<String, Object> resourceAttributes, String schemaUrl) {
         return metric.getExponentialHistogram().getDataPointsList().stream()
+                .filter(dp -> {
+                    if (otelMetricsRawProcessorConfig.getExponentialHistogramMaxAllowedScale() < Math.abs(dp.getScale())){
+                        LOG.error("Exponential histogram can not be processed since its scale of {} is bigger than the configured max of {}.", dp.getScale(), otelMetricsRawProcessorConfig.getExponentialHistogramMaxAllowedScale());
+                        return false;
+                    } else {
+                        return true;
+                    }
+                })
                 .map(dp -> {
                     JacksonExponentialHistogram.Builder builder = JacksonExponentialHistogram.builder()
                             .withUnit(metric.getUnit())

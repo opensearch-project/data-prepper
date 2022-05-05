@@ -19,6 +19,7 @@ public class OtelMetricsRawProcessorConfigTest {
 
         assertThat(dateProcessorConfig.getCalculateExponentialHistogramBuckets(), equalTo(false));
         assertThat(dateProcessorConfig.getCalculateHistogramBuckets(), equalTo(false));
+        assertThat(dateProcessorConfig.getExponentialHistogramMaxAllowedScale(), equalTo(10));
     }
 
 }

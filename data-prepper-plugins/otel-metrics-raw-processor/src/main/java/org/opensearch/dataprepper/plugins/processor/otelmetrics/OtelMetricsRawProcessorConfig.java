@@ -7,9 +7,11 @@ package org.opensearch.dataprepper.plugins.processor.otelmetrics;
 
 public class OtelMetricsRawProcessorConfig {
 
-    private Boolean calculateHistogramBuckets = false;
+    private Boolean calculateHistogramBuckets = true;
 
-    private Boolean calculateExponentialHistogramBuckets = false;
+    private Boolean calculateExponentialHistogramBuckets = true;
+
+    private Integer exponentialHistogramMaxAllowedScale = 10;
 
     public Boolean getCalculateExponentialHistogramBuckets() {
         return calculateExponentialHistogramBuckets;
@@ -17,5 +19,9 @@ public class OtelMetricsRawProcessorConfig {
 
     public Boolean getCalculateHistogramBuckets() {
         return calculateHistogramBuckets;
+    }
+
+    public Integer getExponentialHistogramMaxAllowedScale() {
+        return exponentialHistogramMaxAllowedScale;
     }
 }
