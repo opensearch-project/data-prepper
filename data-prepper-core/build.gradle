@@ -51,6 +51,10 @@ jar {
     }
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+        duplicatesStrategy(DuplicatesStrategy.INCLUDE)
+    }
+    from {
+        configurations.runtimeClasspath.findAll { it.name.endsWith('jar') }.collect { zipTree(it) }
     }
     exclude 'META-INF/*.RSA'
     exclude 'META-INF/*.SF'
