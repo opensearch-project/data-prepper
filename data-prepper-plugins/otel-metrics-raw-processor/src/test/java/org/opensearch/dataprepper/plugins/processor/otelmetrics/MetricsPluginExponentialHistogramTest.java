@@ -33,6 +33,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -68,7 +69,7 @@ public class MetricsPluginExponentialHistogramTest {
     @Test
     public void testWithMaxScaleExceedingConfiguredNegativeScale() {
         when(config.getExponentialHistogramMaxAllowedScale()).thenReturn(-2);
-
+        lenient().when(config.getCalculateExponentialHistogramBuckets()).thenReturn(true);
         ExponentialHistogram histogram = ExponentialHistogram.newBuilder()
                 .addDataPoints(EXPONENTIAL_HISTOGRAM_DATA_POINT).build();
 
@@ -79,7 +80,7 @@ public class MetricsPluginExponentialHistogramTest {
     @Test
     public void testWithMaxScaleExceedingConfiguredPositiveScale() {
         when(config.getExponentialHistogramMaxAllowedScale()).thenReturn(2);
-
+        lenient().when(config.getCalculateExponentialHistogramBuckets()).thenReturn(true);
         ExponentialHistogram histogram = ExponentialHistogram.newBuilder()
                 .addDataPoints(EXPONENTIAL_HISTOGRAM_DATA_POINT).build();
 
@@ -90,7 +91,7 @@ public class MetricsPluginExponentialHistogramTest {
     @Test
     public void test() throws JsonProcessingException {
         when(config.getExponentialHistogramMaxAllowedScale()).thenReturn(10);
-        when(config.getCalculateExponentialHistogramBuckets()).thenReturn(true);
+        lenient().when(config.getCalculateExponentialHistogramBuckets()).thenReturn(true);
         ExponentialHistogram histogram = ExponentialHistogram.newBuilder()
                 .addDataPoints(EXPONENTIAL_HISTOGRAM_DATA_POINT).build();
 
@@ -114,7 +115,7 @@ public class MetricsPluginExponentialHistogramTest {
     @Test
     public void testWithHistogramCalculationFlagDisabled() throws JsonProcessingException {
         when(config.getCalculateExponentialHistogramBuckets()).thenReturn(false);
-        when(config.getExponentialHistogramMaxAllowedScale()).thenReturn(10);
+        lenient().when(config.getExponentialHistogramMaxAllowedScale()).thenReturn(10);
 
         ExponentialHistogram histogram = ExponentialHistogram.newBuilder()
                 .addDataPoints(EXPONENTIAL_HISTOGRAM_DATA_POINT).build();

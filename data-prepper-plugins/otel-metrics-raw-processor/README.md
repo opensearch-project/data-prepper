@@ -106,8 +106,8 @@ a scale parameter, offset and list of bucket counts:
 
 The `exponential_histogram_max_allowed_scale` parameter defines the maximum allowed scale for the exponential histogram. Increasing this parameter will increase potential
 memory consumption. See [the spec](https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/metrics/v1/metrics.proto) for more information on exponential histograms and their computational complexity.
-All exponential histograms that have a scale that is above 10 (or the configured parameter) will be discarded and logged with error level.
 
+All exponential histograms that have a scale that is above the configured parameter (by default, 10) will be discarded and logged with error level.
 **Note**: the absolute scale value is used for comparison, so a scale of -11 will be treated equally to 11 and thus exceed the configured value of 10 - and be discarded.
 
 ## Metrics
