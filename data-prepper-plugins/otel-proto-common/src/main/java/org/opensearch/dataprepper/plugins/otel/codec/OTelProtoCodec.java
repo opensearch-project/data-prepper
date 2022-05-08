@@ -48,6 +48,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -93,9 +94,40 @@ public class OTelProtoCodec {
     public static final Function<String, String> PREFIX_AND_RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> RESOURCE_ATTRIBUTES + DOT + i.replace(DOT, AT);
     public static final Function<String, String> PREFIX_AND_EXEMPLAR_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> EXEMPLAR_ATTRIBUTES + DOT + i.replace(DOT, AT);
 
+    private static final Map<BoundsKey, double[]> EXPONENTIAL_BUCKET_BOUNDS = new ConcurrentHashMap<>();
 
-    private static final Map<Integer, double[]> EXPONENTIAL_BUCKET_BOUNDS = new ConcurrentHashMap<>();
+    static class BoundsKey {
+        private final Integer scale;
+        private final Sign sign;
 
+        public enum Sign {POSITIVE, NEGATIVE};
+
+        public BoundsKey(Integer scale, Sign sign) {
+            this.scale = scale;
+            this.sign = sign;
+        }
+
+        public Integer getScale() {
+            return scale;
+        }
+
+        public Sign getSign() {
+            return sign;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            BoundsKey boundsKey = (BoundsKey) o;
+            return scale.equals(boundsKey.scale) && sign == boundsKey.sign;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(scale, sign);
+        }
+    }
     public static String convertUnixNanosToISO8601(final long unixNano) {
         return Instant.ofEpochSecond(0L, unixNano).toString();
     }
@@ -742,14 +774,23 @@ public class OTelProtoCodec {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Pre-Calculates all possible bucket bounds for this scale.
+     * Uses the entire range of Double values.
+     *
+     * @param key a tuple with scale and offset sign for bounds calculation
+     * @return an array with all possible bucket bounds with the scale
+     */
+    static double[] calculateBoundsForScale(BoundsKey key) {
 
-    static double[] calculateBoundaries(int scale) {
-        int len = 1 << Math.abs(scale);
-        double[] boundaries = new double[len + 1];
-        for (int i = 0; i <= len ; i++) {
-            boundaries[i] = scale >=0 ?
-                    Math.pow(2., i / (double) len) :
-                    Math.pow(2., Math.pow(2., i));
+        //base = 2**(2**(-scale))
+        double base = Math.pow(2., Math.pow(2., -key.getScale()));
+
+        //calculate all possible buckets in the Double range and consider the offset sign
+        int maxIndex = Math.toIntExact(Math.round(Math.log(Double.MAX_VALUE) / Math.log(base)));
+        double[] boundaries = new double[maxIndex + 1];
+        for (int i = 0; i <= maxIndex ; i++) {
+             boundaries[i] = Math.pow(base, key.getSign() == BoundsKey.Sign.POSITIVE ? i : -i);
         }
         return boundaries;
     }
@@ -764,15 +805,23 @@ public class OTelProtoCodec {
      * @return a mapped list of Buckets
      */
     public static List<Bucket> createExponentialBuckets(ExponentialHistogramDataPoint.Buckets buckets, int scale) {
-        double[] bucketBounds = EXPONENTIAL_BUCKET_BOUNDS.computeIfAbsent(scale, integer -> calculateBoundaries(scale));
-        List<Bucket> mappedBuckets = new ArrayList<>();
         int offset = buckets.getOffset();
+        BoundsKey key = new BoundsKey(scale, offset < 0 ? BoundsKey.Sign.NEGATIVE : BoundsKey.Sign.POSITIVE);
+        double[] bucketBounds = EXPONENTIAL_BUCKET_BOUNDS.computeIfAbsent(key, boundsKey -> calculateBoundsForScale(key));
+
+        List<Bucket> mappedBuckets = new ArrayList<>();
         List<Long> bucketsList = buckets.getBucketCountsList();
-        for (int i = 0; i < bucketsList.size(); i++) {
-            Long value = bucketsList.get(i);
-            double lowerBound = bucketBounds[offset + i];
-            double upperBound = bucketBounds[offset + i + 1];
-            mappedBuckets.add(new DefaultBucket(lowerBound, upperBound, value));
+
+        int boundOffset = Math.abs(offset); // Offset can be negative, but we always want positive offsets for array access
+        if (bucketsList.size() + boundOffset >= bucketBounds.length) {
+            LOG.error("Max offset is out of range for Double data type, ignoring buckets");
+        } else {
+            for (int i = 0; i < bucketsList.size(); i++) {
+                Long value = bucketsList.get(i);
+                double lowerBound = bucketBounds[boundOffset + i];
+                double upperBound = bucketBounds[boundOffset + i + 1];
+                mappedBuckets.add(new DefaultBucket(lowerBound, upperBound, value));
+            }
         }
         return mappedBuckets;
     }

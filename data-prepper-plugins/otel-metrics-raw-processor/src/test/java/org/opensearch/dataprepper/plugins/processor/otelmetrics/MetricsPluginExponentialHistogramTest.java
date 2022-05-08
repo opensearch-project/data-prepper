@@ -15,6 +15,8 @@ import io.opentelemetry.proto.metrics.v1.ExponentialHistogramDataPoint;
 import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
 import io.opentelemetry.proto.resource.v1.Resource;
+import org.hamcrest.MatcherAssert;
+import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -38,6 +40,8 @@ import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MetricsPluginExponentialHistogramTest {
+
+    private static final Double MAX_ERROR = 0.00001;
 
     private OTelMetricsRawProcessor rawProcessor;
 
@@ -180,12 +184,13 @@ public class MetricsPluginExponentialHistogramTest {
             for (int i = 0; i < expectedBuckets.size(); i++) {
                 Bucket expectedBucket = expectedBuckets.get(i);
                 Map<Object, Object> actualBucket = negativeBuckets.get(i);
+                Double min = (Double) actualBucket.get("min");
+                Double max = (Double) actualBucket.get("max");
+                Integer count = (Integer) actualBucket.get("count");
 
-                assertThat(actualBucket)
-                        .contains(entry("min", expectedBucket.getMin()))
-                        .contains(entry("max", expectedBucket.getMax()))
-                        .contains(entry("count", expectedBucket.getCount().intValue()));
-
+                MatcherAssert.assertThat(expectedBucket.getMin(), Matchers.closeTo(min, MAX_ERROR));
+                MatcherAssert.assertThat(expectedBucket.getMax(), Matchers.closeTo(max, MAX_ERROR));
+                assertThat(Integer.toUnsignedLong(count)).isEqualTo(expectedBucket.getCount());
             }
         }
     }

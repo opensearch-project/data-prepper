@@ -68,6 +68,8 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class OTelProtoCodecTest {
@@ -919,6 +921,74 @@ public class OTelProtoCodecTest {
     }
 
     @Test
+    public void testExponentialHistogramWithLargeOffset() {
+        List<Bucket> b = OTelProtoCodec.createExponentialBuckets(
+                ExponentialHistogramDataPoint.Buckets.newBuilder()
+                        .addBucketCounts(4)
+                        .addBucketCounts(2)
+                        .addBucketCounts(3)
+                        .addBucketCounts(2)
+                        .setOffset(20)
+                        .build(), 2);
+
+        MatcherAssert.assertThat(b.size(), Matchers.equalTo(4));
+
+        Bucket b1 = b.get(0);
+        MatcherAssert.assertThat(b1.getCount(), Matchers.equalTo(4L));
+        MatcherAssert.assertThat(b1.getMin(), Matchers.closeTo(32.0, MAX_ERROR));
+        MatcherAssert.assertThat(b1.getMax(), Matchers.closeTo(38.05462, MAX_ERROR));
+
+        Bucket b2 = b.get(1);
+        MatcherAssert.assertThat(b2.getCount(), Matchers.equalTo(2L));
+        MatcherAssert.assertThat(b2.getMin(), Matchers.closeTo(38.05462, MAX_ERROR));
+        MatcherAssert.assertThat(b2.getMax(), Matchers.closeTo(45.254833, MAX_ERROR));
+
+        Bucket b3 = b.get(2);
+        MatcherAssert.assertThat(b3.getCount(), Matchers.equalTo(3L));
+        MatcherAssert.assertThat(b3.getMin(), Matchers.closeTo(45.254833, MAX_ERROR));
+        MatcherAssert.assertThat(b3.getMax(), Matchers.closeTo(53.81737, MAX_ERROR));
+
+        Bucket b4 = b.get(3);
+        MatcherAssert.assertThat(b4.getCount(), Matchers.equalTo(2L));
+        MatcherAssert.assertThat(b4.getMin(), Matchers.closeTo(53.81737, MAX_ERROR));
+        MatcherAssert.assertThat(b4.getMax(), Matchers.closeTo(63.99999, MAX_ERROR));
+    }
+
+    @Test
+    public void testExponentialHistogramWithNegativeOffset() {
+        List<Bucket> b = OTelProtoCodec.createExponentialBuckets(
+                ExponentialHistogramDataPoint.Buckets.newBuilder()
+                        .addBucketCounts(4)
+                        .addBucketCounts(2)
+                        .addBucketCounts(3)
+                        .addBucketCounts(2)
+                        .setOffset(-5)
+                        .build(), 2);
+
+        MatcherAssert.assertThat(b.size(), Matchers.equalTo(4));
+
+        Bucket b1 = b.get(0);
+        MatcherAssert.assertThat(b1.getCount(), Matchers.equalTo(4L));
+        MatcherAssert.assertThat(b1.getMin(), Matchers.closeTo(0.42044820762685736, MAX_ERROR));
+        MatcherAssert.assertThat(b1.getMax(), Matchers.closeTo(0.35355339059327384, MAX_ERROR));
+
+        Bucket b2 = b.get(1);
+        MatcherAssert.assertThat(b2.getCount(), Matchers.equalTo(2L));
+        MatcherAssert.assertThat(b2.getMin(), Matchers.closeTo(0.35355339059327384, MAX_ERROR));
+        MatcherAssert.assertThat(b2.getMax(), Matchers.closeTo(0.2973017787506803, MAX_ERROR));
+
+        Bucket b3 = b.get(2);
+        MatcherAssert.assertThat(b3.getCount(), Matchers.equalTo(3L));
+        MatcherAssert.assertThat(b3.getMin(), Matchers.closeTo(0.2973017787506803, MAX_ERROR));
+        MatcherAssert.assertThat(b3.getMax(), Matchers.closeTo(0.2500000000, MAX_ERROR));
+
+        Bucket b4 = b.get(3);
+        MatcherAssert.assertThat(b4.getCount(), Matchers.equalTo(2L));
+        MatcherAssert.assertThat(b4.getMin(), Matchers.closeTo(0.2500000000, MAX_ERROR));
+        MatcherAssert.assertThat(b4.getMax(), Matchers.closeTo(0.2102241038134287, MAX_ERROR));
+    }
+
+    @Test
     public void testExponentialHistogramWithNegativeScale() {
         List<Bucket> b = OTelProtoCodec.createExponentialBuckets(
                 ExponentialHistogramDataPoint.Buckets.newBuilder()
@@ -927,28 +997,78 @@ public class OTelProtoCodecTest {
                         .addBucketCounts(3)
                         .addBucketCounts(2)
                         .setOffset(0)
-                        .build(), -3);
+                        .build(), -2);
 
         MatcherAssert.assertThat(b.size(), Matchers.equalTo(4));
 
         Bucket b1 = b.get(0);
         MatcherAssert.assertThat(b1.getCount(), Matchers.equalTo(4L));
-        MatcherAssert.assertThat(b1.getMin(), Matchers.closeTo(2, MAX_ERROR));
-        MatcherAssert.assertThat(b1.getMax(), Matchers.closeTo(4, MAX_ERROR));
+        MatcherAssert.assertThat(b1.getMin(), Matchers.closeTo(1, MAX_ERROR));
+        MatcherAssert.assertThat(b1.getMax(), Matchers.closeTo(16, MAX_ERROR));
 
         Bucket b2 = b.get(1);
         MatcherAssert.assertThat(b2.getCount(), Matchers.equalTo(2L));
-        MatcherAssert.assertThat(b2.getMin(), Matchers.closeTo(4, MAX_ERROR));
-        MatcherAssert.assertThat(b2.getMax(), Matchers.closeTo(16, MAX_ERROR));
+        MatcherAssert.assertThat(b2.getMin(), Matchers.closeTo(16, MAX_ERROR));
+        MatcherAssert.assertThat(b2.getMax(), Matchers.closeTo(256, MAX_ERROR));
 
         Bucket b3 = b.get(2);
         MatcherAssert.assertThat(b3.getCount(), Matchers.equalTo(3L));
-        MatcherAssert.assertThat(b3.getMin(), Matchers.closeTo(16, MAX_ERROR));
-        MatcherAssert.assertThat(b3.getMax(), Matchers.closeTo(256, MAX_ERROR));
+        MatcherAssert.assertThat(b3.getMin(), Matchers.closeTo(256, MAX_ERROR));
+        MatcherAssert.assertThat(b3.getMax(), Matchers.closeTo(4096, MAX_ERROR));
 
         Bucket b4 = b.get(3);
         MatcherAssert.assertThat(b4.getCount(), Matchers.equalTo(2L));
-        MatcherAssert.assertThat(b4.getMin(), Matchers.closeTo(256, MAX_ERROR));
+        MatcherAssert.assertThat(b4.getMin(), Matchers.closeTo(4096, MAX_ERROR));
         MatcherAssert.assertThat(b4.getMax(), Matchers.closeTo(65536, MAX_ERROR));
     }
+
+    @Test
+    public void testExponentialHistogramWithMaxOffsetOutOfRange() {
+        List<Bucket> b = OTelProtoCodec.createExponentialBuckets(
+                ExponentialHistogramDataPoint.Buckets.newBuilder()
+                        .addBucketCounts(4)
+                        .addBucketCounts(2)
+                        .addBucketCounts(3)
+                        .addBucketCounts(2)
+                        .setOffset(1025)
+                        .build(), -2);
+
+        MatcherAssert.assertThat(b.size(), Matchers.equalTo(0));
+    }
+
+    @Test
+    public void testExponentialHistogramWithMaxNegativeOffsetOutOfRange() {
+        List<Bucket> b = OTelProtoCodec.createExponentialBuckets(
+                ExponentialHistogramDataPoint.Buckets.newBuilder()
+                        .addBucketCounts(4)
+                        .addBucketCounts(2)
+                        .addBucketCounts(3)
+                        .addBucketCounts(2)
+                        .setOffset(-1025)
+                        .build(), -2);
+
+        MatcherAssert.assertThat(b.size(), Matchers.equalTo(0));
+    }
+
+    @Test
+    public void testBoundsKeyEquals() {
+        OTelProtoCodec.BoundsKey k1 = new OTelProtoCodec.BoundsKey(2, OTelProtoCodec.BoundsKey.Sign.POSITIVE);
+        OTelProtoCodec.BoundsKey k2 = new OTelProtoCodec.BoundsKey(2, OTelProtoCodec.BoundsKey.Sign.POSITIVE);
+        assertEquals(k1, k2);
+    }
+
+    @Test
+    public void testBoundsKeyNotEqualsScale() {
+        OTelProtoCodec.BoundsKey k1 = new OTelProtoCodec.BoundsKey(2, OTelProtoCodec.BoundsKey.Sign.POSITIVE);
+        OTelProtoCodec.BoundsKey k2 = new OTelProtoCodec.BoundsKey(-2, OTelProtoCodec.BoundsKey.Sign.POSITIVE);
+        assertNotEquals(k1, k2);
+    }
+
+    @Test
+    public void testBoundsKeyNotEqualsSign() {
+        OTelProtoCodec.BoundsKey k1 = new OTelProtoCodec.BoundsKey(2, OTelProtoCodec.BoundsKey.Sign.POSITIVE);
+        OTelProtoCodec.BoundsKey k2 = new OTelProtoCodec.BoundsKey(2, OTelProtoCodec.BoundsKey.Sign.NEGATIVE);
+        assertNotEquals(k1, k2);
+    }
+
 }
