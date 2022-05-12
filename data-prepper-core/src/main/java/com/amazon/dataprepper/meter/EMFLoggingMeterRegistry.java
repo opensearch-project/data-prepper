@@ -26,8 +26,6 @@ import io.micrometer.core.util.internal.logging.WarnThenDebugLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.cloudwatch.model.Dimension;
-import software.amazon.awssdk.services.cloudwatch.model.MetricDatum;
-import software.amazon.awssdk.services.cloudwatch.model.StandardUnit;
 import software.amazon.cloudwatchlogs.emf.environment.Environment;
 import software.amazon.cloudwatchlogs.emf.environment.EnvironmentProvider;
 import software.amazon.cloudwatchlogs.emf.logger.MetricsLogger;
@@ -39,28 +37,17 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.StreamSupport.stream;
 
 public class EMFLoggingMeterRegistry extends StepMeterRegistry {
     private static final String NAMESPACE = "DataPrepper";
-    private static final Map<String, StandardUnit> STANDARD_UNIT_BY_LOWERCASE_VALUE;
     private static final Map<String, Unit> UNIT_BY_LOWERCASE_VALUE;
 
     static {
-        Map<String, StandardUnit> standardUnitByLowercaseValue = new HashMap<>();
-        for (StandardUnit standardUnit : StandardUnit.values()) {
-            if (standardUnit != StandardUnit.UNKNOWN_TO_SDK_VERSION) {
-                standardUnitByLowercaseValue.put(standardUnit.toString().toLowerCase(), standardUnit);
-            }
-        }
-        STANDARD_UNIT_BY_LOWERCASE_VALUE = Collections.unmodifiableMap(standardUnitByLowercaseValue);
-
         Map<String, Unit> unitByLowercaseValue = new HashMap<>();
         for (Unit unit: Unit.values()) {
             if (unit != Unit.UNKNOWN_TO_SDK_VERSION) {
@@ -110,21 +97,6 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
     }
 
     //VisibleForTesting
-    List<MetricDatum> metricData() {
-        Batch batch = new Batch();
-        return getMeters().stream().flatMap(m -> m.match(
-                batch::gaugeData,
-                batch::counterData,
-                batch::timerData,
-                batch::summaryData,
-                batch::longTaskTimerData,
-                batch::timeGaugeData,
-                batch::functionCounterData,
-                batch::functionTimerData,
-                batch::metricData)
-        ).collect(toList());
-    }
-
     List<MetricsLogger> metricsLoggers() {
         Batch batch = new Batch();
         return getMeters().stream().map(m -> m.match(
@@ -144,22 +116,10 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
     class Batch {
         private final Instant timestamp = Instant.ofEpochMilli(clock.wallTime());
 
-        private Stream<MetricDatum> gaugeData(Gauge gauge) {
-            MetricDatum metricDatum = metricDatum(gauge.getId(), "value", gauge.value());
-            if (metricDatum == null) {
-                return Stream.empty();
-            }
-            return Stream.of(metricDatum);
-        }
-
         private MetricsLogger gaugeDataMetricsLogger(Gauge gauge) {
             MetricsLogger metricsLogger = prepareMetricsLogger(gauge.getId());
             addMetricDatum(gauge.getId(), "value", gauge.value(), metricsLogger);
             return metricsLogger;
-        }
-
-        private Stream<MetricDatum> counterData(Counter counter) {
-            return Stream.of(metricDatum(counter.getId(), "count", StandardUnit.COUNT, counter.count()));
         }
 
         private MetricsLogger counterDataMetricsLogger(Counter counter) {
@@ -169,18 +129,6 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
         }
 
         // VisibleForTesting
-        Stream<MetricDatum> timerData(Timer timer) {
-            Stream.Builder<MetricDatum> metrics = Stream.builder();
-            metrics.add(metricDatum(timer.getId(), "sum", getBaseTimeUnit().name(), timer.totalTime(getBaseTimeUnit())));
-            long count = timer.count();
-            metrics.add(metricDatum(timer.getId(), "count", StandardUnit.COUNT, count));
-            if (count > 0) {
-                metrics.add(metricDatum(timer.getId(), "avg", getBaseTimeUnit().name(), timer.mean(getBaseTimeUnit())));
-                metrics.add(metricDatum(timer.getId(), "max", getBaseTimeUnit().name(), timer.max(getBaseTimeUnit())));
-            }
-            return metrics.build();
-        }
-
         MetricsLogger timerDataMetricsLogger(Timer timer) {
             MetricsLogger metricsLogger = prepareMetricsLogger(timer.getId());
             addMetricDatum(timer.getId(), "sum", getBaseTimeUnit().name(), timer.totalTime(getBaseTimeUnit()), metricsLogger);
@@ -194,18 +142,6 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
         }
 
         // VisibleForTesting
-        Stream<MetricDatum> summaryData(DistributionSummary summary) {
-            Stream.Builder<MetricDatum> metrics = Stream.builder();
-            metrics.add(metricDatum(summary.getId(), "sum", summary.totalAmount()));
-            long count = summary.count();
-            metrics.add(metricDatum(summary.getId(), "count", StandardUnit.COUNT, count));
-            if (count > 0) {
-                metrics.add(metricDatum(summary.getId(), "avg", summary.mean()));
-                metrics.add(metricDatum(summary.getId(), "max", summary.max()));
-            }
-            return metrics.build();
-        }
-
         MetricsLogger summaryDataMetricsLogger(DistributionSummary summary) {
             MetricsLogger metricsLogger = prepareMetricsLogger(summary.getId());
             addMetricDatum(summary.getId(), "sum", summary.totalAmount(), metricsLogger);
@@ -218,25 +154,11 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
             return metricsLogger;
         }
 
-        private Stream<MetricDatum> longTaskTimerData(LongTaskTimer longTaskTimer) {
-            return Stream.of(
-                    metricDatum(longTaskTimer.getId(), "activeTasks", longTaskTimer.activeTasks()),
-                    metricDatum(longTaskTimer.getId(), "duration", longTaskTimer.duration(getBaseTimeUnit())));
-        }
-
         private MetricsLogger longTaskTimerDataMetricsLogger(LongTaskTimer longTaskTimer) {
             MetricsLogger metricsLogger = prepareMetricsLogger(longTaskTimer.getId());
             addMetricDatum(longTaskTimer.getId(), "activeTasks", longTaskTimer.activeTasks(), metricsLogger);
             addMetricDatum(longTaskTimer.getId(), "duration", longTaskTimer.duration(getBaseTimeUnit()), metricsLogger);
             return metricsLogger;
-        }
-
-        private Stream<MetricDatum> timeGaugeData(TimeGauge gauge) {
-            MetricDatum metricDatum = metricDatum(gauge.getId(), "value", gauge.value(getBaseTimeUnit()));
-            if (metricDatum == null) {
-                return Stream.empty();
-            }
-            return Stream.of(metricDatum);
         }
 
         private MetricsLogger timeGaugeDataMetricsLogger(TimeGauge gauge) {
@@ -246,14 +168,6 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
         }
 
         // VisibleForTesting
-        Stream<MetricDatum> functionCounterData(FunctionCounter counter) {
-            MetricDatum metricDatum = metricDatum(counter.getId(), "count", StandardUnit.COUNT, counter.count());
-            if (metricDatum == null) {
-                return Stream.empty();
-            }
-            return Stream.of(metricDatum);
-        }
-
         MetricsLogger functionCounterDataMetricsLogger(FunctionCounter counter) {
             MetricsLogger metricsLogger = prepareMetricsLogger(counter.getId());
             addMetricDatum(counter.getId(), "count", Unit.COUNT, counter.count(), metricsLogger);
@@ -261,22 +175,6 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
         }
 
         // VisibleForTesting
-        Stream<MetricDatum> functionTimerData(FunctionTimer timer) {
-            // we can't know anything about max and percentiles originating from a function timer
-            double sum = timer.totalTime(getBaseTimeUnit());
-            if (!Double.isFinite(sum)) {
-                return Stream.empty();
-            }
-            Stream.Builder<MetricDatum> metrics = Stream.builder();
-            double count = timer.count();
-            metrics.add(metricDatum(timer.getId(), "count", StandardUnit.COUNT, count));
-            metrics.add(metricDatum(timer.getId(), "sum", sum));
-            if (count > 0) {
-                metrics.add(metricDatum(timer.getId(), "avg", timer.mean(getBaseTimeUnit())));
-            }
-            return metrics.build();
-        }
-
         MetricsLogger functionTimerDataMetricsLogger(FunctionTimer timer) {
             MetricsLogger metricsLogger = prepareMetricsLogger(timer.getId());
             // we can't know anything about max and percentiles originating from a function timer
@@ -294,12 +192,6 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
         }
 
         // VisibleForTesting
-        Stream<MetricDatum> metricData(Meter m) {
-            return stream(m.measure().spliterator(), false)
-                    .map(ms -> metricDatum(m.getId().withTag(ms.getStatistic()), ms.getValue()))
-                    .filter(Objects::nonNull);
-        }
-
         MetricsLogger metricDataMetricsLogger(Meter m) {
             MetricsLogger metricsLogger = prepareMetricsLogger(m.getId());
             stream(m.measure().spliterator(), false)
@@ -307,48 +199,16 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
             return metricsLogger;
         }
 
-        @Nullable
-        private MetricDatum metricDatum(Meter.Id id, double value) {
-            return metricDatum(id, null, id.getBaseUnit(), value);
-        }
-
         private void addMetricDatum(Meter.Id id, double value, MetricsLogger metricsLogger) {
             addMetricDatum(id, null, id.getBaseUnit(), value, metricsLogger);
-        }
-
-        @Nullable
-        private MetricDatum metricDatum(Meter.Id id, @Nullable String suffix, double value) {
-            return metricDatum(id, suffix, id.getBaseUnit(), value);
         }
 
         private void addMetricDatum(Meter.Id id, @Nullable String suffix, double value, MetricsLogger metricsLogger) {
             addMetricDatum(id, suffix, id.getBaseUnit(), value, metricsLogger);
         }
 
-        @Nullable
-        private MetricDatum metricDatum(Meter.Id id, @Nullable String suffix, @Nullable String unit, double value) {
-            return metricDatum(id, suffix, toStandardUnit(unit), value);
-        }
-
         private void addMetricDatum(Meter.Id id, @Nullable String suffix, @Nullable String unit, double value, MetricsLogger metricsLogger) {
             addMetricDatum(id, suffix, toUnit(unit), value, metricsLogger);
-        }
-
-        @Nullable
-        private MetricDatum metricDatum(Meter.Id id, @Nullable String suffix, StandardUnit standardUnit, double value) {
-            if (Double.isNaN(value)) {
-                return null;
-            }
-
-            List<Tag> tags = id.getConventionTags(config().namingConvention());
-            return MetricDatum.builder()
-                    .storageResolution(config.highResolution() ? 1 : 60)
-                    .metricName(getMetricName(id, suffix))
-                    .dimensions(toDimensions(tags))
-                    .timestamp(timestamp)
-                    .value(EMFMetricUtils.clampMetricValue(value))
-                    .unit(standardUnit)
-                    .build();
         }
 
         private void addMetricDatum(Meter.Id id, @Nullable String suffix, Unit unit, double value, MetricsLogger metricsLogger) {
@@ -369,14 +229,6 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
         }
 
         // VisibleForTesting
-        StandardUnit toStandardUnit(@Nullable String unit) {
-            if (unit == null) {
-                return StandardUnit.NONE;
-            }
-            StandardUnit standardUnit = STANDARD_UNIT_BY_LOWERCASE_VALUE.get(unit.toLowerCase());
-            return standardUnit != null ? standardUnit : StandardUnit.NONE;
-        }
-
         Unit toUnit(@Nullable String unit) {
             if (unit == null) {
                 return Unit.NONE;
