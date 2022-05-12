@@ -169,10 +169,7 @@ public class EndToEndRawSpanTest {
                 // Extract and replace traceGroupFields with searchHit fields to unify the representation
                 source.entrySet().removeIf(entry -> entry.getKey().startsWith("traceGroupFields"));
 
-                final DocumentField statusCodeField = hit.field(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD);
-                if(statusCodeField != null)
-                    this.<Number>addNonNullField(source, hit, TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD, field -> field.intValue());
-
+                this.<Number>addNonNullField(source, hit, TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD, field -> field.intValue());
                 // Restore trailing zeros for thousand, e.g. 2020-08-20T05:40:46.0895568Z -> 2020-08-20T05:40:46.089556800Z
                 this.<String>addNonNullField(source, hit, TraceGroup.TRACE_GROUP_END_TIME_FIELD, field -> Instant.parse(field).toString());
                 this.<Number>addNonNullField(source, hit, TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD, field -> field.longValue());
