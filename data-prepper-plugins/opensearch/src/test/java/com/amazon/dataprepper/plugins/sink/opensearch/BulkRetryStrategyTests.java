@@ -9,21 +9,28 @@ import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
+import com.amazon.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingBulkRequest;
+import com.amazon.dataprepper.plugins.sink.opensearch.bulk.SizedJsonData;
 import io.micrometer.core.instrument.Measurement;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.opensearch.OpenSearchException;
-import org.opensearch.action.DocWriteRequest;
-import org.opensearch.action.bulk.BulkItemResponse;
-import org.opensearch.action.bulk.BulkRequest;
-import org.opensearch.action.bulk.BulkResponse;
-import org.opensearch.action.index.IndexRequest;
+import org.opensearch.client.json.JsonData;
+import org.opensearch.client.json.jackson.JacksonJsonpMapper;
+import org.opensearch.client.opensearch._types.ErrorCause;
+import org.opensearch.client.opensearch.core.BulkRequest;
+import org.opensearch.client.opensearch.core.BulkResponse;
+import org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
+import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.common.util.concurrent.OpenSearchRejectedExecutionException;
 import org.opensearch.rest.RestStatus;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
@@ -47,7 +54,7 @@ public class BulkRetryStrategyTests {
         setPipelineName(PIPELINE_NAME);
     }};
     private static final PluginMetrics PLUGIN_METRICS = PluginMetrics.fromPluginSetting(PLUGIN_SETTING);
-    private BiConsumer<DocWriteRequest<?>, Throwable> logFailureConsumer;
+    private BiConsumer<BulkOperation, Throwable> logFailureConsumer;
 
     @BeforeEach
     public void setUp() {
@@ -57,25 +64,26 @@ public class BulkRetryStrategyTests {
 
     @Test
     public void testCanRetry() {
+        AccumulatingBulkRequest accumulatingBulkRequest = mock(AccumulatingBulkRequest.class);
         final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
-                bulkRequest -> new BulkResponse(new BulkItemResponse[bulkRequest.requests().size()], 10),
-                (docWriteRequest, throwable) -> {}, PLUGIN_METRICS, BulkRequest::new);
+                bulkRequest -> mock(BulkResponse.class),
+                (docWriteRequest, throwable) -> {}, PLUGIN_METRICS, () -> mock(AccumulatingBulkRequest.class));
         final String testIndex = "foo";
-        final BulkItemResponse bulkItemResponse1 = successItemResponse(testIndex);
-        final BulkItemResponse bulkItemResponse2 = badRequestItemResponse(testIndex);
-        BulkResponse response = new BulkResponse(
-                new BulkItemResponse[]{bulkItemResponse1, bulkItemResponse2}, 10);
-        assertFalse(bulkRetryStrategy.canRetry(response));
+        final BulkResponseItem bulkItemResponse1 = successItemResponse(testIndex);
+        final BulkResponseItem bulkItemResponse2 = badRequestItemResponse(testIndex);
+        BulkResponse bulkResponse = mock(BulkResponse.class);
+        when(bulkResponse.items()).thenReturn(Arrays.asList(bulkItemResponse1, bulkItemResponse2));
+        assertFalse(bulkRetryStrategy.canRetry(bulkResponse));
 
-        final BulkItemResponse bulkItemResponse3 = tooManyRequestItemResponse(testIndex);
-        response = new BulkResponse(
-                new BulkItemResponse[]{bulkItemResponse1, bulkItemResponse3}, 10);
-        assertTrue(bulkRetryStrategy.canRetry(response));
+        final BulkResponseItem bulkItemResponse3 = tooManyRequestItemResponse(testIndex);
+        bulkResponse = mock(BulkResponse.class);
+        when(bulkResponse.items()).thenReturn(Arrays.asList(bulkItemResponse1, bulkItemResponse3));
+        assertTrue(bulkRetryStrategy.canRetry(bulkResponse));
 
-        final BulkItemResponse bulkItemResponse4 = internalServerErrorItemResponse(testIndex);
-        response = new BulkResponse(
-                new BulkItemResponse[]{bulkItemResponse2, bulkItemResponse4}, 10);
-        assertTrue(bulkRetryStrategy.canRetry(response));
+        final BulkResponseItem bulkItemResponse4 = internalServerErrorItemResponse(testIndex);
+        bulkResponse = mock(BulkResponse.class);
+        when(bulkResponse.items()).thenReturn(Arrays.asList(bulkItemResponse2, bulkItemResponse4));
+        assertTrue(bulkRetryStrategy.canRetry(bulkResponse));
     }
 
     @Test
@@ -85,14 +93,19 @@ public class BulkRetryStrategyTests {
         client.successOnFirstAttempt = true;
 
         final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
-                client::bulk, logFailureConsumer, PLUGIN_METRICS, BulkRequest::new);
-        final BulkRequest testBulkRequest = new BulkRequest();
-        testBulkRequest.add(new IndexRequest(testIndex).id("1"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("2"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("3"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("4"));
+                client::bulk, logFailureConsumer, PLUGIN_METRICS, () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder()));
 
-        bulkRetryStrategy.execute(testBulkRequest);
+        final IndexOperation<JsonData> indexOperation1 = new IndexOperation.Builder<JsonData>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final IndexOperation<JsonData> indexOperation2 = new IndexOperation.Builder<JsonData>().index(testIndex).id("2").document(arbitraryDocument()).build();
+        final IndexOperation<JsonData> indexOperation3 = new IndexOperation.Builder<JsonData>().index(testIndex).id("3").document(arbitraryDocument()).build();
+        final IndexOperation<JsonData> indexOperation4 = new IndexOperation.Builder<JsonData>().index(testIndex).id("4").document(arbitraryDocument()).build();
+        final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation1).build());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation2).build());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation3).build());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation4).build());
+
+        bulkRetryStrategy.execute(accumulatingBulkRequest);
 
         assertEquals(1, client.attempt);
 
@@ -115,27 +128,31 @@ public class BulkRetryStrategyTests {
         final FakeClient client = new FakeClient(testIndex);
 
         final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
-                client::bulk, logFailureConsumer, PLUGIN_METRICS, BulkRequest::new);
-        final BulkRequest testBulkRequest = new BulkRequest();
-        testBulkRequest.add(new IndexRequest(testIndex).id("1"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("2"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("3"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("4"));
+                client::bulk, logFailureConsumer, PLUGIN_METRICS, () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder()));
+        final IndexOperation<JsonData> indexOperation1 = new IndexOperation.Builder<JsonData>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final IndexOperation<JsonData> indexOperation2 = new IndexOperation.Builder<JsonData>().index(testIndex).id("2").document(arbitraryDocument()).build();
+        final IndexOperation<JsonData> indexOperation3 = new IndexOperation.Builder<JsonData>().index(testIndex).id("3").document(arbitraryDocument()).build();
+        final IndexOperation<JsonData> indexOperation4 = new IndexOperation.Builder<JsonData>().index(testIndex).id("4").document(arbitraryDocument()).build();
+        final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation1).build());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation2).build());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation3).build());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation4).build());
 
-        bulkRetryStrategy.execute(testBulkRequest);
+        bulkRetryStrategy.execute(accumulatingBulkRequest);
 
         assertEquals(3, client.attempt);
-        assertEquals(2, client.finalResponse.getItems().length);
-        assertFalse(client.finalResponse.hasFailures());
-        assertEquals("3", client.finalRequest.requests().get(0).id());
-        assertEquals("4", client.finalRequest.requests().get(1).id());
+        assertEquals(2, client.finalResponse.items().size());
+        assertFalse(client.finalResponse.errors());
+        assertEquals("3", client.finalRequest.operations().get(0).index().id());
+        assertEquals("4", client.finalRequest.operations().get(1).index().id());
 
-        ArgumentCaptor<DocWriteRequest> loggerWriteRequestArgCaptor = ArgumentCaptor.forClass(DocWriteRequest.class);
+        ArgumentCaptor<BulkOperation> loggerWriteRequestArgCaptor = ArgumentCaptor.forClass(BulkOperation.class);
         ArgumentCaptor<Throwable> loggerThrowableArgCaptor = ArgumentCaptor.forClass(Throwable.class);
         verify(logFailureConsumer).accept(loggerWriteRequestArgCaptor.capture(), loggerThrowableArgCaptor.capture());
         MatcherAssert.assertThat(loggerWriteRequestArgCaptor.getValue(), notNullValue());
-        MatcherAssert.assertThat(loggerWriteRequestArgCaptor.getValue().index(), equalTo(testIndex));
-        MatcherAssert.assertThat(loggerWriteRequestArgCaptor.getValue().id(), equalTo("2"));
+        MatcherAssert.assertThat(loggerWriteRequestArgCaptor.getValue().index().index(), equalTo(testIndex));
+        MatcherAssert.assertThat(loggerWriteRequestArgCaptor.getValue().index().id(), equalTo("2"));
         MatcherAssert.assertThat(loggerThrowableArgCaptor.getValue(), notNullValue());
 
         // verify metrics
@@ -163,27 +180,31 @@ public class BulkRetryStrategyTests {
         client.retryable = false;
 
         final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
-                client::bulk, logFailureConsumer, PLUGIN_METRICS, BulkRequest::new);
-        final BulkRequest testBulkRequest = new BulkRequest();
-        testBulkRequest.add(new IndexRequest(testIndex).id("1"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("2"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("3"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("4"));
+                client::bulk, logFailureConsumer, PLUGIN_METRICS, () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder()));
+        final IndexOperation<JsonData> indexOperation1 = new IndexOperation.Builder<JsonData>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final IndexOperation<JsonData> indexOperation2 = new IndexOperation.Builder<JsonData>().index(testIndex).id("2").document(arbitraryDocument()).build();
+        final IndexOperation<JsonData> indexOperation3 = new IndexOperation.Builder<JsonData>().index(testIndex).id("3").document(arbitraryDocument()).build();
+        final IndexOperation<JsonData> indexOperation4 = new IndexOperation.Builder<JsonData>().index(testIndex).id("4").document(arbitraryDocument()).build();
+        final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation1).build());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation2).build());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation3).build());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation4).build());
 
-        bulkRetryStrategy.execute(testBulkRequest);
+        bulkRetryStrategy.execute(accumulatingBulkRequest);
 
         assertEquals(1, client.attempt);
 
-        ArgumentCaptor<DocWriteRequest> loggerWriteRequestArgCaptor = ArgumentCaptor.forClass(DocWriteRequest.class);
+        ArgumentCaptor<BulkOperation> loggerWriteRequestArgCaptor = ArgumentCaptor.forClass(BulkOperation.class);
         ArgumentCaptor<Throwable> loggerExceptionArgCaptor = ArgumentCaptor.forClass(Throwable.class);
         verify(logFailureConsumer, times(4))
                 .accept(loggerWriteRequestArgCaptor.capture(), isA(IllegalArgumentException.class));
-        final List<DocWriteRequest> allLoggerWriteRequests = loggerWriteRequestArgCaptor.getAllValues();
+        final List<BulkOperation> allLoggerWriteRequests = loggerWriteRequestArgCaptor.getAllValues();
         for (int i = 0; i < allLoggerWriteRequests.size(); i++) {
-            final DocWriteRequest actualFailedWrite = allLoggerWriteRequests.get(i);
-            MatcherAssert.assertThat(actualFailedWrite.index(), equalTo(testIndex));
+            final BulkOperation actualFailedWrite = allLoggerWriteRequests.get(i);
+            MatcherAssert.assertThat(actualFailedWrite.index().index(), equalTo(testIndex));
             String expectedIndexName = Integer.toString(i+1);
-            MatcherAssert.assertThat(actualFailedWrite.id(), equalTo(expectedIndexName));
+            MatcherAssert.assertThat(actualFailedWrite.index().id(), equalTo(expectedIndexName));
         }
 
         // verify metrics
@@ -207,27 +228,31 @@ public class BulkRetryStrategyTests {
         client.nonRetryableException = false;
 
         final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
-                client::bulk, logFailureConsumer, PLUGIN_METRICS, BulkRequest::new);
-        final BulkRequest testBulkRequest = new BulkRequest();
-        testBulkRequest.add(new IndexRequest(testIndex).id("1"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("2"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("3"));
-        testBulkRequest.add(new IndexRequest(testIndex).id("4"));
+                client::bulk, logFailureConsumer, PLUGIN_METRICS, () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder()));
+        final IndexOperation<JsonData> indexOperation1 = new IndexOperation.Builder<JsonData>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final IndexOperation<JsonData> indexOperation2 = new IndexOperation.Builder<JsonData>().index(testIndex).id("2").document(arbitraryDocument()).build();
+        final IndexOperation<JsonData> indexOperation3 = new IndexOperation.Builder<JsonData>().index(testIndex).id("3").document(arbitraryDocument()).build();
+        final IndexOperation<JsonData> indexOperation4 = new IndexOperation.Builder<JsonData>().index(testIndex).id("4").document(arbitraryDocument()).build();
+        final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation1).build());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation2).build());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation3).build());
+        accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation4).build());
 
-        bulkRetryStrategy.execute(testBulkRequest);
+        bulkRetryStrategy.execute(accumulatingBulkRequest);
 
         assertEquals(1, client.attempt);
 
-        ArgumentCaptor<DocWriteRequest> loggerWriteRequestArgCaptor = ArgumentCaptor.forClass(DocWriteRequest.class);
+        ArgumentCaptor<BulkOperation> loggerWriteRequestArgCaptor = ArgumentCaptor.forClass(BulkOperation.class);
         ArgumentCaptor<Throwable> loggerExceptionArgCaptor = ArgumentCaptor.forClass(Throwable.class);
         verify(logFailureConsumer, times(3))
-                .accept(loggerWriteRequestArgCaptor.capture(), isA(IllegalArgumentException.class));
-        final List<DocWriteRequest> allLoggerWriteRequests = loggerWriteRequestArgCaptor.getAllValues();
+                .accept(loggerWriteRequestArgCaptor.capture(), isA(RuntimeException.class));
+        final List<BulkOperation> allLoggerWriteRequests = loggerWriteRequestArgCaptor.getAllValues();
         for (int i = 0; i < allLoggerWriteRequests.size(); i++) {
-            final DocWriteRequest actualFailedWrite = allLoggerWriteRequests.get(i);
-            MatcherAssert.assertThat(actualFailedWrite.index(), equalTo(testIndex));
+            final BulkOperation actualFailedWrite = allLoggerWriteRequests.get(i);
+            MatcherAssert.assertThat(actualFailedWrite.index().index(), equalTo(testIndex));
             String expectedIndexName = Integer.toString(i+2);
-            MatcherAssert.assertThat(actualFailedWrite.id(), equalTo(expectedIndexName));
+            MatcherAssert.assertThat(actualFailedWrite.index().id(), equalTo(expectedIndexName));
         }
 
         // verify metrics
@@ -243,31 +268,33 @@ public class BulkRetryStrategyTests {
         assertEquals(3.0, documentErrorsMeasurements.get(0).getValue(), 0);
     }
 
-    private static BulkItemResponse successItemResponse(final String index) {
-        return mock(BulkItemResponse.class);
+
+    private static BulkResponseItem successItemResponse(final String index) {
+        return mock(BulkResponseItem.class);
     }
 
-    private static BulkItemResponse badRequestItemResponse(final String index) {
-        return customBulkFailureResponse(index, RestStatus.BAD_REQUEST, new IllegalArgumentException());
+    private static BulkResponseItem badRequestItemResponse(final String index) {
+        return customBulkFailureResponse(index, RestStatus.BAD_REQUEST);
     }
 
-    private static BulkItemResponse tooManyRequestItemResponse(final String index) {
-        return customBulkFailureResponse(index, RestStatus.TOO_MANY_REQUESTS, new OpenSearchRejectedExecutionException());
+    private static BulkResponseItem tooManyRequestItemResponse(final String index) {
+        return customBulkFailureResponse(index, RestStatus.TOO_MANY_REQUESTS);
     }
 
-    private static BulkItemResponse internalServerErrorItemResponse(final String index) {
-        return customBulkFailureResponse(index, RestStatus.INTERNAL_SERVER_ERROR, new IllegalAccessException());
+    private static BulkResponseItem internalServerErrorItemResponse(final String index) {
+        return customBulkFailureResponse(index, RestStatus.INTERNAL_SERVER_ERROR);
     }
 
-    private static BulkItemResponse customBulkFailureResponse(final String index, final RestStatus restStatus, final Exception cause) {
-        final BulkItemResponse.Failure failure = mock(BulkItemResponse.Failure.class);
-        when(failure.getStatus()).thenReturn(restStatus);
-        when(failure.getCause()).thenReturn(cause);
-        final BulkItemResponse badResponse = mock(BulkItemResponse.class);
-        when(badResponse.isFailed()).thenReturn(true);
-        when(badResponse.status()).thenReturn(restStatus);
-        when(badResponse.getFailure()).thenReturn(failure);
+    private static BulkResponseItem customBulkFailureResponse(final String index, final RestStatus restStatus) {
+        final ErrorCause errorCause = mock(ErrorCause.class);
+        final BulkResponseItem badResponse = mock(BulkResponseItem.class);
+        when(badResponse.status()).thenReturn(restStatus.getStatus());
+        when(badResponse.error()).thenReturn(errorCause);
         return badResponse;
+    }
+
+    private JsonData arbitraryDocument() {
+        return SizedJsonData.fromString("{}", new JacksonJsonpMapper());
     }
 
     private static class FakeClient {
@@ -284,7 +311,8 @@ public class BulkRetryStrategyTests {
             this.index = index;
         }
 
-        public BulkResponse bulk(final BulkRequest bulkRequest) throws IOException {
+        public BulkResponse bulk(final AccumulatingBulkRequest<BulkOperation, BulkRequest> accumulatingBulkRequest) throws IOException {
+            final BulkRequest bulkRequest = accumulatingBulkRequest.getRequest();
             if (successOnFirstAttempt) {
                 attempt++;
                 return bulkSuccessResponse(bulkRequest);
@@ -298,7 +326,7 @@ public class BulkRetryStrategyTests {
                 }
             }
             finalRequest = bulkRequest;
-            final int requestSize = bulkRequest.requests().size();
+            final int requestSize = bulkRequest.operations().size();
             if (attempt == 0) {
                 assert requestSize == 4;
                 attempt++;
@@ -318,38 +346,38 @@ public class BulkRetryStrategyTests {
         }
 
         private BulkResponse bulkFirstResponse(final BulkRequest bulkRequest) {
-            final int requestSize = bulkRequest.requests().size();
+            final int requestSize = bulkRequest.operations().size();
             assert requestSize == 4;
-            final BulkItemResponse[] bulkItemResponses = new BulkItemResponse[]{
+            final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
                     successItemResponse(index), badRequestItemResponse(index), internalServerErrorItemResponse(index),
-                    tooManyRequestItemResponse(index)};
-            return new BulkResponse(bulkItemResponses, 10);
+                    tooManyRequestItemResponse(index));
+            return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
         }
 
         private BulkResponse bulkSecondResponse(final BulkRequest bulkRequest) {
-            final int requestSize = bulkRequest.requests().size();
+            final int requestSize = bulkRequest.operations().size();
             assert requestSize == 2;
-            final BulkItemResponse[] bulkItemResponses = new BulkItemResponse[]{
-                    successItemResponse(index), successItemResponse(index)};
-            return new BulkResponse(bulkItemResponses, 10);
+            final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
+                    successItemResponse(index), successItemResponse(index));
+            return new BulkResponse.Builder().items(bulkItemResponses).errors(false).took(10).build();
         }
 
         private BulkResponse bulkNonRetryableResponse(final BulkRequest bulkRequest) {
-            final int requestSize = bulkRequest.requests().size();
+            final int requestSize = bulkRequest.operations().size();
             assert requestSize == 4;
-            final BulkItemResponse[] bulkItemResponses = new BulkItemResponse[]{
+            final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
                     successItemResponse(index), badRequestItemResponse(index), badRequestItemResponse(index),
-                    badRequestItemResponse(index)};
-            return new BulkResponse(bulkItemResponses, 10);
+                    badRequestItemResponse(index));
+            return new BulkResponse.Builder().items(bulkItemResponses).errors(true).took(10).build();
         }
 
         private BulkResponse bulkSuccessResponse(final BulkRequest bulkRequest) {
-            final int requestSize = bulkRequest.requests().size();
+            final int requestSize = bulkRequest.operations().size();
             assert requestSize == 4;
-            final BulkItemResponse[] bulkItemResponses = new BulkItemResponse[]{
+            final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
                     successItemResponse(index), successItemResponse(index), successItemResponse(index),
-                    successItemResponse(index)};
-            return new BulkResponse(bulkItemResponses, 10);
+                    successItemResponse(index));
+            return new BulkResponse.Builder().items(bulkItemResponses).took(10).errors(false).build();
         }
     }
 }
