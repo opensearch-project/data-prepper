@@ -38,13 +38,15 @@ dependencies {
     testImplementation project(':data-prepper-api').sourceSets.test.output
     implementation project(':data-prepper-plugins:common')
     implementation "org.opensearch.client:opensearch-rest-high-level-client:${opensearchVersion}"
+    implementation "org.opensearch.client:opensearch-rest-client:${opensearchVersion}"
+    implementation 'org.opensearch.client:opensearch-java:1.0.0'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
     implementation 'software.amazon.awssdk:auth:2.17.15'
     implementation 'software.amazon.awssdk:http-client-spi:2.17.15'
     implementation 'software.amazon.awssdk:sdk-core:2.17.15'
-    implementation 'software.amazon.awssdk:aws-core:2.17.15'
+    implementation 'software.amazon.awssdk:aws-core:2.17.190'
     implementation 'software.amazon.awssdk:regions:2.17.15'
     implementation 'software.amazon.awssdk:utils:2.17.15'
     implementation 'software.amazon.awssdk:sts:2.17.15'
@@ -52,10 +54,10 @@ dependencies {
     implementation 'software.amazon.awssdk:arns:2.17.15'
     implementation 'io.micrometer:micrometer-core:1.8.5'
     testImplementation 'org.awaitility:awaitility:4.1.1'
-    testImplementation "org.opensearch.test:framework:${opensearchVersion}"
     testImplementation 'commons-io:commons-io:2.11.0'
     testImplementation 'net.bytebuddy:byte-buddy:1.12.8'
     testImplementation 'net.bytebuddy:byte-buddy-agent:1.11.20'
+    testImplementation 'org.slf4j:slf4j-simple:1.7.36'
 }
 
 sourceSets {
