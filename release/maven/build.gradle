@@ -3,8 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import com.amazonaws.services.s3.model.ObjectMetadata
-import jp.classmethod.aws.gradle.s3.BulkUploadTask
+import com.mgd.core.gradle.S3Upload
 
 dependencies {
     /* required to resolve below issue with aws sdk
@@ -13,17 +12,11 @@ dependencies {
     implementation 'javax.xml.bind:jaxb-api:2.3.1'
 }
 
-tasks.create(name: 'uploadMavenArtifactsToS3', type: BulkUploadTask) {
+tasks.create(name: 'uploadMavenArtifactsToS3', type: S3Upload) {
     dependsOn ':release:releasePrerequisites'
-    source = fileTree(dir: mavenPublicationRootFile)
-    bucketName = awsS3Bucket
-    prefix = "${archiveRootKey}/maven/"
-
-    metadataProvider = { bucketName, key, file ->
-        def metadata = new ObjectMetadata()
-        metadata.setCacheControl('no-cache, no-store')
-        return metadata
-    }
+    bucket = awsS3Bucket
+    keyPrefix = "${archiveRootKey}/maven/"
+    sourceDir = mavenPublicationRootFile.absolutePath
 }
 
 task uploadArtifacts {
