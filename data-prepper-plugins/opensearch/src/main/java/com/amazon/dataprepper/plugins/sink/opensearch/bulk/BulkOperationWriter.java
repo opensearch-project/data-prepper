@@ -32,7 +32,6 @@
 
 package com.amazon.dataprepper.plugins.sink.opensearch.bulk;
 
-import org.opensearch.client.json.JsonData;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.common.unit.ByteSizeValue;
 
@@ -64,8 +63,8 @@ public class BulkOperationWriter {
     }
 
     private static String extractDocumentSource(BulkOperation bulkOperation) {
-        final JsonData document = (JsonData) bulkOperation.index().document();
+        final SerializedJson document = (SerializedJson) bulkOperation.index().document();
 
-        return document.toJson().toString();
+        return new String(document.getSerializedJson());
     }
 }

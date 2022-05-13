@@ -81,11 +81,11 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
         if (anyDocument == null)
             return OPERATION_OVERHEAD;
 
-        if (!(anyDocument instanceof SizedJsonData)) {
-            throw new IllegalArgumentException("Only SizedJsonData is permitted for accumulating bulk requests. " + bulkOperation);
+        if (!(anyDocument instanceof SizedDocument)) {
+            throw new IllegalArgumentException("Only SizedDocument is permitted for accumulating bulk requests. " + bulkOperation);
         }
 
-        SizedJsonData sizedDocument = (SizedJsonData) anyDocument;
+        SizedDocument sizedDocument = (SizedDocument) anyDocument;
 
         final long documentLength = sizedDocument.getDocumentSize();
         return documentLength + OPERATION_OVERHEAD;
