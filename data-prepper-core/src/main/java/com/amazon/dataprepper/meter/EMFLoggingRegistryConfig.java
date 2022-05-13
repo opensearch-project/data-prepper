@@ -12,6 +12,6 @@ public interface EMFLoggingRegistryConfig extends StepRegistryConfig {
 
     @Override
     default String prefix() {
-        return "emf-logging";
+        return "emf";
     }
 }
