@@ -14,17 +14,16 @@ import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
 import com.amazon.dataprepper.plugins.sink.opensearch.bulk.BulkOperationWriter;
 import com.amazon.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingBulkRequest;
-import com.amazon.dataprepper.plugins.sink.opensearch.bulk.SizedJsonData;
+import com.amazon.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
+import com.amazon.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
 import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
 import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexType;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
-import jakarta.json.JsonObject;
 import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.client.json.JsonData;
-import org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
@@ -73,6 +72,7 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
   private final Counter bulkRequestErrorsCounter;
   private final DistributionSummary bulkRequestSizeBytesSummary;
   private OpenSearchClient openSearchClient;
+  private ObjectMapper objectMapper;
 
   public OpenSearchSink(final PluginSetting pluginSetting) {
     super(pluginSetting);
@@ -110,7 +110,8 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
     }
     indexManager.checkAndCreateIndex();
 
-    OpenSearchTransport transport = new RestClientTransport(restHighLevelClient.getLowLevelClient(), new JacksonJsonpMapper());
+
+    OpenSearchTransport transport = new RestClientTransport(restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
     openSearchClient = new OpenSearchClient(transport);
     bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder().index(indexManager.getIndexAlias()));
     bulkRetryStrategy = new BulkRetryStrategy(
@@ -119,6 +120,8 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
             pluginMetrics,
             bulkRequestSupplier);
     LOG.info("Initialized OpenSearch sink");
+
+    objectMapper = new ObjectMapper();
   }
 
   @Override
@@ -127,17 +130,25 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
       return;
     }
 
+
+
     AccumulatingBulkRequest<BulkOperation, BulkRequest> bulkRequest = bulkRequestSupplier.get();
     for (final Record<Object> record : records) {
-      final JsonData document = getDocument(record.getData());
+      final SerializedJson document = getDocument(record.getData());
 
       final IndexOperation.Builder<Object> indexOperationBuilder = new IndexOperation.Builder<>()
               .index(indexManager.getIndexAlias())
               .document(document);
 
-      final JsonObject jsonObject = document.toJson().asJsonObject();
-      if(jsonObject != null) {
-        final String docId = (String) jsonObject.getString(documentIdField, null);
+
+      final Map documentAsMap;
+      try {
+        documentAsMap = objectMapper.readValue(document.getSerializedJson(), Map.class);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      if(documentAsMap != null) {
+        final String docId = (String) documentAsMap.get(documentIdField);
         if (docId != null) {
           indexOperationBuilder.id(docId);
         }
@@ -163,7 +174,7 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
 
   // Temporary function to support both trace and log ingestion pipelines.
   // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
-  private JsonData getDocument(final Object object) {
+  private SerializedJson getDocument(final Object object) {
     final String jsonString;
     if (object instanceof String) {
       jsonString = (String) object;
@@ -174,7 +185,7 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
       throw new RuntimeException("Invalid record type. OpenSearch sink only supports String and Events");
     }
 
-    return SizedJsonData.fromString(jsonString, openSearchClient._transport().jsonpMapper());
+    return SerializedJson.fromString(jsonString);
   }
 
   private void flushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {
