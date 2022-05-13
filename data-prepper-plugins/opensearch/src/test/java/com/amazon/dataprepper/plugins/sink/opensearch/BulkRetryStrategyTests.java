@@ -11,15 +11,13 @@ import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
 import com.amazon.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingBulkRequest;
-import com.amazon.dataprepper.plugins.sink.opensearch.bulk.SizedJsonData;
+import com.amazon.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
 import io.micrometer.core.instrument.Measurement;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.opensearch.OpenSearchException;
-import org.opensearch.client.json.JsonData;
-import org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import org.opensearch.client.opensearch._types.ErrorCause;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
@@ -95,10 +93,10 @@ public class BulkRetryStrategyTests {
         final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
                 client::bulk, logFailureConsumer, PLUGIN_METRICS, () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder()));
 
-        final IndexOperation<JsonData> indexOperation1 = new IndexOperation.Builder<JsonData>().index(testIndex).id("1").document(arbitraryDocument()).build();
-        final IndexOperation<JsonData> indexOperation2 = new IndexOperation.Builder<JsonData>().index(testIndex).id("2").document(arbitraryDocument()).build();
-        final IndexOperation<JsonData> indexOperation3 = new IndexOperation.Builder<JsonData>().index(testIndex).id("3").document(arbitraryDocument()).build();
-        final IndexOperation<JsonData> indexOperation4 = new IndexOperation.Builder<JsonData>().index(testIndex).id("4").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation3 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("3").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation4 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("4").document(arbitraryDocument()).build();
         final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
         accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation1).build());
         accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation2).build());
@@ -129,10 +127,10 @@ public class BulkRetryStrategyTests {
 
         final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
                 client::bulk, logFailureConsumer, PLUGIN_METRICS, () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder()));
-        final IndexOperation<JsonData> indexOperation1 = new IndexOperation.Builder<JsonData>().index(testIndex).id("1").document(arbitraryDocument()).build();
-        final IndexOperation<JsonData> indexOperation2 = new IndexOperation.Builder<JsonData>().index(testIndex).id("2").document(arbitraryDocument()).build();
-        final IndexOperation<JsonData> indexOperation3 = new IndexOperation.Builder<JsonData>().index(testIndex).id("3").document(arbitraryDocument()).build();
-        final IndexOperation<JsonData> indexOperation4 = new IndexOperation.Builder<JsonData>().index(testIndex).id("4").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation3 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("3").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation4 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("4").document(arbitraryDocument()).build();
         final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
         accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation1).build());
         accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation2).build());
@@ -181,10 +179,10 @@ public class BulkRetryStrategyTests {
 
         final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
                 client::bulk, logFailureConsumer, PLUGIN_METRICS, () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder()));
-        final IndexOperation<JsonData> indexOperation1 = new IndexOperation.Builder<JsonData>().index(testIndex).id("1").document(arbitraryDocument()).build();
-        final IndexOperation<JsonData> indexOperation2 = new IndexOperation.Builder<JsonData>().index(testIndex).id("2").document(arbitraryDocument()).build();
-        final IndexOperation<JsonData> indexOperation3 = new IndexOperation.Builder<JsonData>().index(testIndex).id("3").document(arbitraryDocument()).build();
-        final IndexOperation<JsonData> indexOperation4 = new IndexOperation.Builder<JsonData>().index(testIndex).id("4").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation3 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("3").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation4 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("4").document(arbitraryDocument()).build();
         final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
         accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation1).build());
         accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation2).build());
@@ -229,10 +227,10 @@ public class BulkRetryStrategyTests {
 
         final BulkRetryStrategy bulkRetryStrategy = new BulkRetryStrategy(
                 client::bulk, logFailureConsumer, PLUGIN_METRICS, () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder()));
-        final IndexOperation<JsonData> indexOperation1 = new IndexOperation.Builder<JsonData>().index(testIndex).id("1").document(arbitraryDocument()).build();
-        final IndexOperation<JsonData> indexOperation2 = new IndexOperation.Builder<JsonData>().index(testIndex).id("2").document(arbitraryDocument()).build();
-        final IndexOperation<JsonData> indexOperation3 = new IndexOperation.Builder<JsonData>().index(testIndex).id("3").document(arbitraryDocument()).build();
-        final IndexOperation<JsonData> indexOperation4 = new IndexOperation.Builder<JsonData>().index(testIndex).id("4").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation1 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("1").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation2 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("2").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation3 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("3").document(arbitraryDocument()).build();
+        final IndexOperation<SerializedJson> indexOperation4 = new IndexOperation.Builder<SerializedJson>().index(testIndex).id("4").document(arbitraryDocument()).build();
         final AccumulatingBulkRequest accumulatingBulkRequest = new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
         accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation1).build());
         accumulatingBulkRequest.addOperation(new BulkOperation.Builder().index(indexOperation2).build());
@@ -293,8 +291,8 @@ public class BulkRetryStrategyTests {
         return badResponse;
     }
 
-    private JsonData arbitraryDocument() {
-        return SizedJsonData.fromString("{}", new JacksonJsonpMapper());
+    private SerializedJson arbitraryDocument() {
+        return SerializedJson.fromString("{}");
     }
 
     private static class FakeClient {

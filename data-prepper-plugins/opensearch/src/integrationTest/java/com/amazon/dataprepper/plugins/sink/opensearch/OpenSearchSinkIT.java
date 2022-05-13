@@ -654,7 +654,14 @@ public class OpenSearchSinkIT {
     @Override
     public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
       final ObjectMapper objectMapper = new ObjectMapper();
-      Function<String, Record> stringModel = jsonString -> new Record(jsonString);
+      Function<String, Record> stringModel = jsonString -> {
+        try {
+          // Normalize the JSON string.
+          return new Record(objectMapper.writeValueAsString(objectMapper.readValue(jsonString, Map.class)));
+        } catch (JsonProcessingException e) {
+          throw new RuntimeException(e);
+        }
+      };
       Function<String, Record> eventModel = jsonString -> {
         try {
           return new Record(JacksonEvent.builder().withEventType(EventType.TRACE.toString()).withData(objectMapper.readValue(jsonString, Map.class)).build());

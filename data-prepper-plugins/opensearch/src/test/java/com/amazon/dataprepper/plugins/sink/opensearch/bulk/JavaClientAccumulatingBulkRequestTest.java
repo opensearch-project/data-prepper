@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.opensearch.client.json.JsonData;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
@@ -123,7 +122,7 @@ class JavaClientAccumulatingBulkRequestTest {
     @ParameterizedTest
     @ValueSource(longs = {0, 1, 2, 10, 50, 100})
     void estimateSizeInBytesWithDocument_on_new_object_returns_estimated_document_size_plus_operation_overhead(long inputDocumentSize) {
-        final JsonData document = generateDocumentWithLength(inputDocumentSize);
+        final SizedDocument document = generateDocumentWithLength(inputDocumentSize);
         final BulkOperation bulkOperation = createBulkOperation(document);
 
         assertThat(createObjectUnderTest().estimateSizeInBytesWithDocument(bulkOperation),
@@ -133,7 +132,7 @@ class JavaClientAccumulatingBulkRequestTest {
     @ParameterizedTest
     @ValueSource(longs = {0, 1, 2, 10, 50, 100})
     void estimateSizeInBytesWithDocument_on_request_with_operations_returns_estimated_document_size_plus_operation_overhead(long inputDocumentSize) {
-        final JsonData document = generateDocumentWithLength(inputDocumentSize);
+        final SizedDocument document = generateDocumentWithLength(inputDocumentSize);
         final BulkOperation bulkOperation = createBulkOperation(document);
 
         final JavaClientAccumulatingBulkRequest objectUnderTest = createObjectUnderTest();
@@ -210,13 +209,13 @@ class JavaClientAccumulatingBulkRequestTest {
         return bulkOperation;
     }
 
-    private JsonData generateDocument() {
+    private SizedDocument generateDocument() {
         return generateDocumentWithLength(10L);
     }
 
-    private JsonData generateDocumentWithLength(long documentLength) {
-        final SizedJsonData sizedJsonData = mock(SizedJsonData.class);
-        when(sizedJsonData.getDocumentSize()).thenReturn(documentLength);
-        return sizedJsonData;
+    private SizedDocument generateDocumentWithLength(long documentLength) {
+        final SizedDocument sizedDocument = mock(SizedDocument.class);
+        when(sizedDocument.getDocumentSize()).thenReturn(documentLength);
+        return sizedDocument;
     }
 }
