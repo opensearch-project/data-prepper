@@ -30,6 +30,8 @@ import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.common.document.DocumentField;
+import org.opensearch.search.SearchHit;
 import org.opensearch.search.SearchHits;
 import org.opensearch.search.builder.SearchSourceBuilder;
 
@@ -43,6 +45,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
 import static org.awaitility.Awaitility.await;
 
@@ -165,17 +168,22 @@ public class EndToEndRawSpanTest {
             if (source.containsKey(TraceGroup.TRACE_GROUP_NAME_FIELD)) {
                 // Extract and replace traceGroupFields with searchHit fields to unify the representation
                 source.entrySet().removeIf(entry -> entry.getKey().startsWith("traceGroupFields"));
-                final Number statusCode = hit.field(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD).getValue();
+
+                this.<Number>addNonNullField(source, hit, TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD, field -> field.intValue());
                 // Restore trailing zeros for thousand, e.g. 2020-08-20T05:40:46.0895568Z -> 2020-08-20T05:40:46.089556800Z
-                final String endTime = Instant.parse(hit.field(TraceGroup.TRACE_GROUP_END_TIME_FIELD).getValue()).toString();
-                final Number durationInNanos = hit.field(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD).getValue();
-                source.put(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD, statusCode.intValue());
-                source.put(TraceGroup.TRACE_GROUP_END_TIME_FIELD, endTime);
-                source.put(TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD, durationInNanos.longValue());
+                this.<String>addNonNullField(source, hit, TraceGroup.TRACE_GROUP_END_TIME_FIELD, field -> Instant.parse(field).toString());
+                this.<Number>addNonNullField(source, hit, TraceGroup.TRACE_GROUP_DURATION_IN_NANOS_FIELD, field -> field.longValue());
             }
             sources.add(source);
         });
         return sources;
+    }
+
+    private <F> void addNonNullField(Map<String, Object> source, SearchHit hit, String fieldName, Function<F, Object> fieldToType) {
+        final DocumentField statusCodeField = hit.field(fieldName);
+        if(statusCodeField != null) {
+            source.put(fieldName, fieldToType.apply(statusCodeField.getValue()));
+        }
     }
 
     public static ResourceSpans getResourceSpans(final String serviceName, final String spanName, final byte[]

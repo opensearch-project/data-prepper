@@ -135,7 +135,7 @@ task basicLogEndToEndTest(type: Test) {
     startDataPrepperTask.mustRunAfter 'startOpenSearchDockerContainer'
     // wait for data-preppers to be ready
     doFirst {
-        sleep(10*1000)
+        sleep(15*1000)
     }
 
     description = 'Runs the basic grok end-to-end test.'
