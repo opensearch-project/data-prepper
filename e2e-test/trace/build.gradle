@@ -167,7 +167,7 @@ def createEndToEndTest(final String testName, final String includeTestsMatchPatt
         startDataPrepper2Task.mustRunAfter 'startOpenSearchDockerContainer'
         // wait for data-preppers to be ready
         doFirst {
-            sleep(10*1000)
+            sleep(15*1000)
         }
 
         description = 'Runs the raw span integration tests.'
