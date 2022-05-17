@@ -65,7 +65,7 @@ jacocoTestCoverageVerification {
             limit {
                 // temporarily lowering this to unblock the release.
                 // some builds pass with 0.9 coverage, some fail with 0.89
-                minimum = 0.6
+                minimum = 0.89
             }
         }
     }
