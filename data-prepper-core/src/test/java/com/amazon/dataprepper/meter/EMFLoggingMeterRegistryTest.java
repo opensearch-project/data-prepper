@@ -50,6 +50,7 @@ import static org.mockito.Mockito.when;
 
 class EMFLoggingMeterRegistryTest {
     private static final String METER_NAME = "test";
+    private static final String SERVICE_NAME = "DataPrepper";
     private static final String TEST_TAG_KEY = "testTagKey";
     private static final String TEST_TAG_VALUE = "testTagValue";
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
@@ -80,7 +81,7 @@ class EMFLoggingMeterRegistryTest {
                 .tags(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
         final MetricsLogger metricsLogger = registrySnapshot.gaugeDataMetricsLogger(gauge);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(HasMetric(context, gauge.getId(), "value"), is(true));
     }
@@ -91,7 +92,7 @@ class EMFLoggingMeterRegistryTest {
                 .tags(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
         final MetricsLogger metricsLogger = registrySnapshot.gaugeDataMetricsLogger(gauge);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(HasMetric(context, gauge.getId(), "value"), is(false));
     }
@@ -101,7 +102,7 @@ class EMFLoggingMeterRegistryTest {
         final Counter counter = Counter.builder("counter").tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
         final MetricsLogger metricsLogger = registrySnapshot.counterDataMetricsLogger(counter);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(HasMetric(context, counter.getId(), "count"), is(true));
     }
@@ -115,7 +116,7 @@ class EMFLoggingMeterRegistryTest {
 
         final MetricsLogger metricsLogger = registrySnapshot.timerDataMetricsLogger(timer);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(HasMetric(context, meterId, "count"), is(true));
         assertThat(HasMetric(context, meterId, "sum"), is(true));
@@ -132,7 +133,7 @@ class EMFLoggingMeterRegistryTest {
 
         final MetricsLogger metricsLogger = registrySnapshot.timerDataMetricsLogger(timer);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(HasMetric(context, meterId, "count"), is(true));
         assertThat(HasMetric(context, meterId, "sum"), is(true));
@@ -149,7 +150,7 @@ class EMFLoggingMeterRegistryTest {
 
         final MetricsLogger metricsLogger = registrySnapshot.summaryDataMetricsLogger(summary);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(HasMetric(context, meterId, "count"), is(true));
         assertThat(HasMetric(context, meterId, "sum"), is(true));
@@ -166,7 +167,7 @@ class EMFLoggingMeterRegistryTest {
 
         final MetricsLogger metricsLogger = registrySnapshot.summaryDataMetricsLogger(summary);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(HasMetric(context, meterId, "count"), is(true));
         assertThat(HasMetric(context, meterId, "sum"), is(true));
@@ -180,7 +181,7 @@ class EMFLoggingMeterRegistryTest {
                 .tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
         final MetricsLogger metricsLogger = registrySnapshot.longTaskTimerDataMetricsLogger(longTaskTimer);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(HasMetric(context, longTaskTimer.getId(), "activeTasks"), is(true));
         assertThat(HasMetric(context, longTaskTimer.getId(), "duration"), is(true));
@@ -193,7 +194,7 @@ class EMFLoggingMeterRegistryTest {
                 .tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
         final MetricsLogger metricsLogger = registrySnapshot.timeGaugeDataMetricsLogger(timeGauge);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(HasMetric(context, timeGauge.getId(), "value"), is(true));
     }
@@ -205,7 +206,7 @@ class EMFLoggingMeterRegistryTest {
                 .tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
         final MetricsLogger metricsLogger = registrySnapshot.timeGaugeDataMetricsLogger(timeGauge);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(HasMetric(context, timeGauge.getId(), "value"), is(false));
     }
@@ -216,7 +217,7 @@ class EMFLoggingMeterRegistryTest {
                 .tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
         final MetricsLogger metricsLogger = registrySnapshot.functionCounterDataMetricsLogger(functionCounter);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(HasMetric(context, functionCounter.getId(), "count"), is(true));
     }
@@ -247,7 +248,7 @@ class EMFLoggingMeterRegistryTest {
 
         final MetricsLogger metricsLogger = registrySnapshot.functionTimerDataMetricsLogger(timer);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(HasMetric(context, meterId, "count"), is(true));
         assertThat(HasMetric(context, meterId, "sum"), is(true));
@@ -263,7 +264,7 @@ class EMFLoggingMeterRegistryTest {
 
         final MetricsLogger metricsLogger = registrySnapshot.functionTimerDataMetricsLogger(timer);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(HasMetric(context, meterId, "count"), is(true));
         assertThat(HasMetric(context, meterId, "sum"), is(true));
@@ -278,7 +279,7 @@ class EMFLoggingMeterRegistryTest {
         clock.add(EMFLoggingRegistryConfig.DEFAULT.step());
         final MetricsLogger metricsLogger = registrySnapshot.functionTimerDataMetricsLogger(functionTimer);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertThat(HasMetric(context, functionTimer.getId(), "count"), is(false));
         assertThat(HasMetric(context, functionTimer.getId(), "sum"), is(false));
         assertThat(HasMetric(context, functionTimer.getId(), "avg"), is(false));
@@ -292,7 +293,7 @@ class EMFLoggingMeterRegistryTest {
                 .tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
         final MetricsLogger metricsLogger = registrySnapshot.metricDataMetricsLogger(meter);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(HasMetric(context, meter.getId(), null), is(true));
     }
@@ -305,7 +306,7 @@ class EMFLoggingMeterRegistryTest {
                 .tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
         final MetricsLogger metricsLogger = registrySnapshot.metricDataMetricsLogger(meter);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo("DataPrepper"));
+        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(HasMetric(context, meter.getId(), null), is(false));
     }
