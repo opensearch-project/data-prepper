@@ -42,6 +42,11 @@ import java.util.concurrent.TimeUnit;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.StreamSupport.stream;
 
+/**
+ * {@link StepMeterRegistry} for publishing Data Prepper metrics as
+ * <a href="https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Specification.html">Embedded Metrics Format</a> logs.
+ * @since 1.5
+ */
 public class EMFLoggingMeterRegistry extends StepMeterRegistry {
     private static final String NAMESPACE = "DataPrepper";
     private static final Map<String, Unit> UNIT_BY_LOWERCASE_VALUE;
