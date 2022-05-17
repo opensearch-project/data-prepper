@@ -23,8 +23,6 @@ import io.micrometer.core.instrument.util.NamedThreadFactory;
 import io.micrometer.core.instrument.util.StringUtils;
 import io.micrometer.core.lang.Nullable;
 import io.micrometer.core.util.internal.logging.WarnThenDebugLogger;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import software.amazon.cloudwatchlogs.emf.environment.Environment;
 import software.amazon.cloudwatchlogs.emf.environment.EnvironmentProvider;
 import software.amazon.cloudwatchlogs.emf.logger.MetricsLogger;
@@ -63,7 +61,6 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
 
     private final EMFLoggingRegistryConfig config;
     private final Environment environment;
-    private final Logger logger = LoggerFactory.getLogger(CloudWatchMeterRegistry.class);
     private static final WarnThenDebugLogger warnThenDebugLogger = new WarnThenDebugLogger(EMFLoggingMeterRegistry.class);
 
     public EMFLoggingMeterRegistry() {
