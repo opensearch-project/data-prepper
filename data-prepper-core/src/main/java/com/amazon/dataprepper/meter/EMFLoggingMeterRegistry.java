@@ -5,7 +5,6 @@
 
 package com.amazon.dataprepper.meter;
 
-import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
 import io.micrometer.cloudwatch2.CloudWatchNamingConvention;
 import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.Counter;
