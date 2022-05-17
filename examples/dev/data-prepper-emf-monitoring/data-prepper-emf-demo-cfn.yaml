@@ -6,8 +6,8 @@ Resources:
     Properties:
       NetworkMode: awsvpc
       Family: data-prepper-emf-metrics
-      TaskRoleArn: arn:aws:iam::531516510575:role/ecsTaskExecutionRole
-      ExecutionRoleArn: arn:aws:iam::531516510575:role/ecsTaskExecutionRole
+      TaskRoleArn: arn:aws:iam::<account-id>:role/ecsTaskIAMRole
+      ExecutionRoleArn: arn:aws:iam::<account-id>:role/ecsTaskExecutionRole
       Cpu: 1024
       Memory: 8192
       RequiresCompatibilities:
@@ -15,7 +15,7 @@ Resources:
         - "FARGATE"
       ContainerDefinitions:
         - Name: data-prepper-poc
-          Image: 531516510575.dkr.ecr.us-west-2.amazonaws.com/data-prepper-poc:EMF-METRICS-LOGGING-POC
+          Image: <account-id>.dkr.ecr.<region>.amazonaws.com/data-prepper-poc:EMF-METRICS-LOGGING-POC
           MemoryReservation: 2048
           Essential: true
           PortMappings:
@@ -63,11 +63,11 @@ Resources:
                     - "EMFLogging"
                     - "Prometheus"
         - Name: log_router
-          Image: 531516510575.dkr.ecr.us-west-2.amazonaws.com/aws-for-fluent-bit:POC
+          Image: <account-id>.dkr.ecr.<region>.amazonaws.com/aws-for-fluent-bit:DEMO
           MemoryReservation: 50
           Essential: true
           FirelensConfiguration:
             Type: fluentbit
             Options:
               config-file-type: "file"
-              config-file-value: "/fluentbit.conf"
+              config-file-value: "/firelens-fluent-bit.conf"
