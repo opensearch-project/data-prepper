@@ -5,13 +5,20 @@
 
 package com.amazon.dataprepper.parser.config;
 
+import com.amazon.dataprepper.DataPrepper;
+import com.amazon.dataprepper.meter.EMFLoggingMeterRegistry;
+import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.parser.model.MetricRegistryType;
 import com.amazon.dataprepper.pipeline.server.CloudWatchMeterRegistryProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
@@ -29,6 +36,7 @@ import java.util.List;
 import java.util.Random;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isA;
 import static org.hamcrest.Matchers.nullValue;
@@ -146,6 +154,24 @@ class MetricsConfigTest {
         final MeterRegistry meterRegistry = metricsConfig.cloudWatchMeterRegistry(dataPrepperConfiguration, provider);
 
         assertThat(meterRegistry, is(expected));
+    }
+
+    @Test
+    public void testGivenConfigWithEMFLoggingMeterRegistryThenMeterRegistryCreated() {
+        final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
+
+        when(dataPrepperConfiguration.getMetricRegistryTypes())
+                .thenReturn(Collections.singletonList(MetricRegistryType.EMFLogging));
+
+        final MeterRegistry meterRegistry = metricsConfig.emfLoggingMeterRegistry(dataPrepperConfiguration);
+        final Counter counter = meterRegistry.counter("counter");
+        final List<Tag> commonTags = counter.getId().getConventionTags(meterRegistry.config().namingConvention());
+
+        assertThat(meterRegistry, isA(EMFLoggingMeterRegistry.class));
+        assertThat(commonTags.size(), equalTo(1));
+        final Tag commonTag = commonTags.get(0);
+        assertThat(commonTag.getKey(), equalTo(MetricNames.SERVICE_NAME));
+        assertThat(commonTag.getValue(), equalTo(DataPrepper.getServiceNameForMetrics()));
     }
 
     @Test

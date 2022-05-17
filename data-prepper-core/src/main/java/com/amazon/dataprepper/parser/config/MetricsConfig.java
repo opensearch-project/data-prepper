@@ -22,7 +22,6 @@ import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
-import io.micrometer.core.instrument.logging.LoggingMeterRegistry;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
@@ -139,18 +138,11 @@ public class MetricsConfig {
     }
 
     @Bean
-    public LoggingMeterRegistry loggingMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
-        if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.Logging)) {
-            return new LoggingMeterRegistry();
-        } else {
-            return null;
-        }
-    }
-
-    @Bean
     public EMFLoggingMeterRegistry emfLoggingMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.EMFLogging)) {
-            return new EMFLoggingMeterRegistry();
+            final EMFLoggingMeterRegistry meterRegistry = new EMFLoggingMeterRegistry();
+            configureMetricRegistry(meterRegistry);
+            return meterRegistry;
         } else {
             return null;
         }
