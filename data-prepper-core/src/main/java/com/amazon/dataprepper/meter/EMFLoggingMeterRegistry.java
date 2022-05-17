@@ -85,13 +85,7 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
     @Override
     protected void publish() {
         if (config.enabled()) {
-            for (final MetricsLogger metricsLogger: metricsLoggers()) {
-                try {
-                    metricsLogger.flush();
-                } catch (final Exception e) {
-                    logger.error("error sending metric data.", e);
-                }
-            }
+            metricsLoggers().forEach(MetricsLogger::flush);
         }
     }
 
@@ -115,19 +109,18 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
     class Snapshot {
         private final Instant timestamp = Instant.ofEpochMilli(clock.wallTime());
 
-        private MetricsLogger gaugeDataMetricsLogger(final Gauge gauge) {
+        MetricsLogger gaugeDataMetricsLogger(final Gauge gauge) {
             final MetricsLogger metricsLogger = prepareMetricsLogger(gauge.getId());
             addMetricDatum(gauge.getId(), "value", gauge.value(), metricsLogger);
             return metricsLogger;
         }
 
-        private MetricsLogger counterDataMetricsLogger(final Counter counter) {
+        MetricsLogger counterDataMetricsLogger(final Counter counter) {
             final MetricsLogger metricsLogger = prepareMetricsLogger(counter.getId());
             addMetricDatum(counter.getId(), "count", Unit.COUNT, counter.count(), metricsLogger);
             return metricsLogger;
         }
 
-        // VisibleForTesting
         MetricsLogger timerDataMetricsLogger(final Timer timer) {
             final MetricsLogger metricsLogger = prepareMetricsLogger(timer.getId());
             addMetricDatum(timer.getId(), "sum", getBaseTimeUnit().name(), timer.totalTime(getBaseTimeUnit()), metricsLogger);
@@ -140,7 +133,6 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
             return metricsLogger;
         }
 
-        // VisibleForTesting
         MetricsLogger summaryDataMetricsLogger(final DistributionSummary summary) {
             final MetricsLogger metricsLogger = prepareMetricsLogger(summary.getId());
             addMetricDatum(summary.getId(), "sum", summary.totalAmount(), metricsLogger);
@@ -153,27 +145,25 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
             return metricsLogger;
         }
 
-        private MetricsLogger longTaskTimerDataMetricsLogger(final LongTaskTimer longTaskTimer) {
+        MetricsLogger longTaskTimerDataMetricsLogger(final LongTaskTimer longTaskTimer) {
             final MetricsLogger metricsLogger = prepareMetricsLogger(longTaskTimer.getId());
             addMetricDatum(longTaskTimer.getId(), "activeTasks", longTaskTimer.activeTasks(), metricsLogger);
             addMetricDatum(longTaskTimer.getId(), "duration", longTaskTimer.duration(getBaseTimeUnit()), metricsLogger);
             return metricsLogger;
         }
 
-        private MetricsLogger timeGaugeDataMetricsLogger(final TimeGauge gauge) {
+        MetricsLogger timeGaugeDataMetricsLogger(final TimeGauge gauge) {
             final MetricsLogger metricsLogger = prepareMetricsLogger(gauge.getId());
             addMetricDatum(gauge.getId(), "value", gauge.value(getBaseTimeUnit()), metricsLogger);
             return metricsLogger;
         }
 
-        // VisibleForTesting
         MetricsLogger functionCounterDataMetricsLogger(final FunctionCounter counter) {
             final MetricsLogger metricsLogger = prepareMetricsLogger(counter.getId());
             addMetricDatum(counter.getId(), "count", Unit.COUNT, counter.count(), metricsLogger);
             return metricsLogger;
         }
 
-        // VisibleForTesting
         MetricsLogger functionTimerDataMetricsLogger(final FunctionTimer timer) {
             final MetricsLogger metricsLogger = prepareMetricsLogger(timer.getId());
             // we can't know anything about max and percentiles originating from a function timer
@@ -183,14 +173,13 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
             }
             final double count = timer.count();
             addMetricDatum(timer.getId(), "count", Unit.COUNT, count, metricsLogger);
-            addMetricDatum(timer.getId(), "sum", count, metricsLogger);
+            addMetricDatum(timer.getId(), "sum", sum, metricsLogger);
             if (count > 0) {
                 addMetricDatum(timer.getId(), "avg", timer.mean(getBaseTimeUnit()), metricsLogger);
             }
             return metricsLogger;
         }
 
-        // VisibleForTesting
         MetricsLogger metricDataMetricsLogger(final Meter m) {
             final MetricsLogger metricsLogger = prepareMetricsLogger(m.getId());
             stream(m.measure().spliterator(), false)
@@ -221,13 +210,11 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
             metricsLogger.setDimensions(toDimensionSet(tags));
         }
 
-        // VisibleForTesting
         String getMetricName(final Meter.Id id, @Nullable final String suffix) {
             final String name = suffix != null ? id.getName() + "." + suffix : id.getName();
             return config().namingConvention().name(name, id.getType(), id.getBaseUnit());
         }
 
-        // VisibleForTesting
         Unit toUnit(@Nullable final String unit) {
             if (unit == null) {
                 return Unit.NONE;
