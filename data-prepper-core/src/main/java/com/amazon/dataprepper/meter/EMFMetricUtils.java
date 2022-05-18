@@ -7,8 +7,8 @@ package com.amazon.dataprepper.meter;
 
 class EMFMetricUtils {
 
-    protected static final double MINIMUM_ALLOWED_VALUE = 8.515920e-109;
-    protected static final double MAXIMUM_ALLOWED_VALUE = 1.174271e+108;
+    static final double MINIMUM_ALLOWED_VALUE = 8.515920e-109;
+    static final double MAXIMUM_ALLOWED_VALUE = 1.174271e+108;
 
     static double clampMetricValue(final double value) {
         // Leave as is and let the SDK reject it
