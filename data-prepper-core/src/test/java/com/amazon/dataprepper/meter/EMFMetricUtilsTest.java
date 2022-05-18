@@ -23,12 +23,18 @@ class EMFMetricUtilsTest {
         final double testNegativeValue = -10.1;
         assertThat(EMFMetricUtils.clampMetricValue(testPositiveValue), equalTo(testPositiveValue));
         assertThat(EMFMetricUtils.clampMetricValue(testNegativeValue), equalTo(testNegativeValue));
+        assertThat(EMFMetricUtils.clampMetricValue(EMFMetricUtils.MAXIMUM_ALLOWED_VALUE - 1), equalTo(EMFMetricUtils.MAXIMUM_ALLOWED_VALUE - 1));
+        assertThat(EMFMetricUtils.clampMetricValue(-EMFMetricUtils.MAXIMUM_ALLOWED_VALUE + 1), equalTo(-EMFMetricUtils.MAXIMUM_ALLOWED_VALUE + 1));
     }
 
     @Test
     void testClampMagnitudeOverFlow() {
         assertThat(EMFMetricUtils.clampMetricValue(Double.POSITIVE_INFINITY), equalTo(EMFMetricUtils.MAXIMUM_ALLOWED_VALUE));
         assertThat(EMFMetricUtils.clampMetricValue(Double.NEGATIVE_INFINITY), equalTo(-EMFMetricUtils.MAXIMUM_ALLOWED_VALUE));
+        assertThat(EMFMetricUtils.clampMetricValue(EMFMetricUtils.MAXIMUM_ALLOWED_VALUE + 1), equalTo(EMFMetricUtils.MAXIMUM_ALLOWED_VALUE));
+        assertThat(EMFMetricUtils.clampMetricValue(-EMFMetricUtils.MAXIMUM_ALLOWED_VALUE - 1), equalTo(-EMFMetricUtils.MAXIMUM_ALLOWED_VALUE));
+        assertThat(EMFMetricUtils.clampMetricValue(EMFMetricUtils.MINIMUM_ALLOWED_VALUE / 2), equalTo(EMFMetricUtils.MINIMUM_ALLOWED_VALUE));
+        assertThat(EMFMetricUtils.clampMetricValue(-EMFMetricUtils.MINIMUM_ALLOWED_VALUE / 2), equalTo(-EMFMetricUtils.MINIMUM_ALLOWED_VALUE));
     }
 
     @Test
