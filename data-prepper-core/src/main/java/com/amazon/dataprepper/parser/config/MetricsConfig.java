@@ -139,7 +139,7 @@ public class MetricsConfig {
 
     @Bean
     public EMFLoggingMeterRegistry emfLoggingMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
-        if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.EMFLogging)) {
+        if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.EmbeddedMetricsFormat)) {
             final EMFLoggingMeterRegistry meterRegistry = new EMFLoggingMeterRegistry();
             configureMetricRegistry(meterRegistry);
             return meterRegistry;

@@ -4,7 +4,7 @@ This directory contains the example configuration files for allowing exporting D
 
 ```
 metricRegistries:
-  - "EMFLogging"
+  - "EmbeddedMetricsFormat"
 ```
 
 Data Prepper uses [aws-embedded-metrics-java](https://github.com/awslabs/aws-embedded-metrics-java) sdk to publish its EMF metric logs over TCP to Fluent Bit sidecar which then delivers to third-party streaming service (e.g. Kinesis Data Streams, Apache Kafka).
@@ -21,7 +21,7 @@ which involves the following files:
 * [docker-compose.yml](./docker-compose.yml): running Data Prepper container built from the repo with Fluent Bit sidecar
 * [Dockerfile](./Dockerfile): Dockerfile for building Data Prepper image out of the current repo.
 * [fluent-bit.conf](./fluent-bit.conf): FluentBit configuration file that sets up the tcp source listener. It uses standard output for demo purpose.
-* [data-prepper-config.yaml](./data-prepper-config.yaml): Data Prepper service configuration file. Note that EMFLogging meter registry is specified.
+* [data-prepper-config.yaml](./data-prepper-config.yaml): Data Prepper service configuration file. Note that EmbeddedMetricsFormat meter registry is specified.
 * [pipelines-raw-trace-stdout.yaml](./pipelines-raw-trace-stdout.yaml): Data Prepper demo pipeline definition.
 
 The TCP connection between [EMF metrics log publisher](https://github.com/awslabs/aws-embedded-metrics-java#configuration) in Data Prepper and the Fluent Bit source is established through the environment variable `AWS_EMF_AGENT_ENDPOINT`. To confirm runtime metrics collected from Data Prepper, one can check the `stdout` from Fluent Bit container logs as follows:

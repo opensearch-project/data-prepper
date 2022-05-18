@@ -1,4 +1,4 @@
 ssl: false
 metricRegistries:
-  - "EMFLogging"
+  - "EmbeddedMetricsFormat"
   - "Prometheus"

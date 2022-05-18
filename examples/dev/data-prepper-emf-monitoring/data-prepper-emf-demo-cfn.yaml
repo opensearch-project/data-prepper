@@ -60,7 +60,7 @@ Resources:
                 Fn::Base64: |
                   ssl: false
                   metricRegistries:
-                    - "EMFLogging"
+                    - "EmbeddedMetricsFormat"
                     - "Prometheus"
         - Name: log_router
           Image: <account-id>.dkr.ecr.<region>.amazonaws.com/aws-for-fluent-bit:DEMO

@@ -159,7 +159,7 @@ class MetricsConfigTest {
         final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
 
         when(dataPrepperConfiguration.getMetricRegistryTypes())
-                .thenReturn(Collections.singletonList(MetricRegistryType.EMFLogging));
+                .thenReturn(Collections.singletonList(MetricRegistryType.EmbeddedMetricsFormat));
 
         final MeterRegistry meterRegistry = metricsConfig.emfLoggingMeterRegistry(dataPrepperConfiguration);
         final Counter counter = meterRegistry.counter("counter");
