@@ -83,7 +83,7 @@ class EMFLoggingMeterRegistryTest {
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(HasMetric(context, gauge.getId(), "value"), is(true));
+        assertThat(hasMetric(context, gauge.getId(), "value"), is(true));
     }
 
     @Test
@@ -94,7 +94,7 @@ class EMFLoggingMeterRegistryTest {
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(HasMetric(context, gauge.getId(), "value"), is(false));
+        assertThat(hasMetric(context, gauge.getId(), "value"), is(false));
     }
 
     @Test
@@ -104,7 +104,7 @@ class EMFLoggingMeterRegistryTest {
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(HasMetric(context, counter.getId(), "count"), is(true));
+        assertThat(hasMetric(context, counter.getId(), "count"), is(true));
     }
 
     @Test
@@ -118,10 +118,10 @@ class EMFLoggingMeterRegistryTest {
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(HasMetric(context, meterId, "count"), is(true));
-        assertThat(HasMetric(context, meterId, "sum"), is(true));
-        assertThat(HasMetric(context, meterId, "avg"), is(true));
-        assertThat(HasMetric(context, meterId, "max"), is(true));
+        assertThat(hasMetric(context, meterId, "count"), is(true));
+        assertThat(hasMetric(context, meterId, "sum"), is(true));
+        assertThat(hasMetric(context, meterId, "avg"), is(true));
+        assertThat(hasMetric(context, meterId, "max"), is(true));
     }
 
     @Test
@@ -135,10 +135,10 @@ class EMFLoggingMeterRegistryTest {
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(HasMetric(context, meterId, "count"), is(true));
-        assertThat(HasMetric(context, meterId, "sum"), is(true));
-        assertThat(HasMetric(context, meterId, "avg"), is(false));
-        assertThat(HasMetric(context, meterId, "max"), is(false));
+        assertThat(hasMetric(context, meterId, "count"), is(true));
+        assertThat(hasMetric(context, meterId, "sum"), is(true));
+        assertThat(hasMetric(context, meterId, "avg"), is(false));
+        assertThat(hasMetric(context, meterId, "max"), is(false));
     }
 
     @Test
@@ -152,10 +152,10 @@ class EMFLoggingMeterRegistryTest {
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(HasMetric(context, meterId, "count"), is(true));
-        assertThat(HasMetric(context, meterId, "sum"), is(true));
-        assertThat(HasMetric(context, meterId, "avg"), is(true));
-        assertThat(HasMetric(context, meterId, "max"), is(true));
+        assertThat(hasMetric(context, meterId, "count"), is(true));
+        assertThat(hasMetric(context, meterId, "sum"), is(true));
+        assertThat(hasMetric(context, meterId, "avg"), is(true));
+        assertThat(hasMetric(context, meterId, "max"), is(true));
     }
 
     @Test
@@ -169,10 +169,10 @@ class EMFLoggingMeterRegistryTest {
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(HasMetric(context, meterId, "count"), is(true));
-        assertThat(HasMetric(context, meterId, "sum"), is(true));
-        assertThat(HasMetric(context, meterId, "avg"), is(false));
-        assertThat(HasMetric(context, meterId, "max"), is(false));
+        assertThat(hasMetric(context, meterId, "count"), is(true));
+        assertThat(hasMetric(context, meterId, "sum"), is(true));
+        assertThat(hasMetric(context, meterId, "avg"), is(false));
+        assertThat(hasMetric(context, meterId, "max"), is(false));
     }
 
     @Test
@@ -183,8 +183,8 @@ class EMFLoggingMeterRegistryTest {
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(HasMetric(context, longTaskTimer.getId(), "activeTasks"), is(true));
-        assertThat(HasMetric(context, longTaskTimer.getId(), "duration"), is(true));
+        assertThat(hasMetric(context, longTaskTimer.getId(), "activeTasks"), is(true));
+        assertThat(hasMetric(context, longTaskTimer.getId(), "duration"), is(true));
     }
 
     @Test
@@ -196,7 +196,7 @@ class EMFLoggingMeterRegistryTest {
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(HasMetric(context, timeGauge.getId(), "value"), is(true));
+        assertThat(hasMetric(context, timeGauge.getId(), "value"), is(true));
     }
 
     @Test
@@ -208,7 +208,7 @@ class EMFLoggingMeterRegistryTest {
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(HasMetric(context, timeGauge.getId(), "value"), is(false));
+        assertThat(hasMetric(context, timeGauge.getId(), "value"), is(false));
     }
 
     @Test
@@ -219,7 +219,7 @@ class EMFLoggingMeterRegistryTest {
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(HasMetric(context, functionCounter.getId(), "count"), is(true));
+        assertThat(hasMetric(context, functionCounter.getId(), "count"), is(true));
     }
 
     @Test
@@ -250,9 +250,9 @@ class EMFLoggingMeterRegistryTest {
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(HasMetric(context, meterId, "count"), is(true));
-        assertThat(HasMetric(context, meterId, "sum"), is(true));
-        assertThat(HasMetric(context, meterId, "avg"), is(true));
+        assertThat(hasMetric(context, meterId, "count"), is(true));
+        assertThat(hasMetric(context, meterId, "sum"), is(true));
+        assertThat(hasMetric(context, meterId, "avg"), is(true));
     }
 
     @Test
@@ -266,9 +266,9 @@ class EMFLoggingMeterRegistryTest {
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(HasMetric(context, meterId, "count"), is(true));
-        assertThat(HasMetric(context, meterId, "sum"), is(true));
-        assertThat(HasMetric(context, meterId, "avg"), is(false));
+        assertThat(hasMetric(context, meterId, "count"), is(true));
+        assertThat(hasMetric(context, meterId, "sum"), is(true));
+        assertThat(hasMetric(context, meterId, "avg"), is(false));
     }
 
     @Test
@@ -280,9 +280,9 @@ class EMFLoggingMeterRegistryTest {
         final MetricsLogger metricsLogger = registrySnapshot.functionTimerDataMetricsLogger(functionTimer);
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertThat(HasMetric(context, functionTimer.getId(), "count"), is(false));
-        assertThat(HasMetric(context, functionTimer.getId(), "sum"), is(false));
-        assertThat(HasMetric(context, functionTimer.getId(), "avg"), is(false));
+        assertThat(hasMetric(context, functionTimer.getId(), "count"), is(false));
+        assertThat(hasMetric(context, functionTimer.getId(), "sum"), is(false));
+        assertThat(hasMetric(context, functionTimer.getId(), "avg"), is(false));
     }
 
     @Test
@@ -295,7 +295,7 @@ class EMFLoggingMeterRegistryTest {
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(HasMetric(context, meter.getId(), null), is(true));
+        assertThat(hasMetric(context, meter.getId(), null), is(true));
     }
 
     @Test
@@ -308,7 +308,7 @@ class EMFLoggingMeterRegistryTest {
         final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(HasMetric(context, meter.getId(), null), is(false));
+        assertThat(hasMetric(context, meter.getId(), null), is(false));
     }
 
     @Test
@@ -378,7 +378,7 @@ class EMFLoggingMeterRegistryTest {
         assertThat(dimensionSet.getDimensionValue(key), equalTo(value));
     }
 
-    private boolean HasMetric(final MetricsContext context, final Id meterId, final String suffix) throws JsonProcessingException {
+    private boolean hasMetric(final MetricsContext context, final Id meterId, final String suffix) throws JsonProcessingException {
         final List<String> emfJsonList = context.serialize();
         assertThat(emfJsonList.size(), equalTo(1));
         final Map<String, Object> emfMap = objectMapper.readValue(emfJsonList.get(0), MAP_TYPE_REFERENCE);
