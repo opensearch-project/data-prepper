@@ -46,7 +46,7 @@ dependencies {
     implementation 'software.amazon.awssdk:auth:2.17.15'
     implementation 'software.amazon.awssdk:http-client-spi:2.17.15'
     implementation 'software.amazon.awssdk:sdk-core:2.17.15'
-    implementation 'software.amazon.awssdk:aws-core:2.17.15'
+    implementation 'software.amazon.awssdk:aws-core:2.17.194'
     implementation 'software.amazon.awssdk:regions:2.17.15'
     implementation 'software.amazon.awssdk:utils:2.17.15'
     implementation 'software.amazon.awssdk:sts:2.17.15'
@@ -76,11 +76,20 @@ configurations {
     integrationTestRuntime.extendsFrom testRuntime
 }
 
+tasks.withType(JavaCompile).getByName('compileIntegrationTestJava').configure {
+    javaCompiler = javaToolchains.compilerFor {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+}
+
 task integrationTest(type: Test) {
     group = 'verification'
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
     useJUnitPlatform()
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
 
     classpath = sourceSets.integrationTest.runtimeClasspath
     systemProperty 'tests.opensearch.host', System.getProperty('tests.opensearch.host')
