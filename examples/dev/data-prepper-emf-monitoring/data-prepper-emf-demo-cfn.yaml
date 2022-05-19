@@ -70,4 +70,4 @@ Resources:
             Type: fluentbit
             Options:
               config-file-type: "file"
-              config-file-value: "/firelens-fluent-bit.conf"
+              config-file-value: "/fluent-bit.conf"
