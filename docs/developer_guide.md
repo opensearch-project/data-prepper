@@ -8,27 +8,30 @@ First, please read our [contribution guide](../CONTRIBUTING.md) for more informa
 
 ## Installation Prerequisites
 
-### JDK Versions
+### Java Versions
 
-Running Data Prepper requires JDK 8 and above.
+Building Data Prepper requires JDK 11. The Data Prepper Gradle build runs in a Java 11 JVM, but uses
+[Gradle toolchains](https://docs.gradle.org/current/userguide/toolchains.html) to compile the Java
+code using Java 8. If you have a JDK 8 installed locally, Gradle will use your installed JDK 8. If you
+do not, Gradle will install JDK 8.
 
-Running the integration tests requires JDK 14 or 15.
+All main source code builds on JDK 8, so it must be compatible with Java 8. The test code
+(unit and integration tests) runs using JDK 11 and may use Java 11 features.
 
 
 ## Building from source
 
 The assemble task will build the Jar files without running the integration
 tests. You can use these jar files for running DataPrepper. If you are just
-looking to use DataPrepper and modify it, this build
-is faster than running the integration test suite and only requires JDK 8+.
+looking to build Data Prepper from source, this build
+is faster than running the integration test suite.
 
-To build the project from source, run
+To build the project from source, run the following command from the project root:
 
 ```
 ./gradlew assemble
 ```
 
-from the project root. 
 
 ### Full Project Build
 
@@ -36,13 +39,12 @@ Running the build command will assemble the Jar files needed
 for running DataPrepper. It will also run the integration test
 suite.
 
-To build, run
+To build, run the following command from the project root:
 
 ```
 ./gradlew build
 ```
 
-from the project root.
 
 ## Running the project
 
