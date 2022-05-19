@@ -76,11 +76,20 @@ configurations {
     integrationTestRuntime.extendsFrom testRuntime
 }
 
+tasks.withType(JavaCompile).getByName('compileIntegrationTestJava').configure {
+    javaCompiler = javaToolchains.compilerFor {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
+}
+
 task integrationTest(type: Test) {
     group = 'verification'
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
     useJUnitPlatform()
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
 
     classpath = sourceSets.integrationTest.runtimeClasspath
     systemProperty 'tests.opensearch.host', System.getProperty('tests.opensearch.host')

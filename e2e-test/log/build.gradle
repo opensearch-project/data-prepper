@@ -38,7 +38,7 @@ def BASIC_GROK_PIPELINE_YAML = "basic-grok-e2e-pipeline.yml"
 task createDataPrepperDockerFile(type: Dockerfile) {
     dependsOn copyDataPrepperJar
     destFile = project.file('build/docker/Dockerfile')
-    from("adoptopenjdk/openjdk14:jre-14.0.1_7-alpine")
+    from(dataPrepperBaseImage)
     workingDir("/app")
     copyFile("${dataPrepperJarFilepath}", "/app/data-prepper.jar")
     copyFile("src/integrationTest/resources/${BASIC_GROK_PIPELINE_YAML}", "/app/${BASIC_GROK_PIPELINE_YAML}")

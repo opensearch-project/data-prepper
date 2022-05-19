@@ -44,5 +44,7 @@ subprojects {
 
     ext {
         dataPrepperJarFilepath = "${project.buildDir.name}/bin/${DATA_PREPPER_CORE_JAR.archiveName}"
+        targetJavaVersion = project.hasProperty('endToEndJavaVersion') ? project.getProperty('endToEndJavaVersion') : '11'
+        dataPrepperBaseImage = "eclipse-temurin:${targetJavaVersion}-jre-alpine"
     }
 }
