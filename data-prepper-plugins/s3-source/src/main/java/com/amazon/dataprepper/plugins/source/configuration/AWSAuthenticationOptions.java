@@ -11,30 +11,17 @@ import jakarta.validation.constraints.NotBlank;
 public class AWSAuthenticationOptions {
     @JsonProperty("aws_region")
     @NotBlank(message = "Region cannot be null or empty")
-    private String region;
+    private String awsRegion;
 
     @JsonProperty("aws_sts_role_arn")
-    private String stsRoleArn;
+    private String awsStsRoleArn;
 
-    @JsonProperty("access_key_id")
-    private String accessKeyId;
-
-    @JsonProperty("secret_key_id")
-    private String secretKeyId;
-
-    public String getRegion() {
-        return region;
+    public String getAwsRegion() {
+        return awsRegion;
     }
 
-    public String getStsRoleArn() {
-        return stsRoleArn;
-    }
-
-    public String getAccessKeyId() {
-        return accessKeyId;
-    }
-
-    public String getSecretKeyId() {
-        return secretKeyId;
+    public String getAwsStsRoleArn() {
+        return awsStsRoleArn;
     }
 }
+
