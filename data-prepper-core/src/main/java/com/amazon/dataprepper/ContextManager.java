@@ -15,12 +15,10 @@ import org.springframework.core.env.SimpleCommandLinePropertySource;
  * <p>Creates Spring {@link org.springframework.context.ApplicationContext} hierarchy for Dependency Injection with limited visibility.</p>
  * <p>
  *     Application Context Hierarchy
- *     <pre>
  *         Public Application Context<br>
  *         ├─ Core Application Context<br>
  *         ├─ Shared Plugin Application Context<br>
  *             ├─ Plugin Isolated Application Context<br>
- *     </pre>
  * </p>
  */
 public class ContextManager {
