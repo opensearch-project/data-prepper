@@ -1,0 +1,17 @@
+entry-pipeline:
+  source:
+    otel_trace_source:
+      ssl: false
+      unframed_requests: true
+  sink:
+    - pipeline:
+        name: "raw-pipeline"
+raw-pipeline:
+  source:
+    pipeline:
+      name: "entry-pipeline"
+  prepper:
+    - otel_trace_raw_prepper:
+#        trace_flush_interval: 6
+  sink:
+    - stdout:
