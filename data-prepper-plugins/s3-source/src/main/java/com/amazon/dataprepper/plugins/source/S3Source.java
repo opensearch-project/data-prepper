@@ -9,13 +9,13 @@ import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.log.Log;
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
 import org.apache.commons.lang3.NotImplementedException;
 
 @DataPrepperPlugin(name = "s3", pluginType = Source.class, pluginConfigurationType = S3SourceConfig.class)
-public class S3Source implements Source<Record<Log>> {
+public class S3Source implements Source<Record<Event>> {
 
     private final PluginMetrics pluginMetrics;
     private final S3SourceConfig s3SourceConfig;
@@ -28,7 +28,7 @@ public class S3Source implements Source<Record<Log>> {
     }
 
     @Override
-    public void start(Buffer<Record<Log>> buffer) {
+    public void start(Buffer<Record<Event>> buffer) {
 
     }
 

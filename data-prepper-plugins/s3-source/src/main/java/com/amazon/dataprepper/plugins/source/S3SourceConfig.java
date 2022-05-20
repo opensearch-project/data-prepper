@@ -11,21 +11,24 @@ import com.amazon.dataprepper.plugins.source.configuration.CompressionOption;
 import com.amazon.dataprepper.plugins.source.configuration.NotificationTypeOption;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.NotNull;
 
 public class S3SourceConfig {
 
     @JsonProperty("notification_type")
+    @NotNull
     private NotificationTypeOption notificationType;
 
     @JsonProperty("compression")
     private CompressionOption compression = CompressionOption.NONE;
 
     @JsonProperty("codec")
+    @NotNull
     @Valid
     private CodecOption codec;
 
     @JsonProperty("aws")
+    @NotNull
     @Valid
     private AWSAuthenticationOptions awsAuthentication;
 
@@ -43,10 +46,5 @@ public class S3SourceConfig {
 
     public AWSAuthenticationOptions getAWSAuthentication() {
         return awsAuthentication;
-    }
-
-    @AssertTrue(message = "notification_type cannot be null or empty")
-    boolean isNotificationTypeValid() {
-        return (notificationType != null);
     }
 }
