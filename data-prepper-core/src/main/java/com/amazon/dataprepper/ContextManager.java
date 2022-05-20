@@ -15,15 +15,13 @@ import org.springframework.core.env.SimpleCommandLinePropertySource;
  * <p>Creates Spring {@link org.springframework.context.ApplicationContext} hierarchy for Dependency Injection with limited visibility.</p>
  * <p>
  *     Application Context Hierarchy
- *     <pre>
  *         Public Application Context<br>
  *         ├─ Core Application Context<br>
  *         ├─ Shared Plugin Application Context<br>
  *             ├─ Plugin Isolated Application Context<br>
- *     </pre>
  * </p>
  */
-class ContextManager {
+public class ContextManager {
     private static final Logger LOG = LoggerFactory.getLogger(ContextManager.class);
 
     private final AnnotationConfigApplicationContext coreApplicationContext;
