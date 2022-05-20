@@ -1,0 +1,24 @@
+version: "3.7"
+services:
+  data-prepper:
+    container_name: data-prepper
+    build:
+      context: ../../..
+      dockerfile: examples/dev/data-prepper-monitoring/firelens.Dockerfile
+    environment:
+      AWS_EMF_AGENT_ENDPOINT: "tcp://fluent-bit:25888"
+    volumes:
+      - ./pipelines-raw-trace-stdout.yaml:/usr/share/data-prepper/pipelines.yaml
+      - ./data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
+    ports:
+      - "4900:4900" # DataPrepperServer port
+      - "21890:21890" # OTelTraceSource port
+    links:
+      - fluent-bit
+  fluent-bit:
+    container_name: fluent-bit
+    image: fluent/fluent-bit
+    volumes:
+      - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+    ports:
+      - "25888:25888"
