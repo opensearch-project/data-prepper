@@ -23,7 +23,7 @@ import org.springframework.core.env.SimpleCommandLinePropertySource;
  *     </pre>
  * </p>
  */
-class ContextManager {
+public class ContextManager {
     private static final Logger LOG = LoggerFactory.getLogger(ContextManager.class);
 
     private final AnnotationConfigApplicationContext coreApplicationContext;
