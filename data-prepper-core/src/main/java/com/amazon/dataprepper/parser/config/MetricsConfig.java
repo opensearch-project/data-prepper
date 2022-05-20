@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.parser.config;
 
+import com.amazon.dataprepper.meter.EMFLoggingMeterRegistry;
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
 import com.amazon.dataprepper.parser.model.MetricRegistryType;
 import com.amazon.dataprepper.pipeline.server.CloudWatchMeterRegistryProvider;
@@ -132,6 +133,17 @@ public class MetricsConfig {
             }
         }
         else {
+            return null;
+        }
+    }
+
+    @Bean
+    public EMFLoggingMeterRegistry emfLoggingMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
+        if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.EmbeddedMetricsFormat)) {
+            final EMFLoggingMeterRegistry meterRegistry = new EMFLoggingMeterRegistry();
+            configureMetricRegistry(meterRegistry);
+            return meterRegistry;
+        } else {
             return null;
         }
     }

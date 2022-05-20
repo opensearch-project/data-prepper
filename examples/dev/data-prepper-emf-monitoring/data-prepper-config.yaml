@@ -1,0 +1,4 @@
+ssl: false
+metricRegistries:
+  - "EmbeddedMetricsFormat"
+  - "Prometheus"
