@@ -27,6 +27,7 @@ import org.junit.Assert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -42,6 +43,7 @@ import org.opensearch.common.xcontent.XContentType;
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -55,6 +57,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -511,6 +514,51 @@ public class OpenSearchSinkIT {
     sink.shutdown();
   }
 
+  @ParameterizedTest
+  @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
+  @Timeout(value = 1, unit = TimeUnit.MINUTES)
+  public void testOutputManagementDisabled(Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+    final String testIndexAlias = "test-" + UUID.randomUUID().toString();
+    final String roleName = UUID.randomUUID().toString();
+    final String username = UUID.randomUUID().toString();
+    final String password = UUID.randomUUID().toString();
+    final OpenSearchSecurityAccessor securityAccessor = new OpenSearchSecurityAccessor(client);
+    securityAccessor.createBulkWritingRole(roleName, testIndexAlias + "*");
+    securityAccessor.createUser(username, password, roleName);
+
+    final String testIdField = "someId";
+    final String testId = "foo";
+
+    final List<Record<Object>> testRecords = Collections.singletonList(stringToRecord.apply(generateCustomRecordJson(testIdField, testId)));
+
+    final Map<String, Object> metadata = initializeConfigurationMetadata(false, false, testIndexAlias, null);
+    metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.MANAGEMENT_DISABLED.getValue());
+    metadata.put(ConnectionConfiguration.USERNAME, username);
+    metadata.put(ConnectionConfiguration.PASSWORD, password);
+    metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+    final PluginSetting pluginSetting = generatePluginSettingByMetadata(metadata);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting);
+
+    final String testTemplateFile = Objects.requireNonNull(
+            getClass().getClassLoader().getResource("management-disabled-index-template.json")).getFile();
+    createIndexTemplate(testIndexAlias, testIndexAlias + "*", testTemplateFile);
+    createIndex(testIndexAlias);
+
+    sink.output(testRecords);
+    final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+    MatcherAssert.assertThat(retSources.size(), equalTo(1));
+    MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+    sink.shutdown();
+
+    // verify metrics
+    final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+    MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
+    // COUNT
+    Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+  }
+
   private Map<String, Object> initializeConfigurationMetadata (final boolean isRaw, final boolean isServiceMap, final String indexAlias,
                                                   final String templateFilePath) {
     final Map<String, Object> metadata = new HashMap<>();
@@ -674,5 +722,23 @@ public class OpenSearchSinkIT {
               Arguments.of(eventModel)
       );
     }
+  }
+
+  private void createIndex(final String indexName) throws IOException {
+    final Request request = new Request(HttpMethod.PUT, indexName);
+    final Response response = client.performRequest(request);
+  }
+
+  private void createIndexTemplate(String templateName, String indexPattern, String fileName) throws IOException {
+    final ObjectMapper objectMapper = new ObjectMapper();
+    final Map<String, Object> templateJson = objectMapper.readValue(new FileInputStream(fileName), Map.class);
+
+    templateJson.put("index_patterns", indexPattern);
+
+    final Request request = new Request(HttpMethod.PUT, "_template/" + templateName);
+
+    final String createTemplateJson = objectMapper.writeValueAsString(templateJson);
+    request.setJsonEntity(createTemplateJson);
+    final Response response = client.performRequest(request);
   }
 }
