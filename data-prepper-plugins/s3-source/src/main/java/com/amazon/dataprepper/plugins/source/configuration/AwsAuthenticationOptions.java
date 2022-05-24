@@ -17,7 +17,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import java.util.UUID;
 
-public class AWSAuthenticationOptions {
+public class AwsAuthenticationOptions {
     @JsonProperty("aws_region")
     @NotBlank(message = "Region cannot be null or empty")
     private String awsRegion;

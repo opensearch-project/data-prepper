@@ -19,12 +19,12 @@ import static org.mockito.Mockito.mock;
 
 class AwsAuthenticationOptionsTest {
 
-    private AWSAuthenticationOptions awsAuthenticationOptions;
+    private AwsAuthenticationOptions awsAuthenticationOptions;
     private final StsClient stsClient = mock(StsClient.class);
 
     @BeforeEach
     void setUp() {
-        awsAuthenticationOptions = new AWSAuthenticationOptions();
+        awsAuthenticationOptions = new AwsAuthenticationOptions();
     }
 
     @Test
@@ -45,8 +45,8 @@ class AwsAuthenticationOptionsTest {
         assertThat(awsAuthenticationOptions.authenticateAwsConfiguration(stsClient), instanceOf(AwsCredentialsProvider.class));
     }
 
-    private void reflectivelySetField(final AWSAuthenticationOptions awsAuthenticationOptions, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {
-        final Field field = AWSAuthenticationOptions.class.getDeclaredField(fieldName);
+    private void reflectivelySetField(final AwsAuthenticationOptions awsAuthenticationOptions, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {
+        final Field field = AwsAuthenticationOptions.class.getDeclaredField(fieldName);
         try {
             field.setAccessible(true);
             field.set(awsAuthenticationOptions, value);

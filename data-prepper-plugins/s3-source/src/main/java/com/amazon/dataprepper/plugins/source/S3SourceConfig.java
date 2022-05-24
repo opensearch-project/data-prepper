@@ -5,7 +5,7 @@
 
 package com.amazon.dataprepper.plugins.source;
 
-import com.amazon.dataprepper.plugins.source.configuration.AWSAuthenticationOptions;
+import com.amazon.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
 import com.amazon.dataprepper.plugins.source.configuration.CodecOption;
 import com.amazon.dataprepper.plugins.source.configuration.CompressionOption;
 import com.amazon.dataprepper.plugins.source.configuration.NotificationTypeOption;
@@ -30,7 +30,7 @@ public class S3SourceConfig {
     @JsonProperty("aws")
     @NotNull
     @Valid
-    private AWSAuthenticationOptions awsAuthentication;
+    private AwsAuthenticationOptions awsAuthentication;
 
     public NotificationTypeOption getNotificationType() {
         return notificationType;
@@ -44,7 +44,7 @@ public class S3SourceConfig {
         return codec;
     }
 
-    public AWSAuthenticationOptions getAWSAuthentication() {
+    public AwsAuthenticationOptions getAWSAuthentication() {
         return awsAuthentication;
     }
 }
