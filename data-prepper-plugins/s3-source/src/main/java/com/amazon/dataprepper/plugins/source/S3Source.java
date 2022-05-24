@@ -51,7 +51,7 @@ public class S3Source implements Source<Record<Event>> {
     private final S3Client s3Client;
 
     private AwsCredentialsProvider createCredentialsProvider() {
-        return Objects.requireNonNull(s3SourceConfig.getAWSAuthentication().authenticateAWSConfiguration(StsClient.create()));
+        return Objects.requireNonNull(s3SourceConfig.getAWSAuthentication().authenticateAwsConfiguration(StsClient.create()));
     }
 
     private S3Client createS3Client(final AwsCredentialsProvider awsCredentialsProvider) {

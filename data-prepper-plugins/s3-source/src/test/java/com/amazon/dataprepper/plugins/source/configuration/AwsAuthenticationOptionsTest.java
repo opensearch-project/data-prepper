@@ -17,7 +17,7 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 
-class AWSAuthenticationOptionsTest {
+class AwsAuthenticationOptionsTest {
 
     private AWSAuthenticationOptions awsAuthenticationOptions;
     private final StsClient stsClient = mock(StsClient.class);
@@ -33,7 +33,7 @@ class AWSAuthenticationOptionsTest {
         reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", null);
         assertThat(awsAuthenticationOptions.getAwsRegion(), equalTo("us-east-1"));
         assertThat(awsAuthenticationOptions.getAwsStsRoleArn(), equalTo(null));
-        assertThat(awsAuthenticationOptions.authenticateAWSConfiguration(stsClient), instanceOf(AwsCredentialsProvider.class));
+        assertThat(awsAuthenticationOptions.authenticateAwsConfiguration(stsClient), instanceOf(AwsCredentialsProvider.class));
     }
 
     @Test
@@ -42,7 +42,7 @@ class AWSAuthenticationOptionsTest {
         reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", "arn:aws:iam::123456789012:iam-role");
         assertThat(awsAuthenticationOptions.getAwsRegion(), equalTo("us-east-1"));
         assertThat(awsAuthenticationOptions.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
-        assertThat(awsAuthenticationOptions.authenticateAWSConfiguration(stsClient), instanceOf(AwsCredentialsProvider.class));
+        assertThat(awsAuthenticationOptions.authenticateAwsConfiguration(stsClient), instanceOf(AwsCredentialsProvider.class));
     }
 
     private void reflectivelySetField(final AWSAuthenticationOptions awsAuthenticationOptions, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {
