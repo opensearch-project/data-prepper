@@ -15,12 +15,15 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 
 import static com.amazon.dataprepper.TestDataProvider.INVALID_DATA_PREPPER_CONFIG_FILE;
+import static com.amazon.dataprepper.TestDataProvider.INVALID_DATA_PREPPER_CONFIG_FILE_WITH_TAGS;
 import static com.amazon.dataprepper.TestDataProvider.INVALID_PORT_DATA_PREPPER_CONFIG_FILE;
 import static com.amazon.dataprepper.TestDataProvider.VALID_DATA_PREPPER_CLOUDWATCH_METRICS_CONFIG_FILE;
 import static com.amazon.dataprepper.TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE;
 import static com.amazon.dataprepper.TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE_WITH_BASIC_AUTHENTICATION;
+import static com.amazon.dataprepper.TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE_WITH_TAGS;
 import static com.amazon.dataprepper.TestDataProvider.VALID_DATA_PREPPER_MULTIPLE_METRICS_CONFIG_FILE;
 import static com.amazon.dataprepper.TestDataProvider.VALID_DATA_PREPPER_SOME_DEFAULT_CONFIG_FILE;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -89,6 +92,18 @@ public class DataPrepperConfigurationTests {
     }
 
     @Test
+    void testConfigWithValidMetricTags() throws IOException {
+        final DataPrepperConfiguration dataPrepperConfiguration = makeConfig(
+                VALID_DATA_PREPPER_CONFIG_FILE_WITH_TAGS);
+
+        assertThat(dataPrepperConfiguration, notNullValue());
+        final Map<String, String> metricTags = dataPrepperConfiguration.getMetricTags();
+        assertThat(metricTags, notNullValue());
+        assertThat(metricTags.get("testKey1"), equalTo("testValue1"));
+        assertThat(metricTags.get("testKey2"), equalTo("testValue2"));
+    }
+
+    @Test
     public void testInvalidConfig() {
         assertThrows(UnrecognizedPropertyException.class, () ->
                     makeConfig(INVALID_DATA_PREPPER_CONFIG_FILE));
@@ -98,5 +113,11 @@ public class DataPrepperConfigurationTests {
     public void testInvalidPortConfig() {
         assertThrows(ValueInstantiationException.class, () ->
                 makeConfig(INVALID_PORT_DATA_PREPPER_CONFIG_FILE));
+    }
+
+    @Test
+    void testConfigWithInValidMetricTags() {
+        assertThrows(ValueInstantiationException.class, () ->
+                makeConfig(INVALID_DATA_PREPPER_CONFIG_FILE_WITH_TAGS));
     }
 }

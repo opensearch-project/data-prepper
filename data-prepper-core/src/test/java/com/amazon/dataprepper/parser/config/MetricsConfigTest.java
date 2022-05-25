@@ -27,11 +27,18 @@ import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -172,6 +179,38 @@ class MetricsConfigTest {
         assertThat(commonTag.getValue(), equalTo(DataPrepper.getServiceNameForMetrics()));
     }
 
+    @ParameterizedTest
+    @MethodSource("provideMetricRegistryTypesAndCreators")
+    public void testGivenConfigWithMetricTagsThenMeterRegistryConfigured(final MetricRegistryType metricRegistryType,
+                                                                         final Function<DataPrepperConfiguration, MeterRegistry> creator) {
+        final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
+        when(dataPrepperConfiguration.getMetricRegistryTypes()).thenReturn(Collections.singletonList(metricRegistryType));
+        when(dataPrepperConfiguration.getMetricTags()).thenReturn(Map.of("testKey", "testValue"));
+
+        MeterRegistry meterRegistry = creator.apply(dataPrepperConfiguration);
+        Counter counter = meterRegistry.counter("counter");
+        List<Tag> commonTags = counter.getId().getConventionTags(meterRegistry.config().namingConvention());
+
+        assertThat(commonTags.equals(
+                Arrays.asList(
+                        Tag.of(MetricNames.SERVICE_NAME, DataPrepper.getServiceNameForMetrics()),
+                        Tag.of("testKey", "testValue")
+                        )
+        ), is(true));
+
+        when(dataPrepperConfiguration.getMetricRegistryTypes()).thenReturn(Collections.singletonList(metricRegistryType));
+        when(dataPrepperConfiguration.getMetricTags()).thenReturn(Map.of(MetricNames.SERVICE_NAME, "testServiceName"));
+
+        meterRegistry = creator.apply(dataPrepperConfiguration);
+        counter = meterRegistry.counter("counter");
+        commonTags = counter.getId().getConventionTags(meterRegistry.config().namingConvention());
+
+        assertThat(commonTags.size(), equalTo(1));
+        assertThat(commonTags.equals(
+                List.of(Tag.of(MetricNames.SERVICE_NAME, "testServiceName"))
+        ), is(true));
+    }
+
     @Test
     public void testGivenListOfMeterBindersWhenSystemMeterRegistryThenAllMeterBindersRegistered() {
         final Random r = new Random();
@@ -202,5 +241,12 @@ class MetricsConfigTest {
                 meterRegistries);
 
         assertThat(meterRegistry, isA(CompositeMeterRegistry.class));
+    }
+
+    private static Stream<Arguments> provideMetricRegistryTypesAndCreators() {
+        return Stream.of(
+                Arguments.of(MetricRegistryType.EmbeddedMetricsFormat, (Function<DataPrepperConfiguration, MeterRegistry>) metricsConfig::emfLoggingMeterRegistry),
+                Arguments.of(MetricRegistryType.Prometheus, (Function<DataPrepperConfiguration, MeterRegistry>) metricsConfig::prometheusMeterRegistry)
+        );
     }
 }
