@@ -5,10 +5,7 @@
 
 package com.amazon.dataprepper.plugins.source;
 
-import com.amazon.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
-import com.amazon.dataprepper.plugins.source.configuration.CodecOption;
-import com.amazon.dataprepper.plugins.source.configuration.CompressionOption;
-import com.amazon.dataprepper.plugins.source.configuration.NotificationTypeOption;
+import com.amazon.dataprepper.plugins.source.configuration.*;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -27,10 +24,14 @@ public class S3SourceConfig {
     @Valid
     private CodecOption codec;
 
+    @JsonProperty("sqs")
+    @NotNull
+    private SqsOptions sqsOptions;
+
     @JsonProperty("aws")
     @NotNull
     @Valid
-    private AwsAuthenticationOptions awsAuthentication;
+    private AwsAuthenticationOptions awsAuthenticationOptions;
 
     public NotificationTypeOption getNotificationType() {
         return notificationType;
@@ -44,7 +45,11 @@ public class S3SourceConfig {
         return codec;
     }
 
+    public SqsOptions getSqsOptions() {
+        return sqsOptions;
+    }
+
     public AwsAuthenticationOptions getAWSAuthentication() {
-        return awsAuthentication;
+        return awsAuthenticationOptions;
     }
 }
