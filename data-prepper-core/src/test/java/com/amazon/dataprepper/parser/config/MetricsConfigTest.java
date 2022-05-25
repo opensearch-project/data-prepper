@@ -183,9 +183,12 @@ class MetricsConfigTest {
     @MethodSource("provideMetricRegistryTypesAndCreators")
     public void testGivenConfigWithMetricTagsThenMeterRegistryConfigured(final MetricRegistryType metricRegistryType,
                                                                          final Function<DataPrepperConfiguration, MeterRegistry> creator) {
+        final String testKey = "testKey";
+        final String testValue = "testValue";
+        final String testServiceName = "testServiceName";
         final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
         when(dataPrepperConfiguration.getMetricRegistryTypes()).thenReturn(Collections.singletonList(metricRegistryType));
-        when(dataPrepperConfiguration.getMetricTags()).thenReturn(Map.of("testKey", "testValue"));
+        when(dataPrepperConfiguration.getMetricTags()).thenReturn(Map.of(testKey, testValue));
 
         MeterRegistry meterRegistry = creator.apply(dataPrepperConfiguration);
         Counter counter = meterRegistry.counter("counter");
@@ -194,12 +197,12 @@ class MetricsConfigTest {
         assertThat(commonTags.equals(
                 Arrays.asList(
                         Tag.of(MetricNames.SERVICE_NAME, DataPrepper.getServiceNameForMetrics()),
-                        Tag.of("testKey", "testValue")
+                        Tag.of(testKey, testValue)
                         )
         ), is(true));
 
         when(dataPrepperConfiguration.getMetricRegistryTypes()).thenReturn(Collections.singletonList(metricRegistryType));
-        when(dataPrepperConfiguration.getMetricTags()).thenReturn(Map.of(MetricNames.SERVICE_NAME, "testServiceName"));
+        when(dataPrepperConfiguration.getMetricTags()).thenReturn(Map.of(MetricNames.SERVICE_NAME, testServiceName));
 
         meterRegistry = creator.apply(dataPrepperConfiguration);
         counter = meterRegistry.counter("counter");
@@ -207,7 +210,7 @@ class MetricsConfigTest {
 
         assertThat(commonTags.size(), equalTo(1));
         assertThat(commonTags.equals(
-                List.of(Tag.of(MetricNames.SERVICE_NAME, "testServiceName"))
+                List.of(Tag.of(MetricNames.SERVICE_NAME, testServiceName))
         ), is(true));
     }
 

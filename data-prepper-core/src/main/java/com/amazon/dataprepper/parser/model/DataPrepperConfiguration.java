@@ -37,6 +37,7 @@ public class DataPrepperConfiguration {
 
     public DataPrepperConfiguration() {}
 
+    // TODO: camel case to snake eyes in JsonProperty
     @JsonCreator
     public DataPrepperConfiguration(
             @JsonProperty("ssl") final Boolean ssl,
