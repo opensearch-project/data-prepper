@@ -146,16 +146,18 @@ If a single record turns out to be larger than the set bulk size, it will be sen
 
 ### Management Disabled Index Type
 
-When `index_type` is set to `management_disabled`, Data Prepper will not perform any index management.
-It will not use ISM, create templates, or even validate the index. This setting can be useful when
-you want to minimize the permissions granted to Data Prepper. You must configure some other mechanism
-(e.g. ISM) to create and configure you indices.
+Normally Data Prepper manages the indices it needs within OpenSearch. When `index_type` is set to
+`management_disabled`, Data Prepper will not perform any index management on your behalf. You must
+provide your own mechanism for creating the indices with the correct mappings applied. Data Prepper
+will not use ISM, create templates, or even validate that the index exists. This setting can be
+useful when you want to minimize the OpenSearch permissions which you grant to Data Prepper. But,
+you should only use it if you are proficient with OpenSearch index management.
 
 With management disabled, Data Prepper can run with only being granted the
 `["indices:data/write/index", "indices:data/write/bulk*", "indices:admin/mapping/put"]` permissions on
 the desired indices. It is strongly recommend to retain the `"indices:admin/mapping/put"`
 permission. If Data Prepper lacks this permission, then it cannot write any documents
-which would rely on dynamic mapping. You would need to take great care to ensure that every possible field
+that rely on dynamic mapping. You would need to take great care to ensure that every possible field
 is explicitly mapped by your index template.
 
 ## Metrics
