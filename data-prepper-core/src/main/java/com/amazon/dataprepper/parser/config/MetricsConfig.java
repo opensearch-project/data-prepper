@@ -32,8 +32,10 @@ import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
 import javax.annotation.Nullable;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.amazon.dataprepper.DataPrepper.getServiceNameForMetrics;
 import static com.amazon.dataprepper.metrics.MetricNames.SERVICE_NAME;
@@ -78,11 +80,14 @@ public class MetricsConfig {
         return new JvmThreadMetrics();
     }
 
-    private void configureMetricRegistry(final MeterRegistry meterRegistry) {
+    private void configureMetricRegistry(final Map<String, String> metricTags, final MeterRegistry meterRegistry) {
+        final Map<String, String> metricTagsWithServiceName = new HashMap<>(metricTags);
+        metricTagsWithServiceName.putIfAbsent(SERVICE_NAME, getServiceNameForMetrics());
         meterRegistry.config()
-                .commonTags(Collections.singletonList(
-                        Tag.of(SERVICE_NAME, getServiceNameForMetrics())
-                ));
+                .commonTags(
+                        metricTagsWithServiceName.entrySet().stream().map(e -> Tag.of(e.getKey(), e.getValue()))
+                                .collect(Collectors.toList())
+                );
 
     }
 
@@ -90,7 +95,7 @@ public class MetricsConfig {
     public PrometheusMeterRegistry prometheusMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.Prometheus)) {
             final PrometheusMeterRegistry meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
-            configureMetricRegistry(meterRegistry);
+            configureMetricRegistry(dataPrepperConfiguration.getMetricTags(), meterRegistry);
 
             return meterRegistry;
         }
@@ -124,7 +129,7 @@ public class MetricsConfig {
 
             try {
                 final CloudWatchMeterRegistry meterRegistry = cloudWatchMeterRegistryProvider.getCloudWatchMeterRegistry();
-                configureMetricRegistry(meterRegistry);
+                configureMetricRegistry(dataPrepperConfiguration.getMetricTags(), meterRegistry);
 
                 return meterRegistry;
             } catch (final SdkClientException e) {
@@ -141,7 +146,7 @@ public class MetricsConfig {
     public EMFLoggingMeterRegistry emfLoggingMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.EmbeddedMetricsFormat)) {
             final EMFLoggingMeterRegistry meterRegistry = new EMFLoggingMeterRegistry();
-            configureMetricRegistry(meterRegistry);
+            configureMetricRegistry(dataPrepperConfiguration.getMetricTags(), meterRegistry);
             return meterRegistry;
         } else {
             return null;
