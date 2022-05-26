@@ -15,7 +15,7 @@ import java.time.Duration;
 public class SqsOptions {
     private final int DEFAULT_MAXIMUM_MESSAGES = 10;
     private final int DEFAULT_VISIBILITY_TIMEOUT_SECONDS = 30;
-    private final int DEFAULT_WAIT_TIME_SECONDS = 30;
+    private final int DEFAULT_WAIT_TIME_SECONDS = 0;
     private final int DEFAULT_POLL_DELAY_SECONDS = 0;
     private final int DEFAULT_THREAD_COUNT = 1;
 
@@ -32,6 +32,7 @@ public class SqsOptions {
     private Duration visibilityTimeout = Duration.ofSeconds(DEFAULT_VISIBILITY_TIMEOUT_SECONDS);
 
     @JsonProperty("wait_time")
+    @Max(20)
     private Duration waitTime = Duration.ofSeconds(DEFAULT_WAIT_TIME_SECONDS);
 
     @JsonProperty("poll_delay")

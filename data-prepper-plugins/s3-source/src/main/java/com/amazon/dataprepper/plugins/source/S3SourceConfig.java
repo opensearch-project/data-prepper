@@ -5,7 +5,11 @@
 
 package com.amazon.dataprepper.plugins.source;
 
-import com.amazon.dataprepper.plugins.source.configuration.*;
+import com.amazon.dataprepper.plugins.source.configuration.NotificationTypeOption;
+import com.amazon.dataprepper.plugins.source.configuration.CompressionOption;
+import com.amazon.dataprepper.plugins.source.configuration.CodecOption;
+import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
+import com.amazon.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
