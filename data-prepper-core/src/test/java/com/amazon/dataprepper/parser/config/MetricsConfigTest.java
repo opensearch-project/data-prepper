@@ -194,12 +194,11 @@ class MetricsConfigTest {
         Counter counter = meterRegistry.counter("counter");
         List<Tag> commonTags = counter.getId().getConventionTags(meterRegistry.config().namingConvention());
 
-        assertThat(commonTags.equals(
+        assertThat(commonTags, equalTo(
                 Arrays.asList(
                         Tag.of(MetricNames.SERVICE_NAME, DataPrepper.getServiceNameForMetrics()),
-                        Tag.of(testKey, testValue)
-                        )
-        ), is(true));
+                        Tag.of(testKey, testValue))
+        ));
 
         when(dataPrepperConfiguration.getMetricRegistryTypes()).thenReturn(Collections.singletonList(metricRegistryType));
         when(dataPrepperConfiguration.getMetricTags()).thenReturn(Map.of(MetricNames.SERVICE_NAME, testServiceName));
@@ -208,10 +207,7 @@ class MetricsConfigTest {
         counter = meterRegistry.counter("counter");
         commonTags = counter.getId().getConventionTags(meterRegistry.config().namingConvention());
 
-        assertThat(commonTags.size(), equalTo(1));
-        assertThat(commonTags.equals(
-                List.of(Tag.of(MetricNames.SERVICE_NAME, testServiceName))
-        ), is(true));
+        assertThat(commonTags, equalTo(List.of(Tag.of(MetricNames.SERVICE_NAME, testServiceName))));
     }
 
     @Test
