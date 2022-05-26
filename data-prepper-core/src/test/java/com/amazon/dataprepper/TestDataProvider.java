@@ -48,7 +48,9 @@ public class TestDataProvider {
     public static final String VALID_DATA_PREPPER_SOME_DEFAULT_CONFIG_FILE = "src/test/resources/valid_data_prepper_some_default_config.yml";
     public static final String VALID_DATA_PREPPER_CLOUDWATCH_METRICS_CONFIG_FILE = "src/test/resources/valid_data_prepper_cloudwatch_metrics_config.yml";
     public static final String VALID_DATA_PREPPER_MULTIPLE_METRICS_CONFIG_FILE = "src/test/resources/valid_data_prepper_multiple_metrics_config.yml";
+    public static final String VALID_DATA_PREPPER_CONFIG_FILE_WITH_TAGS = "src/test/resources/valid_data_prepper_config_with_tags.yml";
     public static final String INVALID_DATA_PREPPER_CONFIG_FILE = "src/test/resources/invalid_data_prepper_config.yml";
+    public static final String INVALID_DATA_PREPPER_CONFIG_FILE_WITH_TAGS = "src/test/resources/invalid_data_prepper_config_with_tags.yml";
     public static final String INVALID_PORT_DATA_PREPPER_CONFIG_FILE = "src/test/resources/invalid_port_data_prepper_config.yml";
     public static final String INVALID_KEYSTORE_PASSWORD_DATA_PREPPER_CONFIG_FILE = "src/test/resources/invalid_data_prepper_config_with_bad_keystore_password.yml";
 
