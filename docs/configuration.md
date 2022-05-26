@@ -60,7 +60,7 @@ Data Prepper allows the following properties to be configured:
 * `privateKeyPassword` string password for private key within keystore. Optional, defaults to empty string
 * `serverPort`: integer port number to use for server APIs. Defaults to `4900`
 * `metricRegistries`: list of metrics registries for publishing the generated metrics. Defaults to Prometheus; Prometheus and CloudWatch are currently supported.
-* `metricTags`: map of metric tag key-value pairs applied as common metric tags to meter registries. Defaults to empty map. The maximum number of pairs is limited to 3. Note that `serviceName` is a special tag key with `DataPrepper` as default tag value. Its value could also be set through the environment variable `DATAPREPPER_SERVICE_NAME`. If `serviceName` is defined in `metricTags`, the value will overwrite those set through the above mechanism.
+* `metricTags`: map of metric tag key-value pairs applied as common metric tags to meter registries. Defaults to empty map. The maximum number of pairs is limited to 3. Note that `serviceName` is a reserved tag key with `DataPrepper` as default tag value. Its value could also be set through the environment variable `DATAPREPPER_SERVICE_NAME`. If `serviceName` is defined in `metricTags`, the value will overwrite those set through the above mechanism.
 
 Example Data Prepper configuration file (data-prepper-config.yaml) with SSL enabled:
 
