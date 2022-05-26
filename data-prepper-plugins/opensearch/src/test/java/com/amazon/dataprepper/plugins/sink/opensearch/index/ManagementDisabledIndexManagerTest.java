@@ -93,7 +93,7 @@ class ManagementDisabledIndexManagerTest {
     @Test
     void getIndexAlias_IndexWithTimePattern() {
         when(indexConfiguration.getIndexAlias()).thenReturn(indexAliasWithTimePattern);
-        IndexManager objectUnderTest = indexManagerFactory.getIndexManager(IndexType.MANAGEMENT_DISABLED, restHighLevelClient, openSearchSinkConfiguration);
+        final IndexManager objectUnderTest = indexManagerFactory.getIndexManager(IndexType.MANAGEMENT_DISABLED, restHighLevelClient, openSearchSinkConfiguration);
         final Pattern expectedIndexPattern = Pattern.compile(baseIndexAlias + "-\\d{4}.\\d{2}.\\d{2}.\\d{2}");
         final String actualIndexPattern = objectUnderTest.getIndexAlias();
         assertThat(actualIndexPattern, matchesPattern(expectedIndexPattern));
@@ -112,7 +112,7 @@ class ManagementDisabledIndexManagerTest {
 
     @ParameterizedTest
     @ValueSource(chars = {'#', '\\', '/', '*', '?', '"', '<', '>', '|', ',', ':'})
-    void getIndexAlias_IndexWithTimePattern_Exceptional_WithSpecialChars(char invalidCharacter) {
+    void getIndexAlias_IndexWithTimePattern_Exceptional_WithSpecialChars(final char invalidCharacter) {
         when(indexConfiguration.getIndexAlias()).thenReturn(baseIndexAlias + "-%{yyyy" + invalidCharacter + ".MM.dd.HH}");
         assertThrows(IllegalArgumentException.class,
                 () -> indexManagerFactory.getIndexManager(IndexType.MANAGEMENT_DISABLED, restHighLevelClient, openSearchSinkConfiguration));
@@ -140,7 +140,7 @@ class ManagementDisabledIndexManagerTest {
 
     @ParameterizedTest
     @ValueSource(chars = {'m', 's', 'S', 'A', 'n', 'N'})
-    void getIndexAlias_IndexWithTimePattern_TooGranular(char granularTimePattern) {
+    void getIndexAlias_IndexWithTimePattern_TooGranular(final char granularTimePattern) {
         when(indexConfiguration.getIndexAlias()).thenReturn(baseIndexAlias + "-%{yyyy.MM.dd.HH." + granularTimePattern + "}");
         assertThrows(IllegalArgumentException.class,
                 () -> indexManagerFactory.getIndexManager(IndexType.MANAGEMENT_DISABLED, restHighLevelClient, openSearchSinkConfiguration));
@@ -151,7 +151,7 @@ class ManagementDisabledIndexManagerTest {
     @Test
     void setupIndex_does_nothing() throws IOException {
         when(indexConfiguration.getIndexAlias()).thenReturn(indexAliasWithTimePattern);
-        IndexManager objectUnderTest = indexManagerFactory.getIndexManager(IndexType.MANAGEMENT_DISABLED, restHighLevelClient, openSearchSinkConfiguration);
+        final IndexManager objectUnderTest = indexManagerFactory.getIndexManager(IndexType.MANAGEMENT_DISABLED, restHighLevelClient, openSearchSinkConfiguration);
 
         verifyNoMoreInteractions(
                 restHighLevelClient,

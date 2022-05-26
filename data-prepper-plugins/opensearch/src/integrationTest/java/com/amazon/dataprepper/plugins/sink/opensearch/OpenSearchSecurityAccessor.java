@@ -16,17 +16,17 @@ import java.io.IOException;
 
 class OpenSearchSecurityAccessor {
     private static final String PLUGINS_SECURITY_API = "_opendistro/_security/api/";
-    private RestClient client;
+    private final RestClient client;
 
-    OpenSearchSecurityAccessor(RestClient client) {
+    OpenSearchSecurityAccessor(final RestClient client) {
         this.client = client;
     }
 
-    void createBulkWritingRole(String role, String indexPattern) throws IOException {
+    void createBulkWritingRole(final String role, final String indexPattern) throws IOException {
         createRole(role, indexPattern, "indices:data/write/index", "indices:data/write/bulk*");
     }
 
-    private void createRole(String role, String indexPattern, String... allowedActions) throws IOException {
+    private void createRole(final String role, final String indexPattern, final String... allowedActions) throws IOException {
         final Request request = new Request(HttpMethod.PUT, PLUGINS_SECURITY_API + "roles/" + role);
 
         final String createRoleJson = Strings.toString(
@@ -44,7 +44,7 @@ class OpenSearchSecurityAccessor {
         final Response response = client.performRequest(request);
     }
 
-    public void createUser(String username, String password, String... roles) throws IOException {
+    public void createUser(final String username, final String password, final String... roles) throws IOException {
         final Request request = new Request(HttpMethod.PUT, PLUGINS_SECURITY_API + "internalusers/" + username);
 
         final String createUserJson = Strings.toString(

@@ -74,7 +74,7 @@ public class IndexManagerFactory {
     }
 
     private class ManagementDisabledIndexManager extends IndexManager {
-        protected ManagementDisabledIndexManager(RestHighLevelClient restHighLevelClient, OpenSearchSinkConfiguration openSearchSinkConfiguration) {
+        protected ManagementDisabledIndexManager(final RestHighLevelClient restHighLevelClient, final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
             super(restHighLevelClient, openSearchSinkConfiguration);
         }
 

@@ -159,7 +159,7 @@ public class OpenSearchSinkIT {
 
   @ParameterizedTest
   @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
-  public void testOutputRawSpanDefault(Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+  public void testOutputRawSpanDefault(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
     final String testDoc1 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
     final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_2);
     final ObjectMapper mapper = new ObjectMapper();
@@ -224,7 +224,7 @@ public class OpenSearchSinkIT {
 
   @ParameterizedTest
   @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
-  public void testOutputRawSpanWithDLQ(Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+  public void testOutputRawSpanWithDLQ(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
     // TODO: write test case
     final String testDoc1 = readDocFromFile("raw-span-error.json");
     final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
@@ -300,7 +300,7 @@ public class OpenSearchSinkIT {
 
   @ParameterizedTest
   @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
-  public void testOutputServiceMapDefault(Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+  public void testOutputServiceMapDefault(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
     final String testDoc = readDocFromFile(DEFAULT_SERVICE_MAP_FILE);
     final ObjectMapper mapper = new ObjectMapper();
     @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
@@ -375,7 +375,7 @@ public class OpenSearchSinkIT {
     MatcherAssert.assertThat((boolean) mappings.get("date_detection"), equalTo(false));
     sink.shutdown();
 
-    String expectedIndexPolicyName = indexAlias + "-policy";
+    final String expectedIndexPolicyName = indexAlias + "-policy";
     if (isOSBundle()) {
       // Check managed index
       await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
@@ -464,7 +464,7 @@ public class OpenSearchSinkIT {
 
   @ParameterizedTest
   @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
-  public void testOutputCustomIndex(Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+  public void testOutputCustomIndex(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
     final String testIndexAlias = "test-alias";
     final String testTemplateFile = Objects.requireNonNull(
             getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
@@ -517,8 +517,8 @@ public class OpenSearchSinkIT {
   @ParameterizedTest
   @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
   @Timeout(value = 1, unit = TimeUnit.MINUTES)
-  public void testOutputManagementDisabled(Function<String, Record> stringToRecord) throws IOException, InterruptedException {
-    final String testIndexAlias = "test-" + UUID.randomUUID().toString();
+  public void testOutputManagementDisabled(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+    final String testIndexAlias = "test-" + UUID.randomUUID();
     final String roleName = UUID.randomUUID().toString();
     final String username = UUID.randomUUID().toString();
     final String password = UUID.randomUUID().toString();
@@ -537,7 +537,7 @@ public class OpenSearchSinkIT {
     metadata.put(ConnectionConfiguration.PASSWORD, password);
     metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
     final PluginSetting pluginSetting = generatePluginSettingByMetadata(metadata);
-    OpenSearchSink sink = new OpenSearchSink(pluginSetting);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
 
     final String testTemplateFile = Objects.requireNonNull(
             getClass().getClassLoader().getResource("management-disabled-index-template.json")).getFile();
@@ -688,7 +688,7 @@ public class OpenSearchSinkIT {
             .forEach(indexName -> {
               try {
                 client.performRequest(new Request("DELETE", "/" + indexName));
-              } catch (IOException e) {
+              } catch (final IOException e) {
                 throw new RuntimeException(e);
               }
             });
@@ -702,18 +702,18 @@ public class OpenSearchSinkIT {
     @Override
     public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
       final ObjectMapper objectMapper = new ObjectMapper();
-      Function<String, Record> stringModel = jsonString -> {
+      final Function<String, Record> stringModel = jsonString -> {
         try {
           // Normalize the JSON string.
           return new Record(objectMapper.writeValueAsString(objectMapper.readValue(jsonString, Map.class)));
-        } catch (JsonProcessingException e) {
+        } catch (final JsonProcessingException e) {
           throw new RuntimeException(e);
         }
       };
-      Function<String, Record> eventModel = jsonString -> {
+      final Function<String, Record> eventModel = jsonString -> {
         try {
           return new Record(JacksonEvent.builder().withEventType(EventType.TRACE.toString()).withData(objectMapper.readValue(jsonString, Map.class)).build());
-        } catch (JsonProcessingException e) {
+        } catch (final JsonProcessingException e) {
           throw new RuntimeException(e);
         }
       };
@@ -729,7 +729,7 @@ public class OpenSearchSinkIT {
     final Response response = client.performRequest(request);
   }
 
-  private void createIndexTemplate(String templateName, String indexPattern, String fileName) throws IOException {
+  private void createIndexTemplate(final String templateName, final String indexPattern, final String fileName) throws IOException {
     final ObjectMapper objectMapper = new ObjectMapper();
     final Map<String, Object> templateJson = objectMapper.readValue(new FileInputStream(fileName), Map.class);
 
