@@ -23,43 +23,64 @@ import java.util.stream.Collectors;
 public class SqsWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(SqsWorker.class);
 
+    private static final int NUMBER_OF_RETRIES = 5;
+    private static final long TIME_TO_WAIT = 5000;
+
     private final S3SourceConfig s3SourceConfig;
     private final SqsClient sqsClient;
     private final S3Client s3Client;
     private final ObjectMapper objectMapper;
 
-    public SqsWorker(SqsClient sqsClient, S3Client s3Client, S3SourceConfig s3SourceConfig) {
+    SqsOptions sqsOptions;
+    private BackoffUtils sqsBackoff;
+
+    public SqsWorker(final SqsClient sqsClient, final S3Client s3Client, final S3SourceConfig s3SourceConfig) {
         this.s3SourceConfig = s3SourceConfig;
         this.sqsClient = sqsClient;
         this.s3Client = s3Client;
         objectMapper = new ObjectMapper();
+        sqsOptions = s3SourceConfig.getSqsOptions();
     }
 
     @Override
     public void run() {
-        SqsOptions sqsOptions = s3SourceConfig.getSqsOptions();
+
+        sqsBackoff = new BackoffUtils(NUMBER_OF_RETRIES, TIME_TO_WAIT);
 
         do {
             // read messages from sqs
             List<Message> messages = new ArrayList<>();
 
-            try {
-                ReceiveMessageRequest receiveMessageRequest = ReceiveMessageRequest.builder()
-                        .queueUrl(sqsOptions.getSqsUrl())
-                        .maxNumberOfMessages(sqsOptions.getMaximumMessages())
-                        .visibilityTimeout((int) sqsOptions.getVisibilityTimeout().getSeconds())
-                        .waitTimeSeconds((int) sqsOptions.getWaitTime().getSeconds())
-                        .build();
+            while (sqsBackoff.shouldRetry()) {
+                try {
+                    ReceiveMessageRequest receiveMessageRequest = createReceiveMessageRequest();
+                    messages.addAll(sqsClient.receiveMessage(receiveMessageRequest).messages());
 
-                messages.addAll(sqsClient.receiveMessage(receiveMessageRequest).messages());
-            } catch (SqsException e) {
-                LOG.error(e.awsErrorDetails().errorMessage());
-                System.exit(1);
+                    sqsBackoff.doNotRetry();
+                } catch (SqsException e) {
+                    sqsBackoff.errorOccurred();
+                    if (sqsBackoff.getNumberOfTriesLeft() == 0)
+                        LOG.error("Error reading from SQS: {}", e.awsErrorDetails().errorMessage());
+                }
             }
+
+
+//            try {
+//                ReceiveMessageRequest receiveMessageRequest = ReceiveMessageRequest.builder()
+//                        .queueUrl(sqsOptions.getSqsUrl())
+//                        .maxNumberOfMessages(sqsOptions.getMaximumMessages())
+//                        .visibilityTimeout((int) sqsOptions.getVisibilityTimeout().getSeconds())
+//                        .waitTimeSeconds((int) sqsOptions.getWaitTime().getSeconds())
+//                        .build();
+//
+//                messages.addAll(sqsClient.receiveMessage(receiveMessageRequest).messages());
+//            } catch (SqsException e) {
+//                LOG.error("Error reading from SQS: {}", e.awsErrorDetails().errorMessage());
+//            }
 
             // read each message as S3 event message
             List<S3EventNotification.S3EventNotificationRecord> s3EventNotificationRecords = messages.stream()
-                    .map(this::getS3EventMessages)
+                    .map(this::convertS3EventMessages)
                     .collect(Collectors.toList());
 
 
@@ -81,14 +102,22 @@ public class SqsWorker implements Runnable {
                 try {
                     Thread.sleep(s3SourceConfig.getSqsOptions().getPollDelay().toMillis());
                 } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    LOG.error("Thread is interrupted while polling.", e);
                 }
             }
         } while (true);
     }
 
-    private S3EventNotification.S3EventNotificationRecord getS3EventMessages(Message message) {
-        return objectMapper.convertValue(message, S3EventNotification.S3EventNotificationRecord.class);
+    private ReceiveMessageRequest createReceiveMessageRequest() {
+        return ReceiveMessageRequest.builder()
+                .queueUrl(sqsOptions.getSqsUrl())
+                .maxNumberOfMessages(sqsOptions.getMaximumMessages())
+                .visibilityTimeout((int) sqsOptions.getVisibilityTimeout().getSeconds())
+                .waitTimeSeconds((int) sqsOptions.getWaitTime().getSeconds())
+                .build();
     }
 
+    private S3EventNotification.S3EventNotificationRecord convertS3EventMessages(final Message message) {
+        return objectMapper.convertValue(message, S3EventNotification.S3EventNotificationRecord.class);
+    }
 }

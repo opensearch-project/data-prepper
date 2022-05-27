@@ -13,11 +13,11 @@ import jakarta.validation.constraints.NotBlank;
 import java.time.Duration;
 
 public class SqsOptions {
-    private final int DEFAULT_MAXIMUM_MESSAGES = 10;
-    private final int DEFAULT_VISIBILITY_TIMEOUT_SECONDS = 30;
-    private final int DEFAULT_WAIT_TIME_SECONDS = 0;
-    private final int DEFAULT_POLL_DELAY_SECONDS = 0;
-    private final int DEFAULT_THREAD_COUNT = 1;
+    private static final int DEFAULT_MAXIMUM_MESSAGES = 10;
+    private static final Duration DEFAULT_VISIBILITY_TIMEOUT_SECONDS = Duration.ofSeconds(30);
+    private static final Duration DEFAULT_WAIT_TIME_SECONDS = Duration.ofSeconds(20);
+    private static final Duration DEFAULT_POLL_DELAY_SECONDS = Duration.ofSeconds(0);
+    private static final int DEFAULT_THREAD_COUNT = 1;
 
     @JsonProperty("queue_url")
     @NotBlank(message = "SQS URL cannot be null or empty")
@@ -29,14 +29,14 @@ public class SqsOptions {
     @JsonProperty("visibility_timeout")
     @Min(0)
     @Max(43200)
-    private Duration visibilityTimeout = Duration.ofSeconds(DEFAULT_VISIBILITY_TIMEOUT_SECONDS);
+    private Duration visibilityTimeout = DEFAULT_VISIBILITY_TIMEOUT_SECONDS;
 
     @JsonProperty("wait_time")
     @Max(20)
-    private Duration waitTime = Duration.ofSeconds(DEFAULT_WAIT_TIME_SECONDS);
+    private Duration waitTime = DEFAULT_WAIT_TIME_SECONDS;
 
     @JsonProperty("poll_delay")
-    private Duration pollDelay = Duration.ofSeconds(DEFAULT_POLL_DELAY_SECONDS);
+    private Duration pollDelay = DEFAULT_POLL_DELAY_SECONDS;
 
     @JsonProperty("thread_count")
     private int threadCount = DEFAULT_THREAD_COUNT;
