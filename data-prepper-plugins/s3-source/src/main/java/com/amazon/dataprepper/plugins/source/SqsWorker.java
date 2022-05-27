@@ -64,20 +64,6 @@ public class SqsWorker implements Runnable {
                 }
             }
 
-
-//            try {
-//                ReceiveMessageRequest receiveMessageRequest = ReceiveMessageRequest.builder()
-//                        .queueUrl(sqsOptions.getSqsUrl())
-//                        .maxNumberOfMessages(sqsOptions.getMaximumMessages())
-//                        .visibilityTimeout((int) sqsOptions.getVisibilityTimeout().getSeconds())
-//                        .waitTimeSeconds((int) sqsOptions.getWaitTime().getSeconds())
-//                        .build();
-//
-//                messages.addAll(sqsClient.receiveMessage(receiveMessageRequest).messages());
-//            } catch (SqsException e) {
-//                LOG.error("Error reading from SQS: {}", e.awsErrorDetails().errorMessage());
-//            }
-
             // read each message as S3 event message
             List<S3EventNotification.S3EventNotificationRecord> s3EventNotificationRecords = messages.stream()
                     .map(this::convertS3EventMessages)

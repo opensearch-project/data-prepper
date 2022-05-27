@@ -31,8 +31,6 @@ class S3SourceTest {
     private BlockingBuffer<Record<Event>> testBuffer;
     private PluginMetrics pluginMetrics;
     private S3SourceConfig s3SourceConfig;
-    private AwsAuthenticationOptions awsAuthenticationOptions;
-    private SqsOptions sqsOptions;
 
 
     @BeforeEach
@@ -40,22 +38,7 @@ class S3SourceTest {
         testBuffer = getBuffer();
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
 
-        awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
-        when(awsAuthenticationOptions.getAwsRegion()).thenReturn("us-east-1");
-        when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn(null);
-
-        sqsOptions = mock(SqsOptions.class);
-        when(sqsOptions.getMaximumMessages()).thenReturn(10);
-        when(sqsOptions.getSqsUrl()).thenReturn("https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue");
-        when(sqsOptions.getThreadCount()).thenReturn(1);
-        when(sqsOptions.getPollDelay()).thenReturn(Duration.ofSeconds(10));
-        when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(10));
-        when(sqsOptions.getWaitTime()).thenReturn(Duration.ofSeconds(10));
-
         s3SourceConfig = mock(S3SourceConfig.class);
-        when(s3SourceConfig.getNotificationType()).thenReturn(NotificationTypeOption.SQS);
-        when(s3SourceConfig.getAWSAuthentication()).thenReturn(awsAuthenticationOptions);
-        when(s3SourceConfig.getSqsOptions()).thenReturn(sqsOptions);
 
         s3Source = new S3Source(pluginMetrics, s3SourceConfig);
     }
