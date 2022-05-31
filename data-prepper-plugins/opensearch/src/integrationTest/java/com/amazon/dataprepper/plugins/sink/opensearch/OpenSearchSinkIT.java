@@ -27,6 +27,7 @@ import org.junit.Assert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -42,6 +43,7 @@ import org.opensearch.common.xcontent.XContentType;
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -55,6 +57,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -156,7 +159,7 @@ public class OpenSearchSinkIT {
 
   @ParameterizedTest
   @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
-  public void testOutputRawSpanDefault(Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+  public void testOutputRawSpanDefault(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
     final String testDoc1 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
     final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_2);
     final ObjectMapper mapper = new ObjectMapper();
@@ -221,7 +224,7 @@ public class OpenSearchSinkIT {
 
   @ParameterizedTest
   @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
-  public void testOutputRawSpanWithDLQ(Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+  public void testOutputRawSpanWithDLQ(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
     // TODO: write test case
     final String testDoc1 = readDocFromFile("raw-span-error.json");
     final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
@@ -297,7 +300,7 @@ public class OpenSearchSinkIT {
 
   @ParameterizedTest
   @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
-  public void testOutputServiceMapDefault(Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+  public void testOutputServiceMapDefault(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
     final String testDoc = readDocFromFile(DEFAULT_SERVICE_MAP_FILE);
     final ObjectMapper mapper = new ObjectMapper();
     @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
@@ -372,7 +375,7 @@ public class OpenSearchSinkIT {
     MatcherAssert.assertThat((boolean) mappings.get("date_detection"), equalTo(false));
     sink.shutdown();
 
-    String expectedIndexPolicyName = indexAlias + "-policy";
+    final String expectedIndexPolicyName = indexAlias + "-policy";
     if (isOSBundle()) {
       // Check managed index
       await().atMost(1, TimeUnit.SECONDS).untilAsserted(() -> {
@@ -461,7 +464,7 @@ public class OpenSearchSinkIT {
 
   @ParameterizedTest
   @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
-  public void testOutputCustomIndex(Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+  public void testOutputCustomIndex(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
     final String testIndexAlias = "test-alias";
     final String testTemplateFile = Objects.requireNonNull(
             getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
@@ -509,6 +512,51 @@ public class OpenSearchSinkIT {
     MatcherAssert.assertThat(retSources.containsAll(Arrays.asList(expectedContent)), equalTo(true));
     MatcherAssert.assertThat(getDocumentCount(expIndexAlias, "log", "foobar"), equalTo(Integer.valueOf(1)));
     sink.shutdown();
+  }
+
+  @ParameterizedTest
+  @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
+  @Timeout(value = 1, unit = TimeUnit.MINUTES)
+  public void testOutputManagementDisabled(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+    final String testIndexAlias = "test-" + UUID.randomUUID();
+    final String roleName = UUID.randomUUID().toString();
+    final String username = UUID.randomUUID().toString();
+    final String password = UUID.randomUUID().toString();
+    final OpenSearchSecurityAccessor securityAccessor = new OpenSearchSecurityAccessor(client);
+    securityAccessor.createBulkWritingRole(roleName, testIndexAlias + "*");
+    securityAccessor.createUser(username, password, roleName);
+
+    final String testIdField = "someId";
+    final String testId = "foo";
+
+    final List<Record<Object>> testRecords = Collections.singletonList(stringToRecord.apply(generateCustomRecordJson(testIdField, testId)));
+
+    final Map<String, Object> metadata = initializeConfigurationMetadata(false, false, testIndexAlias, null);
+    metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.MANAGEMENT_DISABLED.getValue());
+    metadata.put(ConnectionConfiguration.USERNAME, username);
+    metadata.put(ConnectionConfiguration.PASSWORD, password);
+    metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+    final PluginSetting pluginSetting = generatePluginSettingByMetadata(metadata);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
+
+    final String testTemplateFile = Objects.requireNonNull(
+            getClass().getClassLoader().getResource("management-disabled-index-template.json")).getFile();
+    createIndexTemplate(testIndexAlias, testIndexAlias + "*", testTemplateFile);
+    createIndex(testIndexAlias);
+
+    sink.output(testRecords);
+    final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+    MatcherAssert.assertThat(retSources.size(), equalTo(1));
+    MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+    sink.shutdown();
+
+    // verify metrics
+    final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+    MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
+    // COUNT
+    Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
   }
 
   private Map<String, Object> initializeConfigurationMetadata (final boolean isRaw, final boolean isServiceMap, final String indexAlias,
@@ -640,7 +688,7 @@ public class OpenSearchSinkIT {
             .forEach(indexName -> {
               try {
                 client.performRequest(new Request("DELETE", "/" + indexName));
-              } catch (IOException e) {
+              } catch (final IOException e) {
                 throw new RuntimeException(e);
               }
             });
@@ -654,18 +702,18 @@ public class OpenSearchSinkIT {
     @Override
     public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
       final ObjectMapper objectMapper = new ObjectMapper();
-      Function<String, Record> stringModel = jsonString -> {
+      final Function<String, Record> stringModel = jsonString -> {
         try {
           // Normalize the JSON string.
           return new Record(objectMapper.writeValueAsString(objectMapper.readValue(jsonString, Map.class)));
-        } catch (JsonProcessingException e) {
+        } catch (final JsonProcessingException e) {
           throw new RuntimeException(e);
         }
       };
-      Function<String, Record> eventModel = jsonString -> {
+      final Function<String, Record> eventModel = jsonString -> {
         try {
           return new Record(JacksonEvent.builder().withEventType(EventType.TRACE.toString()).withData(objectMapper.readValue(jsonString, Map.class)).build());
-        } catch (JsonProcessingException e) {
+        } catch (final JsonProcessingException e) {
           throw new RuntimeException(e);
         }
       };
@@ -674,5 +722,23 @@ public class OpenSearchSinkIT {
               Arguments.of(eventModel)
       );
     }
+  }
+
+  private void createIndex(final String indexName) throws IOException {
+    final Request request = new Request(HttpMethod.PUT, indexName);
+    final Response response = client.performRequest(request);
+  }
+
+  private void createIndexTemplate(final String templateName, final String indexPattern, final String fileName) throws IOException {
+    final ObjectMapper objectMapper = new ObjectMapper();
+    final Map<String, Object> templateJson = objectMapper.readValue(new FileInputStream(fileName), Map.class);
+
+    templateJson.put("index_patterns", indexPattern);
+
+    final Request request = new Request(HttpMethod.PUT, "_template/" + templateName);
+
+    final String createTemplateJson = objectMapper.writeValueAsString(templateJson);
+    request.setJsonEntity(createTemplateJson);
+    final Response response = client.performRequest(request);
   }
 }
