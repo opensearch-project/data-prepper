@@ -143,7 +143,7 @@ public abstract class IndexManager {
         return LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(UTC_ZONE_ID);
     }
 
-    public final boolean checkISMEnabled() throws IOException {
+    final boolean checkISMEnabled() throws IOException {
         final ClusterGetSettingsRequest request = new ClusterGetSettingsRequest();
         request.includeDefaults(true);
         final ClusterGetSettingsResponse response = restHighLevelClient.cluster().getSettings(request, RequestOptions.DEFAULT);
@@ -151,7 +151,27 @@ public abstract class IndexManager {
         return enabled != null && enabled.equals("true");
     }
 
-    public final void checkAndCreateIndexTemplate(final boolean isISMEnabled, final String ismPolicyId) throws IOException {
+    /**
+     * Setups anything required for the index.
+     *
+     * @throws IOException
+     */
+    public void setupIndex() throws IOException {
+        checkAndCreateIndexTemplate();
+        checkAndCreateIndex();
+    }
+
+    private void checkAndCreateIndexTemplate() throws IOException {
+        final boolean isISMEnabled = checkISMEnabled();
+        final Optional<String> policyIdOptional = isISMEnabled ?
+                ismPolicyManagementStrategy.checkAndCreatePolicy() :
+                Optional.empty();
+        if (!openSearchSinkConfiguration.getIndexConfiguration().getIndexTemplate().isEmpty()) {
+            checkAndCreateIndexTemplate(isISMEnabled, policyIdOptional.orElse(null));
+        }
+    }
+
+    final void checkAndCreateIndexTemplate(final boolean isISMEnabled, final String ismPolicyId) throws IOException {
         //If index prefix has a ending dash, then remove it to avoid two consecutive dashes.
         final String indexPrefixWithoutTrailingDash = indexPrefix.replaceAll("-$", "");
         final String indexTemplateName = indexPrefixWithoutTrailingDash  + "-index-template";
@@ -173,7 +193,7 @@ public abstract class IndexManager {
         restHighLevelClient.indices().putTemplate(putIndexTemplateRequest, RequestOptions.DEFAULT);
     }
 
-    public final Optional<String> checkAndCreatePolicy() throws IOException {
+    final Optional<String> checkAndCreatePolicy() throws IOException {
         return ismPolicyManagementStrategy.checkAndCreatePolicy();
     }
 

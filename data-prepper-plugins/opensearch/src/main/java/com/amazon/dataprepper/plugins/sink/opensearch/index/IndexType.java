@@ -14,7 +14,8 @@ import java.util.stream.Collectors;
 public enum IndexType {
     TRACE_ANALYTICS_RAW("trace-analytics-raw"),
     TRACE_ANALYTICS_SERVICE_MAP("trace-analytics-service-map"),
-    CUSTOM("custom");
+    CUSTOM("custom"),
+    MANAGEMENT_DISABLED("management_disabled");
 
     private final String value;
 
@@ -32,7 +33,7 @@ public enum IndexType {
         this.value = value;
     }
 
-    String getValue(){
+    public String getValue(){
         return value;
     }
 

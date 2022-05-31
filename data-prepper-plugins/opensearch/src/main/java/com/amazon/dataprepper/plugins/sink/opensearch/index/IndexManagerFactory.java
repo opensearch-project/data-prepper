@@ -20,6 +20,8 @@ public class IndexManagerFactory {
                 return new TraceAnalyticsRawIndexManager(restHighLevelClient, openSearchSinkConfiguration);
             case TRACE_ANALYTICS_SERVICE_MAP:
                 return new TraceAnalyticsServiceMapIndexManager(restHighLevelClient, openSearchSinkConfiguration);
+            case MANAGEMENT_DISABLED:
+                return new ManagementDisabledIndexManager(restHighLevelClient, openSearchSinkConfiguration);
             default:
                 return new DefaultIndexManager(restHighLevelClient, openSearchSinkConfiguration);
         }
@@ -69,5 +71,16 @@ public class IndexManagerFactory {
             this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(restHighLevelClient);
         }
 
+    }
+
+    private class ManagementDisabledIndexManager extends IndexManager {
+        protected ManagementDisabledIndexManager(final RestHighLevelClient restHighLevelClient, final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
+            super(restHighLevelClient, openSearchSinkConfiguration);
+        }
+
+        @Override
+        public void setupIndex() {
+
+        }
     }
 }

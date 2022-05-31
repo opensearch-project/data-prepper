@@ -84,7 +84,7 @@ Default is null.
 
 - `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:\<port\>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
 
-- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`], which represents an index type. Defaults to `custom`. This index_type instructs Sink plugin what type of data it is handling. 
+- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management-disabled`], which represents an index type. Defaults to `custom`. This index_type instructs Sink plugin what type of data it is handling. 
 
 ```
     APM trace analytics raw span data type example:
@@ -143,6 +143,22 @@ all the records received from the upstream prepper at a time will be sent as a s
 If a single record turns out to be larger than the set bulk size, it will be sent as a bulk request of a single document.
 
 - `ism_policy_file` (optional): A String of absolute file path for an ISM (Index State Management) policy JSON file. This policy file is effective only when there is no built-in policy file for the index type. For example, `custom` index type is currently the only one without a built-in policy file, thus it would use the policy file here if it's provided through this parameter. OpenSearch documentation has more about [ISM policies.](https://opensearch.org/docs/latest/im-plugin/ism/policies/)
+
+### Management Disabled Index Type
+
+Normally Data Prepper manages the indices it needs within OpenSearch. When `index_type` is set to
+`management_disabled`, Data Prepper will not perform any index management on your behalf. You must
+provide your own mechanism for creating the indices with the correct mappings applied. Data Prepper
+will not use ISM, create templates, or even validate that the index exists. This setting can be
+useful when you want to minimize the OpenSearch permissions which you grant to Data Prepper. But,
+you should only use it if you are proficient with OpenSearch index management.
+
+With management disabled, Data Prepper can run with only being granted the
+`["indices:data/write/index", "indices:data/write/bulk*", "indices:admin/mapping/put"]` permissions on
+the desired indices. It is strongly recommend to retain the `"indices:admin/mapping/put"`
+permission. If Data Prepper lacks this permission, then it cannot write any documents
+that rely on dynamic mapping. You would need to take great care to ensure that every possible field
+is explicitly mapped by your index template.
 
 ## Metrics
 
