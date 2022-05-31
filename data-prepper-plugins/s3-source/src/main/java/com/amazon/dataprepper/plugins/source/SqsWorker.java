@@ -30,9 +30,7 @@ public class SqsWorker implements Runnable {
     private final SqsClient sqsClient;
     private final S3Client s3Client;
     private final ObjectMapper objectMapper;
-
-    SqsOptions sqsOptions;
-    private BackoffUtils sqsBackoff;
+    private final SqsOptions sqsOptions;
 
     public SqsWorker(final SqsClient sqsClient, final S3Client s3Client, final S3SourceConfig s3SourceConfig) {
         this.s3SourceConfig = s3SourceConfig;
@@ -45,7 +43,7 @@ public class SqsWorker implements Runnable {
     @Override
     public void run() {
 
-        sqsBackoff = new BackoffUtils(NUMBER_OF_RETRIES, TIME_TO_WAIT);
+        BackoffUtils sqsBackoff = new BackoffUtils(NUMBER_OF_RETRIES, TIME_TO_WAIT);
 
         do {
             // read messages from sqs
@@ -94,7 +92,7 @@ public class SqsWorker implements Runnable {
         } while (true);
     }
 
-    private ReceiveMessageRequest createReceiveMessageRequest() {
+    ReceiveMessageRequest createReceiveMessageRequest() {
         return ReceiveMessageRequest.builder()
                 .queueUrl(sqsOptions.getSqsUrl())
                 .maxNumberOfMessages(sqsOptions.getMaximumMessages())

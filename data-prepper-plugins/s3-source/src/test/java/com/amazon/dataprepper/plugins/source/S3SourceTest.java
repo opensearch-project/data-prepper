@@ -10,18 +10,13 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
-import com.amazon.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
-import com.amazon.dataprepper.plugins.source.configuration.NotificationTypeOption;
-import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 class S3SourceTest {
     private final String PLUGIN_NAME = "s3";
