@@ -46,7 +46,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Supplier;
 
 @DataPrepperPlugin(name = "opensearch", pluginType = Sink.class)
@@ -98,18 +97,12 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
     LOG.info("Initializing OpenSearch sink");
     restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
     indexManager = indexManagerFactory.getIndexManager(indexType, restHighLevelClient, openSearchSinkConfig);
-    final boolean isISMEnabled = indexManager.checkISMEnabled();
-    final Optional<String> policyIdOptional = isISMEnabled ? indexManager.checkAndCreatePolicy() :
-            Optional.empty();
-    if (!openSearchSinkConfig.getIndexConfiguration().getIndexTemplate().isEmpty()) {
-      indexManager.checkAndCreateIndexTemplate(isISMEnabled, policyIdOptional.orElse(null));
-    }
     final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();
     if (dlqFile != null) {
       dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
-    indexManager.checkAndCreateIndex();
 
+    indexManager.setupIndex();
 
     OpenSearchTransport transport = new RestClientTransport(restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
     openSearchClient = new OpenSearchClient(transport);
