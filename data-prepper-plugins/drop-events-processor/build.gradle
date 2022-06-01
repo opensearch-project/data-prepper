@@ -10,7 +10,7 @@ plugins {
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:common')
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.2.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.3'
 }
 
 jacocoTestCoverageVerification {
