@@ -5,8 +5,8 @@
 
 package com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate;
 
-import com.amazonaws.arn.Arn;
-import com.amazonaws.services.certificatemanager.model.InvalidArnException;
+import software.amazon.awssdk.arns.Arn;
+import software.amazon.awssdk.services.acm.model.InvalidArnException;
 
 public class CertificateProviderConfig {
     private static final String S3_PREFIX = "s3://";
@@ -24,7 +24,7 @@ public class CertificateProviderConfig {
             try {
                 Arn.fromString(acmCertificateArn);
             } catch(Exception e) {
-                throw new InvalidArnException("Invalid ARN format for acmCertificateArn");
+                throw InvalidArnException.builder().message("Invalid ARN format for acmCertificateArn").build();
             }
         }
         this.awsRegion = awsRegion;
