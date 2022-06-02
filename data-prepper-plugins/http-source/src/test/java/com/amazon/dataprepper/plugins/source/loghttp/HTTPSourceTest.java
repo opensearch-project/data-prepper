@@ -168,6 +168,7 @@ class HTTPSourceTest {
         lenient().when(sourceConfig.getThreadCount()).thenReturn(200);
         lenient().when(sourceConfig.getMaxConnectionCount()).thenReturn(500);
         lenient().when(sourceConfig.getMaxPendingRequests()).thenReturn(1024);
+        lenient().when(sourceConfig.hasHealthCheckService()).thenReturn(true);
 
         MetricsTestUtil.initMetrics();
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
@@ -243,6 +244,22 @@ class HTTPSourceTest {
         final Measurement payloadSizeMax = MetricsTestUtil.getMeasurementFromList(
                 payloadSizeSummaryMeasurements, Statistic.MAX);
         Assertions.assertEquals(testPayloadSize, payloadSizeMax.getValue());
+    }
+
+    @Test
+    public void testHealthCheck() {
+        // Prepare
+        HTTPSourceUnderTest.start(testBuffer);
+
+        // When
+        WebClient.of().execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:2021")
+                                .method(HttpMethod.GET)
+                                .path("/health")
+                                .build())
+                .aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
     }
 
     @Test

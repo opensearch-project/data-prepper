@@ -24,6 +24,8 @@ public class HTTPSourceConfig {
     static final int DEFAULT_THREAD_COUNT = 200;
     static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
     static final int DEFAULT_MAX_PENDING_REQUESTS = 1024;
+    static final boolean DEFAULT_HEALTH_CHECK = false;
+    static final String HEALTH_CHECK_SERVICE = "health_check_service";
 
     @JsonProperty("port")
     @Min(0)
@@ -57,6 +59,9 @@ public class HTTPSourceConfig {
 
     @JsonProperty("ssl_key_password")
     private String sslKeyPassword;
+
+    @JsonProperty(HEALTH_CHECK_SERVICE)
+    private boolean healthCheckService = DEFAULT_HEALTH_CHECK;
 
     private PluginModel authentication;
 
@@ -113,5 +118,9 @@ public class HTTPSourceConfig {
 
     public PluginModel getAuthentication() {
         return authentication;
+    }
+
+    public boolean hasHealthCheckService() {
+        return healthCheckService;
     }
 }

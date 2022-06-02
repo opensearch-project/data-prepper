@@ -21,6 +21,7 @@ import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.amazon.dataprepper.plugins.source.loghttp.certificate.CertificateProviderFactory;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
+import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 import com.linecorp.armeria.server.throttling.ThrottlingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +42,7 @@ public class HTTPSource implements Source<Record<Log>> {
     private final ArmeriaHttpAuthenticationProvider authenticationProvider;
     private Server server;
     private final PluginMetrics pluginMetrics;
+    private static final String HTTP_HEALTH_CHECK_PATH = "/health";
 
     @DataPrepperPluginConstructor
     public HTTPSource(final HTTPSourceConfig sourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
@@ -108,7 +110,11 @@ public class HTTPSource implements Source<Record<Log>> {
             sb.decorator(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
             final LogHTTPService logHTTPService = new LogHTTPService(requestTimeoutInMillis, buffer, pluginMetrics);
             sb.annotatedService(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI, logHTTPService);
-            // TODO: attach HealthCheckService
+
+            if (sourceConfig.hasHealthCheckService()) {
+                LOG.info("HTTP source health check is enabled");
+                sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.of());
+            }
 
             server = sb.build();
         }
