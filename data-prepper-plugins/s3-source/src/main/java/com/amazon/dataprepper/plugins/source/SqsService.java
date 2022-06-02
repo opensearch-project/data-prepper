@@ -5,7 +5,6 @@
 
 package com.amazon.dataprepper.plugins.source;
 
-import com.sun.tools.javac.util.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
