@@ -140,7 +140,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
             Thread.currentThread().interrupt();
             throw new RuntimeException(ex);
         }
-        LOG.info("Started otel_trace_source...");
+        LOG.info("Started otel_trace_source on port " + oTelTraceSourceConfig.getPort() + "...");
     }
 
     @Override

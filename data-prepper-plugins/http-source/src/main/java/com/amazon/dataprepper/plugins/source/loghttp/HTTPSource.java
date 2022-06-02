@@ -125,7 +125,7 @@ public class HTTPSource implements Source<Record<Log>> {
             Thread.currentThread().interrupt();
             throw new RuntimeException(ex);
         }
-        LOG.info("Started http source...");
+        LOG.info("Started http source on port " + sourceConfig.getPort() + "...");
     }
 
     @Override
