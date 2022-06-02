@@ -21,12 +21,13 @@ source:
 
 ## Configurations
 
-* port(Optional) => An `int` between 0 and 65535 represents the port source is running on. Default is ```2021```.
-* request_timeout(Optional) => An `int` larger than 0 represents request timeout in millis. Default is ```10_000```. 
-* thread_count(Optional) => An `int` larger than 0 represents the number of threads to keep in the ScheduledThreadPool. Default is `200`.
-* max_connection_count(Optional) => An `int` larger than 0 represents the maximum allowed number of open connections. Default is `500`.
-* max_pending_requests(Optional) => An `int` larger than 0 represents the maximum allowed number of tasks in the ScheduledThreadPool work queue. Default is `1024`.
-* authentication(Optional) => An authentication configuration. By default, this runs an unauthenticated server. See below for more information.
+* port (Optional) => An `int` between 0 and 65535 represents the port source is running on. Default is ```2021```.
+* health_check_service (Optional) => A `boolean` that determines if a `/health` endpoint on the defined port will be home to a health check. Default is `false`
+* request_timeout (Optional) => An `int` larger than 0 represents request timeout in millis. Default is ```10_000```. 
+* thread_count (Optional) => An `int` larger than 0 represents the number of threads to keep in the ScheduledThreadPool. Default is `200`.
+* max_connection_count (Optional) => An `int` larger than 0 represents the maximum allowed number of open connections. Default is `500`.
+* max_pending_requests (Optional) => An `int` larger than 0 represents the maximum allowed number of tasks in the ScheduledThreadPool work queue. Default is `1024`.
+* authentication (Optional) => An authentication configuration. By default, this runs an unauthenticated server. See below for more information.
 
 ### Authentication Configurations
 
