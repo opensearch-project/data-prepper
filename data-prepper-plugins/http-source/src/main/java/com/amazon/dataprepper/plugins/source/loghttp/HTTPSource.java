@@ -112,7 +112,7 @@ public class HTTPSource implements Source<Record<Log>> {
             sb.annotatedService(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI, logHTTPService);
 
             if (sourceConfig.hasHealthCheckService()) {
-                LOG.info("Health check is enabled");
+                LOG.info("HTTP source health check is enabled");
                 sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.of());
             }
 
