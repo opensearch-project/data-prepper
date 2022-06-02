@@ -12,6 +12,7 @@ import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
 import com.amazon.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
 public class S3SourceConfig {
@@ -37,6 +38,10 @@ public class S3SourceConfig {
     @Valid
     private AwsAuthenticationOptions awsAuthenticationOptions;
 
+    @JsonProperty("thread_count")
+    @Min(0)
+    private int threadCount;
+
     public NotificationTypeOption getNotificationType() {
         return notificationType;
     }
@@ -53,7 +58,11 @@ public class S3SourceConfig {
         return sqsOptions;
     }
 
-    public AwsAuthenticationOptions getAWSAuthentication() {
+    public AwsAuthenticationOptions getAWSAuthenticationOptions() {
         return awsAuthenticationOptions;
+    }
+
+    public int getThreadCount() {
+        return threadCount;
     }
 }
