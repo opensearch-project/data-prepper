@@ -8,8 +8,10 @@ package com.amazon.dataprepper.plugins.source;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.record.Record;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Objects;
 
 /**
  * Accumulates {@link Record} objects before placing them into a Data Prepper
@@ -20,26 +22,30 @@ import java.util.Collection;
  */
 class BufferAccumulator<T extends Record<?>> {
     private final Buffer<T> buffer;
-    private final int recordsToAccumulate;
-    private final int timeoutMillis;
+    private final int numberOfRecordsToAccumulate;
+    private final int bufferTimeoutMillis;
 
     private final Collection<T> recordsAccumulated;
 
-    private BufferAccumulator(final Buffer<T> buffer, final int recordsToAccumulate, final int timeoutMillis) {
-        this.buffer = buffer;
-        this.recordsToAccumulate = recordsToAccumulate;
-        this.timeoutMillis = timeoutMillis;
+    private BufferAccumulator(final Buffer<T> buffer, final int numberOfRecordsToAccumulate, final Duration bufferTimeout) {
+        this.buffer = Objects.requireNonNull(buffer, "buffer must be non-null.");
+        this.numberOfRecordsToAccumulate = numberOfRecordsToAccumulate;
+        Objects.requireNonNull(bufferTimeout, "bufferTimeout must be non-null.");
+        this.bufferTimeoutMillis = (int) bufferTimeout.toMillis();
 
-        recordsAccumulated = new ArrayList<>(recordsToAccumulate);
+        if(numberOfRecordsToAccumulate < 1)
+            throw new IllegalArgumentException("numberOfRecordsToAccumulate must be greater than zero.");
+
+        recordsAccumulated = new ArrayList<>(numberOfRecordsToAccumulate);
     }
 
-    static <T extends Record<?>> BufferAccumulator<T> create(final Buffer<T> buffer, final int recordsToAccumulate, final int timeoutMillis) {
-        return new BufferAccumulator<T>(buffer, recordsToAccumulate, timeoutMillis);
+    static <T extends Record<?>> BufferAccumulator<T> create(final Buffer<T> buffer, final int recordsToAccumulate, final Duration bufferTimeout) {
+        return new BufferAccumulator<T>(buffer, recordsToAccumulate, bufferTimeout);
     }
 
     void add(final T record) throws Exception {
         recordsAccumulated.add(record);
-        if (recordsAccumulated.size() == recordsToAccumulate) {
+        if (recordsAccumulated.size() == numberOfRecordsToAccumulate) {
             flushAccumulatedToBuffer();
         }
     }
@@ -50,7 +56,7 @@ class BufferAccumulator<T extends Record<?>> {
 
     private void flushAccumulatedToBuffer() throws Exception {
         if (recordsAccumulated.size() > 0) {
-            buffer.writeAll(recordsAccumulated, timeoutMillis);
+            buffer.writeAll(recordsAccumulated, bufferTimeoutMillis);
             recordsAccumulated.clear();
         }
     }

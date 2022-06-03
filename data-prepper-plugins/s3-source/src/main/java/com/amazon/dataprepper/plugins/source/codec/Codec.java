@@ -13,8 +13,8 @@ import java.io.InputStream;
 import java.util.function.Consumer;
 
 /**
- * A codec parsing S3 objects. Each implementation of this class should
- * support parsing a specific type of S3 object. See sub-classes for examples.
+ * A codec parsing data through an input stream. Each implementation of this class should
+ * support parsing a specific type or format of data. See sub-classes for examples.
  */
 public interface Codec {
     /**

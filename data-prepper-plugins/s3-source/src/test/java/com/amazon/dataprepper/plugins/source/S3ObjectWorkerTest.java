@@ -24,6 +24,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.Random;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -51,7 +52,7 @@ class S3ObjectWorkerTest {
     @Mock
     private Codec codec;
 
-    private int bufferTimeoutInMillis;
+    private Duration bufferTimeout;
     private int recordsToAccumulate;
 
     @Mock
@@ -62,7 +63,7 @@ class S3ObjectWorkerTest {
     @BeforeEach
     void setUp() {
         final Random random = new Random();
-        bufferTimeoutInMillis = random.nextInt(100) + 100;
+        bufferTimeout = Duration.ofMillis(random.nextInt(100) + 100);
         recordsToAccumulate = random.nextInt(10) + 2;
 
         bucketName = UUID.randomUUID().toString();
@@ -72,7 +73,7 @@ class S3ObjectWorkerTest {
     }
 
     private S3ObjectWorker createObjectUnderTest() {
-        return new S3ObjectWorker(s3Client, buffer, codec, bufferTimeoutInMillis, recordsToAccumulate);
+        return new S3ObjectWorker(s3Client, buffer, codec, bufferTimeout, recordsToAccumulate);
     }
 
     @Test
@@ -112,7 +113,7 @@ class S3ObjectWorkerTest {
 
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
-            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeoutInMillis))
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
                     .thenReturn(bufferAccumulator);
             createObjectUnderTest().parseS3Object(s3ObjectReference);
         }
@@ -135,7 +136,7 @@ class S3ObjectWorkerTest {
 
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
-            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeoutInMillis))
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
                     .thenReturn(bufferAccumulator);
             createObjectUnderTest().parseS3Object(s3ObjectReference);
         }

@@ -17,6 +17,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.io.IOException;
+import java.time.Duration;
 
 /**
  * Class responsible for taking an {@link S3ObjectReference} and creating all the necessary {@link Event}
@@ -28,19 +29,19 @@ class S3ObjectWorker {
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
     private final Codec codec;
-    private final int bufferTimeoutInMillis;
-    private final int recordsToAccumulate;
+    private final Duration bufferTimeout;
+    private final int numberOfRecordsToAccumulate;
 
     public S3ObjectWorker(final S3Client s3Client,
                           final Buffer<Record<Event>> buffer,
                           final Codec codec,
-                          final int bufferTimeoutInMillis,
-                          final int recordsToAccumulate) {
+                          final Duration bufferTimeout,
+                          final int numberOfRecordsToAccumulate) {
         this.s3Client = s3Client;
         this.buffer = buffer;
         this.codec = codec;
-        this.bufferTimeoutInMillis = bufferTimeoutInMillis;
-        this.recordsToAccumulate = recordsToAccumulate;
+        this.bufferTimeout = bufferTimeout;
+        this.numberOfRecordsToAccumulate = numberOfRecordsToAccumulate;
     }
 
     void parseS3Object(final S3ObjectReference s3ObjectPointer) throws IOException {
@@ -49,7 +50,7 @@ class S3ObjectWorker {
                 .key(s3ObjectPointer.getKey())
                 .build();
 
-        final BufferAccumulator bufferAccumulator = BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeoutInMillis);
+        final BufferAccumulator bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
 
         try (final ResponseInputStream<GetObjectResponse> object = s3Client.getObject(getObjectRequest)) {
             codec.parse(object, record -> {

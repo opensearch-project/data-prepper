@@ -15,6 +15,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -24,6 +25,7 @@ import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -38,16 +40,37 @@ class BufferAccumulatorTest {
     @Mock
     private Buffer<Record<?>> buffer;
     private int recordsToAccumulate;
+    private Duration bufferTimeout;
     private int timeoutMillis;
 
     @BeforeEach
     void setUp() {
         recordsToAccumulate = 20;
         timeoutMillis = 100;
+        bufferTimeout = Duration.ofMillis(timeoutMillis);
     }
 
     private BufferAccumulator createObjectUnderTest() {
-        return BufferAccumulator.create(buffer, recordsToAccumulate, timeoutMillis);
+        return BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout);
+    }
+
+    @Test
+    void constructor_should_throw_if_buffer_is_null() {
+        buffer = null;
+        assertThrows(NullPointerException.class, this::createObjectUnderTest);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, -1, -2, Integer.MIN_VALUE})
+    void constructor_should_throw_if_numberOfRecordsToAccumulate_is_not_positive(int nonPositiveNumber) {
+        recordsToAccumulate = nonPositiveNumber;
+        assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    void constructor_should_throw_if_bufferTimeout_is_null() {
+        bufferTimeout = null;
+        assertThrows(NullPointerException.class, this::createObjectUnderTest);
     }
 
     @ParameterizedTest
