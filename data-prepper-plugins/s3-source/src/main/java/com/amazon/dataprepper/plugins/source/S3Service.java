@@ -19,12 +19,12 @@ public class S3Service {
     private S3SourceConfig s3SourceConfig;
     private S3Client s3Client;
 
-    public S3Service(S3SourceConfig s3SourceConfig) {
+    public S3Service(final S3SourceConfig s3SourceConfig) {
         this.s3SourceConfig = s3SourceConfig;
         this.s3Client = createS3Client(StsClient.create());
     }
 
-    S3ObjectReference addS3Object(S3ObjectReference s3ObjectReference) {
+    S3ObjectReference addS3Object(final S3ObjectReference s3ObjectReference) {
         // TODO: should return message id and receipt handle if successfully converted to event
         return null;
     }

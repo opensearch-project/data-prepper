@@ -22,7 +22,7 @@ public class SqsService {
 
     private Thread sqsWorkerThread;
 
-    public SqsService(S3SourceConfig s3SourceConfig, S3Service s3Accessor) {
+    public SqsService(final S3SourceConfig s3SourceConfig, final S3Service s3Accessor) {
         this.s3SourceConfig = s3SourceConfig;
         this.s3Accessor = s3Accessor;
         this.sqsClient = createSqsClient(StsClient.create());

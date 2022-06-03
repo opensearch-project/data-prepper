@@ -74,7 +74,7 @@ public class SqsWorker implements Runnable {
         }
     }
 
-    S3ObjectReference populateS3Reference(S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord) {
+    S3ObjectReference populateS3Reference(final S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord) {
         return new S3ObjectReference(s3EventNotificationRecord.getS3().getBucket().getName(),
                 s3EventNotificationRecord.getS3().getObject().getKey());
     }
