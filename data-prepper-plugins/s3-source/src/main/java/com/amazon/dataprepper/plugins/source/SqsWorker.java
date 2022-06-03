@@ -6,6 +6,8 @@
 package com.amazon.dataprepper.plugins.source;
 
 import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
+import com.amazon.dataprepper.plugins.source.filter.ObjectCreatedFilter;
+import com.amazon.dataprepper.plugins.source.filter.S3EventFilter;
 import com.amazonaws.services.s3.event.S3EventNotification;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -18,6 +20,7 @@ import software.amazon.awssdk.services.sqs.model.SqsException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class SqsWorker implements Runnable {
@@ -28,12 +31,14 @@ public class SqsWorker implements Runnable {
     private SqsClient sqsClient;
     private S3Service s3Service;
     private SqsOptions sqsOptions;
+    private S3EventFilter objectCreatedFilter;
 
     public SqsWorker(final SqsClient sqsClient, final S3Service s3Service, final S3SourceConfig s3SourceConfig) {
         this.s3SourceConfig = s3SourceConfig;
         this.sqsClient = sqsClient;
         this.s3Service = s3Service;
         sqsOptions = s3SourceConfig.getSqsOptions();
+        objectCreatedFilter = new ObjectCreatedFilter();
     }
 
     @Override
@@ -56,7 +61,8 @@ public class SqsWorker implements Runnable {
             // build s3ObjectPointer from S3EventNotificationRecord if event name starts with ObjectCreated
             List<S3ObjectReference> addedObjects = new ArrayList<>();
             for (Map.Entry<Message, S3EventNotification.S3EventNotificationRecord> entry: s3EventNotificationRecords.entrySet()) {
-                if (entry.getValue().getEventName().startsWith("ObjectCreated")) {
+                Optional<S3EventNotification.S3EventNotificationRecord> filter = objectCreatedFilter.filter(entry.getValue());
+                if(filter.isPresent()) {
                     S3ObjectReference s3ObjectPointer = populateS3Reference(entry.getValue());
                     addedObjects.add(s3Service.addS3Object(s3ObjectPointer));
                 }
