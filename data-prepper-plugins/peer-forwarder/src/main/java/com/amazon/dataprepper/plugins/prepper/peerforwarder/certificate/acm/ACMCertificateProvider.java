@@ -10,8 +10,6 @@ import com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate.model.Ce
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.acm.AcmClient;
-import software.amazon.awssdk.services.acm.model.ExportCertificateRequest;
-import software.amazon.awssdk.services.acm.model.ExportCertificateResponse;
 import software.amazon.awssdk.services.acm.model.GetCertificateRequest;
 import software.amazon.awssdk.services.acm.model.GetCertificateResponse;
 import software.amazon.awssdk.services.acm.model.InvalidArnException;
