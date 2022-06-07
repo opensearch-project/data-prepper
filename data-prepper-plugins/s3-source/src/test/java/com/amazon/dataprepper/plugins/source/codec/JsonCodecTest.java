@@ -61,7 +61,7 @@ class JsonCodecTest {
     }
 
     @Test
-    void parse_with_null_InputStream_throws() throws IOException {
+    void parse_with_null_InputStream_throws() {
         final JsonCodec objectUnderTest = createObjectUnderTest();
 
         assertThrows(NullPointerException.class, () ->
@@ -71,7 +71,7 @@ class JsonCodecTest {
     }
 
     @Test
-    void parse_with_null_Consumer_throws() throws IOException {
+    void parse_with_null_Consumer_throws() {
         final JsonCodec objectUnderTest = createObjectUnderTest();
 
         final InputStream inputStream = mock(InputStream.class);
@@ -143,7 +143,7 @@ class JsonCodecTest {
 
     @ParameterizedTest
     @ArgumentsSource(JsonPermutations.class)
-    void parse_with_InputStream_calls_Consumer_for_arrays_in_Json_permutations(Function<List<Map<String, Object>>, Map<String, Object>> rootJsonGenerator) throws IOException {
+    void parse_with_InputStream_calls_Consumer_for_arrays_in_Json_permutations(final Function<List<Map<String, Object>>, Map<String, Object>> rootJsonGenerator) throws IOException {
         final int numberOfObjects = 10;
         final List<Map<String, Object>> jsonObjects = generateJsonObjectsAsList(numberOfObjects);
 
@@ -202,7 +202,7 @@ class JsonCodecTest {
     static class JsonPermutations implements ArgumentsProvider {
 
         @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext context) throws Exception {
+        public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
             return Stream.of(
                     arguments((Function<List<Map<String, Object>>, Map<String, Object>>) jsonObjects -> {
                         final Map<String, Object> deepestJson = Collections.singletonMap(UUID.randomUUID().toString(), jsonObjects);

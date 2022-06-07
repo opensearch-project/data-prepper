@@ -28,34 +28,30 @@ public class JsonCodec implements Codec {
     private final JsonFactory jsonFactory = new JsonFactory();
 
     @Override
-    public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
+    public void parse(final InputStream inputStream, final Consumer<Record<Event>> eventConsumer) throws IOException {
 
         Objects.requireNonNull(inputStream);
         Objects.requireNonNull(eventConsumer);
 
-        JsonParser jsonParser = jsonFactory.createParser(inputStream);
+        final JsonParser jsonParser = jsonFactory.createParser(inputStream);
 
-        boolean inArrayToParse = false;
         while (!jsonParser.isClosed() && jsonParser.nextToken() != JsonToken.END_OBJECT) {
-
-            if (jsonParser.getCurrentToken() == JsonToken.END_ARRAY) {
-                inArrayToParse = false;
-            }
-
-            if (inArrayToParse) {
-                final Map innerJson = objectMapper.readValue(jsonParser, Map.class);
-
-                final Record<Event> record = createRecord(innerJson);
-                eventConsumer.accept(record);
-            }
-
             if (jsonParser.getCurrentToken() == JsonToken.START_ARRAY) {
-                inArrayToParse = true;
+                parseRecordsArray(jsonParser, eventConsumer);
             }
         }
     }
 
-    private Record<Event> createRecord(Map json) {
+    private void parseRecordsArray(final JsonParser jsonParser, final Consumer<Record<Event>> eventConsumer) throws IOException {
+        while (jsonParser.nextToken() != JsonToken.END_ARRAY) {
+            final Map<String, Object> innerJson = objectMapper.readValue(jsonParser, Map.class);
+
+            final Record<Event> record = createRecord(innerJson);
+            eventConsumer.accept(record);
+        }
+    }
+
+    private Record<Event> createRecord(final Map<String, Object> json) {
         final JacksonEvent event = JacksonEvent.builder()
                 .withEventType("event")
                 .withData(json)
