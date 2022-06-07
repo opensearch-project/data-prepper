@@ -16,8 +16,8 @@ import software.amazon.awssdk.services.sts.StsClient;
 public class S3Service {
     private static final Logger LOG = LoggerFactory.getLogger(S3Service.class);
 
-    private S3SourceConfig s3SourceConfig;
-    private S3Client s3Client;
+    private final S3SourceConfig s3SourceConfig;
+    private final S3Client s3Client;
 
     public S3Service(final S3SourceConfig s3SourceConfig) {
         this.s3SourceConfig = s3SourceConfig;
