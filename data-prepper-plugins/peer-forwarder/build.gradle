@@ -21,11 +21,12 @@ dependencies {
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetryProto}"
     implementation "com.linecorp.armeria:armeria:1.9.2"
     implementation "com.linecorp.armeria:armeria-grpc:1.9.2"
-    implementation 'com.amazonaws:aws-java-sdk-s3'
-    implementation 'com.amazonaws:aws-java-sdk-acm'
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:acm'
     implementation 'software.amazon.awssdk:servicediscovery'
     implementation "commons-io:commons-io:2.11.0"
     implementation "org.apache.commons:commons-lang3:3.12.0"
+    implementation 'commons-codec:commons-codec:1.15'
     implementation "commons-validator:commons-validator:1.7"
     testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"

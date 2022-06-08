@@ -6,17 +6,19 @@
 package com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate.acm;
 
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate.model.Certificate;
-import com.amazonaws.services.certificatemanager.AWSCertificateManager;
-import com.amazonaws.services.certificatemanager.model.GetCertificateRequest;
-import com.amazonaws.services.certificatemanager.model.GetCertificateResult;
-import com.amazonaws.services.certificatemanager.model.InvalidArnException;
-import com.amazonaws.services.certificatemanager.model.RequestInProgressException;
-import com.amazonaws.services.certificatemanager.model.ResourceNotFoundException;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+
+import software.amazon.awssdk.services.acm.AcmClient;
+import software.amazon.awssdk.services.acm.model.GetCertificateRequest;
+import software.amazon.awssdk.services.acm.model.GetCertificateResponse;
+import software.amazon.awssdk.services.acm.model.InvalidArnException;
+import software.amazon.awssdk.services.acm.model.RequestInProgressException;
+import software.amazon.awssdk.services.acm.model.ResourceNotFoundException;
 
 import java.util.UUID;
 
@@ -31,42 +33,42 @@ public class ACMCertificateProviderTest {
     private static final String acmCertificateArn = "arn:aws:acm:us-east-1:account:certificate/1234-567-856456";
     private static final long acmCertIssueTimeOutMillis = 2000L;
     @Mock
-    private AWSCertificateManager  awsCertificateManager;
+    private AcmClient  acmClient;
 
     @Mock
-    private GetCertificateResult getCertificateResult;
+    private GetCertificateResponse getCertificateResponse;
 
     private ACMCertificateProvider acmCertificateProvider;
 
     @Before
     public void beforeEach() {
-        acmCertificateProvider = new ACMCertificateProvider(awsCertificateManager, acmCertificateArn, acmCertIssueTimeOutMillis);
+        acmCertificateProvider = new ACMCertificateProvider(acmClient, acmCertificateArn, acmCertIssueTimeOutMillis);
     }
 
     @Test
     public void getACMCertificateSuccess() {
         final String certificateContent = UUID.randomUUID().toString();
-        when(getCertificateResult.getCertificate()).thenReturn(certificateContent);
-        when(awsCertificateManager.getCertificate(any(GetCertificateRequest.class))).thenReturn(getCertificateResult);
+        when(getCertificateResponse.certificate()).thenReturn(certificateContent);
+        when(acmClient.getCertificate(any(GetCertificateRequest.class))).thenReturn(getCertificateResponse);
         final Certificate certificate = acmCertificateProvider.getCertificate();
         assertThat(certificate.getCertificate(), is(certificateContent));
     }
 
     @Test
     public void getACMCertificateRequestInProgressException() {
-        when(awsCertificateManager.getCertificate(any(GetCertificateRequest.class))).thenThrow(new RequestInProgressException("Request in progress."));
+        when(acmClient.getCertificate(any(GetCertificateRequest.class))).thenThrow(RequestInProgressException.builder().message("Request in progress.").build());
         assertThrows(IllegalStateException.class, () -> acmCertificateProvider.getCertificate());
     }
 
     @Test
     public void getACMCertificateResourceNotFoundException() {
-        when(awsCertificateManager.getCertificate(any(GetCertificateRequest.class))).thenThrow(new ResourceNotFoundException("Resource not found."));
+        when(acmClient.getCertificate(any(GetCertificateRequest.class))).thenThrow(ResourceNotFoundException.builder().message("Resource not found.").build());
         assertThrows(ResourceNotFoundException.class, () -> acmCertificateProvider.getCertificate());
     }
 
     @Test
     public void getACMCertificateInvalidArnException() {
-        when(awsCertificateManager.getCertificate(any(GetCertificateRequest.class))).thenThrow(new InvalidArnException("Invalid certificate arn."));
+        when(acmClient.getCertificate(any(GetCertificateRequest.class))).thenThrow(InvalidArnException.builder().message("Invalid certificate arn.").build());
         assertThrows(InvalidArnException.class, () -> acmCertificateProvider.getCertificate());
     }
 }
