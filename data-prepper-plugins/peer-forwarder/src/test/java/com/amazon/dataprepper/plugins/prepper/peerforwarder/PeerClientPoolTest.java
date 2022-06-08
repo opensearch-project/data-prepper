@@ -58,7 +58,7 @@ public class PeerClientPoolTest {
             PeerClientPool pool = PeerClientPool.getInstance();
             pool.setSsl(true);
 
-            final Path certFilePath = Path.of(PeerClientPoolTest.class.getClassLoader().getResource("test-crt.crt").getPath());
+            final Path certFilePath = new File(PeerClientPoolTest.class.getClassLoader().getResource("test-crt.crt").getFile()).toPath();
             final String certAsString = Files.readString(certFilePath);
             final Certificate certificate = new Certificate(certAsString);
             pool.setCertificate(certificate);
