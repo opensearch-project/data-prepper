@@ -10,6 +10,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,7 +31,7 @@ public class FileCertificateProviderTest {
 
         final Certificate certificate = fileCertificateProvider.getCertificate();
 
-        final Path certFilePath = Path.of(certificateFilePath);
+        final Path certFilePath = new File(certificateFilePath).toPath();
         final String certAsString = Files.readString(certFilePath);
 
         assertThat(certificate.getCertificate(), is(certAsString));
