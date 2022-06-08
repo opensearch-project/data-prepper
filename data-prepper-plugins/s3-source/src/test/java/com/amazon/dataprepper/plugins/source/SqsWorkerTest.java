@@ -9,8 +9,6 @@ import com.amazon.dataprepper.plugins.source.configuration.AwsAuthenticationOpti
 import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
 import com.amazon.dataprepper.plugins.source.filter.ObjectCreatedFilter;
 import com.amazon.dataprepper.plugins.source.filter.S3EventFilter;
-import com.amazonaws.services.s3.event.S3EventNotification;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -22,14 +20,13 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
 import java.util.Collections;
-import java.util.Optional;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class SqsWorkerTest {
     private SqsWorker sqsWorker;
@@ -56,16 +53,6 @@ class SqsWorkerTest {
         when(s3SourceConfig.getSqsOptions()).thenReturn(sqsOptions);
 
         sqsWorker = new SqsWorker(sqsClient, s3Service, s3SourceConfig);
-    }
-
-    @Test
-    void getMessagesFromSqs_throws_null_pointer_exception_with_dummy_queue_url() {
-        assertThrows(NullPointerException.class, () -> sqsWorker.getMessagesFromSqs());
-    }
-
-    @Test
-    void createReceiveMessageRequest_should_return_ReceiveMessageRequest() {
-        assertThat(sqsWorker.createReceiveMessageRequest(), instanceOf(ReceiveMessageRequest.class));
     }
 
     @Test
@@ -118,7 +105,7 @@ class SqsWorkerTest {
     @ValueSource(strings = {"", "{\"foo\": \"bar\""})
     void processSqsMessages_should_throw_SdkClientException_if_input_is_not_valid_JSON(String inputString) {
         final Message message = mock(Message.class);
-        when(message.body()).thenReturn("{\"foo\": \"bar\"");
+        when(message.body()).thenReturn(inputString);
 
         final ReceiveMessageResponse receiveMessageResponse = mock(ReceiveMessageResponse.class);
         when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(receiveMessageResponse);
@@ -126,6 +113,7 @@ class SqsWorkerTest {
 
         final int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(1));
+        verifyNoInteractions(s3Service);
     }
 
     @ParameterizedTest
@@ -140,42 +128,6 @@ class SqsWorkerTest {
 
         final int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(1));
-    }
-
-    @Test
-    void convertS3EventMessages_convert_message_to_S3EventNotificationRecord() {
-        Message message = mock(Message.class);
-        when(message.body()).thenReturn("{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"us-east-1\"," +
-                "\"eventTime\":\"2022-06-06T18:02:33.495Z\",\"eventName\":\"ObjectCreated:Put\",\"userIdentity\":{\"principalId\":\"AWS:AROAX:xxxxxx\"}," +
-                "\"requestParameters\":{\"sourceIPAddress\":\"99.99.999.99\"},\"responseElements\":{\"x-amz-request-id\":\"ABCD\"," +
-                "\"x-amz-id-2\":\"abcd\"},\"s3\":{\"s3SchemaVersion\":\"1.0\",\"configurationId\":\"s3SourceEventNotification\"," +
-                "\"bucket\":{\"name\":\"bucketName\",\"ownerIdentity\":{\"principalId\":\"ID\"},\"arn\":\"arn:aws:s3:::bucketName\"}," +
-                "\"object\":{\"key\":\"File.gz\",\"size\":72,\"eTag\":\"abcd\",\"sequencer\":\"ABCD\"}}}]}");
-        Optional<S3EventNotification.S3EventNotificationRecord> actualS3EventNotificationRecord = sqsWorker.convertS3EventMessages(message);
-        assertThat(actualS3EventNotificationRecord, instanceOf(S3EventNotification.S3EventNotificationRecord.class));
-        assertThat(actualS3EventNotificationRecord.get().getAwsRegion(), equalTo("us-east-1"));
-        assertThat(actualS3EventNotificationRecord.get().getS3().getBucket().getName(), equalTo("bucketName"));
-        assertThat(actualS3EventNotificationRecord.get().getS3().getObject().getKey(), equalTo("File.gz"));
-    }
-
-    @Test
-    void populateS3Reference_should_return_instance_of_S3ObjectReference() {
-        S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord = mock(S3EventNotification.S3EventNotificationRecord.class);
-        S3EventNotification.S3Entity s3Entity = mock(S3EventNotification.S3Entity.class);
-        S3EventNotification.S3BucketEntity s3BucketEntity = mock(S3EventNotification.S3BucketEntity.class);
-        S3EventNotification.S3ObjectEntity s3ObjectEntity = mock(S3EventNotification.S3ObjectEntity.class);
-
-        when(s3EventNotificationRecord.getS3()).thenReturn(s3Entity);
-        when(s3Entity.getBucket()).thenReturn(s3BucketEntity);
-        when(s3Entity.getObject()).thenReturn(s3ObjectEntity);
-
-        when(s3EventNotificationRecord.getS3().getBucket().getName()).thenReturn("s3-source-test-bucket");
-        when(s3EventNotificationRecord.getS3().getObject().getKey()).thenReturn("s3-bucket-key");
-
-        S3ObjectReference s3ObjectReference = sqsWorker.populateS3Reference(s3EventNotificationRecord);
-
-        assertThat(s3ObjectReference, instanceOf(S3ObjectReference.class));
-        assertThat(s3ObjectReference.getBucketName(), equalTo("s3-source-test-bucket"));
-        assertThat(s3ObjectReference.getKey(), equalTo("s3-bucket-key"));
+        verifyNoInteractions(s3Service);
     }
 }

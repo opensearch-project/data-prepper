@@ -17,7 +17,10 @@ import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class SqsWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(SqsWorker.class);
@@ -40,7 +43,6 @@ public class SqsWorker implements Runnable {
     public void run() {
 
         while(true) {
-
             final int messagesProcessed = processSqsMessages();
 
             if (messagesProcessed < sqsOptions.getMaximumMessages() && s3SourceConfig.getSqsOptions().getPollDelay().toMillis() > 0) {
@@ -54,12 +56,11 @@ public class SqsWorker implements Runnable {
     }
 
     int processSqsMessages() {
-
         final List<Message> sqsMessages = getMessagesFromSqs();
 
         // convert each message to S3EventNotificationRecord
         // TODO: eliminate map with extended S3ObjectReference classes
-        final Map<Message, Optional<S3EventNotification.S3EventNotificationRecord>> s3EventNotificationRecords =
+        final Map<Message, List<S3EventNotification.S3EventNotificationRecord>> s3EventNotificationRecords =
                 getS3MessageEventNotificationRecordMap(sqsMessages);
 
         // build s3ObjectReference from S3EventNotificationRecord if event name starts with ObjectCreated
@@ -68,17 +69,17 @@ public class SqsWorker implements Runnable {
         return sqsMessages.size();
     }
 
-    List<Message> getMessagesFromSqs() {
+    private List<Message> getMessagesFromSqs() {
         try {
             final ReceiveMessageRequest receiveMessageRequest = createReceiveMessageRequest();
             return sqsClient.receiveMessage(receiveMessageRequest).messages();
         } catch (SqsException e) {
             LOG.error("Error reading from SQS: {}", e.getMessage());
-            return Collections.EMPTY_LIST;
+            return Collections.emptyList();
         }
     }
 
-    ReceiveMessageRequest createReceiveMessageRequest() {
+    private ReceiveMessageRequest createReceiveMessageRequest() {
         return ReceiveMessageRequest.builder()
                 .queueUrl(sqsOptions.getSqsUrl())
                 .maxNumberOfMessages(sqsOptions.getMaximumMessages())
@@ -87,41 +88,46 @@ public class SqsWorker implements Runnable {
                 .build();
     }
 
-    private Map<Message, Optional<S3EventNotification.S3EventNotificationRecord>> getS3MessageEventNotificationRecordMap(final List<Message> sqsMessages) {
-        return sqsMessages.stream()
-                .collect(HashMap::new,
-                        (messageRecordMap, message) -> messageRecordMap.put(message, convertS3EventMessages(message)),
-                        HashMap::putAll);
+    private Map<Message, List<S3EventNotification.S3EventNotificationRecord>> getS3MessageEventNotificationRecordMap(final List<Message> sqsMessages) {
+        return sqsMessages.stream().collect(Collectors.toMap(message -> message, this::convertS3EventMessages));
     }
 
-    Optional<S3EventNotification.S3EventNotificationRecord> convertS3EventMessages(final Message message) {
+    // on_error: delete_from_queue|visibility_expiration
+    private List<S3EventNotification.S3EventNotificationRecord> convertS3EventMessages(final Message message) {
         try {
-            return Optional.ofNullable(S3EventNotification.parseJson(message.body()).getRecords().get(0));
+            final S3EventNotification s3EventNotification = S3EventNotification.parseJson(message.body());
+            if (s3EventNotification.getRecords() != null)
+                return s3EventNotification.getRecords();
+            else {
+                LOG.debug("S3 notification message with ID:{} cannot be parsed into S3EventNotificationRecord.", message.messageId());
+                return Collections.emptyList();
+            }
+
         } catch (SdkClientException e) {
-            LOG.error("Invalid JSON string in message body of {}", message.messageId());
+            LOG.error("Invalid JSON string in message body of {}", message.messageId(), e);
         }
-        return Optional.empty();
+        return Collections.emptyList();
     }
 
-    private void processS3ObjectAndDeleteSqsMessages(final Map<Message, Optional<S3EventNotification.S3EventNotificationRecord>> s3EventNotificationRecords) {
-        for (Map.Entry<Message, Optional<S3EventNotification.S3EventNotificationRecord>> entry: s3EventNotificationRecords.entrySet()) {
-            if (!entry.getValue().isPresent()) {
-                // TODO: delete sqsMessages whose S3EventNotificationRecord is null
+    private void processS3ObjectAndDeleteSqsMessages(final Map<Message, List<S3EventNotification.S3EventNotificationRecord>> s3EventNotificationRecords) {
+        for (Map.Entry<Message, List<S3EventNotification.S3EventNotificationRecord>> entry: s3EventNotificationRecords.entrySet()) {
+            if (entry.getValue().isEmpty()) {
+                // TODO: delete or ignore based on configuration
             }
-            else if (isEventNameCreated(entry.getValue())) {
-                final S3ObjectReference s3ObjectReference = populateS3Reference(entry.getValue().get());
+            else if (isEventNameCreated(entry.getValue().get(0))) {
+                final S3ObjectReference s3ObjectReference = populateS3Reference(entry.getValue().get(0));
                 s3Service.addS3Object(s3ObjectReference);
                 // TODO: delete sqsMessages which are successfully processed
             }
         }
     }
 
-    private boolean isEventNameCreated(final Optional<S3EventNotification.S3EventNotificationRecord> s3EventNotificationRecord) {
+    private boolean isEventNameCreated(final S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord) {
         return objectCreatedFilter.filter(s3EventNotificationRecord)
                 .isPresent();
     }
 
-    S3ObjectReference populateS3Reference(final S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord) {
+    private S3ObjectReference populateS3Reference(final S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord) {
         return S3ObjectReference.fromBucketAndKey(s3EventNotificationRecord.getS3().getBucket().getName(),
                 s3EventNotificationRecord.getS3().getObject().getKey());
     }
