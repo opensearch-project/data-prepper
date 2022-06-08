@@ -15,7 +15,7 @@ dependencies {
     implementation 'software.amazon.awssdk:acm'
     implementation "org.apache.commons:commons-lang3:3.12.0"
     implementation "org.bouncycastle:bcprov-jdk15on:1.69"
-    implementation "org.bouncycastle:bcpkix-jdk15on:1.69"
+    implementation "org.bouncycastle:bcpkix-jdk15on:1.70"
     implementation 'org.reflections:reflections:0.10.2'
     testImplementation project(':data-prepper-plugins:blocking-buffer')
     testImplementation 'commons-io:commons-io:2.11.0'
