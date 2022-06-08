@@ -13,7 +13,7 @@ dependencies {
     implementation 'commons-codec:commons-codec:1.15'
     testImplementation project(':data-prepper-api').sourceSets.test.output
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetryProto}"
-    implementation 'com.google.protobuf:protobuf-java-util:3.19.4'
+    implementation 'com.google.protobuf:protobuf-java-util:3.21.1'
     implementation "com.linecorp.armeria:armeria:1.9.2"
     implementation "com.linecorp.armeria:armeria-grpc:1.9.2"
     implementation 'com.fasterxml.jackson.core:jackson-databind'
