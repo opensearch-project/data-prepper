@@ -9,11 +9,12 @@ import com.amazon.dataprepper.plugins.source.configuration.AwsAuthenticationOpti
 import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
 import com.amazon.dataprepper.plugins.source.filter.ObjectCreatedFilter;
 import com.amazon.dataprepper.plugins.source.filter.S3EventFilter;
-import com.amazonaws.SdkClientException;
 import com.amazonaws.services.s3.event.S3EventNotification;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
@@ -21,7 +22,6 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
 import java.util.Collections;
-import java.util.List;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -94,8 +94,9 @@ class SqsWorkerTest {
         assertThat(messagesProcessed, equalTo(0));
     }
 
-    @Test
-    void processSqsMessages_should_throw_SdkClientException_if_input_is_not_valid_JSON() {
+    @ParameterizedTest
+    @ValueSource(strings = {"", "{\"foo\": \"bar\""})
+    void processSqsMessages_should_throw_SdkClientException_if_input_is_not_valid_JSON(String inputString) {
         final Message message = mock(Message.class);
         when(message.body()).thenReturn("{\"foo\": \"bar\"");
 
@@ -107,11 +108,11 @@ class SqsWorkerTest {
         assertThat(messagesProcessed, equalTo(1));
     }
 
-    //TODO: parameterize the test to provide a message body as as "foobar", "{\"foo\": \"bar\"}" and ""
-    @Test
-    void processSqsMessages_should_return_zero_messages_when_messages_are_not_S3EventsNotificationRecords() {
+    @ParameterizedTest
+    @ValueSource(strings = {"{\"foo\": \"bar\"}", "{}"})
+    void processSqsMessages_should_return_zero_messages_when_messages_are_not_S3EventsNotificationRecords(String inputString) {
         final Message message = mock(Message.class);
-        when(message.body()).thenReturn("{\"foo\": \"bar\"}");
+        when(message.body()).thenReturn(inputString);
 
         final ReceiveMessageResponse receiveMessageResponse = mock(ReceiveMessageResponse.class);
         when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(receiveMessageResponse);
@@ -119,10 +120,7 @@ class SqsWorkerTest {
 
         final int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(1));
-//        assertThrows(SdkClientException.class, () -> sqsWorker.processSqsMessages());
     }
-
-
 
     @Test
     void convertS3EventMessages_convert_message_to_S3EventNotificationRecord() {

@@ -110,7 +110,10 @@ public class SqsWorker implements Runnable {
 
     private void processS3ObjectAndDeleteSqsMessages(final Map<Message, S3EventNotification.S3EventNotificationRecord> s3EventNotificationRecords) {
         for (Map.Entry<Message, S3EventNotification.S3EventNotificationRecord> entry: s3EventNotificationRecords.entrySet()) {
-            if(entry.getValue() != null && isEventNameCreated(entry.getValue())) {
+            if (entry.getValue() == null) {
+                // TODO: delete sqsMessages whose S3EventNotificationRecord is null
+            }
+            else if (isEventNameCreated(entry.getValue())) {
                 final S3ObjectReference s3ObjectReference = populateS3Reference(entry.getValue());
                 s3Service.addS3Object(s3ObjectReference);
                 // TODO: delete sqsMessages which are successfully processed
