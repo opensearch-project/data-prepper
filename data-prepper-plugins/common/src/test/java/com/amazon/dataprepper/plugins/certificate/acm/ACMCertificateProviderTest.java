@@ -6,17 +6,18 @@
 package com.amazon.dataprepper.plugins.certificate.acm;
 
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
-import com.amazonaws.services.certificatemanager.AWSCertificateManager;
-import com.amazonaws.services.certificatemanager.model.ExportCertificateRequest;
-import com.amazonaws.services.certificatemanager.model.ExportCertificateResult;
-import com.amazonaws.services.certificatemanager.model.InvalidArnException;
-import com.amazonaws.services.certificatemanager.model.RequestInProgressException;
-import com.amazonaws.services.certificatemanager.model.ResourceNotFoundException;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import software.amazon.awssdk.services.acm.AcmClient;
+import software.amazon.awssdk.services.acm.model.ExportCertificateRequest;
+import software.amazon.awssdk.services.acm.model.ExportCertificateResponse;
+import software.amazon.awssdk.services.acm.model.InvalidArnException;
+import software.amazon.awssdk.services.acm.model.RequestInProgressException;
+import software.amazon.awssdk.services.acm.model.ResourceNotFoundException;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -35,16 +36,14 @@ public class ACMCertificateProviderTest {
     private static final long acmCertIssueTimeOutMillis = 2000L;
     private static final String acmPrivateKeyPassword = "password";
     @Mock
-    private AWSCertificateManager  awsCertificateManager;
-
+    private AcmClient acmClient;
     @Mock
-    private ExportCertificateResult exportCertificateResult;
-
+    private ExportCertificateResponse exportCertificateResponse;
     private ACMCertificateProvider acmCertificateProvider;
 
     @BeforeEach
     public void beforeEach() {
-        acmCertificateProvider = new ACMCertificateProvider(awsCertificateManager, acmCertificateArn, acmCertIssueTimeOutMillis, acmPrivateKeyPassword);
+        acmCertificateProvider = new ACMCertificateProvider(acmClient, acmCertificateArn, acmCertIssueTimeOutMillis, acmPrivateKeyPassword);
     }
 
     @Test
@@ -55,9 +54,9 @@ public class ACMCertificateProviderTest {
         final String certAsString = Files.readString(certFilePath);
         final String encryptedKeyAsString = Files.readString(encryptedKeyFilePath);
         final String decryptedKeyAsString = Files.readString(decryptedKeyFilePath);
-        when(exportCertificateResult.getCertificate()).thenReturn(certAsString);
-        when(exportCertificateResult.getPrivateKey()).thenReturn(encryptedKeyAsString);
-        when(awsCertificateManager.exportCertificate(any(ExportCertificateRequest.class))).thenReturn(exportCertificateResult);
+        when(exportCertificateResponse.certificate()).thenReturn(certAsString);
+        when(exportCertificateResponse.privateKey()).thenReturn(encryptedKeyAsString);
+        when(acmClient.exportCertificate(any(ExportCertificateRequest.class))).thenReturn(exportCertificateResponse);
         final Certificate certificate = acmCertificateProvider.getCertificate();
         assertThat(certificate.getCertificate(), is(certAsString));
         assertThat(certificate.getPrivateKey(), is(decryptedKeyAsString));
@@ -69,9 +68,9 @@ public class ACMCertificateProviderTest {
         final Path decryptedKeyFilePath = Path.of("data/certificate/test_decrypted_key.key");
         final String certAsString = Files.readString(certFilePath);
         final String decryptedKeyAsString = Files.readString(decryptedKeyFilePath);
-        when(exportCertificateResult.getCertificate()).thenReturn(certAsString);
-        when(exportCertificateResult.getPrivateKey()).thenReturn(decryptedKeyAsString);
-        when(awsCertificateManager.exportCertificate(any(ExportCertificateRequest.class))).thenReturn(exportCertificateResult);
+        when(exportCertificateResponse.certificate()).thenReturn(certAsString);
+        when(exportCertificateResponse.privateKey()).thenReturn(decryptedKeyAsString);
+        when(acmClient.exportCertificate(any(ExportCertificateRequest.class))).thenReturn(exportCertificateResponse);
         final Certificate certificate = acmCertificateProvider.getCertificate();
         assertThat(certificate.getCertificate(), is(certAsString));
         assertThat(certificate.getPrivateKey(), is(decryptedKeyAsString));
@@ -79,26 +78,26 @@ public class ACMCertificateProviderTest {
 
     @Test
     public void getACMCertificateWithInvalidPrivateKeyException() {
-        when(exportCertificateResult.getPrivateKey()).thenReturn(UUID.randomUUID().toString());
-        when(awsCertificateManager.exportCertificate(any(ExportCertificateRequest.class))).thenReturn(exportCertificateResult);
+        when(exportCertificateResponse.privateKey()).thenReturn(UUID.randomUUID().toString());
+        when(acmClient.exportCertificate(any(ExportCertificateRequest.class))).thenReturn(exportCertificateResponse);
         assertThrows(RuntimeException.class, () -> acmCertificateProvider.getCertificate());
     }
 
     @Test
     public void getACMCertificateRequestInProgressException() {
-        when(awsCertificateManager.exportCertificate(any(ExportCertificateRequest.class))).thenThrow(new RequestInProgressException("Request in progress."));
+        when(acmClient.exportCertificate(any(ExportCertificateRequest.class))).thenThrow(RequestInProgressException.builder().message("Request in progress.").build());
         assertThrows(IllegalStateException.class, () -> acmCertificateProvider.getCertificate());
     }
 
     @Test
     public void getACMCertificateResourceNotFoundException() {
-        when(awsCertificateManager.exportCertificate(any(ExportCertificateRequest.class))).thenThrow(new ResourceNotFoundException("Resource not found."));
+        when(acmClient.exportCertificate(any(ExportCertificateRequest.class))).thenThrow(ResourceNotFoundException.builder().message("Resource not found.").build());
         assertThrows(ResourceNotFoundException.class, () -> acmCertificateProvider.getCertificate());
     }
 
     @Test
     public void getACMCertificateInvalidArnException() {
-        when(awsCertificateManager.exportCertificate(any(ExportCertificateRequest.class))).thenThrow(new InvalidArnException("Invalid certificate arn."));
+        when(acmClient.exportCertificate(any(ExportCertificateRequest.class))).thenThrow(InvalidArnException.builder().message("Invalid certificate arn.").build());
         assertThrows(InvalidArnException.class, () -> acmCertificateProvider.getCertificate());
     }
 }
