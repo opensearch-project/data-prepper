@@ -10,9 +10,9 @@ import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Objects;
 
 public class FileCertificateProvider implements CertificateProvider {
@@ -29,8 +29,8 @@ public class FileCertificateProvider implements CertificateProvider {
 
     public Certificate getCertificate() {
         try {
-            final Path certFilePath = Paths.get(certificateFilePath);
-            final Path pkFilePath = Paths.get(privateKeyFilePath);
+            final Path certFilePath = new File(certificateFilePath).toPath();
+            final Path pkFilePath = new File(privateKeyFilePath).toPath();
 
             final byte[] certFileBytes = Files.readAllBytes(certFilePath);
             final byte[] pkFileBytes = Files.readAllBytes(pkFilePath);

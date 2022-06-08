@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.MockitoJUnitRunner;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -121,7 +122,7 @@ public class PeerForwarderConfigTest {
         verify(peerClientPool, times(1)).setCertificate(certificateArgumentCaptor.capture());
         final Certificate certificate = certificateArgumentCaptor.getValue();
 
-        final Path certFilePath = Path.of(VALID_SSL_KEY_CERT_FILE);
+        final Path certFilePath = new File(VALID_SSL_KEY_CERT_FILE).toPath();
         final String certAsString = Files.readString(certFilePath);
         Assert.assertEquals(certificate.getCertificate(), certAsString);
     }

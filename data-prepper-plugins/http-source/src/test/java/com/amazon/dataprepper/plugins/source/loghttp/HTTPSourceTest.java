@@ -42,6 +42,7 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -448,8 +449,8 @@ class HTTPSourceTest {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             when(server.stop()).thenReturn(completableFuture);
 
-            final Path certFilePath = Path.of(TEST_SSL_CERTIFICATE_FILE);
-            final Path keyFilePath = Path.of(TEST_SSL_KEY_FILE);
+            final Path certFilePath = new File(TEST_SSL_CERTIFICATE_FILE).toPath();
+            final Path keyFilePath = new File(TEST_SSL_KEY_FILE).toPath();
             final String certAsString = Files.readString(certFilePath);
             final String keyAsString = Files.readString(keyFilePath);
 

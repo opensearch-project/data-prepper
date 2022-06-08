@@ -32,10 +32,10 @@ import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import javax.net.ssl.SSLContext;
+import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.KeyStore;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
@@ -360,7 +360,7 @@ public class ConnectionConfiguration {
 
     public Builder withCert(final String certPath) {
       checkArgument(certPath != null, "cert cannot be null");
-      this.certPath = Paths.get(certPath);
+      this.certPath = new File(certPath).toPath();
       return this;
     }
 
