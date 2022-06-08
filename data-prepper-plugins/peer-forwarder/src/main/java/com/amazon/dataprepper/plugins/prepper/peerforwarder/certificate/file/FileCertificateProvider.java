@@ -10,9 +10,9 @@ import com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate.model.Ce
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Objects;
 
 public class FileCertificateProvider implements CertificateProvider {
@@ -26,7 +26,7 @@ public class FileCertificateProvider implements CertificateProvider {
 
     public Certificate getCertificate() {
         try {
-            final Path certFilePath = Paths.get(certificateFilePath);
+            final Path certFilePath = new File(certificateFilePath).toPath();
 
             final byte[] bytes = Files.readAllBytes(certFilePath);
 
