@@ -11,6 +11,7 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
 import io.micrometer.core.instrument.Counter;
+import com.amazon.dataprepper.plugins.source.configuration.CompressionOption;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,6 +56,9 @@ class S3ObjectWorkerTest {
     private Buffer<Record<Event>> buffer;
 
     @Mock
+    private S3SourceConfig s3SourceConfig;
+
+    @Mock
     private Codec codec;
 
     private Duration bufferTimeout;
@@ -83,10 +87,12 @@ class S3ObjectWorkerTest {
         when(s3ObjectReference.getKey()).thenReturn(key);
 
         when(pluginMetrics.counter(S3ObjectWorker.S3_OBJECTS_FAILED_METRIC_NAME)).thenReturn(s3ObjectsFailedCounter);
+
+        when(s3SourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
     }
 
     private S3ObjectWorker createObjectUnderTest() {
-        return new S3ObjectWorker(s3Client, buffer, codec, bufferTimeout, recordsToAccumulate, pluginMetrics);
+        return new S3ObjectWorker(s3Client, buffer, s3SourceConfig, codec, bufferTimeout, recordsToAccumulate, pluginMetrics);
     }
 
     @Test
