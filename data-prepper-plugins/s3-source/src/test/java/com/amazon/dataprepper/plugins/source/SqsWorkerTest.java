@@ -22,14 +22,14 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
 import java.util.Collections;
+import java.util.Optional;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class SqsWorkerTest {
     private SqsWorker sqsWorker;
@@ -88,6 +88,26 @@ class SqsWorkerTest {
     }
 
     @Test
+    void processSqsMessages_with_object_deleted_should_return_number_of_messages_processed_without_s3service_interactions() {
+        final Message message = mock(Message.class);
+        when(message.body()).thenReturn("{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"us-east-1\"," +
+                "\"eventTime\":\"2022-06-06T18:02:33.495Z\",\"eventName\":\"ObjectRemoved:Delete\",\"userIdentity\":{\"principalId\":\"AWS:AROAX:xxxxxx\"}," +
+                "\"requestParameters\":{\"sourceIPAddress\":\"99.99.999.99\"},\"responseElements\":{\"x-amz-request-id\":\"ABCD\"," +
+                "\"x-amz-id-2\":\"abcd\"},\"s3\":{\"s3SchemaVersion\":\"1.0\",\"configurationId\":\"s3SourceEventNotification\"," +
+                "\"bucket\":{\"name\":\"bucketName\",\"ownerIdentity\":{\"principalId\":\"ID\"},\"arn\":\"arn:aws:s3:::bucketName\"}," +
+                "\"object\":{\"key\":\"File.gz\",\"size\":72,\"eTag\":\"abcd\",\"sequencer\":\"ABCD\"}}}]}");
+
+        final ReceiveMessageResponse receiveMessageResponse = mock(ReceiveMessageResponse.class);
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(receiveMessageResponse);
+        when(receiveMessageResponse.messages()).thenReturn(Collections.singletonList(message));
+
+        final int messagesProcessed = sqsWorker.processSqsMessages();
+
+        assertThat(messagesProcessed, equalTo(1));
+        verifyNoInteractions(s3Service);
+    }
+
+    @Test
     void processSqsMessages_should_return_zero_messages_when_a_SqsException_is_thrown() {
         when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(SqsException.class);
         final int messagesProcessed = sqsWorker.processSqsMessages();
@@ -131,25 +151,11 @@ class SqsWorkerTest {
                 "\"x-amz-id-2\":\"abcd\"},\"s3\":{\"s3SchemaVersion\":\"1.0\",\"configurationId\":\"s3SourceEventNotification\"," +
                 "\"bucket\":{\"name\":\"bucketName\",\"ownerIdentity\":{\"principalId\":\"ID\"},\"arn\":\"arn:aws:s3:::bucketName\"}," +
                 "\"object\":{\"key\":\"File.gz\",\"size\":72,\"eTag\":\"abcd\",\"sequencer\":\"ABCD\"}}}]}");
-        S3EventNotification.S3EventNotificationRecord actualS3EventNotificationRecord = sqsWorker.convertS3EventMessages(message);
+        Optional<S3EventNotification.S3EventNotificationRecord> actualS3EventNotificationRecord = sqsWorker.convertS3EventMessages(message);
         assertThat(actualS3EventNotificationRecord, instanceOf(S3EventNotification.S3EventNotificationRecord.class));
-        assertThat(actualS3EventNotificationRecord.getAwsRegion(), equalTo("us-east-1"));
-        assertThat(actualS3EventNotificationRecord.getS3().getBucket().getName(), equalTo("bucketName"));
-        assertThat(actualS3EventNotificationRecord.getS3().getObject().getKey(), equalTo("File.gz"));
-    }
-
-    @Test
-    void isEventNameCreated_should_return_true_if_event_is_created() {
-        S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord = mock(S3EventNotification.S3EventNotificationRecord.class);
-        when(s3EventNotificationRecord.getEventName()).thenReturn("ObjectCreated");
-        Assertions.assertTrue(sqsWorker.isEventNameCreated(s3EventNotificationRecord));
-    }
-
-    @Test
-    void isEventNameCreated_should_return_false_if_event_is_not_created() {
-        S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord = mock(S3EventNotification.S3EventNotificationRecord.class);
-        when(s3EventNotificationRecord.getEventName()).thenReturn("ObjectRemoved");
-        Assertions.assertFalse(sqsWorker.isEventNameCreated(s3EventNotificationRecord));
+        assertThat(actualS3EventNotificationRecord.get().getAwsRegion(), equalTo("us-east-1"));
+        assertThat(actualS3EventNotificationRecord.get().getS3().getBucket().getName(), equalTo("bucketName"));
+        assertThat(actualS3EventNotificationRecord.get().getS3().getObject().getKey(), equalTo("File.gz"));
     }
 
     @Test
