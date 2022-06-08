@@ -43,6 +43,7 @@ class S3ObjectWorker {
     public S3ObjectWorker(final S3Client s3Client,
                           final Buffer<Record<Event>> buffer,
                           final S3SourceConfig s3SourceConfig,
+                          final CompressionEngine compressionEngine,
                           final Codec codec,
                           final Duration bufferTimeout,
                           final int numberOfRecordsToAccumulate,
@@ -87,6 +88,7 @@ class S3ObjectWorker {
 
     private InputStream getInputStreamFromCompressionType(GetObjectRequest getObjectRequest, CompressionOption compressionOption) throws IOException {
         final ResponseInputStream<GetObjectResponse> object = s3Client.getObject(getObjectRequest);
+        new CompressionEngine().createInputStream(getObjectRequest.key(), object);
         if (compressionOption.equals(CompressionOption.NONE))
             return object;
         else if (compressionOption.equals(CompressionOption.GZIP))
@@ -98,6 +100,30 @@ class S3ObjectWorker {
             else {
                 return object;
             }
+        }
+    }
+
+    public static class CompressionEngine {
+        private final CompressionOption compressionOption;
+
+        public CompressionEngine(CompressionOption compressionOption) {
+            this.compressionOption = compressionOption;
+        }
+
+        public InputStream createInputStream(String s3Key, ResponseInputStream<GetObjectResponse> responseInputStream) throws IOException {
+            if (compressionOption.equals(CompressionOption.NONE))
+                return responseInputStream;
+            else if (compressionOption.equals(CompressionOption.GZIP))
+                return new GZIPInputStream(responseInputStream);
+            else {
+                if (s3Key.endsWith(".gz")) {
+                    return new GZIPInputStream(responseInputStream);
+                }
+                else {
+                    return responseInputStream;
+                }
+            }
+        }
         }
     }
 }
