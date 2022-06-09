@@ -34,7 +34,7 @@ class S3ObjectWorker {
 
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
-    private final S3SourceConfig s3SourceConfig;
+    private final CompressionEngine compressionEngine;
     private final Codec codec;
     private final Duration bufferTimeout;
     private final int numberOfRecordsToAccumulate;
@@ -42,7 +42,6 @@ class S3ObjectWorker {
 
     public S3ObjectWorker(final S3Client s3Client,
                           final Buffer<Record<Event>> buffer,
-                          final S3SourceConfig s3SourceConfig,
                           final CompressionEngine compressionEngine,
                           final Codec codec,
                           final Duration bufferTimeout,
@@ -50,7 +49,7 @@ class S3ObjectWorker {
                           final PluginMetrics pluginMetrics) {
         this.s3Client = s3Client;
         this.buffer = buffer;
-        this.s3SourceConfig = s3SourceConfig;
+        this.compressionEngine = compressionEngine;
         this.codec = codec;
         this.bufferTimeout = bufferTimeout;
         this.numberOfRecordsToAccumulate = numberOfRecordsToAccumulate;
@@ -66,7 +65,9 @@ class S3ObjectWorker {
 
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
 
-        try (final InputStream inputStream = getInputStreamFromCompressionType(getObjectRequest, s3SourceConfig.getCompression())) {
+
+        try (final ResponseInputStream<GetObjectResponse> responseInputStream = s3Client.getObject(getObjectRequest);
+             final InputStream inputStream = compressionEngine.createInputStream(getObjectRequest.key(), responseInputStream)) {
             codec.parse(inputStream, record -> {
                 try {
                     bufferAccumulator.add(record);

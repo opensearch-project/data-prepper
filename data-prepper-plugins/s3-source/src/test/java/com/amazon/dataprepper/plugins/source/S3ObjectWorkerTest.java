@@ -56,7 +56,7 @@ class S3ObjectWorkerTest {
     private Buffer<Record<Event>> buffer;
 
     @Mock
-    private S3SourceConfig s3SourceConfig;
+    private CompressionEngine compressionEngine;
 
     @Mock
     private Codec codec;
@@ -92,7 +92,7 @@ class S3ObjectWorkerTest {
     }
 
     private S3ObjectWorker createObjectUnderTest() {
-        return new S3ObjectWorker(s3Client, buffer, s3SourceConfig, codec, bufferTimeout, recordsToAccumulate, pluginMetrics);
+        return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bufferTimeout, recordsToAccumulate, pluginMetrics);
     }
 
     @Test
@@ -118,6 +118,7 @@ class S3ObjectWorkerTest {
         final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
+        when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
 
         createObjectUnderTest().parseS3Object(s3ObjectReference);
 
@@ -129,6 +130,7 @@ class S3ObjectWorkerTest {
         final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
+        when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
 
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
@@ -152,6 +154,7 @@ class S3ObjectWorkerTest {
         final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
+        when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
 
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
