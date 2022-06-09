@@ -94,8 +94,9 @@ subprojects {
         }
     }
     dependencies {
+        implementation platform('com.fasterxml.jackson:jackson-bom:2.13.3')
+        implementation platform('io.micrometer:micrometer-bom:1.9.0')
         implementation 'com.google.guava:guava:31.0.1-jre'
-        implementation platform('io.micrometer:micrometer-bom:1.7.5')
         implementation 'org.slf4j:slf4j-api:1.7.36'
         testImplementation platform("org.junit:junit-bom:${versionMap.junitJupiter}")
         testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -163,7 +164,6 @@ subprojects {
 
 configure(subprojects.findAll {it.name != 'data-prepper-api'}) {
     dependencies {
-        implementation platform('com.fasterxml.jackson:jackson-bom:2.13.2')
         implementation platform('software.amazon.awssdk:bom:2.17.15')
         implementation 'jakarta.validation:jakarta.validation-api:3.0.1'
     }
