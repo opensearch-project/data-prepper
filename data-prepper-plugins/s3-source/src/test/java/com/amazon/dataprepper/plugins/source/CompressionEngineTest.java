@@ -17,12 +17,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class CompressionEngineTest {
@@ -40,7 +43,8 @@ class CompressionEngineTest {
     void createInputStream_with_none_should_return_instance_of_ResponseInputStream() throws IOException {
         compressionEngine = new CompressionEngine(CompressionOption.NONE);
         InputStream inputStream = compressionEngine.createInputStream(s3Key, responseInputStream);
-        assertThat(inputStream, sameInstance(inputStream));
+        assertThat(inputStream, sameInstance(responseInputStream));
+        verifyNoInteractions(responseInputStream);
     }
 
     @Test
@@ -53,7 +57,7 @@ class CompressionEngineTest {
         final ByteArrayInputStream byteInStream = getByteArrayInputStream(testStringBytes);
 
         InputStream inputStream = compressionEngine.createInputStream(s3Key, byteInStream);
-        assertThat(inputStream, sameInstance(inputStream));
+        assertThat(inputStream, instanceOf(GZIPInputStream.class));
         assertThat(inputStream.readAllBytes(), equalTo(testStringBytes));
     }
 
@@ -63,7 +67,8 @@ class CompressionEngineTest {
         when(responseInputStream.response()).thenReturn(mock(GetObjectResponse.class));
 
         InputStream inputStream = compressionEngine.createInputStream(s3Key, responseInputStream);
-        assertThat(inputStream, sameInstance(inputStream));
+        assertThat(inputStream, sameInstance(responseInputStream));
+        verifyNoInteractions(responseInputStream);
     }
 
     @Test
@@ -77,7 +82,7 @@ class CompressionEngineTest {
         final ByteArrayInputStream byteInStream = getByteArrayInputStream(testStringBytes);
 
         InputStream inputStream = compressionEngine.createInputStream(s3Key, byteInStream);
-        assertThat(inputStream, sameInstance(inputStream));
+        assertThat(inputStream, instanceOf(GZIPInputStream.class));
         assertThat(inputStream.readAllBytes(), equalTo(testStringBytes));
     }
 
