@@ -5,10 +5,12 @@
 
 package com.amazon.dataprepper.plugins.source;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,9 +33,12 @@ import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -57,6 +62,12 @@ class S3ObjectWorkerTest {
 
     @Mock
     private S3ObjectReference s3ObjectReference;
+
+    @Mock
+    private PluginMetrics pluginMetrics;
+    @Mock
+    private Counter s3ObjectsFailedCounter;
+
     private String bucketName;
     private String key;
 
@@ -70,10 +81,12 @@ class S3ObjectWorkerTest {
         key = UUID.randomUUID().toString();
         when(s3ObjectReference.getBucketName()).thenReturn(bucketName);
         when(s3ObjectReference.getKey()).thenReturn(key);
+
+        when(pluginMetrics.counter(S3ObjectWorker.S3_OBJECTS_FAILED_METRIC_NAME)).thenReturn(s3ObjectsFailedCounter);
     }
 
     private S3ObjectWorker createObjectUnderTest() {
-        return new S3ObjectWorker(s3Client, buffer, codec, bufferTimeout, recordsToAccumulate);
+        return new S3ObjectWorker(s3Client, buffer, codec, bufferTimeout, recordsToAccumulate, pluginMetrics);
     }
 
     @Test
@@ -123,7 +136,7 @@ class S3ObjectWorkerTest {
 
         final Consumer<Record<Event>> consumerUnderTest = eventConsumerArgumentCaptor.getValue();
 
-        final Record record = mock(Record.class);
+        final Record<Event> record = mock(Record.class);
         consumerUnderTest.accept(record);
         verify(bufferAccumulator).add(record);
     }
@@ -145,5 +158,36 @@ class S3ObjectWorkerTest {
 
         inOrder.verify(codec).parse(any(InputStream.class), any(Consumer.class));
         inOrder.verify(bufferAccumulator).flush();
+    }
+
+    @Test
+    void parseS3Object_throws_Exception_and_increments_counter_when_unable_to_get_S3_object() {
+        final RuntimeException expectedException = mock(RuntimeException.class);
+        when(s3Client.getObject(any(GetObjectRequest.class)))
+                .thenThrow(expectedException);
+
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest();
+        final RuntimeException actualException = assertThrows(RuntimeException.class, () -> objectUnderTest.parseS3Object(s3ObjectReference));
+
+        assertThat(actualException, sameInstance(expectedException));
+
+        verify(s3ObjectsFailedCounter).increment();
+    }
+
+    @Test
+    void parseS3Object_throws_Exception_and_increments_counter_when_unable_to_parse_S3_object() throws IOException {
+        final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
+        when(s3Client.getObject(any(GetObjectRequest.class)))
+                .thenReturn(objectInputStream);
+        final IOException expectedException = mock(IOException.class);
+        doThrow(expectedException)
+                .when(codec).parse(any(InputStream.class), any(Consumer.class));
+
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest();
+        final IOException actualException = assertThrows(IOException.class, () -> objectUnderTest.parseS3Object(s3ObjectReference));
+
+        assertThat(actualException, sameInstance(expectedException));
+
+        verify(s3ObjectsFailedCounter).increment();
     }
 }
