@@ -16,7 +16,6 @@ dependencies {
     implementation "commons-io:commons-io:2.11.0"
     testImplementation project(':data-prepper-api').sourceSets.test.output
     testImplementation 'org.assertj:assertj-core:3.23.1'
-    testImplementation "org.hamcrest:hamcrest:2.2"
 }
 
 jacocoTestCoverageVerification {
