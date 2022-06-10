@@ -11,7 +11,6 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
 import io.micrometer.core.instrument.Counter;
-import com.amazon.dataprepper.plugins.source.configuration.CompressionOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.ResponseInputStream;
@@ -22,7 +21,6 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
-import java.util.zip.GZIPInputStream;
 
 /**
  * Class responsible for taking an {@link S3ObjectReference} and creating all the necessary {@link Event}
@@ -77,6 +75,7 @@ class S3ObjectWorker {
             });
         } catch (final Exception e) {
             LOG.error("Error reading from S3 object: s3ObjectReference={}.", s3ObjectReference, e);
+            s3ObjectsFailedCounter.increment();
             throw e;
         }
 
@@ -84,47 +83,6 @@ class S3ObjectWorker {
             bufferAccumulator.flush();
         } catch (final Exception e) {
             LOG.error("Failed writing S3 objects to buffer.", e);
-        }
-    }
-
-    private InputStream getInputStreamFromCompressionType(GetObjectRequest getObjectRequest, CompressionOption compressionOption) throws IOException {
-        final ResponseInputStream<GetObjectResponse> object = s3Client.getObject(getObjectRequest);
-        new CompressionEngine().createInputStream(getObjectRequest.key(), object);
-        if (compressionOption.equals(CompressionOption.NONE))
-            return object;
-        else if (compressionOption.equals(CompressionOption.GZIP))
-            return new GZIPInputStream(object);
-        else {
-            if (getObjectRequest.key().endsWith(".gz")) {
-                return new GZIPInputStream(object);
-            }
-            else {
-                return object;
-            }
-        }
-    }
-
-    public static class CompressionEngine {
-        private final CompressionOption compressionOption;
-
-        public CompressionEngine(CompressionOption compressionOption) {
-            this.compressionOption = compressionOption;
-        }
-
-        public InputStream createInputStream(String s3Key, ResponseInputStream<GetObjectResponse> responseInputStream) throws IOException {
-            if (compressionOption.equals(CompressionOption.NONE))
-                return responseInputStream;
-            else if (compressionOption.equals(CompressionOption.GZIP))
-                return new GZIPInputStream(responseInputStream);
-            else {
-                if (s3Key.endsWith(".gz")) {
-                    return new GZIPInputStream(responseInputStream);
-                }
-                else {
-                    return responseInputStream;
-                }
-            }
-        }
         }
     }
 }

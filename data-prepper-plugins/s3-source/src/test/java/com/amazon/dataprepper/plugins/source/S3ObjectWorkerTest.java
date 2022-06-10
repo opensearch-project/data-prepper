@@ -11,7 +11,6 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
 import io.micrometer.core.instrument.Counter;
-import com.amazon.dataprepper.plugins.source.configuration.CompressionOption;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -77,7 +76,7 @@ class S3ObjectWorkerTest {
     private ResponseInputStream<GetObjectResponse> objectInputStream;
 
     @BeforeEach
-    void setUp() throws IOException {
+    void setUp() {
         final Random random = new Random();
         bufferTimeout = Duration.ofMillis(random.nextInt(100) + 100);
         recordsToAccumulate = random.nextInt(10) + 2;
@@ -89,10 +88,7 @@ class S3ObjectWorkerTest {
 
         when(pluginMetrics.counter(S3ObjectWorker.S3_OBJECTS_FAILED_METRIC_NAME)).thenReturn(s3ObjectsFailedCounter);
 
-        when(s3SourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
-
         objectInputStream = mock(ResponseInputStream.class);
-        when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
     }
 
     private S3ObjectWorker createObjectUnderTest() {
@@ -120,6 +116,7 @@ class S3ObjectWorkerTest {
     void parseS3Object_calls_Codec_parse_on_S3InputStream() throws Exception {
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
+        when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
 
         createObjectUnderTest().parseS3Object(s3ObjectReference);
 
@@ -130,6 +127,7 @@ class S3ObjectWorkerTest {
     void parseS3Object_calls_Codec_parse_with_Consumer_that_adds_to_BufferAccumulator() throws Exception {
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
+        when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
 
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
@@ -152,6 +150,7 @@ class S3ObjectWorkerTest {
     void parseS3Object_calls_BufferAccumulator_flush_after_Codec_parse() throws Exception {
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
+        when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
 
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
@@ -182,7 +181,7 @@ class S3ObjectWorkerTest {
 
     @Test
     void parseS3Object_throws_Exception_and_increments_counter_when_unable_to_parse_S3_object() throws IOException {
-        final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
+        when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
         final IOException expectedException = mock(IOException.class);
