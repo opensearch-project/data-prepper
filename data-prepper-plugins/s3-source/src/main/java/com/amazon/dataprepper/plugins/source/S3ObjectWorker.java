@@ -12,6 +12,7 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
 import com.amazon.dataprepper.plugins.source.compression.CompressionEngine;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.ResponseInputStream;
@@ -22,6 +23,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
+import java.util.concurrent.Callable;
 
 /**
  * Class responsible for taking an {@link S3ObjectReference} and creating all the necessary {@link Event}
@@ -30,6 +32,8 @@ import java.time.Duration;
 class S3ObjectWorker {
     private static final Logger LOG = LoggerFactory.getLogger(S3ObjectWorker.class);
     static final String S3_OBJECTS_FAILED_METRIC_NAME = "s3ObjectsFailed";
+    static final String S3_OBJECTS_SUCCEEDED_METRIC_NAME = "s3ObjectsSucceeded";
+    static final String S3_OBJECTS_TIME_ELAPSED_METRIC_NAME = "s3ObjectReadTimeElapsed";
 
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
@@ -38,6 +42,8 @@ class S3ObjectWorker {
     private final Duration bufferTimeout;
     private final int numberOfRecordsToAccumulate;
     private final Counter s3ObjectsFailedCounter;
+    private final Counter s3ObjectsSucceededCounter;
+    private final Timer s3ObjectReadTimer;
 
     public S3ObjectWorker(final S3Client s3Client,
                           final Buffer<Record<Event>> buffer,
@@ -54,6 +60,8 @@ class S3ObjectWorker {
         this.numberOfRecordsToAccumulate = numberOfRecordsToAccumulate;
 
         s3ObjectsFailedCounter = pluginMetrics.counter(S3_OBJECTS_FAILED_METRIC_NAME);
+        s3ObjectsSucceededCounter = pluginMetrics.counter(S3_OBJECTS_SUCCEEDED_METRIC_NAME);
+        s3ObjectReadTimer = pluginMetrics.timer(S3_OBJECTS_TIME_ELAPSED_METRIC_NAME);
     }
 
     void parseS3Object(final S3ObjectReference s3ObjectReference) throws IOException {

@@ -12,6 +12,7 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
 import com.amazon.dataprepper.plugins.source.compression.CompressionEngine;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +32,7 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -45,6 +47,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,6 +75,10 @@ class S3ObjectWorkerTest {
     private PluginMetrics pluginMetrics;
     @Mock
     private Counter s3ObjectsFailedCounter;
+    @Mock
+    private Counter s3ObjectsSucceededCounter;
+    @Mock
+    private Timer s3ObjectReadTimer;
 
     private String bucketName;
     private String key;
@@ -88,7 +95,12 @@ class S3ObjectWorkerTest {
         when(s3ObjectReference.getBucketName()).thenReturn(bucketName);
         when(s3ObjectReference.getKey()).thenReturn(key);
 
+        when(s3ObjectReadTimer.wrap(any(Callable.class)))
+                .thenAnswer(a -> a.getArgument(0, Callable.class).call());
+
         when(pluginMetrics.counter(S3ObjectWorker.S3_OBJECTS_FAILED_METRIC_NAME)).thenReturn(s3ObjectsFailedCounter);
+        when(pluginMetrics.counter(S3ObjectWorker.S3_OBJECTS_SUCCEEDED_METRIC_NAME)).thenReturn(s3ObjectsSucceededCounter);
+        when(pluginMetrics.timer(S3ObjectWorker.S3_OBJECTS_TIME_ELAPSED_METRIC_NAME)).thenReturn(s3ObjectReadTimer);
 
         objectInputStream = mock(ResponseInputStream.class);
     }
@@ -190,6 +202,19 @@ class S3ObjectWorkerTest {
     }
 
     @Test
+    void parseS3Object_increments_success_counter_after_parsing_S3_object() throws IOException {
+        final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
+        when(s3Client.getObject(any(GetObjectRequest.class)))
+                .thenReturn(objectInputStream);
+
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest();
+        objectUnderTest.parseS3Object(s3ObjectReference);
+
+        verify(s3ObjectsSucceededCounter).increment();
+        verifyNoInteractions(s3ObjectsFailedCounter);
+    }
+
+    @Test
     void parseS3Object_throws_Exception_and_increments_counter_when_unable_to_get_S3_object() {
         final RuntimeException expectedException = mock(RuntimeException.class);
         when(s3Client.getObject(any(GetObjectRequest.class)))
@@ -201,6 +226,7 @@ class S3ObjectWorkerTest {
         assertThat(actualException, sameInstance(expectedException));
 
         verify(s3ObjectsFailedCounter).increment();
+        verifyNoInteractions(s3ObjectsSucceededCounter);
     }
 
     @Test
@@ -218,5 +244,21 @@ class S3ObjectWorkerTest {
         assertThat(actualException, sameInstance(expectedException));
 
         verify(s3ObjectsFailedCounter).increment();
+        verifyNoInteractions(s3ObjectsSucceededCounter);
+    }
+
+    @Test
+    void parseS3Object_calls_GetObject_after_Callable() throws IOException {
+        final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
+        when(s3Client.getObject(any(GetObjectRequest.class)))
+                .thenReturn(objectInputStream);
+
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest();
+        objectUnderTest.parseS3Object(s3ObjectReference);
+
+        final InOrder inOrder = inOrder(s3ObjectReadTimer, s3Client);
+
+        inOrder.verify(s3ObjectReadTimer).wrap(any(Callable.class));
+        inOrder.verify(s3Client).getObject(any(GetObjectRequest.class));
     }
 }
