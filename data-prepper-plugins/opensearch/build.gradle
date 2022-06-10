@@ -53,7 +53,6 @@ dependencies {
     implementation 'software.amazon.awssdk:url-connection-client'
     implementation 'software.amazon.awssdk:arns'
     implementation 'io.micrometer:micrometer-core'
-    testImplementation 'org.awaitility:awaitility:4.1.1'
     testImplementation 'commons-io:commons-io:2.11.0'
     testImplementation 'net.bytebuddy:byte-buddy:1.12.10'
     testImplementation 'net.bytebuddy:byte-buddy-agent:1.11.20'
