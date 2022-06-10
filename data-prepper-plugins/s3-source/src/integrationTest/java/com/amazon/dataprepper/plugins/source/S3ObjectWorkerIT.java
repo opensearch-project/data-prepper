@@ -5,12 +5,14 @@
 
 package com.amazon.dataprepper.plugins.source;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
 import com.amazon.dataprepper.plugins.source.codec.NewlineDelimitedCodec;
 import com.amazon.dataprepper.plugins.source.codec.NewlineDelimitedConfig;
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -26,6 +28,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static com.amazon.dataprepper.plugins.source.S3ObjectWorker.S3_OBJECTS_FAILED_METRIC_NAME;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -38,6 +41,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class S3ObjectWorkerIT {
     public static final int NUMBER_OF_RECORDS_TO_ACCUMULATE = 100;
@@ -47,6 +51,7 @@ public class S3ObjectWorkerIT {
     private Buffer<Record<Event>> buffer;
     private String bucket;
     private int recordsReceived;
+    private PluginMetrics pluginMetrics;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -71,10 +76,14 @@ public class S3ObjectWorkerIT {
             return null;
         })
                 .when(buffer).writeAll(anyCollection(), anyInt());
+
+        pluginMetrics = mock(PluginMetrics.class);
+        final Counter counter = mock(Counter.class);
+        when(pluginMetrics.counter(S3_OBJECTS_FAILED_METRIC_NAME)).thenReturn(counter);
     }
 
     private S3ObjectWorker createObjectUnderTest(final Codec codec, final int numberOfRecordsToAccumulate) {
-        return new S3ObjectWorker(s3Client, buffer, codec, Duration.ofMillis(TIMEOUT_IN_MILLIS), numberOfRecordsToAccumulate);
+        return new S3ObjectWorker(s3Client, buffer, codec, Duration.ofMillis(TIMEOUT_IN_MILLIS), numberOfRecordsToAccumulate, pluginMetrics);
     }
 
     @ParameterizedTest
