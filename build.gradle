@@ -103,6 +103,8 @@ subprojects {
         testImplementation 'org.junit.vintage:junit-vintage-engine'
         testImplementation "org.mockito:mockito-core:${versionMap.mockito}"
         testImplementation "org.mockito:mockito-junit-jupiter:${versionMap.mockito}"
+        testImplementation 'org.hamcrest:hamcrest:2.2'
+        testImplementation 'org.awaitility:awaitility:4.2.0'
         constraints {
             implementation('org.apache.httpcomponents:httpclient') {
                 version {

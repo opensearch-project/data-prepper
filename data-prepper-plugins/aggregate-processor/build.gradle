@@ -12,7 +12,6 @@ dependencies {
     implementation project(':data-prepper-plugins:common')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
-    testImplementation 'org.hamcrest:hamcrest:2.2'
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
 }
 

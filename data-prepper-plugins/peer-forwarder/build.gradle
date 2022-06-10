@@ -28,10 +28,8 @@ dependencies {
     implementation "org.apache.commons:commons-lang3:3.12.0"
     implementation 'commons-codec:commons-codec:1.15'
     implementation "commons-validator:commons-validator:1.7"
-    testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
     testImplementation "commons-io:commons-io:2.10.0"
-    testImplementation 'org.awaitility:awaitility:4.2.0'
 }
 
 jacocoTestCoverageVerification {
