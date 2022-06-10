@@ -15,6 +15,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.List;
+
 public class S3SourceConfig {
 
     @JsonProperty("notification_type")
@@ -42,6 +44,15 @@ public class S3SourceConfig {
     @Min(0)
     private int threadCount;
 
+    @JsonProperty("allow_any_account_id")
+    private boolean allowAnyAccountId = false;
+
+    @JsonProperty("account_ids")
+    private List<String> accountIds;
+
+    @JsonProperty("buckets")
+    private List<String> buckets;
+
     public NotificationTypeOption getNotificationType() {
         return notificationType;
     }
@@ -64,5 +75,17 @@ public class S3SourceConfig {
 
     public int getThreadCount() {
         return threadCount;
+    }
+
+    public boolean isAllowAnyAccountId() {
+        return allowAnyAccountId;
+    }
+
+    public List<String> getAccountIds() {
+        return accountIds;
+    }
+
+    public List<String> getBuckets() {
+        return buckets;
     }
 }

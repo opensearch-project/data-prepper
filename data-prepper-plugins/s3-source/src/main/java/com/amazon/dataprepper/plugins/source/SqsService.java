@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.plugins.source;
 
+import com.amazon.dataprepper.plugins.source.filter.S3EventFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
@@ -18,18 +19,20 @@ public class SqsService {
 
     private final S3SourceConfig s3SourceConfig;
     private final S3Service s3Accessor;
+    private final S3EventFilter s3EventFilter;
     private final SqsClient sqsClient;
 
     private Thread sqsWorkerThread;
 
-    public SqsService(final S3SourceConfig s3SourceConfig, final S3Service s3Accessor) {
+    public SqsService(final S3SourceConfig s3SourceConfig, final S3Service s3Accessor, final S3EventFilter s3EventFilter) {
         this.s3SourceConfig = s3SourceConfig;
         this.s3Accessor = s3Accessor;
+        this.s3EventFilter = s3EventFilter;
         this.sqsClient = createSqsClient(StsClient.create());
     }
 
     public void start() {
-        sqsWorkerThread = new Thread(new SqsWorker(sqsClient, s3Accessor, s3SourceConfig));
+        sqsWorkerThread = new Thread(new SqsWorker(sqsClient, s3Accessor, s3SourceConfig, s3EventFilter));
         sqsWorkerThread.start();
     }
 

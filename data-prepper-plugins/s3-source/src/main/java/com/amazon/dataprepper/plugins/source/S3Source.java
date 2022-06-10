@@ -12,6 +12,8 @@ import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
+import com.amazon.dataprepper.plugins.source.filter.ConfigFilterConfigFactory;
+import com.amazon.dataprepper.plugins.source.filter.S3EventFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,11 +25,14 @@ public class S3Source implements Source<Record<Event>> {
     private final S3SourceConfig s3SourceConfig;
 
     private SqsService sqsService;
+    private final S3EventFilter s3EventFilter;
 
     @DataPrepperPluginConstructor
-    public S3Source(PluginMetrics pluginMetrics, final S3SourceConfig s3SourceConfig) {
+    public S3Source(final PluginMetrics pluginMetrics, final S3SourceConfig s3SourceConfig) {
         this.pluginMetrics = pluginMetrics;
         this.s3SourceConfig = s3SourceConfig;
+
+        s3EventFilter = new ConfigFilterConfigFactory().createFilter(s3SourceConfig);
     }
 
     @Override
@@ -37,7 +42,7 @@ public class S3Source implements Source<Record<Event>> {
         }
 
         S3Service s3Service = new S3Service(s3SourceConfig);
-        sqsService = new SqsService(s3SourceConfig, s3Service);
+        sqsService = new SqsService(s3SourceConfig, s3Service, s3EventFilter);
 
         sqsService.start();
     }

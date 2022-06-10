@@ -6,7 +6,6 @@
 package com.amazon.dataprepper.plugins.source;
 
 import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
-import com.amazon.dataprepper.plugins.source.filter.ObjectCreatedFilter;
 import com.amazon.dataprepper.plugins.source.filter.S3EventFilter;
 import com.amazonaws.SdkClientException;
 import com.amazonaws.services.s3.event.S3EventNotification;
@@ -20,6 +19,7 @@ import software.amazon.awssdk.services.sqs.model.SqsException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class SqsWorker implements Runnable {
@@ -29,20 +29,20 @@ public class SqsWorker implements Runnable {
     private final SqsClient sqsClient;
     private final S3Service s3Service;
     private final SqsOptions sqsOptions;
-    private final S3EventFilter objectCreatedFilter;
+    private final S3EventFilter s3EventFilter;
 
-    public SqsWorker(final SqsClient sqsClient, final S3Service s3Service, final S3SourceConfig s3SourceConfig) {
+    public SqsWorker(final SqsClient sqsClient, final S3Service s3Service, final S3SourceConfig s3SourceConfig, final S3EventFilter s3EventFilter) {
         this.s3SourceConfig = s3SourceConfig;
         this.sqsClient = sqsClient;
         this.s3Service = s3Service;
         sqsOptions = s3SourceConfig.getSqsOptions();
-        objectCreatedFilter = new ObjectCreatedFilter();
+        this.s3EventFilter = s3EventFilter;
     }
 
     @Override
     public void run() {
 
-        while(true) {
+        while (true) {
             final int messagesProcessed = processSqsMessages();
 
             if (messagesProcessed < sqsOptions.getMaximumMessages() && s3SourceConfig.getSqsOptions().getPollDelay().toMillis() > 0) {
@@ -110,20 +110,27 @@ public class SqsWorker implements Runnable {
     }
 
     private void processS3ObjectAndDeleteSqsMessages(final Map<Message, List<S3EventNotification.S3EventNotificationRecord>> s3EventNotificationRecords) {
-        for (Map.Entry<Message, List<S3EventNotification.S3EventNotificationRecord>> entry: s3EventNotificationRecords.entrySet()) {
+        for (Map.Entry<Message, List<S3EventNotification.S3EventNotificationRecord>> entry : s3EventNotificationRecords.entrySet()) {
             if (entry.getValue().isEmpty()) {
                 // TODO: delete or ignore based on configuration
-            }
-            else if (isEventNameCreated(entry.getValue().get(0))) {
-                final S3ObjectReference s3ObjectReference = populateS3Reference(entry.getValue().get(0));
-                s3Service.addS3Object(s3ObjectReference);
+            } else {
+                entry.getValue()
+                        .stream()
+                        .map(s3EventFilter::filter)
+                        .filter(Optional::isPresent)
+                        .map(Optional::get)
+                        .map(this::populateS3Reference)
+                        .forEach(s3Service::addS3Object);
+
+                //final S3ObjectReference s3ObjectReference = populateS3Reference(entry.getValue().get(0));
+                //s3Service.addS3Object(s3ObjectReference);
                 // TODO: delete sqsMessages which are successfully processed
             }
         }
     }
 
     private boolean isEventNameCreated(final S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord) {
-        return objectCreatedFilter.filter(s3EventNotificationRecord)
+        return s3EventFilter.filter(s3EventNotificationRecord)
                 .isPresent();
     }
 

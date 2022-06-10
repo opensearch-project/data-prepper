@@ -1,0 +1,49 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package com.amazon.dataprepper.plugins.source;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import java.net.MalformedURLException;
+import java.util.UUID;
+
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class SqsUrlTest {
+    @Test
+    void parse_throws_when_URL_is_not_a_URL() {
+        assertThrows(MalformedURLException.class, () -> SqsUrl.parse(UUID.randomUUID().toString()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "https://sqs.us-east-1.amazonaws.com",
+            "https://sqs.us-east-1.amazonaws.com/",
+            "https://sqs.us-east-1.amazonaws.com/123456789",
+            "https://sqs.us-east-1.amazonaws.com/123456789/"
+    })
+    void parse_throws_when_URL_has_invalid_paths(final String queueUrl) {
+        assertThrows(MalformedURLException.class, () -> SqsUrl.parse(queueUrl));
+    }
+
+    @Test
+    void getAccountId_returns_accountId_part() throws MalformedURLException {
+        final String accountId = UUID.randomUUID().toString();
+        final String queueName = UUID.randomUUID().toString();
+
+        final String queueUrl = String.format("https://sqs.us-east-1.amazonaws.com/%s/%s", accountId, queueName);
+
+        final SqsUrl objectUnderTest = SqsUrl.parse(queueUrl);
+
+        assertThat(objectUnderTest, notNullValue());
+        assertThat(objectUnderTest.getAccountId(), equalTo(accountId));
+    }
+}

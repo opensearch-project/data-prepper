@@ -6,11 +6,13 @@
 package com.amazon.dataprepper.plugins.source;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
+import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class S3SourceTest {
     private final String PLUGIN_NAME = "s3";
@@ -25,6 +27,10 @@ class S3SourceTest {
     void setUp() {
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
         s3SourceConfig = mock(S3SourceConfig.class);
+
+        final SqsOptions sqsOptions = mock(SqsOptions.class);
+        when(s3SourceConfig.getSqsOptions()).thenReturn(sqsOptions);
+        when(sqsOptions.getSqsUrl()).thenReturn("https://sqs/123/abc");
 
         s3Source = new S3Source(pluginMetrics, s3SourceConfig);
     }
