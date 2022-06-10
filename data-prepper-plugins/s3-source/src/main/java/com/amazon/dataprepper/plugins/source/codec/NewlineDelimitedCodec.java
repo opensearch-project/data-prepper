@@ -6,13 +6,14 @@
 package com.amazon.dataprepper.plugins.source.codec;
 
 import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.event.JacksonEvent;
+import com.amazon.dataprepper.model.log.JacksonLog;
 import com.amazon.dataprepper.model.record.Record;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -45,7 +46,9 @@ public class NewlineDelimitedCodec implements Codec {
                 continue;
             }
 
-            final Event event = JacksonEvent.fromMessage(line);
+            final Event event = JacksonLog.builder()
+                    .withData(Collections.singletonMap("message", line))
+                    .build();
             eventConsumer.accept(new Record<>(event));
         }
     }

@@ -6,6 +6,7 @@
 package com.amazon.dataprepper.plugins.source.codec;
 
 import com.amazon.dataprepper.model.event.Event;
+import com.amazon.dataprepper.model.event.EventType;
 import com.amazon.dataprepper.model.record.Record;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,7 +53,7 @@ class NewlineDelimitedCodecTest {
 
     @ParameterizedTest
     @ValueSource(ints = {-1, -2, Integer.MIN_VALUE})
-    void constructor_throws_if_skipLines_is_less_than_zero(int negativeSkipLines) {
+    void constructor_throws_if_skipLines_is_less_than_zero(final int negativeSkipLines) {
         when(config.getSkipLines()).thenReturn(negativeSkipLines);
 
         assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
@@ -60,11 +61,11 @@ class NewlineDelimitedCodecTest {
 
     @ParameterizedTest
     @ValueSource(ints = {0, 1, 2, 10, 50})
-    void parse_calls_Consumer_for_each_line(int numberOfLines) throws IOException {
+    void parse_calls_Consumer_for_each_line(final int numberOfLines) throws IOException {
         final List<String> linesList = generateLinesAsList(numberOfLines);
         final InputStream inputStream = createInputStream(linesList);
 
-        List<Record<Event>> actualEvents = new ArrayList<>();
+        final List<Record<Event>> actualEvents = new ArrayList<>();
         createObjectUnderTest().parse(inputStream, actualEvents::add);
 
         assertThat(actualEvents.size(), equalTo(numberOfLines));
@@ -78,7 +79,7 @@ class NewlineDelimitedCodecTest {
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 10, 50})
-    void parse_calls_Consumer_for_each_line_after_skipping(int numberOfLines) throws IOException {
+    void parse_calls_Consumer_for_each_line_after_skipping(final int numberOfLines) throws IOException {
         final List<String> linesList = generateLinesAsList(numberOfLines);
         final InputStream inputStream = createInputStream(linesList);
 
@@ -93,6 +94,8 @@ class NewlineDelimitedCodecTest {
             assertThat(record, notNullValue());
             assertThat(record.getData(), notNullValue());
             assertThat(record.getData().get("message", String.class), equalTo(linesList.get(i + skipLines)));
+            assertThat(record.getData().getMetadata(), notNullValue());
+            assertThat(record.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
         }
     }
 
@@ -101,26 +104,26 @@ class NewlineDelimitedCodecTest {
         final InputStream inputStream = createInputStream(generateLinesAsList(0));
 
         when(config.getSkipLines()).thenReturn(1);
-        Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
+        final Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
         createObjectUnderTest().parse(inputStream, eventConsumer);
 
         verifyNoInteractions(eventConsumer);
     }
 
-    private InputStream createInputStream(List<String> lines) {
+    private InputStream createInputStream(final List<String> lines) {
         final String inputString = generateMultilineString(lines);
 
         return new ByteArrayInputStream(inputString.getBytes(StandardCharsets.UTF_8));
     }
 
-    private List<String> generateLinesAsList(int numberOfLines) {
-        List<String> linesList = new ArrayList<>(numberOfLines);
+    private List<String> generateLinesAsList(final int numberOfLines) {
+        final List<String> linesList = new ArrayList<>(numberOfLines);
         for (int i = 0; i < numberOfLines; i++)
             linesList.add(UUID.randomUUID().toString());
         return Collections.unmodifiableList(linesList);
     }
 
-    private String generateMultilineString(List<String> numberOfLines) {
+    private String generateMultilineString(final List<String> numberOfLines) {
         final StringWriter stringWriter = new StringWriter();
         for (String line : numberOfLines) {
             stringWriter.write(line);

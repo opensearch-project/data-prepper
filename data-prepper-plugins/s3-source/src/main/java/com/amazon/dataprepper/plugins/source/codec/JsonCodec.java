@@ -7,6 +7,7 @@ package com.amazon.dataprepper.plugins.source.codec;
 
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
+import com.amazon.dataprepper.model.log.JacksonLog;
 import com.amazon.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
@@ -52,8 +53,7 @@ public class JsonCodec implements Codec {
     }
 
     private Record<Event> createRecord(final Map<String, Object> json) {
-        final JacksonEvent event = JacksonEvent.builder()
-                .withEventType("event")
+        final JacksonEvent event = JacksonLog.builder()
                 .withData(json)
                 .build();
 
