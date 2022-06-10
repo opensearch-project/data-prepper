@@ -14,11 +14,11 @@ import java.util.zip.GZIPInputStream;
 public class CompressionEngine {
     private final CompressionOption compressionOption;
 
-    public CompressionEngine(CompressionOption compressionOption) {
+    public CompressionEngine(final CompressionOption compressionOption) {
         this.compressionOption = compressionOption;
     }
 
-    InputStream createInputStream(String s3Key, InputStream responseInputStream) throws IOException {
+    InputStream createInputStream(final String s3Key, final InputStream responseInputStream) throws IOException {
         if (compressionOption.equals(CompressionOption.NONE))
             return responseInputStream;
         else if (compressionOption.equals(CompressionOption.GZIP))
