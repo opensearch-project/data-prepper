@@ -6,6 +6,7 @@
 package com.amazon.dataprepper.plugins.source;
 
 import com.amazon.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
+import com.amazon.dataprepper.plugins.source.configuration.OnErrorOption;
 import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
 import com.amazon.dataprepper.plugins.source.filter.ObjectCreatedFilter;
 import com.amazon.dataprepper.plugins.source.filter.S3EventFilter;
@@ -15,6 +16,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.Message;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SqsException;
@@ -25,8 +27,10 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 class SqsWorkerTest {
     private SqsWorker sqsWorker;
@@ -51,6 +55,7 @@ class SqsWorkerTest {
 
         when(s3SourceConfig.getAWSAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         when(s3SourceConfig.getSqsOptions()).thenReturn(sqsOptions);
+        when(s3SourceConfig.getOnErrorOption()).thenReturn(OnErrorOption.DLQ);
 
         sqsWorker = new SqsWorker(sqsClient, s3Service, s3SourceConfig);
     }
@@ -72,6 +77,8 @@ class SqsWorkerTest {
         final int messagesProcessed = sqsWorker.processSqsMessages();
 
         assertThat(messagesProcessed, equalTo(1));
+        verify(s3Service, times(1)).addS3Object(any(S3ObjectReference.class));
+        verify(sqsClient, times(1)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
     }
 
     @Test
@@ -92,6 +99,7 @@ class SqsWorkerTest {
 
         assertThat(messagesProcessed, equalTo(1));
         verifyNoInteractions(s3Service);
+        verify(sqsClient, times(1)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
     }
 
     @Test
@@ -99,6 +107,7 @@ class SqsWorkerTest {
         when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(SqsException.class);
         final int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(0));
+        verify(sqsClient, times(1)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
     }
 
     @ParameterizedTest
@@ -114,6 +123,7 @@ class SqsWorkerTest {
         final int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(1));
         verifyNoInteractions(s3Service);
+        verify(sqsClient, times(1)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
     }
 
     @ParameterizedTest
@@ -129,5 +139,6 @@ class SqsWorkerTest {
         final int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(1));
         verifyNoInteractions(s3Service);
+        verify(sqsClient, times(1)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
     }
 }

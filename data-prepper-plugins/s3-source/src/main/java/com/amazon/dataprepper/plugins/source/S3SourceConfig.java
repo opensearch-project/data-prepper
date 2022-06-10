@@ -10,6 +10,7 @@ import com.amazon.dataprepper.plugins.source.configuration.CompressionOption;
 import com.amazon.dataprepper.plugins.source.configuration.CodecOption;
 import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
 import com.amazon.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
+import com.amazon.dataprepper.plugins.source.configuration.OnErrorOption;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -42,6 +43,9 @@ public class S3SourceConfig {
     @Min(0)
     private int threadCount;
 
+    @JsonProperty("on_error")
+    private OnErrorOption onErrorOption = OnErrorOption.DLQ;
+
     public NotificationTypeOption getNotificationType() {
         return notificationType;
     }
@@ -64,5 +68,9 @@ public class S3SourceConfig {
 
     public int getThreadCount() {
         return threadCount;
+    }
+
+    public OnErrorOption getOnErrorOption() {
+        return onErrorOption;
     }
 }
