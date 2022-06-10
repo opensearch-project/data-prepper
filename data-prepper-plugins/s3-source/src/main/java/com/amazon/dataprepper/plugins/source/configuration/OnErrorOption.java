@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 public enum OnErrorOption {
     DELETE_MESSAGES("delete_messages"),
-    DLQ("dlq");
+    RETAIN_MESSAGES("retain_messages");
 
     private static final Map<String, OnErrorOption> OPTIONS_MAP = Arrays.stream(OnErrorOption.values())
             .collect(Collectors.toMap(

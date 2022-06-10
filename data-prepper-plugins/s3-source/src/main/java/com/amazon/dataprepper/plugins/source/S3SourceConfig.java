@@ -44,7 +44,7 @@ public class S3SourceConfig {
     private int threadCount;
 
     @JsonProperty("on_error")
-    private OnErrorOption onErrorOption = OnErrorOption.DLQ;
+    private OnErrorOption onErrorOption = OnErrorOption.RETAIN_MESSAGES;
 
     public NotificationTypeOption getNotificationType() {
         return notificationType;

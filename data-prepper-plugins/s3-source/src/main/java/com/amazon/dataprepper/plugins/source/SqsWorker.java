@@ -96,7 +96,6 @@ public class SqsWorker implements Runnable {
         return sqsMessages.stream().collect(Collectors.toMap(message -> message, this::convertS3EventMessages));
     }
 
-    // on_error: delete_from_queue|visibility_expiration
     private List<S3EventNotification.S3EventNotificationRecord> convertS3EventMessages(final Message message) {
         try {
             final S3EventNotification s3EventNotification = S3EventNotification.parseJson(message.body());
@@ -127,8 +126,10 @@ public class SqsWorker implements Runnable {
                 deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(entry.getKey()));
             }
         }
-        DeleteMessageBatchRequest deleteMessageBatchRequest = buildDeleteMessageBatchRequest(deleteMessageBatchRequestEntryCollection);
-        sqsClient.deleteMessageBatch(deleteMessageBatchRequest);
+        if (!deleteMessageBatchRequestEntryCollection.isEmpty()) {
+            DeleteMessageBatchRequest deleteMessageBatchRequest = buildDeleteMessageBatchRequest(deleteMessageBatchRequestEntryCollection);
+            sqsClient.deleteMessageBatch(deleteMessageBatchRequest);
+        }
     }
 
     private DeleteMessageBatchRequestEntry buildDeleteMessageBatchRequestEntry(Message message) {
