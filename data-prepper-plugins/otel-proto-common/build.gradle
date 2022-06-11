@@ -15,5 +15,4 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation "org.apache.commons:commons-lang3:3.12.0"
     implementation 'commons-codec:commons-codec:1.15'
-    testImplementation "org.hamcrest:hamcrest:2.2"
 }

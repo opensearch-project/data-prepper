@@ -16,19 +16,20 @@ dependencies {
     testImplementation project(':data-prepper-api').sourceSets.test.output
     implementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetryProto}"
     implementation "commons-io:commons-io:2.11.0"
-    implementation 'com.amazonaws:aws-java-sdk-s3'
-    implementation 'com.amazonaws:aws-java-sdk-acm'
+    implementation 'software.amazon.awssdk:acm'
+    implementation 'software.amazon.awssdk:auth'
+    implementation 'software.amazon.awssdk:regions'
+    implementation 'software.amazon.awssdk:s3'
     implementation "com.google.protobuf:protobuf-java-util:${versionMap.protobufJavaUtil}"
     implementation "com.linecorp.armeria:armeria:${versionMap.armeria}"
     implementation "com.linecorp.armeria:armeria-grpc:${versionMap.armeriaGrpc}"
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation "org.apache.commons:commons-lang3:3.12.0"
-    implementation "org.bouncycastle:bcprov-jdk15on:1.69"
+    implementation "org.bouncycastle:bcprov-jdk15on:1.70"
     implementation "org.bouncycastle:bcpkix-jdk15on:1.69"
-    testImplementation 'org.assertj:assertj-core:3.21.0'
+    testImplementation 'org.assertj:assertj-core:3.23.1'
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
-    testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation("commons-io:commons-io:2.10.0")
 }
 

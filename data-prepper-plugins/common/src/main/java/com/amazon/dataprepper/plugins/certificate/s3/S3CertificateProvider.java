@@ -7,45 +7,59 @@ package com.amazon.dataprepper.plugins.certificate.s3;
 
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3URI;
-import com.amazonaws.services.s3.model.S3Object;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.services.s3.S3Client;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 public class S3CertificateProvider implements CertificateProvider {
     private static final Logger LOG = LoggerFactory.getLogger(S3CertificateProvider.class);
-    private final AmazonS3 s3Client;
-    private final String certificateFilePath;
-    private final String privateKeyFilePath;
+    private final S3Client s3Client;
+    private final String certificateFile;
+    private final String privateKeyFile;
 
-    public S3CertificateProvider(final AmazonS3 s3Client,
-                                 final String certificateFilePath,
-                                 final String privateKeyFilePath) {
+    public S3CertificateProvider(final S3Client s3Client,
+                                 final String certificateFile,
+                                 final String privateKeyFile) {
         this.s3Client = Objects.requireNonNull(s3Client);
-        this.certificateFilePath = Objects.requireNonNull(certificateFilePath);
-        this.privateKeyFilePath = Objects.requireNonNull(privateKeyFilePath);
+        this.certificateFile = Objects.requireNonNull(certificateFile);
+        this.privateKeyFile = Objects.requireNonNull(privateKeyFile);
     }
 
     public Certificate getCertificate() {
-        final AmazonS3URI certificateS3URI = new AmazonS3URI(certificateFilePath);
-        final AmazonS3URI privateKeyS3URI = new AmazonS3URI(privateKeyFilePath);
-        final String certificate = getObjectWithKey(certificateS3URI.getBucket(), certificateS3URI.getKey());
-        final String privateKey = getObjectWithKey(privateKeyS3URI.getBucket(), privateKeyS3URI.getKey());
 
-        return new Certificate(certificate, privateKey);
+        try {
+
+            final URI certificateFileUri = new URI(certificateFile);
+            final URI privateKeyFileUri = new URI(privateKeyFile);
+
+            final String certificate = getObjectWithKey(certificateFileUri.getHost(), certificateFileUri.getPath().substring(1));
+            final String privateKey = getObjectWithKey(privateKeyFileUri.getHost(), privateKeyFileUri.getPath().substring(1));
+
+            return new Certificate(certificate, privateKey);
+
+        } catch (URISyntaxException ex) {
+            LOG.error("Error encountered while parsing the certificate's Amazon S3 URI.", ex);
+            throw new RuntimeException(ex);
+        }
+
     }
 
     private String getObjectWithKey(final String bucketName, final String key) {
 
         // Download the object
-        try (final S3Object s3Object = s3Client.getObject(bucketName, key)) {
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucketName).key(key).build();
+        try (final ResponseInputStream<GetObjectResponse> s3Object = s3Client.getObject(getObjectRequest)) {
             LOG.info("Object with key \"{}\" downloaded.", key);
-            return IOUtils.toString(s3Object.getObjectContent(), StandardCharsets.UTF_8);
+            return IOUtils.toString(s3Object, StandardCharsets.UTF_8);
         } catch (final Exception ex) {
             LOG.error("Error encountered while processing the response from Amazon S3.", ex);
             throw new RuntimeException(ex);

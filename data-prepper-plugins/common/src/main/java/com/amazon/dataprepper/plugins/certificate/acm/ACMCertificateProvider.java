@@ -7,13 +7,7 @@ package com.amazon.dataprepper.plugins.certificate.acm;
 
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
-import com.amazonaws.arn.Arn;
-import com.amazonaws.services.certificatemanager.AWSCertificateManager;
-import com.amazonaws.services.certificatemanager.model.ExportCertificateRequest;
-import com.amazonaws.services.certificatemanager.model.ExportCertificateResult;
-import com.amazonaws.services.certificatemanager.model.InvalidArnException;
-import com.amazonaws.services.certificatemanager.model.RequestInProgressException;
-import com.amazonaws.services.certificatemanager.model.ResourceNotFoundException;
+
 import org.apache.commons.lang3.RandomStringUtils;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -30,10 +24,18 @@ import org.bouncycastle.pkcs.jcajce.JcePKCSPBEInputDecryptorProviderBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import software.amazon.awssdk.arns.Arn;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.acm.AcmClient;
+import software.amazon.awssdk.services.acm.model.ExportCertificateRequest;
+import software.amazon.awssdk.services.acm.model.ExportCertificateResponse;
+import software.amazon.awssdk.services.acm.model.InvalidArnException;
+import software.amazon.awssdk.services.acm.model.RequestInProgressException;
+import software.amazon.awssdk.services.acm.model.ResourceNotFoundException;
+
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.nio.ByteBuffer;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
 import java.security.Security;
@@ -48,21 +50,21 @@ public class ACMCertificateProvider implements CertificateProvider {
     private static final String BOUNCY_CASTLE_PROVIDER = "BC";
     private static final Random SECURE_RANDOM = new SecureRandom();
 
-    private final AWSCertificateManager awsCertificateManager;
+    private final AcmClient acmClient;
     private final String acmArn;
     private final long totalTimeout;
     private final String passphrase;
 
-    public ACMCertificateProvider(final AWSCertificateManager awsCertificateManager,
+    public ACMCertificateProvider(final AcmClient acmClient,
                                   final String acmArn,
                                   final long totalTimeout,
                                   final String passphrase) {
-        this.awsCertificateManager = Objects.requireNonNull(awsCertificateManager);
+        this.acmClient = Objects.requireNonNull(acmClient);
         this.acmArn = Objects.requireNonNull(acmArn);
         try {
             Arn.fromString(acmArn);
         } catch (Exception e) {
-            throw new InvalidArnException("Invalid ARN format for acmArn");
+            throw InvalidArnException.builder().message("Invalid ARN format for acmArn").build();
         }
         this.totalTimeout = Objects.requireNonNull(totalTimeout);
         // Passphrase can be null. If null a random passphrase will be generated.
@@ -71,19 +73,21 @@ public class ACMCertificateProvider implements CertificateProvider {
     }
 
     public Certificate getCertificate() {
-        ExportCertificateResult exportCertificateResult = null;
+        ExportCertificateResponse exportCertificateResponse = null;
         long timeSlept = 0L;
 
         // The private key from ACM is encrypted. Passphrase is the privateKey password that will be used to decrypt the
         // private key. If it's not provided, generate a random password. The configured passphrase can
         // be used to decrypt the private key manually using openssl commands for any inspection or debugging.
         final String pkPassphrase = Optional.ofNullable(passphrase).orElse(generatePassphrase(PASSPHRASE_CHAR_COUNT));
-        while (exportCertificateResult == null && timeSlept < totalTimeout) {
+        while (exportCertificateResponse == null && timeSlept < totalTimeout) {
             try {
-                final ExportCertificateRequest exportCertificateRequest = new ExportCertificateRequest()
-                        .withCertificateArn(acmArn)
-                        .withPassphrase(ByteBuffer.wrap(pkPassphrase.getBytes()));
-                exportCertificateResult = awsCertificateManager.exportCertificate(exportCertificateRequest);
+                ExportCertificateRequest exportCertificateRequest = ExportCertificateRequest.builder()
+                        .certificateArn(acmArn)
+                        .passphrase(SdkBytes.fromByteArray(pkPassphrase.getBytes()))
+                        .build();
+
+                exportCertificateResponse = acmClient.exportCertificate(exportCertificateRequest);
 
             } catch (final RequestInProgressException ex) {
                 try {
@@ -97,9 +101,9 @@ public class ACMCertificateProvider implements CertificateProvider {
             }
             timeSlept += SLEEP_INTERVAL;
         }
-        if (exportCertificateResult != null) {
-            final String decryptedPrivateKey = getDecryptedPrivateKey(exportCertificateResult.getPrivateKey(), pkPassphrase);
-            return new Certificate(exportCertificateResult.getCertificate(), decryptedPrivateKey);
+        if (exportCertificateResponse != null) {
+            final String decryptedPrivateKey = getDecryptedPrivateKey(exportCertificateResponse.privateKey(), pkPassphrase);
+            return new Certificate(exportCertificateResponse.certificate(), decryptedPrivateKey);
         } else {
             throw new IllegalStateException(String.format("Exception retrieving certificate results. Time spent retrieving certificate is" +
                     " %d ms and total time out set is %d ms.", timeSlept, totalTimeout));
