@@ -91,8 +91,8 @@ class SqsWorkerTest {
         assertThat(actualDeleteMessageBatchRequest.entries().get(0).id(), equalTo(message.messageId()));
         assertThat(actualDeleteMessageBatchRequest.entries().get(0).receiptHandle(), equalTo(message.receiptHandle()));
         assertThat(messagesProcessed, equalTo(1));
-        verify(s3Service, times(1)).addS3Object(any(S3ObjectReference.class));
-        verify(sqsClient, times(1)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+        verify(s3Service).addS3Object(any(S3ObjectReference.class));
+        verify(sqsClient).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
     }
 
     @Test
@@ -113,6 +113,7 @@ class SqsWorkerTest {
 
         assertThat(messagesProcessed, equalTo(1));
         verifyNoInteractions(s3Service);
+        verify(sqsClient, times(0)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
     }
 
     @Test
@@ -120,6 +121,7 @@ class SqsWorkerTest {
         when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(SqsException.class);
         final int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(0));
+        verify(sqsClient, times(0)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
     }
 
     @ParameterizedTest
@@ -135,6 +137,7 @@ class SqsWorkerTest {
         final int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(1));
         verifyNoInteractions(s3Service);
+        verify(sqsClient, times(0)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
     }
 
     @ParameterizedTest
@@ -150,11 +153,12 @@ class SqsWorkerTest {
         final int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(1));
         verifyNoInteractions(s3Service);
+        verify(sqsClient, times(0)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"", "{\"foo\": \"bar\""})
-    void processSqsMessages_should_throw_invoke_delete_if_input_is_not_valid_JSON_and_delete_on_error(String inputString) {
+    void processSqsMessages_should_invoke_delete_if_input_is_not_valid_JSON_and_delete_on_error(String inputString) {
         when(s3SourceConfig.getOnErrorOption()).thenReturn(OnErrorOption.DELETE_MESSAGES);
         final Message message = mock(Message.class);
         when(message.body()).thenReturn(inputString);
