@@ -12,6 +12,7 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
 import com.amazon.dataprepper.plugins.source.codec.NewlineDelimitedCodec;
 import com.amazon.dataprepper.plugins.source.codec.NewlineDelimitedConfig;
+import com.amazon.dataprepper.plugins.source.compression.CompressionEngine;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtensionContext;
