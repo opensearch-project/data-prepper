@@ -10,6 +10,7 @@ import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
+import com.amazon.dataprepper.plugins.source.compression.CompressionEngine;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,6 +56,9 @@ class S3ObjectWorkerTest {
     private Buffer<Record<Event>> buffer;
 
     @Mock
+    private CompressionEngine compressionEngine;
+
+    @Mock
     private Codec codec;
 
     private Duration bufferTimeout;
@@ -70,6 +74,7 @@ class S3ObjectWorkerTest {
 
     private String bucketName;
     private String key;
+    private ResponseInputStream<GetObjectResponse> objectInputStream;
 
     @BeforeEach
     void setUp() {
@@ -83,15 +88,16 @@ class S3ObjectWorkerTest {
         when(s3ObjectReference.getKey()).thenReturn(key);
 
         when(pluginMetrics.counter(S3ObjectWorker.S3_OBJECTS_FAILED_METRIC_NAME)).thenReturn(s3ObjectsFailedCounter);
+
+        objectInputStream = mock(ResponseInputStream.class);
     }
 
     private S3ObjectWorker createObjectUnderTest() {
-        return new S3ObjectWorker(s3Client, buffer, codec, bufferTimeout, recordsToAccumulate, pluginMetrics);
+        return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bufferTimeout, recordsToAccumulate, pluginMetrics);
     }
 
     @Test
     void parseS3Object_calls_getObject_with_correct_GetObjectRequest() throws IOException {
-        final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
 
@@ -109,9 +115,9 @@ class S3ObjectWorkerTest {
 
     @Test
     void parseS3Object_calls_Codec_parse_on_S3InputStream() throws Exception {
-        final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
+        when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
 
         createObjectUnderTest().parseS3Object(s3ObjectReference);
 
@@ -120,9 +126,9 @@ class S3ObjectWorkerTest {
 
     @Test
     void parseS3Object_calls_Codec_parse_with_Consumer_that_adds_to_BufferAccumulator() throws Exception {
-        final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
+        when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
 
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
@@ -143,9 +149,9 @@ class S3ObjectWorkerTest {
 
     @Test
     void parseS3Object_calls_BufferAccumulator_flush_after_Codec_parse() throws Exception {
-        final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
+        when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
 
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
@@ -176,7 +182,7 @@ class S3ObjectWorkerTest {
 
     @Test
     void parseS3Object_throws_Exception_and_increments_counter_when_unable_to_parse_S3_object() throws IOException {
-        final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
+        when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
         final IOException expectedException = mock(IOException.class);
