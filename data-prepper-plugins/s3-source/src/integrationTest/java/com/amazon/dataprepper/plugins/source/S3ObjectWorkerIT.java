@@ -12,6 +12,7 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
 import com.amazon.dataprepper.plugins.source.codec.NewlineDelimitedCodec;
 import com.amazon.dataprepper.plugins.source.codec.NewlineDelimitedConfig;
+import com.amazon.dataprepper.plugins.source.compression.CompressionEngine;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -49,6 +50,7 @@ public class S3ObjectWorkerIT {
     private S3Client s3Client;
     private S3ObjectGenerator s3ObjectGenerator;
     private Buffer<Record<Event>> buffer;
+    private CompressionEngine compressionEngine;
     private String bucket;
     private int recordsReceived;
     private PluginMetrics pluginMetrics;
@@ -62,6 +64,7 @@ public class S3ObjectWorkerIT {
         s3ObjectGenerator = new S3ObjectGenerator(s3Client, bucket);
 
         buffer = mock(Buffer.class);
+        compressionEngine = mock(CompressionEngine.class);
         recordsReceived = 0;
         doAnswer(a -> {
             final Collection<Record<Event>> recordsCollection = a.<Collection<Record<Event>>>getArgument(0);
@@ -83,7 +86,7 @@ public class S3ObjectWorkerIT {
     }
 
     private S3ObjectWorker createObjectUnderTest(final Codec codec, final int numberOfRecordsToAccumulate) {
-        return new S3ObjectWorker(s3Client, buffer, codec, Duration.ofMillis(TIMEOUT_IN_MILLIS), numberOfRecordsToAccumulate, pluginMetrics);
+        return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, Duration.ofMillis(TIMEOUT_IN_MILLIS), numberOfRecordsToAccumulate, pluginMetrics);
     }
 
     @ParameterizedTest
