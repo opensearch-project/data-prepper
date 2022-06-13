@@ -10,6 +10,7 @@ import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
+import com.amazon.dataprepper.plugins.source.compression.CompressionEngine;
 import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +20,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
 
 /**
@@ -31,6 +33,7 @@ class S3ObjectWorker {
 
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
+    private final CompressionEngine compressionEngine;
     private final Codec codec;
     private final Duration bufferTimeout;
     private final int numberOfRecordsToAccumulate;
@@ -38,12 +41,14 @@ class S3ObjectWorker {
 
     public S3ObjectWorker(final S3Client s3Client,
                           final Buffer<Record<Event>> buffer,
+                          final CompressionEngine compressionEngine,
                           final Codec codec,
                           final Duration bufferTimeout,
                           final int numberOfRecordsToAccumulate,
                           final PluginMetrics pluginMetrics) {
         this.s3Client = s3Client;
         this.buffer = buffer;
+        this.compressionEngine = compressionEngine;
         this.codec = codec;
         this.bufferTimeout = bufferTimeout;
         this.numberOfRecordsToAccumulate = numberOfRecordsToAccumulate;
@@ -51,16 +56,18 @@ class S3ObjectWorker {
         s3ObjectsFailedCounter = pluginMetrics.counter(S3_OBJECTS_FAILED_METRIC_NAME);
     }
 
-    void parseS3Object(final S3ObjectReference s3ObjectPointer) throws IOException {
+    void parseS3Object(final S3ObjectReference s3ObjectReference) throws IOException {
         final GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                .bucket(s3ObjectPointer.getBucketName())
-                .key(s3ObjectPointer.getKey())
+                .bucket(s3ObjectReference.getBucketName())
+                .key(s3ObjectReference.getKey())
                 .build();
 
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
 
-        try (final ResponseInputStream<GetObjectResponse> object = s3Client.getObject(getObjectRequest)) {
-            codec.parse(object, record -> {
+
+        try (final ResponseInputStream<GetObjectResponse> responseInputStream = s3Client.getObject(getObjectRequest);
+             final InputStream inputStream = compressionEngine.createInputStream(getObjectRequest.key(), responseInputStream)) {
+            codec.parse(inputStream, record -> {
                 try {
                     bufferAccumulator.add(record);
                 } catch (final Exception e) {
@@ -68,7 +75,7 @@ class S3ObjectWorker {
                 }
             });
         } catch (final Exception e) {
-            LOG.error("Error reading from S3 object: s3ObjectReference={}.", s3ObjectPointer, e);
+            LOG.error("Error reading from S3 object: s3ObjectReference={}.", s3ObjectReference, e);
             s3ObjectsFailedCounter.increment();
             throw e;
         }
