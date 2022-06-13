@@ -166,7 +166,7 @@ subprojects {
 
 configure(subprojects.findAll {it.name != 'data-prepper-api'}) {
     dependencies {
-        implementation platform('software.amazon.awssdk:bom:2.17.15')
+        implementation platform('software.amazon.awssdk:bom:2.17.209')
         implementation 'jakarta.validation:jakarta.validation-api:3.0.1'
     }
 }
