@@ -6,6 +6,7 @@
 package com.amazon.dataprepper.plugins.source.codec;
 
 import com.amazon.dataprepper.model.event.Event;
+import com.amazon.dataprepper.model.event.EventType;
 import com.amazon.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -135,6 +136,8 @@ class JsonCodecTest {
             final Record<Event> actualRecord = actualRecords.get(i);
             assertThat(actualRecord, notNullValue());
             assertThat(actualRecord.getData(), notNullValue());
+            assertThat(actualRecord.getData().getMetadata(), notNullValue());
+            assertThat(actualRecord.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
 
             final Map<String, Object> expectedMap = jsonObjects.get(i);
             assertThat(actualRecord.getData().toMap(), equalTo(expectedMap));
@@ -146,8 +149,6 @@ class JsonCodecTest {
     void parse_with_InputStream_calls_Consumer_for_arrays_in_Json_permutations(final Function<List<Map<String, Object>>, Map<String, Object>> rootJsonGenerator) throws IOException {
         final int numberOfObjects = 10;
         final List<Map<String, Object>> jsonObjects = generateJsonObjectsAsList(numberOfObjects);
-
-        final Map<String, Object> rootJson = rootJsonGenerator.apply(jsonObjects);
 
         createObjectUnderTest().parse(createInputStream(jsonObjects), eventConsumer);
 
@@ -162,6 +163,8 @@ class JsonCodecTest {
             final Record<Event> actualRecord = actualRecords.get(i);
             assertThat(actualRecord, notNullValue());
             assertThat(actualRecord.getData(), notNullValue());
+            assertThat(actualRecord.getData().getMetadata(), notNullValue());
+            assertThat(actualRecord.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
 
             final Map<String, Object> expectedMap = jsonObjects.get(i);
             assertThat(actualRecord.getData().toMap(), equalTo(expectedMap));
@@ -193,6 +196,8 @@ class JsonCodecTest {
             final Record<Event> actualRecord = actualRecords.get(i);
             assertThat(actualRecord, notNullValue());
             assertThat(actualRecord.getData(), notNullValue());
+            assertThat(actualRecord.getData().getMetadata(), notNullValue());
+            assertThat(actualRecord.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
 
             final Map<String, Object> expectedMap = expectedJsonObjects.get(i);
             assertThat(actualRecord.getData().toMap(), equalTo(expectedMap));
