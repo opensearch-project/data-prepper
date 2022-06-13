@@ -30,6 +30,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -113,7 +114,7 @@ class SqsWorkerTest {
 
         assertThat(messagesProcessed, equalTo(1));
         verifyNoInteractions(s3Service);
-        verify(sqsClient, times(0)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+        verify(sqsClient, never()).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
     }
 
     @Test
@@ -121,7 +122,7 @@ class SqsWorkerTest {
         when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(SqsException.class);
         final int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(0));
-        verify(sqsClient, times(0)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+        verify(sqsClient, never()).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
     }
 
     @ParameterizedTest
@@ -137,7 +138,7 @@ class SqsWorkerTest {
         final int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(1));
         verifyNoInteractions(s3Service);
-        verify(sqsClient, times(0)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+        verify(sqsClient, never()).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
     }
 
     @ParameterizedTest
@@ -153,7 +154,7 @@ class SqsWorkerTest {
         final int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(1));
         verifyNoInteractions(s3Service);
-        verify(sqsClient, times(0)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+        verify(sqsClient, never()).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
     }
 
     @ParameterizedTest

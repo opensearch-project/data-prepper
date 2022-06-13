@@ -15,7 +15,7 @@ class OnErrorOptionTest {
     @ParameterizedTest
     @EnumSource(OnErrorOption.class)
     void fromOptionValue(final OnErrorOption option) {
-        assertThat(OnErrorOption.fromOptionValue(option.name()), is(option));
+        assertThat(OnErrorOption.fromOptionValue(option.name().toLowerCase()), is(option));
     }
 
 }

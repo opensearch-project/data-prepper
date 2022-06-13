@@ -24,11 +24,11 @@ public enum OnErrorOption {
     private final String option;
 
     OnErrorOption(final String option) {
-        this.option = option.toLowerCase();
+        this.option = option;
     }
 
     @JsonCreator
     static OnErrorOption fromOptionValue(final String option) {
-        return OPTIONS_MAP.get(option.toLowerCase());
+        return OPTIONS_MAP.get(option);
     }
 }
