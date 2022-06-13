@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.plugins.source;
 
+import com.amazon.dataprepper.plugins.source.configuration.OnErrorOption;
 import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
 import com.amazon.dataprepper.plugins.source.filter.ObjectCreatedFilter;
 import com.amazon.dataprepper.plugins.source.filter.S3EventFilter;
@@ -13,10 +14,13 @@ import com.amazonaws.services.s3.event.S3EventNotification;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -92,7 +96,6 @@ public class SqsWorker implements Runnable {
         return sqsMessages.stream().collect(Collectors.toMap(message -> message, this::convertS3EventMessages));
     }
 
-    // on_error: delete_from_queue|visibility_expiration
     private List<S3EventNotification.S3EventNotificationRecord> convertS3EventMessages(final Message message) {
         try {
             final S3EventNotification s3EventNotification = S3EventNotification.parseJson(message.body());
@@ -110,16 +113,37 @@ public class SqsWorker implements Runnable {
     }
 
     private void processS3ObjectAndDeleteSqsMessages(final Map<Message, List<S3EventNotification.S3EventNotificationRecord>> s3EventNotificationRecords) {
+        List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection = new ArrayList<>();
         for (Map.Entry<Message, List<S3EventNotification.S3EventNotificationRecord>> entry: s3EventNotificationRecords.entrySet()) {
             if (entry.getValue().isEmpty()) {
-                // TODO: delete or ignore based on configuration
+                if (s3SourceConfig.getOnErrorOption().equals(OnErrorOption.DELETE_MESSAGES)) {
+                    deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(entry.getKey()));
+                }
             }
             else if (isEventNameCreated(entry.getValue().get(0))) {
                 final S3ObjectReference s3ObjectReference = populateS3Reference(entry.getValue().get(0));
                 s3Service.addS3Object(s3ObjectReference);
-                // TODO: delete sqsMessages which are successfully processed
+                deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(entry.getKey()));
             }
         }
+        if (!deleteMessageBatchRequestEntryCollection.isEmpty()) {
+            DeleteMessageBatchRequest deleteMessageBatchRequest = buildDeleteMessageBatchRequest(deleteMessageBatchRequestEntryCollection);
+            sqsClient.deleteMessageBatch(deleteMessageBatchRequest);
+        }
+    }
+
+    private DeleteMessageBatchRequestEntry buildDeleteMessageBatchRequestEntry(Message message) {
+        return DeleteMessageBatchRequestEntry.builder()
+                .id(message.messageId())
+                .receiptHandle(message.receiptHandle())
+                .build();
+    }
+
+    private DeleteMessageBatchRequest buildDeleteMessageBatchRequest(List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection) {
+        return DeleteMessageBatchRequest.builder()
+                .queueUrl(s3SourceConfig.getSqsOptions().getSqsUrl())
+                .entries(deleteMessageBatchRequestEntryCollection)
+                .build();
     }
 
     private boolean isEventNameCreated(final S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord) {
