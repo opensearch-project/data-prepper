@@ -6,11 +6,12 @@ apply plugin: DockerRemoteApiPlugin
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
 import com.bmuschko.gradle.docker.DockerRemoteApiPlugin
 import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
+import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStartContainer
 import com.bmuschko.gradle.docker.tasks.container.DockerStopContainer
-import com.bmuschko.gradle.docker.tasks.container.DockerRemoveContainer
 import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
 import com.bmuschko.gradle.docker.tasks.image.DockerPullImage
 import com.bmuschko.gradle.docker.tasks.image.Dockerfile
@@ -254,11 +255,11 @@ dependencies {
     integrationTestImplementation project(':data-prepper-plugins:common')
     integrationTestImplementation project(':data-prepper-plugins:opensearch')
     integrationTestImplementation project(':data-prepper-plugins:otel-trace-group-processor')
-    integrationTestImplementation "org.awaitility:awaitility:4.1.1"
+    integrationTestImplementation 'org.awaitility:awaitility:4.2.0'
     integrationTestImplementation "io.opentelemetry:opentelemetry-proto:${versionMap.opentelemetryProto}"
-    integrationTestImplementation 'com.google.protobuf:protobuf-java-util:3.19.4'
-    integrationTestImplementation "com.linecorp.armeria:armeria:1.0.0"
-    integrationTestImplementation "com.linecorp.armeria:armeria-grpc:1.0.0"
+    integrationTestImplementation "com.google.protobuf:protobuf-java-util:${versionMap.protobufJavaUtil}"
+    integrationTestImplementation "com.linecorp.armeria:armeria:${versionMap.armeria}"
+    integrationTestImplementation "com.linecorp.armeria:armeria-grpc:${versionMap.armeriaGrpc}"
     integrationTestImplementation "org.opensearch.client:opensearch-rest-high-level-client:${versionMap.opensearchVersion}"
     integrationTestImplementation 'com.fasterxml.jackson.core:jackson-databind'
 }
