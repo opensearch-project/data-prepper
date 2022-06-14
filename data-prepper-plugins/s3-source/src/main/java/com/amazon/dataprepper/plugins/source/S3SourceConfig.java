@@ -5,9 +5,9 @@
 
 package com.amazon.dataprepper.plugins.source;
 
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.plugins.source.configuration.NotificationTypeOption;
 import com.amazon.dataprepper.plugins.source.configuration.CompressionOption;
-import com.amazon.dataprepper.plugins.source.configuration.CodecOption;
 import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
 import com.amazon.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
 import com.amazon.dataprepper.plugins.source.configuration.OnErrorOption;
@@ -27,8 +27,7 @@ public class S3SourceConfig {
 
     @JsonProperty("codec")
     @NotNull
-    @Valid
-    private CodecOption codec;
+    private PluginModel codec;
 
     @JsonProperty("sqs")
     @NotNull
@@ -54,7 +53,7 @@ public class S3SourceConfig {
         return compression;
     }
 
-    public CodecOption getCodec() {
+    public PluginModel getCodec() {
         return codec;
     }
 
