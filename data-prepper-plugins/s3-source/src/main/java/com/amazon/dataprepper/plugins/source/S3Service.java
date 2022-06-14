@@ -5,6 +5,10 @@
 
 package com.amazon.dataprepper.plugins.source;
 
+import com.amazon.dataprepper.model.buffer.Buffer;
+import com.amazon.dataprepper.model.event.Event;
+import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.plugins.source.codec.Codec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
@@ -17,10 +21,14 @@ public class S3Service {
     private static final Logger LOG = LoggerFactory.getLogger(S3Service.class);
 
     private final S3SourceConfig s3SourceConfig;
+    private final Buffer<Record<Event>> buffer;
     private final S3Client s3Client;
+    private final Codec codec;
 
-    public S3Service(final S3SourceConfig s3SourceConfig) {
+    public S3Service(final S3SourceConfig s3SourceConfig,  Buffer<Record<Event>> buffer, Codec codec) {
         this.s3SourceConfig = s3SourceConfig;
+        this.buffer = buffer;
+        this.codec = codec;
         this.s3Client = createS3Client(StsClient.create());
     }
 

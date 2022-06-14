@@ -5,6 +5,8 @@
 
 package com.amazon.dataprepper.plugins.source.codec;
 
+import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
+import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.log.JacksonLog;
 import com.amazon.dataprepper.model.record.Record;
@@ -17,9 +19,11 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+@DataPrepperPlugin(name = "newline", pluginType = Codec.class, pluginConfigurationType = NewlineDelimitedConfig.class)
 public class NewlineDelimitedCodec implements Codec {
     private final int skipLines;
 
+    @DataPrepperPluginConstructor
     public NewlineDelimitedCodec(final NewlineDelimitedConfig config) {
         Objects.requireNonNull(config);
         skipLines = config.getSkipLines();
