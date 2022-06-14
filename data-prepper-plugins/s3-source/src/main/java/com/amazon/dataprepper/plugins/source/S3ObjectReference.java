@@ -36,13 +36,13 @@ class S3ObjectReference {
         return key;
     }
 
+    Optional<String> getBucketOwner() {
+        return Optional.ofNullable(owner);
+    }
+
     @Override
     public String toString() {
         return "[bucketName=" + bucketName + ", key=" + key + "]";
-    }
-
-    public Optional<String> getBucketOwner() {
-        return Optional.ofNullable(owner);
     }
 
     public static final class Builder {
