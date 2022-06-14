@@ -51,17 +51,17 @@ class S3ObjectReference {
         private final String key;
         private String owner;
 
-        public Builder(final String bucketName, final String key) {
+        private Builder(final String bucketName, final String key) {
             this.bucketName = bucketName;
             this.key = key;
         }
 
-        Builder owner(final String owner) {
+        public Builder owner(final String owner) {
             this.owner = owner;
             return this;
         }
 
-        S3ObjectReference build() {
+        public S3ObjectReference build() {
             return new S3ObjectReference(bucketName, key, owner);
         }
     }
