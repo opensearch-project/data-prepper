@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.plugins.source.codec;
 
+import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.log.JacksonLog;
@@ -23,6 +24,7 @@ import java.util.function.Consumer;
 /**
  * An implementation of {@link Codec} which parses JSON objects for arrays.
  */
+@DataPrepperPlugin(name = "json", pluginType = Codec.class)
 public class JsonCodec implements Codec {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
