@@ -37,6 +37,7 @@ import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -84,6 +85,8 @@ class S3ObjectWorkerTest {
     private String key;
     private ResponseInputStream<GetObjectResponse> objectInputStream;
 
+    private Exception exceptionThrownByCallable;
+
     @BeforeEach
     void setUp() {
         final Random random = new Random();
@@ -95,8 +98,17 @@ class S3ObjectWorkerTest {
         when(s3ObjectReference.getBucketName()).thenReturn(bucketName);
         when(s3ObjectReference.getKey()).thenReturn(key);
 
+        exceptionThrownByCallable = null;
         when(s3ObjectReadTimer.wrap(any(Callable.class)))
-                .thenAnswer(a -> a.getArgument(0, Callable.class).call());
+                .thenAnswer(a -> {
+                    try {
+                        a.getArgument(0, Callable.class).call();
+                    } catch (final Exception ex) {
+                        exceptionThrownByCallable = ex;
+                        throw ex;
+                    }
+                    return null;
+                });
 
         when(pluginMetrics.counter(S3ObjectWorker.S3_OBJECTS_FAILED_METRIC_NAME)).thenReturn(s3ObjectsFailedCounter);
         when(pluginMetrics.counter(S3ObjectWorker.S3_OBJECTS_SUCCEEDED_METRIC_NAME)).thenReturn(s3ObjectsSucceededCounter);
@@ -212,6 +224,7 @@ class S3ObjectWorkerTest {
 
         verify(s3ObjectsSucceededCounter).increment();
         verifyNoInteractions(s3ObjectsFailedCounter);
+        assertThat(exceptionThrownByCallable, nullValue());
     }
 
     @Test
@@ -227,10 +240,11 @@ class S3ObjectWorkerTest {
 
         verify(s3ObjectsFailedCounter).increment();
         verifyNoInteractions(s3ObjectsSucceededCounter);
+        assertThat(exceptionThrownByCallable, sameInstance(expectedException));
     }
 
     @Test
-    void parseS3Object_throws_Exception_and_increments_counter_when_unable_to_parse_S3_object() throws IOException {
+    void parseS3Object_throws_Exception_and_increments_failure_counter_when_unable_to_parse_S3_object() throws IOException {
         when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
@@ -245,6 +259,40 @@ class S3ObjectWorkerTest {
 
         verify(s3ObjectsFailedCounter).increment();
         verifyNoInteractions(s3ObjectsSucceededCounter);
+        assertThat(exceptionThrownByCallable, sameInstance(expectedException));
+    }
+
+    @Test
+    void parseS3Object_throws_Exception_and_increments_failure_counter_when_unable_to_GetObject_from_S3() {
+        final RuntimeException expectedException = mock(RuntimeException.class);
+        when(s3Client.getObject(any(GetObjectRequest.class)))
+                .thenThrow(expectedException);
+
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest();
+        final RuntimeException actualException = assertThrows(RuntimeException.class, () -> objectUnderTest.parseS3Object(s3ObjectReference));
+
+        assertThat(actualException, sameInstance(expectedException));
+
+        verify(s3ObjectsFailedCounter).increment();
+        verifyNoInteractions(s3ObjectsSucceededCounter);
+        assertThat(exceptionThrownByCallable, sameInstance(expectedException));
+    }
+
+    @Test
+    void parseS3Object_throws_Exception_and_increments_failure_counter_when_CompressionEngine_fails() throws IOException {
+        when(s3Client.getObject(any(GetObjectRequest.class)))
+                .thenReturn(objectInputStream);
+        final IOException expectedException = mock(IOException.class);
+        when(compressionEngine.createInputStream(key, objectInputStream)).thenThrow(expectedException);
+
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest();
+        final IOException actualException = assertThrows(IOException.class, () -> objectUnderTest.parseS3Object(s3ObjectReference));
+
+        assertThat(actualException, sameInstance(expectedException));
+
+        verify(s3ObjectsFailedCounter).increment();
+        verifyNoInteractions(s3ObjectsSucceededCounter);
+        assertThat(exceptionThrownByCallable, sameInstance(expectedException));
     }
 
     @Test

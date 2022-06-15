@@ -73,8 +73,16 @@ class S3ObjectWorker {
                 .build();
 
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
+        s3ObjectReadTimer.wrap((Callable<Void>) () -> {
+            doParseObject(s3ObjectReference, getObjectRequest, bufferAccumulator);
 
+            return null;
+        });
 
+        s3ObjectsSucceededCounter.increment();
+    }
+
+    private void doParseObject(final S3ObjectReference s3ObjectReference, final GetObjectRequest getObjectRequest, final BufferAccumulator<Record<Event>> bufferAccumulator) throws IOException {
         try (final ResponseInputStream<GetObjectResponse> responseInputStream = s3Client.getObject(getObjectRequest);
              final InputStream inputStream = compressionEngine.createInputStream(getObjectRequest.key(), responseInputStream)) {
             codec.parse(inputStream, record -> {
