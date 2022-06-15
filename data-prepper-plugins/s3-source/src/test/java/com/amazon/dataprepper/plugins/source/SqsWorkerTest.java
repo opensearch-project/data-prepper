@@ -57,7 +57,7 @@ class SqsWorkerTest {
         SqsOptions sqsOptions = mock(SqsOptions.class);
         when(sqsOptions.getSqsUrl()).thenReturn("https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue");
 
-        when(s3SourceConfig.getAWSAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
+        when(s3SourceConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         when(s3SourceConfig.getSqsOptions()).thenReturn(sqsOptions);
         when(s3SourceConfig.getOnErrorOption()).thenReturn(OnErrorOption.RETAIN_MESSAGES);
 
