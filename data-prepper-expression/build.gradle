@@ -16,16 +16,16 @@ dependencies {
     antlr 'org.antlr:antlr4:4.9.3'
     implementation project(':data-prepper-api')
     implementation 'javax.inject:javax.inject:1'
-    implementation('org.springframework:spring-core:5.3.20') {
+    implementation('org.springframework:spring-core:5.3.21') {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
-    implementation('org.springframework:spring-context:5.3.18') {
+    implementation('org.springframework:spring-context:5.3.21') {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
     implementation platform('org.apache.logging.log4j:log4j-bom:2.17.2')
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.logging.log4j:log4j-slf4j-impl'
-    testImplementation 'org.springframework:spring-test:5.3.20'
+    testImplementation 'org.springframework:spring-test:5.3.21'
     testImplementation 'com.fasterxml.jackson.core:jackson-databind'
 }
 
