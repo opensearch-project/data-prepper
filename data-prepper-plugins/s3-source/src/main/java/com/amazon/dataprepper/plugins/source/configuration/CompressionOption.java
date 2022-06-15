@@ -5,6 +5,10 @@
 
 package com.amazon.dataprepper.plugins.source.configuration;
 
+import com.amazon.dataprepper.plugins.source.compression.AutomaticCompressionEngine;
+import com.amazon.dataprepper.plugins.source.compression.CompressionEngine;
+import com.amazon.dataprepper.plugins.source.compression.GZipCompressionEngine;
+import com.amazon.dataprepper.plugins.source.compression.NoneCompressionEngine;
 import com.fasterxml.jackson.annotation.JsonCreator;
 
 import java.util.Arrays;
@@ -12,9 +16,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public enum CompressionOption {
-    NONE("none"),
-    GZIP("gzip"),
-    AUTOMATIC("automatic");
+    NONE("none", new NoneCompressionEngine()),
+    GZIP("gzip", new GZipCompressionEngine()),
+    AUTOMATIC("automatic", new AutomaticCompressionEngine());
 
     private static final Map<String, CompressionOption> OPTIONS_MAP = Arrays.stream(CompressionOption.values())
             .collect(Collectors.toMap(
@@ -24,8 +28,15 @@ public enum CompressionOption {
 
     private final String option;
 
-    CompressionOption(final String option) {
+    private final CompressionEngine engine;
+
+    CompressionOption(final String option, final CompressionEngine engine) {
         this.option = option.toLowerCase();
+        this.engine = engine;
+    }
+
+    public CompressionEngine getEngine() {
+        return engine;
     }
 
     @JsonCreator
