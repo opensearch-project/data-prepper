@@ -36,8 +36,8 @@ public class SqsService {
     SqsClient createSqsClient(final StsClient stsClient) {
         LOG.info("Creating SQS client");
         return SqsClient.builder()
-                .region(Region.of(s3SourceConfig.getAWSAuthenticationOptions().getAwsRegion()))
-                .credentialsProvider(s3SourceConfig.getAWSAuthenticationOptions().authenticateAwsConfiguration(stsClient))
+                .region(Region.of(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion()))
+                .credentialsProvider(s3SourceConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration(stsClient))
                 .overrideConfiguration(ClientOverrideConfiguration.builder()
                         .retryPolicy(RetryPolicy.builder().numRetries(5).build())
                         .build())

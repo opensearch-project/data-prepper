@@ -16,12 +16,9 @@ import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @DataPrepperPlugin(name = "s3", pluginType = Source.class, pluginConfigurationType = S3SourceConfig.class)
 public class S3Source implements Source<Record<Event>> {
-    private static final Logger LOG = LoggerFactory.getLogger(S3Source.class);
 
     private final PluginMetrics pluginMetrics;
     private final S3SourceConfig s3SourceConfig;
@@ -45,7 +42,7 @@ public class S3Source implements Source<Record<Event>> {
             throw new IllegalStateException("Buffer provided is null");
         }
 
-        S3Service s3Service = new S3Service(s3SourceConfig, buffer, codec);
+        S3Service s3Service = new S3Service(s3SourceConfig, buffer, codec, pluginMetrics);
         sqsService = new SqsService(s3SourceConfig, s3Service);
 
         sqsService.start();

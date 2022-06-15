@@ -13,10 +13,13 @@ import com.amazon.dataprepper.plugins.source.configuration.AwsAuthenticationOpti
 import com.amazon.dataprepper.plugins.source.configuration.OnErrorOption;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 
+import java.time.Duration;
+
 public class S3SourceConfig {
+    static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(10);
+    static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 100;
 
     @JsonProperty("notification_type")
     @NotNull
@@ -38,12 +41,14 @@ public class S3SourceConfig {
     @Valid
     private AwsAuthenticationOptions awsAuthenticationOptions;
 
-    @JsonProperty("thread_count")
-    @Min(0)
-    private int threadCount;
-
     @JsonProperty("on_error")
     private OnErrorOption onErrorOption = OnErrorOption.RETAIN_MESSAGES;
+
+    @JsonProperty("buffer_timeout")
+    private Duration bufferTimeout = DEFAULT_BUFFER_TIMEOUT;
+
+    @JsonProperty("records_to_accumulate")
+    private int numberOfRecordsToAccumulate = DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE;
 
     public NotificationTypeOption getNotificationType() {
         return notificationType;
@@ -61,15 +66,19 @@ public class S3SourceConfig {
         return sqsOptions;
     }
 
-    public AwsAuthenticationOptions getAWSAuthenticationOptions() {
+    public AwsAuthenticationOptions getAwsAuthenticationOptions() {
         return awsAuthenticationOptions;
-    }
-
-    public int getThreadCount() {
-        return threadCount;
     }
 
     public OnErrorOption getOnErrorOption() {
         return onErrorOption;
+    }
+
+    public Duration getBufferTimeout() {
+        return bufferTimeout;
+    }
+
+    public int getNumberOfRecordsToAccumulate() {
+        return numberOfRecordsToAccumulate;
     }
 }
