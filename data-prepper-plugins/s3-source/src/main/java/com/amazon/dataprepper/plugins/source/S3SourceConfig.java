@@ -18,7 +18,7 @@ import jakarta.validation.constraints.NotNull;
 import java.time.Duration;
 
 public class S3SourceConfig {
-    static final Duration DEFAULT_REQUEST_TIMEOUT = Duration.ofMillis(10_000);
+    static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(10);
     static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 100;
 
     @JsonProperty("notification_type")
@@ -44,8 +44,8 @@ public class S3SourceConfig {
     @JsonProperty("on_error")
     private OnErrorOption onErrorOption = OnErrorOption.RETAIN_MESSAGES;
 
-    @JsonProperty("request_timeout")
-    private Duration requestTimeout = DEFAULT_REQUEST_TIMEOUT;
+    @JsonProperty("buffer_timeout")
+    private Duration bufferTimeout = DEFAULT_BUFFER_TIMEOUT;
 
     @JsonProperty("records_to_accumulate")
     private int numberOfRecordsToAccumulate = DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE;
@@ -74,8 +74,8 @@ public class S3SourceConfig {
         return onErrorOption;
     }
 
-    public Duration getRequestTimeout() {
-        return requestTimeout;
+    public Duration getBufferTimeout() {
+        return bufferTimeout;
     }
 
     public int getNumberOfRecordsToAccumulate() {

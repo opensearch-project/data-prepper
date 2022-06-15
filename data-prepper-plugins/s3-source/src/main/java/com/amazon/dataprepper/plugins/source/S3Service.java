@@ -40,7 +40,7 @@ public class S3Service {
         this.s3Client = createS3Client(StsClient.create());
         this.compressionEngine = s3SourceConfig.getCompression().getEngine();
         this.s3ObjectWorker = new S3ObjectWorker(s3Client, buffer, compressionEngine, codec,
-                s3SourceConfig.getRequestTimeout(), s3SourceConfig.getNumberOfRecordsToAccumulate(), pluginMetrics);
+                s3SourceConfig.getBufferTimeout(), s3SourceConfig.getNumberOfRecordsToAccumulate(), pluginMetrics);
     }
 
     void addS3Object(final S3ObjectReference s3ObjectReference) {

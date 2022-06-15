@@ -10,7 +10,7 @@ import com.amazon.dataprepper.plugins.source.configuration.OnErrorOption;
 import org.junit.jupiter.api.Test;
 
 import static com.amazon.dataprepper.plugins.source.S3SourceConfig.DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE;
-import static com.amazon.dataprepper.plugins.source.S3SourceConfig.DEFAULT_REQUEST_TIMEOUT;
+import static com.amazon.dataprepper.plugins.source.S3SourceConfig.DEFAULT_BUFFER_TIMEOUT;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -28,7 +28,7 @@ class S3SourceConfigTest {
 
     @Test
     void default_request_timeout_test() {
-        assertThat(new S3SourceConfig().getRequestTimeout(), equalTo(DEFAULT_REQUEST_TIMEOUT));
+        assertThat(new S3SourceConfig().getBufferTimeout(), equalTo(DEFAULT_BUFFER_TIMEOUT));
     }
 
     @Test
