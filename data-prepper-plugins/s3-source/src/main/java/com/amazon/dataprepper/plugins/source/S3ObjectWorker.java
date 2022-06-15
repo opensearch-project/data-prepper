@@ -73,11 +73,19 @@ class S3ObjectWorker {
                 .build();
 
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
-        s3ObjectReadTimer.wrap((Callable<Void>) () -> {
-            doParseObject(s3ObjectReference, getObjectRequest, bufferAccumulator);
+        try {
+            s3ObjectReadTimer.recordCallable((Callable<Void>) () -> {
+                doParseObject(s3ObjectReference, getObjectRequest, bufferAccumulator);
 
-            return null;
-        });
+                return null;
+            });
+        } catch (final IOException | RuntimeException e) {
+            throw e;
+        } catch (final Exception e) {
+            // doParseObject does not throw Exception, only IOException or RuntimeException. But, Callable has Exception as a checked
+            // exception on the interface. This catch block thus should not be reached, but in case it is, wrap it.
+            throw new RuntimeException(e);
+        }
 
         s3ObjectsSucceededCounter.increment();
     }

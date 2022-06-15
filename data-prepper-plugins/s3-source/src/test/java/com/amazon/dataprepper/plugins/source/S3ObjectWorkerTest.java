@@ -88,7 +88,7 @@ class S3ObjectWorkerTest {
     private Exception exceptionThrownByCallable;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         final Random random = new Random();
         bufferTimeout = Duration.ofMillis(random.nextInt(100) + 100);
         recordsToAccumulate = random.nextInt(10) + 2;
@@ -99,7 +99,7 @@ class S3ObjectWorkerTest {
         when(s3ObjectReference.getKey()).thenReturn(key);
 
         exceptionThrownByCallable = null;
-        when(s3ObjectReadTimer.wrap(any(Callable.class)))
+        when(s3ObjectReadTimer.recordCallable(any(Callable.class)))
                 .thenAnswer(a -> {
                     try {
                         a.getArgument(0, Callable.class).call();
@@ -296,7 +296,7 @@ class S3ObjectWorkerTest {
     }
 
     @Test
-    void parseS3Object_calls_GetObject_after_Callable() throws IOException {
+    void parseS3Object_calls_GetObject_after_Callable() throws Exception {
         final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
@@ -306,7 +306,7 @@ class S3ObjectWorkerTest {
 
         final InOrder inOrder = inOrder(s3ObjectReadTimer, s3Client);
 
-        inOrder.verify(s3ObjectReadTimer).wrap(any(Callable.class));
+        inOrder.verify(s3ObjectReadTimer).recordCallable(any(Callable.class));
         inOrder.verify(s3Client).getObject(any(GetObjectRequest.class));
     }
 }
