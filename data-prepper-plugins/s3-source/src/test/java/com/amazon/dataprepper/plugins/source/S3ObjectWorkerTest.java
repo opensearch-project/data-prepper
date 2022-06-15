@@ -28,6 +28,7 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -111,6 +112,28 @@ class S3ObjectWorkerTest {
         assertThat(actualGetObjectRequest, notNullValue());
         assertThat(actualGetObjectRequest.bucket(), equalTo(bucketName));
         assertThat(actualGetObjectRequest.key(), equalTo(key));
+    }
+
+    @Test
+    void parseS3Object_calls_getObject_with_correct_GetObjectRequest_when_bucketOwner_is_present() throws IOException {
+        final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
+        when(s3Client.getObject(any(GetObjectRequest.class)))
+                .thenReturn(objectInputStream);
+
+        final String bucketOwner = UUID.randomUUID().toString();
+        when(s3ObjectReference.getBucketOwner()).thenReturn(Optional.of(bucketOwner));
+
+        createObjectUnderTest().parseS3Object(s3ObjectReference);
+
+        final ArgumentCaptor<GetObjectRequest> getObjectRequestArgumentCaptor = ArgumentCaptor.forClass(GetObjectRequest.class);
+        verify(s3Client).getObject(getObjectRequestArgumentCaptor.capture());
+
+        final GetObjectRequest actualGetObjectRequest = getObjectRequestArgumentCaptor.getValue();
+
+        assertThat(actualGetObjectRequest, notNullValue());
+        assertThat(actualGetObjectRequest.bucket(), equalTo(bucketName));
+        assertThat(actualGetObjectRequest.key(), equalTo(key));
+        assertThat(actualGetObjectRequest.expectedBucketOwner(), equalTo(bucketOwner));
     }
 
     @Test

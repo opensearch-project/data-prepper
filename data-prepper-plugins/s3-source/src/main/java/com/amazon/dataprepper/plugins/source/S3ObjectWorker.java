@@ -57,9 +57,11 @@ class S3ObjectWorker {
     }
 
     void parseS3Object(final S3ObjectReference s3ObjectReference) throws IOException {
-        final GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+        final GetObjectRequest.Builder getObjectBuilder = GetObjectRequest.builder()
                 .bucket(s3ObjectReference.getBucketName())
-                .key(s3ObjectReference.getKey())
+                .key(s3ObjectReference.getKey());
+        s3ObjectReference.getBucketOwner().ifPresent(getObjectBuilder::expectedBucketOwner);
+        final GetObjectRequest getObjectRequest = getObjectBuilder
                 .build();
 
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
