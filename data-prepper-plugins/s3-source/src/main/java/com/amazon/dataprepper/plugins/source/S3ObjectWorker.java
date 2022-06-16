@@ -95,6 +95,8 @@ class S3ObjectWorker {
              final InputStream inputStream = compressionEngine.createInputStream(getObjectRequest.key(), responseInputStream)) {
             codec.parse(inputStream, record -> {
                 try {
+                    record.getData().put("bucket", s3ObjectReference.getBucketName());
+                    record.getData().put("key", s3ObjectReference.getKey());
                     bufferAccumulator.add(record);
                 } catch (final Exception e) {
                     LOG.error("Failed writing S3 objects to buffer.", e);

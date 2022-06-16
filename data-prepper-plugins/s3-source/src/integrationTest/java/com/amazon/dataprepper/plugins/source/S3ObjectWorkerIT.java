@@ -78,13 +78,15 @@ class S3ObjectWorkerIT {
         when(pluginMetrics.timer(anyString())).thenReturn(timer);
     }
 
-    private void stubBufferWriter(final Consumer<Event> additionalEventAssertions) throws Exception {
+    private void stubBufferWriter(final Consumer<Event> additionalEventAssertions, final String key) throws Exception {
         doAnswer(a -> {
             final Collection<Record<Event>> recordsCollection = a.getArgument(0);
             assertThat(recordsCollection.size(), greaterThanOrEqualTo(1));
             for (Record<Event> eventRecord : recordsCollection) {
                 assertThat(eventRecord, notNullValue());
                 assertThat(eventRecord.getData(), notNullValue());
+                assertThat(eventRecord.getData().get("bucket", String.class), equalTo(bucket));
+                assertThat(eventRecord.getData().get("key", String.class), equalTo(key));
                 additionalEventAssertions.accept(eventRecord.getData());
 
             }
@@ -110,7 +112,7 @@ class S3ObjectWorkerIT {
 
         final S3ObjectWorker objectUnderTest = createObjectUnderTest(recordsGenerator.getCodec(), numberOfRecordsToAccumulate);
 
-        stubBufferWriter(recordsGenerator::assertEventIsCorrect);
+        stubBufferWriter(recordsGenerator::assertEventIsCorrect, key);
 
         parseObject(key, objectUnderTest);
 

@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -56,7 +57,7 @@ public class JsonCodec implements Codec {
 
     private Record<Event> createRecord(final Map<String, Object> json) {
         final JacksonEvent event = JacksonLog.builder()
-                .withData(json)
+                .withData(Collections.singletonMap("message", json))
                 .build();
 
         return new Record<>(event);
