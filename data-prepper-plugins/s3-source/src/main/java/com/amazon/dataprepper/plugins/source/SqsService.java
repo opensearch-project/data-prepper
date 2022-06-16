@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.plugins.source;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
@@ -19,17 +20,21 @@ public class SqsService {
     private final S3SourceConfig s3SourceConfig;
     private final S3Service s3Accessor;
     private final SqsClient sqsClient;
+    private final PluginMetrics pluginMetrics;
 
     private Thread sqsWorkerThread;
 
-    public SqsService(final S3SourceConfig s3SourceConfig, final S3Service s3Accessor) {
+    public SqsService(final S3SourceConfig s3SourceConfig,
+                      final S3Service s3Accessor,
+                      final PluginMetrics pluginMetrics) {
         this.s3SourceConfig = s3SourceConfig;
         this.s3Accessor = s3Accessor;
+        this.pluginMetrics = pluginMetrics;
         this.sqsClient = createSqsClient(StsClient.create());
     }
 
     public void start() {
-        sqsWorkerThread = new Thread(new SqsWorker(sqsClient, s3Accessor, s3SourceConfig));
+        sqsWorkerThread = new Thread(new SqsWorker(sqsClient, s3Accessor, s3SourceConfig, pluginMetrics));
         sqsWorkerThread.start();
     }
 

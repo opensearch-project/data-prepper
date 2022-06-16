@@ -5,11 +5,15 @@
 
 package com.amazon.dataprepper.plugins.source;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
 import com.amazon.dataprepper.plugins.source.configuration.OnErrorOption;
 import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
 import com.amazon.dataprepper.plugins.source.filter.ObjectCreatedFilter;
 import com.amazon.dataprepper.plugins.source.filter.S3EventFilter;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,10 +22,13 @@ import org.mockito.ArgumentCaptor;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResponse;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResultEntry;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.UUID;
 
@@ -34,6 +41,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 class SqsWorkerTest {
@@ -42,6 +50,11 @@ class SqsWorkerTest {
     private S3Service s3Service;
     private S3SourceConfig s3SourceConfig;
     private S3EventFilter objectCreatedFilter;
+    private PluginMetrics pluginMetrics;
+    private Counter sqsMessagesReceivedCounter;
+    private Counter sqsMessagesDeletedCounter;
+    private Counter sqsMessagesFailedCounter;
+    private Timer sqsMessageDelayTimer;
 
     @BeforeEach
     void setUp() {
@@ -61,7 +74,27 @@ class SqsWorkerTest {
         when(s3SourceConfig.getSqsOptions()).thenReturn(sqsOptions);
         when(s3SourceConfig.getOnErrorOption()).thenReturn(OnErrorOption.RETAIN_MESSAGES);
 
-        sqsWorker = new SqsWorker(sqsClient, s3Service, s3SourceConfig);
+        final DeleteMessageBatchResponse deleteMessageBatchResponse = mock(DeleteMessageBatchResponse.class);
+        when(deleteMessageBatchResponse.hasSuccessful()).thenReturn(true);
+        when(deleteMessageBatchResponse.successful()).thenReturn(Collections.singletonList(mock(DeleteMessageBatchResultEntry.class)));
+        when(sqsClient.deleteMessageBatch(any(DeleteMessageBatchRequest.class))).thenReturn(deleteMessageBatchResponse);
+
+        pluginMetrics = mock(PluginMetrics.class);
+        sqsMessagesReceivedCounter = mock(Counter.class);
+        sqsMessagesDeletedCounter = mock(Counter.class);
+        sqsMessagesFailedCounter = mock(Counter.class);
+        sqsMessageDelayTimer = mock(Timer.class);
+        when(pluginMetrics.counter(SqsWorker.SQS_MESSAGES_RECEIVED_METRIC_NAME)).thenReturn(sqsMessagesReceivedCounter);
+        when(pluginMetrics.counter(SqsWorker.SQS_MESSAGES_DELETED_METRIC_NAME)).thenReturn(sqsMessagesDeletedCounter);
+        when(pluginMetrics.counter(SqsWorker.SQS_MESSAGES_FAILED_METRIC_NAME)).thenReturn(sqsMessagesFailedCounter);
+        when(pluginMetrics.timer(SqsWorker.SQS_MESSAGE_DELAY_METRIC_NAME)).thenReturn(sqsMessageDelayTimer);
+
+        sqsWorker = new SqsWorker(sqsClient, s3Service, s3SourceConfig, pluginMetrics);
+    }
+
+    @AfterEach
+    void cleanup() {
+        verifyNoMoreInteractions(sqsMessagesReceivedCounter, sqsMessagesDeletedCounter, sqsMessagesFailedCounter, sqsMessageDelayTimer);
     }
 
     @Test
@@ -94,6 +127,9 @@ class SqsWorkerTest {
         assertThat(messagesProcessed, equalTo(1));
         verify(s3Service).addS3Object(any(S3ObjectReference.class));
         verify(sqsClient).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+        verify(sqsMessagesReceivedCounter).increment(any(Double.class));
+        verify(sqsMessagesDeletedCounter).increment(any(Double.class));
+        verify(sqsMessageDelayTimer).record(any(Duration.class));
     }
 
     @Test
@@ -114,7 +150,8 @@ class SqsWorkerTest {
 
         assertThat(messagesProcessed, equalTo(1));
         verifyNoInteractions(s3Service);
-        verify(sqsClient, never()).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+        verify(sqsMessagesReceivedCounter).increment(any(Double.class));
+        verify(sqsMessagesDeletedCounter).increment(any(Double.class));
     }
 
     @Test
@@ -139,6 +176,8 @@ class SqsWorkerTest {
         assertThat(messagesProcessed, equalTo(1));
         verifyNoInteractions(s3Service);
         verify(sqsClient, never()).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+        verify(sqsMessagesReceivedCounter).increment(any(Double.class));
+        verify(sqsMessagesFailedCounter).increment();
     }
 
     @ParameterizedTest
@@ -155,6 +194,8 @@ class SqsWorkerTest {
         assertThat(messagesProcessed, equalTo(1));
         verifyNoInteractions(s3Service);
         verify(sqsClient, never()).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+        verify(sqsMessagesReceivedCounter).increment(any(Double.class));
+        verify(sqsMessagesFailedCounter).increment();
     }
 
     @ParameterizedTest
@@ -185,5 +226,8 @@ class SqsWorkerTest {
         assertThat(messagesProcessed, equalTo(1));
         verifyNoInteractions(s3Service);
         verify(sqsClient, times(1)).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+        verify(sqsMessagesReceivedCounter).increment(any(Double.class));
+        verify(sqsMessagesDeletedCounter).increment(any(Double.class));
+        verify(sqsMessagesFailedCounter).increment();
     }
 }
