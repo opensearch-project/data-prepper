@@ -6,9 +6,9 @@
 package com.amazon.dataprepper.plugins.source.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import org.hibernate.validator.constraints.time.DurationMax;
+import org.hibernate.validator.constraints.time.DurationMin;
 
 import java.time.Duration;
 
@@ -26,17 +26,17 @@ public class SqsOptions {
     private int maximumMessages = DEFAULT_MAXIMUM_MESSAGES;
 
     @JsonProperty("visibility_timeout")
-    @Min(0)
-    @Max(43200)
+    @DurationMin(seconds = 0)
+    @DurationMax(seconds = 43200)
     private Duration visibilityTimeout = DEFAULT_VISIBILITY_TIMEOUT_SECONDS;
 
     @JsonProperty("wait_time")
-    @Min(0)
-    @Max(20)
+    @DurationMin(seconds = 0)
+    @DurationMax(seconds = 20)
     private Duration waitTime = DEFAULT_WAIT_TIME_SECONDS;
 
     @JsonProperty("poll_delay")
-    @Min(0)
+    @DurationMin(seconds = 0)
     private Duration pollDelay = DEFAULT_POLL_DELAY_SECONDS;
 
     public String getSqsUrl() {
