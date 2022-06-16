@@ -12,6 +12,7 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
 import com.amazon.dataprepper.plugins.source.compression.CompressionEngine;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,10 +32,12 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -45,6 +48,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,13 +76,19 @@ class S3ObjectWorkerTest {
     private PluginMetrics pluginMetrics;
     @Mock
     private Counter s3ObjectsFailedCounter;
+    @Mock
+    private Counter s3ObjectsSucceededCounter;
+    @Mock
+    private Timer s3ObjectReadTimer;
 
     private String bucketName;
     private String key;
     private ResponseInputStream<GetObjectResponse> objectInputStream;
 
+    private Exception exceptionThrownByCallable;
+
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         final Random random = new Random();
         bufferTimeout = Duration.ofMillis(random.nextInt(100) + 100);
         recordsToAccumulate = random.nextInt(10) + 2;
@@ -88,7 +98,21 @@ class S3ObjectWorkerTest {
         when(s3ObjectReference.getBucketName()).thenReturn(bucketName);
         when(s3ObjectReference.getKey()).thenReturn(key);
 
+        exceptionThrownByCallable = null;
+        when(s3ObjectReadTimer.recordCallable(any(Callable.class)))
+                .thenAnswer(a -> {
+                    try {
+                        a.getArgument(0, Callable.class).call();
+                    } catch (final Exception ex) {
+                        exceptionThrownByCallable = ex;
+                        throw ex;
+                    }
+                    return null;
+                });
+
         when(pluginMetrics.counter(S3ObjectWorker.S3_OBJECTS_FAILED_METRIC_NAME)).thenReturn(s3ObjectsFailedCounter);
+        when(pluginMetrics.counter(S3ObjectWorker.S3_OBJECTS_SUCCEEDED_METRIC_NAME)).thenReturn(s3ObjectsSucceededCounter);
+        when(pluginMetrics.timer(S3ObjectWorker.S3_OBJECTS_TIME_ELAPSED_METRIC_NAME)).thenReturn(s3ObjectReadTimer);
 
         objectInputStream = mock(ResponseInputStream.class);
     }
@@ -190,6 +214,20 @@ class S3ObjectWorkerTest {
     }
 
     @Test
+    void parseS3Object_increments_success_counter_after_parsing_S3_object() throws IOException {
+        final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
+        when(s3Client.getObject(any(GetObjectRequest.class)))
+                .thenReturn(objectInputStream);
+
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest();
+        objectUnderTest.parseS3Object(s3ObjectReference);
+
+        verify(s3ObjectsSucceededCounter).increment();
+        verifyNoInteractions(s3ObjectsFailedCounter);
+        assertThat(exceptionThrownByCallable, nullValue());
+    }
+
+    @Test
     void parseS3Object_throws_Exception_and_increments_counter_when_unable_to_get_S3_object() {
         final RuntimeException expectedException = mock(RuntimeException.class);
         when(s3Client.getObject(any(GetObjectRequest.class)))
@@ -201,10 +239,12 @@ class S3ObjectWorkerTest {
         assertThat(actualException, sameInstance(expectedException));
 
         verify(s3ObjectsFailedCounter).increment();
+        verifyNoInteractions(s3ObjectsSucceededCounter);
+        assertThat(exceptionThrownByCallable, sameInstance(expectedException));
     }
 
     @Test
-    void parseS3Object_throws_Exception_and_increments_counter_when_unable_to_parse_S3_object() throws IOException {
+    void parseS3Object_throws_Exception_and_increments_failure_counter_when_unable_to_parse_S3_object() throws IOException {
         when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
@@ -218,5 +258,55 @@ class S3ObjectWorkerTest {
         assertThat(actualException, sameInstance(expectedException));
 
         verify(s3ObjectsFailedCounter).increment();
+        verifyNoInteractions(s3ObjectsSucceededCounter);
+        assertThat(exceptionThrownByCallable, sameInstance(expectedException));
+    }
+
+    @Test
+    void parseS3Object_throws_Exception_and_increments_failure_counter_when_unable_to_GetObject_from_S3() {
+        final RuntimeException expectedException = mock(RuntimeException.class);
+        when(s3Client.getObject(any(GetObjectRequest.class)))
+                .thenThrow(expectedException);
+
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest();
+        final RuntimeException actualException = assertThrows(RuntimeException.class, () -> objectUnderTest.parseS3Object(s3ObjectReference));
+
+        assertThat(actualException, sameInstance(expectedException));
+
+        verify(s3ObjectsFailedCounter).increment();
+        verifyNoInteractions(s3ObjectsSucceededCounter);
+        assertThat(exceptionThrownByCallable, sameInstance(expectedException));
+    }
+
+    @Test
+    void parseS3Object_throws_Exception_and_increments_failure_counter_when_CompressionEngine_fails() throws IOException {
+        when(s3Client.getObject(any(GetObjectRequest.class)))
+                .thenReturn(objectInputStream);
+        final IOException expectedException = mock(IOException.class);
+        when(compressionEngine.createInputStream(key, objectInputStream)).thenThrow(expectedException);
+
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest();
+        final IOException actualException = assertThrows(IOException.class, () -> objectUnderTest.parseS3Object(s3ObjectReference));
+
+        assertThat(actualException, sameInstance(expectedException));
+
+        verify(s3ObjectsFailedCounter).increment();
+        verifyNoInteractions(s3ObjectsSucceededCounter);
+        assertThat(exceptionThrownByCallable, sameInstance(expectedException));
+    }
+
+    @Test
+    void parseS3Object_calls_GetObject_after_Callable() throws Exception {
+        final ResponseInputStream<GetObjectResponse> objectInputStream = mock(ResponseInputStream.class);
+        when(s3Client.getObject(any(GetObjectRequest.class)))
+                .thenReturn(objectInputStream);
+
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest();
+        objectUnderTest.parseS3Object(s3ObjectReference);
+
+        final InOrder inOrder = inOrder(s3ObjectReadTimer, s3Client);
+
+        inOrder.verify(s3ObjectReadTimer).recordCallable(any(Callable.class));
+        inOrder.verify(s3Client).getObject(any(GetObjectRequest.class));
     }
 }
