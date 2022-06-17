@@ -92,7 +92,12 @@ public class SqsWorker implements Runnable {
                 getS3MessageEventNotificationRecordMap(sqsMessages);
 
         // build s3ObjectReference from S3EventNotificationRecord if event name starts with ObjectCreated
-        processS3ObjectAndDeleteSqsMessages(s3EventNotificationRecords);
+        final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = processS3Objects(s3EventNotificationRecords);
+
+        // delete sqs messages
+        if (!deleteMessageBatchRequestEntries.isEmpty()) {
+            deleteSqsMessages(deleteMessageBatchRequestEntries);
+        }
 
         return sqsMessages.size();
     }
@@ -136,7 +141,7 @@ public class SqsWorker implements Runnable {
         return Collections.emptyList();
     }
 
-    private void processS3ObjectAndDeleteSqsMessages(final Map<Message, List<S3EventNotification.S3EventNotificationRecord>> s3EventNotificationRecords) {
+    private List<DeleteMessageBatchRequestEntry> processS3Objects(final Map<Message, List<S3EventNotification.S3EventNotificationRecord>> s3EventNotificationRecords) {
         List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection = new ArrayList<>();
         for (Map.Entry<Message, List<S3EventNotification.S3EventNotificationRecord>> entry: s3EventNotificationRecords.entrySet()) {
             if (entry.getValue().isEmpty()) {
@@ -156,21 +161,18 @@ public class SqsWorker implements Runnable {
                 deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(entry.getKey()));
             }
             else {
-                // Delete SQS messages if the eventName is not ObjectCreated
+                // Add SQS message to delete collection if the eventName is not ObjectCreated
                 deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(entry.getKey()));
             }
         }
-
-        if (!deleteMessageBatchRequestEntryCollection.isEmpty()) {
-            deleteSqsMessages(deleteMessageBatchRequestEntryCollection);
-        }
+        return deleteMessageBatchRequestEntryCollection;
     }
 
-    private void deleteSqsMessages(List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection) {
-        DeleteMessageBatchRequest deleteMessageBatchRequest = buildDeleteMessageBatchRequest(deleteMessageBatchRequestEntryCollection);
-        DeleteMessageBatchResponse deleteMessageBatchResponse = sqsClient.deleteMessageBatch(deleteMessageBatchRequest);
+    private void deleteSqsMessages(final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection) {
+        final DeleteMessageBatchRequest deleteMessageBatchRequest = buildDeleteMessageBatchRequest(deleteMessageBatchRequestEntryCollection);
+        final DeleteMessageBatchResponse deleteMessageBatchResponse = sqsClient.deleteMessageBatch(deleteMessageBatchRequest);
         if (deleteMessageBatchResponse.hasSuccessful()) {
-            int deletedMessagesCount = deleteMessageBatchResponse.successful().size();
+            final int deletedMessagesCount = deleteMessageBatchResponse.successful().size();
             sqsMessagesDeletedCounter.increment(deletedMessagesCount);
         }
     }
