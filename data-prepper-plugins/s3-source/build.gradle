@@ -59,6 +59,7 @@ task integrationTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
     systemProperty 'tests.s3source.bucket', System.getProperty('tests.s3source.bucket')
     systemProperty 'tests.s3source.region', System.getProperty('tests.s3source.region')
+    systemProperty 'tests.s3source.queue.url', System.getProperty('tests.s3source.queue.url')
 
     filter {
         includeTestsMatching '*IT'
