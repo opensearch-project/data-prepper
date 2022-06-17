@@ -16,6 +16,8 @@ import jakarta.validation.Validator;
 
 import javax.inject.Named;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -45,7 +47,7 @@ class PluginConfigurationConverter {
      * Java Bean Validation 2.0.
      *
      * @param pluginConfigurationType the destination type
-     * @param pluginSetting The source {@link PluginSetting}
+     * @param pluginSetting           The source {@link PluginSetting}
      * @return The converted object of type pluginConfigurationType
      * @throws InvalidPluginConfigurationException - If the plugin configuration is invalid
      */
@@ -53,14 +55,14 @@ class PluginConfigurationConverter {
         Objects.requireNonNull(pluginConfigurationType);
         Objects.requireNonNull(pluginSetting);
 
-        if(pluginConfigurationType.equals(PluginSetting.class))
+        if (pluginConfigurationType.equals(PluginSetting.class))
             return pluginSetting;
 
-        final Object configuration = objectMapper.convertValue(pluginSetting.getSettings(), pluginConfigurationType);
+        final Object configuration = convertSettings(pluginConfigurationType, pluginSetting);
 
         final Set<ConstraintViolation<Object>> constraintViolations = validator.validate(configuration);
 
-        if(!constraintViolations.isEmpty()) {
+        if (!constraintViolations.isEmpty()) {
             final String violationsString = constraintViolations.stream()
                     .map(v -> v.getPropertyPath().toString() + " " + v.getMessage())
                     .collect(Collectors.joining(". "));
@@ -71,5 +73,12 @@ class PluginConfigurationConverter {
         }
 
         return configuration;
+    }
+
+    private Object convertSettings(final Class<?> pluginConfigurationType, final PluginSetting pluginSetting) {
+        Map<String, Object> settingsMap = pluginSetting.getSettings();
+        if (settingsMap == null)
+            settingsMap = Collections.emptyMap();
+        return objectMapper.convertValue(settingsMap, pluginConfigurationType);
     }
 }
