@@ -34,6 +34,8 @@ class S3ObjectWorker {
     static final String S3_OBJECTS_FAILED_METRIC_NAME = "s3ObjectsFailed";
     static final String S3_OBJECTS_SUCCEEDED_METRIC_NAME = "s3ObjectsSucceeded";
     static final String S3_OBJECTS_TIME_ELAPSED_METRIC_NAME = "s3ObjectReadTimeElapsed";
+    public static final String BUCKET_FIELD_NAME = "bucket";
+    public static final String KEY_FIELD_NAME = "key";
 
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
@@ -95,8 +97,8 @@ class S3ObjectWorker {
              final InputStream inputStream = compressionEngine.createInputStream(getObjectRequest.key(), responseInputStream)) {
             codec.parse(inputStream, record -> {
                 try {
-                    record.getData().put("bucket", s3ObjectReference.getBucketName());
-                    record.getData().put("key", s3ObjectReference.getKey());
+                    record.getData().put(BUCKET_FIELD_NAME, s3ObjectReference.getBucketName());
+                    record.getData().put(KEY_FIELD_NAME, s3ObjectReference.getKey());
                     bufferAccumulator.add(record);
                 } catch (final Exception e) {
                     LOG.error("Failed writing S3 objects to buffer.", e);

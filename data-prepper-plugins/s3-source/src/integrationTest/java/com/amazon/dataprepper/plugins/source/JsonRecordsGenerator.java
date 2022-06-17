@@ -27,6 +27,7 @@ class JsonRecordsGenerator implements RecordsGenerator {
 
     public static final String EVENT_VERSION_FIELD = "eventVersion";
     public static final String EVENT_VERSION_VALUE = "1.0";
+    public static final int KNOWN_FIELD_COUNT_PER_EVENT = 7;
     private final JsonFactory jsonFactory = new JsonFactory();
 
     @Override
@@ -61,7 +62,7 @@ class JsonRecordsGenerator implements RecordsGenerator {
 
         final Map<String, Object> messageMap = event.get("message", Map.class);
         assertThat(messageMap, notNullValue());
-        assertThat(messageMap.size(), greaterThanOrEqualTo(7));
+        assertThat(messageMap.size(), greaterThanOrEqualTo(KNOWN_FIELD_COUNT_PER_EVENT));
         assertThat(messageMap.get(EVENT_VERSION_FIELD), equalTo(EVENT_VERSION_VALUE));
     }
 
