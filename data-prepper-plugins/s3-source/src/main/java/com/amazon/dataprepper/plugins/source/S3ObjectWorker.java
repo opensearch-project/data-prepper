@@ -11,6 +11,7 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
 import com.amazon.dataprepper.plugins.source.compression.CompressionEngine;
+import com.amazon.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
@@ -41,6 +42,7 @@ class S3ObjectWorker {
     private final Buffer<Record<Event>> buffer;
     private final CompressionEngine compressionEngine;
     private final Codec codec;
+    private final BucketOwnerProvider bucketOwnerProvider;
     private final Duration bufferTimeout;
     private final int numberOfRecordsToAccumulate;
     private final Counter s3ObjectsFailedCounter;
@@ -51,6 +53,7 @@ class S3ObjectWorker {
                           final Buffer<Record<Event>> buffer,
                           final CompressionEngine compressionEngine,
                           final Codec codec,
+                          final BucketOwnerProvider bucketOwnerProvider,
                           final Duration bufferTimeout,
                           final int numberOfRecordsToAccumulate,
                           final PluginMetrics pluginMetrics) {
@@ -58,6 +61,7 @@ class S3ObjectWorker {
         this.buffer = buffer;
         this.compressionEngine = compressionEngine;
         this.codec = codec;
+        this.bucketOwnerProvider = bucketOwnerProvider;
         this.bufferTimeout = bufferTimeout;
         this.numberOfRecordsToAccumulate = numberOfRecordsToAccumulate;
 
@@ -70,7 +74,7 @@ class S3ObjectWorker {
         final GetObjectRequest.Builder getObjectBuilder = GetObjectRequest.builder()
                 .bucket(s3ObjectReference.getBucketName())
                 .key(s3ObjectReference.getKey());
-        s3ObjectReference.getBucketOwner().ifPresent(getObjectBuilder::expectedBucketOwner);
+        bucketOwnerProvider.getBucketOwner(s3ObjectReference.getBucketName()).ifPresent(getObjectBuilder::expectedBucketOwner);
         final GetObjectRequest getObjectRequest = getObjectBuilder
                 .build();
 
