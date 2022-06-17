@@ -142,8 +142,8 @@ class SqsWorkerTest {
         verify(sqsClient).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
         verify(sqsMessagesReceivedCounter).increment(1);
         verify(sqsMessagesDeletedCounter).increment(1);
-        assertThat(actualDelay, lessThanOrEqualTo(Duration.ofHours(1).plus(Duration.ofMinutes(5))));
-        assertThat(actualDelay, greaterThanOrEqualTo(Duration.ofHours(1).minus(Duration.ofMinutes(5))));
+        assertThat(actualDelay, lessThanOrEqualTo(Duration.ofHours(1).plus(Duration.ofSeconds(5))));
+        assertThat(actualDelay, greaterThanOrEqualTo(Duration.ofHours(1).minus(Duration.ofSeconds(5))));
     }
 
 
