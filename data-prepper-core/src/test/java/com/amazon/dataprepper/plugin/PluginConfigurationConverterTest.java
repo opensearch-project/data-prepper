@@ -20,6 +20,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -92,6 +93,21 @@ class PluginConfigurationConverterTest {
         final TestConfiguration convertedTestConfiguration = (TestConfiguration) convertedConfiguration;
 
         assertThat(convertedTestConfiguration.getMyValue(), equalTo(value));
+    }
+
+    @Test
+    void convert_with_other_target_should_return_empty_when_settings_are_null() {
+        given(pluginSetting.getSettings())
+                .willReturn(null);
+
+        final Object convertedConfiguration = createObjectUnderTest().convert(TestConfiguration.class, pluginSetting);
+
+        assertThat(convertedConfiguration, notNullValue());
+        assertThat(convertedConfiguration, instanceOf(TestConfiguration.class));
+
+        final TestConfiguration convertedTestConfiguration = (TestConfiguration) convertedConfiguration;
+
+        assertThat(convertedTestConfiguration.getMyValue(), nullValue());
     }
 
     @Test
