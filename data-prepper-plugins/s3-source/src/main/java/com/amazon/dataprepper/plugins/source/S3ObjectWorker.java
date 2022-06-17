@@ -34,8 +34,8 @@ class S3ObjectWorker {
     static final String S3_OBJECTS_FAILED_METRIC_NAME = "s3ObjectsFailed";
     static final String S3_OBJECTS_SUCCEEDED_METRIC_NAME = "s3ObjectsSucceeded";
     static final String S3_OBJECTS_TIME_ELAPSED_METRIC_NAME = "s3ObjectReadTimeElapsed";
-    public static final String BUCKET_FIELD_NAME = "bucket";
-    public static final String KEY_FIELD_NAME = "key";
+    private static final String BUCKET_FIELD_NAME = "bucket";
+    private static final String KEY_FIELD_NAME = "key";
 
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
