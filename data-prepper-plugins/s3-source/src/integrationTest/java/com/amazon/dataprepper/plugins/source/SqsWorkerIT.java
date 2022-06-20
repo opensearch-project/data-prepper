@@ -77,6 +77,12 @@ public class SqsWorkerIT {
         while (sqsMessagesProcessed > 0);
     }
 
+    /*
+    * receiveMessage of SQS doesn't return the exact number of objects that are written to S3 even if long polling is enabled with
+    * MaxNumberOfMessages greater than the number of objects written.
+    * The default behaviour is it returns the message immediately as soon as there's a single message and can return upto MaxNumberOfMessages.
+    * So the asserts in this test verify at least one message is returned.
+    */
     @ParameterizedTest
     @ValueSource(ints = {1, 5})
     void processSqsMessages_should_return_at_least_one_message(final int numberOfObjectsToWrite) throws IOException {
