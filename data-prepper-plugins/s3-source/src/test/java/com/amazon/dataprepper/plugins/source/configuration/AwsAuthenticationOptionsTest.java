@@ -6,21 +6,28 @@
 package com.amazon.dataprepper.plugins.source.configuration;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.StsClientBuilder;
 
 import java.lang.reflect.Field;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 class AwsAuthenticationOptionsTest {
 
     private AwsAuthenticationOptions awsAuthenticationOptions;
-    private final StsClient stsClient = mock(StsClient.class);
 
     @BeforeEach
     void setUp() {
@@ -33,16 +40,68 @@ class AwsAuthenticationOptionsTest {
         reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", null);
         assertThat(awsAuthenticationOptions.getAwsRegion(), equalTo("us-east-1"));
         assertThat(awsAuthenticationOptions.getAwsStsRoleArn(), equalTo(null));
-        assertThat(awsAuthenticationOptions.authenticateAwsConfiguration(stsClient), instanceOf(AwsCredentialsProvider.class));
+
+        final DefaultCredentialsProvider mockedCredentialsProvider = mock(DefaultCredentialsProvider.class);
+        final AwsCredentialsProvider actualCredentialsProvider;
+        try (final MockedStatic<DefaultCredentialsProvider> defaultCredentialsProviderMockedStatic = mockStatic(DefaultCredentialsProvider.class)) {
+            defaultCredentialsProviderMockedStatic.when(DefaultCredentialsProvider::create)
+                    .thenReturn(mockedCredentialsProvider);
+            actualCredentialsProvider = awsAuthenticationOptions.authenticateAwsConfiguration();
+        }
+
+        assertThat(actualCredentialsProvider, sameInstance(mockedCredentialsProvider));
     }
 
-    @Test
-    void authenticateAWSConfiguration_should_return_s3Client_with_sts_role_arn() throws NoSuchFieldException, IllegalAccessException {
-        reflectivelySetField(awsAuthenticationOptions, "awsRegion", "us-east-1");
-        reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", "arn:aws:iam::123456789012:iam-role");
-        assertThat(awsAuthenticationOptions.getAwsRegion(), equalTo("us-east-1"));
-        assertThat(awsAuthenticationOptions.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
-        assertThat(awsAuthenticationOptions.authenticateAwsConfiguration(stsClient), instanceOf(AwsCredentialsProvider.class));
+    @Nested
+    class WithSts {
+        private StsClient stsClient;
+        private StsClientBuilder stsClientBuilder;
+
+        @BeforeEach
+        void setUp() {
+            stsClient = mock(StsClient.class);
+            stsClientBuilder = mock(StsClientBuilder.class);
+
+
+            when(stsClientBuilder.build()).thenReturn(stsClient);
+        }
+
+
+        @Test
+        void authenticateAWSConfiguration_should_return_s3Client_with_sts_role_arn() throws NoSuchFieldException, IllegalAccessException {
+            reflectivelySetField(awsAuthenticationOptions, "awsRegion", "us-east-1");
+            reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", "arn:aws:iam::123456789012:iam-role");
+            assertThat(awsAuthenticationOptions.getAwsRegion(), equalTo("us-east-1"));
+            assertThat(awsAuthenticationOptions.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
+
+            when(stsClientBuilder.region(Region.US_EAST_1)).thenReturn(stsClientBuilder);
+
+            final AwsCredentialsProvider actualCredentialsProvider;
+            try (final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class)) {
+                stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
+                actualCredentialsProvider = awsAuthenticationOptions.authenticateAwsConfiguration();
+            }
+
+            assertThat(actualCredentialsProvider, instanceOf(AwsCredentialsProvider.class));
+        }
+
+        @Test
+        void authenticateAWSConfiguration_should_return_s3Client_with_sts_role_arn_when_no_region() throws NoSuchFieldException, IllegalAccessException {
+            reflectivelySetField(awsAuthenticationOptions, "awsRegion", null);
+            reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", "arn:aws:iam::123456789012:iam-role");
+            assertThat(awsAuthenticationOptions.getAwsRegion(), equalTo(null));
+            assertThat(awsAuthenticationOptions.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
+
+            when(stsClientBuilder.region(null)).thenReturn(stsClientBuilder);
+
+            final AwsCredentialsProvider actualCredentialsProvider;
+            try (final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class)) {
+                stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
+                actualCredentialsProvider = awsAuthenticationOptions.authenticateAwsConfiguration();
+            }
+
+            assertThat(actualCredentialsProvider, instanceOf(AwsCredentialsProvider.class));
+        }
     }
 
     private void reflectivelySetField(final AwsAuthenticationOptions awsAuthenticationOptions, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {

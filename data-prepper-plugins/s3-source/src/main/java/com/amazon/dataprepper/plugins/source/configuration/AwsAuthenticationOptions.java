@@ -11,6 +11,7 @@ import jakarta.validation.constraints.Size;
 import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -34,15 +35,19 @@ public class AwsAuthenticationOptions {
         return awsStsRoleArn;
     }
 
-    public AwsCredentialsProvider authenticateAwsConfiguration(final StsClient stsClient) {
+    public AwsCredentialsProvider authenticateAwsConfiguration() {
 
-        AwsCredentialsProvider awsCredentialsProvider;
+        final AwsCredentialsProvider awsCredentialsProvider;
         if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
             try {
                 Arn.fromString(awsStsRoleArn);
-            } catch (Exception e) {
+            } catch (final Exception e) {
                 throw new IllegalArgumentException("Invalid ARN format for awsStsRoleArn");
             }
+
+            final StsClient stsClient = StsClient.builder()
+                    .region(awsRegion != null ? Region.of(awsRegion) : null)
+                    .build();
 
             awsCredentialsProvider = StsAssumeRoleCredentialsProvider.builder()
                     .stsClient(stsClient)
@@ -52,8 +57,7 @@ public class AwsAuthenticationOptions {
                             .build())
                     .build();
 
-        }
-        else {
+        } else {
             // use default credential provider
             awsCredentialsProvider = DefaultCredentialsProvider.create();
         }
