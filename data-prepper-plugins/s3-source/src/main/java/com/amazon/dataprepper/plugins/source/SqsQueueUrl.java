@@ -9,19 +9,17 @@ import java.net.MalformedURLException;
 import java.net.URL;
 
 public class SqsQueueUrl {
-    private final URL queueUrl;
     private final String accountId;
 
-    private SqsQueueUrl(final URL queueUrl) throws MalformedURLException {
-        this.queueUrl = queueUrl;
+    private SqsQueueUrl(final URL queueUrl) {
         final String path = queueUrl.getPath();
 
         if (path.isEmpty())
-            throw new MalformedURLException();
+            throw new IllegalArgumentException("No path for the SQS queue URL.");
 
         final String[] pathParts = path.split("/");
         if (pathParts.length < 3)
-            throw new MalformedURLException();
+            throw new IllegalArgumentException("Not enough path parts for the SQS queue URL.");
 
         accountId = pathParts[1];
     }

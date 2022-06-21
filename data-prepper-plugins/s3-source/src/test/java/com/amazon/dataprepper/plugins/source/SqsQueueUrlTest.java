@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.plugins.source;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -31,19 +32,30 @@ class SqsQueueUrlTest {
             "https://sqs.us-east-1.amazonaws.com/123456789/"
     })
     void parse_throws_when_URL_has_invalid_paths(final String queueUrl) {
-        assertThrows(MalformedURLException.class, () -> SqsQueueUrl.parse(queueUrl));
+        assertThrows(IllegalArgumentException.class, () -> SqsQueueUrl.parse(queueUrl));
     }
 
-    @Test
-    void getAccountId_returns_accountId_part() throws MalformedURLException {
-        final String accountId = UUID.randomUUID().toString();
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "https://sqs.us-east-1.amazonaws.com/%s/%s",
+            "https://sqs.us-east-1.amazonaws.com/%s/%s/",
+            "https://sqs.us-east-1.amazonaws.com/%s/%s.fifo",
+            "https://sqs.us-east-1.amazonaws.com/%s/%s.fifo/",
+            "https://sqs.us-west-2.amazonaws.com/%s/%s"
+    })
+    void getAccountId_returns_accountId_part(final String queueFormatString) throws MalformedURLException {
+        final String accountId = randomAccountId();
         final String queueName = UUID.randomUUID().toString();
 
-        final String queueUrl = String.format("https://sqs.us-east-1.amazonaws.com/%s/%s", accountId, queueName);
+        final String queueUrl = String.format(queueFormatString, accountId, queueName);
 
         final SqsQueueUrl objectUnderTest = SqsQueueUrl.parse(queueUrl);
 
         assertThat(objectUnderTest, notNullValue());
         assertThat(objectUnderTest.getAccountId(), equalTo(accountId));
+    }
+
+    private String randomAccountId() {
+        return RandomStringUtils.randomNumeric(12);
     }
 }

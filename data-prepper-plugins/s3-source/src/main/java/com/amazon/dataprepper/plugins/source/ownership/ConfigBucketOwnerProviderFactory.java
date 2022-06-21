@@ -15,6 +15,12 @@ public class ConfigBucketOwnerProviderFactory {
         if(s3SourceConfig.isDisableBucketOwnershipValidation())
             return new NoOwnershipBucketOwnerProvider();
 
+        final String accountId = extractQueueAccountId(s3SourceConfig);
+
+        return new StaticBucketOwnerProvider(accountId);
+    }
+
+    private String extractQueueAccountId(final S3SourceConfig s3SourceConfig) {
         final String queueUrl = s3SourceConfig.getSqsOptions().getSqsUrl();
         final String accountId;
         try {
@@ -22,7 +28,6 @@ public class ConfigBucketOwnerProviderFactory {
         } catch (final MalformedURLException e) {
             throw new RuntimeException(e);
         }
-
-        return new StaticBucketOwnerProvider(accountId);
+        return accountId;
     }
 }
