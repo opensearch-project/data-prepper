@@ -190,8 +190,15 @@ class S3ObjectWorkerTest {
         final Consumer<Record<Event>> consumerUnderTest = eventConsumerArgumentCaptor.getValue();
 
         final Record<Event> record = mock(Record.class);
+        final Event event = mock(Event.class);
+        when(record.getData()).thenReturn(event);
+
         consumerUnderTest.accept(record);
-        verify(bufferAccumulator).add(record);
+
+        final InOrder inOrder = inOrder(event, bufferAccumulator);
+        inOrder.verify(event).put("bucket", bucketName);
+        inOrder.verify(event).put("key", key);
+        inOrder.verify(bufferAccumulator).add(record);
     }
 
     @Test
