@@ -104,15 +104,11 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
 
             final ServerBuilder sb = Server.builder();
             sb.disableServerHeader();
+            sb.service(grpcServiceBuilder.build());
 
             final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
                     authenticationProvider.getHttpAuthenticationService();
-            final GrpcService grpcService = grpcServiceBuilder.build();
-            if(optionalHttpAuthenticationService.isPresent()) {
-                sb.service(grpcService, optionalHttpAuthenticationService.get());
-            } else {
-                sb.service(grpcService);
-            }
+            optionalHttpAuthenticationService.ifPresent(sb::decorator);
 
             sb.requestTimeoutMillis(oTelMetricsSourceConfig.getRequestTimeoutInMillis());
 

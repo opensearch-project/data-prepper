@@ -105,15 +105,11 @@ public class OTelTraceSource implements Source<Record<Object>> {
 
             final ServerBuilder sb = Server.builder();
             sb.disableServerHeader();
+            sb.service(grpcServiceBuilder.build());
 
             final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
                     authenticationProvider.getHttpAuthenticationService();
-            final GrpcService grpcService = grpcServiceBuilder.build();
-            if(optionalHttpAuthenticationService.isPresent()) {
-                sb.service(grpcService, optionalHttpAuthenticationService.get());
-            } else {
-                sb.service(grpcService);
-            }
+            optionalHttpAuthenticationService.ifPresent(sb::decorator);
 
             sb.requestTimeoutMillis(oTelTraceSourceConfig.getRequestTimeoutInMillis());
 
