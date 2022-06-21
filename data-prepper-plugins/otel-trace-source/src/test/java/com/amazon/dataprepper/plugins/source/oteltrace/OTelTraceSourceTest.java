@@ -28,6 +28,8 @@ import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
+import com.linecorp.armeria.server.HttpService;
+import com.linecorp.armeria.server.HttpServiceWithRoutes;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
@@ -64,6 +66,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -176,6 +179,7 @@ public class OTelTraceSourceTest {
     @BeforeEach
     public void beforeEach() {
         lenient().when(serverBuilder.service(any(GrpcService.class))).thenReturn(serverBuilder);
+        lenient().when(serverBuilder.service(any(GrpcService.class), any(Function.class))).thenReturn(serverBuilder);
         lenient().when(serverBuilder.http(anyInt())).thenReturn(serverBuilder);
         lenient().when(serverBuilder.https(anyInt())).thenReturn(serverBuilder);
         lenient().when(serverBuilder.build()).thenReturn(server);
@@ -453,6 +457,19 @@ public class OTelTraceSourceTest {
         verify(grpcServiceBuilder, never()).addService(isA(HealthGrpcService.class));
     }
 
+    @Test
+    public void testOptionalHttpAuthServiceNotInPlace() {
+        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
+            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
+            when(server.stop()).thenReturn(completableFuture);
+
+            // starting server
+            SOURCE.start(buffer);
+
+            verify(serverBuilder, never()).service(isA(GrpcService.class), isA(Function.class));
+            verify(serverBuilder).service(isA(GrpcService.class));
+        }
+    }
 
     @Test
     public void testDoubleStart() {

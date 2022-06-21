@@ -62,6 +62,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.amazon.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.SSL;
@@ -453,6 +454,20 @@ public class OTelMetricsSourceTest {
             // When/Then
             final RuntimeException ex = assertThrows(RuntimeException.class, () -> source.start(buffer));
             assertEquals(expCause, ex);
+        }
+    }
+
+    @Test
+    public void testOptionalHttpAuthServiceNotInPlace() {
+        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
+            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
+            when(server.stop()).thenReturn(completableFuture);
+
+            // starting server
+            SOURCE.start(buffer);
+
+            verify(serverBuilder, never()).service(isA(GrpcService.class), isA(Function.class));
+            verify(serverBuilder).service(isA(GrpcService.class));
         }
     }
 

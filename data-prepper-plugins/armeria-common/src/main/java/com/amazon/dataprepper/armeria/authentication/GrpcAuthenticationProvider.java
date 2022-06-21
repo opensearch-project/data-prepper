@@ -33,7 +33,8 @@ public interface GrpcAuthenticationProvider {
     ServerInterceptor getAuthenticationInterceptor();
 
     /**
-     * Returns an optional service for HTTP authentication
+     * Allows implementors to provide an {@link HttpService} to either intercept the HTTP request prior to validation,
+     * or to perform validation on the HTTP request. This may be optional, in which case it is not used.
      * @since 1.5
      */
     default Optional<Function<? super HttpService, ? extends HttpService>> getHttpAuthenticationService() {

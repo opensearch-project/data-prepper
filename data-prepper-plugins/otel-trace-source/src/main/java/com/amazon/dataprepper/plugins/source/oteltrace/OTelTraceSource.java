@@ -35,6 +35,7 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
@@ -105,8 +106,14 @@ public class OTelTraceSource implements Source<Record<Object>> {
             final ServerBuilder sb = Server.builder();
             sb.disableServerHeader();
 
-            final Function<? super HttpService, ? extends HttpService> httpAuthenticationService = authenticationProvider.getHttpAuthenticationService().get();
-            sb.service(grpcServiceBuilder.build(), httpAuthenticationService);
+            final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
+                    authenticationProvider.getHttpAuthenticationService();
+            final GrpcService grpcService = grpcServiceBuilder.build();
+            if(optionalHttpAuthenticationService.isPresent()) {
+                sb.service(grpcService, optionalHttpAuthenticationService.get());
+            } else {
+                sb.service(grpcService);
+            }
 
             sb.requestTimeoutMillis(oTelTraceSourceConfig.getRequestTimeoutInMillis());
 
