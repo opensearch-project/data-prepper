@@ -37,6 +37,19 @@ class SqsQueueUrlTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
+            "12345678901",
+            "1234567890123",
+            "A23456789012",
+            "12345678901A",
+            "12345678901!"
+    })
+    void parse_throws_when_URL_has_invalid_accountId(final String accountId) {
+        final String queueUrl = String.format("https://sqs.us-east-1.amazonaws.com/%s/%s", accountId, UUID.randomUUID());
+        assertThrows(IllegalArgumentException.class, () -> SqsQueueUrl.parse(queueUrl));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
             "https://sqs.us-east-1.amazonaws.com/%s/%s",
             "https://sqs.us-east-1.amazonaws.com/%s/%s/",
             "https://sqs.us-east-1.amazonaws.com/%s/%s.fifo",
