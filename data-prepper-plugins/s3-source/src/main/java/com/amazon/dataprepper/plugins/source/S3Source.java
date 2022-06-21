@@ -43,7 +43,7 @@ public class S3Source implements Source<Record<Event>> {
         }
 
         S3Service s3Service = new S3Service(s3SourceConfig, buffer, codec, pluginMetrics);
-        sqsService = new SqsService(s3SourceConfig, s3Service);
+        sqsService = new SqsService(s3SourceConfig, s3Service, pluginMetrics);
 
         sqsService.start();
     }
