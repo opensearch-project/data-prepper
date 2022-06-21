@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.plugins.source;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.plugins.source.configuration.OnErrorOption;
 import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
 import org.junit.jupiter.api.AfterEach;
@@ -36,6 +37,7 @@ public class SqsWorkerIT {
     private SqsClient sqsClient;
     private S3Service s3Service;
     private S3SourceConfig s3SourceConfig;
+    private PluginMetrics pluginMetrics;
     private S3ObjectGenerator s3ObjectGenerator;
     private String bucket;
 
@@ -54,6 +56,8 @@ public class SqsWorkerIT {
         s3SourceConfig = mock(S3SourceConfig.class);
         s3Service = mock(S3Service.class);
 
+        pluginMetrics = mock(PluginMetrics.class);
+
         final SqsOptions sqsOptions = mock(SqsOptions.class);
         when(sqsOptions.getSqsUrl()).thenReturn(System.getProperty("tests.s3source.queue.url"));
         when(sqsOptions.getVisibilityTimeout()).thenReturn(Duration.ofSeconds(60));
@@ -64,7 +68,7 @@ public class SqsWorkerIT {
     }
 
     private SqsWorker createObjectUnderTest() {
-        return new SqsWorker(sqsClient, s3Service, s3SourceConfig);
+        return new SqsWorker(sqsClient, s3Service, s3SourceConfig, pluginMetrics);
     }
 
     @AfterEach
