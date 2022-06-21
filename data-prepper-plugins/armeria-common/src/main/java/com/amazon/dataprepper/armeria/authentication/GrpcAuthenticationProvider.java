@@ -5,7 +5,11 @@
 
 package com.amazon.dataprepper.armeria.authentication;
 
+import com.linecorp.armeria.server.HttpService;
 import io.grpc.ServerInterceptor;
+
+import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * An interface for providing authentication in GRPC servers.
@@ -27,4 +31,8 @@ public interface GrpcAuthenticationProvider {
      * @since 1.2
      */
     ServerInterceptor getAuthenticationInterceptor();
+
+    default Optional<Function<? super HttpService, ? extends HttpService>> getHttpAuthenticationService() {
+        return Optional.empty();
+    }
 }
