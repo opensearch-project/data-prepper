@@ -16,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
@@ -60,7 +59,7 @@ public class S3Service {
     S3Client createS3Client() {
         LOG.info("Creating S3 client");
         return S3Client.builder()
-                .region(Region.of(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion()))
+                .region(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion())
                 .credentialsProvider(s3SourceConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration())
                 .overrideConfiguration(ClientOverrideConfiguration.builder()
                         .retryPolicy(RetryPolicy.builder().numRetries(5).build())

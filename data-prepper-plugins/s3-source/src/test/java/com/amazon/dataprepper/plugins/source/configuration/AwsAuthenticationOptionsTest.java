@@ -8,6 +8,8 @@ package com.amazon.dataprepper.plugins.source.configuration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -19,6 +21,7 @@ import java.lang.reflect.Field;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
@@ -34,12 +37,23 @@ class AwsAuthenticationOptionsTest {
         awsAuthenticationOptions = new AwsAuthenticationOptions();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"us-east-1", "us-east-2", "ap-northeast-1", "fake-dynamic-2"})
+    void getAwsRegion_returns_Region(final String region) throws NoSuchFieldException, IllegalAccessException {
+        reflectivelySetField(awsAuthenticationOptions, "awsRegion", region);
+        assertThat(awsAuthenticationOptions.getAwsRegion(), equalTo(Region.of(region)));
+    }
+
+    @Test
+    void getAwsRegion_returns_null_when_region_is_null() throws NoSuchFieldException, IllegalAccessException {
+        reflectivelySetField(awsAuthenticationOptions, "awsRegion", null);
+        assertThat(awsAuthenticationOptions.getAwsRegion(), nullValue());
+    }
+
     @Test
     void authenticateAWSConfiguration_should_return_s3Client_without_sts_role_arn() throws NoSuchFieldException, IllegalAccessException {
         reflectivelySetField(awsAuthenticationOptions, "awsRegion", "us-east-1");
         reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", null);
-        assertThat(awsAuthenticationOptions.getAwsRegion(), equalTo("us-east-1"));
-        assertThat(awsAuthenticationOptions.getAwsStsRoleArn(), equalTo(null));
 
         final DefaultCredentialsProvider mockedCredentialsProvider = mock(DefaultCredentialsProvider.class);
         final AwsCredentialsProvider actualCredentialsProvider;
@@ -62,7 +76,6 @@ class AwsAuthenticationOptionsTest {
             stsClient = mock(StsClient.class);
             stsClientBuilder = mock(StsClientBuilder.class);
 
-
             when(stsClientBuilder.build()).thenReturn(stsClient);
         }
 
@@ -71,8 +84,6 @@ class AwsAuthenticationOptionsTest {
         void authenticateAWSConfiguration_should_return_s3Client_with_sts_role_arn() throws NoSuchFieldException, IllegalAccessException {
             reflectivelySetField(awsAuthenticationOptions, "awsRegion", "us-east-1");
             reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", "arn:aws:iam::123456789012:iam-role");
-            assertThat(awsAuthenticationOptions.getAwsRegion(), equalTo("us-east-1"));
-            assertThat(awsAuthenticationOptions.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
 
             when(stsClientBuilder.region(Region.US_EAST_1)).thenReturn(stsClientBuilder);
 
@@ -90,7 +101,6 @@ class AwsAuthenticationOptionsTest {
             reflectivelySetField(awsAuthenticationOptions, "awsRegion", null);
             reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", "arn:aws:iam::123456789012:iam-role");
             assertThat(awsAuthenticationOptions.getAwsRegion(), equalTo(null));
-            assertThat(awsAuthenticationOptions.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
 
             when(stsClientBuilder.region(null)).thenReturn(stsClientBuilder);
 

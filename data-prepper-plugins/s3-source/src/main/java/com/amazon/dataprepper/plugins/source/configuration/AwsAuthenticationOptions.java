@@ -6,7 +6,6 @@
 package com.amazon.dataprepper.plugins.source.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -19,20 +18,16 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import java.util.UUID;
 
 public class AwsAuthenticationOptions {
-    @JsonProperty("aws_region")
-    @NotBlank(message = "Region cannot be null or empty")
+    @JsonProperty("region")
+    @Size(min = 1, message = "Region cannot be empty string")
     private String awsRegion;
 
-    @JsonProperty("aws_sts_role_arn")
+    @JsonProperty("sts_role_arn")
     @Size(min = 20, max = 2048, message = "awsStsRoleArn length should be between 1 and 2048 characters")
     private String awsStsRoleArn;
 
-    public String getAwsRegion() {
-        return awsRegion;
-    }
-
-    public String getAwsStsRoleArn() {
-        return awsStsRoleArn;
+    public Region getAwsRegion() {
+        return awsRegion != null ? Region.of(awsRegion) : null;
     }
 
     public AwsCredentialsProvider authenticateAwsConfiguration() {
@@ -46,7 +41,7 @@ public class AwsAuthenticationOptions {
             }
 
             final StsClient stsClient = StsClient.builder()
-                    .region(awsRegion != null ? Region.of(awsRegion) : null)
+                    .region(getAwsRegion())
                     .build();
 
             awsCredentialsProvider = StsAssumeRoleCredentialsProvider.builder()
