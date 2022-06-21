@@ -12,6 +12,7 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
 import com.amazon.dataprepper.plugins.source.compression.CompressionEngine;
 import com.amazon.dataprepper.plugins.source.compression.NoneCompressionEngine;
+import com.amazon.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tags;
@@ -31,6 +32,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -58,6 +60,7 @@ class S3ObjectWorkerIT {
     private String bucket;
     private int recordsReceived;
     private PluginMetrics pluginMetrics;
+    private BucketOwnerProvider bucketOwnerProvider;
 
     @BeforeEach
     void setUp() {
@@ -76,6 +79,8 @@ class S3ObjectWorkerIT {
         final Timer timer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
         when(pluginMetrics.counter(anyString())).thenReturn(counter);
         when(pluginMetrics.timer(anyString())).thenReturn(timer);
+
+        bucketOwnerProvider = b -> Optional.empty();
     }
 
     private void stubBufferWriter(final Consumer<Event> additionalEventAssertions, final String key) throws Exception {
@@ -97,7 +102,7 @@ class S3ObjectWorkerIT {
     }
 
     private S3ObjectWorker createObjectUnderTest(final Codec codec, final int numberOfRecordsToAccumulate) {
-        return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, Duration.ofMillis(TIMEOUT_IN_MILLIS), numberOfRecordsToAccumulate, pluginMetrics);
+        return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider, Duration.ofMillis(TIMEOUT_IN_MILLIS), numberOfRecordsToAccumulate, pluginMetrics);
     }
 
     @ParameterizedTest
