@@ -21,6 +21,7 @@ import java.util.function.Consumer;
 
 @DataPrepperPlugin(name = "newline", pluginType = Codec.class, pluginConfigurationType = NewlineDelimitedConfig.class)
 public class NewlineDelimitedCodec implements Codec {
+    private static final String MESSAGE_FIELD_NAME = "message";
     private final int skipLines;
 
     @DataPrepperPluginConstructor
@@ -51,7 +52,7 @@ public class NewlineDelimitedCodec implements Codec {
             }
 
             final Event event = JacksonLog.builder()
-                    .withData(Collections.singletonMap("message", line))
+                    .withData(Collections.singletonMap(MESSAGE_FIELD_NAME, line))
                     .build();
             eventConsumer.accept(new Record<>(event));
         }

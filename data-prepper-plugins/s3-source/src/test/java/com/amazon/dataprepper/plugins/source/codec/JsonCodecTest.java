@@ -140,7 +140,7 @@ class JsonCodecTest {
             assertThat(actualRecord.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
 
             final Map<String, Object> expectedMap = jsonObjects.get(i);
-            assertThat(actualRecord.getData().toMap(), equalTo(expectedMap));
+            assertThat(actualRecord.getData().get("message", Map.class), equalTo(expectedMap));
         }
     }
 
@@ -167,7 +167,7 @@ class JsonCodecTest {
             assertThat(actualRecord.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
 
             final Map<String, Object> expectedMap = jsonObjects.get(i);
-            assertThat(actualRecord.getData().toMap(), equalTo(expectedMap));
+            assertThat(actualRecord.getData().get("message", Map.class), equalTo(expectedMap));
         }
     }
 
@@ -200,7 +200,7 @@ class JsonCodecTest {
             assertThat(actualRecord.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
 
             final Map<String, Object> expectedMap = expectedJsonObjects.get(i);
-            assertThat(actualRecord.getData().toMap(), equalTo(expectedMap));
+            assertThat(actualRecord.getData().get("message", Map.class), equalTo(expectedMap));
         }
     }
 

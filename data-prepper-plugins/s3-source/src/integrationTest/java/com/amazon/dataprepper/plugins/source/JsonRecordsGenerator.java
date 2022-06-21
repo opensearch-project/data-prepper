@@ -15,9 +15,11 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
@@ -25,6 +27,7 @@ class JsonRecordsGenerator implements RecordsGenerator {
 
     public static final String EVENT_VERSION_FIELD = "eventVersion";
     public static final String EVENT_VERSION_VALUE = "1.0";
+    public static final int KNOWN_FIELD_COUNT_PER_EVENT = 7;
     private final JsonFactory jsonFactory = new JsonFactory();
 
     @Override
@@ -57,8 +60,10 @@ class JsonRecordsGenerator implements RecordsGenerator {
     @Override
     public void assertEventIsCorrect(final Event event) {
 
-        assertThat(event.get(EVENT_VERSION_FIELD, String.class), equalTo(EVENT_VERSION_VALUE));
-        assertThat(event.toMap().size(), greaterThanOrEqualTo(7));
+        final Map<String, Object> messageMap = event.get("message", Map.class);
+        assertThat(messageMap, notNullValue());
+        assertThat(messageMap.size(), greaterThanOrEqualTo(KNOWN_FIELD_COUNT_PER_EVENT));
+        assertThat(messageMap.get(EVENT_VERSION_FIELD), equalTo(EVENT_VERSION_VALUE));
     }
 
     private void writeSingleRecord(final JsonGenerator jsonGenerator) throws IOException {

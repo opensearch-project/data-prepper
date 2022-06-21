@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -26,7 +27,7 @@ import java.util.function.Consumer;
  */
 @DataPrepperPlugin(name = "json", pluginType = Codec.class)
 public class JsonCodec implements Codec {
-
+    private static final String MESSAGE_FIELD_NAME = "message";
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final JsonFactory jsonFactory = new JsonFactory();
 
@@ -56,7 +57,7 @@ public class JsonCodec implements Codec {
 
     private Record<Event> createRecord(final Map<String, Object> json) {
         final JacksonEvent event = JacksonLog.builder()
-                .withData(json)
+                .withData(Collections.singletonMap(MESSAGE_FIELD_NAME, json))
                 .build();
 
         return new Record<>(event);
