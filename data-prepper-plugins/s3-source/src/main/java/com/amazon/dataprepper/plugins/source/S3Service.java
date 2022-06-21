@@ -11,6 +11,7 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
 import com.amazon.dataprepper.plugins.source.compression.CompressionEngine;
+import com.amazon.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
@@ -30,23 +31,29 @@ public class S3Service {
     private final Codec codec;
     private final CompressionEngine compressionEngine;
     private final PluginMetrics pluginMetrics;
+    private final BucketOwnerProvider bucketOwnerProvider;
     private final S3ObjectWorker s3ObjectWorker;
 
-    public S3Service(final S3SourceConfig s3SourceConfig, Buffer<Record<Event>> buffer, Codec codec, PluginMetrics pluginMetrics) {
+    public S3Service(final S3SourceConfig s3SourceConfig,
+                     final Buffer<Record<Event>> buffer,
+                     final Codec codec,
+                     final PluginMetrics pluginMetrics,
+                     final BucketOwnerProvider bucketOwnerProvider) {
         this.s3SourceConfig = s3SourceConfig;
         this.buffer = buffer;
         this.codec = codec;
         this.pluginMetrics = pluginMetrics;
+        this.bucketOwnerProvider = bucketOwnerProvider;
         this.s3Client = createS3Client(StsClient.create());
         this.compressionEngine = s3SourceConfig.getCompression().getEngine();
-        this.s3ObjectWorker = new S3ObjectWorker(s3Client, buffer, compressionEngine, codec,
+        this.s3ObjectWorker = new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider,
                 s3SourceConfig.getBufferTimeout(), s3SourceConfig.getNumberOfRecordsToAccumulate(), pluginMetrics);
     }
 
     void addS3Object(final S3ObjectReference s3ObjectReference) {
         try {
             s3ObjectWorker.parseS3Object(s3ObjectReference);
-        } catch (IOException e) {
+        } catch (final IOException e) {
             LOG.error("Unable to read S3 object from S3ObjectReference = {}", s3ObjectReference, e);
         }
     }

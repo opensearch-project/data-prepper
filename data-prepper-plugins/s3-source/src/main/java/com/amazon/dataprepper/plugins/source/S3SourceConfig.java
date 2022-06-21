@@ -50,6 +50,9 @@ public class S3SourceConfig {
     @JsonProperty("records_to_accumulate")
     private int numberOfRecordsToAccumulate = DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE;
 
+    @JsonProperty("disable_bucket_ownership_validation")
+    private boolean disableBucketOwnershipValidation = false;
+
     public NotificationTypeOption getNotificationType() {
         return notificationType;
     }
@@ -80,5 +83,9 @@ public class S3SourceConfig {
 
     public int getNumberOfRecordsToAccumulate() {
         return numberOfRecordsToAccumulate;
+    }
+
+    public boolean isDisableBucketOwnershipValidation() {
+        return disableBucketOwnershipValidation;
     }
 }
