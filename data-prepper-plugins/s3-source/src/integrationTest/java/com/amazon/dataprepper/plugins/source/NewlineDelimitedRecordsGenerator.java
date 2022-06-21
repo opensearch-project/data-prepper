@@ -17,7 +17,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Random;
 
 import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -51,7 +50,6 @@ class NewlineDelimitedRecordsGenerator implements RecordsGenerator {
     @Override
     public void assertEventIsCorrect(final Event event) {
         final String message = event.get("message", String.class);
-        assertThat(event.toMap().size(), equalTo(1));
         assertThat(message, notNullValue());
         assertThat(message, containsString(KNOWN_HTTP_LINE));
     }
