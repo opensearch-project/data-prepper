@@ -8,6 +8,10 @@ package com.amazon.dataprepper.plugins.source.ownership;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * An implementation of {@link BucketOwnerProvider} which provides the
+ * same owner for all buckets.
+ */
 class StaticBucketOwnerProvider implements BucketOwnerProvider {
     private final String accountId;
 

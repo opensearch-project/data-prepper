@@ -7,6 +7,7 @@ package com.amazon.dataprepper.plugins.source;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Objects;
 
 public class SqsQueueUrl {
     private final String accountId;
@@ -36,6 +37,7 @@ public class SqsQueueUrl {
     }
 
     public static SqsQueueUrl parse(final String queueUrl) throws MalformedURLException {
+        Objects.requireNonNull(queueUrl);
         return new SqsQueueUrl(new URL(queueUrl));
     }
 }

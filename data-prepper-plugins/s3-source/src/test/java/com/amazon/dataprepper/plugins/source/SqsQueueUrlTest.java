@@ -20,6 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class SqsQueueUrlTest {
     @Test
+    void parse_throws_when_URL_is_null() {
+        assertThrows(NullPointerException.class, () -> SqsQueueUrl.parse(null));
+    }
+
+    @Test
     void parse_throws_when_URL_is_not_a_URL() {
         assertThrows(MalformedURLException.class, () -> SqsQueueUrl.parse(UUID.randomUUID().toString()));
     }

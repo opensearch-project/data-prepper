@@ -10,7 +10,16 @@ import com.amazon.dataprepper.plugins.source.SqsQueueUrl;
 
 import java.net.MalformedURLException;
 
+/**
+ * Produces a {@link BucketOwnerProvider} from the S3 source configuration as
+ * provided in a {@link S3SourceConfig}.
+ */
 public class ConfigBucketOwnerProviderFactory {
+    /**
+     * Creates the {@link BucketOwnerProvider}
+     * @param s3SourceConfig The input {@link S3SourceConfig}
+     * @return The {@link BucketOwnerProvider}
+     */
     public BucketOwnerProvider createBucketOwnerProvider(final S3SourceConfig s3SourceConfig) {
         if(s3SourceConfig.isDisableBucketOwnershipValidation())
             return new NoOwnershipBucketOwnerProvider();
