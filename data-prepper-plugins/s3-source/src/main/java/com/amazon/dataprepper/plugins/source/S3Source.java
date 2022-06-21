@@ -16,6 +16,8 @@ import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
+import com.amazon.dataprepper.plugins.source.ownership.BucketOwnerProvider;
+import com.amazon.dataprepper.plugins.source.ownership.ConfigBucketOwnerProviderFactory;
 
 @DataPrepperPlugin(name = "s3", pluginType = Source.class, pluginConfigurationType = S3SourceConfig.class)
 public class S3Source implements Source<Record<Event>> {
@@ -42,7 +44,10 @@ public class S3Source implements Source<Record<Event>> {
             throw new IllegalStateException("Buffer provided is null");
         }
 
-        S3Service s3Service = new S3Service(s3SourceConfig, buffer, codec, pluginMetrics);
+        final ConfigBucketOwnerProviderFactory configBucketOwnerProviderFactory = new ConfigBucketOwnerProviderFactory();
+        final BucketOwnerProvider bucketOwnerProvider = configBucketOwnerProviderFactory.createBucketOwnerProvider(s3SourceConfig);
+
+        final S3Service s3Service = new S3Service(s3SourceConfig, buffer, codec, pluginMetrics, bucketOwnerProvider);
         sqsService = new SqsService(s3SourceConfig, s3Service, pluginMetrics);
 
         sqsService.start();

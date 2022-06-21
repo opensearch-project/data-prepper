@@ -11,6 +11,7 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
 import com.amazon.dataprepper.plugins.source.compression.CompressionEngine;
+import com.amazon.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,6 +67,9 @@ class S3ObjectWorkerTest {
     @Mock
     private Codec codec;
 
+    @Mock
+    private BucketOwnerProvider bucketOwnerProvider;
+
     private Duration bufferTimeout;
     private int recordsToAccumulate;
 
@@ -118,7 +122,7 @@ class S3ObjectWorkerTest {
     }
 
     private S3ObjectWorker createObjectUnderTest() {
-        return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bufferTimeout, recordsToAccumulate, pluginMetrics);
+        return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider, bufferTimeout, recordsToAccumulate, pluginMetrics);
     }
 
     @Test
@@ -136,6 +140,7 @@ class S3ObjectWorkerTest {
         assertThat(actualGetObjectRequest, notNullValue());
         assertThat(actualGetObjectRequest.bucket(), equalTo(bucketName));
         assertThat(actualGetObjectRequest.key(), equalTo(key));
+        assertThat(actualGetObjectRequest.expectedBucketOwner(), nullValue());
     }
 
     @Test
@@ -145,7 +150,7 @@ class S3ObjectWorkerTest {
                 .thenReturn(objectInputStream);
 
         final String bucketOwner = UUID.randomUUID().toString();
-        when(s3ObjectReference.getBucketOwner()).thenReturn(Optional.of(bucketOwner));
+        when(bucketOwnerProvider.getBucketOwner(bucketName)).thenReturn(Optional.of(bucketOwner));
 
         createObjectUnderTest().parseS3Object(s3ObjectReference);
 

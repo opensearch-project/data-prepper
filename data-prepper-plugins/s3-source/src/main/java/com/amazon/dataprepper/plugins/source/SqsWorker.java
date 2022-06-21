@@ -200,7 +200,6 @@ public class SqsWorker implements Runnable {
         final S3EventNotification.S3Entity s3Entity = s3EventNotificationRecord.getS3();
         return S3ObjectReference.bucketAndKey(s3Entity.getBucket().getName(),
                 s3Entity.getObject().getKey())
-                .owner(s3Entity.getBucket().getOwnerIdentity().getPrincipalId())
                 .build();
     }
 }
