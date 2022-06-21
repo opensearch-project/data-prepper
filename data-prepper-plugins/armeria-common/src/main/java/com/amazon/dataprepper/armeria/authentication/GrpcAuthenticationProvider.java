@@ -32,6 +32,10 @@ public interface GrpcAuthenticationProvider {
      */
     ServerInterceptor getAuthenticationInterceptor();
 
+    /**
+     * Returns an optional service for HTTP authentication
+     * @since 1.5
+     */
     default Optional<Function<? super HttpService, ? extends HttpService>> getHttpAuthenticationService() {
         return Optional.empty();
     }
