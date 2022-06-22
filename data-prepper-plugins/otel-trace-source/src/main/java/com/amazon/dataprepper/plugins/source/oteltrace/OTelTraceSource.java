@@ -20,6 +20,7 @@ import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.amazon.dataprepper.plugins.health.HealthGrpcService;
 import com.amazon.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import com.amazon.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
+import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
@@ -34,8 +35,10 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 @DataPrepperPlugin(name = "otel_trace_source", pluginType = Source.class, pluginConfigurationType = OTelTraceSourceConfig.class)
 public class OTelTraceSource implements Source<Record<Object>> {
@@ -103,6 +106,11 @@ public class OTelTraceSource implements Source<Record<Object>> {
             final ServerBuilder sb = Server.builder();
             sb.disableServerHeader();
             sb.service(grpcServiceBuilder.build());
+
+            final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
+                    authenticationProvider.getHttpAuthenticationService();
+            optionalHttpAuthenticationService.ifPresent(sb::decorator);
+
             sb.requestTimeoutMillis(oTelTraceSourceConfig.getRequestTimeoutInMillis());
 
             // ACM Cert for SSL takes preference
