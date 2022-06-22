@@ -10,7 +10,6 @@ import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
@@ -28,6 +27,7 @@ import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
+import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
@@ -62,8 +62,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -82,7 +84,6 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -117,6 +118,9 @@ public class OTelTraceSourceTest {
 
     @Mock
     private PluginFactory pluginFactory;
+
+    @Mock
+    private GrpcAuthenticationProvider authenticationProvider;
 
     private PluginSetting pluginSetting;
     private PluginSetting testPluginSetting;
@@ -176,6 +180,7 @@ public class OTelTraceSourceTest {
     @BeforeEach
     public void beforeEach() {
         lenient().when(serverBuilder.service(any(GrpcService.class))).thenReturn(serverBuilder);
+        lenient().when(serverBuilder.service(any(GrpcService.class), any(Function.class))).thenReturn(serverBuilder);
         lenient().when(serverBuilder.http(anyInt())).thenReturn(serverBuilder);
         lenient().when(serverBuilder.https(anyInt())).thenReturn(serverBuilder);
         lenient().when(serverBuilder.build()).thenReturn(server);
@@ -186,7 +191,6 @@ public class OTelTraceSourceTest {
         lenient().when(grpcServiceBuilder.useBlockingTaskExecutor(anyBoolean())).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.build()).thenReturn(grpcService);
 
-        final GrpcAuthenticationProvider authenticationProvider = mock(GrpcBasicAuthenticationProvider.class);
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
         configureObjectUnderTest(RecordType.EVENT.toString());
@@ -453,6 +457,33 @@ public class OTelTraceSourceTest {
         verify(grpcServiceBuilder, never()).addService(isA(HealthGrpcService.class));
     }
 
+    @Test
+    public void testOptionalHttpAuthServiceNotInPlace() {
+        when(server.stop()).thenReturn(completableFuture);
+
+        try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
+            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
+            SOURCE.start(buffer);
+        }
+
+        verify(serverBuilder).service(isA(GrpcService.class));
+        verify(serverBuilder, never()).decorator(isA(Function.class));
+    }
+
+    @Test
+    public void testOptionalHttpAuthServiceInPlace() {
+        final Optional<Function<? super HttpService, ? extends HttpService>> function = Optional.of(httpService -> httpService);
+        when(server.stop()).thenReturn(completableFuture);
+        when(authenticationProvider.getHttpAuthenticationService()).thenReturn(function);
+
+        try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
+            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
+            SOURCE.start(buffer);
+        }
+
+        verify(serverBuilder).service(isA(GrpcService.class));
+        verify(serverBuilder).decorator(isA(Function.class));
+    }
 
     @Test
     public void testDoubleStart() {
