@@ -16,9 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.sts.StsClient;
 
 import java.io.IOException;
 
@@ -44,7 +42,7 @@ public class S3Service {
         this.codec = codec;
         this.pluginMetrics = pluginMetrics;
         this.bucketOwnerProvider = bucketOwnerProvider;
-        this.s3Client = createS3Client(StsClient.create());
+        this.s3Client = createS3Client();
         this.compressionEngine = s3SourceConfig.getCompression().getEngine();
         this.s3ObjectWorker = new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider,
                 s3SourceConfig.getBufferTimeout(), s3SourceConfig.getNumberOfRecordsToAccumulate(), pluginMetrics);
@@ -58,11 +56,11 @@ public class S3Service {
         }
     }
 
-    S3Client createS3Client(final StsClient stsClient) {
+    S3Client createS3Client() {
         LOG.info("Creating S3 client");
         return S3Client.builder()
-                .region(Region.of(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion()))
-                .credentialsProvider(s3SourceConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration(stsClient))
+                .region(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion())
+                .credentialsProvider(s3SourceConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration())
                 .overrideConfiguration(ClientOverrideConfiguration.builder()
                         .retryPolicy(RetryPolicy.builder().numRetries(5).build())
                         .build())

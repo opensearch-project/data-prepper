@@ -10,9 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
-import software.amazon.awssdk.services.sts.StsClient;
 
 public class SqsService {
     private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
@@ -30,7 +28,7 @@ public class SqsService {
         this.s3SourceConfig = s3SourceConfig;
         this.s3Accessor = s3Accessor;
         this.pluginMetrics = pluginMetrics;
-        this.sqsClient = createSqsClient(StsClient.create());
+        this.sqsClient = createSqsClient();
     }
 
     public void start() {
@@ -38,11 +36,11 @@ public class SqsService {
         sqsWorkerThread.start();
     }
 
-    SqsClient createSqsClient(final StsClient stsClient) {
+    SqsClient createSqsClient() {
         LOG.info("Creating SQS client");
         return SqsClient.builder()
-                .region(Region.of(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion()))
-                .credentialsProvider(s3SourceConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration(stsClient))
+                .region(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion())
+                .credentialsProvider(s3SourceConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration())
                 .overrideConfiguration(ClientOverrideConfiguration.builder()
                         .retryPolicy(RetryPolicy.builder().numRetries(5).build())
                         .build())
