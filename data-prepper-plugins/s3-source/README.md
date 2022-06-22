@@ -5,8 +5,10 @@ of which S3 objects are new and loads those new objects to parse out events.
 
 ## Basic Usage
 
-You must configure the S3 Source to read from an SQS queue. You must also define a codec which parses
-the actual data from S3 and produces events from the data. You may also wish to define compression.
+This source requires an SQS queue which receives 
+[S3 Event Notifications](https://docs.aws.amazon.com/AmazonS3/latest/userguide/NotificationHowTo.html).
+The S3 Source will load S3 objects that have Event notifications for Create events.
+A user-specified codec parses the S3 Object and creates Events from them.
 
 Currently, there are two codecs:
 
@@ -96,7 +98,7 @@ The AWS configuration is the same for both SQS and S3.
 
 The integration tests for this plugin do not run as part of the Data Prepper build.
 
-You can run them via:
+The following command runs the integration tests:
 
 ```
 ./gradlew :data-prepper-plugins:s3-source:integrationTest -Dtests.s3source.region=<your-aws-region> -Dtests.s3source.bucket=<your-bucket>
