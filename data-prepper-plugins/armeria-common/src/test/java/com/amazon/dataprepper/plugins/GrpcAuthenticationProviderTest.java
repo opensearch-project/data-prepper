@@ -24,7 +24,8 @@ public class GrpcAuthenticationProviderTest {
     public void confirmDefaultBehavior() {
         when(provider.getHttpAuthenticationService()).thenCallRealMethod();
 
-        Assertions.assertNotNull(provider.getHttpAuthenticationService());
-        Assertions.assertFalse(provider.getHttpAuthenticationService().isPresent());
+        var result = provider.getHttpAuthenticationService();
+        Assertions.assertNotNull(result);
+        Assertions.assertFalse(result.isPresent());
     }
 }
