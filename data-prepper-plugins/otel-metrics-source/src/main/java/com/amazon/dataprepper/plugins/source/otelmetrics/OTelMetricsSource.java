@@ -19,6 +19,7 @@ import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.amazon.dataprepper.plugins.health.HealthGrpcService;
 import com.amazon.dataprepper.plugins.source.otelmetrics.certificate.CertificateProviderFactory;
+import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
@@ -35,8 +36,10 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 @DataPrepperPlugin(name = "otel_metrics_source", pluginType = Source.class, pluginConfigurationType = OTelMetricsSourceConfig.class)
 public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequest>> {
@@ -102,6 +105,11 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
             final ServerBuilder sb = Server.builder();
             sb.disableServerHeader();
             sb.service(grpcServiceBuilder.build());
+
+            final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
+                    authenticationProvider.getHttpAuthenticationService();
+            optionalHttpAuthenticationService.ifPresent(sb::decorator);
+
             sb.requestTimeoutMillis(oTelMetricsSourceConfig.getRequestTimeoutInMillis());
 
             // ACM Cert for SSL takes preference
