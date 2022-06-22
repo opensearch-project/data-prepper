@@ -8,8 +8,6 @@ package com.amazon.dataprepper.plugins.source.configuration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -18,6 +16,7 @@ import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.StsClientBuilder;
 
 import java.lang.reflect.Field;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -37,11 +36,17 @@ class AwsAuthenticationOptionsTest {
         awsAuthenticationOptions = new AwsAuthenticationOptions();
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"us-east-1", "us-east-2", "ap-northeast-1", "fake-dynamic-2"})
-    void getAwsRegion_returns_Region(final String region) throws NoSuchFieldException, IllegalAccessException {
-        reflectivelySetField(awsAuthenticationOptions, "awsRegion", region);
-        assertThat(awsAuthenticationOptions.getAwsRegion(), equalTo(Region.of(region)));
+    @Test
+    void getAwsRegion_returns_Region_of() throws NoSuchFieldException, IllegalAccessException {
+        final String regionString = UUID.randomUUID().toString();
+        final Region expectedRegionObject = mock(Region.class);
+        reflectivelySetField(awsAuthenticationOptions, "awsRegion", regionString);
+        final Region actualRegion;
+        try(final MockedStatic<Region> regionMockedStatic = mockStatic(Region.class)) {
+            regionMockedStatic.when(() -> Region.of(regionString)).thenReturn(expectedRegionObject);
+            actualRegion = awsAuthenticationOptions.getAwsRegion();
+        }
+        assertThat(actualRegion, equalTo(expectedRegionObject));
     }
 
     @Test
@@ -78,7 +83,6 @@ class AwsAuthenticationOptionsTest {
 
             when(stsClientBuilder.build()).thenReturn(stsClient);
         }
-
 
         @Test
         void authenticateAWSConfiguration_should_return_s3Client_with_sts_role_arn() throws NoSuchFieldException, IllegalAccessException {
