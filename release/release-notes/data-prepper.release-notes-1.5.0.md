@@ -11,6 +11,7 @@
 * The OpenSearch sink now supports disabling any index management from Data Prepper via the `management-disabled` `index-type`. ([#1051](https://github.com/opensearch-project/data-prepper/issues/1051))
 * Add a health check to the HTTP source. ([#1466](https://github.com/opensearch-project/data-prepper/issues/1466))
 * Display the port number when starting the HTTP source or OTel trace source. ([#1469](https://github.com/opensearch-project/data-prepper/issues/1469))
+* Allow for HTTP decorators in gRPC authentication plugins to give access to the HTTP request. ([#1529](https://github.com/opensearch-project/data-prepper/pull/1529))
 
 ### Bug Fixes
 * Fix a bug where a null plugin setting throws an exception when attempting to validate that setting. ([#1525](https://github.com/opensearch-project/data-prepper/issues/1525))
