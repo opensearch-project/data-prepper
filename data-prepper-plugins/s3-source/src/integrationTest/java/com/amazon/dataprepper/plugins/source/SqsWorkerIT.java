@@ -8,6 +8,8 @@ package com.amazon.dataprepper.plugins.source;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.plugins.source.configuration.OnErrorOption;
 import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,12 +30,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.core.StringStartsWith.startsWith;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class SqsWorkerIT {
+class SqsWorkerIT {
     private SqsClient sqsClient;
     private S3Service s3Service;
     private S3SourceConfig s3SourceConfig;
@@ -57,6 +60,11 @@ public class SqsWorkerIT {
         s3Service = mock(S3Service.class);
 
         pluginMetrics = mock(PluginMetrics.class);
+        final Counter sharedCounter = mock(Counter.class);
+        final Timer sqsMessageDelayTimer = mock(Timer.class);
+
+        when(pluginMetrics.counter(anyString())).thenReturn(sharedCounter);
+        when(pluginMetrics.timer(anyString())).thenReturn(sqsMessageDelayTimer);
 
         final SqsOptions sqsOptions = mock(SqsOptions.class);
         when(sqsOptions.getSqsUrl()).thenReturn(System.getProperty("tests.s3source.queue.url"));
@@ -81,12 +89,12 @@ public class SqsWorkerIT {
         while (sqsMessagesProcessed > 0);
     }
 
-    /*
-    * receiveMessage of SQS doesn't return the exact number of objects that are written to S3 even if long polling is enabled with
-    * MaxNumberOfMessages greater than the number of objects written.
-    * The default behaviour is it returns the message immediately as soon as there's a single message and can return upto MaxNumberOfMessages.
-    * So the asserts in this test verify at least one message is returned.
-    */
+    /**
+     * receiveMessage of SQS doesn't return the exact number of objects that are written to S3 even if long polling is enabled with
+     * MaxNumberOfMessages greater than the number of objects written.
+     * The default behaviour is it returns the message immediately as soon as there's a single message and can return upto MaxNumberOfMessages.
+     * So the asserts in this test verify at least one message is returned.
+     */
     @ParameterizedTest
     @ValueSource(ints = {1, 5})
     void processSqsMessages_should_return_at_least_one_message(final int numberOfObjectsToWrite) throws IOException {
