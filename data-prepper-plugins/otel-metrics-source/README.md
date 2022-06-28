@@ -16,11 +16,9 @@ source:
 
 * port(Optional) => An `int` represents the port Otel metrics source is running on. Default is ```21891```.
 * request_timeout(Optional) => An `int` represents request timeout in millis. Default is ```10_000```.
-* health_check_service(Optional) => A boolean enables health check service. When ```true``` enables a gRPC health check service under ```grpc.health.v1.Health/Check```. Default is ```false```. 
-  * ```proto_reflection_service``` should be enabled to use the health check service.
+* health_check_service(Optional) => A boolean enables health check service. When ```true``` enables a gRPC health check service under ```grpc.health.v1.Health/Check```. Default is ```false```. In order to use the health check service, you must also enable ```proto_reflection_service```.
 * proto_reflection_service(Optional) => A boolean enables a reflection service for Protobuf services (see [ProtoReflectionService](https://grpc.github.io/grpc-java/javadoc/io/grpc/protobuf/services/ProtoReflectionService.html) and [gRPC reflection](https://github.com/grpc/grpc-java/blob/master/documentation/server-reflection-tutorial.md) docs). Default is ```false```.
-* unframed_requests(Optional) => A boolean to enable requests not framed using the gRPC wire protocol. 
-  * when ```health_check_service``` is true and ```unframed_requests``` is true, enables HTTP health check service under ```/health```
+* unframed_requests(Optional) => A boolean to enable requests not framed using the gRPC wire protocol. When ```health_check_service``` is true and ```unframed_requests``` is true, enables HTTP health check service under ```/health```
 * thread_count(Optional) => the number of threads to keep in the ScheduledThreadPool. Default is `200`.
 * max_connection_count(Optional) => the maximum allowed number of open connections. Default is `500`.
 
