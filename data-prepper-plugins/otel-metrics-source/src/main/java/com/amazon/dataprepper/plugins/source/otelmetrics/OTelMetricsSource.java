@@ -24,6 +24,7 @@ import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
+import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
@@ -44,6 +45,7 @@ import java.util.function.Function;
 @DataPrepperPlugin(name = "otel_metrics_source", pluginType = Source.class, pluginConfigurationType = OTelMetricsSourceConfig.class)
 public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequest>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsSource.class);
+    private static final String HTTP_HEALTH_CHECK_PATH = "/health";
     private final OTelMetricsSourceConfig oTelMetricsSourceConfig;
     private Server server;
     private final PluginMetrics pluginMetrics;
@@ -105,6 +107,10 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
             final ServerBuilder sb = Server.builder();
             sb.disableServerHeader();
             sb.service(grpcServiceBuilder.build());
+
+            if(oTelMetricsSourceConfig.enableHttpHealthCheck()) {
+                sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.of());
+            }
 
             final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
                     authenticationProvider.getHttpAuthenticationService();
