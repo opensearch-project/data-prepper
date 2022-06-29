@@ -34,6 +34,7 @@ import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
+import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 import io.grpc.BindableService;
 import io.grpc.ServerServiceDefinition;
 import io.netty.util.AsciiString;
@@ -359,6 +360,50 @@ public class OTelMetricsSourceTest {
         verify(grpcServiceBuilder, times(1)).useClientTimeoutHeader(false);
         verify(grpcServiceBuilder, times(1)).useBlockingTaskExecutor(true);
         verify(grpcServiceBuilder).addService(isA(HealthGrpcService.class));
+        verify(serverBuilder, never()).service(eq("/health"),isA(HealthCheckService.class));
+    }
+
+    @Test
+    void start_with_Health_configured_unframed_requests_includes_HealthCheck_service() throws IOException {
+        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class);
+             MockedStatic<GrpcService> grpcServerMock = Mockito.mockStatic(GrpcService.class)) {
+            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
+            grpcServerMock.when(GrpcService::builder).thenReturn(grpcServiceBuilder);
+            when(grpcServiceBuilder.addService(any(ServerServiceDefinition.class))).thenReturn(grpcServiceBuilder);
+            when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
+
+            when(server.stop()).thenReturn(completableFuture);
+            final Path certFilePath = Path.of("data/certificate/test_cert.crt");
+            final Path keyFilePath = Path.of("data/certificate/test_decrypted_key.key");
+            final String certAsString = Files.readString(certFilePath);
+            final String keyAsString = Files.readString(keyFilePath);
+            when(certificate.getCertificate()).thenReturn(certAsString);
+            when(certificate.getPrivateKey()).thenReturn(keyAsString);
+            when(certificateProvider.getCertificate()).thenReturn(certificate);
+            when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
+            final Map<String, Object> settingsMap = new HashMap<>();
+            settingsMap.put(SSL, true);
+            settingsMap.put("useAcmCertForSSL", true);
+            settingsMap.put("awsRegion", "us-east-1");
+            settingsMap.put("acmCertificateArn", "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
+            settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
+            settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
+            settingsMap.put("health_check_service", "true");
+            settingsMap.put("unframed_requests", "true");
+
+            testPluginSetting = new PluginSetting(null, settingsMap);
+            testPluginSetting.setPipelineName("pipeline");
+
+            oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
+            final OTelMetricsSource source = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+            source.start(buffer);
+            source.stop();
+        }
+
+        verify(grpcServiceBuilder, times(1)).useClientTimeoutHeader(false);
+        verify(grpcServiceBuilder, times(1)).useBlockingTaskExecutor(true);
+        verify(grpcServiceBuilder).addService(isA(HealthGrpcService.class));
+        verify(serverBuilder).service(eq("/health"), isA(HealthCheckService.class));
     }
 
     @Test
@@ -399,6 +444,49 @@ public class OTelMetricsSourceTest {
         verify(grpcServiceBuilder, times(1)).useClientTimeoutHeader(false);
         verify(grpcServiceBuilder, times(1)).useBlockingTaskExecutor(true);
         verify(grpcServiceBuilder, never()).addService(isA(HealthGrpcService.class));
+        verify(serverBuilder, never()).service(eq("/health"),isA(HealthCheckService.class));
+    }
+
+    @Test
+    void start_without_Health_configured_unframed_requests_does_not_include_HealthCheck_service() throws IOException {
+        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class);
+             MockedStatic<GrpcService> grpcServerMock = Mockito.mockStatic(GrpcService.class)) {
+            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
+            grpcServerMock.when(GrpcService::builder).thenReturn(grpcServiceBuilder);
+            when(grpcServiceBuilder.addService(any(ServerServiceDefinition.class))).thenReturn(grpcServiceBuilder);
+            when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
+
+            when(server.stop()).thenReturn(completableFuture);
+            final Path certFilePath = Path.of("data/certificate/test_cert.crt");
+            final Path keyFilePath = Path.of("data/certificate/test_decrypted_key.key");
+            final String certAsString = Files.readString(certFilePath);
+            final String keyAsString = Files.readString(keyFilePath);
+            when(certificate.getCertificate()).thenReturn(certAsString);
+            when(certificate.getPrivateKey()).thenReturn(keyAsString);
+            when(certificateProvider.getCertificate()).thenReturn(certificate);
+            when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
+            final Map<String, Object> settingsMap = new HashMap<>();
+            settingsMap.put(SSL, true);
+            settingsMap.put("useAcmCertForSSL", true);
+            settingsMap.put("awsRegion", "us-east-1");
+            settingsMap.put("acmCertificateArn", "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
+            settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
+            settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
+            settingsMap.put("health_check_service", "false");
+            settingsMap.put("unframed_requests", "true");
+
+            testPluginSetting = new PluginSetting(null, settingsMap);
+            testPluginSetting.setPipelineName("pipeline");
+            oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
+            final OTelMetricsSource source = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+            source.start(buffer);
+            source.stop();
+        }
+
+        verify(grpcServiceBuilder, times(1)).useClientTimeoutHeader(false);
+        verify(grpcServiceBuilder, times(1)).useBlockingTaskExecutor(true);
+        verify(grpcServiceBuilder, never()).addService(isA(HealthGrpcService.class));
+        verify(serverBuilder, never()).service(eq("/health"),isA(HealthCheckService.class));
     }
 
     @Test
