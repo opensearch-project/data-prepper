@@ -48,11 +48,48 @@ public class OtelMetricsSourceConfigTests {
         assertEquals(DEFAULT_THREAD_COUNT, otelMetricsSourceConfig.getThreadCount());
         assertEquals(OTelMetricsSourceConfig.DEFAULT_MAX_CONNECTION_COUNT, otelMetricsSourceConfig.getMaxConnectionCount());
         assertFalse(otelMetricsSourceConfig.hasHealthCheck());
+        assertFalse(otelMetricsSourceConfig.enableHttpHealthCheck());
         assertFalse(otelMetricsSourceConfig.hasProtoReflectionService());
         assertFalse(otelMetricsSourceConfig.isSslCertAndKeyFileInS3());
         assertTrue(otelMetricsSourceConfig.isSsl());
         assertNull(otelMetricsSourceConfig.getSslKeyCertChainFile());
         assertNull(otelMetricsSourceConfig.getSslKeyFile());
+    }
+
+    @Test
+    public void testHttpHealthCheckWithUnframedRequestEnabled() {
+        // Prepare
+        final Map<String, Object> settings = new HashMap<>();
+        settings.put(OTelMetricsSourceConfig.ENABLE_UNFRAMED_REQUESTS, "true");
+        settings.put(OTelMetricsSourceConfig.HEALTH_CHECK_SERVICE, "true");
+        settings.put(OTelMetricsSourceConfig.PROTO_REFLECTION_SERVICE, "true");
+
+        final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, settings);
+        final OTelMetricsSourceConfig otelMetricsSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelMetricsSourceConfig.class);
+
+        // When/Then
+        assertTrue(otelMetricsSourceConfig.hasHealthCheck());
+        assertTrue(otelMetricsSourceConfig.enableUnframedRequests());
+        assertTrue(otelMetricsSourceConfig.hasProtoReflectionService());
+        assertTrue(otelMetricsSourceConfig.enableHttpHealthCheck());
+    }
+
+    @Test
+    public void testHttpHealthCheckWithUnframedRequestDisabled() {
+        // Prepare
+        final Map<String, Object> settings = new HashMap<>();
+        settings.put(OTelMetricsSourceConfig.ENABLE_UNFRAMED_REQUESTS, "false");
+        settings.put(OTelMetricsSourceConfig.HEALTH_CHECK_SERVICE, "true");
+        settings.put(OTelMetricsSourceConfig.PROTO_REFLECTION_SERVICE, "true");
+
+        final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, settings);
+        final OTelMetricsSourceConfig otelMetricsSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelMetricsSourceConfig.class);
+
+        // When/Then
+        assertTrue(otelMetricsSourceConfig.hasHealthCheck());
+        assertFalse(otelMetricsSourceConfig.enableUnframedRequests());
+        assertTrue(otelMetricsSourceConfig.hasProtoReflectionService());
+        assertFalse(otelMetricsSourceConfig.enableHttpHealthCheck());
     }
 
     @Test
@@ -81,6 +118,7 @@ public class OtelMetricsSourceConfigTests {
         assertEquals(TEST_MAX_CONNECTION_COUNT, otelMetricsSourceConfig.getMaxConnectionCount());
         assertTrue(otelMetricsSourceConfig.hasHealthCheck());
         assertTrue(otelMetricsSourceConfig.hasProtoReflectionService());
+        assertFalse(otelMetricsSourceConfig.enableHttpHealthCheck());
         assertTrue(otelMetricsSourceConfig.isSsl());
         assertFalse(otelMetricsSourceConfig.isSslCertAndKeyFileInS3());
         assertEquals(TEST_KEY_CERT, otelMetricsSourceConfig.getSslKeyCertChainFile());
@@ -113,6 +151,7 @@ public class OtelMetricsSourceConfigTests {
         assertEquals(TEST_THREAD_COUNT, otelMetricsSourceConfig.getThreadCount());
         assertEquals(TEST_MAX_CONNECTION_COUNT, otelMetricsSourceConfig.getMaxConnectionCount());
         assertFalse(otelMetricsSourceConfig.hasHealthCheck());
+        assertFalse(otelMetricsSourceConfig.enableHttpHealthCheck());
         assertFalse(otelMetricsSourceConfig.hasProtoReflectionService());
         assertTrue(otelMetricsSourceConfig.isSsl());
         assertTrue(otelMetricsSourceConfig.isSslCertAndKeyFileInS3());
