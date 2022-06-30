@@ -172,13 +172,13 @@ public class SqsWorker implements Runnable {
         try {
             s3Service.addS3Object(s3ObjectReference);
             deleteMessageBatchRequestEntry = Optional.of(buildDeleteMessageBatchRequestEntry(entry.getKey()));
+            sqsMessageDelayTimer.record(Duration.between(
+                    Instant.ofEpochMilli(entry.getValue().get(0).getEventTime().toInstant().getMillis()),
+                    Instant.now()
+            ));
         } catch (final Exception e) {
             LOG.warn("Unable to process S3Object: s3ObjectReference={}.", s3ObjectReference, e);
         }
-        sqsMessageDelayTimer.record(Duration.between(
-                Instant.ofEpochMilli(entry.getValue().get(0).getEventTime().toInstant().getMillis()),
-                Instant.now()
-        ));
         return deleteMessageBatchRequestEntry;
     }
 
