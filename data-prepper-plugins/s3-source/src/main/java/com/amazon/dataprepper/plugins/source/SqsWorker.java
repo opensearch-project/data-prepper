@@ -153,7 +153,7 @@ public class SqsWorker implements Runnable {
             }
             else if (isEventNameCreated(entry.getValue().get(0))) {
                 final S3ObjectReference s3ObjectReference = populateS3Reference(entry.getValue().get(0));
-                Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = processS3Object(entry, s3ObjectReference);
+                final Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = processS3Object(entry, s3ObjectReference);
                 deleteMessageBatchRequestEntry.ifPresent(deleteMessageBatchRequestEntryCollection::add);
             }
             else {
@@ -164,7 +164,9 @@ public class SqsWorker implements Runnable {
         return deleteMessageBatchRequestEntryCollection;
     }
 
-    private Optional<DeleteMessageBatchRequestEntry> processS3Object(Map.Entry<Message, List<S3EventNotification.S3EventNotificationRecord>> entry, S3ObjectReference s3ObjectReference) {
+    private Optional<DeleteMessageBatchRequestEntry> processS3Object(
+            final Map.Entry<Message, List<S3EventNotification.S3EventNotificationRecord>> entry,
+            final S3ObjectReference s3ObjectReference) {
         Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = Optional.empty();
         // SQS messages won't be deleted if we are unable to process S3Objects because of S3Exception: Access Denied
         try {
