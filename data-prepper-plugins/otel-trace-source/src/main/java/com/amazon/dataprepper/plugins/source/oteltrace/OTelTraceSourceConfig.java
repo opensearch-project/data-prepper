@@ -135,6 +135,10 @@ public class OTelTraceSourceConfig {
         return healthCheck;
     }
 
+    public boolean enableHttpHealthCheck() {
+        return enableUnframedRequests() && hasHealthCheck();
+    }
+
     public boolean hasProtoReflectionService() {
         return protoReflectionService;
     }
