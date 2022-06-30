@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class SqsWorker implements Runnable {
@@ -71,7 +72,7 @@ public class SqsWorker implements Runnable {
         while(true) {
             final int messagesProcessed = processSqsMessages();
 
-            if (messagesProcessed < sqsOptions.getMaximumMessages() && s3SourceConfig.getSqsOptions().getPollDelay().toMillis() > 0) {
+            if (messagesProcessed > 0 && s3SourceConfig.getSqsOptions().getPollDelay().toMillis() > 0) {
                 try {
                     Thread.sleep(s3SourceConfig.getSqsOptions().getPollDelay().toMillis());
                 } catch (InterruptedException e) {
@@ -92,7 +93,7 @@ public class SqsWorker implements Runnable {
                 getS3MessageEventNotificationRecordMap(sqsMessages);
 
         // build s3ObjectReference from S3EventNotificationRecord if event name starts with ObjectCreated
-        final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = processS3Objects(s3EventNotificationRecords);
+        final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = processS3EventNotificationRecords(s3EventNotificationRecords);
 
         // delete sqs messages
         if (!deleteMessageBatchRequestEntries.isEmpty()) {
@@ -141,7 +142,7 @@ public class SqsWorker implements Runnable {
         return Collections.emptyList();
     }
 
-    private List<DeleteMessageBatchRequestEntry> processS3Objects(final Map<Message, List<S3EventNotification.S3EventNotificationRecord>> s3EventNotificationRecords) {
+    private List<DeleteMessageBatchRequestEntry> processS3EventNotificationRecords(final Map<Message, List<S3EventNotification.S3EventNotificationRecord>> s3EventNotificationRecords) {
         List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection = new ArrayList<>();
         for (Map.Entry<Message, List<S3EventNotification.S3EventNotificationRecord>> entry: s3EventNotificationRecords.entrySet()) {
             if (entry.getValue().isEmpty()) {
@@ -152,13 +153,8 @@ public class SqsWorker implements Runnable {
             }
             else if (isEventNameCreated(entry.getValue().get(0))) {
                 final S3ObjectReference s3ObjectReference = populateS3Reference(entry.getValue().get(0));
-                s3Service.addS3Object(s3ObjectReference);
-
-                sqsMessageDelayTimer.record(Duration.between(
-                        Instant.ofEpochMilli(entry.getValue().get(0).getEventTime().toInstant().getMillis()),
-                        Instant.now()
-                        ));
-                deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(entry.getKey()));
+                Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = processS3Object(entry, s3ObjectReference);
+                deleteMessageBatchRequestEntry.ifPresent(deleteMessageBatchRequestEntryCollection::add);
             }
             else {
                 // Add SQS message to delete collection if the eventName is not ObjectCreated
@@ -166,6 +162,22 @@ public class SqsWorker implements Runnable {
             }
         }
         return deleteMessageBatchRequestEntryCollection;
+    }
+
+    private Optional<DeleteMessageBatchRequestEntry> processS3Object(Map.Entry<Message, List<S3EventNotification.S3EventNotificationRecord>> entry, S3ObjectReference s3ObjectReference) {
+        Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = Optional.empty();
+        // SQS messages won't be deleted if we are unable to process S3Objects because of S3Exception: Access Denied
+        try {
+            s3Service.addS3Object(s3ObjectReference);
+            deleteMessageBatchRequestEntry = Optional.of(buildDeleteMessageBatchRequestEntry(entry.getKey()));
+        } catch (final Exception e) {
+            LOG.warn("Unable to process S3Object: s3ObjectReference={}.", s3ObjectReference, e);
+        }
+        sqsMessageDelayTimer.record(Duration.between(
+                Instant.ofEpochMilli(entry.getValue().get(0).getEventTime().toInstant().getMillis()),
+                Instant.now()
+        ));
+        return deleteMessageBatchRequestEntry;
     }
 
     private void deleteSqsMessages(final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection) {
