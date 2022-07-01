@@ -95,7 +95,7 @@ subprojects {
     }
     dependencies {
         implementation platform('com.fasterxml.jackson:jackson-bom:2.13.3')
-        implementation platform('io.micrometer:micrometer-bom:1.9.0')
+        implementation platform('io.micrometer:micrometer-bom:1.9.1')
         implementation 'com.google.guava:guava:31.0.1-jre'
         implementation 'org.slf4j:slf4j-api:1.7.36'
         testImplementation platform("org.junit:junit-bom:${versionMap.junitJupiter}")
