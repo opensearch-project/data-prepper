@@ -17,7 +17,7 @@ dependencies {
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:sts'
     implementation 'software.amazon.awssdk:sqs'
-    implementation 'com.amazonaws:aws-java-sdk-s3:1.12.220'
+    implementation 'com.amazonaws:aws-java-sdk-s3:1.12.252'
     implementation 'org.hibernate.validator:hibernate-validator:7.0.4.Final'
     testImplementation 'org.apache.commons:commons-lang3:3.12.0'
 }
