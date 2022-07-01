@@ -60,7 +60,7 @@ Your pipeline configuration needs to include:
 * `discovery_mode` - Set to `aws_cloud_map`
 
 Your pipeline configuration can optionally include:
-* `awsCloudMapQueryParameters` - Key/value pairs to filter the results based on custom attributes for the instance. Only instances that match all the specified key-value pairs are returned.
+* `awsCloudMapQueryParameters` - Key/value pairs to filter the results based on the custom attributes attached to an instance. Only instances that match all the specified key-value pairs are returned.
 
 Example configuration:
 

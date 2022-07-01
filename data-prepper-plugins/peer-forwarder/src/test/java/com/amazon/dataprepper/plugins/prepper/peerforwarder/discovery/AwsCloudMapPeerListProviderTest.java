@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -81,7 +82,7 @@ class AwsCloudMapPeerListProviderTest {
     }
 
     private AwsCloudMapPeerListProvider createObjectUnderTest() {
-        final AwsCloudMapPeerListProvider objectUnderTest = new AwsCloudMapPeerListProvider(awsServiceDiscovery, namespaceName, serviceName, timeToRefreshSeconds, backoff, pluginMetrics);
+        final AwsCloudMapPeerListProvider objectUnderTest = new AwsCloudMapPeerListProvider(awsServiceDiscovery, namespaceName, serviceName, queryParameters, timeToRefreshSeconds, backoff, pluginMetrics);
         objectsToClose.add(objectUnderTest);
         return objectUnderTest;
     }
