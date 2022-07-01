@@ -70,7 +70,12 @@ public class SqsWorker implements Runnable {
     public void run() {
 
         while(true) {
-            final int messagesProcessed = processSqsMessages();
+            int messagesProcessed = 0;
+            try {
+                messagesProcessed = processSqsMessages();
+            } catch (Exception e) {
+                LOG.error("Unable to process SQS messages with configuration provided", e);
+            }
 
             if (messagesProcessed > 0 && s3SourceConfig.getSqsOptions().getPollDelay().toMillis() > 0) {
                 try {
