@@ -153,6 +153,7 @@ class AwsCloudMapPeerListProviderTest {
 
         assertThat(actualRequest.namespaceName(), equalTo(namespaceName));
         assertThat(actualRequest.serviceName(), equalTo(serviceName));
+        assertThat(actualRequest.queryParameters(), equalTo(queryParameters));
         assertThat(actualRequest.healthStatusAsString(), nullValue());
     }
 
@@ -244,6 +245,7 @@ class AwsCloudMapPeerListProviderTest {
             for (DiscoverInstancesRequest actualRequest : requestArgumentCaptor.getAllValues()) {
                 assertThat(actualRequest.namespaceName(), equalTo(namespaceName));
                 assertThat(actualRequest.serviceName(), equalTo(serviceName));
+                assertThat(actualRequest.queryParameters(), equalTo(queryParameters));
                 assertThat(actualRequest.healthStatusAsString(), nullValue());
             }
         }
