@@ -45,6 +45,7 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
     private final ServiceDiscoveryAsyncClient awsServiceDiscovery;
     private final String namespaceName;
     private final String serviceName;
+    private final Map<String, String> queryParameters;
     private final AwsCloudMapDynamicEndpointGroup endpointGroup;
     private final int timeToRefreshSeconds;
     private final Backoff backoff;
@@ -55,12 +56,14 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
             final ServiceDiscoveryAsyncClient awsServiceDiscovery,
             final String namespaceName,
             final String serviceName,
+            final Map<String, String> queryParameters,
             final int timeToRefreshSeconds,
             final Backoff backoff,
             final PluginMetrics pluginMetrics) {
         this.awsServiceDiscovery = Objects.requireNonNull(awsServiceDiscovery);
         this.namespaceName = Objects.requireNonNull(namespaceName);
         this.serviceName = Objects.requireNonNull(serviceName);
+        this.queryParameters = Objects.requireNonNull(queryParameters);
         this.timeToRefreshSeconds = timeToRefreshSeconds;
         this.backoff = Objects.requireNonNull(backoff);
 
@@ -82,6 +85,7 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
         final String awsRegion = getRequiredSettingString(pluginSetting, PeerForwarderConfig.AWS_REGION);
         final String namespace = getRequiredSettingString(pluginSetting, PeerForwarderConfig.AWS_CLOUD_MAP_NAMESPACE_NAME);
         final String serviceName = getRequiredSettingString(pluginSetting, PeerForwarderConfig.AWS_CLOUD_MAP_SERVICE_NAME);
+        final Map<String, String> queryParameters = getOptionalSettingMap(pluginSetting, PeerForwarderConfig.AWS_CLOUD_MAP_QUERY_PARAMETERS);
 
         final Backoff standardBackoff = Backoff.exponential(ONE_SECOND, TWENTY_SECONDS).withJitter(TWENTY_PERCENT);
         final int timeToRefreshSeconds = 20;
@@ -96,6 +100,7 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
                 serviceDiscoveryAsyncClient,
                 namespace,
                 serviceName,
+                queryParameters,
                 timeToRefreshSeconds,
                 standardBackoff,
                 pluginMetrics);
@@ -104,6 +109,16 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
     private static String getRequiredSettingString(final PluginSetting pluginSetting, final String propertyName) {
         final String propertyValue = pluginSetting.getStringOrDefault(propertyName, null);
         return Objects.requireNonNull(propertyValue, String.format("Missing '%s' configuration value", propertyName));
+    }
+
+    private static Map<String, String> getOptionalSettingMap(final PluginSetting pluginSetting, final String propertyName) {
+        final Map<String, String> propertyValue = pluginSetting.getTypedMap(propertyName, String.class, String.class);
+
+        if (propertyValue == null) {
+            return Collections.emptyMap();
+        }
+
+        return propertyValue;
     }
 
     @Override
@@ -152,6 +167,7 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
                     .builder()
                     .namespaceName(namespaceName)
                     .serviceName(serviceName)
+                    .queryParameters(queryParameters)
                     .build();
 
             LOG.info("Discovering instances.");

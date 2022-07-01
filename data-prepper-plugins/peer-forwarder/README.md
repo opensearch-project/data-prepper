@@ -59,6 +59,9 @@ Your pipeline configuration needs to include:
 * `awsRegion` - The AWS region where your namespace exists.
 * `discovery_mode` - Set to `aws_cloud_map`
 
+Your pipeline configuration can optionally include:
+* `awsCloudMapQueryParameters` - Key/value pairs to filter the results based on custom attributes for the instance. Only instances that match all the specified key-value pairs are returned.
+
 Example configuration:
 
 ```
@@ -67,6 +70,8 @@ Example configuration:
         discovery_mode: aws_cloud_map
         awsCloudMapNamespaceName: my-namespace
         awsCloudMapServiceName: data-prepper-cluster
+        awsCloudMapQueryParameters:
+            instance_type: r5.xlarge
         awsRegion: us-east-1
 ```
 

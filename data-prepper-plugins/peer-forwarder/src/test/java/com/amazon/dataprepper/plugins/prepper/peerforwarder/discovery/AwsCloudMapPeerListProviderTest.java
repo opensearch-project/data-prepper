@@ -55,6 +55,7 @@ class AwsCloudMapPeerListProviderTest {
     private ServiceDiscoveryAsyncClient awsServiceDiscovery;
     private String namespaceName;
     private String serviceName;
+    private Map<String, String> queryParameters;
     private int timeToRefreshSeconds;
     private Backoff backoff;
     private PluginMetrics pluginMetrics;
@@ -65,6 +66,7 @@ class AwsCloudMapPeerListProviderTest {
         awsServiceDiscovery = mock(ServiceDiscoveryAsyncClient.class);
         namespaceName = RandomStringUtils.randomAlphabetic(10);
         serviceName = RandomStringUtils.randomAlphabetic(10);
+        queryParameters = Collections.emptyMap();
 
         timeToRefreshSeconds = 1;
         backoff = mock(Backoff.class);
@@ -103,6 +105,14 @@ class AwsCloudMapPeerListProviderTest {
     @Test
     void constructor_throws_with_null_ServiceName() {
         serviceName = null;
+
+        assertThrows(NullPointerException.class,
+                this::createObjectUnderTest);
+    }
+
+    @Test
+    void constructor_throws_with_null_QueryParameters() {
+        queryParameters = null;
 
         assertThrows(NullPointerException.class,
                 this::createObjectUnderTest);
