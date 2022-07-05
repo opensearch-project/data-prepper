@@ -6,6 +6,8 @@
 package com.amazon.dataprepper.plugins.source.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import org.hibernate.validator.constraints.time.DurationMax;
 import org.hibernate.validator.constraints.time.DurationMin;
@@ -23,6 +25,8 @@ public class SqsOptions {
     private String sqsUrl;
 
     @JsonProperty("maximum_messages")
+    @Min(1)
+    @Max(10)
     private int maximumMessages = DEFAULT_MAXIMUM_MESSAGES;
 
     @JsonProperty("visibility_timeout")
