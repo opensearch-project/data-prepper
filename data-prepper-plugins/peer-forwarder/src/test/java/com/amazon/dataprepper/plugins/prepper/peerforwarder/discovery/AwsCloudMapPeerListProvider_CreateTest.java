@@ -19,6 +19,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import software.amazon.awssdk.regions.Region;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -48,6 +49,8 @@ class AwsCloudMapPeerListProvider_CreateTest {
         pluginSetting.getSettings().put(PeerForwarderConfig.AWS_CLOUD_MAP_NAMESPACE_NAME, UUID.randomUUID().toString());
         pluginSetting.getSettings().put(PeerForwarderConfig.AWS_CLOUD_MAP_SERVICE_NAME, UUID.randomUUID().toString());
         pluginSetting.getSettings().put(PeerForwarderConfig.AWS_REGION, "us-east-1");
+        pluginSetting.getSettings().put(PeerForwarderConfig.AWS_CLOUD_MAP_QUERY_PARAMETERS,
+                Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString()));
 
     }
 
@@ -70,6 +73,18 @@ class AwsCloudMapPeerListProvider_CreateTest {
         assertThrows(NullPointerException.class,
                 () -> AwsCloudMapPeerListProvider.createPeerListProvider(pluginSetting, pluginMetrics));
 
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            PeerForwarderConfig.AWS_CLOUD_MAP_QUERY_PARAMETERS
+    })
+    void createPeerListProvider_with_missing_optional_map_property(final String propertyToRemove) {
+        pluginSetting.getSettings().remove(propertyToRemove);
+
+        final PeerListProvider result = AwsCloudMapPeerListProvider.createPeerListProvider(pluginSetting, pluginMetrics);
+
+        assertThat(result, instanceOf(AwsCloudMapPeerListProvider.class));
     }
 
     @ParameterizedTest

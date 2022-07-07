@@ -26,10 +26,13 @@ import software.amazon.awssdk.services.servicediscovery.model.HttpInstanceSummar
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -55,6 +58,7 @@ class AwsCloudMapPeerListProviderTest {
     private ServiceDiscoveryAsyncClient awsServiceDiscovery;
     private String namespaceName;
     private String serviceName;
+    private Map<String, String> queryParameters;
     private int timeToRefreshSeconds;
     private Backoff backoff;
     private PluginMetrics pluginMetrics;
@@ -65,6 +69,7 @@ class AwsCloudMapPeerListProviderTest {
         awsServiceDiscovery = mock(ServiceDiscoveryAsyncClient.class);
         namespaceName = RandomStringUtils.randomAlphabetic(10);
         serviceName = RandomStringUtils.randomAlphabetic(10);
+        queryParameters = generateRandomStringMap();
 
         timeToRefreshSeconds = 1;
         backoff = mock(Backoff.class);
@@ -79,7 +84,7 @@ class AwsCloudMapPeerListProviderTest {
     }
 
     private AwsCloudMapPeerListProvider createObjectUnderTest() {
-        final AwsCloudMapPeerListProvider objectUnderTest = new AwsCloudMapPeerListProvider(awsServiceDiscovery, namespaceName, serviceName, timeToRefreshSeconds, backoff, pluginMetrics);
+        final AwsCloudMapPeerListProvider objectUnderTest = new AwsCloudMapPeerListProvider(awsServiceDiscovery, namespaceName, serviceName, queryParameters, timeToRefreshSeconds, backoff, pluginMetrics);
         objectsToClose.add(objectUnderTest);
         return objectUnderTest;
     }
@@ -103,6 +108,14 @@ class AwsCloudMapPeerListProviderTest {
     @Test
     void constructor_throws_with_null_ServiceName() {
         serviceName = null;
+
+        assertThrows(NullPointerException.class,
+                this::createObjectUnderTest);
+    }
+
+    @Test
+    void constructor_throws_with_null_QueryParameters() {
+        queryParameters = null;
 
         assertThrows(NullPointerException.class,
                 this::createObjectUnderTest);
@@ -142,6 +155,7 @@ class AwsCloudMapPeerListProviderTest {
 
         assertThat(actualRequest.namespaceName(), equalTo(namespaceName));
         assertThat(actualRequest.serviceName(), equalTo(serviceName));
+        assertThat(actualRequest.queryParameters(), equalTo(queryParameters));
         assertThat(actualRequest.healthStatusAsString(), nullValue());
     }
 
@@ -233,6 +247,7 @@ class AwsCloudMapPeerListProviderTest {
             for (DiscoverInstancesRequest actualRequest : requestArgumentCaptor.getAllValues()) {
                 assertThat(actualRequest.namespaceName(), equalTo(namespaceName));
                 assertThat(actualRequest.serviceName(), equalTo(serviceName));
+                assertThat(actualRequest.queryParameters(), equalTo(queryParameters));
                 assertThat(actualRequest.healthStatusAsString(), nullValue());
             }
         }
@@ -388,5 +403,15 @@ class AwsCloudMapPeerListProviderTest {
                 .map(i -> random.nextInt(255))
                 .mapToObj(Integer::toString)
                 .collect(Collectors.joining("."));
+    }
+
+    private static Map<String, String> generateRandomStringMap() {
+        final Random random = new Random();
+
+        final Map<String, String> map = new HashMap<>();
+        IntStream.range(0, random.nextInt(5) + 1)
+                .mapToObj(num -> map.put(UUID.randomUUID().toString(), UUID.randomUUID().toString()));
+
+        return map;
     }
 }
