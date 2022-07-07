@@ -35,6 +35,7 @@ public class PeerForwarderConfig {
     public static final String AWS_REGION = "awsRegion";
     public static final String AWS_CLOUD_MAP_NAMESPACE_NAME = "awsCloudMapNamespaceName";
     public static final String AWS_CLOUD_MAP_SERVICE_NAME = "awsCloudMapServiceName";
+    public static final String AWS_CLOUD_MAP_QUERY_PARAMETERS = "awsCloudMapQueryParameters";
 
     private final HashRing hashRing;
     private final PeerClientPool peerClientPool;
