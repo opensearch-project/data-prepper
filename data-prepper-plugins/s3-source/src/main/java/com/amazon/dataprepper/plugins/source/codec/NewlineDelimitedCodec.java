@@ -36,9 +36,9 @@ public class NewlineDelimitedCodec implements Codec {
 
     @Override
     public void parse(final InputStream inputStream, final Consumer<Record<Event>> eventConsumer) throws IOException {
-        final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-
-        parseBufferedReader(reader, eventConsumer);
+        try (final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+            parseBufferedReader(reader, eventConsumer);
+        }
     }
 
     private void parseBufferedReader(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
