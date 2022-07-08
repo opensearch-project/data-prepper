@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.zip.GZIPOutputStream;
 
 public class S3ObjectGenerator {
     private final S3Client s3Client;
@@ -22,14 +23,12 @@ public class S3ObjectGenerator {
         this.s3Client = s3Client;
     }
 
-    void write(final int numberOfRecords, final String key, final RecordsGenerator objectGenerator) throws IOException {
+    void write(final int numberOfRecords, final String key, final RecordsGenerator objectGenerator, final boolean isCompressionEnabled) throws IOException {
         final File tempFile = File.createTempFile("s3-source-" + numberOfRecords + "-", null);
 
         try {
             try (final OutputStream outputStream = new FileOutputStream(tempFile)) {
-
-                objectGenerator.write(numberOfRecords, outputStream);
-                outputStream.flush();
+                writeToOutputStream(numberOfRecords, objectGenerator, isCompressionEnabled, outputStream);
             }
 
             final PutObjectRequest putObjectRequest = PutObjectRequest.builder()
@@ -39,6 +38,22 @@ public class S3ObjectGenerator {
             s3Client.putObject(putObjectRequest, tempFile.toPath());
         } finally {
             tempFile.delete();
+        }
+    }
+
+    private void writeToOutputStream(final int numberOfRecords,
+                                     final RecordsGenerator objectGenerator,
+                                     final boolean isCompressionEnabled,
+                                     final OutputStream outputStream) throws IOException {
+        if (isCompressionEnabled) {
+            try (final GZIPOutputStream gzipOutputStream = new GZIPOutputStream(outputStream);){
+                objectGenerator.write(numberOfRecords, gzipOutputStream);
+                gzipOutputStream.flush();
+            }
+        }
+        else {
+            objectGenerator.write(numberOfRecords, outputStream);
+            outputStream.flush();
         }
     }
 }
