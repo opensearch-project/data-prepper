@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.plugins.source.compression;
 
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.core.ResponseInputStream;
@@ -16,7 +17,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
-import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -51,7 +51,7 @@ class GZipCompressionEngineTest {
 
         final InputStream inputStream = compressionEngine.createInputStream(s3Key, byteInStream);
 
-        assertThat(inputStream, instanceOf(GZIPInputStream.class));
+        assertThat(inputStream, instanceOf(GzipCompressorInputStream.class));
         assertThat(inputStream.readAllBytes(), equalTo(testStringBytes));
     }
 }
