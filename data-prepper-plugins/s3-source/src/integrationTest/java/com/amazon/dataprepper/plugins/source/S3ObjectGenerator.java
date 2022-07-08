@@ -46,7 +46,7 @@ public class S3ObjectGenerator {
                                      final boolean isCompressionEnabled,
                                      final OutputStream outputStream) throws IOException {
         if (isCompressionEnabled) {
-            try (final GZIPOutputStream gzipOutputStream = new GZIPOutputStream(outputStream);){
+            try (final GZIPOutputStream gzipOutputStream = new GZIPOutputStream(outputStream)){
                 objectGenerator.write(numberOfRecords, gzipOutputStream);
                 gzipOutputStream.flush();
             }

@@ -112,17 +112,10 @@ class S3ObjectWorkerIT {
             final int numberOfRecordsToAccumulate,
             final boolean shouldCompress) throws Exception {
 
-        S3ObjectWorker objectUnderTest;
-        String key;
+        final String key = getKeyString(recordsGenerator, numberOfRecords, shouldCompress);
 
-        if (shouldCompress) {
-            key = "s3source/s3/" + numberOfRecords + "_" + Instant.now().toString() + recordsGenerator.getFileExtension() + ".gz";
-            objectUnderTest = createObjectUnderTest(recordsGenerator.getCodec(), numberOfRecordsToAccumulate, new GZipCompressionEngine());
-        }
-        else {
-            key = "s3source/s3/" + numberOfRecords + "_" + Instant.now().toString() + recordsGenerator.getFileExtension();
-            objectUnderTest = createObjectUnderTest(recordsGenerator.getCodec(), numberOfRecordsToAccumulate, new NoneCompressionEngine());
-        }
+        final CompressionEngine compressionEngine = shouldCompress ? new GZipCompressionEngine() : new NoneCompressionEngine();
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest(recordsGenerator.getCodec(), numberOfRecordsToAccumulate, compressionEngine);
 
         s3ObjectGenerator.write(numberOfRecords, key, recordsGenerator, shouldCompress);
         stubBufferWriter(recordsGenerator::assertEventIsCorrect, key);
@@ -134,6 +127,11 @@ class S3ObjectWorkerIT {
         verify(buffer, times(expectedWrites)).writeAll(anyCollection(), eq(TIMEOUT_IN_MILLIS));
 
         assertThat(recordsReceived, equalTo(numberOfRecords));
+    }
+
+    private String getKeyString(final RecordsGenerator recordsGenerator, final int numberOfRecords, final boolean shouldCompress) {
+        String key = "s3source/s3/" + numberOfRecords + "_" + Instant.now().toString() + recordsGenerator.getFileExtension();
+        return shouldCompress ? key + ".gz" : key;
     }
 
     private void parseObject(final String key, final S3ObjectWorker objectUnderTest) throws IOException {
