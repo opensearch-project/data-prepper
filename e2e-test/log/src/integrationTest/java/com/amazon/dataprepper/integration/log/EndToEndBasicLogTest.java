@@ -6,6 +6,7 @@
 package com.amazon.dataprepper.integration.log;
 
 import com.amazon.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
+import com.amazon.dataprepper.plugins.source.loggenerator.ApacheLogFaker;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.WebClient;
@@ -131,7 +132,7 @@ public class EndToEndBasicLogTest {
         for (int i = 0; i < numLogs; i++) {
             final Map<String, Object> logObj = new HashMap<String, Object>() {{
                 put("date", System.currentTimeMillis());
-                put("log", apacheLogFaker.generateRandomApacheLog());
+                put("log", apacheLogFaker.generateRandomExtendedApacheLog());
             }};
             jsonArray.add(logObj);
         }

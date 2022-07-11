@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.integration.log;
+package com.amazon.dataprepper.plugins.source.loggenerator;
 
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -14,7 +14,8 @@ import java.util.Random;
  * This class provides the API to generate fake Apache log.
  */
 public class ApacheLogFaker {
-    private static final String APACHE_LOG_FORMAT = "%s %s %s [%s] \"%s %s HTTP/1.0\" %s %s \"http://%s\" \"%s\"";
+    private static final String APACHE_EXTENDED_LOG_FORMAT = "%s %s %s [%s] \"%s %s HTTP/1.0\" %s %s \"http://%s\" \"%s\"";
+    private static final String APACHE_COMMON_LOG_FORMAT = "%s %s %s [%s] \"%s %s HTTP/1.0\" %s %s";
     private static final String VALID_PASSWORD_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final String[] NAMES = new String[] {
             "rasul",
@@ -93,10 +94,10 @@ public class ApacheLogFaker {
         return ZonedDateTime.now().minus(offset).format(dateTimeFormatter);
     }
 
-    public String generateRandomApacheLog() {
+    public String generateRandomExtendedApacheLog() {
         final int bytes = random.nextInt(1001) + 4000;
         return String.format(
-                APACHE_LOG_FORMAT,
+                APACHE_EXTENDED_LOG_FORMAT,
                 randomIpV4Address(),
                 getRandomIn(NAMES),
                 getRandomIn(passwords),
@@ -107,6 +108,21 @@ public class ApacheLogFaker {
                 bytes,
                 getRandomIn(URLS),
                 getRandomIn(USER_AGENTS)
+        );
+    }
+
+    public String generateRandomCommonApacheLog() {
+        final int bytes = random.nextInt(1001) + 4000;
+        return String.format(
+                APACHE_COMMON_LOG_FORMAT,
+                randomIpV4Address(),
+                getRandomIn(NAMES),
+                getRandomIn(passwords),
+                randomDate(),
+                getRandomIn(HTTP_METHODS),
+                getRandomIn(FAKE_URIS),
+                getRandomIn(FAKE_STATUS),
+                bytes
         );
     }
 }
