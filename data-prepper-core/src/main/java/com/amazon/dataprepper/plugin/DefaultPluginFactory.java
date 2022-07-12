@@ -49,11 +49,6 @@ public class DefaultPluginFactory implements PluginFactory {
             throw new RuntimeException("Data Prepper requires at least one PluginProvider. " +
                     "Your Data Prepper configuration may be missing the com.amazon.dataprepper.plugin.PluginProvider file.");
         }
-
-        // TODO: Remove this along with the removal of com.amazon.dataprepper.plugins.PluginFactory
-        com.amazon.dataprepper.plugins.PluginFactory.dangerousMethod_setPluginFunction(
-                ((pluginSetting, aClass) -> pluginCreator.newPluginInstance(aClass, getConstructionContext(pluginSetting, aClass), pluginSetting.getName()))
-        );
     }
 
     @Override
