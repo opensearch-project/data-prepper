@@ -49,7 +49,6 @@ public class LogGeneratorSourceTest {
     private PluginMetrics pluginMetrics;
     @Mock
     private PluginFactory pluginFactory;
-    @Mock
     private LogGeneratorSource logGeneratorSource;
     @Mock
     private PluginModel mockLogPluginModel;
