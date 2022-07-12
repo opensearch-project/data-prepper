@@ -14,11 +14,13 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import static com.amazon.dataprepper.plugins.source.loggenerator.LogGeneratorSourceConfig.INFINITE_LOG_COUNT;
 
 import java.util.Map;
 import java.util.HashMap;
 import java.util.concurrent.TimeoutException;
 import java.time.Duration;
+import java.util.UUID;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -31,23 +33,28 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.Assert.assertEquals;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
+@ExtendWith(MockitoExtension.class)
 public class LogGeneratorSourceTest {
+    @Mock
     private LogGeneratorSourceConfig sourceConfig;
+    @Mock
     private PluginMetrics pluginMetrics;
+    @Mock
     private PluginFactory pluginFactory;
+    @Mock
     private LogGeneratorSource logGeneratorSource;
-
+    @Mock
+    private PluginModel mockLogPluginModel;
     @BeforeEach
     public void setup() {
-        sourceConfig = mock(LogGeneratorSourceConfig.class);
-        pluginMetrics = mock(PluginMetrics.class);
-        pluginFactory = mock(PluginFactory.class);
-
-        PluginModel mockLogPluginModel = mock(PluginModel.class);
         when(sourceConfig.getLogType()).thenReturn(mockLogPluginModel);
 
         when(mockLogPluginModel.getPluginName()).thenReturn(
@@ -61,20 +68,27 @@ public class LogGeneratorSourceTest {
 
 
         when(pluginFactory.loadPlugin(any(), any(PluginSetting.class))).thenReturn(commonApacheLogTypeGenerator);
-        String hardcodedEvent = "127.0.0.1 user pwd [date] \"GET /list HTTP/1.1\" 404 4043";
-        Event stubbedJackson = JacksonEvent.fromMessage(hardcodedEvent);
+        String sampleEventString = UUID.randomUUID().toString();
+        Event stubbedJackson = JacksonEvent.fromMessage(sampleEventString);
         lenient().when(commonApacheLogTypeGenerator.generateEvent()).thenReturn(stubbedJackson); // JacksonEvent type
+    }
 
-        logGeneratorSource = new LogGeneratorSource(sourceConfig, pluginMetrics, pluginFactory);
+    @AfterEach
+    public void tearDown() { logGeneratorSource.stop(); }
+
+    private LogGeneratorSource createObjectUnderTest() {
+        return new LogGeneratorSource(sourceConfig, pluginMetrics, pluginFactory);
     }
 
     @Test
     void GIVEN_logGeneratorSourceAndBlockingBuffer_WHEN_noLimit_THEN_keepsWritingToBufferUntilStopped()
             throws InterruptedException, TimeoutException {
+        logGeneratorSource = createObjectUnderTest();
+
         BlockingBuffer<Record<Event>> spyBuffer = spy(new BlockingBuffer<Record<Event>>("SamplePipeline"));
 
         lenient().when(sourceConfig.getInterval()).thenReturn(Duration.ofSeconds(1)); // interval of 1 second
-        lenient().when(sourceConfig.getCount()).thenReturn(0); // no limit to log count
+        lenient().when(sourceConfig.getCount()).thenReturn(INFINITE_LOG_COUNT); // no limit to log count
 
         logGeneratorSource.start(spyBuffer);
         Thread.sleep(1500);
@@ -82,12 +96,13 @@ public class LogGeneratorSourceTest {
         verify(spyBuffer, atLeast(1)).write(any(Record.class), anyInt());
         Thread.sleep(700);
         verify(spyBuffer, atLeast(2)).write(any(Record.class), anyInt());
-        logGeneratorSource.stop();
     }
 
     @Test
     void GIVEN_logGeneratorSourceAndBlockingBuffer_WHEN_reachedLimit_THEN_stopsWritingToBuffer()
             throws InterruptedException, TimeoutException {
+        logGeneratorSource = createObjectUnderTest();
+
         BlockingBuffer<Record<Event>> spyBuffer = spy(new BlockingBuffer<Record<Event>>("SamplePipeline"));
 
         lenient().when(sourceConfig.getInterval()).thenReturn(Duration.ofSeconds(1)); // interval of 1 second
@@ -101,47 +116,5 @@ public class LogGeneratorSourceTest {
 
         Thread.sleep(1000);
         verify(spyBuffer, times(1)).write(any(Record.class), anyInt());
-        logGeneratorSource.stop();
     }
-
-    // Below test is possibly redundant because of test:
-    // GIVEN_logGeneratorSourceAndBlockingBuffer_WHEN_noLimit_THEN_keepsWritingToBufferUntilStopped
-//    @Test
-//    void GIVEN_logGeneratorSourceAndBlockingBuffer_WHEN_stopCalled_THEN_stopsWritingToBuffer()
-//            throws InterruptedException, TimeoutException {
-//        BlockingBuffer<Record<Event>> spyBuffer = spy(new BlockingBuffer<Record<Event>>("SamplePipeline"));
-//
-//        lenient().when(sourceConfig.getInterval()).thenReturn(Duration.ofSeconds(1)); // interval of 1 second
-//        lenient().when(sourceConfig.getCount()).thenReturn(2); // max count of 2
-//
-//        logGeneratorSource.start(spyBuffer);
-//        assertEquals(spyBuffer.isEmpty(), true);
-//        Thread.sleep(2500);
-//
-//        verify(spyBuffer, times(2)).write(any(Record.class), anyInt());
-//        logGeneratorSource.stop();
-//        Thread.sleep(500);
-//        verify(spyBuffer, times(2)).write(any(Record.class), anyInt());
-//    }
-    // this test is also possibly redundant
-//    @Test
-//    void GIVEN_logGeneratorSourceAndBlockingBuffer_WHEN_startCalled_THEN_bufferIsNotEmpty()
-//            throws InterruptedException, TimeoutException {
-//        // also need to mock the buffer class
-//        // arbitrary buffer settings
-////        try {
-//        // BlockingBuffer as the Buffer here was arbitrary
-//        BlockingBuffer<Record<Event>> spyBuffer = spy(new BlockingBuffer<Record<Event>>("SamplePipeline"));
-//
-//        lenient().when(sourceConfig.getInterval()).thenReturn(Duration.ofSeconds(1)); // interval of 1 second
-//        lenient().when(sourceConfig.getCount()).thenReturn(2); // max count of 2
-//
-//        logGeneratorSource.start(spyBuffer);
-//        assertEquals(spyBuffer.isEmpty(), true);
-//        Thread.sleep(3000);
-//        assertEquals(spyBuffer.isEmpty(), false);
-//        System.out.println("Succeeded beyond the Thread sleep");
-//
-//        logGeneratorSource.stop();
-//    }
 }
