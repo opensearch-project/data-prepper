@@ -37,6 +37,8 @@ dependencies {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
     implementation 'software.amazon.cloudwatchlogs:aws-embedded-metrics:2.0.0-beta-1'
+    // TODO: Remove after implementing the decorator
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
     testImplementation 'org.springframework:spring-test:5.3.21'
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
 }
