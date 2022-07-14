@@ -14,12 +14,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 
-public class PeerForwardingProcessingDecorator implements Processor<Record<Event>, Record<Event>> {
-    private static final Logger LOG = LoggerFactory.getLogger(PeerForwardingProcessingDecorator.class);
+public class PeerForwardingProcessorDecorator implements Processor<Record<Event>, Record<Event>> {
+    private static final Logger LOG = LoggerFactory.getLogger(PeerForwardingProcessorDecorator.class);
 
 
     @Override
-    public Collection<Record<Event>> execute(Collection<Record<Event>> collection) {
+    public Collection<Record<Event>> execute(final Collection<Record<Event>> collection) {
         LOG.info("Peer Forwarder not implemented yet, skipping events for now.");
         throw new NotImplementedException();
     }

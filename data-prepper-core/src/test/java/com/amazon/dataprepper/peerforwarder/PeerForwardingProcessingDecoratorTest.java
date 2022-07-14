@@ -25,13 +25,13 @@ class PeerForwardingProcessingDecoratorTest {
         record = mock(Record.class);
     }
 
-    private PeerForwardingProcessingDecorator createObjectUnderTest() {
-        return new PeerForwardingProcessingDecorator();
+    private PeerForwardingProcessorDecorator createObjectUnderTest() {
+        return new PeerForwardingProcessorDecorator();
     }
 
     @Test
     void PeerForwardingProcessingDecorator_will_throw_NotImplemented_exception() {
-        PeerForwardingProcessingDecorator objectUnderTest = createObjectUnderTest();
+        PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest();
         Collection<Record<Event>> testData = Collections.singletonList(record);
         assertThrows(NotImplementedException.class, () -> objectUnderTest.execute(testData));
     }
