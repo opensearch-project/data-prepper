@@ -8,7 +8,6 @@ package com.amazon.dataprepper.peerforwarder;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
-import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +20,7 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
     @Override
     public Collection<Record<Event>> execute(final Collection<Record<Event>> collection) {
         LOG.info("Peer Forwarder not implemented yet, skipping events for now.");
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     @Override

@@ -7,7 +7,6 @@ package com.amazon.dataprepper.peerforwarder;
 
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
-import org.apache.commons.lang3.NotImplementedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -33,7 +32,7 @@ class PeerForwardingProcessingDecoratorTest {
     void PeerForwardingProcessingDecorator_will_throw_NotImplemented_exception() {
         PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest();
         Collection<Record<Event>> testData = Collections.singletonList(record);
-        assertThrows(NotImplementedException.class, () -> objectUnderTest.execute(testData));
+        assertThrows(UnsupportedOperationException.class, () -> objectUnderTest.execute(testData));
     }
 
 }

@@ -8,13 +8,12 @@ package com.amazon.dataprepper.model.peerforwarder;
 import java.util.Set;
 
 /**
- * Add this interface to a Processor which must have peer forwarding
- * prior to processing events.
+ * An interface that a {@link com.amazon.dataprepper.model.processor.Processor} will implement which must have peer forwarding prior to processing events.
+ * @since 2.0
  */
 public interface RequiresPeerForwarding {
     /**
-     * Gets the identification keys which Peer Forwarder uses to allocate
-     * Events to specific Data Prepper nodes.
+     * Gets the identification keys which Peer Forwarder uses to allocate Events to specific Data Prepper nodes.
      *
      * @return A set of keys
      */
