@@ -13,13 +13,13 @@ import java.time.Duration;
 
 public class LogGeneratorSourceConfig {
     static int DEFAULT_INTERVAL_SECONDS = 5;
-    static int DEFAULT_LOG_COUNT = 0;
+    static int INFINITE_LOG_COUNT = 0;
 
     @JsonProperty("interval")
     private Duration interval = Duration.ofSeconds(DEFAULT_INTERVAL_SECONDS);
 
     @JsonProperty("total_log_count")
-    private int count = DEFAULT_LOG_COUNT;
+    private int count = INFINITE_LOG_COUNT; // default of 0 => will generate logs until call to stop()
 
     @JsonProperty("log_type")
     @NotNull
