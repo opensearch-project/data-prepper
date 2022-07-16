@@ -9,7 +9,12 @@ plugins {
 
 dependencies {
     implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:blocking-buffer')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     testImplementation 'org.hamcrest:hamcrest:2.2'
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
+}
+
+test {
+    useJUnitPlatform()
 }
