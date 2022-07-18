@@ -11,6 +11,7 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.source.codec.Codec;
 import com.amazon.dataprepper.plugins.source.compression.CompressionEngine;
+import com.amazon.dataprepper.plugins.source.compression.GZipCompressionEngine;
 import com.amazon.dataprepper.plugins.source.compression.NoneCompressionEngine;
 import com.amazon.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import io.micrometer.core.instrument.Counter;
@@ -56,7 +57,6 @@ class S3ObjectWorkerIT {
     private S3Client s3Client;
     private S3ObjectGenerator s3ObjectGenerator;
     private Buffer<Record<Event>> buffer;
-    private CompressionEngine compressionEngine;
     private String bucket;
     private int recordsReceived;
     private PluginMetrics pluginMetrics;
@@ -71,7 +71,6 @@ class S3ObjectWorkerIT {
         s3ObjectGenerator = new S3ObjectGenerator(s3Client, bucket);
 
         buffer = mock(Buffer.class);
-        compressionEngine = new NoneCompressionEngine();
         recordsReceived = 0;
 
         pluginMetrics = mock(PluginMetrics.class);
@@ -101,7 +100,7 @@ class S3ObjectWorkerIT {
                 .when(buffer).writeAll(anyCollection(), anyInt());
     }
 
-    private S3ObjectWorker createObjectUnderTest(final Codec codec, final int numberOfRecordsToAccumulate) {
+    private S3ObjectWorker createObjectUnderTest(final Codec codec, final int numberOfRecordsToAccumulate, final CompressionEngine compressionEngine) {
         return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider, Duration.ofMillis(TIMEOUT_IN_MILLIS), numberOfRecordsToAccumulate, pluginMetrics);
     }
 
@@ -110,13 +109,15 @@ class S3ObjectWorkerIT {
     void parseS3Object_correctly_loads_data_into_Buffer(
             final RecordsGenerator recordsGenerator,
             final int numberOfRecords,
-            final int numberOfRecordsToAccumulate) throws Exception {
+            final int numberOfRecordsToAccumulate,
+            final boolean shouldCompress) throws Exception {
 
-        final String key = "s3source/s3/" + numberOfRecords + "_" + Instant.now().toString() + recordsGenerator.getFileExtension();
-        s3ObjectGenerator.write(numberOfRecords, key, recordsGenerator);
+        final String key = getKeyString(recordsGenerator, numberOfRecords, shouldCompress);
 
-        final S3ObjectWorker objectUnderTest = createObjectUnderTest(recordsGenerator.getCodec(), numberOfRecordsToAccumulate);
+        final CompressionEngine compressionEngine = shouldCompress ? new GZipCompressionEngine() : new NoneCompressionEngine();
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest(recordsGenerator.getCodec(), numberOfRecordsToAccumulate, compressionEngine);
 
+        s3ObjectGenerator.write(numberOfRecords, key, recordsGenerator, shouldCompress);
         stubBufferWriter(recordsGenerator::assertEventIsCorrect, key);
 
         parseObject(key, objectUnderTest);
@@ -126,6 +127,11 @@ class S3ObjectWorkerIT {
         verify(buffer, times(expectedWrites)).writeAll(anyCollection(), eq(TIMEOUT_IN_MILLIS));
 
         assertThat(recordsReceived, equalTo(numberOfRecords));
+    }
+
+    private String getKeyString(final RecordsGenerator recordsGenerator, final int numberOfRecords, final boolean shouldCompress) {
+        String key = "s3source/s3/" + numberOfRecords + "_" + Instant.now().toString() + recordsGenerator.getFileExtension();
+        return shouldCompress ? key + ".gz" : key;
     }
 
     private void parseObject(final String key, final S3ObjectWorker objectUnderTest) throws IOException {
@@ -140,16 +146,18 @@ class S3ObjectWorkerIT {
             final List<RecordsGenerator> recordsGenerators = List.of(new NewlineDelimitedRecordsGenerator(), new JsonRecordsGenerator());
             final List<Integer> numberOfRecordsList = List.of(0, 1, 25, 500, 5000);
             final List<Integer> recordsToAccumulateList = List.of(1, 100, 1000);
+            final List<Boolean> booleanList = List.of(Boolean.TRUE, Boolean.FALSE);
 
             return recordsGenerators
                     .stream()
-                    .flatMap(recordsGenerator ->
-                            numberOfRecordsList
+                    .flatMap(recordsGenerator -> numberOfRecordsList
+                            .stream()
+                            .flatMap(records -> recordsToAccumulateList
                                     .stream()
-                                    .flatMap(records -> recordsToAccumulateList
+                                    .flatMap(accumulate -> booleanList
                                             .stream()
-                                            .map(accumulate -> arguments(recordsGenerator, records, accumulate))
-                                    ));
+                                            .map(shouldCompress -> arguments(recordsGenerator, records, accumulate, shouldCompress))
+                                    )));
         }
     }
 }
