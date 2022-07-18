@@ -125,7 +125,8 @@ class SqsWorkerIT {
         final NewlineDelimitedRecordsGenerator newlineDelimitedRecordsGenerator = new NewlineDelimitedRecordsGenerator();
         for (int i = 0; i < numberOfObjectsToWrite; i++) {
             final String key = "s3source/sqs/" + UUID.randomUUID() + "_" + Instant.now().toString() + newlineDelimitedRecordsGenerator.getFileExtension();
-            s3ObjectGenerator.write(numberOfRecords, key, newlineDelimitedRecordsGenerator);
+            // isCompressionEnabled is set to false since we test for compression in S3ObjectWorkerIT
+            s3ObjectGenerator.write(numberOfRecords, key, newlineDelimitedRecordsGenerator, false);
         }
     }
 }
