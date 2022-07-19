@@ -8,6 +8,7 @@ package com.amazon.dataprepper.parser;
 import com.amazon.dataprepper.model.annotations.SingleThread;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import com.amazon.dataprepper.model.plugin.NoPluginFoundException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.prepper.Prepper;
@@ -15,6 +16,7 @@ import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.parser.model.PipelineConfiguration;
+import com.amazon.dataprepper.peerforwarder.PeerForwardingProcessorDecorator;
 import com.amazon.dataprepper.pipeline.Pipeline;
 import com.amazon.dataprepper.pipeline.PipelineConnector;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -99,6 +101,19 @@ public class PipelineParser {
             final List<List<Processor>> processorSets = pipelineConfiguration.getProcessorPluginSettings().stream()
                     .map(this::newProcessor)
                     .collect(Collectors.toList());
+
+            final List<List<Processor>> decoratedProcessorSets = processorSets.stream()
+                    .map(processorSet -> processorSet.stream()
+                            .map(processor -> {
+                                if (processor instanceof RequiresPeerForwarding) {
+//                                    TODO: Create buffer per stateful processor and store map of processor, buffer
+                                    return new PeerForwardingProcessorDecorator(processor);
+                                }
+                                return processor;
+                            })
+                            .collect(Collectors.toList())
+                    ).collect(Collectors.toList());
+
             final int readBatchDelay = pipelineConfiguration.getReadBatchDelay();
 
             LOG.info("Building sinks for the pipeline [{}]", pipelineName);

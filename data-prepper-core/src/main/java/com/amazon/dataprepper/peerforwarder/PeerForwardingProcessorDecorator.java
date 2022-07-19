@@ -16,6 +16,11 @@ import java.util.Collection;
 public class PeerForwardingProcessorDecorator implements Processor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwardingProcessorDecorator.class);
 
+    private final Processor innerProcessor;
+
+    public PeerForwardingProcessorDecorator(Processor innerProcessor) {
+        this.innerProcessor = innerProcessor;
+    }
 
     @Override
     public Collection<Record<Event>> execute(final Collection<Record<Event>> collection) {
