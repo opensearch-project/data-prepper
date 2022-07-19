@@ -18,28 +18,28 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
 
     private final Processor innerProcessor;
 
-    public PeerForwardingProcessorDecorator(Processor innerProcessor) {
+    public PeerForwardingProcessorDecorator(final Processor innerProcessor) {
         this.innerProcessor = innerProcessor;
+        LOG.info("Peer Forwarder not implemented yet, processing events locally.");
     }
 
     @Override
-    public Collection<Record<Event>> execute(final Collection<Record<Event>> collection) {
-        LOG.info("Peer Forwarder not implemented yet, skipping events for now.");
-        throw new UnsupportedOperationException();
+    public Collection<Record<Event>> execute(final Collection<Record<Event>> records) {
+        return innerProcessor.execute(records);
     }
 
     @Override
     public void prepareForShutdown() {
-
+        innerProcessor.prepareForShutdown();
     }
 
     @Override
     public boolean isReadyForShutdown() {
-        return false;
+        return innerProcessor.isReadyForShutdown();
     }
 
     @Override
     public void shutdown() {
-
+        innerProcessor.shutdown();
     }
 }

@@ -106,7 +106,7 @@ public class PipelineParser {
                     .map(processorSet -> processorSet.stream()
                             .map(processor -> {
                                 if (processor instanceof RequiresPeerForwarding) {
-//                                    TODO: Create buffer per stateful processor and store map of processor, buffer
+                                    // TODO: Create buffer per stateful processor and store map of processor, buffer
                                     return new PeerForwardingProcessorDecorator(processor);
                                 }
                                 return processor;
@@ -121,7 +121,7 @@ public class PipelineParser {
                     .map(this::buildSinkOrConnector)
                     .collect(Collectors.toList());
 
-            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, processorSets, sinks, processorThreads, readBatchDelay);
+            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, decoratedProcessorSets, sinks, processorThreads, readBatchDelay);
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
             //If pipeline construction errors out, we will skip that pipeline and proceed
