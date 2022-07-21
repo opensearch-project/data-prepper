@@ -5,7 +5,7 @@
 
 package com.amazon.dataprepper.plugins.source.filter;
 
-import com.amazonaws.services.s3.event.S3EventNotification;
+import com.amazon.dataprepper.plugins.source.S3EventNotification;
 
 import java.util.Optional;
 
