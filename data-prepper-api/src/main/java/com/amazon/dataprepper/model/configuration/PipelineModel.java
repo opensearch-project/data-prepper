@@ -80,8 +80,8 @@ public class PipelineModel {
             final List<PluginModel> sinks,
             final Integer workers,
             final Integer delay) {
-        checkArgument(!Objects.isNull(source), "Source must not be null");
-        checkArgument(!Objects.isNull(sinks), "Sinks must not be null");
+        checkArgument(Objects.nonNull(source), "Source must not be null");
+        checkArgument(Objects.nonNull(sinks), "Sinks must not be null");
         checkArgument(sinks.size() > 0, "PipelineModel must include at least 1 sink");
 
 

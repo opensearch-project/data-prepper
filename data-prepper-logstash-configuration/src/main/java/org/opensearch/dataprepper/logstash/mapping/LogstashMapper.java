@@ -33,7 +33,7 @@ public class LogstashMapper {
 
         List<PluginModel> sinkPluginModels = mapPluginSection(logstashConfiguration, LogstashPluginType.OUTPUT);
 
-        if (sinkPluginModels.size() == 0) {
+        if (sinkPluginModels.isEmpty()) {
             throw new LogstashMappingException("At least one logstash output plugin is required");
         }
 

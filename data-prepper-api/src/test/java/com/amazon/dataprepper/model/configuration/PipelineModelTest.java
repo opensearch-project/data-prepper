@@ -87,7 +87,7 @@ public class PipelineModelTest {
     @Test
     public void testPipelineModelWithPrepperAndProcessorConfigThrowsException() {
 
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
+        final Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
                 validSourcePluginModel(),
                 validBufferPluginModel(),
                 validPreppersPluginModel(),
@@ -106,8 +106,8 @@ public class PipelineModelTest {
 
     @Test
     public void testPipelineModelWithValidPrepperConfig() {
-        List<PluginModel> expectedPreppersPluginModel = validPreppersPluginModel();
-        PipelineModel pipelineModel = new PipelineModel(
+        final List<PluginModel> expectedPreppersPluginModel = validPreppersPluginModel();
+        final PipelineModel pipelineModel = new PipelineModel(
                 validSourcePluginModel(),
                 null,
                 expectedPreppersPluginModel,
@@ -123,8 +123,8 @@ public class PipelineModelTest {
 
     @Test
     public void testPipelineModelWithValidProcessorConfig() {
-        List<PluginModel> expectedPreppersPluginModel = validPreppersPluginModel();
-        PipelineModel pipelineModel = new PipelineModel(
+        final List<PluginModel> expectedPreppersPluginModel = validPreppersPluginModel();
+        final PipelineModel pipelineModel = new PipelineModel(
                 validSourcePluginModel(),
                 null,
                 null,
@@ -140,7 +140,7 @@ public class PipelineModelTest {
 
     @Test
     public void testPipelineModelWithNullSourceThrowsException() {
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
+        final Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
                 null,
                 validBufferPluginModel(),
                 validPreppersPluginModel(),
@@ -156,7 +156,7 @@ public class PipelineModelTest {
 
     @Test
     public void testPipelineModelWithNullSinksThrowsException() {
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
+        final Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
                 validSourcePluginModel(),
                 validBufferPluginModel(),
                 validPreppersPluginModel(),
@@ -172,7 +172,7 @@ public class PipelineModelTest {
 
     @Test
     public void testPipelineModelWithEmptySinksThrowsException() {
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
+        final Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
                 validSourcePluginModel(),
                 validBufferPluginModel(),
                 validPreppersPluginModel(),
