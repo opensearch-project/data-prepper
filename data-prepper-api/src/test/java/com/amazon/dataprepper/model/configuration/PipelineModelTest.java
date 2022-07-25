@@ -27,6 +27,7 @@ public class PipelineModelTest {
     public static final Integer TEST_WORKERS = random.nextInt(30);
     public static final Integer TEST_READ_BATCH_DELAY = random.nextInt(40);
     public static PluginModel TEST_VALID_SOURCE_PLUGIN_MODEL = new PluginModel("source-plugin", validPluginSettings());
+    public static PluginModel TEST_VALID_BUFFER_PLUGIN_MODEL = new PluginModel("buffer", validPluginSettings());
     public static PluginModel TEST_VALID_PREPPERS_PLUGIN_MODEL = new PluginModel("prepper", validPluginSettings());
     public static PluginModel TEST_VALID_SINKS_PLUGIN_MODEL = new PluginModel("sink", validPluginSettings());
 
@@ -34,20 +35,25 @@ public class PipelineModelTest {
     public void testPipelineModelCreation() {
         final PipelineModel pipelineModel = new PipelineModel(
                 validSourcePluginModel(),
+                validBufferPluginModel(),
                 validPreppersPluginModel(),
                 validSinksPluginModel(),
                 TEST_WORKERS,
                 TEST_READ_BATCH_DELAY
         );
         final PluginModel originalSource = pipelineModel.getSource();
+        final PluginModel originalBuffer = pipelineModel.getBuffer();
         final List<PluginModel> originalPreppers = pipelineModel.getProcessors();
         final List<PluginModel> originalSinks = pipelineModel.getSinks();
 
         assertThat(originalSource, notNullValue());
+        assertThat(originalBuffer, notNullValue());
         assertThat(originalPreppers, notNullValue());
         assertThat(originalSinks, notNullValue());
         assertThat(originalSource.getPluginName(), is(equalTo(TEST_VALID_SOURCE_PLUGIN_MODEL.getPluginName())));
         assertThat(originalSource.getPluginSettings(), is(equalTo(TEST_VALID_SOURCE_PLUGIN_MODEL.getPluginSettings())));
+        assertThat(originalBuffer.getPluginName(), is(equalTo(TEST_VALID_BUFFER_PLUGIN_MODEL.getPluginName())));
+        assertThat(originalBuffer.getPluginSettings(), is(equalTo(TEST_VALID_BUFFER_PLUGIN_MODEL.getPluginSettings())));
         assertThat(originalPreppers.get(0).getPluginName(), is(equalTo(TEST_VALID_PREPPERS_PLUGIN_MODEL.getPluginName())));
         assertThat(originalPreppers.get(0).getPluginSettings(), is(equalTo(TEST_VALID_PREPPERS_PLUGIN_MODEL.getPluginSettings())));
         assertThat(originalSinks.get(0).getPluginName(), is(equalTo(TEST_VALID_SINKS_PLUGIN_MODEL.getPluginName())));
@@ -66,6 +72,10 @@ public class PipelineModelTest {
         return new PluginModel("source-plugin", validPluginSettings());
     }
 
+    public static PluginModel validBufferPluginModel() {
+        return new PluginModel("buffer", validPluginSettings());
+    }
+
     public static List<PluginModel> validPreppersPluginModel() {
         return Collections.singletonList(new PluginModel("prepper", validPluginSettings()));
     }
@@ -79,6 +89,7 @@ public class PipelineModelTest {
 
         Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
                 validSourcePluginModel(),
+                validBufferPluginModel(),
                 validPreppersPluginModel(),
                 validPreppersPluginModel(),
                 validSinksPluginModel(),
@@ -98,6 +109,7 @@ public class PipelineModelTest {
         List<PluginModel> expectedPreppersPluginModel = validPreppersPluginModel();
         PipelineModel pipelineModel = new PipelineModel(
                 validSourcePluginModel(),
+                null,
                 expectedPreppersPluginModel,
                 null,
                 validSinksPluginModel(),
@@ -115,6 +127,7 @@ public class PipelineModelTest {
         PipelineModel pipelineModel = new PipelineModel(
                 validSourcePluginModel(),
                 null,
+                null,
                 expectedPreppersPluginModel,
                 validSinksPluginModel(),
                 TEST_WORKERS,
@@ -123,5 +136,53 @@ public class PipelineModelTest {
 
         assertEquals(expectedPreppersPluginModel, pipelineModel.getPreppers());
         assertEquals(expectedPreppersPluginModel, pipelineModel.getProcessors());
+    }
+
+    @Test
+    public void testPipelineModelWithNullSourceThrowsException() {
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
+                null,
+                validBufferPluginModel(),
+                validPreppersPluginModel(),
+                validSinksPluginModel(),
+                TEST_WORKERS,
+                TEST_READ_BATCH_DELAY
+        ));
+
+        final String expected = "Source must not be null";
+
+        assertTrue(exception.getMessage().contains(expected));
+    }
+
+    @Test
+    public void testPipelineModelWithNullSinksThrowsException() {
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
+                validSourcePluginModel(),
+                validBufferPluginModel(),
+                validPreppersPluginModel(),
+                null,
+                TEST_WORKERS,
+                TEST_READ_BATCH_DELAY
+        ));
+
+        final String expected = "Sinks must not be null";
+
+        assertTrue(exception.getMessage().contains(expected));
+    }
+
+    @Test
+    public void testPipelineModelWithEmptySinksThrowsException() {
+        Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
+                validSourcePluginModel(),
+                validBufferPluginModel(),
+                validPreppersPluginModel(),
+                Collections.emptyList(),
+                TEST_WORKERS,
+                TEST_READ_BATCH_DELAY
+        ));
+
+        final String expected = "PipelineModel must include at least 1 sink";
+
+        assertThat(exception.getMessage(), equalTo(expected));
     }
 }
