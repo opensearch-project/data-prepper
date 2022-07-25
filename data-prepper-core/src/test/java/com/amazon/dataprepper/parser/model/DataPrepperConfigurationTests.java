@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.parser.model;
 
+import com.amazon.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
@@ -26,10 +27,12 @@ import static com.amazon.dataprepper.TestDataProvider.VALID_DATA_PREPPER_CONFIG_
 import static com.amazon.dataprepper.TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE_WITH_TAGS;
 import static com.amazon.dataprepper.TestDataProvider.VALID_DATA_PREPPER_MULTIPLE_METRICS_CONFIG_FILE;
 import static com.amazon.dataprepper.TestDataProvider.VALID_DATA_PREPPER_SOME_DEFAULT_CONFIG_FILE;
+import static com.amazon.dataprepper.TestDataProvider.VALID_PEER_FORWARDER_DATA_PREPPER_CONFIG_FILE;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.isA;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class DataPrepperConfigurationTests {
@@ -101,6 +104,13 @@ public class DataPrepperConfigurationTests {
         assertThat(metricTags, notNullValue());
         assertThat(metricTags.get("testKey1"), equalTo("testValue1"));
         assertThat(metricTags.get("testKey2"), equalTo("testValue2"));
+    }
+
+    @Test
+    void testPeerForwarderConfig() throws IOException {
+        final DataPrepperConfiguration dataPrepperConfiguration = makeConfig(VALID_PEER_FORWARDER_DATA_PREPPER_CONFIG_FILE);
+
+        assertThat(dataPrepperConfiguration.getPeerForwarderConfiguration(), isA(PeerForwarderConfiguration.class));
     }
 
     @Test

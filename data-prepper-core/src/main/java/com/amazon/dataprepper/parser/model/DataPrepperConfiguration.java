@@ -6,6 +6,7 @@
 package com.amazon.dataprepper.parser.model;
 
 import com.amazon.dataprepper.model.configuration.PluginModel;
+import com.amazon.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,6 +31,7 @@ public class DataPrepperConfiguration {
     private List<MetricRegistryType> metricRegistries = DEFAULT_METRIC_REGISTRY_TYPE;
     private PluginModel authentication;
     private Map<String, String> metricTags = new HashMap<>();
+    private PeerForwarderConfiguration peerForwarderConfiguration;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
 
@@ -47,7 +49,8 @@ public class DataPrepperConfiguration {
             @JsonProperty("serverPort") final String serverPort,
             @JsonProperty("metricRegistries") final List<MetricRegistryType> metricRegistries,
             @JsonProperty("authentication") final PluginModel authentication,
-            @JsonProperty("metricTags") final Map<String, String> metricTags
+            @JsonProperty("metricTags") final Map<String, String> metricTags,
+            @JsonProperty("peer_forwarder") final PeerForwarderConfiguration peerForwarderConfiguration
             ) {
         this.authentication = authentication;
         setSsl(ssl);
@@ -57,6 +60,7 @@ public class DataPrepperConfiguration {
         this.metricRegistries = metricRegistries != null && !metricRegistries.isEmpty() ? metricRegistries : DEFAULT_METRIC_REGISTRY_TYPE;
         setMetricTags(metricTags);
         setServerPort(serverPort);
+        this.peerForwarderConfiguration = peerForwarderConfiguration;
     }
 
     public int getServerPort() {
@@ -95,6 +99,10 @@ public class DataPrepperConfiguration {
 
     public PluginModel getAuthentication() {
         return authentication;
+    }
+
+    public PeerForwarderConfiguration getPeerForwarderConfiguration() {
+        return peerForwarderConfiguration;
     }
 
     private void setServerPort(final String serverPort) {
