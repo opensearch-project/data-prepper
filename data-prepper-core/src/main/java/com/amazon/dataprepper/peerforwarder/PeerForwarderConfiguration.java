@@ -13,6 +13,12 @@ import jakarta.validation.constraints.AssertTrue;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+/**
+ * Class to hold configuration for Core Peer Forwarder in {@link com.amazon.dataprepper.parser.model.DataPrepperConfiguration},
+ * including port, ssl, buffer, peer forwarder client and server configuration.
+ * @since 2.0
+ */
+
 public class PeerForwarderConfiguration {
     private Integer serverPort = 21890;
     private Integer requestTimeout = 10_000;
