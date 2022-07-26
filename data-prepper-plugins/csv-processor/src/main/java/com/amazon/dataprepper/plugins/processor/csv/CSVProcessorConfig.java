@@ -6,29 +6,25 @@
 package com.amazon.dataprepper.plugins.processor.csv;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.AssertTrue;
 
 public class CSVProcessorConfig {
     static final String DEFAULT_SOURCE = "message";
-    static final char DEFAULT_DELIMITER = ',';
-    static final char DEFAULT_QUOTE_CHARACTER = '\"'; // double quote
-    static final boolean DEFAULT_DELETE_HEADERS = true;
+    static final String DEFAULT_DELIMITER = ",";
+    static final String DEFAULT_QUOTE_CHARACTER = "\""; // double quote
+    static final Boolean DEFAULT_DELETE_HEADERS = true;
 
     @JsonProperty("source")
-    @NotNull
     private String source = DEFAULT_SOURCE;
 
     @JsonProperty("delimiter")
-    @NotNull
-    private char delimiter = DEFAULT_DELIMITER;
+    private String delimiter = DEFAULT_DELIMITER;
 
     @JsonProperty("delete_header")
-    @NotNull
-    private boolean deleteHeader = DEFAULT_DELETE_HEADERS;
+    private Boolean deleteHeader = DEFAULT_DELETE_HEADERS;
 
     @JsonProperty("quote_character")
-    @NotNull
-    private char quoteCharacter = DEFAULT_QUOTE_CHARACTER;
+    private String quoteCharacter = DEFAULT_QUOTE_CHARACTER;
 
     @JsonProperty("column_names_source_key")
     private String columnNamesSourceKey;
@@ -40,15 +36,15 @@ public class CSVProcessorConfig {
         return source;
     }
 
-    public char getDelimiter() {
+    public String getDelimiter() {
         return delimiter;
     }
 
-    public boolean isDeleteHeader() {
+    public Boolean isDeleteHeader() {
         return deleteHeader;
     }
 
-    public char getQuoteCharacter() {
+    public String getQuoteCharacter() {
         return quoteCharacter;
     }
 
@@ -58,5 +54,15 @@ public class CSVProcessorConfig {
 
     public String[] getColumnNames() {
         return columnNames;
+    }
+
+    @AssertTrue(message = "delimiter must be exactly one character.")
+    boolean isValidDelimiter() {
+        return delimiter.length() == 1;
+    }
+
+    @AssertTrue(message = "quote_character must be exactly one character.")
+    boolean isValidQuoteCharacter() {
+        return quoteCharacter.length() == 1;
     }
 }

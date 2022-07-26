@@ -7,12 +7,9 @@ plugins {
     id 'java'
 }
 
-group 'com.amazon.dataprepper.plugins.processor.csv'
-version '2.0.0-SNAPSHOT'
 
 dependencies {
     implementation project(':data-prepper-api')
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
 }
 
