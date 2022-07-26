@@ -44,10 +44,7 @@ public class HttpBasicArmeriaHttpAuthenticationProvider implements ArmeriaHttpAu
 
     private Function<? super HttpService, ? extends HttpService> createDecorator() {
         return AuthService.builder()
-                .addBasicAuth((context, basic) ->
-                        CompletableFuture.completedFuture(
-                                httpBasicAuthenticationConfig.getUsername().equals(basic.username()) &&
-                                        httpBasicAuthenticationConfig.getPassword().equals(basic.password())))
+                .add(new HttpAuthorizer(httpBasicAuthenticationConfig))
                 .newDecorator();
     }
 }
