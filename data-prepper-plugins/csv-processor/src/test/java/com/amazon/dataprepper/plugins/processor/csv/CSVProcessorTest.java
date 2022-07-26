@@ -22,6 +22,7 @@ public class CSVProcessorTest {
 
     @Mock
     private PluginMetrics pluginMetrics;
+
     @BeforeEach
     void setup() {
 

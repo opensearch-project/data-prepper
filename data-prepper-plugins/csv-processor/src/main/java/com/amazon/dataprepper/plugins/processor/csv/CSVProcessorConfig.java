@@ -7,6 +7,7 @@ package com.amazon.dataprepper.plugins.processor.csv;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
+import java.util.List;
 
 public class CSVProcessorConfig {
     static final String DEFAULT_SOURCE = "message";
@@ -30,7 +31,7 @@ public class CSVProcessorConfig {
     private String columnNamesSourceKey;
 
     @JsonProperty("column_names")
-    private String[] columnNames;
+    private List<String> columnNames;
 
     public String getSource() {
         return source;
@@ -52,7 +53,7 @@ public class CSVProcessorConfig {
         return columnNamesSourceKey;
     }
 
-    public String[] getColumnNames() {
+    public List<String> getColumnNames() {
         return columnNames;
     }
 
