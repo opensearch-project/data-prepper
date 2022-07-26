@@ -45,8 +45,7 @@ public class NewlineDelimitedCodec implements Codec {
         int linesToSkip = skipLines;
         String line;
         while ((line = reader.readLine()) != null) {
-            // have a single line here checking if there's a header config option. Then append to the Event both the
-            // line and the header values.
+
             if (linesToSkip > 0) {
                 linesToSkip--;
                 continue;

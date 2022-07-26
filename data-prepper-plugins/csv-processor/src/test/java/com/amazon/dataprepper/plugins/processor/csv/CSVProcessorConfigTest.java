@@ -26,7 +26,7 @@ public class CSVProcessorConfigTest {
         assertThat(objectUnderTest.getSource(), equalTo(DEFAULT_SOURCE));
         assertThat(objectUnderTest.getDelimiter(), equalTo(DEFAULT_DELIMITER));
         assertThat(objectUnderTest.getQuoteCharacter(), equalTo(DEFAULT_QUOTE_CHARACTER));
-        assertThat(objectUnderTest.getDeleteHeader(), equalTo(DEFAULT_DELETE_HEADERS));
+        assertThat(objectUnderTest.isDeleteHeader(), equalTo(DEFAULT_DELETE_HEADERS));
         assertThat(objectUnderTest.getColumnNamesSourceKey(), equalTo(null));
         assertThat(objectUnderTest.getColumnNames(), equalTo(null));
     }

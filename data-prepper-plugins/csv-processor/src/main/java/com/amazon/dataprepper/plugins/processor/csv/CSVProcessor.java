@@ -30,7 +30,7 @@ public class CSVProcessor extends AbstractProcessor<Record<Event>, Record<Event>
 
         @Override
         public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
-                return records;
+            return records;
         }
 
         @Override
