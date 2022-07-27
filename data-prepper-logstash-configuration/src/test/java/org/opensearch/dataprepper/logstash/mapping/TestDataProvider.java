@@ -40,6 +40,12 @@ public class TestDataProvider {
                 .build();
     }
 
+    public static LogstashConfiguration sampleConfigurationWithEmptyInputPlugins() {
+        return LogstashConfiguration.builder()
+                .pluginSections(Collections.singletonMap(LogstashPluginType.INPUT, Collections.emptyList()))
+                .build();
+    }
+
     public static LogstashPlugin invalidMappingResourceNameData() {
         return LogstashPlugin.builder()
                 .pluginName(UUID.randomUUID().toString())
