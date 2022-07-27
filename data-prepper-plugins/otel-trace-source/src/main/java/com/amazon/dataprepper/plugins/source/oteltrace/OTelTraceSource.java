@@ -115,7 +115,8 @@ public class OTelTraceSource implements Source<Record<Object>> {
 
             final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
                     authenticationProvider.getHttpAuthenticationService();
-            optionalHttpAuthenticationService.ifPresent(sb::decorator);
+            optionalHttpAuthenticationService.ifPresent(httpAuthenticationService ->
+                    sb.decorator("regex:^/(?!health$).*$", httpAuthenticationService));
 
             sb.requestTimeoutMillis(oTelTraceSourceConfig.getRequestTimeoutInMillis());
 
