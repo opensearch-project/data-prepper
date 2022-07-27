@@ -25,7 +25,7 @@ public class CSVProcessorConfigTest {
     }
     @Test
     public void test_when_defaultCSVProcessorConfig_then_returns_default_values() {
-        CSVProcessorConfig objectUnderTest = createObjectUnderTest();
+        final CSVProcessorConfig objectUnderTest = createObjectUnderTest();
 
         assertThat(objectUnderTest.getSource(), equalTo(DEFAULT_SOURCE));
         assertThat(objectUnderTest.getDelimiter(), equalTo(DEFAULT_DELIMITER));
@@ -37,7 +37,7 @@ public class CSVProcessorConfigTest {
 
     @Nested
     class Validation {
-        final CSVProcessorConfig csvProcessorConfig = new CSVProcessorConfig();
+        final CSVProcessorConfig csvProcessorConfig = createObjectUnderTest();
         @BeforeEach
         void setUp() {}
         @Test
