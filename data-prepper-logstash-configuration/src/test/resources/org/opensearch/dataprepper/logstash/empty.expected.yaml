@@ -1,4 +1,0 @@
-logstash-converted-pipeline:
-  source: null
-  processor: []
-  sink: []

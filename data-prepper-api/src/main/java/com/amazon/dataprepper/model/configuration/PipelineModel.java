@@ -13,6 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Objects;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 /**
  * Model class for a Pipeline containing all possible Plugin types in Configuration YAML
@@ -54,7 +57,12 @@ public class PipelineModel {
     private final PluginModel source;
 
     @JsonProperty("processor")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private final List<PluginModel> processors;
+
+    @JsonProperty("buffer")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private final PluginModel buffer;
 
     @JsonProperty("sink")
     private final List<PluginModel> sinks;
@@ -67,11 +75,18 @@ public class PipelineModel {
 
     public PipelineModel(
             final PluginModel source,
+            final PluginModel buffer,
             final List<PluginModel> processors,
             final List<PluginModel> sinks,
             final Integer workers,
             final Integer delay) {
+        checkArgument(Objects.nonNull(source), "Source must not be null");
+        checkArgument(Objects.nonNull(sinks), "Sinks must not be null");
+        checkArgument(sinks.size() > 0, "PipelineModel must include at least 1 sink");
+
+
         this.source = source;
+        this.buffer = buffer;
         this.processors = processors;
         this.sinks = sinks;
         this.workers = workers;
@@ -91,17 +106,20 @@ public class PipelineModel {
     @Deprecated
     public PipelineModel(
             @JsonProperty("source") final PluginModel source,
+            @JsonProperty("buffer") final PluginModel buffer,
             @Deprecated @JsonProperty("prepper") final List<PluginModel> preppers,
             @JsonProperty("processor") final List<PluginModel> processors,
             @JsonProperty("sink") final List<PluginModel> sinks,
             @JsonProperty("workers") final Integer workers,
             @JsonProperty("delay") final Integer delay) {
-        this(source, validateProcessor(preppers, processors), sinks, workers, delay);
+        this(source, buffer, validateProcessor(preppers, processors), sinks, workers, delay);
     }
 
     public PluginModel getSource() {
         return source;
     }
+
+    public PluginModel getBuffer() { return buffer; }
 
     @Deprecated
     @JsonIgnore

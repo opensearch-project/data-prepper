@@ -25,16 +25,19 @@ public class LogstashMapper {
 
         List<PluginModel> sourcePluginModels = mapPluginSection(logstashConfiguration, LogstashPluginType.INPUT);
         PluginModel sourcePlugin = null;
-        if (sourcePluginModels.size() > 1)
-            throw new LogstashMappingException("More than 1 source plugins are not supported");
-        else if (sourcePluginModels.size() == 1)
-            sourcePlugin = sourcePluginModels.get(0);
+        if (sourcePluginModels.size() != 1)
+            throw new LogstashMappingException("Only logstash configurations with exactly 1 input plugin are supported");
+        else sourcePlugin = sourcePluginModels.get(0);
 
         List<PluginModel> prepperPluginModels = mapPluginSection(logstashConfiguration, LogstashPluginType.FILTER);
 
         List<PluginModel> sinkPluginModels = mapPluginSection(logstashConfiguration, LogstashPluginType.OUTPUT);
 
-        return new PipelineModel(sourcePlugin, prepperPluginModels, sinkPluginModels, null, null);
+        if (sinkPluginModels.isEmpty()) {
+            throw new LogstashMappingException("At least one logstash output plugin is required");
+        }
+
+        return new PipelineModel(sourcePlugin, null, prepperPluginModels, sinkPluginModels, null, null);
     }
 
     private List<PluginModel> mapPluginSection(LogstashConfiguration logstashConfiguration, LogstashPluginType logstashPluginType) {
