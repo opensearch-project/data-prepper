@@ -45,6 +45,7 @@ import java.util.function.Function;
 public class OTelTraceSource implements Source<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceSource.class);
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
+    public static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
     private Server server;
     private final PluginMetrics pluginMetrics;
@@ -116,7 +117,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
             final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
                     authenticationProvider.getHttpAuthenticationService();
             optionalHttpAuthenticationService.ifPresent(httpAuthenticationService ->
-                    sb.decorator("regex:^/(?!health$).*$", httpAuthenticationService));
+                    sb.decorator(REGEX_HEALTH, httpAuthenticationService));
 
             sb.requestTimeoutMillis(oTelTraceSourceConfig.getRequestTimeoutInMillis());
 
