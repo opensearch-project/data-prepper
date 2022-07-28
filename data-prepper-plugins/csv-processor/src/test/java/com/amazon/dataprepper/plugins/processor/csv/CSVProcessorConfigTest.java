@@ -23,6 +23,7 @@ public class CSVProcessorConfigTest {
     private CSVProcessorConfig createObjectUnderTest() {
         return new CSVProcessorConfig();
     }
+
     @Test
     public void test_when_defaultCSVProcessorConfig_then_returns_default_values() {
         final CSVProcessorConfig objectUnderTest = createObjectUnderTest();
@@ -38,8 +39,7 @@ public class CSVProcessorConfigTest {
     @Nested
     class Validation {
         final CSVProcessorConfig csvProcessorConfig = createObjectUnderTest();
-        @BeforeEach
-        void setUp() {}
+
         @Test
         void isValidDelimiter_should_return_false_if_delimiter_is_multiple_characters()
                 throws NoSuchFieldException, IllegalAccessException {
