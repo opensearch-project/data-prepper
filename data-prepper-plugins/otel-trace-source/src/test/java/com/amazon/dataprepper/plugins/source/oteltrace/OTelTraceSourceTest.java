@@ -570,7 +570,7 @@ public class OTelTraceSourceTest {
         }
 
         verify(serverBuilder).service(isA(GrpcService.class));
-        verify(serverBuilder).decorator(isA(Function.class));
+        verify(serverBuilder).decorator(isA(String.class), isA(Function.class));
     }
 
     @Test
