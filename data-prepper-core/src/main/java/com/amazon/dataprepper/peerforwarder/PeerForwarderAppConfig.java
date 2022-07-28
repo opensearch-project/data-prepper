@@ -6,14 +6,19 @@
 package com.amazon.dataprepper.peerforwarder;
 
 import com.amazon.dataprepper.parser.model.DataPrepperConfiguration;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
+@Configuration
 public class PeerForwarderAppConfig {
 
     @Bean
-    public PeerForwarderConfiguration peerForwarderConfiguration(final DataPrepperConfiguration dataPrepperConfiguration) {
-        if (dataPrepperConfiguration != null)
-            return dataPrepperConfiguration.getPeerForwarderConfiguration();
+    public PeerForwarderConfiguration peerForwarderConfiguration(
+            @Autowired(required = false) final DataPrepperConfiguration dataPrepperConfiguration) {
+        if (dataPrepperConfiguration != null && dataPrepperConfiguration.getPeerForwarderConfiguration() != null) {
+                return dataPrepperConfiguration.getPeerForwarderConfiguration();
+            }
         else
             return new PeerForwarderConfiguration();
     }

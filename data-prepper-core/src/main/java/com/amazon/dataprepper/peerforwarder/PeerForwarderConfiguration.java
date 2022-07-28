@@ -8,7 +8,6 @@ package com.amazon.dataprepper.peerforwarder;
 import com.amazon.dataprepper.peerforwarder.discovery.DiscoveryMode;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.AssertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -18,17 +17,16 @@ import java.nio.file.Paths;
  * including port, ssl, buffer, peer forwarder client and server configuration.
  * @since 2.0
  */
-
 public class PeerForwarderConfiguration {
     private Integer serverPort = 21890;
     private Integer requestTimeout = 10_000;
     private Integer threadCount = 200;
     private Integer maxConnectionCount = 500;
     private Integer maxPendingRequests = 1024;
-    private Boolean ssl = true;
+    private boolean ssl = true;
     private String sslCertificateFile;
     private String sslKeyFile;
-    private DiscoveryMode discoveryMode;
+    private DiscoveryMode discoveryMode = DiscoveryMode.STATIC;
     private Integer batchSize = 48;
     private Integer bufferSize = 512;
 
@@ -55,24 +53,10 @@ public class PeerForwarderConfiguration {
         setMaxPendingRequests(maxPendingRequests);
         setSsl(ssl);
         setDiscoveryMode(discoveryMode);
-        this.sslCertificateFile = sslCertificateFile != null ? sslCertificateFile : "";
-        this.sslKeyFile = sslKeyFile != null ? sslKeyFile : "";
+        setSslCertificateFile(sslCertificateFile);
+        setSslKeyFile(sslKeyFile);
         setBatchSize(batchSize);
         setBufferSize(bufferSize);
-    }
-
-    @AssertTrue(message = "ssl_certificate_file must be a valid file path when ssl is enabled")
-    boolean isSslCertificateFileValid() {
-        return !ssl || isValidFilePath(sslCertificateFile);
-    }
-
-    @AssertTrue(message = "ssl_key_file must be a valid file path when ssl is enabled")
-    boolean isSslKeyFileValid() {
-        return !ssl || isValidFilePath(sslKeyFile);
-    }
-
-    private static boolean isValidFilePath(final String filePath) {
-        return filePath != null && !filePath.isEmpty() && Files.exists(Paths.get(filePath));
     }
 
     public int getServerPort() {
@@ -120,38 +104,48 @@ public class PeerForwarderConfiguration {
     }
 
     private void setServerPort(final Integer serverPort) {
-        if (serverPort <= 0) {
-            throw new IllegalArgumentException("Server port must be a positive integer");
+        if (serverPort != null) {
+            if (serverPort < 0 || serverPort > 65535) {
+                throw new IllegalArgumentException("Server port should be between 0 and 65535");
+            }
+            this.serverPort = serverPort;
         }
-        this.serverPort = serverPort;
     }
 
     private void setRequestTimeout(final Integer requestTimeout) {
-        if (serverPort <= 0) {
-            throw new IllegalArgumentException("Request timeout must be a positive integer");
+        if (requestTimeout!= null) {
+            if (requestTimeout <= 0) {
+                throw new IllegalArgumentException("Request timeout must be a positive integer");
+            }
+            this.requestTimeout = requestTimeout;
         }
-        this.requestTimeout = requestTimeout;
     }
 
     private void setThreadCount(final Integer threadCount) {
-        if (serverPort <= 0) {
-            throw new IllegalArgumentException("Thread count must be a positive integer");
+        if (threadCount != null) {
+            if (threadCount <= 0) {
+                throw new IllegalArgumentException("Thread count must be a positive integer");
+            }
+            this.threadCount = threadCount;
         }
-        this.threadCount = threadCount;
     }
 
     private void setMaxConnectionCount(final Integer maxConnectionCount) {
-        if (serverPort <= 0) {
-            throw new IllegalArgumentException("Maximum connection count must be a positive integer");
+        if (maxConnectionCount != null) {
+            if (maxConnectionCount <= 0) {
+                throw new IllegalArgumentException("Maximum connection count must be a positive integer");
+            }
+            this.maxConnectionCount = maxConnectionCount;
         }
-        this.maxConnectionCount = maxConnectionCount;
     }
 
     private void setMaxPendingRequests(final Integer maxPendingRequests) {
-        if (serverPort <= 0) {
-            throw new IllegalArgumentException("Maximum pending requests must be a positive integer");
+        if (maxPendingRequests != null) {
+            if (maxPendingRequests <= 0) {
+                throw new IllegalArgumentException("Maximum pending requests must be a positive integer");
+            }
+            this.maxPendingRequests = maxPendingRequests;
         }
-        this.maxPendingRequests = maxPendingRequests;
     }
 
     private void setSsl(final Boolean ssl) {
@@ -160,22 +154,49 @@ public class PeerForwarderConfiguration {
         }
     }
 
-    public void setDiscoveryMode(final String discoveryMode) {
-        if (discoveryMode != null)
+    private void setSslCertificateFile(String sslCertificateFile) {
+        if (!ssl || isValidFilePath(sslCertificateFile)) {
+            this.sslCertificateFile = sslCertificateFile;
+        }
+        else {
+            throw new IllegalArgumentException("SSL certificate file path must be a valid file path when ssl is enabled.");
+        }
+    }
+
+    private void setSslKeyFile(String sslKeyFile) {
+        if (!ssl || isValidFilePath(sslKeyFile)) {
+            this.sslKeyFile = sslKeyFile;
+        }
+        else {
+            throw new IllegalArgumentException("SSL key file path must be a valid file path when ssl is enabled.");
+        }
+    }
+
+    private void setDiscoveryMode(final String discoveryMode) {
+        if (discoveryMode != null) {
             this.discoveryMode = DiscoveryMode.valueOf(discoveryMode.toUpperCase());
+        }
     }
 
     private void setBatchSize(final Integer batchSize) {
-        if (serverPort <= 0) {
-            throw new IllegalArgumentException("Batch size must be a positive integer");
+        if (batchSize != null) {
+            if (batchSize <= 0) {
+                throw new IllegalArgumentException("Batch size must be a positive integer");
+            }
+            this.batchSize = batchSize;
         }
-        this.batchSize = batchSize;
     }
 
     private void setBufferSize(final Integer bufferSize) {
-        if (serverPort <= 0) {
-            throw new IllegalArgumentException("Buffer size must be a positive integer");
+        if (bufferSize!= null) {
+            if (bufferSize <= 0) {
+                throw new IllegalArgumentException("Buffer size must be a positive integer");
+            }
+            this.bufferSize = bufferSize;
         }
-        this.bufferSize = bufferSize;
+    }
+
+    private static boolean isValidFilePath(final String filePath) {
+        return filePath != null && !filePath.isEmpty() && Files.exists(Paths.get(filePath));
     }
 }

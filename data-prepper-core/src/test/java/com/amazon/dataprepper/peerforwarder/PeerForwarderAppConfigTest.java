@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -25,7 +26,7 @@ class PeerForwarderAppConfigTest {
 
         final PeerForwarderConfiguration peerForwarderConfiguration = peerForwarderAppConfig.peerForwarderConfiguration(dataPrepperConfiguration);
 
-        verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
+        verify(dataPrepperConfiguration, times(2)).getPeerForwarderConfiguration();
         assertThat(peerForwarderConfiguration, notNullValue());
     }
 

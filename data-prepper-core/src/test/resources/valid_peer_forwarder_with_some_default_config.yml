@@ -1,7 +1,1 @@
-port: 21890
-request_timeout: 10000
-thread_count: 200
-max_connection_count: 500
-max_pending_requests: 1024
-batch_size: 48
-buffer_size: 512
+ssl: false
