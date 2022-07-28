@@ -188,7 +188,7 @@ public class PeerForwarderConfiguration {
     }
 
     private void setBufferSize(final Integer bufferSize) {
-        if (bufferSize!= null) {
+        if (bufferSize != null) {
             if (bufferSize <= 0) {
                 throw new IllegalArgumentException("Buffer size must be a positive integer");
             }

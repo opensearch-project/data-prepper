@@ -17,7 +17,7 @@ import java.io.File;
 import java.io.IOException;
 
 import static com.amazon.dataprepper.TestDataProvider.VALID_PEER_FORWARDER_CONFIG_FILE;
-import static com.amazon.dataprepper.TestDataProvider.VALID_DEFAULT_PEER_FORWARDER_CONFIG_FILE;
+import static com.amazon.dataprepper.TestDataProvider.VALID_PEER_FORWARDER_CONFIG_WITHOUT_SSL_FILE;
 import static com.amazon.dataprepper.TestDataProvider.INVALID_PEER_FORWARDER_WITH_PORT_CONFIG_FILE;
 import static com.amazon.dataprepper.TestDataProvider.INVALID_PEER_FORWARDER_WITH_SSL_CONFIG_FILE;
 import static com.amazon.dataprepper.TestDataProvider.INVALID_PEER_FORWARDER_WITH_BUFFER_SIZE_CONFIG_FILE;
@@ -39,7 +39,7 @@ class PeerForwarderConfigurationTest {
 
     @Test
     void testPeerForwarderDefaultConfig() throws IOException {
-        final PeerForwarderConfiguration peerForwarderConfiguration = makeConfig(VALID_DEFAULT_PEER_FORWARDER_CONFIG_FILE);
+        final PeerForwarderConfiguration peerForwarderConfiguration = makeConfig(VALID_PEER_FORWARDER_CONFIG_WITHOUT_SSL_FILE);
 
         assertThat(peerForwarderConfiguration.getServerPort(), equalTo(21890));
         assertThat(peerForwarderConfiguration.getRequestTimeout(), equalTo(10_000));

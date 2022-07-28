@@ -54,7 +54,7 @@ public class TestDataProvider {
     public static final String INVALID_PORT_DATA_PREPPER_CONFIG_FILE = "src/test/resources/invalid_port_data_prepper_config.yml";
     public static final String INVALID_KEYSTORE_PASSWORD_DATA_PREPPER_CONFIG_FILE = "src/test/resources/invalid_data_prepper_config_with_bad_keystore_password.yml";
     public static final String VALID_PEER_FORWARDER_DATA_PREPPER_CONFIG_FILE = "src/test/resources/valid_data_prepper_config_wth_peer_forwarder_config.yml";
-    public static final String VALID_DEFAULT_PEER_FORWARDER_CONFIG_FILE = "src/test/resources/valid_peer_forwarder_with_some_default_config.yml";
+    public static final String VALID_PEER_FORWARDER_CONFIG_WITHOUT_SSL_FILE = "src/test/resources/valid_peer_forwarder_without_ssl_config.yml";
     public static final String VALID_PEER_FORWARDER_CONFIG_FILE = "src/test/resources/valid_peer_forwarder_config.yml";
     public static final String INVALID_PEER_FORWARDER_WITH_PORT_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_port_config.yml";
     public static final String INVALID_PEER_FORWARDER_WITH_THREAD_COUNT_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_thread_count_config.yml";
