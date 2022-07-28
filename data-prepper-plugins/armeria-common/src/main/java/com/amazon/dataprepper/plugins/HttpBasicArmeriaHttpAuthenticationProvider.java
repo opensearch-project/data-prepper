@@ -14,6 +14,7 @@ import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.auth.AuthService;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
@@ -38,8 +39,8 @@ public class HttpBasicArmeriaHttpAuthenticationProvider implements ArmeriaHttpAu
     }
 
     @Override
-    public void addAuthenticationDecorator(final ServerBuilder serverBuilder) {
-        serverBuilder.decorator(/*"regex:^/(?!health$).*$",*/ createDecorator());
+    public Optional<Function<? super HttpService, ? extends HttpService>> getAuthenticationDecorator() {
+        return Optional.of(createDecorator());
     }
 
     private Function<? super HttpService, ? extends HttpService> createDecorator() {

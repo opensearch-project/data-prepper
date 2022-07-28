@@ -26,7 +26,7 @@ class UnauthenticatedArmeriaHttpAuthenticationProviderTest {
         @Override
         protected void configure(final ServerBuilder sb) {
             sb.service("/test", (ctx, req) -> HttpResponse.of(200));
-            new UnauthenticatedArmeriaHttpAuthenticationProvider().addAuthenticationDecorator(sb);
+            new UnauthenticatedArmeriaHttpAuthenticationProvider().getAuthenticationDecorator();
         }
     };
 

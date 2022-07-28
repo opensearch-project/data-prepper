@@ -11,6 +11,7 @@ import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.auth.BasicToken;
+import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.testing.junit5.server.ServerExtension;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,7 +19,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -37,11 +40,14 @@ class HttpBasicArmeriaHttpAuthenticationProviderTest {
         @Override
         protected void configure(final ServerBuilder sb) {
             sb.service("/test", (ctx, req) -> HttpResponse.of(200));
+            sb.service("/health", (ctx, req) -> HttpResponse.of(200));
 
             final HttpBasicAuthenticationConfig config = mock(HttpBasicAuthenticationConfig.class);
             when(config.getUsername()).thenReturn(USERNAME);
             when(config.getPassword()).thenReturn(PASSWORD);
-            new HttpBasicArmeriaHttpAuthenticationProvider(config).addAuthenticationDecorator(sb);
+            Optional<Function<? super HttpService, ? extends HttpService>> optionalAuthDecorator =
+                    new HttpBasicArmeriaHttpAuthenticationProvider(config).getAuthenticationDecorator();
+            optionalAuthDecorator.ifPresent(authDecorator -> sb.decorator("regex:^/(?!health$).*$", authDecorator));
         }
     };
 
@@ -109,6 +115,16 @@ class HttpBasicArmeriaHttpAuthenticationProviderTest {
                     .build();
 
             final AggregatedHttpResponse httpResponse = client.get("/test").aggregate().join();
+
+            assertThat(httpResponse.status(), equalTo(HttpStatus.OK));
+        }
+
+        @Test
+        void httpRequest_without_authentication_responds_OK_for_health() {
+            final WebClient client = WebClient.builder(server.httpUri())
+                    .build();
+
+            final AggregatedHttpResponse httpResponse = client.get("/health").aggregate().join();
 
             assertThat(httpResponse.status(), equalTo(HttpStatus.OK));
         }

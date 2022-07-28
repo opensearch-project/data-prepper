@@ -19,6 +19,7 @@ import com.amazon.dataprepper.model.source.Source;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.amazon.dataprepper.plugins.source.loghttp.certificate.CertificateProviderFactory;
+import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
@@ -30,12 +31,15 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.function.Function;
 
 @DataPrepperPlugin(name = "http", pluginType = Source.class, pluginConfigurationType = HTTPSourceConfig.class)
 public class HTTPSource implements Source<Record<Log>> {
     private static final Logger LOG = LoggerFactory.getLogger(HTTPSource.class);
+    public static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
 
     private final HTTPSourceConfig sourceConfig;
     private final CertificateProviderFactory certificateProviderFactory;
@@ -93,7 +97,8 @@ public class HTTPSource implements Source<Record<Log>> {
                 sb.http(sourceConfig.getPort());
             }
 
-            authenticationProvider.addAuthenticationDecorator(sb);
+            Optional<Function<? super HttpService, ? extends HttpService>> optionalAuthDecorator = authenticationProvider.getAuthenticationDecorator();
+            optionalAuthDecorator.ifPresent(authDecorator -> sb.decorator(REGEX_HEALTH, authDecorator));
 
             sb.maxNumConnections(sourceConfig.getMaxConnectionCount());
             final int requestTimeoutInMillis = sourceConfig.getRequestTimeoutInMillis();

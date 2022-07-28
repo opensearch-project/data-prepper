@@ -17,7 +17,4 @@ import com.linecorp.armeria.server.ServerBuilder;
  */
 @DataPrepperPlugin(name = ArmeriaHttpAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, pluginType = ArmeriaHttpAuthenticationProvider.class)
 public class UnauthenticatedArmeriaHttpAuthenticationProvider implements ArmeriaHttpAuthenticationProvider {
-    @Override
-    public void addAuthenticationDecorator(final ServerBuilder serverBuilder) {
-    }
 }
