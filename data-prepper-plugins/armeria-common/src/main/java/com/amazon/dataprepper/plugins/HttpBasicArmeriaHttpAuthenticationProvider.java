@@ -39,14 +39,15 @@ public class HttpBasicArmeriaHttpAuthenticationProvider implements ArmeriaHttpAu
 
     @Override
     public void addAuthenticationDecorator(final ServerBuilder serverBuilder) {
-        serverBuilder.decorator("regex:^/(?!health$).*$", createDecorator());
+        serverBuilder.decorator(/*"regex:^/(?!health$).*$",*/ createDecorator());
     }
 
     private Function<? super HttpService, ? extends HttpService> createDecorator() {
         return AuthService.builder()
-                .addBasicAuth((ctx, basic) ->
-                        CompletableFuture.completedFuture(basic.username() == httpBasicAuthenticationConfig.getUsername()
-                        && basic.password() == httpBasicAuthenticationConfig.getPassword()))
+                .addBasicAuth((context, basic) ->
+                        CompletableFuture.completedFuture(
+                                httpBasicAuthenticationConfig.getUsername().equals(basic.username()) &&
+                                        httpBasicAuthenticationConfig.getPassword().equals(basic.password())))
                 .newDecorator();
     }
 }
