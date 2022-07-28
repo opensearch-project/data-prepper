@@ -10,7 +10,6 @@ import com.amazon.dataprepper.armeria.authentication.HttpBasicAuthenticationConf
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import com.linecorp.armeria.server.HttpService;
-import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.auth.AuthService;
 
 import java.util.Objects;
