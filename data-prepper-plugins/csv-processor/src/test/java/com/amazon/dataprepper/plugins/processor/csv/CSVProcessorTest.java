@@ -276,6 +276,27 @@ public class CSVProcessorTest {
         assertThatKeyEquals(parsedEvent, "column3", "3");
     }
 
+    @Test
+    public void test_when_multilineInput_then_parseBehavior() {
+        when(processorConfig.getColumnNamesSourceKey()).thenReturn("header");
+        csvProcessor = createObjectUnderTest();
+
+        final Map<String, Object> eventData = new HashMap();
+        eventData.put("message","1,2,3\n4,5,6");
+        eventData.put("header","col1,col2");
+        final Record<Event> eventUnderTest = buildRecordWithEvent(eventData);
+        final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
+        final Event parsedEvent = getSingleEvent(editedEvents);
+
+        assertThat(parsedEvent.containsKey("message"), equalTo(true));
+        assertThat(parsedEvent.containsKey("column1"), equalTo(false));
+        assertThat(parsedEvent.containsKey("column2"), equalTo(false));
+
+        assertThatKeyEquals(parsedEvent, "col1", "1");
+        assertThatKeyEquals(parsedEvent, "col2", "2");
+        assertThatKeyEquals(parsedEvent, "column3", "3");
+    }
+
     private Record<Event> createMessageEvent(final String message) {
         final Map<String, Object> eventData = new HashMap();
         eventData.put("message",message);
@@ -289,12 +310,12 @@ public class CSVProcessorTest {
                 .build());
     }
 
-    private void assertThatKeyEquals(Event parsedEvent, final String key, final Object value) {
+    private void assertThatKeyEquals(final Event parsedEvent, final String key, final Object value) {
         assertThat(parsedEvent.containsKey(key), equalTo(true));
         assertThat(parsedEvent.get(key, String.class), equalTo(value));
     }
 
-    private Event getSingleEvent(List<Record<Event>> editedRecords) {
+    private Event getSingleEvent(final List<Record<Event>> editedRecords) {
         return editedRecords.get(0).getData();
     }
 }
