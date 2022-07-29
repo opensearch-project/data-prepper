@@ -5,16 +5,15 @@
 
 package com.amazon.dataprepper.plugins.source;
 
-import com.amazonaws.services.s3.model.S3Event;
 import java.util.List;
 
-import com.amazonaws.util.SdkHttpUtils;
 import org.joda.time.DateTime;
 
-import com.amazonaws.internal.DateTimeJsonSerializer;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import software.amazon.awssdk.utils.http.SdkHttpUtils;
 
@@ -49,8 +48,13 @@ public class S3EventNotification {
    *
    * @return The resulting S3EventNotification object.
    */
-  public static S3EventNotification parseJson(String json) {
-    return Jackson.fromJsonString(json, S3EventNotification.class);
+  public static S3EventNotification parseJson(String json) throws JsonProcessingException {
+    if (json == null) {
+      return null;
+    }
+    System.out.println("Json = " + json);
+    final ObjectMapper objectMapper = new ObjectMapper();
+    return objectMapper.readValue(json, S3EventNotification.class);
   }
 
   /**
@@ -59,13 +63,6 @@ public class S3EventNotification {
   @JsonProperty(value = "Records")
   public List<S3EventNotificationRecord> getRecords() {
     return records;
-  }
-
-  /**
-   * @return a JSON representation of this object
-   */
-  public String toJson() {
-    return Jackson.toJsonString(this);
   }
 
   public static class UserIdentityEntity {
@@ -391,11 +388,6 @@ public class S3EventNotification {
 
     public String getEventName() {
       return eventName;
-    }
-
-    @JsonIgnore
-    public S3Event getEventNameAsEnum() {
-      return S3Event.fromValue(eventName);
     }
 
     public String getEventSource() {

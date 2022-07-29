@@ -10,6 +10,7 @@ import com.amazon.dataprepper.plugins.source.configuration.OnErrorOption;
 import com.amazon.dataprepper.plugins.source.configuration.SqsOptions;
 import com.amazon.dataprepper.plugins.source.filter.ObjectCreatedFilter;
 import com.amazon.dataprepper.plugins.source.filter.S3EventFilter;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
@@ -141,7 +142,7 @@ public class SqsWorker implements Runnable {
                 return Collections.emptyList();
             }
 
-        } catch (SdkClientException e) {
+        } catch (SdkClientException | JsonProcessingException e) {
             LOG.error("Invalid JSON string in message body of {}", message.messageId(), e);
         }
         return Collections.emptyList();
