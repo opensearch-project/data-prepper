@@ -55,8 +55,7 @@ public class CSVProcessorTest {
 
     @Test
     public void test_when_messageIsEmpty_then_notParsed() {
-        // not sure what default behavior here should be
-        Record<Event> eventUnderTest = createMessageEvent("");
+        final Record<Event> eventUnderTest = createMessageEvent("");
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
         final Event parsedEvent = getSingleEvent(editedEvents);
         assertThat(parsedEvent.containsKey("message"), equalTo(true));
@@ -68,7 +67,6 @@ public class CSVProcessorTest {
         when(processorConfig.getDelimiter()).thenReturn("\t");
         csvProcessor = createObjectUnderTest();
 
-        // might somehow need to test four-spaces instead of \t
         Record<Event> eventUnderTest = createMessageEvent("1\t2\t3");
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
         final Event parsedEvent = getSingleEvent(editedEvents);
@@ -121,10 +119,6 @@ public class CSVProcessorTest {
 
     @Test
     public void test_when_deleteHeaderandNoHeaderSource_then_extraFieldsNotDeleted() {
-        when(processorConfig.isDeleteHeader()).thenReturn(true);
-
-        csvProcessor = createObjectUnderTest();
-
         final Map<String, Object> eventData = new HashMap();
         eventData.put("message","1,2,3");
         eventData.put("header","col1,col2,col3");
@@ -142,8 +136,7 @@ public class CSVProcessorTest {
 
     @Test
     public void test_when_messageHasOneColumn_then_parsed() {
-        // not sure what default behavior here should be
-        Record<Event> eventUnderTest = createMessageEvent("1");
+        final Record<Event> eventUnderTest = createMessageEvent("1");
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
         final Event parsedEvent = getSingleEvent(editedEvents);
         assertThat(parsedEvent.containsKey("message"), equalTo(true));
@@ -153,10 +146,10 @@ public class CSVProcessorTest {
 
     @Test
     public void test_when_tooManyUserSpecifiedColumns_then_ommitsExtraNames() {
-        List<String> columnNames = Arrays.asList("col1","col2","col3","col4");
+        final List<String> columnNames = Arrays.asList("col1","col2","col3","col4");
         when(processorConfig.getColumnNames()).thenReturn(columnNames);
         csvProcessor = createObjectUnderTest();
-        Record<Event> eventUnderTest = createMessageEvent("1,2,3");
+        final Record<Event> eventUnderTest = createMessageEvent("1,2,3");
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
         final Event parsedEvent = getSingleEvent(editedEvents);
         assertThat(parsedEvent.containsKey("message"), equalTo(true));
@@ -169,10 +162,10 @@ public class CSVProcessorTest {
 
     @Test
     public void test_when_notEnoughUserSpecifiedColumns_then_generatesExtraNames() {
-        List<String> columnNames = Arrays.asList("col1","col2");
+        final List<String> columnNames = Arrays.asList("col1","col2");
         when(processorConfig.getColumnNames()).thenReturn(columnNames);
         csvProcessor = createObjectUnderTest();
-        Record<Event> eventUnderTest = createMessageEvent("1,2,3");
+        final Record<Event> eventUnderTest = createMessageEvent("1,2,3");
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
         final Event parsedEvent = getSingleEvent(editedEvents);
         assertThat(parsedEvent.containsKey("message"), equalTo(true));
@@ -191,7 +184,7 @@ public class CSVProcessorTest {
         final Map<String, Object> eventData = new HashMap();
         eventData.put("message","1,2,3");
         eventData.put("header","col1,col2,col3,col4");
-        Record<Event> eventUnderTest = buildRecordWithEvent(eventData);
+        final Record<Event> eventUnderTest = buildRecordWithEvent(eventData);
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
         final Event parsedEvent = getSingleEvent(editedEvents);
         assertThat(parsedEvent.containsKey("message"), equalTo(true));
@@ -210,7 +203,7 @@ public class CSVProcessorTest {
         final Map<String, Object> eventData = new HashMap();
         eventData.put("message","1,2,3");
         eventData.put("header","col1,col2");
-        Record<Event> eventUnderTest = buildRecordWithEvent(eventData);
+        final Record<Event> eventUnderTest = buildRecordWithEvent(eventData);
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
         final Event parsedEvent = getSingleEvent(editedEvents);
         assertThat(parsedEvent.containsKey("message"), equalTo(true));
@@ -225,16 +218,16 @@ public class CSVProcessorTest {
     @Test
     public void test_when_twoEventsAndNoHeaderSourceOnOne_then_ChooseUserColumns() {
         when(processorConfig.getColumnNamesSourceKey()).thenReturn("header");
-        List<String> columnNames = Arrays.asList("user_col1","user_col2","user_col3");
+        final List<String> columnNames = Arrays.asList("user_col1","user_col2","user_col3");
         when(processorConfig.getColumnNames()).thenReturn(columnNames);
         csvProcessor = createObjectUnderTest();
 
         final Map<String, Object> firstEventData = new HashMap();
         firstEventData.put("message","1,2,3");
         firstEventData.put("header","col1,col2,col3");
-        Record<Event> firstEventUnderTest = buildRecordWithEvent(firstEventData);
+        final Record<Event> firstEventUnderTest = buildRecordWithEvent(firstEventData);
 
-        Record<Event> secondEventUnderTest = createMessageEvent("1,2,3");
+        final Record<Event> secondEventUnderTest = createMessageEvent("1,2,3");
 
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Arrays.asList(
                 firstEventUnderTest, secondEventUnderTest));
@@ -256,7 +249,7 @@ public class CSVProcessorTest {
         when(processorConfig.getQuoteCharacter()).thenReturn("\'");
         csvProcessor = createObjectUnderTest();
 
-        Record<Event> eventUnderTest = createMessageEvent("'1','2','3'");
+        final Record<Event> eventUnderTest = createMessageEvent("'1','2','3'");
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
         final Event parsedEvent = getSingleEvent(editedEvents);
 
@@ -273,7 +266,7 @@ public class CSVProcessorTest {
 
         final Map<String, Object> eventData = new HashMap();
         eventData.put("different_source","1,2,3");
-        Record<Event> eventUnderTest = buildRecordWithEvent(eventData);
+        final Record<Event> eventUnderTest = buildRecordWithEvent(eventData);
 
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
         final Event parsedEvent = getSingleEvent(editedEvents);
@@ -283,7 +276,7 @@ public class CSVProcessorTest {
         assertThatKeyEquals(parsedEvent, "column3", "3");
     }
 
-    private Record<Event> createMessageEvent(String message) {
+    private Record<Event> createMessageEvent(final String message) {
         final Map<String, Object> eventData = new HashMap();
         eventData.put("message",message);
         return buildRecordWithEvent(eventData);
@@ -296,7 +289,7 @@ public class CSVProcessorTest {
                 .build());
     }
 
-    private void assertThatKeyEquals(Event parsedEvent, String key, Object value) {
+    private void assertThatKeyEquals(Event parsedEvent, final String key, final Object value) {
         assertThat(parsedEvent.containsKey(key), equalTo(true));
         assertThat(parsedEvent.get(key, String.class), equalTo(value));
     }
