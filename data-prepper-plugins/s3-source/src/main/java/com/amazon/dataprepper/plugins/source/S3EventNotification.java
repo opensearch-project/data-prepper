@@ -20,6 +20,8 @@ import software.amazon.awssdk.utils.http.SdkHttpUtils;
 /**
  * A helper class that represents a strongly typed S3 EventNotification item sent
  * to SQS, SNS, or Lambda.
+ *
+ * This class is derived from <code>S3EventNotification</code> in the AWS SDKv1 for Java.
  */
 public class S3EventNotification {
 
