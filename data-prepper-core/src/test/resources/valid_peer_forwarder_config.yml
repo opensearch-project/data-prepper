@@ -1,0 +1,9 @@
+port: 21895
+request_timeout: 1000
+thread_count: 100
+max_connection_count: 100
+max_pending_requests: 512
+ssl: false
+discovery_mode: static
+batch_size: 100
+buffer_size: 100
