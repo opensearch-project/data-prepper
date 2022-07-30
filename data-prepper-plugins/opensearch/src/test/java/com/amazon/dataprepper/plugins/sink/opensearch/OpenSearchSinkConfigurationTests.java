@@ -6,6 +6,7 @@
 package com.amazon.dataprepper.plugins.sink.opensearch;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.junit.Test;
 
@@ -14,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 public class OpenSearchSinkConfigurationTests {
@@ -25,6 +27,41 @@ public class OpenSearchSinkConfigurationTests {
     public void testReadESConfig() {
         final OpenSearchSinkConfiguration openSearchSinkConfiguration = OpenSearchSinkConfiguration.readESConfig(
                 generatePluginSetting());
+        assertNotNull(openSearchSinkConfiguration.getConnectionConfiguration());
+        assertNotNull(openSearchSinkConfiguration.getIndexConfiguration());
+        assertNotNull(openSearchSinkConfiguration.getRetryConfiguration());
+        assertEquals(BulkAction.INDEX.toString(), openSearchSinkConfiguration.getIndexConfiguration().getAction());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testInvalidAction() {
+
+        final Map<String, Object> metadata = new HashMap<>();
+        metadata.put(IndexConfiguration.TRACE_ANALYTICS_RAW_FLAG, true);
+        metadata.put(IndexConfiguration.ACTION, "invalid");
+        metadata.put(ConnectionConfiguration.HOSTS, TEST_HOSTS);
+
+        final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, metadata);
+        pluginSetting.setPipelineName(PIPELINE_NAME);
+
+        OpenSearchSinkConfiguration.readESConfig(pluginSetting);
+
+    }
+
+    @Test
+    public void testReadESConfigWithBulkActionCreate() {
+
+        final Map<String, Object> metadata = new HashMap<>();
+        metadata.put(IndexConfiguration.TRACE_ANALYTICS_RAW_FLAG, true);
+        metadata.put(IndexConfiguration.ACTION, BulkAction.CREATE.toString());
+        metadata.put(ConnectionConfiguration.HOSTS, TEST_HOSTS);
+
+        final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, metadata);
+        pluginSetting.setPipelineName(PIPELINE_NAME);
+
+        final OpenSearchSinkConfiguration openSearchSinkConfiguration =
+                OpenSearchSinkConfiguration.readESConfig(pluginSetting);
+
         assertNotNull(openSearchSinkConfiguration.getConnectionConfiguration());
         assertNotNull(openSearchSinkConfiguration.getIndexConfiguration());
         assertNotNull(openSearchSinkConfiguration.getRetryConfiguration());

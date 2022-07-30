@@ -72,11 +72,15 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
 
     private long estimateBulkOperationSize(BulkOperation bulkOperation) {
 
-        if (!bulkOperation.isIndex()) {
-            throw new UnsupportedOperationException("Only index operations are supported currently. " + bulkOperation);
-        }
+        Object anyDocument;
 
-        Object anyDocument = bulkOperation.index().document();
+        if (bulkOperation.isIndex()) {
+            anyDocument = bulkOperation.index().document();
+        } else if (bulkOperation.isCreate()) {
+            anyDocument = bulkOperation.create().document();
+        } else {
+            throw new UnsupportedOperationException("Only index or create operations are supported currently. " + bulkOperation);
+        }
 
         if (anyDocument == null)
             return OPERATION_OVERHEAD;
@@ -89,5 +93,6 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
 
         final long documentLength = sizedDocument.getDocumentSize();
         return documentLength + OPERATION_OVERHEAD;
+
     }
 }
