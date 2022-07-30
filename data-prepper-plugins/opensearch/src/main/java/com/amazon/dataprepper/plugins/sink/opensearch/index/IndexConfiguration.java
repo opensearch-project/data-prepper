@@ -6,8 +6,10 @@
 package com.amazon.dataprepper.plugins.sink.opensearch.index;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.EnumUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +36,7 @@ public class IndexConfiguration {
     public static final String DOCUMENT_ID_FIELD = "document_id_field";
     public static final String ISM_POLICY_FILE = "ism_policy_file";
     public static final long DEFAULT_BULK_SIZE = 5L;
+    public static final String ACTION = "action";
 
     private IndexType indexType;
     private final String indexAlias;
@@ -41,6 +44,7 @@ public class IndexConfiguration {
     private final String documentIdField;
     private final long bulkSize;
     private final Optional<String> ismPolicyFile;
+    private final String action;
 
     private static final Logger LOG = LoggerFactory.getLogger(IndexManager.class);
 
@@ -79,6 +83,7 @@ public class IndexConfiguration {
         }
         this.documentIdField = documentIdField;
         this.ismPolicyFile = builder.ismPolicyFile;
+        this.action = builder.action;
     }
 
     private void determineIndexType(Builder builder) {
@@ -131,6 +136,8 @@ public class IndexConfiguration {
         final String ismPolicyFile = pluginSetting.getStringOrDefault(ISM_POLICY_FILE, null);
         builder = builder.withIsmPolicyFile(ismPolicyFile);
 
+        builder.withAction(pluginSetting.getStringOrDefault(ACTION, BulkAction.INDEX.toString()));
+
         return builder.build();
     }
 
@@ -156,6 +163,10 @@ public class IndexConfiguration {
 
     public Optional<String> getIsmPolicyFile() {
         return ismPolicyFile;
+    }
+
+    public String getAction() {
+        return action;
     }
 
     /**
@@ -201,6 +212,7 @@ public class IndexConfiguration {
         private String documentIdField;
         private long bulkSize = DEFAULT_BULK_SIZE;
         private Optional<String> ismPolicyFile;
+        private String action;
 
         public Builder setIsRaw(final Boolean isRaw) {
             checkNotNull(isRaw, "trace_analytics_raw cannot be null.");
@@ -257,6 +269,12 @@ public class IndexConfiguration {
 
         public Builder withIsmPolicyFile(final String ismPolicyFile) {
             this.ismPolicyFile = Optional.ofNullable(ismPolicyFile);
+            return this;
+        }
+
+        public Builder withAction(final String action) {
+            checkArgument(EnumUtils.isValidEnumIgnoreCase(BulkAction.class, action), "action must be one of the following: " +  BulkAction.values());
+            this.action = action;
             return this;
         }
 
