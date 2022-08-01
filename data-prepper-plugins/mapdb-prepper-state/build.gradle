@@ -15,7 +15,7 @@ dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:common')
     implementation 'org.mapdb:mapdb:3.0.8'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.7.0'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.7.10'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.7.0'
 
     testImplementation project(':data-prepper-plugins:common').sourceSets.test.output
