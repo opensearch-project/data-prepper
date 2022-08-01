@@ -63,11 +63,11 @@ public class CSVProcessor extends AbstractProcessor<Record<Event>, Record<Event>
                     putDataInEvent(event, header, row);
                 }
 
-                if (thisEventHasHeaderSource && config.isDeleteHeader()) {
+                if (thisEventHasHeaderSource && Boolean.TRUE.equals(config.isDeleteHeader())) {
                     event.delete(config.getColumnNamesSourceKey());
                 }
             } catch (final IOException e) {
-                LOG.error("An exception occured while reading event [{}]", event, e);
+                LOG.error("An exception occurred while reading event [{}]", event, e);
             }
         }
         return records;
@@ -110,7 +110,7 @@ public class CSVProcessor extends AbstractProcessor<Record<Event>, Record<Event>
             return config.getColumnNames();
         }
         else {
-            final List<String> emptyHeader = new ArrayList<String>();
+            final List<String> emptyHeader = new ArrayList<>();
             return emptyHeader;
         }
     }
@@ -125,8 +125,8 @@ public class CSVProcessor extends AbstractProcessor<Record<Event>, Record<Event>
             return headerFromEventSource;
         }
         catch (final IOException e) {
-            LOG.debug("Autogenerating header because of IOException on the header of event [{}]", event, e);
-            final List<String> emptyHeader = new ArrayList<String>();
+            LOG.debug("Auto generating header because of IOException on the header of event [{}]", event, e);
+            final List<String> emptyHeader = new ArrayList<>();
             return emptyHeader;
         }
     }
@@ -142,7 +142,7 @@ public class CSVProcessor extends AbstractProcessor<Record<Event>, Record<Event>
     }
 
     private String generateColumnHeader(final int colNumber) {
-        final int displayColNumber = colNumber + 1; // just like logstash we 1-index columns
+        final int displayColNumber = colNumber + 1; // auto generated column name indices start from 1 (not 0)
         return "column" + displayColNumber;
     }
 }
