@@ -110,6 +110,78 @@ class NewlineDelimitedCodecTest {
         verifyNoInteractions(eventConsumer);
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 2, 10, 50})
+    void parse_with_header_calls_Consumer_with_header_fields_no_skip(final int numberOfLines) throws IOException {
+        final String headerMessage = "HeaderOnList";
+
+        final List<String> linesList = generateLinesAsListWithHeader(numberOfLines, headerMessage);
+        final InputStream inputStream = createInputStream(linesList);
+
+        final int headerOffset = 1;
+        when(config.getHeaderDestination()).thenReturn("event_header");
+        final List<Record<Event>> actualEvents = new ArrayList<>();
+        createObjectUnderTest().parse(inputStream, actualEvents::add);
+
+        assertThat(actualEvents.size(), equalTo(numberOfLines));
+        for (int i = headerOffset; i < actualEvents.size(); i++) {
+            final Record<Event> record = actualEvents.get(i);
+            assertThat(record, notNullValue());
+            assertThat(record.getData(), notNullValue());
+            assertThat(record.getData().get("event_header", String.class), equalTo(headerMessage));
+            assertThat(record.getData().get("message", String.class), equalTo(linesList.get(i + headerOffset)));
+            assertThat(record.getData().getMetadata(), notNullValue());
+            assertThat(record.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10, 50})
+    void parse_with_header_calls_Consumer_with_header_fields_after_skip(final int numberOfLines) throws IOException {
+        final String headerMessage = "HeaderOnList";
+
+        final List<String> linesList = generateLinesAsListWithHeaderAfterSingleInitialJunkLine(numberOfLines, headerMessage);
+        final InputStream inputStream = createInputStream(linesList);
+
+        final int headerOffset = 1;
+        final int skipLines = 1;
+        when(config.getHeaderDestination()).thenReturn("event_header");
+        when(config.getSkipLines()).thenReturn(skipLines);
+        final List<Record<Event>> actualEvents = new ArrayList<>();
+        createObjectUnderTest().parse(inputStream, actualEvents::add);
+
+        assertThat(actualEvents.size(), equalTo(numberOfLines));
+        for (int i = headerOffset; i < actualEvents.size(); i++) {
+            final Record<Event> record = actualEvents.get(i);
+            assertThat(record, notNullValue());
+            assertThat(record.getData(), notNullValue());
+            assertThat(record.getData().get("event_header", String.class), equalTo(headerMessage));
+            assertThat(record.getData().get("message", String.class), equalTo(linesList.get(i + skipLines + headerOffset)));
+            assertThat(record.getData().getMetadata(), notNullValue());
+            assertThat(record.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
+        }
+    }
+
+    private List<String> generateLinesAsListWithHeader(final int numberOfLines, final String headerMessage) {
+        final int headerOffset = 1;
+        final List<String> linesList = new ArrayList<>(numberOfLines+headerOffset);
+        linesList.add(headerMessage);
+        for (int i = 0; i < numberOfLines; i++)
+            linesList.add(UUID.randomUUID().toString());
+        return Collections.unmodifiableList(linesList);
+    }
+
+    private List<String> generateLinesAsListWithHeaderAfterSingleInitialJunkLine(final int numberOfLines, final String headerMessage) {
+        final int headerOffset = 1;
+        final int SKIP_OFFSET = 1;
+        final List<String> linesList = new ArrayList<>(numberOfLines+headerOffset+SKIP_OFFSET);
+        linesList.add("JUNK VALUE TO BE SKIPPED");
+        linesList.add(headerMessage);
+        for (int i = 0; i < numberOfLines; i++)
+            linesList.add(UUID.randomUUID().toString());
+        return Collections.unmodifiableList(linesList);
+    }
+
     private InputStream createInputStream(final List<String> lines) {
         final String inputString = generateMultilineString(lines);
 
