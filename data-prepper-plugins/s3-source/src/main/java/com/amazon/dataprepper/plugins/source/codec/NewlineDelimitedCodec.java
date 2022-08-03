@@ -15,7 +15,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -47,15 +46,17 @@ public class NewlineDelimitedCodec implements Codec {
     }
 
     private void parseBufferedReader(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
-        final boolean doAddHeaderToOutgoingEvents = Objects.nonNull(this.headerDestination);
+        final boolean doAddHeaderToOutgoingEvents = Objects.nonNull(headerDestination);
         boolean hasReadHeader = false;
         String header = "";
 
         int linesToSkip = skipLines;
         String line;
         while ((line = reader.readLine()) != null) {
+            final boolean shouldSkipBecauseThisLineIsHeader = doAddHeaderToOutgoingEvents && !hasReadHeader;
+            final boolean shouldSkipThisLine = linesToSkip > 0 || shouldSkipBecauseThisLineIsHeader;
 
-            if (linesToSkip > 0 || (doAddHeaderToOutgoingEvents && !hasReadHeader)) {
+            if (shouldSkipThisLine) {
                 if (linesToSkip > 0) {
                     linesToSkip--;
                 } else {
@@ -65,14 +66,12 @@ public class NewlineDelimitedCodec implements Codec {
                 continue;
             }
 
-            final Map<String, String> eventData;
+            final Map<String, String> eventData = new HashMap<>();
+
             if (doAddHeaderToOutgoingEvents) {
-                eventData = new HashMap<>();
-                eventData.put(this.headerDestination, header);
-                eventData.put(MESSAGE_FIELD_NAME, line);
-            } else {
-                eventData = Collections.singletonMap(MESSAGE_FIELD_NAME, line);
+                eventData.put(headerDestination, header);
             }
+            eventData.put(MESSAGE_FIELD_NAME, line);
 
             final Event event = JacksonLog.builder().withData(eventData).build();
             eventConsumer.accept(new Record<>(event));

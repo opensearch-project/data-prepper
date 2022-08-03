@@ -6,12 +6,15 @@
 package com.amazon.dataprepper.plugins.source.codec;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
+
+import java.util.Objects;
 
 /**
  * Configuration class for the newline delimited codec.
  */
 public class NewlineDelimitedConfig {
-    private final int skipLines = 0;
+    private int skipLines = 0;
 
     @JsonProperty("header_destination")
     private String headerDestination;
@@ -34,5 +37,11 @@ public class NewlineDelimitedConfig {
      */
     public String getHeaderDestination() {
         return headerDestination;
+    }
+
+    @AssertTrue(message = "header_destination must be either null or length greater than 0. It cannot be empty. " +
+            "To make it null delete header_destination in your configuration YAML file")
+    boolean isValidHeaderDestination() {
+        return Objects.isNull(headerDestination) || (headerDestination.length() > 0);
     }
 }
