@@ -36,62 +36,56 @@ public class PeerForwarderReceiveBuffer<T extends Record<?>> implements Buffer<T
 
     private final int bufferSize;
     private final int batchSize;
-    private final String pluginName;
     private final Semaphore capacitySemaphore;
     private final LinkedBlockingQueue<T> blockingQueue;
     private int recordsInFlight = 0;
 
-    public PeerForwarderReceiveBuffer(final int bufferSize, final int batchSize, final String pluginName) {
+    public PeerForwarderReceiveBuffer(final int bufferSize, final int batchSize) {
         this.bufferSize = bufferSize;
         this.batchSize = batchSize;
-        this.pluginName = pluginName;
         this.blockingQueue = new LinkedBlockingQueue<>(bufferSize);
         this.capacitySemaphore = new Semaphore(bufferSize);
     }
 
     @Override
-    public void write(T record, int timeoutInMillis) throws TimeoutException {
+    public void write(final T record, final int timeoutInMillis) throws TimeoutException {
         try {
             final boolean permitAcquired = capacitySemaphore.tryAcquire(timeoutInMillis, TimeUnit.MILLISECONDS);
             if (!permitAcquired) {
-                throw new TimeoutException(format("Plugin [%s] - Buffer is full, timed out waiting for a slot",
-                        pluginName));
+                throw new TimeoutException("Peer forwarder buffer is full, timed out waiting for a slot");
             }
             blockingQueue.offer(record);
         } catch (InterruptedException ex) {
-            LOG.error("Plugin [{}] - Buffer is full, interrupted while waiting to write the record", pluginName, ex);
-            throw new TimeoutException("Buffer is full, timed out waiting for a slot");
+            LOG.error("Peer forwarder buffer is full, interrupted while waiting to write the record", ex);
+            throw new TimeoutException("Peer forwarder buffer is full, timed out waiting for a slot");
         }
     }
 
     @Override
-    public void writeAll(Collection<T> records, int timeoutInMillis) throws Exception {
+    public void writeAll(final Collection<T> records, final int timeoutInMillis) throws Exception {
         final int size = records.size();
         if (size > bufferSize) {
-            throw new SizeOverflowException(format("Buffer capacity too small for the size of records: %d", size));
+            throw new SizeOverflowException(format("Peer forwarder buffer capacity too small for the size of records: %d", size));
         }
         try {
             final boolean permitAcquired = capacitySemaphore.tryAcquire(size, timeoutInMillis, TimeUnit.MILLISECONDS);
             if (!permitAcquired) {
                 throw new TimeoutException(
-                        format("Plugin [%s] - Buffer does not have enough capacity left for the size of records: %d, " +
-                                        "timed out waiting for slots.",
-                                pluginName, size));
+                        format("Peer forwarder buffer does not have enough capacity left for the size of records: %d, " +
+                                        "timed out waiting for slots.", size));
             }
             blockingQueue.addAll(records);
         } catch (InterruptedException ex) {
-            LOG.error("Plugin [{}] - Buffer does not have enough capacity left for the size of records: {}, " +
-                            "interrupted while waiting to write the records",
-                    pluginName, size, ex);
+            LOG.error("Peer forwarder buffer does not have enough capacity left for the size of records: {}, " +
+                            "interrupted while waiting to write the records", size, ex);
             throw new TimeoutException(
-                    format("Plugin [%s] - Buffer does not have enough capacity left for the size of records: %d, " +
-                                    "timed out waiting for slots.",
-                            pluginName, size));
+                    format("Peer forwarder buffer does not have enough capacity left for the size of records: %d, " +
+                                    "timed out waiting for slots.", size));
         }
     }
 
     @Override
-    public Map.Entry<Collection<T>, CheckpointState> read(int timeoutInMillis) {
+    public Map.Entry<Collection<T>, CheckpointState> read(final int timeoutInMillis) {
         final List<T> records = new ArrayList<>();
         final Stopwatch stopwatch = Stopwatch.createStarted();
         try {
@@ -105,7 +99,7 @@ public class PeerForwarderReceiveBuffer<T extends Record<?>> implements Buffer<T
                 }
             }
         } catch (InterruptedException ex) {
-            LOG.info("Plugin [{}] - Interrupt received while reading from buffer", pluginName);
+            LOG.info("Peer forwarder buffer - Interrupt received while reading from buffer");
             throw new RuntimeException(ex);
         }
         final CheckpointState checkpointState = new CheckpointState(records.size());
@@ -114,7 +108,7 @@ public class PeerForwarderReceiveBuffer<T extends Record<?>> implements Buffer<T
     }
 
     @Override
-    public void checkpoint(CheckpointState checkpointState) {
+    public void checkpoint(final CheckpointState checkpointState) {
         final int numCheckedRecords = checkpointState.getNumRecordsToBeChecked();
         capacitySemaphore.release(numCheckedRecords);
         recordsInFlight -= checkpointState.getNumRecordsToBeChecked();

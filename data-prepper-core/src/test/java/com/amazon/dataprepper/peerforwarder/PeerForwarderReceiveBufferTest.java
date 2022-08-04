@@ -25,14 +25,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 
 class PeerForwarderReceiveBufferTest {
-    private static final String TEST_PLUGIN_NAME = "test-plugin";
     private static final int TEST_BATCH_SIZE = 3;
     private static final int TEST_BUFFER_SIZE = 13;
     private static final int TEST_WRITE_TIMEOUT = 100;
     private static final int TEST_BATCH_READ_TIMEOUT = 5_000;
 
     PeerForwarderReceiveBuffer<Record<String>> createObjectUnderTest(final int bufferSize) {
-        return new PeerForwarderReceiveBuffer<>(bufferSize, TEST_BATCH_SIZE, TEST_PLUGIN_NAME);
+        return new PeerForwarderReceiveBuffer<>(bufferSize, TEST_BATCH_SIZE);
     }
 
     @Test
