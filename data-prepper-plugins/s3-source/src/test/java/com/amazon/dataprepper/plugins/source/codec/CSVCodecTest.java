@@ -66,7 +66,10 @@ public class CSVCodecTest {
 
         csvCodec = createObjectUnderTest();
     }
-
+//    @Test(timeout=10000)
+//    void test_millionLineFile() {
+//
+//    }
     @Test
     void test_when_configIsNull_then_throwsException() {
         config = null;
