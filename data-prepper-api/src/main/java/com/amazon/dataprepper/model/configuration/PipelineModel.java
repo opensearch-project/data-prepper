@@ -67,9 +67,11 @@ public class PipelineModel {
     @JsonProperty("sink")
     private final List<PluginModel> sinks;
 
+    @JsonProperty("workers")
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private final Integer workers;
 
+    @JsonProperty("delay")
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private final Integer readBatchDelay;
 
