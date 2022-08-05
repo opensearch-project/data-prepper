@@ -5,3 +5,5 @@ test-pipeline:
   - testPrepper: null
   sink:
   - testSink: null
+  workers: 8
+  delay: 50
