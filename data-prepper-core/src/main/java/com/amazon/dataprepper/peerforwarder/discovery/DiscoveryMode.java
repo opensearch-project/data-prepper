@@ -5,15 +5,31 @@
 
 package com.amazon.dataprepper.peerforwarder.discovery;
 
+import com.amazon.dataprepper.peerforwarder.PeerForwarderConfiguration;
+
+import java.util.Objects;
+import java.util.function.Function;
+
 public enum DiscoveryMode {
-    // TODO: Add peer list provider function for each enum type
-    STATIC("static"),
-    DNS("dns"),
-    AWS_CLOUD_MAP("aws_cloud_map");
+    STATIC(StaticPeerListProvider::createPeerListProvider),
+    DNS(DnsPeerListProvider::createPeerListProvider),
+    AWS_CLOUD_MAP(AwsCloudMapPeerListProvider::createPeerListProvider);
 
-    private final String mode;
+    private final Function<PeerForwarderConfiguration, PeerListProvider> creationFunction;
 
-    DiscoveryMode(String mode) {
-        this.mode = mode;
+    DiscoveryMode(final Function<PeerForwarderConfiguration, PeerListProvider> creationFunction) {
+        Objects.requireNonNull(creationFunction);
+
+        this.creationFunction = creationFunction;
+    }
+
+    /**
+     * Creates a new {@link PeerListProvider} for this discovery mode.
+     *
+     * @param peerForwarderConfiguration The plugin settings
+     * @return The new {@link PeerListProvider} for this discovery mode
+     */
+    PeerListProvider create(PeerForwarderConfiguration peerForwarderConfiguration) {
+        return creationFunction.apply(peerForwarderConfiguration);
     }
 }

@@ -63,6 +63,12 @@ public class TestDataProvider {
     public static final String INVALID_PEER_FORWARDER_WITH_DISCOVERY_MODE_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_discovery_mode_config.yml";
     public static final String INVALID_PEER_FORWARDER_WITH_BUFFER_SIZE_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_buffer_size_config.yml";
     public static final String INVALID_PEER_FORWARDER_WITH_BATCH_SIZE_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_batch_size_config.yml";
+    public static final String INVALID_PEER_FORWARDER_WITH_ACM_WITHOUT_ARN_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_acm_without_arn_config.yml";
+    public static final String INVALID_PEER_FORWARDER_WITH_ACM_WITHOUT_REGION_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_acm_without_region_config.yml";
+    public static final String INVALID_PEER_FORWARDER_WITH_CLOUD_MAP_WITHOUT_SERVICE_NAME_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_cloud_map_without_service_name_config.yml";
+    public static final String INVALID_PEER_FORWARDER_WITH_CLOUD_MAP_WITHOUT_NAMESPACE_NAME_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_cloud_map_without_namespace_name_config.yml";
+    public static final String INVALID_PEER_FORWARDER_WITH_CLOUD_MAP_WITHOUT_REGION_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_cloud_map_without_region_config.yml";
+    public static final String INVALID_PEER_FORWARDER_WITH_DNS_WITHOUT_DOMAIN_NAME_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_dns_without_domain_name_config.yml";
 
 
 
