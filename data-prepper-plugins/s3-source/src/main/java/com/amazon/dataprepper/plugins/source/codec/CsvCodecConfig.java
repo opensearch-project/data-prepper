@@ -11,7 +11,7 @@ import jakarta.validation.constraints.AssertTrue;
 import java.util.List;
 import java.util.Objects;
 
-public class CSVCodecConfig {
+public class CsvCodecConfig {
     static final String DEFAULT_DELIMITER = ",";
     static final String DEFAULT_QUOTE_CHARACTER = "\""; // double quote
     static final Boolean DEFAULT_DETECT_HEADER = true;
@@ -54,7 +54,7 @@ public class CSVCodecConfig {
         return quoteCharacter.length() == 1;
     }
 
-    @AssertTrue(message = "quote_character and delimiter cannot be the same character")
+    @AssertTrue(message = "quote_character and delimiter cannot be the same character.")
     boolean areDelimiterAndQuoteCharacterDifferent() {
         return !(delimiter.equals(quoteCharacter));
     }

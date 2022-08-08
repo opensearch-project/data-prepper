@@ -28,13 +28,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-@DataPrepperPlugin(name = "csv", pluginType = Codec.class, pluginConfigurationType = CSVCodecConfig.class)
-public class CSVCodec implements Codec {
-    private static final Logger LOG = LoggerFactory.getLogger(CSVCodec.class);
-    private final CSVCodecConfig config;
+@DataPrepperPlugin(name = "csv", pluginType = Codec.class, pluginConfigurationType = CsvCodecConfig.class)
+public class CsvCodec implements Codec {
+    private static final Logger LOG = LoggerFactory.getLogger(CsvCodec.class);
+    private final CsvCodecConfig config;
 
     @DataPrepperPluginConstructor
-    public CSVCodec(final CSVCodecConfig config) {
+    public CsvCodec(final CsvCodecConfig config) {
         Objects.requireNonNull(config);
         this.config = config;
     }
@@ -53,29 +53,29 @@ public class CSVCodec implements Codec {
             schema = createAutodetectHeaderCsvSchema();
         }
         else {
-            final int numberColsFirstLine = getNumberOfColsByMarkingBeginningOfInputStreamAndResettingReaderAfter(reader);
-            schema = createCsvSchemaFromConfig(numberColsFirstLine);
+            final int numberColumnsFirstLine = getNumberOfColumnsByMarkingBeginningOfInputStreamAndResettingReaderAfter(reader);
+            schema = createCsvSchemaFromConfig(numberColumnsFirstLine);
         }
 
         MappingIterator<Map<String, String>> parsingIterator = mapper.readerFor(Map.class).with(schema).readValues(reader);
         try {
             while (parsingIterator.hasNextValue()) {
-                readCSVLine(parsingIterator, eventConsumer);
+                readCsvLine(parsingIterator, eventConsumer);
             }
         } catch (Exception jsonExceptionOnHasNextLine) {
             LOG.error("An Exception occurred while determining if file has next line ", jsonExceptionOnHasNextLine);
         }
     }
 
-    private int getNumberOfColsByMarkingBeginningOfInputStreamAndResettingReaderAfter(BufferedReader reader) throws IOException {
+    private int getNumberOfColumnsByMarkingBeginningOfInputStreamAndResettingReaderAfter(BufferedReader reader) throws IOException {
         final int defaultBufferSize = 8192; // this number doesn't affect even a thousand column header — it's sufficiently large.
         reader.mark(defaultBufferSize); // calling reader.readLine() will consume the first line, so mark initial location to reset after
-        final int firstLineNumCols = extractNumberOfColsFromFirstLine(reader.readLine());
+        final int firstLineNumberColumns = extractNumberOfColumnsFromFirstLine(reader.readLine());
         reader.reset(); // move reader pointer back to beginning of file in order to reread first line
-        return firstLineNumCols;
+        return firstLineNumberColumns;
     }
 
-    private void readCSVLine(final MappingIterator<Map<String, String>> parsingIterator, final Consumer<Record<Event>> eventConsumer) {
+    private void readCsvLine(final MappingIterator<Map<String, String>> parsingIterator, final Consumer<Record<Event>> eventConsumer) {
         try {
             final Map<String, String> parsedLine = parsingIterator.nextValue();
 
@@ -95,20 +95,18 @@ public class CSVCodec implements Codec {
         }
     }
 
-    private int extractNumberOfColsFromFirstLine(final String firstLine) {
-        int numberOfSeperators = 0;
-        int charPointer = 0;
-
-        for ( ; charPointer < firstLine.length(); charPointer++) {
+    private int extractNumberOfColumnsFromFirstLine(final String firstLine) {
+        int numberOfSeparators = 0;
+        for (int charPointer = 0; charPointer < firstLine.length(); charPointer++) {
             if (firstLine.charAt(charPointer) == config.getDelimiter().charAt(0)) {
-                numberOfSeperators++;
+                numberOfSeparators++;
             }
         }
-        return numberOfSeperators + 1;
+        return numberOfSeparators + 1;
     }
 
     private CsvSchema createCsvSchemaFromConfig(final int firstLineSize) {
-        final List<String> userSpecifiedHeader = config.getHeader();
+        final List<String> userSpecifiedHeader = Objects.isNull(config.getHeader()) ? new ArrayList<>() : config.getHeader();
         final List<String> actualHeader = new ArrayList<>();
         final char delimiter = config.getDelimiter().charAt(0);
         final char quoteCharacter = config.getQuoteCharacter().charAt(0);
@@ -127,9 +125,9 @@ public class CSVCodec implements Codec {
         return schema;
     }
 
-    private String generateColumnHeader(final int colNumber) {
-        final int displayColNumber = colNumber + 1; // auto generated column name indices start from 1 (not 0)
-        return "column" + displayColNumber;
+    private String generateColumnHeader(final int columnNumber) {
+        final int displayColumnNumber = columnNumber + 1; // auto generated column name indices start from 1 (not 0)
+        return "column" + displayColumnNumber;
     }
 
     private CsvMapper createCsvMapper() {
