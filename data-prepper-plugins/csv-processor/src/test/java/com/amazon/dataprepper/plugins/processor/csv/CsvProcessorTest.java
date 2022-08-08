@@ -27,18 +27,18 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class CSVProcessorTest {
+class CsvProcessorTest {
     @Mock
-    private CSVProcessorConfig processorConfig;
+    private CsvProcessorConfig processorConfig;
 
     @Mock
     private PluginMetrics pluginMetrics;
 
-    private CSVProcessor csvProcessor;
+    private CsvProcessor csvProcessor;
 
     @BeforeEach
     void setup() {
-        CSVProcessorConfig defaultConfig = new CSVProcessorConfig();
+        CsvProcessorConfig defaultConfig = new CsvProcessorConfig();
         lenient().when(processorConfig.getSource()).thenReturn(defaultConfig.getSource());
         lenient().when(processorConfig.getDelimiter()).thenReturn(defaultConfig.getDelimiter());
         lenient().when(processorConfig.isDeleteHeader()).thenReturn(defaultConfig.isDeleteHeader());
@@ -49,8 +49,8 @@ class CSVProcessorTest {
         csvProcessor = createObjectUnderTest();
     }
 
-    private CSVProcessor createObjectUnderTest() {
-        return new CSVProcessor(pluginMetrics, processorConfig);
+    private CsvProcessor createObjectUnderTest() {
+        return new CsvProcessor(pluginMetrics, processorConfig);
     }
 
     @Test

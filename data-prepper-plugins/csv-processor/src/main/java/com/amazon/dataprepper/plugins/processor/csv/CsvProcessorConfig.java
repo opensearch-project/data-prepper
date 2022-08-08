@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import java.util.List;
 
-public class CSVProcessorConfig {
+public class CsvProcessorConfig {
     static final String DEFAULT_SOURCE = "message";
     static final String DEFAULT_DELIMITER = ",";
     static final String DEFAULT_QUOTE_CHARACTER = "\""; // double quote

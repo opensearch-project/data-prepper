@@ -29,13 +29,13 @@ import java.util.Objects;
  * Processor to parse CSV data in Events.
  *
  */
-@DataPrepperPlugin(name="csv", pluginType = Processor.class, pluginConfigurationType = CSVProcessorConfig.class)
-public class CSVProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private static final Logger LOG = LoggerFactory.getLogger(CSVProcessor.class);
-    private final CSVProcessorConfig config;
+@DataPrepperPlugin(name="csv", pluginType = Processor.class, pluginConfigurationType = CsvProcessorConfig.class)
+public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
+    private static final Logger LOG = LoggerFactory.getLogger(CsvProcessor.class);
+    private final CsvProcessorConfig config;
 
     @DataPrepperPluginConstructor
-    public CSVProcessor(final PluginMetrics pluginMetrics, final CSVProcessorConfig config) {
+    public CsvProcessor(final PluginMetrics pluginMetrics, final CsvProcessorConfig config) {
         super(pluginMetrics);
         this.config = config;
     }
