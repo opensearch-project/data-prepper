@@ -11,6 +11,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Class to hold configuration for Core Peer Forwarder in {@link com.amazon.dataprepper.parser.model.DataPrepperConfiguration},
@@ -26,7 +30,15 @@ public class PeerForwarderConfiguration {
     private boolean ssl = true;
     private String sslCertificateFile;
     private String sslKeyFile;
+    private boolean useAcmCertificateForSsl = false;
+    private String acmCertificateArn;
     private DiscoveryMode discoveryMode = DiscoveryMode.STATIC;
+    private String awsCloudMapNamespaceName;
+    private String awsCloudMapServiceName;
+    private String awsRegion;
+    private Map<String, String> awsCloudMapQueryParameters = Collections.emptyMap();
+    private String domainName;
+    private List<String> staticEndpoints = new ArrayList<>();
     private Integer batchSize = 48;
     private Integer bufferSize = 512;
 
@@ -42,7 +54,15 @@ public class PeerForwarderConfiguration {
             @JsonProperty("ssl") final Boolean ssl,
             @JsonProperty("ssl_certificate_file") final String sslCertificateFile,
             @JsonProperty("ssl_key_file") final String sslKeyFile,
+            @JsonProperty("use_acm_certificate_for_ssl") final Boolean useAcmCertificateForSsl,
+            @JsonProperty("acm_certificate_arn") final String acmCertificateArn,
             @JsonProperty("discovery_mode") final String discoveryMode,
+            @JsonProperty("aws_cloud_map_namespace_name") final String awsCloudMapNamespaceName,
+            @JsonProperty("aws_cloud_map_service_name") final String awsCloudMapServiceName,
+            @JsonProperty("aws_region") final String awsRegion,
+            @JsonProperty("aws_cloud_map_query_parameters") final Map<String, String> awsCloudMapQueryParameters,
+            @JsonProperty("domain_name") final String domainName,
+            @JsonProperty("static_endpoints") final List<String> staticEndpoints,
             @JsonProperty("batch_size") final Integer batchSize,
             @JsonProperty("buffer_size") final Integer bufferSize
     ) {
@@ -52,9 +72,17 @@ public class PeerForwarderConfiguration {
         setMaxConnectionCount(maxConnectionCount);
         setMaxPendingRequests(maxPendingRequests);
         setSsl(ssl);
-        setDiscoveryMode(discoveryMode);
         setSslCertificateFile(sslCertificateFile);
         setSslKeyFile(sslKeyFile);
+        setUseAcmCertificateForSsl(useAcmCertificateForSsl);
+        setAcmCertificateArn(acmCertificateArn);
+        setDiscoveryMode(discoveryMode);
+        setAwsCloudMapNamespaceName(awsCloudMapNamespaceName);
+        setAwsCloudMapServiceName(awsCloudMapServiceName);
+        setAwsRegion(awsRegion);
+        setAwsCloudMapQueryParameters(awsCloudMapQueryParameters);
+        setDomainName(domainName);
+        setStaticEndpoints(staticEndpoints);
         setBatchSize(batchSize);
         setBufferSize(bufferSize);
     }
@@ -91,8 +119,40 @@ public class PeerForwarderConfiguration {
         return sslKeyFile;
     }
 
+    public boolean isUseAcmCertificateForSsl() {
+        return useAcmCertificateForSsl;
+    }
+
+    public String getAcmCertificateArn() {
+        return acmCertificateArn;
+    }
+
     public DiscoveryMode getDiscoveryMode() {
         return discoveryMode;
+    }
+
+    public String getAwsCloudMapNamespaceName() {
+        return awsCloudMapNamespaceName;
+    }
+
+    public String getAwsCloudMapServiceName() {
+        return awsCloudMapServiceName;
+    }
+
+    public String getAwsRegion() {
+        return awsRegion;
+    }
+
+    public Map<String, String> getAwsCloudMapQueryParameters() {
+        return awsCloudMapQueryParameters;
+    }
+
+    public List<String> getStaticEndpoints() {
+        return staticEndpoints;
+    }
+
+    public String getDomainName() {
+        return domainName;
     }
 
     public int getBatchSize() {
@@ -154,7 +214,7 @@ public class PeerForwarderConfiguration {
         }
     }
 
-    private void setSslCertificateFile(String sslCertificateFile) {
+    private void setSslCertificateFile(final String sslCertificateFile) {
         if (!ssl || isValidFilePath(sslCertificateFile)) {
             this.sslCertificateFile = sslCertificateFile;
         }
@@ -163,7 +223,7 @@ public class PeerForwarderConfiguration {
         }
     }
 
-    private void setSslKeyFile(String sslKeyFile) {
+    private void setSslKeyFile(final String sslKeyFile) {
         if (!ssl || isValidFilePath(sslKeyFile)) {
             this.sslKeyFile = sslKeyFile;
         }
@@ -172,9 +232,80 @@ public class PeerForwarderConfiguration {
         }
     }
 
+    private void setUseAcmCertificateForSsl(final Boolean useAcmCertificateForSsl) {
+        if (useAcmCertificateForSsl != null) {
+            this.useAcmCertificateForSsl = useAcmCertificateForSsl;
+        }
+    }
+
+    private void setAcmCertificateArn(final String acmCertificateArn) {
+        if (!useAcmCertificateForSsl || acmCertificateArn != null) {
+            this.acmCertificateArn = acmCertificateArn;
+        }
+        else {
+            throw new IllegalArgumentException("ACM certificate ARN cannot be empty if ACM certificate is ued for SSL.");
+        }
+    }
+
     private void setDiscoveryMode(final String discoveryMode) {
         if (discoveryMode != null) {
             this.discoveryMode = DiscoveryMode.valueOf(discoveryMode.toUpperCase());
+        }
+    }
+
+    private void setAwsCloudMapNamespaceName(final String awsCloudMapNamespaceName) {
+        if (discoveryMode.equals(DiscoveryMode.AWS_CLOUD_MAP)) {
+            if (awsCloudMapNamespaceName != null) {
+                this.awsCloudMapNamespaceName = awsCloudMapNamespaceName;
+            }
+            else {
+                throw new IllegalArgumentException("Cloud Map namespace cannot be null if discover mode is AWS Cloud Map.");
+            }
+        }
+    }
+
+    private void setAwsCloudMapServiceName(final String awsCloudMapServiceName) {
+        if (discoveryMode.equals(DiscoveryMode.AWS_CLOUD_MAP)) {
+            if (awsCloudMapServiceName != null) {
+                this.awsCloudMapServiceName = awsCloudMapServiceName;
+            }
+            else {
+                throw new IllegalArgumentException("Cloud Map service name cannot be null if discover mode is AWS Cloud Map.");
+            }
+        }
+    }
+
+    private void setAwsRegion(final String awsRegion) {
+        if (discoveryMode.equals(DiscoveryMode.AWS_CLOUD_MAP) || useAcmCertificateForSsl) {
+            if (awsRegion != null) {
+                this.awsRegion = awsRegion;
+            }
+            else {
+                throw new IllegalArgumentException("AWS region cannot be null if discover mode is AWS Cloud Map or if ACM certificate for SLL is enabled.");
+            }
+        }
+    }
+
+    public void setAwsCloudMapQueryParameters(Map<String, String> awsCloudMapQueryParameters) {
+        if (awsCloudMapQueryParameters != null) {
+            this.awsCloudMapQueryParameters = awsCloudMapQueryParameters;
+        }
+    }
+
+    private void setDomainName(final String domainName) {
+        if (discoveryMode.equals(DiscoveryMode.DNS)) {
+            if (domainName != null) {
+                this.domainName = domainName;
+            }
+            else {
+                throw new IllegalArgumentException("Domain name cannot be null if discover mode is DNS.");
+            }
+        }
+    }
+
+    private void setStaticEndpoints(final List<String> staticEndpoints) {
+        if (staticEndpoints != null) {
+            this.staticEndpoints = staticEndpoints;
         }
     }
 
