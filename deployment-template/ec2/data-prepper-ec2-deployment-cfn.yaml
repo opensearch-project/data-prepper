@@ -145,26 +145,26 @@ Resources:
                     \        hosts: [ \"${AmazonEsEndpoint}\" ]\n
                     \        aws_sigv4: true\n
                     \        aws_region: \"${AmazonEsRegion}\"\n
-                    \        trace_analytics_raw: true"
+                    \        index_type: trace-analytics-raw"
                     - !Sub "\n
                     \        hosts: [ \"${AmazonEsEndpoint}\" ]\n
                     \        aws_sigv4: false\n
                     \        username: \"${Username}\"\n
                     \        password: \"${Password}\"\n
-                    \        trace_analytics_raw: true"
+                    \        index_type: trace-analytics-raw"
                   serviceMapConfig: !If
                     - NoMasterUser
                     - !Sub "\n
                     \        hosts: [ \"${AmazonEsEndpoint}\" ]\n
                     \        aws_sigv4: true\n
                     \        aws_region: \"${AmazonEsRegion}\"\n
-                    \        trace_analytics_service_map: true"
+                    \        index_type: trace-analytics-service-map"
                     - !Sub "\n
                     \        hosts: [ \"${AmazonEsEndpoint}\" ]\n
                     \        aws_sigv4: false\n
                     \        username: \"${Username}\"\n
                     \        password: \"${Password}\"\n
-                    \        trace_analytics_service_map: true"
+                    \        index_type: trace-analytics-service-map"
               mode: "000400"
               owner: root
               group: root
