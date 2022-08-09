@@ -27,7 +27,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class DnsPeerListProvider_CreateTest {
+class DnsPeerListProviderCreationTest {
 
     private static final String VALID_ENDPOINT = "VALID.ENDPOINT";
     private static final String INVALID_ENDPOINT = "INVALID_ENDPOINT_";

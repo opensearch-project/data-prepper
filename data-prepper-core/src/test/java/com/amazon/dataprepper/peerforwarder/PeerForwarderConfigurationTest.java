@@ -97,9 +97,7 @@ class PeerForwarderConfigurationTest {
             INVALID_PEER_FORWARDER_WITH_CLOUD_MAP_WITHOUT_REGION_CONFIG_FILE,
             INVALID_PEER_FORWARDER_WITH_DNS_WITHOUT_DOMAIN_NAME_CONFIG_FILE
     })
-    void invalid_InvalidPeerForwarderConfig_test(final String filePath) throws IOException {
-//        PeerForwarderConfiguration peerForwarderConfiguration = makeConfig(filePath);
-//        System.out.println(peerForwarderConfiguration.isSsl());
+    void invalid_InvalidPeerForwarderConfig_test(final String filePath) {
         assertThrows(ValueInstantiationException.class, () -> makeConfig(filePath));
     }
 }

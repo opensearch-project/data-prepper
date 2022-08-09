@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class AwsCloudMapPeerListProvider_CreateTest {
+class AwsCloudMapPeerListProviderCreationTest {
 
     private PeerForwarderConfiguration peerForwarderConfiguration;
 

@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class StaticPeerListProvider_CreateTest {
+class StaticPeerListProviderCreationTest {
 
     private static final String ENDPOINT = "ENDPOINT";
     private static final String INVALID_ENDPOINT = "INVALID_ENDPOINT_";
