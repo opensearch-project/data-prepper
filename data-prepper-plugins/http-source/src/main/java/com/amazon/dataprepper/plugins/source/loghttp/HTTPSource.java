@@ -98,7 +98,12 @@ public class HTTPSource implements Source<Record<Log>> {
             }
 
             Optional<Function<? super HttpService, ? extends HttpService>> optionalAuthDecorator = authenticationProvider.getAuthenticationDecorator();
-            optionalAuthDecorator.ifPresent(authDecorator -> sb.decorator(REGEX_HEALTH, authDecorator));
+
+            if(sourceConfig.isUnauthenticatedHealthCheck()) {
+                optionalAuthDecorator.ifPresent(authDecorator -> sb.decorator(REGEX_HEALTH, authDecorator));
+            } else {
+                optionalAuthDecorator.ifPresent(sb::decorator);
+            }
 
             sb.maxNumConnections(sourceConfig.getMaxConnectionCount());
             final int requestTimeoutInMillis = sourceConfig.getRequestTimeoutInMillis();
@@ -118,7 +123,7 @@ public class HTTPSource implements Source<Record<Log>> {
 
             if (sourceConfig.hasHealthCheckService()) {
                 LOG.info("HTTP source health check is enabled");
-                sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.of());
+                sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
             }
 
             server = sb.build();
