@@ -170,6 +170,7 @@ class HTTPSourceTest {
         lenient().when(sourceConfig.getMaxConnectionCount()).thenReturn(500);
         lenient().when(sourceConfig.getMaxPendingRequests()).thenReturn(1024);
         lenient().when(sourceConfig.hasHealthCheckService()).thenReturn(true);
+        lenient().when(sourceConfig.isUnauthenticatedHealthCheck()).thenReturn(true);
 
         MetricsTestUtil.initMetrics();
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
