@@ -27,7 +27,7 @@ raw-pipeline:
         cert: "/usr/share/data-prepper/root-ca.pem"
         username: "admin"
         password: "admin"
-        trace_analytics_raw: true
+        index_type: trace-analytics-raw
 service-map-pipeline:
   delay: "100"
   source:
@@ -41,4 +41,4 @@ service-map-pipeline:
         cert: "/usr/share/data-prepper/root-ca.pem"
         username: "admin"
         password: "admin"
-        trace_analytics_service_map: true
+        index_type: trace-analytics-service-map
