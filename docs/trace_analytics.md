@@ -118,7 +118,7 @@ raw-pipeline:
   sink:
     - opensearch:
         hosts: [ "https://localhost:9200" ]
-        trace_analytics_raw: true
+        index_type: trace-analytics-raw
         # Change to your credentials
         username: "admin"
         password: "admin"
@@ -155,7 +155,7 @@ service-map-pipeline:
   sink:
     - opensearch:
         hosts: [ "https://localhost:9200" ]
-        trace_analytics_service_map: true
+        index_type: trace-analytics-service-map
         # Change to your credentials
         username: "admin"
         password: "admin"
