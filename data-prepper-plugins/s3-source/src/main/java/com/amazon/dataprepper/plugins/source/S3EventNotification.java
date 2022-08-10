@@ -54,7 +54,6 @@ public class S3EventNotification {
     if (json == null) {
       return null;
     }
-    System.out.println("Json = " + json);
     final ObjectMapper objectMapper = new ObjectMapper();
     return objectMapper.readValue(json, S3EventNotification.class);
   }

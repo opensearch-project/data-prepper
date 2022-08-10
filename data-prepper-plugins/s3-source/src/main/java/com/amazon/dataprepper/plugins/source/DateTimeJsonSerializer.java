@@ -17,7 +17,7 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 /**
  * A Jackson serializer for Joda {@code DateTime}s.
  */
-public final class DateTimeJsonSerializer extends JsonSerializer<Date> {
+final class DateTimeJsonSerializer extends JsonSerializer<Date> {
 
   @Override
   public void serialize(Date value, JsonGenerator jgen, SerializerProvider provider) throws IOException {
