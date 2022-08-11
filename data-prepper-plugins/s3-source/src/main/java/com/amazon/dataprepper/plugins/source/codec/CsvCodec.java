@@ -28,6 +28,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+/**
+ * An implementation of {@link Codec} which parses CSV records into fields.
+ */
 @DataPrepperPlugin(name = "csv", pluginType = Codec.class, pluginConfigurationType = CsvCodecConfig.class)
 public class CsvCodec implements Codec {
     private static final Logger LOG = LoggerFactory.getLogger(CsvCodec.class);
