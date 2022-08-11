@@ -5,14 +5,13 @@
 
 package com.amazon.dataprepper.model.annotations;
 
-import com.amazon.dataprepper.model.PluginType;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
 import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * Annotates a Data Prepper plugin. This can be a pipeline component such
@@ -26,10 +25,7 @@ import java.lang.annotation.RetentionPolicy;
  * The value provided in the {@link #name()} attribute determines the name of
  * the plugin as would be found in the pipeline configuration.
  * <p>
- * You must define either the {@link #pluginType()} or {@link #type()} to load
- * as a plugin. Right now, neither are required at compile-time. However, in a
- * future release of Data Prepper we will make {@link #pluginType()} required
- * and remove {@link #type()} altogether.
+ * You must define the {@link #pluginType()} to load your class as a plugin.
  */
 
 @Documented
@@ -43,25 +39,12 @@ public @interface DataPrepperPlugin {
     String name();
 
     /**
-     * The enum of supported pipeline component types.
-     *
-     * @deprecated Remove in favor of {@link DataPrepperPlugin#pluginType()}.
-     * This value will be removed in an upcoming release of Data Prepper.
-     * @return The plugin type enum
-     */
-    @Deprecated
-    PluginType type() default PluginType.NONE;
-
-    /**
      * The class type for this plugin.
-     * <p>
-     * While this property is not currently required, you should supply it. A
-     * future version of Data Prepper will make this a required attribute.
      *
      * @return The Java class
      * @since 1.2
      */
-    Class<?> pluginType() default Void.class;
+    Class<?> pluginType();
 
     /**
      * The configuration type which the plugin takes in the constructor.
