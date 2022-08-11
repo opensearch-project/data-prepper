@@ -6,14 +6,17 @@
 package com.amazon.dataprepper.plugins.source.loghttp;
 
 import com.amazon.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
+import com.amazon.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
 import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.CheckpointState;
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.log.Log;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.ResponseTimeoutException;
@@ -170,13 +173,12 @@ class HTTPSourceTest {
         lenient().when(sourceConfig.getMaxConnectionCount()).thenReturn(500);
         lenient().when(sourceConfig.getMaxPendingRequests()).thenReturn(1024);
         lenient().when(sourceConfig.hasHealthCheckService()).thenReturn(true);
-        lenient().when(sourceConfig.isUnauthenticatedHealthCheck()).thenReturn(true);
 
         MetricsTestUtil.initMetrics();
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
 
         pluginFactory = mock(PluginFactory.class);
-        final ArmeriaHttpAuthenticationProvider authenticationProvider = mock(ArmeriaHttpAuthenticationProvider.class);
+        final ArmeriaHttpAuthenticationProvider authenticationProvider = new HttpBasicArmeriaHttpAuthenticationProvider(new HttpBasicAuthenticationConfig("test", "test"));
         when(pluginFactory.loadPlugin(eq(ArmeriaHttpAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
 
@@ -251,6 +253,10 @@ class HTTPSourceTest {
     @Test
     public void testHealthCheck() {
         // Prepare
+        lenient().when(sourceConfig.isUnauthenticatedHealthCheck()).thenReturn(true);
+        pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
+
         HTTPSourceUnderTest.start(testBuffer);
 
         // When
@@ -262,6 +268,32 @@ class HTTPSourceTest {
                                 .build())
                 .aggregate()
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
+    }
+
+    @Test
+    public void testHealthCheckUnauthenticatedDisabled() {
+        // Prepare
+        lenient().when(sourceConfig.isUnauthenticatedHealthCheck()).thenReturn(false);
+        lenient().when(sourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+                new HashMap()
+                {{
+                    put("username", "test");
+                    put("password", "test");
+                }}));
+        pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
+
+        HTTPSourceUnderTest.start(testBuffer);
+
+        // When
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("127.0.0.1:2021")
+                        .method(HttpMethod.GET)
+                        .path("/health")
+                        .build())
+                .aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.UNAUTHORIZED)).join();
     }
 
     @Test
