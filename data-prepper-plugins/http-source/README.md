@@ -23,6 +23,7 @@ source:
 
 * port (Optional) => An `int` between 0 and 65535 represents the port source is running on. Default is ```2021```.
 * health_check_service (Optional) => A `boolean` that determines if a `/health` endpoint on the defined port will be home to a health check. Default is `false`
+* unauthenticated_health_check (Optional) => A `boolean` that determines if the health endpoint will require authentication. This option is ignored if no authentication is defined. Default is `false`
 * request_timeout (Optional) => An `int` larger than 0 represents request timeout in millis. Default is ```10_000```. 
 * thread_count (Optional) => An `int` larger than 0 represents the number of threads to keep in the ScheduledThreadPool. Default is `200`.
 * max_connection_count (Optional) => An `int` larger than 0 represents the maximum allowed number of open connections. Default is `500`.
