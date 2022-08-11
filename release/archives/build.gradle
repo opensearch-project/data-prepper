@@ -17,7 +17,7 @@ subprojects {
         /* required to resolve below issue with aws sdk
           JAXB is unavailable. Will fallback to SDK implementation which may be less performant
          */
-        implementation "javax.xml.bind:jaxb-api:2.3.1"
+        implementation 'javax.xml.bind:jaxb-api:2.3.1'
     }
 
     ext {
@@ -40,8 +40,8 @@ subprojects {
                 distributionBaseName = "${project.rootProject.name}-${project.rootProject.version}-${platform}-${architecture}"
                 contents {
                     with archiveToTar()
-                    into('') {
-                        from("data-prepper-tar-install-${architecture}.sh").rename("data-prepper-tar-install-${architecture}.sh", "data-prepper-tar-install.sh")
+                    into('bin') {
+                        from("data-prepper-${architecture}.sh").rename("data-prepper-${architecture}.sh", "data-prepper")
                         fileMode 0755
                     }
                 }
@@ -53,8 +53,8 @@ subprojects {
                     into('openjdk') {
                         from tarTree("${buildDir}/${platform}${architecture}/openjdk/openjdk.tar.gz")
                     }
-                    into('') {
-                        from("data-prepper-tar-install-with-jdk-${architecture}.sh").rename("data-prepper-tar-install-with-jdk-${architecture}.sh", "data-prepper-tar-install.sh")
+                    into('bin') {
+                        from("data-prepper-jdk-${architecture}.sh").rename("data-prepper-jdk-${architecture}.sh", "data-prepper")
                         fileMode 0755
                     }
                 }
@@ -115,7 +115,7 @@ subprojects {
             }
         }
 
-        tasks.create("uploadToS3") {
+        tasks.create('uploadToS3') {
             tasks.withType(S3Upload).each {
                 dependsOn it.name
             }
@@ -126,7 +126,7 @@ subprojects {
 
 CopySpec archiveToTar() {
     return copySpec {
-        into('bin') {
+        into('lib') {
             from project(':data-prepper-core').jar.archivePath
             fileMode 0755
         }
