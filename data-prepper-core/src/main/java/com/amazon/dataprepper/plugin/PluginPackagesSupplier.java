@@ -13,10 +13,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -29,7 +29,9 @@ import java.util.stream.Collectors;
 class PluginPackagesSupplier implements Supplier<String[]> {
 
     private static final Logger LOG = LoggerFactory.getLogger(PluginPackagesSupplier.class);
-    private static final String DEFAULT_PLUGINS_CLASSPATH = "com.amazon.dataprepper.plugins";
+    private static final String DEFAULT_PLUGINS_CLASSPATH = "org.opensearch.dataprepper.plugins";
+    // TODO: Remove this once all plugins have migrated to org.opensearch
+    private static final String DEPRECATED_DEFAULT_PLUGINS_CLASSPATH = "com.amazon.dataprepper.plugins";
 
     PluginPackagesSupplier() {
     }
@@ -60,7 +62,7 @@ class PluginPackagesSupplier implements Supplier<String[]> {
             packageNames = readResources(pluginResources);
         } catch (final IOException ex) {
             LOG.warn("Unable to load data-prepper.plugins.properties file. Reverting to default plugin package.");
-            packageNames = Collections.singleton(DEFAULT_PLUGINS_CLASSPATH);
+            packageNames = new LinkedHashSet<>(Arrays.asList(DEFAULT_PLUGINS_CLASSPATH, DEPRECATED_DEFAULT_PLUGINS_CLASSPATH));
         }
         return packageNames;
     }
@@ -92,6 +94,7 @@ class PluginPackagesSupplier implements Supplier<String[]> {
         if (packageNames.isEmpty()) {
             LOG.warn("Unable to load packages from data-prepper.plugins.properties file. Reverting to default plugin package.");
             packageNames.add(DEFAULT_PLUGINS_CLASSPATH);
+            packageNames.add(DEPRECATED_DEFAULT_PLUGINS_CLASSPATH);
         }
 
         return packageNames;
