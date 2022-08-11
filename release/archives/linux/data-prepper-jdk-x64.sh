@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #
 # Copyright OpenSearch Contributors
@@ -15,13 +15,14 @@ fi
 
 PIPELINES_FILE_LOCATION=$1
 CONFIG_FILE_LOCATION=$2
-DATA_PREPPER_HOME=$(dirname $(realpath $0))
-EXECUTABLE_JAR=$(ls -1 $DATA_PREPPER_HOME/bin/*.jar 2>/dev/null)
+DATA_PREPPER_BIN=$(dirname $(realpath $0))
+DATA_PREPPER_HOME=$DATA_PREPPER_BIN/..
+EXECUTABLE_JAR=$(ls -1 $DATA_PREPPER_HOME/lib/*.jar 2>/dev/null)
 OPENJDK=$(ls -1 $DATA_PREPPER_HOME/openjdk/ 2>/dev/null)
 
 if [[ -z "$EXECUTABLE_JAR" ]]
 then
-  echo "Jar file is missing from directory $DATA_PREPPER_HOME/bin"
+  echo "Jar file is missing from directory $DATA_PREPPER_HOME/lib"
   exit 1
 fi
 
