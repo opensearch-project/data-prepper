@@ -26,6 +26,7 @@ public class OTelTraceSourceConfig {
     static final String MAX_CONNECTION_COUNT = "max_connection_count";
     static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
     static final String RECORD_TYPE = "record_type";
+    static final String UNAUTHENTICATED_HEALTH_CHECK = "unauthenticated_health_check";
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final int DEFAULT_PORT = 21890;
     static final int DEFAULT_THREAD_COUNT = 200;
@@ -91,6 +92,9 @@ public class OTelTraceSourceConfig {
 
     @JsonProperty(RECORD_TYPE)
     private RecordType recordType = DEFAULT_RECORD_TYPE;
+
+    @JsonProperty(UNAUTHENTICATED_HEALTH_CHECK)
+    private boolean unauthenticatedHealthCheck = false;
 
     public void validateAndInitializeCertAndKeyFileInS3() {
         boolean certAndKeyFileInS3 = false;
@@ -195,5 +199,9 @@ public class OTelTraceSourceConfig {
 
     public RecordType getRecordType() {
         return recordType;
+    }
+
+    public boolean isUnauthenticatedHealthCheck() {
+        return unauthenticatedHealthCheck;
     }
 }

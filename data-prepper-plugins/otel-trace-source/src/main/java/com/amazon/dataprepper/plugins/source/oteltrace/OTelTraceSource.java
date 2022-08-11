@@ -111,13 +111,20 @@ public class OTelTraceSource implements Source<Record<Object>> {
             sb.service(grpcServiceBuilder.build());
 
             if(oTelTraceSourceConfig.enableHttpHealthCheck()) {
-                sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.of());
+                sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
             }
 
-            final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
-                    authenticationProvider.getHttpAuthenticationService();
-            optionalHttpAuthenticationService.ifPresent(httpAuthenticationService ->
-                    sb.decorator(REGEX_HEALTH, httpAuthenticationService));
+            if(oTelTraceSourceConfig.getAuthentication() != null) {
+                final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
+                        authenticationProvider.getHttpAuthenticationService();
+
+                if(oTelTraceSourceConfig.isUnauthenticatedHealthCheck()) {
+                    optionalHttpAuthenticationService.ifPresent(httpAuthenticationService ->
+                            sb.decorator(REGEX_HEALTH, httpAuthenticationService));
+                } else {
+                    optionalHttpAuthenticationService.ifPresent(sb::decorator);
+                }
+            }
 
             sb.requestTimeoutMillis(oTelTraceSourceConfig.getRequestTimeoutInMillis());
 

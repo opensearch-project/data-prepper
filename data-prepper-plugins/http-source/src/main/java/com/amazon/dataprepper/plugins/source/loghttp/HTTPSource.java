@@ -97,12 +97,14 @@ public class HTTPSource implements Source<Record<Log>> {
                 sb.http(sourceConfig.getPort());
             }
 
-            Optional<Function<? super HttpService, ? extends HttpService>> optionalAuthDecorator = authenticationProvider.getAuthenticationDecorator();
+            if(sourceConfig.getAuthentication() != null) {
+                final Optional<Function<? super HttpService, ? extends HttpService>> optionalAuthDecorator = authenticationProvider.getAuthenticationDecorator();
 
-            if(sourceConfig.isUnauthenticatedHealthCheck()) {
-                optionalAuthDecorator.ifPresent(authDecorator -> sb.decorator(REGEX_HEALTH, authDecorator));
-            } else {
-                optionalAuthDecorator.ifPresent(sb::decorator);
+                if (sourceConfig.isUnauthenticatedHealthCheck()) {
+                    optionalAuthDecorator.ifPresent(authDecorator -> sb.decorator(REGEX_HEALTH, authDecorator));
+                } else {
+                    optionalAuthDecorator.ifPresent(sb::decorator);
+                }
             }
 
             sb.maxNumConnections(sourceConfig.getMaxConnectionCount());
