@@ -11,6 +11,9 @@ import jakarta.validation.constraints.AssertTrue;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Configuration class for {@link CsvCodec}.
+ */
 public class CsvCodecConfig {
     static final String DEFAULT_DELIMITER = ",";
     static final String DEFAULT_QUOTE_CHARACTER = "\""; // double quote
@@ -28,18 +31,40 @@ public class CsvCodecConfig {
     @JsonProperty("detect_header")
     private Boolean detectHeader = DEFAULT_DETECT_HEADER;
 
+    /**
+     * The delimiter separating columns.
+     * Comma "," by default.
+     * @return The delimiter separating columns.
+     */
     public String getDelimiter() {
         return delimiter;
     }
 
+    /**
+     * The character used as a text qualifier for CSV data.
+     * Double quote "\"" by default.
+     *
+     * @return The quote character.
+     */
     public String getQuoteCharacter() {
         return quoteCharacter;
     }
 
+    /**
+     * The header containing the column names used to parse CSV data.
+     *
+     * @return The list of header/column names.
+     */
     public List<String> getHeader() {
         return header;
     }
 
+    /**
+     * Whether the first line of the S3 Object should be interpreted as a header.
+     * Defaults to true, meaning the first line of the S3 Object will be the header and will not be parsed like a regular CSV line.
+     *
+     * @return Whether the codec should detect the first line as a header.
+     */
     public Boolean isDetectHeader() {
         return detectHeader;
     }
