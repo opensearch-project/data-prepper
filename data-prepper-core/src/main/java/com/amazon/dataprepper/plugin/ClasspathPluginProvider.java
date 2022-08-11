@@ -61,11 +61,7 @@ public class ClasspathPluginProvider implements PluginProvider {
             final DataPrepperPlugin dataPrepperPluginAnnotation = concretePluginClass
                     .getAnnotation(DataPrepperPlugin.class);
             final String pluginName = dataPrepperPluginAnnotation.name();
-            Class<?> supportedType = dataPrepperPluginAnnotation.pluginType();
-
-            if(supportedType.equals(Void.class)) {
-                supportedType = dataPrepperPluginAnnotation.type().pluginClass();
-            }
+            final Class<?> supportedType = dataPrepperPluginAnnotation.pluginType();
 
             final Map<Class<?>, Class<?>> supportTypeToPluginTypeMap =
                     pluginsMap.computeIfAbsent(pluginName, k -> new HashMap<>());
