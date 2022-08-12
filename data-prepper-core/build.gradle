@@ -41,6 +41,7 @@ dependencies {
     implementation "com.linecorp.armeria:armeria:${versionMap.armeria}"
     implementation 'commons-validator:commons-validator:1.7'
     implementation 'software.amazon.awssdk:servicediscovery'
+    testImplementation 'org.springframework:spring-test:5.3.22'
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
     testImplementation 'org.apache.commons:commons-lang3:3.12.0'
 }
