@@ -7,6 +7,7 @@ package com.amazon.dataprepper.plugins.source.oteltrace;
 
 import com.amazon.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import com.amazon.dataprepper.metrics.PluginMetrics;
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
@@ -561,12 +562,51 @@ public class OTelTraceSourceTest {
     @Test
     public void testOptionalHttpAuthServiceInPlace() {
         final Optional<Function<? super HttpService, ? extends HttpService>> function = Optional.of(httpService -> httpService);
-        when(server.stop()).thenReturn(completableFuture);
+
+        final Map<String, Object> settingsMap = new HashMap<>();
+        settingsMap.put("authentication", new PluginModel("test", null));
+        settingsMap.put("unauthenticated_health_check", true);
+
+        settingsMap.put(SSL, false);
+
+        testPluginSetting = new PluginSetting(null, settingsMap);
+        testPluginSetting.setPipelineName("pipeline");
+        oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
+
         when(authenticationProvider.getHttpAuthenticationService()).thenReturn(function);
+
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
 
         try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
-            SOURCE.start(buffer);
+            source.start(buffer);
+        }
+
+        verify(serverBuilder).service(isA(GrpcService.class));
+        verify(serverBuilder).decorator(isA(String.class), isA(Function.class));
+    }
+
+    @Test
+    public void testOptionalHttpAuthServiceInPlaceWithUnauthenticatedDisabled() {
+        final Optional<Function<? super HttpService, ? extends HttpService>> function = Optional.of(httpService -> httpService);
+
+        final Map<String, Object> settingsMap = new HashMap<>();
+        settingsMap.put("authentication", new PluginModel("test", null));
+        settingsMap.put("unauthenticated_health_check", false);
+
+        settingsMap.put(SSL, false);
+
+        testPluginSetting = new PluginSetting(null, settingsMap);
+        testPluginSetting.setPipelineName("pipeline");
+        oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
+
+        when(authenticationProvider.getHttpAuthenticationService()).thenReturn(function);
+
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+
+        try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
+            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
+            source.start(buffer);
         }
 
         verify(serverBuilder).service(isA(GrpcService.class));

@@ -5,7 +5,11 @@
 
 package com.amazon.dataprepper.armeria.authentication;
 
+import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.ServerBuilder;
+
+import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * An interface for providing authentication in Armeria-based HTTP servers.
@@ -23,10 +27,11 @@ public interface ArmeriaHttpAuthenticationProvider {
     String UNAUTHENTICATED_PLUGIN_NAME = "unauthenticated";
 
     /**
-     * Adds an authentication decorator to an Armeria {@link ServerBuilder}.
+     * Gets an authentication decorator to an Armeria {@link ServerBuilder}.
      *
-     * @param serverBuilder the builder for the server needing authentication
-     * @since 1.2
+     * @since 2.0
      */
-    void addAuthenticationDecorator(ServerBuilder serverBuilder);
+    default Optional<Function<? super HttpService, ? extends HttpService>> getAuthenticationDecorator() {
+        return Optional.empty();
+    }
 }
