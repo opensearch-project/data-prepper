@@ -26,6 +26,7 @@ public class HTTPSourceConfig {
     static final int DEFAULT_MAX_PENDING_REQUESTS = 1024;
     static final boolean DEFAULT_HEALTH_CHECK = false;
     static final String HEALTH_CHECK_SERVICE = "health_check_service";
+    static final String UNAUTHENTICATED_HEALTH_CHECK = "unauthenticated_health_check";
 
     @JsonProperty("port")
     @Min(0)
@@ -62,6 +63,9 @@ public class HTTPSourceConfig {
 
     @JsonProperty(HEALTH_CHECK_SERVICE)
     private boolean healthCheckService = DEFAULT_HEALTH_CHECK;
+
+    @JsonProperty(UNAUTHENTICATED_HEALTH_CHECK)
+    private boolean unauthenticatedHealthCheck = false;
 
     private PluginModel authentication;
 
@@ -122,5 +126,9 @@ public class HTTPSourceConfig {
 
     public boolean hasHealthCheckService() {
         return healthCheckService;
+    }
+
+    public boolean isUnauthenticatedHealthCheck() {
+        return unauthenticatedHealthCheck;
     }
 }
