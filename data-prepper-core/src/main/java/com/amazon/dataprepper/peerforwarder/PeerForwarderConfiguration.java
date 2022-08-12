@@ -8,9 +8,8 @@ package com.amazon.dataprepper.peerforwarder;
 import com.amazon.dataprepper.peerforwarder.discovery.DiscoveryMode;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.apache.commons.lang3.StringUtils;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -22,6 +21,8 @@ import java.util.Map;
  * @since 2.0
  */
 public class PeerForwarderConfiguration {
+    private static final String S3_PREFIX = "s3://";
+
     private Integer serverPort = 21890;
     private Integer requestTimeout = 10_000;
     private Integer threadCount = 200;
@@ -32,6 +33,8 @@ public class PeerForwarderConfiguration {
     private String sslKeyFile;
     private boolean useAcmCertificateForSsl = false;
     private String acmCertificateArn;
+    private String acmPrivateKeyPassword;
+    private Integer acmCertificateTimeoutMillis = 120000;
     private DiscoveryMode discoveryMode = DiscoveryMode.STATIC;
     private String awsCloudMapNamespaceName;
     private String awsCloudMapServiceName;
@@ -41,6 +44,7 @@ public class PeerForwarderConfiguration {
     private List<String> staticEndpoints = new ArrayList<>();
     private Integer batchSize = 48;
     private Integer bufferSize = 512;
+    private boolean sslCertAndKeyFileInS3;
 
     public PeerForwarderConfiguration() {}
 
@@ -56,6 +60,8 @@ public class PeerForwarderConfiguration {
             @JsonProperty("ssl_key_file") final String sslKeyFile,
             @JsonProperty("use_acm_certificate_for_ssl") final Boolean useAcmCertificateForSsl,
             @JsonProperty("acm_certificate_arn") final String acmCertificateArn,
+            @JsonProperty("acm_private_key_password") final String acmPrivateKeyPassword,
+            @JsonProperty("acm_certificate_timeout_millis") final Integer acmCertificateTimeoutMillis,
             @JsonProperty("discovery_mode") final String discoveryMode,
             @JsonProperty("aws_cloud_map_namespace_name") final String awsCloudMapNamespaceName,
             @JsonProperty("aws_cloud_map_service_name") final String awsCloudMapServiceName,
@@ -76,6 +82,8 @@ public class PeerForwarderConfiguration {
         setSslKeyFile(sslKeyFile);
         setUseAcmCertificateForSsl(useAcmCertificateForSsl);
         setAcmCertificateArn(acmCertificateArn);
+        this.acmPrivateKeyPassword = acmPrivateKeyPassword;
+        setAcmCertificateTimeoutMillis(acmCertificateTimeoutMillis);
         setDiscoveryMode(discoveryMode);
         setAwsCloudMapNamespaceName(awsCloudMapNamespaceName);
         setAwsCloudMapServiceName(awsCloudMapServiceName);
@@ -85,6 +93,7 @@ public class PeerForwarderConfiguration {
         setStaticEndpoints(staticEndpoints);
         setBatchSize(batchSize);
         setBufferSize(bufferSize);
+        checkForCertAndKeyFileInS3();
     }
 
     public int getServerPort() {
@@ -127,6 +136,14 @@ public class PeerForwarderConfiguration {
         return acmCertificateArn;
     }
 
+    public String getAcmPrivateKeyPassword() {
+        return acmPrivateKeyPassword;
+    }
+
+    public int getAcmCertificateTimeoutMillis() {
+        return acmCertificateTimeoutMillis;
+    }
+
     public DiscoveryMode getDiscoveryMode() {
         return discoveryMode;
     }
@@ -166,7 +183,7 @@ public class PeerForwarderConfiguration {
     private void setServerPort(final Integer serverPort) {
         if (serverPort != null) {
             if (serverPort < 0 || serverPort > 65535) {
-                throw new IllegalArgumentException("Server port should be between 0 and 65535");
+                throw new IllegalArgumentException("Server port should be between 0 and 65535.");
             }
             this.serverPort = serverPort;
         }
@@ -175,7 +192,7 @@ public class PeerForwarderConfiguration {
     private void setRequestTimeout(final Integer requestTimeout) {
         if (requestTimeout!= null) {
             if (requestTimeout <= 0) {
-                throw new IllegalArgumentException("Request timeout must be a positive integer");
+                throw new IllegalArgumentException("Request timeout must be a positive integer.");
             }
             this.requestTimeout = requestTimeout;
         }
@@ -184,7 +201,7 @@ public class PeerForwarderConfiguration {
     private void setThreadCount(final Integer threadCount) {
         if (threadCount != null) {
             if (threadCount <= 0) {
-                throw new IllegalArgumentException("Thread count must be a positive integer");
+                throw new IllegalArgumentException("Thread count must be a positive integer.");
             }
             this.threadCount = threadCount;
         }
@@ -193,7 +210,7 @@ public class PeerForwarderConfiguration {
     private void setMaxConnectionCount(final Integer maxConnectionCount) {
         if (maxConnectionCount != null) {
             if (maxConnectionCount <= 0) {
-                throw new IllegalArgumentException("Maximum connection count must be a positive integer");
+                throw new IllegalArgumentException("Maximum connection count must be a positive integer.");
             }
             this.maxConnectionCount = maxConnectionCount;
         }
@@ -202,7 +219,7 @@ public class PeerForwarderConfiguration {
     private void setMaxPendingRequests(final Integer maxPendingRequests) {
         if (maxPendingRequests != null) {
             if (maxPendingRequests <= 0) {
-                throw new IllegalArgumentException("Maximum pending requests must be a positive integer");
+                throw new IllegalArgumentException("Maximum pending requests must be a positive integer.");
             }
             this.maxPendingRequests = maxPendingRequests;
         }
@@ -215,7 +232,7 @@ public class PeerForwarderConfiguration {
     }
 
     private void setSslCertificateFile(final String sslCertificateFile) {
-        if (!ssl || isValidFilePath(sslCertificateFile)) {
+        if (!ssl || StringUtils.isNotEmpty(sslCertificateFile)) {
             this.sslCertificateFile = sslCertificateFile;
         }
         else {
@@ -224,7 +241,7 @@ public class PeerForwarderConfiguration {
     }
 
     private void setSslKeyFile(final String sslKeyFile) {
-        if (!ssl || isValidFilePath(sslKeyFile)) {
+        if (!ssl || StringUtils.isNotEmpty(sslKeyFile)) {
             this.sslKeyFile = sslKeyFile;
         }
         else {
@@ -239,11 +256,20 @@ public class PeerForwarderConfiguration {
     }
 
     private void setAcmCertificateArn(final String acmCertificateArn) {
-        if (!useAcmCertificateForSsl || acmCertificateArn != null) {
+        if (!useAcmCertificateForSsl || StringUtils.isNotEmpty(acmCertificateArn)) {
             this.acmCertificateArn = acmCertificateArn;
         }
         else {
             throw new IllegalArgumentException("ACM certificate ARN cannot be empty if ACM certificate is ued for SSL.");
+        }
+    }
+
+    private void setAcmCertificateTimeoutMillis(final Integer acmCertificateTimeoutMillis) {
+        if (acmCertificateTimeoutMillis != null) {
+            if (acmCertificateTimeoutMillis <= 0) {
+                throw new IllegalArgumentException("ACM certificate timeout must be a positive integer");
+            }
+            this.acmCertificateTimeoutMillis = acmCertificateTimeoutMillis;
         }
     }
 
@@ -277,7 +303,7 @@ public class PeerForwarderConfiguration {
 
     private void setAwsRegion(final String awsRegion) {
         if (discoveryMode.equals(DiscoveryMode.AWS_CLOUD_MAP) || useAcmCertificateForSsl) {
-            if (awsRegion != null) {
+            if (StringUtils.isNotEmpty(awsRegion)) {
                 this.awsRegion = awsRegion;
             }
             else {
@@ -286,7 +312,7 @@ public class PeerForwarderConfiguration {
         }
     }
 
-    public void setAwsCloudMapQueryParameters(Map<String, String> awsCloudMapQueryParameters) {
+    private void setAwsCloudMapQueryParameters(Map<String, String> awsCloudMapQueryParameters) {
         if (awsCloudMapQueryParameters != null) {
             this.awsCloudMapQueryParameters = awsCloudMapQueryParameters;
         }
@@ -312,7 +338,7 @@ public class PeerForwarderConfiguration {
     private void setBatchSize(final Integer batchSize) {
         if (batchSize != null) {
             if (batchSize <= 0) {
-                throw new IllegalArgumentException("Batch size must be a positive integer");
+                throw new IllegalArgumentException("Batch size must be a positive integer.");
             }
             this.batchSize = batchSize;
         }
@@ -321,13 +347,20 @@ public class PeerForwarderConfiguration {
     private void setBufferSize(final Integer bufferSize) {
         if (bufferSize != null) {
             if (bufferSize <= 0) {
-                throw new IllegalArgumentException("Buffer size must be a positive integer");
+                throw new IllegalArgumentException("Buffer size must be a positive integer.");
             }
             this.bufferSize = bufferSize;
         }
     }
 
-    private static boolean isValidFilePath(final String filePath) {
-        return filePath != null && !filePath.isEmpty() && Files.exists(Paths.get(filePath));
+    private void checkForCertAndKeyFileInS3() {
+        if (ssl && sslCertificateFile.toLowerCase().startsWith(S3_PREFIX) &&
+                    sslKeyFile.toLowerCase().startsWith(S3_PREFIX)) {
+            sslCertAndKeyFileInS3 = true;
+        }
+    }
+
+    public boolean isSslCertAndKeyFileInS3() {
+        return sslCertAndKeyFileInS3;
     }
 }
