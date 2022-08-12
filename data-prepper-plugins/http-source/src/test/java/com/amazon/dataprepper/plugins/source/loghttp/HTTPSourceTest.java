@@ -253,10 +253,6 @@ class HTTPSourceTest {
     @Test
     public void testHealthCheck() {
         // Prepare
-        when(sourceConfig.isUnauthenticatedHealthCheck()).thenReturn(true);
-        pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
-        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
-
         HTTPSourceUnderTest.start(testBuffer);
 
         // When
