@@ -253,7 +253,7 @@ class HTTPSourceTest {
     @Test
     public void testHealthCheck() {
         // Prepare
-        lenient().when(sourceConfig.isUnauthenticatedHealthCheck()).thenReturn(true);
+        when(sourceConfig.isUnauthenticatedHealthCheck()).thenReturn(true);
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
         HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
 
@@ -273,8 +273,8 @@ class HTTPSourceTest {
     @Test
     public void testHealthCheckUnauthenticatedDisabled() {
         // Prepare
-        lenient().when(sourceConfig.isUnauthenticatedHealthCheck()).thenReturn(false);
-        lenient().when(sourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+        when(sourceConfig.isUnauthenticatedHealthCheck()).thenReturn(false);
+        when(sourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
                 new HashMap()
                 {{
                     put("username", "test");
