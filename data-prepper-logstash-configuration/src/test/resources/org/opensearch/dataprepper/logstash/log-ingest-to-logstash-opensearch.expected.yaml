@@ -6,7 +6,12 @@ logstash-converted-pipeline:
   processor:
     - csv:
         delete_header: true
-        column_names: []
+        column_names:
+          - "a"
+          - "b"
+        quote_character: ";"
+        delimiter: ":"
+        source: "message_source"
     - grok:
         match:
           log:
