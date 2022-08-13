@@ -63,6 +63,7 @@ logstash-converted-pipeline:
         entries:
           - source: "splitMessage"
             delimiter: ","
+  router: []
   sink:
     - opensearch:
         hosts:

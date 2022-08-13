@@ -3,6 +3,7 @@ test-pipeline:
     testSource: null
   processor:
   - testPrepper: null
+  router: []
   sink:
   - testSink: null
   workers: 8

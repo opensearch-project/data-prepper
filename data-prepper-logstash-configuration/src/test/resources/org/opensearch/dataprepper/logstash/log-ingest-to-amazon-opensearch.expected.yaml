@@ -8,6 +8,7 @@ logstash-converted-pipeline:
         match:
           log:
             - "%{COMBINEDAPACHELOG}"
+  router: []
   sink:
     - opensearch:
         aws_sigv4: true

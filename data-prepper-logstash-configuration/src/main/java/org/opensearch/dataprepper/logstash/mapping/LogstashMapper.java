@@ -37,7 +37,7 @@ public class LogstashMapper {
             throw new LogstashMappingException("At least one logstash output plugin is required");
         }
 
-        return new PipelineModel(sourcePlugin, null, prepperPluginModels, sinkPluginModels, null, null);
+        return new PipelineModel(sourcePlugin, null, prepperPluginModels, null, sinkPluginModels, null, null);
     }
 
     private List<PluginModel> mapPluginSection(LogstashConfiguration logstashConfiguration, LogstashPluginType logstashPluginType) {

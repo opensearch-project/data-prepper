@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -64,6 +65,9 @@ public class PipelineModel {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private final PluginModel buffer;
 
+    @JsonProperty("router")
+    private List<PipelineConditionalRoute> router;
+
     @JsonProperty("sink")
     private final List<PluginModel> sinks;
 
@@ -79,6 +83,7 @@ public class PipelineModel {
             final PluginModel source,
             final PluginModel buffer,
             final List<PluginModel> processors,
+            final List<PipelineConditionalRoute> router,
             final List<PluginModel> sinks,
             final Integer workers,
             final Integer delay) {
@@ -90,6 +95,7 @@ public class PipelineModel {
         this.source = source;
         this.buffer = buffer;
         this.processors = processors;
+        this.router = router != null ? router : new ArrayList<>();
         this.sinks = sinks;
         this.workers = workers;
         this.readBatchDelay = delay;
@@ -111,10 +117,11 @@ public class PipelineModel {
             @JsonProperty("buffer") final PluginModel buffer,
             @Deprecated @JsonProperty("prepper") final List<PluginModel> preppers,
             @JsonProperty("processor") final List<PluginModel> processors,
+            @JsonProperty("router") final List<PipelineConditionalRoute> router,
             @JsonProperty("sink") final List<PluginModel> sinks,
             @JsonProperty("workers") final Integer workers,
             @JsonProperty("delay") final Integer delay) {
-        this(source, buffer, validateProcessor(preppers, processors), sinks, workers, delay);
+        this(source, buffer, validateProcessor(preppers, processors), router, sinks, workers, delay);
     }
 
     public PluginModel getSource() {
@@ -133,6 +140,10 @@ public class PipelineModel {
         return processors;
     }
 
+    public List<PipelineConditionalRoute> getRouter() {
+        return router;
+    }
+
     public List<PluginModel> getSinks() {
         return sinks;
     }
@@ -144,5 +155,4 @@ public class PipelineModel {
     public Integer getReadBatchDelay() {
         return readBatchDelay;
     }
-
 }
