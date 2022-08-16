@@ -28,13 +28,20 @@ public class CsvLogstashPluginAttributesMapper extends AbstractLogstashPluginAtt
     protected void mapCustomAttributes(final List<LogstashAttribute> logstashAttributes,
                                        final LogstashAttributesMappings logstashAttributesMappings,
                                        final Map<String, Object> pluginSettings) {
-        final Optional<LogstashAttribute> columnsAttribute = findLogstashAttribute(logstashAttributes,
-                LOGSTASH_COLUMNS_ATTRIBUTE_NAME);
+
 
         final Optional<LogstashAttribute> autogenerateColumnNamesAttribute = findLogstashAttribute(logstashAttributes,
                 LOGSTASH_AUTOGENERATE_COLUMN_NAMES_ATTRIBUTE_NAME);
+        Object autogenerateColumnNamesValue = autogenerateColumnNamesAttribute.map(attribute -> attribute.getAttributeValue().getValue())
+                .orElse(false);
+        boolean isAutogenerateColumnNames = autogenerateColumnNamesValue.equals(true);
 
-        if (logstashAttributeExistsAndIsTrue(autogenerateColumnNamesAttribute) && logstashColumnsDoesNotExistOrIsEmpty(columnsAttribute)) {
+        final Optional<LogstashAttribute> columnsAttribute = findLogstashAttribute(logstashAttributes,
+                LOGSTASH_COLUMNS_ATTRIBUTE_NAME);
+        Object columnsValue = columnsAttribute.map(attribute -> attribute.getAttributeValue().getValue()).orElse(false);
+        boolean columnsValueIsEmptyOrDoesNotExist = columnsValue.equals(false) || ((List<String>) columnsValue).isEmpty();
+
+        if (isAutogenerateColumnNames && columnsValueIsEmptyOrDoesNotExist) {
             pluginSettings.put(
                     DATA_PREPPER_COLUMN_NAMES,
                     new ArrayList<String>()
@@ -47,21 +54,6 @@ public class CsvLogstashPluginAttributesMapper extends AbstractLogstashPluginAtt
         return logstashAttributes.stream()
                 .filter(logstashAttribute -> logstashAttribute.getAttributeName().equals(logstashAttributeName))
                 .findFirst();
-    }
-
-    private boolean logstashColumnsDoesNotExistOrIsEmpty(final Optional<LogstashAttribute> columnsLogstashAttribute) {
-        if (!columnsLogstashAttribute.isPresent()) {
-            return true;
-        }
-        final Object columnsFromLogstashConfiguration = columnsLogstashAttribute.get().getAttributeValue().getValue();
-        if (columnsFromLogstashConfiguration instanceof List) {
-            return ((List<?>) columnsFromLogstashConfiguration).isEmpty();
-        }
-        return true;
-    }
-
-    private boolean logstashAttributeExistsAndIsTrue(final Optional<LogstashAttribute> optionalLogstashAttribute) {
-        return optionalLogstashAttribute.isPresent() && optionalLogstashAttribute.get().getAttributeValue().getValue().equals(true);
     }
 
     @Override
