@@ -66,7 +66,8 @@ public class PipelineModel {
     private final PluginModel buffer;
 
     @JsonProperty("router")
-    private List<PipelineConditionalRoute> router;
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private List<ConditionalRoute> router;
 
     @JsonProperty("sink")
     private final List<PluginModel> sinks;
@@ -83,7 +84,7 @@ public class PipelineModel {
             final PluginModel source,
             final PluginModel buffer,
             final List<PluginModel> processors,
-            final List<PipelineConditionalRoute> router,
+            final List<ConditionalRoute> router,
             final List<PluginModel> sinks,
             final Integer workers,
             final Integer delay) {
@@ -117,7 +118,7 @@ public class PipelineModel {
             @JsonProperty("buffer") final PluginModel buffer,
             @Deprecated @JsonProperty("prepper") final List<PluginModel> preppers,
             @JsonProperty("processor") final List<PluginModel> processors,
-            @JsonProperty("router") final List<PipelineConditionalRoute> router,
+            @JsonProperty("router") final List<ConditionalRoute> router,
             @JsonProperty("sink") final List<PluginModel> sinks,
             @JsonProperty("workers") final Integer workers,
             @JsonProperty("delay") final Integer delay) {
@@ -140,7 +141,7 @@ public class PipelineModel {
         return processors;
     }
 
-    public List<PipelineConditionalRoute> getRouter() {
+    public List<ConditionalRoute> getRouter() {
         return router;
     }
 

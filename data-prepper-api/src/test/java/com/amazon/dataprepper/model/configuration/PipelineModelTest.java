@@ -58,7 +58,6 @@ class PipelineModelTest {
         assertThat(originalPreppers.get(0).getPluginName(), is(equalTo(TEST_VALID_PREPPERS_PLUGIN_MODEL.getPluginName())));
         assertThat(originalPreppers.get(0).getPluginSettings(), is(equalTo(TEST_VALID_PREPPERS_PLUGIN_MODEL.getPluginSettings())));
         assertThat(pipelineModel.getRouter(), notNullValue());
-        assertThat(pipelineModel.getRouter(), notNullValue());
         assertThat(pipelineModel.getRouter().size(), equalTo(1));
         assertThat(originalSinks.get(0).getPluginName(), is(equalTo(TEST_VALID_SINKS_PLUGIN_MODEL.getPluginName())));
         assertThat(originalSinks.get(0).getPluginSettings(), is(equalTo(TEST_VALID_SINKS_PLUGIN_MODEL.getPluginSettings())));
@@ -84,8 +83,8 @@ class PipelineModelTest {
         return Collections.singletonList(new PluginModel("prepper", validPluginSettings()));
     }
 
-    private static List<PipelineConditionalRoute> validPipelineRouter() {
-        return Collections.singletonList(new PipelineConditionalRoute("router", "/a==b"));
+    private static List<ConditionalRoute> validPipelineRouter() {
+        return Collections.singletonList(new ConditionalRoute("router", "/a==b"));
     }
 
     static List<PluginModel> validSinksPluginModel() {

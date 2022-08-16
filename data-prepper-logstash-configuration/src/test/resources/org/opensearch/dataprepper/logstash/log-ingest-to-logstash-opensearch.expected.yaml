@@ -19,7 +19,6 @@ logstash-converted-pipeline:
             patterns:
               - "yyyy-MM-dd HH:mm:ss"
               - "yyyy MMM dd HH:mm"
-  router: []
   sink:
     - opensearch:
         hosts:

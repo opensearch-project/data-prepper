@@ -8,7 +8,6 @@ logstash-converted-pipeline:
         match:
           log:
             - "%{COMBINEDAPACHELOG}"
-  router: []
   sink:
     - opensearch:
         hosts:

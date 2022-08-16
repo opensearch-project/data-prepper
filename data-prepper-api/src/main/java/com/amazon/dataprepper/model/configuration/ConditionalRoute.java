@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 
 import java.io.IOException;
@@ -26,14 +27,14 @@ import java.util.Map;
  *
  * @since 2.0
  */
-@JsonSerialize(using = PipelineConditionalRoute.PipelineConditionalRouteSerializer.class)
-@JsonDeserialize(using = PipelineConditionalRoute.PipelineConditionalRouteDeserializer.class)
-public class PipelineConditionalRoute {
+@JsonSerialize(using = ConditionalRoute.ConditionalRouteSerializer.class)
+@JsonDeserialize(using = ConditionalRoute.ConditionalRouteDeserializer.class)
+public class ConditionalRoute {
     private final String name;
     private final String condition;
 
     @JsonCreator
-    public PipelineConditionalRoute(final String name, final String condition) {
+    public ConditionalRoute(final String name, final String condition) {
         this.name = name;
         this.condition = condition;
     }
@@ -58,38 +59,43 @@ public class PipelineConditionalRoute {
         return condition;
     }
 
-    static class PipelineConditionalRouteSerializer extends StdSerializer<PipelineConditionalRoute> {
+    static class ConditionalRouteSerializer extends StdSerializer<ConditionalRoute> {
 
-        protected PipelineConditionalRouteSerializer() {
-            super(PipelineConditionalRoute.class);
+        protected ConditionalRouteSerializer() {
+            super(ConditionalRoute.class);
         }
 
         @Override
-        public void serialize(final PipelineConditionalRoute value, final JsonGenerator gen, final SerializerProvider provider) throws IOException {
+        public void serialize(final ConditionalRoute value, final JsonGenerator gen, final SerializerProvider provider) throws IOException {
             gen.writeStartObject();
             gen.writeObjectField(value.name, value.condition);
             gen.writeEndObject();
         }
     }
 
-    static class PipelineConditionalRouteDeserializer extends StdDeserializer<PipelineConditionalRoute> {
+    static class ConditionalRouteDeserializer extends StdDeserializer<ConditionalRoute> {
 
-        protected PipelineConditionalRouteDeserializer() {
-            super(PipelineConditionalRoute.class);
+        protected ConditionalRouteDeserializer() {
+            super(ConditionalRoute.class);
         }
 
         @Override
-        public PipelineConditionalRoute deserialize(final JsonParser parser, final DeserializationContext context) throws IOException, JacksonException {
-            final JsonNode node = parser.getCodec().readTree(parser);
+        public ConditionalRoute deserialize(final JsonParser parser, final DeserializationContext context) throws IOException, JacksonException {
+            final JsonNode node = context.readTree(parser);
 
             final Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
             final Map.Entry<String, JsonNode> onlyField = fields.next();
 
             final String routeName = onlyField.getKey();
             final JsonNode value = onlyField.getValue();
+            if(!value.isTextual())
+                throw new InvalidFormatException(parser, "Route has a condition which is not a string.", value, String.class);
             final String condition = value.asText();
 
-            return new PipelineConditionalRoute(routeName, condition);
+            if(fields.hasNext())
+                throw new InvalidFormatException(parser, "Route has too many fields.", null, String.class);
+
+            return new ConditionalRoute(routeName, condition);
         }
     }
 }
