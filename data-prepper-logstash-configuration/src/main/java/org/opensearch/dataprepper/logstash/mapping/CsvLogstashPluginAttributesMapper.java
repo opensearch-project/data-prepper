@@ -32,14 +32,15 @@ public class CsvLogstashPluginAttributesMapper extends AbstractLogstashPluginAtt
 
         final Optional<LogstashAttribute> autogenerateColumnNamesAttribute = findLogstashAttribute(logstashAttributes,
                 LOGSTASH_AUTOGENERATE_COLUMN_NAMES_ATTRIBUTE_NAME);
-        Object autogenerateColumnNamesValue = autogenerateColumnNamesAttribute.map(attribute -> attribute.getAttributeValue().getValue())
+        final Object autogenerateColumnNamesValue = autogenerateColumnNamesAttribute.map(attribute -> attribute.getAttributeValue().getValue())
                 .orElse(false);
-        boolean isAutogenerateColumnNames = autogenerateColumnNamesValue.equals(true);
+        final boolean isAutogenerateColumnNames = autogenerateColumnNamesValue.equals(true);
 
         final Optional<LogstashAttribute> columnsAttribute = findLogstashAttribute(logstashAttributes,
                 LOGSTASH_COLUMNS_ATTRIBUTE_NAME);
-        Object columnsValue = columnsAttribute.map(attribute -> attribute.getAttributeValue().getValue()).orElse(false);
-        boolean columnsValueIsEmptyOrDoesNotExist = columnsValue.equals(false) || ((List<String>) columnsValue).isEmpty();
+        final List<String> columnsValue = (List<String>) columnsAttribute.map(attribute -> attribute.getAttributeValue().getValue())
+                .orElse(Collections.emptyList());
+        final boolean columnsValueIsEmptyOrDoesNotExist = columnsValue.isEmpty();
 
         if (isAutogenerateColumnNames && columnsValueIsEmptyOrDoesNotExist) {
             pluginSettings.put(
