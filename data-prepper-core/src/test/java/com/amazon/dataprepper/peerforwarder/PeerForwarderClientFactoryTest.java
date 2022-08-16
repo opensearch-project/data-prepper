@@ -53,7 +53,7 @@ class PeerForwarderClientFactoryTest {
     void testCreatePeerClientPool_should_return() {
         PeerForwarderClientFactory peerForwarderClientFactory = createObjectUnderTest();
 
-        PeerClientPool peerClientPool = peerForwarderClientFactory.createPeerClientPool();
+        PeerClientPool peerClientPool = peerForwarderClientFactory.setPeerClientPool();
 
         assertThat(peerClientPool, new IsInstanceOf(PeerClientPool.class));
     }

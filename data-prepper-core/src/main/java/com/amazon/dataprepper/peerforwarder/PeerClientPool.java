@@ -52,7 +52,11 @@ public class PeerClientPool {
     }
 
     private WebClient getHTTPClient(final String ipAddress) {
-        final ClientBuilder clientBuilder;
+        final String protocol = ssl ? HTTP : HTTPS;
+
+        ClientBuilder clientBuilder = Clients.builder(String.format("%s://%s:%s/", protocol, ipAddress, port))
+                .writeTimeout(Duration.ofSeconds(clientTimeoutSeconds));
+
         if (ssl) {
             final ClientFactory clientFactory = ClientFactory.builder()
                     .tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(
@@ -61,14 +65,9 @@ public class PeerClientPool {
                     ).tlsNoVerifyHosts(ipAddress)
                     .build();
 
-            clientBuilder = Clients.builder(String.format("%s://%s:%s/", HTTPS, ipAddress, port))
-                    .writeTimeout(Duration.ofSeconds(clientTimeoutSeconds))
-                    .factory(clientFactory);
+            clientBuilder = clientBuilder.factory(clientFactory);
         }
-        else {
-            clientBuilder = Clients.builder(String.format("%s://%s:%s/", HTTP, ipAddress, port))
-                    .writeTimeout(Duration.ofSeconds(clientTimeoutSeconds));
-        }
+
         return clientBuilder.build(WebClient.class);
     }
 }
