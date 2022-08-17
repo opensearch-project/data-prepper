@@ -38,4 +38,21 @@ class PeerForwarderAppConfigTest {
         assertThat(peerForwarderConfiguration, notNullValue());
     }
 
+    @Test
+    void peerClientPool_should_return_test() {
+        PeerClientPool peerClientPool = peerForwarderAppConfig.peerClientPool();
+
+        assertThat(peerClientPool, notNullValue());
+    }
+
+    @Test
+    void peerForwarderClientFactory_should_return_test() {
+        PeerForwarderClientFactory peerForwarderClientFactory = peerForwarderAppConfig.peerForwarderClientFactory(
+                mock(PeerForwarderConfiguration.class),
+                mock(PeerClientPool.class)
+        );
+
+        assertThat(peerForwarderClientFactory, notNullValue());
+    }
+
 }
