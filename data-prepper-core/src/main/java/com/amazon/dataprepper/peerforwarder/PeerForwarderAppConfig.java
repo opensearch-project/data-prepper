@@ -23,4 +23,17 @@ public class PeerForwarderAppConfig {
             return new PeerForwarderConfiguration();
     }
 
+    @Bean
+    public PeerClientPool peerClientPool() {
+        return new PeerClientPool();
+    }
+
+    @Bean
+    public PeerForwarderClientFactory peerForwarderClientFactory(
+            final PeerForwarderConfiguration peerForwarderConfiguration,
+            final PeerClientPool peerClientPool
+    ) {
+        return new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool);
+    }
+
 }

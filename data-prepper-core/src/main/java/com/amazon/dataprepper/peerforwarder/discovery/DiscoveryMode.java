@@ -29,7 +29,7 @@ public enum DiscoveryMode {
      * @param peerForwarderConfiguration The plugin settings
      * @return The new {@link PeerListProvider} for this discovery mode
      */
-    PeerListProvider create(PeerForwarderConfiguration peerForwarderConfiguration) {
+    public PeerListProvider create(PeerForwarderConfiguration peerForwarderConfiguration) {
         return creationFunction.apply(peerForwarderConfiguration);
     }
 }

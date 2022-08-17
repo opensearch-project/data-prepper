@@ -54,6 +54,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getMaxConnectionCount(), equalTo(500));
         assertThat(peerForwarderConfiguration.getMaxPendingRequests(), equalTo(1024));
         assertThat(peerForwarderConfiguration.isSsl(), equalTo(false));
+        assertThat(peerForwarderConfiguration.getAcmPrivateKeyPassword(), equalTo(null));
         assertThat(peerForwarderConfiguration.isUseAcmCertificateForSsl(), equalTo(false));
         assertThat(peerForwarderConfiguration.getDiscoveryMode(), equalTo(DiscoveryMode.STATIC));
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(48));
