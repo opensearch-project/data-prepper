@@ -61,7 +61,7 @@ public abstract class AbstractLogstashPluginAttributesMapper implements Logstash
                         }
                     }
                     else {
-                        LOG.warn("Attribute name {} is not found in mapping file.", logstashAttributeName);
+                        LOG.warn("Logstash Attribute {} is not supported in Data Prepper.", logstashAttributeName);
                     }
                 });
 
