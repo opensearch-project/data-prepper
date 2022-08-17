@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.logstash.model;
 
 /**
- * Types of attribute values in Logstash configuration
+ * Types of attribute values in Logstash configuration. To specify a boolean, use BAREWORD
  *
  * @since 1.2
  */
