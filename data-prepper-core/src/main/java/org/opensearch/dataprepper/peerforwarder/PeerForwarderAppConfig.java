@@ -36,4 +36,11 @@ public class PeerForwarderAppConfig {
         return new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool);
     }
 
+    @Bean
+    public PeerForwarder peerForwarder(
+            final PeerForwarderClientFactory peerForwarderClientFactory,
+            final ObjectMapper objectMapper
+            ) {
+        return new PeerForwarder(peerForwarderClientFactory, objectMapper);
+    }
 }

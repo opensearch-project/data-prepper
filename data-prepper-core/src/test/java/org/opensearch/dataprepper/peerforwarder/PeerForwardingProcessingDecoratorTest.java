@@ -28,13 +28,16 @@ class PeerForwardingProcessingDecoratorTest {
     @Mock
     Processor processorMock;
 
+    @Mock
+    PeerForwarder peerForwarder;
+
     @BeforeEach
     void setUp() {
         record = mock(Record.class);
     }
 
     private PeerForwardingProcessorDecorator createObjectUnderTest() {
-        return new PeerForwardingProcessorDecorator(processorMock);
+        return new PeerForwardingProcessorDecorator(processorMock, peerForwarder);
     }
 
     @Test

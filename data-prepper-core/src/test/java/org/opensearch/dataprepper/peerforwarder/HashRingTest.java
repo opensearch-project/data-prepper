@@ -16,7 +16,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -30,8 +29,8 @@ class HashRingTest {
             "10.10.0.2",
             "10.10.0.3");
 
-    private static final Set<String> IDENTIFICATION_KEY_SET_1 = Set.of("key1");
-    private static final Set<String> IDENTIFICATION_KEY_SET_2 = Set.of("key_2");
+    private static final List<String> IDENTIFICATION_KEY_SET_1 = List.of("key1");
+    private static final List<String> IDENTIFICATION_KEY_SET_2 = List.of("key_2");
 
     private static final int SINGLE_VIRTUAL_NODE_COUNT = 1;
     private static final int MULTIPLE_VIRTUAL_NODE_COUNT = 100;
