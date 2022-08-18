@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
-import com.amazon.dataprepper.plugins.prepper.peerforwarder.HashRing;
 import com.linecorp.armeria.client.Endpoint;
 import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
 import org.junit.Before;
@@ -13,6 +12,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.opensearch.dataprepper.peerforwarder.HashRing;
 
 import java.util.Arrays;
 import java.util.List;
