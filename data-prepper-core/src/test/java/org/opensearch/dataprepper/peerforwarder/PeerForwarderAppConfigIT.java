@@ -23,7 +23,6 @@ class PeerForwarderAppConfigIT {
         applicationContext.scan(PeerForwarderConfiguration.class.getPackageName());
         applicationContext.register(PeerForwarderAppConfig.class);
         applicationContext.register(InnerAppConfig.class);
-//        applicationContext.register(ObjectMapper.class);
         applicationContext.refresh();
 
         return applicationContext.getBean(PeerForwarderConfiguration.class);
