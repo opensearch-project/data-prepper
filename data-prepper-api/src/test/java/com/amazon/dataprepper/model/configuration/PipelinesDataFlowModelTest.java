@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -39,9 +40,9 @@ class PipelinesDataFlowModelTest {
     void testSerializing_PipelinesDataFlowModel_empty_Plugins_with_nonEmpty_delay_and_workers() throws JsonProcessingException {
         String pipelineName = "test-pipeline";
 
-        final PluginModel source = new PluginModel("testSource", null);
-        final List<PluginModel> preppers = Collections.singletonList(new PluginModel("testPrepper", null));
-        final List<PluginModel> sinks = Collections.singletonList(new PluginModel("testSink", null));
+        final PluginModel source = new PluginModel("testSource", (Map<String, Object>) null);
+        final List<PluginModel> preppers = Collections.singletonList(new PluginModel("testPrepper", (Map<String, Object>) null));
+        final List<PluginModel> sinks = Collections.singletonList(new PluginModel("testSink", (Map<String, Object>) null));
         final PipelineModel pipelineModel = new PipelineModel(source, null, preppers, null, sinks, 8, 50);
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(Collections.singletonMap(pipelineName, pipelineModel));
