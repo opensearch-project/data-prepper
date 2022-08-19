@@ -99,6 +99,9 @@ public class CsvCodec implements Codec {
     }
 
     private int extractNumberOfColumnsFromFirstLine(final String firstLine) {
+        if (Objects.isNull(firstLine)) {
+            return 0;
+        }
         int numberOfSeparators = 0;
         for (int charPointer = 0; charPointer < firstLine.length(); charPointer++) {
             if (firstLine.charAt(charPointer) == config.getDelimiter().charAt(0)) {
