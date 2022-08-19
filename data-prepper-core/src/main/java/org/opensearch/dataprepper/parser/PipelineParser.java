@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.parser;
 
 import com.amazon.dataprepper.model.annotations.SingleThread;
 import com.amazon.dataprepper.model.buffer.Buffer;
+import com.amazon.dataprepper.model.configuration.PipelinesDataFlowModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import com.amazon.dataprepper.model.plugin.NoPluginFoundException;
@@ -15,14 +16,13 @@ import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwardingProcessorDecorator;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.PipelineConnector;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,10 +59,15 @@ public class PipelineParser {
      */
     public Map<String, Pipeline> parseConfiguration() {
         try {
-            final Map<String, PipelineConfiguration> pipelineConfigurationMap = OBJECT_MAPPER.readValue(
-                    new File(pipelineConfigurationFileLocation),
-                    new TypeReference<Map<String, PipelineConfiguration>>() {
-                    });
+            final PipelinesDataFlowModel pipelinesDataFlowModel = OBJECT_MAPPER.readValue(new File(pipelineConfigurationFileLocation),
+                    PipelinesDataFlowModel.class);
+
+            final Map<String, PipelineConfiguration> pipelineConfigurationMap = pipelinesDataFlowModel.getPipelines().entrySet()
+                    .stream()
+                    .collect(Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry -> new PipelineConfiguration(entry.getValue())
+                    ));
             final List<String> allPipelineNames = PipelineConfigurationValidator.validateAndGetPipelineNames(pipelineConfigurationMap);
 
             // LinkedHashMap to preserve insertion order
