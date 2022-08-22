@@ -21,24 +21,23 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
 
     private final Processor innerProcessor;
     private final PeerForwarder peerForwarder;
+    private Set<String> identificationKeys;
 
     public PeerForwardingProcessorDecorator(final Processor innerProcessor,
                                             final PeerForwarder peerForwarder
                                             ) {
         this.innerProcessor = innerProcessor;
         this.peerForwarder = peerForwarder;
+
+        if (innerProcessor instanceof RequiresPeerForwarding) {
+            identificationKeys = ((RequiresPeerForwarding) innerProcessor).getIdentificationKeys();
+        }
         LOG.info("Peer Forwarder not implemented yet, processing events locally.");
     }
 
     @Override
     public Collection<Record<Event>> execute(final Collection<Record<Event>> records) {
-        Set<String> identificationKeys = null;
-
-        if (innerProcessor instanceof RequiresPeerForwarding) {
-            identificationKeys = ((RequiresPeerForwarding) innerProcessor).getIdentificationKeys();
-        }
-
-        final List<Record<Event>> recordsToProcessLocally = peerForwarder.processRecords(records, identificationKeys);
+        final List<Record<Event>> recordsToProcessLocally = peerForwarder.forwardRecords(records, identificationKeys);
 
         return innerProcessor.execute(recordsToProcessLocally);
     }

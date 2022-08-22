@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.peerforwarder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
+import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -38,10 +39,14 @@ public class PeerForwarderAppConfig {
     }
 
     @Bean
-    public PeerForwarder peerForwarder(
-            final PeerForwarderClientFactory peerForwarderClientFactory,
-            final ObjectMapper objectMapper
-            ) {
-        return new PeerForwarder(peerForwarderClientFactory, objectMapper);
+    public PeerForwarderClient peerForwarderClient(final ObjectMapper objectMapper) {
+        return new PeerForwarderClient(objectMapper);
     }
+
+    @Bean
+    public PeerForwarder peerForwarder(final PeerForwarderClientFactory peerForwarderClientFactory,
+                                       final PeerForwarderClient peerForwarderSerializer) {
+        return new PeerForwarder(peerForwarderClientFactory, peerForwarderSerializer);
+    }
+
 }
