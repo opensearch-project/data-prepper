@@ -223,11 +223,11 @@ public class Pipeline {
      * @param records records that needs to published to each sink
      * @return List of Future, each future for each sink
      */
-    public List<Future<Void>> publishToSinks(final Collection<Record> records) {
+    List<Future<Void>> publishToSinks(final Collection<Record> records) {
         final int sinksSize = sinks.size();
-        List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
+        final List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
         for (int i = 0; i < sinksSize; i++) {
-            int finalI = i;
+            final int finalI = i;
             sinkFutures.add(sinkExecutorService.submit(() -> sinks.get(finalI).output(records), null));
         }
         return sinkFutures;
