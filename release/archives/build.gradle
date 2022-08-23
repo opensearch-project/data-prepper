@@ -126,8 +126,10 @@ subprojects {
 
 CopySpec archiveToTar() {
     return copySpec {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         into('lib') {
-            from project(':data-prepper-core').jar.archivePath
+            from project(':data-prepper-main').jar.archivePath
+            from project(':data-prepper-main').configurations.runtimeClasspath
             fileMode 0755
         }
         into('examples') {
