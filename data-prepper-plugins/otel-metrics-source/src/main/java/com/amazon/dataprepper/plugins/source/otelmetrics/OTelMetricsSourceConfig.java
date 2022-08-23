@@ -37,6 +37,7 @@ public class OTelMetricsSourceConfig {
     static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
     static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
     private static final String S3_PREFIX = "s3://";
+    static final String UNAUTHENTICATED_HEALTH_CHECK = "unauthenticated_health_check";
 
     @JsonProperty(REQUEST_TIMEOUT)
     private int requestTimeoutInMillis = DEFAULT_REQUEST_TIMEOUT_MS;
@@ -87,6 +88,9 @@ public class OTelMetricsSourceConfig {
 
     @JsonProperty("authentication")
     private PluginModel authentication;
+
+    @JsonProperty(UNAUTHENTICATED_HEALTH_CHECK)
+    private boolean unauthenticatedHealthCheck = false;
 
     public void validateAndInitializeCertAndKeyFileInS3() {
         boolean certAndKeyFileInS3 = false;
@@ -188,5 +192,9 @@ public class OTelMetricsSourceConfig {
     }
 
     public PluginModel getAuthentication() { return authentication; }
+
+    public boolean isUnauthenticatedHealthCheck() {
+        return unauthenticatedHealthCheck;
+    }
 }
 
