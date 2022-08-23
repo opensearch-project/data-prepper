@@ -12,13 +12,14 @@ public class ReflectivelySetField {
 
     /**
      * Reflectively set the field of a configuration object.
-     * @param configurationClass
-     * @param configurationObject
-     * @param fieldName
-     * @param value
-     * @param <T>
-     * @throws NoSuchFieldException
-     * @throws IllegalAccessException
+     * @param configurationClass The class of the configuration object.
+     * @param configurationObject The configuration object itself (for tests you might need to specify
+     *                            "NameOfTestClass.this.configurationObject"
+     * @param fieldName Field to change
+     * @param value Value that field is set to
+     *
+     * @throws NoSuchFieldException When field does not exist
+     * @throws IllegalAccessException When field cannot be accessed
      */
     public static <T> void setField(final Class<T> configurationClass, final Object configurationObject,
                                        final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {
