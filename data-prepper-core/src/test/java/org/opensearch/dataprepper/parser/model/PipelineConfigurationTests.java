@@ -5,36 +5,53 @@
 
 package org.opensearch.dataprepper.parser.model;
 
+import com.amazon.dataprepper.model.configuration.PipelineModel;
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
-import org.opensearch.dataprepper.TestDataProvider;
 import org.hamcrest.CoreMatchers;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.TestDataProvider;
 
 import java.util.ArrayList;
-import java.util.InputMismatchException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-public class PipelineConfigurationTests {
+class PipelineConfigurationTests {
+
+    private PluginModel source;
+    private List<PluginModel> processors;
+    private List<PluginModel> sinks;
+
+    @BeforeEach
+    void setUp() {
+        source = TestDataProvider.validSingleConfiguration();
+        processors = TestDataProvider.validMultipleConfigurationOfSizeOne();
+        sinks = TestDataProvider.validMultipleConfiguration();
+    }
 
     @Test
-    public void testPipelineConfigurationCreation() {
-        final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(TestDataProvider.validSingleConfiguration(),
-                null,
-                TestDataProvider.validMultipleConfigurationOfSizeOne(),
-                TestDataProvider.validMultipleConfiguration(),
-                TestDataProvider.TEST_WORKERS, TestDataProvider.TEST_DELAY);
+    void testPipelineConfigurationCreation() {
+        final PipelineModel pipelineModel = mock(PipelineModel.class);
+        when(pipelineModel.getSource()).thenReturn(source);
+        when(pipelineModel.getProcessors()).thenReturn(processors);
+        when(pipelineModel.getPreppers()).thenReturn(null);
+        when(pipelineModel.getSinks()).thenReturn(sinks);
+        when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
+        final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(pipelineModel);
+
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
         final PluginSetting actualBufferPluginSetting = pipelineConfiguration.getBufferPluginSetting();
         final List<PluginSetting> actualProcesserPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
@@ -67,78 +84,16 @@ public class PipelineConfigurationTests {
     }
 
     @Test
-    public void testExceptionThrownWhenPrepperAndProcessorAreConfigured() {
-        Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(
-                TestDataProvider.validSingleConfiguration(),
-                null,
-                TestDataProvider.validMultipleConfigurationOfSizeOne(),
-                TestDataProvider.validMultipleConfigurationOfSizeOne(),
-                TestDataProvider.validMultipleConfiguration(),
-                TestDataProvider.TEST_WORKERS,
-                TestDataProvider.TEST_DELAY));
-
-        final String expected = "Pipeline configuration cannot specify a prepper and processor configuration. It is " +
-                "recommended to move prepper configurations to the processor section to maintain compatibility with " +
-                "DataPrepper version 1.2 and above.";
-
-        assertTrue(exception.getMessage().contains(expected));
-    }
-
-    private void assertEqualProcessorPluginSettings(
-            final List<Map.Entry<String, Map<String, Object>>> expectedPluginSettings,
-            final List<PluginSetting> actualPluginSettings) {
-        assertEquals(expectedPluginSettings.size(), actualPluginSettings.size());
-
-        expectedPluginSettings.forEach(expectedSetting -> {
-            final PluginSetting actualSetting = actualPluginSettings.stream()
-                    .filter(plugin -> expectedSetting.getKey().equals(plugin.getName()))
-                    .findFirst()
-                    .orElseThrow(() -> new InputMismatchException("Expected setting named " + expectedSetting.getKey()));
-
-            final Map<String, Object> expectedSettingValue = expectedSetting.getValue();
-            final Set<String> expectedKeySet = expectedSettingValue.keySet();
-            final Map<String, Object> settings = actualSetting.getSettings();
-            assertEquals(expectedKeySet.size(), settings.size());
-
-            expectedKeySet.forEach(key -> {
-                assertEquals(expectedSettingValue.get(key), settings.get(key));
-            });
-        });
-    }
-
-    @Test
-    public void testPipelineConfigurationWithPrepperOrProcessorAreEquivalent() {
-        Map.Entry<String, Map<String, Object>> sourcePluginSettings = TestDataProvider.validSingleConfiguration();
-        List<Map.Entry<String, Map<String, Object>>> expectedPluginSettings = TestDataProvider.validMultipleConfigurationOfSizeOne();
-
-        PipelineConfiguration prepperConfig = new PipelineConfiguration(
-                sourcePluginSettings,
-                null,
-                expectedPluginSettings,
-                null,
-                TestDataProvider.validMultipleConfiguration(),
-                TestDataProvider.TEST_WORKERS,
-                TestDataProvider.TEST_DELAY);
-        PipelineConfiguration processorConfig = new PipelineConfiguration(
-                sourcePluginSettings,
-                null,
-                null,
-                expectedPluginSettings,
-                TestDataProvider.validMultipleConfiguration(),
-                TestDataProvider.TEST_WORKERS,
-                TestDataProvider.TEST_DELAY);
-
-        assertEqualProcessorPluginSettings(expectedPluginSettings, prepperConfig.getProcessorPluginSettings());
-        assertEqualProcessorPluginSettings(expectedPluginSettings, processorConfig.getProcessorPluginSettings());
-    }
-
-    @Test
-    public void testOnlySourceAndSink() {
-        final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(TestDataProvider.validSingleConfiguration(),
-                null,
-                null,
-                TestDataProvider.validMultipleConfigurationOfSizeOne(),
-                null, null);
+    void testOnlySourceAndSink() {
+        sinks = TestDataProvider.validMultipleConfigurationOfSizeOne();
+        final PipelineModel pipelineModel = mock(PipelineModel.class);
+        when(pipelineModel.getSource()).thenReturn(source);
+        when(pipelineModel.getSinks()).thenReturn(sinks);
+        when(pipelineModel.getProcessors()).thenReturn(null);
+        when(pipelineModel.getPreppers()).thenReturn(null);
+        when(pipelineModel.getWorkers()).thenReturn(null);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(null);
+        final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(pipelineModel);
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
         final PluginSetting actualBufferPluginSetting = pipelineConfiguration.getBufferPluginSetting();
         final List<PluginSetting> actualProcessorPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
@@ -155,108 +110,102 @@ public class PipelineConfigurationTests {
         assertThat(pipelineConfiguration.getReadBatchDelay(), CoreMatchers.is(TestDataProvider.DEFAULT_READ_BATCH_DELAY));
     }
 
-    @Test //not using expected to assert the message
-    public void testNoSourceConfiguration() {
-        try {
-            new PipelineConfiguration(
-                    null,
-                    TestDataProvider.validSingleConfiguration(),
-                    TestDataProvider.validMultipleConfiguration(),
-                    TestDataProvider.validMultipleConfiguration(),
-                    TestDataProvider.TEST_WORKERS, TestDataProvider.TEST_DELAY);
-        } catch (IllegalArgumentException ex) {
-            assertThat(ex.getMessage(), is("Invalid configuration, source is a required component"));
-        }
+    @Test
+    void testNoSourceConfiguration() {
+        final PipelineModel pipelineModel = mock(PipelineModel.class);
+        when(pipelineModel.getProcessors()).thenReturn(processors);
+        when(pipelineModel.getPreppers()).thenReturn(null);
+        when(pipelineModel.getSinks()).thenReturn(sinks);
+        when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
+
+        final IllegalArgumentException actual = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(pipelineModel));
+
+        assertThat(actual.getMessage(), equalTo("Invalid configuration, source is a required component"));
     }
 
     @Test
-    public void testNoProcessorAndNoPrepperConfiguration() {
-        final PipelineConfiguration nullProcessorConfiguration = new PipelineConfiguration(
-                TestDataProvider.validSingleConfiguration(),
-                TestDataProvider.validSingleConfiguration(),
-                null,
-                TestDataProvider.validMultipleConfiguration(),
-                TestDataProvider.TEST_WORKERS, TestDataProvider.TEST_DELAY);
-        assertThat(nullProcessorConfiguration.getProcessorPluginSettings(), isA(Iterable.class));
-        assertThat(nullProcessorConfiguration.getProcessorPluginSettings().size(), is(0));
-
-        final PipelineConfiguration emptyProcessorsConfiguration = new PipelineConfiguration(
-                TestDataProvider.validSingleConfiguration(),
-                TestDataProvider.validSingleConfiguration(),
-                new ArrayList<>(),
-                TestDataProvider.validMultipleConfiguration(),
-                TestDataProvider.TEST_WORKERS, TestDataProvider.TEST_DELAY);
-        assertThat(emptyProcessorsConfiguration.getProcessorPluginSettings(), isA(Iterable.class));
-        assertThat(emptyProcessorsConfiguration.getProcessorPluginSettings().size(), is(0));
-    }
-
-    @Test //not using expected to assert the message
-    public void testNoSinkConfiguration() {
-        try {
-            new PipelineConfiguration(
-                    TestDataProvider.validSingleConfiguration(),
-                    TestDataProvider.validSingleConfiguration(),
-                    TestDataProvider.validMultipleConfiguration(),
-                    null,
-                    TestDataProvider.TEST_WORKERS, TestDataProvider.TEST_DELAY);
-        } catch (IllegalArgumentException ex) {
-            assertThat(ex.getMessage(), is("Invalid configuration, at least one sink is required"));
-        }
-
-        try {
-            new PipelineConfiguration(
-                    TestDataProvider.validSingleConfiguration(),
-                    TestDataProvider.validSingleConfiguration(),
-                    TestDataProvider.validMultipleConfiguration(),
-                    new ArrayList<>(),
-                    TestDataProvider.TEST_WORKERS, TestDataProvider.TEST_DELAY);
-        } catch (IllegalArgumentException ex) {
-            assertThat(ex.getMessage(), is("Invalid configuration, at least one sink is required"));
-        }
-    }
-
-    @Test //not using expected to assert the message
-    public void testInvalidWorkersConfiguration() {
-        try {
-            new PipelineConfiguration(
-                    TestDataProvider.validSingleConfiguration(),
-                    TestDataProvider.validSingleConfiguration(),
-                    TestDataProvider.validMultipleConfiguration(),
-                    TestDataProvider.validMultipleConfiguration(),
-                    0, TestDataProvider.TEST_DELAY);
-        } catch (IllegalArgumentException ex) {
-            assertThat(ex.getMessage(), is("Invalid configuration, workers cannot be 0"));
-        }
-    }
-
-    @Test //not using expected to assert the message
-    public void testInvalidDelayConfiguration() {
-        try {
-            new PipelineConfiguration(
-                    TestDataProvider.validSingleConfiguration(),
-                    TestDataProvider.validSingleConfiguration(),
-                    null,
-                    TestDataProvider.validMultipleConfiguration(),
-                    TestDataProvider.validMultipleConfiguration(),
-                    TestDataProvider.TEST_WORKERS, 0);
-        } catch (IllegalArgumentException ex) {
-            assertThat(ex.getMessage(), is("Invalid configuration, delay cannot be 0"));
-        }
+    void testNullProcessorAndNoPrepperConfiguration() {
+        final PipelineModel pipelineModel = mock(PipelineModel.class);
+        when(pipelineModel.getSource()).thenReturn(source);
+        when(pipelineModel.getProcessors()).thenReturn(null);
+        when(pipelineModel.getPreppers()).thenReturn(null);
+        when(pipelineModel.getSinks()).thenReturn(sinks);
+        when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
+        final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(pipelineModel);
+        assertThat(pipelineConfiguration.getProcessorPluginSettings(), isA(Iterable.class));
+        assertThat(pipelineConfiguration.getProcessorPluginSettings().size(), is(0));
     }
 
     @Test
-    public void testPipelineConfigurationWithoutPluginSettingAttributes() throws Exception {
-        final Map<String, PipelineConfiguration> pipelineConfigurationMap = TestDataProvider.readConfigFile(
-                TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
-        assertThat(pipelineConfigurationMap.size(), is(equalTo(1)));
-        final PipelineConfiguration actualPipelineConfiguration = pipelineConfigurationMap.get(TestDataProvider.TEST_PIPELINE_NAME);
-        assertThat(actualPipelineConfiguration, notNullValue());
-        assertThat(actualPipelineConfiguration.getSourcePluginSetting(), notNullValue());
-        assertThat(actualPipelineConfiguration.getBufferPluginSetting(), notNullValue());
-        assertThat(actualPipelineConfiguration.getProcessorPluginSettings(), notNullValue());
-        assertThat(actualPipelineConfiguration.getProcessorPluginSettings().size(), is(equalTo(0)));
-        assertThat(actualPipelineConfiguration.getSinkPluginSettings(), notNullValue());
-        assertThat(actualPipelineConfiguration.getSinkPluginSettings().size(), is(equalTo(1)));
+    void testEmptyProcessorAndNoPrepperConfiguration() {
+        final PipelineModel pipelineModel = mock(PipelineModel.class);
+        when(pipelineModel.getSource()).thenReturn(source);
+        when(pipelineModel.getProcessors()).thenReturn(new ArrayList<>());
+        when(pipelineModel.getPreppers()).thenReturn(null);
+        when(pipelineModel.getSinks()).thenReturn(sinks);
+        when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
+        final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(pipelineModel);
+        assertThat(pipelineConfiguration.getProcessorPluginSettings(), isA(Iterable.class));
+        assertThat(pipelineConfiguration.getProcessorPluginSettings().size(), is(0));
+    }
+
+    @Test
+    void testNullSinkConfiguration() {
+        final PipelineModel pipelineModel = mock(PipelineModel.class);
+        when(pipelineModel.getSource()).thenReturn(source);
+        when(pipelineModel.getProcessors()).thenReturn(processors);
+        when(pipelineModel.getPreppers()).thenReturn(null);
+        when(pipelineModel.getSinks()).thenReturn(Collections.emptyList());
+        when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
+
+        final IllegalArgumentException actual = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(pipelineModel));
+
+        assertThat(actual.getMessage(), equalTo("Invalid configuration, at least one sink is required"));
+    }
+
+    @Test
+    void testEmptySinkConfiguration() {
+        final PipelineModel pipelineModel = mock(PipelineModel.class);
+        when(pipelineModel.getSource()).thenReturn(source);
+        when(pipelineModel.getProcessors()).thenReturn(processors);
+        when(pipelineModel.getPreppers()).thenReturn(null);
+        when(pipelineModel.getSinks()).thenReturn(new ArrayList<>());
+        when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
+
+        final IllegalArgumentException actual = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(pipelineModel));
+
+        assertThat(actual.getMessage(), equalTo("Invalid configuration, at least one sink is required"));
+    }
+
+    @Test
+    void testInvalidWorkersConfiguration() {
+        final PipelineModel pipelineModel = mock(PipelineModel.class);
+        when(pipelineModel.getSource()).thenReturn(source);
+        when(pipelineModel.getProcessors()).thenReturn(processors);
+        when(pipelineModel.getPreppers()).thenReturn(null);
+        when(pipelineModel.getSinks()).thenReturn(sinks);
+        when(pipelineModel.getWorkers()).thenReturn(0);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
+        final IllegalArgumentException actual = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(pipelineModel));
+        assertThat(actual.getMessage(), equalTo("Invalid configuration, workers cannot be 0"));
+    }
+
+    @Test
+    void testInvalidDelayConfiguration() {
+        final PipelineModel pipelineModel = mock(PipelineModel.class);
+        when(pipelineModel.getSource()).thenReturn(source);
+        when(pipelineModel.getProcessors()).thenReturn(processors);
+        when(pipelineModel.getPreppers()).thenReturn(null);
+        when(pipelineModel.getSinks()).thenReturn(sinks);
+        when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(0);
+        final IllegalArgumentException actual = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(pipelineModel));
+        assertThat(actual.getMessage(), equalTo("Invalid configuration, delay cannot be 0"));
     }
 
     private void comparePluginSettings(final PluginSetting actual, final PluginSetting expected) {
