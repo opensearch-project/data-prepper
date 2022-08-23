@@ -7,8 +7,8 @@ package com.amazon.dataprepper.plugins.prepper.oteltrace;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.prepper.AbstractPrepper;
-import com.amazon.dataprepper.model.prepper.Prepper;
+import com.amazon.dataprepper.model.processor.AbstractProcessor;
+import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.OTelProtoHelper;
 import com.amazon.dataprepper.plugins.prepper.oteltrace.model.RawSpan;
@@ -39,8 +39,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 
-@DataPrepperPlugin(name = "otel_trace_raw_prepper", pluginType = Prepper.class)
-public class OTelTraceRawPrepper extends AbstractPrepper<Record<ExportTraceServiceRequest>, Record<String>> {
+@DataPrepperPlugin(name = "otel_trace_raw_prepper", pluginType = Processor.class)
+public class OTelTraceRawPrepper extends AbstractProcessor<Record<ExportTraceServiceRequest>, Record<String>> {
     private static final long SEC_TO_MILLIS = 1_000L;
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceRawPrepper.class);
 
