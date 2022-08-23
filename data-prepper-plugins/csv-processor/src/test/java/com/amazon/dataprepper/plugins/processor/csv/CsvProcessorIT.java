@@ -13,17 +13,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
+import static com.amazon.dataprepper.test.helper.ReflectivelySetField.setField;
+
 public class CsvProcessorIT {
     private static final String PLUGIN_NAME = "csv";
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
-
+    private static final String DELIMITER = " ";
     private CsvProcessorConfig csvProcessorConfig;
     private CsvProcessor csvProcessor;
     private VpcFlowLogTypeGenerator vpcFlowLogTypeGenerator;
@@ -32,7 +33,7 @@ public class CsvProcessorIT {
     void setup() {
         csvProcessorConfig = new CsvProcessorConfig();
         try {
-            reflectivelySetField(csvProcessorConfig, "delimiter", " ");
+            setField(CsvProcessorConfig.class, CsvProcessorIT.this.csvProcessorConfig, "delimiter", DELIMITER);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
@@ -71,7 +72,7 @@ public class CsvProcessorIT {
      * @return
      */
     private boolean eventHasKnownLogSnippet(final Event event, final String knownLogSnippet) {
-        final String[] logSplitOnSpace = knownLogSnippet.split(" ");
+        final String[] logSplitOnSpace = knownLogSnippet.split(DELIMITER);
         for (int columnIndex = 0; columnIndex < logSplitOnSpace.length; columnIndex++) {
             final String field = logSplitOnSpace[columnIndex];
             final String expectedColumnName = "column" + (columnIndex+1);
@@ -83,16 +84,5 @@ public class CsvProcessorIT {
             }
         }
         return true;
-    }
-
-    private void reflectivelySetField(final CsvProcessorConfig csvProcessorConfig, final String fieldName, final Object value)
-            throws NoSuchFieldException, IllegalAccessException {
-        final Field field = CsvProcessorConfig.class.getDeclaredField(fieldName);
-        try {
-            field.setAccessible(true);
-            field.set(CsvProcessorIT.this.csvProcessorConfig, value);
-        } finally {
-            field.setAccessible(false);
-        }
     }
 }

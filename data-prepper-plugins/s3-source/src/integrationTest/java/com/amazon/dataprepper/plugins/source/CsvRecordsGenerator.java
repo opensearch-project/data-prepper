@@ -12,12 +12,13 @@ import com.amazon.dataprepper.plugins.source.codec.CsvCodecConfig;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.lang.reflect.Field;
 import java.time.format.DateTimeFormatter;
 import java.util.Random;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+
+import static com.amazon.dataprepper.test.helper.ReflectivelySetField.setField;
 
 /**
  * Generates comma-separated CSV records where each record is on a single line.
@@ -51,7 +52,7 @@ class CsvRecordsGenerator implements RecordsGenerator {
     private CsvCodecConfig csvCodecConfigWithAutogenerateHeader() {
         CsvCodecConfig csvCodecConfig = new CsvCodecConfig();
         try {
-            reflectivelySetField(csvCodecConfig, "detectHeader", false);
+            setField(CsvCodecConfig.class, csvCodecConfig, "detectHeader", false);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
@@ -87,17 +88,6 @@ class CsvRecordsGenerator implements RecordsGenerator {
     private void writeLine(final PrintWriter printWriter) {
         final String line = KNOWN_CLOUDFRONT_ACCESS_SNIPPET + "," + random.nextInt(3000);
         printWriter.write(line + "\n");
-    }
-
-    private void reflectivelySetField(final CsvCodecConfig csvCodecConfig, final String fieldName, final Object value)
-            throws NoSuchFieldException, IllegalAccessException {
-        final Field field = CsvCodecConfig.class.getDeclaredField(fieldName);
-        try {
-            field.setAccessible(true);
-            field.set(csvCodecConfig, value);
-        } finally {
-            field.setAccessible(false);
-        }
     }
 
     @Override

@@ -13,6 +13,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     testImplementation project(':data-prepper-plugins:s3-source')
     testImplementation project(':data-prepper-plugins:log-generator-source')
+    testImplementation project(':data-prepper-test-common')
 }
 
 test {

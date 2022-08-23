@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.plugins.source.loggenerator;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -17,7 +18,7 @@ public class CsvLogFakerTest {
         CsvLogFaker objectUnderTest = new CsvLogFaker();
 
         final String log = objectUnderTest.generateRandomStandardVPCFlowLog();
-        final int numberOfSpaces = log.length() - log.replace(" ","").length(); // count instances of space (" ")
+        final int numberOfSpaces = StringUtils.countMatches(log, " ");
         final int expectedNumberOfSpaces = 12;
         assertThat(numberOfSpaces, equalTo(expectedNumberOfSpaces));
     }
