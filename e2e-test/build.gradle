@@ -34,16 +34,17 @@ subprojects {
         integrationTestRuntime.extendsFrom testRuntime
     }
 
-    def DATA_PREPPER_CORE_JAR = project(':data-prepper-core').jar
-
     task copyDataPrepperJar(type: Copy) {
-        dependsOn DATA_PREPPER_CORE_JAR
-        from("${DATA_PREPPER_CORE_JAR.archivePath}")
-        into "${project.buildDir}/bin"
+        dependsOn project(':data-prepper-main').jar
+        dependsOn project(':data-prepper-plugins').jar
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        from project(':data-prepper-main').jar.archivePath
+        from project(':data-prepper-main').configurations.runtimeClasspath
+        into("${project.buildDir}/bin/data-prepper")
     }
 
     ext {
-        dataPrepperJarFilepath = "${project.buildDir.name}/bin/${DATA_PREPPER_CORE_JAR.archiveName}"
+        dataPrepperJarFilepath = "${project.buildDir.name}/bin/data-prepper/"
         targetJavaVersion = project.hasProperty('endToEndJavaVersion') ? project.getProperty('endToEndJavaVersion') : '11'
         dataPrepperBaseImage = "eclipse-temurin:${targetJavaVersion}-jre-alpine"
     }

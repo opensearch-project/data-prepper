@@ -14,7 +14,7 @@ sourceSets {
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-expression')
-    implementation project(':data-prepper-plugins')
+    implementation project(':data-prepper-plugins:blocking-buffer')
     implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-logstash-configuration')
     testImplementation project(':data-prepper-plugins:common').sourceSets.test.output
@@ -48,32 +48,6 @@ dependencies {
     implementation 'software.amazon.awssdk:servicediscovery'
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
     testImplementation 'org.apache.commons:commons-lang3:3.12.0'
-}
-
-jar {
-    zip64 = true
-    dependsOn configurations.runtimeClasspath
-    manifest {
-        attributes('Implementation-Title': project.name,
-                'Implementation-Version': project.version,
-                'Main-Class': 'org.opensearch.dataprepper.DataPrepperExecute')
-    }
-    from {
-        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-        duplicatesStrategy(DuplicatesStrategy.INCLUDE)
-    }
-    from {
-        configurations.runtimeClasspath.findAll { it.name.endsWith('jar') }.collect { zipTree(it) }
-    }
-    exclude 'META-INF/*.RSA'
-    exclude 'META-INF/*.SF'
-    exclude 'META-INF/*.DSA'
-    exclude 'META-INF/services/com.linecorp.armeria.client.ClientFactoryProvider'
-
-    from ('src/main/resources/META-INF/services') {
-        into 'META-INF/services'
-    }
-
 }
 
 jacocoTestCoverageVerification {

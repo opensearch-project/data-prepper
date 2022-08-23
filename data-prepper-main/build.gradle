@@ -1,0 +1,29 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+sourceSets {
+    main {
+        resources {
+            srcDirs += "../shared-config"
+        }
+    }
+}
+
+dependencies {
+    implementation project(':data-prepper-core')
+    implementation project(':data-prepper-plugins')
+    implementation project(':data-prepper-logstash-configuration')
+    implementation('org.springframework:spring-context:5.3.22') {
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+}
+
+jar {
+    manifest {
+        attributes('Implementation-Title': project.name,
+                'Implementation-Version': project.version,
+                'Main-Class': 'org.opensearch.dataprepper.DataPrepperExecute')
+    }
+}
