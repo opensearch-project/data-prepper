@@ -11,12 +11,13 @@ import jakarta.validation.constraints.NotNull;
 
 public class ParseJsonProcessorConfig {
     static final String DEFAULT_SOURCE = "message";
+
     @NotEmpty
     @NotNull
     @JsonProperty("source")
     private String source = DEFAULT_SOURCE;
 
-    @JsonProperty("destinatino")
+    @JsonProperty("destination")
     private String destination;
 
     /**

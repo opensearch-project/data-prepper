@@ -1,4 +1,3 @@
-
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
@@ -27,16 +26,15 @@ import java.util.Objects;
 @DataPrepperPlugin(name = "parse_json", pluginType = Processor.class, pluginConfigurationType = ParseJsonProcessorConfig.class)
 public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(ParseJsonProcessor.class);
-    private ParseJsonProcessorConfig config;
+
     private final String source;
     private final String destination;
     @DataPrepperPluginConstructor
     public ParseJsonProcessor(final PluginMetrics pluginMetrics, final ParseJsonProcessorConfig parseJsonProcessorConfig) {
         super(pluginMetrics);
 
-        this.config = parseJsonProcessorConfig;
-        source = config.getSource();
-        destination = config.getDestination();
+        source = parseJsonProcessorConfig.getSource();
+        destination = parseJsonProcessorConfig.getDestination();
     }
 
     @Override
@@ -48,7 +46,8 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
             final Event event = record.getData();
             final String message = event.get(source, String.class);
             try {
-                final Map<String, Object> parsedJson = objectMapper.readValue(message, new TypeReference<HashMap<String, Object>>(){});
+                TypeReference<HashMap<String, Object>> hashMapTypeReference = new TypeReference<HashMap<String, Object>>() {};
+                final Map<String, Object> parsedJson = objectMapper.readValue(message, hashMapTypeReference);
 
                 if (doWriteToRoot) {
                     writeToRoot(event, parsedJson);

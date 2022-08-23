@@ -58,7 +58,7 @@ class ParseJsonProcessorTest {
         final String destination = "destination_key";
         when(processorConfig.getSource()).thenReturn(source);
         when(processorConfig.getDestination()).thenReturn(destination);
-        parseJsonProcessor = createObjectUnderTest(); // need to recreate to pick up different config options
+        parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
 
         final Map<String, Object> data = Collections.singletonMap("key", "value");
         final String serializedMessage = convertMapToJSONString(data);
@@ -74,7 +74,7 @@ class ParseJsonProcessorTest {
     void test_when_dataFieldEqualToRootField_then_overwritesOriginalFields() {
         final String source = "root_source";
         when(processorConfig.getSource()).thenReturn(source);
-        parseJsonProcessor = createObjectUnderTest(); // need to recreate to pick up different config options
+        parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
 
         final Map<String, Object> data = Map.ofEntries(
                 entry(source,"value_that_will_overwrite_source"),
@@ -116,7 +116,7 @@ class ParseJsonProcessorTest {
     void test_when_deeplyNestedFieldInKey_then_canReachDeepestLayer() {
         final String destination = "destination_key";
         when(processorConfig.getDestination()).thenReturn(destination);
-        parseJsonProcessor = createObjectUnderTest(); // need to recreate to pick up different config options
+        parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
 
         final int numberOfLayers = 20;
         final Map<String, Object> messageMap = constructArbitrarilyDeepJsonMap(numberOfLayers);
@@ -157,14 +157,11 @@ class ParseJsonProcessorTest {
      */
     private Map<String, Object> constructArbitrarilyDeepJsonMap(final int numberOfLayers) {
         final Map<String, Object> result = Collections.singletonMap(DEEPLY_NESTED_KEY_NAME,deepJsonMapHelper(0,numberOfLayers));
-        System.out.println(result.toString());
         return result;
     }
 
     private Object deepJsonMapHelper(final int currentLayer, final int numberOfLayers) {
-        if (currentLayer >= numberOfLayers) {
-            return "value";
-        }
+        if (currentLayer >= numberOfLayers) return "value";
 
         final String key = "key" + currentLayer;
         return Collections.singletonMap(key, deepJsonMapHelper(currentLayer+1, numberOfLayers));
