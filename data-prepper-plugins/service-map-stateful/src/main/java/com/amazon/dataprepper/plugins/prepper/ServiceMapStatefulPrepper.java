@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @SingleThread
 @DataPrepperPlugin(name = "service_map_stateful", pluginType = Processor.class)
-public class ServiceMapStatefulPrepper extends AbstractProcessor<Record<Object>, Record<Event>> {
+public class ServiceMapStatefulPrepper extends AbstractProcessor<Record<Event>, Record<Event>> {
 
     public static final String SPANS_DB_SIZE = "spansDbSize";
     public static final String TRACE_GROUP_DB_SIZE = "traceGroupDbSize";
@@ -126,62 +126,16 @@ public class ServiceMapStatefulPrepper extends AbstractProcessor<Record<Object>,
      * added to the service map index. Otherwise, returns an empty set.
      */
     @Override
-    public Collection<Record<Event>> doExecute(Collection<Record<Object>> records) {
+    public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
         final Collection<Record<Event>> relationships = windowDurationHasPassed() ? evaluateEdges() : EMPTY_COLLECTION;
         final Map<byte[], ServiceMapStateData> batchStateData = new TreeMap<>(SignedBytes.lexicographicalComparator());
-        records.forEach(i -> {
-            final Object recordData = i.getData();
-            // TODO: remove support for ExportTraceServiceRequest in 2.0
-            if (recordData instanceof ExportTraceServiceRequest) {
-                processExportTraceServiceRequest((ExportTraceServiceRequest) recordData, batchStateData);
-            } else if (recordData instanceof Span) {
-                processSpan((Span) recordData, batchStateData);
-            } else {
-                throw new RuntimeException("Unsupported record data type: " + recordData.getClass());
-            }
-        });
+        records.forEach(i -> processSpan((Span) i.getData(), batchStateData));
         try {
             currentWindow.putAll(batchStateData);
         } catch (RuntimeException e) {
             LOG.error("Caught exception trying to put batch state data", e);
         }
         return relationships;
-    }
-
-    private void processExportTraceServiceRequest(
-            final ExportTraceServiceRequest exportTraceServiceRequest, final Map<byte[], ServiceMapStateData> batchStateData) {
-        exportTraceServiceRequest.getResourceSpansList().forEach(resourceSpans -> {
-            OTelHelper.getServiceName(resourceSpans.getResource()).ifPresent(serviceName -> resourceSpans.getInstrumentationLibrarySpansList().forEach(
-                    instrumentationLibrarySpans -> {
-                        instrumentationLibrarySpans.getSpansList().forEach(
-                                span -> {
-                                    if (OTelHelper.checkValidSpan(span)) {
-                                        try {
-                                            batchStateData.put(
-                                                    span.getSpanId().toByteArray(),
-                                                    new ServiceMapStateData(
-                                                            serviceName,
-                                                            span.getParentSpanId().isEmpty() ? null : span.getParentSpanId().toByteArray(),
-                                                            span.getTraceId().toByteArray(),
-                                                            span.getKind().name(),
-                                                            span.getName()));
-                                        } catch (RuntimeException e) {
-                                            LOG.error("Caught exception trying to put service map state data into batch", e);
-                                        }
-                                        if (span.getParentSpanId().isEmpty()) {
-                                            try {
-                                                currentTraceGroupWindow.put(span.getTraceId().toByteArray(), span.getName());
-                                            } catch (RuntimeException e) {
-                                                LOG.error("Caught exception trying to put trace group name", e);
-                                            }
-                                        }
-                                    } else {
-                                        LOG.warn("Invalid span received");
-                                    }
-                                });
-                    }
-            ));
-        });
     }
 
     private void processSpan(final Span span, final Map<byte[], ServiceMapStateData> batchStateData) {

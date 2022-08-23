@@ -80,7 +80,6 @@ public class OTelTraceSource implements Source<Record<Object>> {
 
             final OTelTraceGrpcService oTelTraceGrpcService = new OTelTraceGrpcService(
                     oTelTraceSourceConfig.getRequestTimeoutInMillis(),
-                    oTelTraceSourceConfig.getRecordType(),
                     new OTelProtoCodec.OTelProtoDecoder(),
                     buffer,
                     pluginMetrics

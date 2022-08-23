@@ -46,9 +46,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -69,7 +66,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.SSL;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -162,9 +158,8 @@ public class OTelTraceSourceTest {
         return new BlockingBuffer<>(new PluginSetting("blocking_buffer", integerHashMap));
     }
 
-    private void configureObjectUnderTest(final String recordType) {
+    private void configureObjectUnderTest() {
         final Map<String, Object> settingsMap = new HashMap<>();
-        settingsMap.put("record_type", recordType);
         settingsMap.put("request_timeout", 5);
         settingsMap.put(SSL, false);
         pluginSetting = new PluginSetting("otel_trace", settingsMap);
@@ -173,10 +168,6 @@ public class OTelTraceSourceTest {
 
         oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class);
         SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory);
-    }
-
-    private static Stream<Arguments> recordTypeArguments() {
-        return Stream.of(Arguments.of(RecordType.OTLP.toString()), Arguments.of(RecordType.EVENT.toString()));
     }
 
     @BeforeEach
@@ -195,7 +186,7 @@ public class OTelTraceSourceTest {
 
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
-        configureObjectUnderTest(RecordType.EVENT.toString());
+        configureObjectUnderTest();
         buffer = getBuffer();
     }
 
@@ -204,10 +195,9 @@ public class OTelTraceSourceTest {
         SOURCE.stop();
     }
 
-    @ParameterizedTest
-    @MethodSource("recordTypeArguments")
-    void testHttpFullJson(final String recordType) throws InvalidProtocolBufferException {
-        configureObjectUnderTest(recordType);
+    @Test
+    void testHttpFullJson() throws InvalidProtocolBufferException {
+        configureObjectUnderTest();
         SOURCE.start(buffer);
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
@@ -233,12 +223,10 @@ public class OTelTraceSourceTest {
                 .join();
     }
 
-    @ParameterizedTest
-    @MethodSource("recordTypeArguments")
-    void testHttpsFullJson(final String recordType) throws InvalidProtocolBufferException {
+    @Test
+    void testHttpsFullJson() throws InvalidProtocolBufferException {
 
         final Map<String, Object> settingsMap = new HashMap<>();
-        settingsMap.put("record_type", recordType);
         settingsMap.put("request_timeout", 5);
         settingsMap.put(SSL, true);
         settingsMap.put("useAcmCertForSSL", false);
@@ -277,10 +265,9 @@ public class OTelTraceSourceTest {
                 .join();
     }
 
-    @ParameterizedTest
-    @MethodSource("recordTypeArguments")
-    void testHttpFullBytes(final String recordType) {
-        configureObjectUnderTest(recordType);
+    @Test
+    void testHttpFullBytes() {
+        configureObjectUnderTest();
         SOURCE.start(buffer);
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)

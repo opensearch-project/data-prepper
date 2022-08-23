@@ -34,11 +34,6 @@ import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.opensearch.common.unit.ByteSizeUnit;
-import org.opensearch.common.xcontent.LoggingDeprecationHandler;
-import org.opensearch.common.xcontent.NamedXContentRegistry;
-import org.opensearch.common.xcontent.XContentFactory;
-import org.opensearch.common.xcontent.XContentParser;
-import org.opensearch.common.xcontent.XContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +48,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 @DataPrepperPlugin(name = "opensearch", pluginType = Sink.class)
-public class OpenSearchSink extends AbstractSink<Record<Object>> {
+public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String BULKREQUEST_LATENCY = "bulkRequestLatency";
   public static final String BULKREQUEST_ERRORS = "bulkRequestErrors";
   public static final String BULKREQUEST_SIZE_BYTES = "bulkRequestSizeBytes";
@@ -124,14 +119,14 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
   }
 
   @Override
-  public void doOutput(final Collection<Record<Object>> records) {
+  public void doOutput(final Collection<Record<Event>> records) {
     if (records.isEmpty()) {
       return;
     }
 
     AccumulatingBulkRequest<BulkOperation, BulkRequest> bulkRequest = bulkRequestSupplier.get();
 
-    for (final Record<Object> record : records) {
+    for (final Record<Event> record : records) {
       final SerializedJson document = getDocument(record.getData());
       final Optional<String> docId = getDocumentIdFromDocument(document);
 
@@ -200,20 +195,8 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
     return Optional.empty();
   }
 
-  // Temporary function to support both trace and log ingestion pipelines.
-  // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
-  private SerializedJson getDocument(final Object object) {
-    final String jsonString;
-    if (object instanceof String) {
-      jsonString = (String) object;
-    } else if (object instanceof Event) {
-      jsonString = ((Event) object).toJsonString();
-
-    } else {
-      throw new RuntimeException("Invalid record type. OpenSearch sink only supports String and Events");
-    }
-
-    return SerializedJson.fromString(jsonString);
+  private SerializedJson getDocument(final Event event) {
+    return SerializedJson.fromString(event.toJsonString());
   }
 
   private void flushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {
@@ -228,12 +211,6 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
         Thread.currentThread().interrupt();
       }
     });
-  }
-
-  private Map<String, Object> getMapFromJson(final String documentJson) throws IOException {
-    final XContentParser parser = XContentFactory.xContent(XContentType.JSON)
-            .createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, documentJson);
-    return parser.map();
   }
 
   private void logFailure(final BulkOperation bulkOperation, final Throwable failure) {
