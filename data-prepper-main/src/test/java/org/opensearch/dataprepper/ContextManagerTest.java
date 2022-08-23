@@ -14,10 +14,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 class ContextManagerTest {
 
     @Test
-    public void testContextManagerGet() {
+    void testContextManagerGet() {
         final ContextManager contextManager = new ContextManager(
-                TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE,
-                TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE
+                "src/test/resources/single_pipeline_valid_empty_source_plugin_settings.yml",
+                "src/test/resources/valid_data_prepper_config.yml"
         );
         final DataPrepper dataPrepper = contextManager.getDataPrepperBean();
 
