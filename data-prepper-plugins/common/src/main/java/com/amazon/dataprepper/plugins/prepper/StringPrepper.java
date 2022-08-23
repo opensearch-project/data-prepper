@@ -10,7 +10,7 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
-import com.amazon.dataprepper.model.prepper.Prepper;
+import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -24,11 +24,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * An simple String implementation of {@link Prepper} which generates new Records with upper case or lowercase content. The current
+ * A simple String implementation of {@link Processor} which generates new Records with uppercase or lowercase content. The current
  * simpler implementation does not handle errors (if any).
  */
-@DataPrepperPlugin(name = "string_converter", pluginType = Prepper.class, pluginConfigurationType = StringPrepper.Configuration.class)
-public class StringPrepper implements Prepper<Record<Event>, Record<Event>> {
+@DataPrepperPlugin(name = "string_converter", pluginType = Processor.class, pluginConfigurationType = StringPrepper.Configuration.class)
+public class StringPrepper implements Processor<Record<Event>, Record<Event>> {
     private static Logger LOG = LoggerFactory.getLogger(StringPrepper.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final TypeReference<Map<String, Object>> mapTypeReference = new TypeReference<Map<String, Object>>() {};
