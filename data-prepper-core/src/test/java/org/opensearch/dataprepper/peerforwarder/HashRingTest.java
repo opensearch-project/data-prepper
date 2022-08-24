@@ -29,8 +29,8 @@ class HashRingTest {
             "10.10.0.2",
             "10.10.0.3");
 
-    private static final List<String> IDENTIFICATION_KEY_SET_1 = List.of("key1");
-    private static final List<String> IDENTIFICATION_KEY_SET_2 = List.of("key_2");
+    private static final List<String> IDENTIFICATION_KEY_LIST_1 = List.of("key1");
+    private static final List<String> IDENTIFICATION_KEY_LIST_2 = List.of("key_2");
 
     private static final int SINGLE_VIRTUAL_NODE_COUNT = 1;
     private static final int MULTIPLE_VIRTUAL_NODE_COUNT = 100;
@@ -49,7 +49,7 @@ class HashRingTest {
         when(peerListProvider.getPeerList()).thenReturn(Collections.emptyList());
         hashRing = new HashRing(peerListProvider, SINGLE_VIRTUAL_NODE_COUNT);
 
-        Optional<String> result = hashRing.getServerIp(IDENTIFICATION_KEY_SET_1);
+        Optional<String> result = hashRing.getServerIp(IDENTIFICATION_KEY_LIST_1);
 
         Assertions.assertFalse(result.isPresent());
     }
@@ -58,8 +58,8 @@ class HashRingTest {
     void testGetServerIpSingleNodeSameIdentificationKeys() {
         hashRing = new HashRing(peerListProvider, SINGLE_VIRTUAL_NODE_COUNT);
 
-        Optional<String> result1 = hashRing.getServerIp(IDENTIFICATION_KEY_SET_1);
-        Optional<String> result2 = hashRing.getServerIp(IDENTIFICATION_KEY_SET_1);
+        Optional<String> result1 = hashRing.getServerIp(IDENTIFICATION_KEY_LIST_1);
+        Optional<String> result2 = hashRing.getServerIp(IDENTIFICATION_KEY_LIST_1);
 
         Assertions.assertTrue(result1.isPresent());
         Assertions.assertTrue(result2.isPresent());
@@ -70,8 +70,8 @@ class HashRingTest {
     void testGetServerIpSingleNodeDifferentIdentificationKeys() {
         hashRing = new HashRing(peerListProvider, SINGLE_VIRTUAL_NODE_COUNT);
 
-        Optional<String> result1 = hashRing.getServerIp(IDENTIFICATION_KEY_SET_1);
-        Optional<String> result2 = hashRing.getServerIp(IDENTIFICATION_KEY_SET_2);
+        Optional<String> result1 = hashRing.getServerIp(IDENTIFICATION_KEY_LIST_1);
+        Optional<String> result2 = hashRing.getServerIp(IDENTIFICATION_KEY_LIST_2);
 
         Assertions.assertTrue(result1.isPresent());
         Assertions.assertTrue(result2.isPresent());
@@ -83,8 +83,8 @@ class HashRingTest {
     void testGetServerIpMultipleNodesSameIdentificationKeys() {
         hashRing = new HashRing(peerListProvider, MULTIPLE_VIRTUAL_NODE_COUNT);
 
-        Optional<String> result1 = hashRing.getServerIp(IDENTIFICATION_KEY_SET_1);
-        Optional<String> result2 = hashRing.getServerIp(IDENTIFICATION_KEY_SET_1);
+        Optional<String> result1 = hashRing.getServerIp(IDENTIFICATION_KEY_LIST_1);
+        Optional<String> result2 = hashRing.getServerIp(IDENTIFICATION_KEY_LIST_1);
 
         Assertions.assertTrue(result1.isPresent());
         Assertions.assertTrue(result2.isPresent());
@@ -95,8 +95,8 @@ class HashRingTest {
     void testGetServerIpMultipleDifferentIdentificationKeys() {
         hashRing = new HashRing(peerListProvider, MULTIPLE_VIRTUAL_NODE_COUNT);
 
-        Optional<String> result1 = hashRing.getServerIp(IDENTIFICATION_KEY_SET_1);
-        Optional<String> result2 = hashRing.getServerIp(IDENTIFICATION_KEY_SET_2);
+        Optional<String> result1 = hashRing.getServerIp(IDENTIFICATION_KEY_LIST_1);
+        Optional<String> result2 = hashRing.getServerIp(IDENTIFICATION_KEY_LIST_2);
 
         Assertions.assertTrue(result1.isPresent());
         Assertions.assertTrue(result2.isPresent());
@@ -110,10 +110,10 @@ class HashRingTest {
         hashRing = new HashRing(peerListProvider, SINGLE_VIRTUAL_NODE_COUNT);
 
         // IDENTIFICATION KEY SET 1 hash is less than the hash of "serverIp"
-        Optional<String> result1 = hashRing.getServerIp(IDENTIFICATION_KEY_SET_1);
+        Optional<String> result1 = hashRing.getServerIp(IDENTIFICATION_KEY_LIST_1);
 
         // IDENTIFICATION KEY SET 2 hash is greater than the hash of "serverIp"
-        Optional<String> result2 = hashRing.getServerIp(IDENTIFICATION_KEY_SET_2);
+        Optional<String> result2 = hashRing.getServerIp(IDENTIFICATION_KEY_LIST_2);
 
         // As there is only one value in the server list, the results should be the same
         Assertions.assertTrue(result1.isPresent());

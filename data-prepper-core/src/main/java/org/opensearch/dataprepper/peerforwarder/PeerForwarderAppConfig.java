@@ -45,8 +45,8 @@ public class PeerForwarderAppConfig {
 
     @Bean
     public PeerForwarder peerForwarder(final PeerForwarderClientFactory peerForwarderClientFactory,
-                                       final PeerForwarderClient peerForwarderSerializer) {
-        return new PeerForwarder(peerForwarderClientFactory, peerForwarderSerializer);
+                                       final PeerForwarderClient peerForwarderClient) {
+        return new PeerForwarder(peerForwarderClientFactory, peerForwarderClient);
     }
 
 }

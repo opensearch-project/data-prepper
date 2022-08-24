@@ -56,7 +56,7 @@ public class PipelineParser {
                           final PeerForwarder peerForwarder) {
         this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
-        this.peerForwarder = peerForwarder;
+        this.peerForwarder = Objects.requireNonNull(peerForwarder);
     }
 
     /**
