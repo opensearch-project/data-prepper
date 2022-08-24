@@ -26,11 +26,11 @@ import static org.junit.Assert.assertTrue;
 public class IndexConfigurationTests {
     private static final String DEFAULT_TEMPLATE_FILE = "test-template-withshards.json";
     private static final String TEST_CUSTOM_INDEX_POLICY_FILE = "test-custom-index-policy-file.json";
-    private static final String INDEX_TYPE = "index_type";
 
     @Test
     public void testRawAPMSpan() {
-        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder().setIsRaw(true).build();
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder().withIndexType(
+                IndexType.TRACE_ANALYTICS_RAW.getValue()).build();
         final URL expTemplateURL = indexConfiguration.getClass().getClassLoader().getResource(RAW_DEFAULT_TEMPLATE_FILE);
         assertEquals(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW), indexConfiguration.getIndexAlias());
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
@@ -38,7 +38,8 @@ public class IndexConfigurationTests {
 
     @Test
     public void testServiceMap() {
-        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder().setIsServiceMap(true).build();
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder().withIndexType(
+                IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue()).build();
         final URL expTemplateURL = indexConfiguration
                 .getClass().getClassLoader().getResource(SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
         assertEquals(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP), indexConfiguration.getIndexAlias());
@@ -64,8 +65,6 @@ public class IndexConfigurationTests {
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
 
         indexConfiguration = new IndexConfiguration.Builder()
-                .setIsRaw(false)
-                .setIsServiceMap(false)
                 .withIndexAlias(testIndexAlias)
                 .withBulkSize(-1)
                 .build();
@@ -86,8 +85,6 @@ public class IndexConfigurationTests {
         assertTrue(indexConfiguration.getIndexTemplate().isEmpty());
 
         indexConfiguration = new IndexConfiguration.Builder()
-                .setIsRaw(false)
-                .setIsServiceMap(false)
                 .withIndexAlias(testIndexAlias)
                 .withBulkSize(-1)
                 .build();
@@ -113,8 +110,6 @@ public class IndexConfigurationTests {
 
 
         indexConfiguration = new IndexConfiguration.Builder()
-                .setIsRaw(false)
-                .setIsServiceMap(false)
                 .withIndexAlias(testIndexAlias)
                 .withBulkSize(-1)
                 .build();
@@ -141,8 +136,6 @@ public class IndexConfigurationTests {
 
 
         indexConfiguration = new IndexConfiguration.Builder()
-                .setIsRaw(false)
-                .setIsServiceMap(false)
                 .withIndexAlias(testIndexAlias)
                 .withBulkSize(-1)
                 .build();
@@ -158,24 +151,9 @@ public class IndexConfigurationTests {
     }
 
     @Test
-    public void testReadIndexConfig_RawFlag() {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                true, null, null, null, null, null);
-        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
-        final URL expTemplateFile = indexConfiguration
-                .getClass().getClassLoader().getResource(RAW_DEFAULT_TEMPLATE_FILE);
-        assertEquals(IndexType.TRACE_ANALYTICS_RAW, indexConfiguration.getIndexType());
-        assertEquals(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW), indexConfiguration.getIndexAlias());
-        assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
-        assertEquals(5, indexConfiguration.getBulkSize());
-        assertEquals("spanId", indexConfiguration.getDocumentIdField());
-    }
-
-    @Test
     public void testReadIndexConfig_RawIndexType() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-                null, null, null, null, null, null);
-        metadata.put(INDEX_TYPE, IndexType.TRACE_ANALYTICS_RAW.getValue());
+                IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null, null, null);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         final URL expTemplateFile = indexConfiguration
@@ -190,31 +168,15 @@ public class IndexConfigurationTests {
     @Test
     public void testReadIndexConfig_InvalidIndexTypeValueString() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-                null, null, null, null, null, null);
-        metadata.put(INDEX_TYPE, "i-am-an-illegitimate-index-type");
+                "i-am-an-illegitimate-index-type", null, null, null, null);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         assertThrows(IllegalArgumentException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting));
     }
 
     @Test
-    public void testReadIndexConfig_ServiceMapFlag() {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                null, true, null, null, null, null);
-        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
-        final URL expTemplateFile = indexConfiguration
-                .getClass().getClassLoader().getResource(SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
-        assertEquals(IndexType.TRACE_ANALYTICS_SERVICE_MAP, indexConfiguration.getIndexType());
-        assertEquals(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP), indexConfiguration.getIndexAlias());
-        assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
-        assertEquals(5, indexConfiguration.getBulkSize());
-        assertEquals("hashId", indexConfiguration.getDocumentIdField());
-    }
-
-    @Test
     public void testReadIndexConfig_ServiceMapIndexType() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-                null, null, null, null, null, null);
-        metadata.put(INDEX_TYPE, IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue());
+                IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue(), null, null, null, null);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         final URL expTemplateFile = indexConfiguration
@@ -224,14 +186,6 @@ public class IndexConfigurationTests {
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
         assertEquals(5, indexConfiguration.getBulkSize());
         assertEquals("hashId", indexConfiguration.getDocumentIdField());
-    }
-
-    @Test
-    public void testReadIndexConfigInvalid() {
-        final PluginSetting pluginSetting = generatePluginSetting(
-                true, true, null, null, null, null);
-        Exception e = assertThrows(IllegalStateException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting));
-        assertTrue(e.getMessage().contains("trace_analytics_raw and trace_analytics_service_map cannot be both true."));
     }
 
     @Test
@@ -242,7 +196,7 @@ public class IndexConfigurationTests {
         final long testBulkSize = 10L;
         final String testIdField = "someId";
         final PluginSetting pluginSetting = generatePluginSetting(
-                false, false, testIndexAlias, defaultTemplateFilePath, testBulkSize, testIdField);
+                null, testIndexAlias, defaultTemplateFilePath, testBulkSize, testIdField);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
@@ -255,12 +209,12 @@ public class IndexConfigurationTests {
     public void testReadIndexConfig_ExplicitCustomIndexType() throws MalformedURLException {
         final String defaultTemplateFilePath = Objects.requireNonNull(
                 getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
+        final String testIndexType = IndexType.CUSTOM.getValue();
         final String testIndexAlias = "foo";
         final long testBulkSize = 10L;
         final String testIdField = "someId";
         final Map<String, Object> metadata = initializeConfigMetaData(
-                true, false, testIndexAlias, defaultTemplateFilePath, testBulkSize, testIdField);
-        metadata.put(INDEX_TYPE, IndexType.CUSTOM.getValue());
+                testIndexType, testIndexAlias, defaultTemplateFilePath, testBulkSize, testIdField);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
@@ -271,9 +225,9 @@ public class IndexConfigurationTests {
     }
 
     private PluginSetting generatePluginSetting(
-            final Boolean isRaw, final Boolean isServiceMap, final String indexAlias,
-            final String templateFilePath, final Long bulkSize, final String documentIdField) {
-        final Map<String, Object> metadata = initializeConfigMetaData(isRaw, isServiceMap, indexAlias, templateFilePath, bulkSize, documentIdField);
+            final String indexType, final String indexAlias, final String templateFilePath,
+            final Long bulkSize, final String documentIdField) {
+        final Map<String, Object> metadata = initializeConfigMetaData(indexType, indexAlias, templateFilePath, bulkSize, documentIdField);
         return getPluginSetting(metadata);
     }
 
@@ -281,13 +235,11 @@ public class IndexConfigurationTests {
         return new PluginSetting("opensearch", metadata);
     }
 
-    private Map<String, Object> initializeConfigMetaData(Boolean isRaw, Boolean isServiceMap, String indexAlias, String templateFilePath, Long bulkSize, String documentIdField) {
+    private Map<String, Object> initializeConfigMetaData(
+            String indexType, String indexAlias, String templateFilePath, Long bulkSize, String documentIdField) {
         final Map<String, Object> metadata = new HashMap<>();
-        if (isRaw != null) {
-            metadata.put(IndexConfiguration.TRACE_ANALYTICS_RAW_FLAG, isRaw);
-        }
-        if (isServiceMap != null) {
-            metadata.put(IndexConfiguration.TRACE_ANALYTICS_SERVICE_MAP_FLAG, isServiceMap);
+        if (indexType != null) {
+            metadata.put(IndexConfiguration.INDEX_TYPE, indexType);
         }
         if (indexAlias != null) {
             metadata.put(IndexConfiguration.INDEX_ALIAS, indexAlias);
