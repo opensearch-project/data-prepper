@@ -7,13 +7,12 @@ package com.amazon.dataprepper.plugins.prepper;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 
 import java.util.Collection;
 
-@DataPrepperPlugin(name = "no-op", pluginType = Prepper.class)
+@DataPrepperPlugin(name = "no-op", pluginType = Processor.class)
 public class NoOpPrepper implements Processor<Record<Event>, Record<Event>> {
 
     public NoOpPrepper() {

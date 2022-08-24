@@ -10,8 +10,8 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.SingleThread;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.prepper.AbstractPrepper;
-import com.amazon.dataprepper.model.prepper.Prepper;
+import com.amazon.dataprepper.model.processor.AbstractProcessor;
+import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
@@ -52,8 +52,8 @@ import java.util.stream.Collectors;
 
 
 @SingleThread
-@DataPrepperPlugin(name = "grok", pluginType = Prepper.class)
-public class GrokPrepper extends AbstractPrepper<Record<Event>, Record<Event>> {
+@DataPrepperPlugin(name = "grok", pluginType = Processor.class)
+public class GrokPrepper extends AbstractProcessor<Record<Event>, Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(GrokPrepper.class);
 
