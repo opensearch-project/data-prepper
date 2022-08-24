@@ -26,6 +26,7 @@ or from project root directory
 
 ## Service Map Ingestion Pipelines End-to-end test
 
+Run from current directory
 ```
 ./gradlew :serviceMapEndToEndTest
 ```

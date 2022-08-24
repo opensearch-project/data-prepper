@@ -5,7 +5,6 @@ entry-pipeline:
       ssl: true
       sslKeyCertChainFile: "/app/demo-data-prepper.crt"
       sslKeyFile: "/app/demo-data-prepper.key"
-      record_type: "event"
   sink:
     - pipeline:
         name: "raw-pipeline"

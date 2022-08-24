@@ -14,7 +14,6 @@ import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
 import com.amazon.dataprepper.model.trace.JacksonSpan;
 import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.plugins.otel.codec.OTelProtoCodec;
-import com.google.protobuf.ByteString;
 import io.grpc.Channel;
 import io.micrometer.core.instrument.Measurement;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
@@ -65,18 +64,6 @@ import static org.mockito.Mockito.when;
 public class PeerForwarderTest {
     private static final String TEST_PIPELINE_NAME = "testPipeline";
     private static final String LOCAL_IP = "127.0.0.1";
-    private static final io.opentelemetry.proto.trace.v1.Span OTLP_SPAN_1 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdA")).setSpanId(ByteString.copyFromUtf8("spanId1")).build();
-    private static final io.opentelemetry.proto.trace.v1.Span OTLP_SPAN_2 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdA")).setSpanId(ByteString.copyFromUtf8("spanId2")).build();
-    private static final io.opentelemetry.proto.trace.v1.Span OTLP_SPAN_3 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdA")).setSpanId(ByteString.copyFromUtf8("spanId3")).build();
-    private static final io.opentelemetry.proto.trace.v1.Span OTLP_SPAN_4 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdB")).setSpanId(ByteString.copyFromUtf8("spanId4")).build();
-    private static final io.opentelemetry.proto.trace.v1.Span OTLP_SPAN_5 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdB")).setSpanId(ByteString.copyFromUtf8("spanId5")).build();
-    private static final io.opentelemetry.proto.trace.v1.Span OTLP_SPAN_6 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdB")).setSpanId(ByteString.copyFromUtf8("spanId6")).build();
 
     private static final String TEST_TRACE_ID_1 = "b1";
     private static final String TEST_TRACE_ID_2 = "b2";
