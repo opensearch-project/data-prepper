@@ -46,13 +46,13 @@ task createDataPrepperDockerFile(type: Dockerfile) {
     exposePort(21890)
     exposePort(4900)
     workingDir("/app")
-    copyFile("${dataPrepperJarFilepath}", "/app/data-prepper.jar")
+    copyFile("${dataPrepperJarFilepath}", "/app/data-prepper")
     copyFile("src/integrationTest/resources/${RAW_SPAN_PIPELINE_YAML}", "/app/${RAW_SPAN_PIPELINE_YAML}")
     copyFile("src/integrationTest/resources/${RAW_SPAN_PIPELINE_PEER_FORWARDER_YAML}", "/app/${RAW_SPAN_PIPELINE_PEER_FORWARDER_YAML}")
     copyFile("src/integrationTest/resources/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}", "/app/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
     copyFile("src/integrationTest/resources/${SERVICE_MAP_PIPELINE_YAML}", "/app/${SERVICE_MAP_PIPELINE_YAML}")
     copyFile("src/integrationTest/resources/data_prepper.yml", "/app/data_prepper.yml")
-    defaultCommand("java", "-jar", "data-prepper.jar", "/app/${RAW_SPAN_PIPELINE_YAML}", "/app/data_prepper.yml")
+    defaultCommand('java', '-cp', 'data-prepper/*', 'org.opensearch.dataprepper.DataPrepperExecute', "/app/${RAW_SPAN_PIPELINE_YAML}", "/app/data_prepper.yml")
 }
 
 task buildDataPrepperDockerImage(type: DockerBuildImage) {
@@ -70,7 +70,7 @@ def createDataPrepperDockerContainer(final String taskBaseName, final String dat
         containerName = dataPrepperName
         hostConfig.portBindings = [String.format('%d:21890', grpcPort), String.format('%d:4900', serverPort)]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
-        cmd = ["java", "-jar", "data-prepper.jar", pipelineConfigYAML, "/app/data_prepper.yml"]
+        cmd = ['java', '-cp', 'data-prepper/*', 'org.opensearch.dataprepper.DataPrepperExecute', pipelineConfigYAML, "/app/data_prepper.yml"]
         targetImageId buildDataPrepperDockerImage.getImageId()
     }
 }
