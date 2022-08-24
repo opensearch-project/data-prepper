@@ -5,6 +5,7 @@ entry-pipeline:
       ssl: true
       sslKeyCertChainFile: "/app/demo-data-prepper.crt"
       sslKeyFile: "/app/demo-data-prepper.key"
+      record_type: "event"
   sink:
     - pipeline:
         name: "raw-pipeline"
@@ -14,8 +15,8 @@ raw-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  prepper:
-    - otel_trace_raw_prepper:
+  processor:
+    - otel_trace_raw:
   sink:
     - opensearch:
         hosts: [ "https://node-0.example.com:9200" ]
@@ -28,7 +29,7 @@ service-map-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  prepper:
+  processor:
     - service_map_stateful:
   sink:
     - opensearch:
