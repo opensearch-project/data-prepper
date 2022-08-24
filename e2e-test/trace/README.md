@@ -4,72 +4,32 @@ This module includes e2e tests for trace data ingestion supported by data-preppe
 
 ## Raw Span Ingestion Pipeline End-to-end test
 
-### OTLP record type
-
 Run from current directory
 ```
-./gradlew :rawSpanOTLPEndToEndTest
+./gradlew :rawSpanEndToEndTest
 ```
 or from project root directory
 ```
-./gradlew :e2e-test:trace:rawSpanOTLPEndToEndTest
-```
-
-### Event record type compatibility with OTLP record type
-
-Run from current directory
-```
-./gradlew :rawSpanOTLPAndEventEndToEndTest
-```
-or from project root directory
-```
-./gradlew :e2e-test:trace:rawSpanOTLPAndEventEndToEndTest
+./gradlew :e2e-test:trace:rawSpanEndToEndTest
 ```
 
 ## Raw Span Ingestion Pipelines Latest Release Compatibility End-to-end test
 
-### OTLP record type compatibility with latest release
-
 Run from current directory
 ```
-./gradlew :rawSpanOTLPLatestReleaseCompatibilityEndToEndTest
+./gradlew :rawSpanLatestReleaseCompatibilityEndToEndTest
 ```
 or from project root directory
 ```
-./gradlew :e2e-test:trace:rawSpanOTLPLatestReleaseCompatibilityEndToEndTest
-```
-
-### Event record type compatibility with latest release
-
-Run from current directory
-```
-./gradlew :rawSpanEventLatestReleaseCompatibilityEndToEndTest
-```
-or from project root directory
-```
-./gradlew :e2e-test:trace:rawSpanEventLatestReleaseCompatibilityEndToEndTest
+./gradlew :e2e-test:trace:rawSpanLatestReleaseCompatibilityEndToEndTest
 ```
 
 ## Service Map Ingestion Pipelines End-to-end test
 
-### OTLP record type
-
-Run from current directory
 ```
-./gradlew :serviceMapOTLPEndToEndTest
+./gradlew :serviceMapEndToEndTest
 ```
 or from project root directory
 ```
-./gradlew :e2e-test:trace:serviceMapOTLPEndToEndTest
-```
-
-### Event record type compatibility with OTLP record type
-
-Run from current directory
-```
-./gradlew :serviceMapOTLPAndEventEndToEndTest
-```
-or from project root directory
-```
-./gradlew :e2e-test:trace:serviceMapOTLPAndEventEndToEndTest
+./gradlew :e2e-test:trace:serviceMapEndToEndTest
 ```

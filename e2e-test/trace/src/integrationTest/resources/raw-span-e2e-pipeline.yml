@@ -9,10 +9,10 @@ raw-pipeline:
   source:
     pipeline:
       name: "entry-pipeline"
-  prepper:
-    - otel_trace_raw_prepper:
+  processor:
+    - otel_trace_raw:
         trace_flush_interval: 5
-    - otel_trace_group_prepper:
+    - otel_trace_group:
         hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
         password: "admin"
