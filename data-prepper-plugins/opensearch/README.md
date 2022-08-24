@@ -24,7 +24,7 @@ pipeline:
       bulk_size: 4
 ```
 
-The OpenSearch sink will reserve `otel-v1-apm-span-*` as index pattern and `otel-v1-apm-span` as index name for record ingestion.
+The OpenSearch sink will reserve `otel-v1-apm-span-*` as index pattern and `otel-v1-apm-span` as index alias for record ingestion.
 
 ### </a>Service map trace analytics
 
@@ -42,7 +42,7 @@ pipeline:
       bulk_size: 4
 ```
 
-The OpenSearch sink will reserve `otel-v1-apm-service-map` as index name for record ingestion.
+The OpenSearch sink will reserve `otel-v1-apm-service-map` as index for record ingestion.
 
 ### Amazon OpenSearch Service
 
