@@ -14,42 +14,32 @@ import com.linecorp.armeria.client.ClientBuilder;
 import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
-import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class PeerForwarderClientTest {
 
     private static final String LOCAL_IP = "127.0.0.1";
-
-    @Mock
-    WebClient webClient;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -58,30 +48,9 @@ class PeerForwarderClientTest {
     }
 
     @Test
-    void test_serializeRecordsAndSendHttpRequest_with_mock_client_should_return() {
-        when(webClient.uri()).thenReturn(URI.create("http://127.0.0.1:"));
-        final HttpResponse httpResponse = mock(HttpResponse.class);
-        AggregatedHttpResponse aggregatedHttpResponseMock =
-                mock(AggregatedHttpResponse.class);
-        when(aggregatedHttpResponseMock.status()).thenReturn(HttpStatus.OK);
-        when(webClient.post(anyString(), anyString())).thenReturn(httpResponse);
-
-        when(httpResponse.aggregate()).thenReturn(CompletableFuture.completedFuture(aggregatedHttpResponseMock));
-
-        final PeerForwarderClient peerForwarderClient = createObjectUnderTest();
-
-        final AggregatedHttpResponse aggregatedHttpResponse =
-                peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), webClient);
-
-        assertThat(aggregatedHttpResponse, notNullValue());
-        assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
-        assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
-    }
-
-    @Test
     void test_serializeRecordsAndSendHttpRequest_with_actual_client_and_server_should_return() {
         final HttpServer server = createServer(2022);
-        server.createContext("/", new testHandler());
+        server.createContext("/", new TestHandler());
         server.start();
 
         final InetSocketAddress address = server.getAddress();
@@ -129,7 +98,7 @@ class PeerForwarderClientTest {
         return httpServer;
     }
 
-    private static class testHandler implements HttpHandler {
+    private static class TestHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange httpExchange) throws IOException {
             String response = "test server started";
