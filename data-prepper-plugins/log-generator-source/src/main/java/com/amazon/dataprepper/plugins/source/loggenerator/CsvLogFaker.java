@@ -62,12 +62,11 @@ public class CsvLogFaker {
 
     }
     private String generateRandomDigitString(final int length) {
-        String result = "";
+        StringBuilder result = new StringBuilder();
         for (int i = 0; i < length; ++i) {
-            result += random.nextInt(10);
+            result.append(random.nextInt(10));
         }
-
-        return result;
+        return result.toString();
     }
     private String getRandomElementOf(final String[] array) {
         return array[random.nextInt(array.length)];

@@ -50,7 +50,7 @@ public class CsvProcessorIT {
         final List<Record<Event>> records = new ArrayList<>();
         for (int i = 0; i < numberOfRecords; i++) {
             final Event thisEvent = vpcFlowLogTypeGenerator.generateEvent();
-            final Record asRecord = new Record<Event>(thisEvent);
+            final Record<Event> asRecord = new Record<>(thisEvent);
             records.add(asRecord);
         }
 

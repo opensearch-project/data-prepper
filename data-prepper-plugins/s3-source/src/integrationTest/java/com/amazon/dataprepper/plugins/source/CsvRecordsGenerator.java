@@ -12,23 +12,20 @@ import com.amazon.dataprepper.plugins.source.codec.CsvCodecConfig;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.time.format.DateTimeFormatter;
 import java.util.Random;
 
+import static com.amazon.dataprepper.test.helper.ReflectivelySetField.setField;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-
-import static com.amazon.dataprepper.test.helper.ReflectivelySetField.setField;
 
 /**
  * Generates comma-separated CSV records where each record is on a single line.
  */
 class CsvRecordsGenerator implements RecordsGenerator {
-    private final String KNOWN_CLOUDFRONT_ACCESS_SNIPPET = "2022-06-30,15:03:52,DEL26,4628,88.217.18.190,PATCH," +
+    private static final String KNOWN_CLOUDFRONT_ACCESS_SNIPPET = "2022-06-30,15:03:52,DEL26,4628,88.217.18.190,PATCH," +
             "00b04893ad3c.cloudfront.net,app,200,erickson.info,Mozilla/5.0 (iPad; CPU iPad OS 14_2 like Mac OS X) AppleWebKit/533.0 " +
             "(KHTML, like Gecko) CriOS/15.0.895.0 Mobile/73X080 Safari/533.0";
     private final Random random = new Random();
-    private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @Override
     public void write(final int numberOfRecords, final OutputStream outputStream) {
@@ -66,7 +63,6 @@ class CsvRecordsGenerator implements RecordsGenerator {
 
     @Override
     public void assertEventIsCorrect(final Event event) {
-        final String message = event.get("message", String.class);
         assertThat(eventHasKnownLogSnippet(event, KNOWN_CLOUDFRONT_ACCESS_SNIPPET), equalTo(true));
     }
 
