@@ -1,4 +1,4 @@
-FROM gradle:jdk14 AS builder
+FROM gradle:jdk11 AS builder
 COPY . /home/gradle/src
 WORKDIR /home/gradle/src
 RUN gradle -p data-prepper-core clean jar --no-daemon
