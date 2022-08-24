@@ -18,7 +18,6 @@ import com.amazon.dataprepper.plugins.prepper.state.MapDbPrepperState;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.SignedBytes;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
