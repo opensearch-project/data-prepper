@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
 
 public class PeerForwardingProcessorDecorator implements Processor<Record<Event>, Record<Event>> {
@@ -21,13 +20,16 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
 
     private final Processor innerProcessor;
     private final PeerForwarder peerForwarder;
+    private final String pluginId;
     private Set<String> identificationKeys;
 
     public PeerForwardingProcessorDecorator(final Processor innerProcessor,
-                                            final PeerForwarder peerForwarder
+                                            final PeerForwarder peerForwarder,
+                                            final String pluginId
                                             ) {
         this.innerProcessor = innerProcessor;
         this.peerForwarder = peerForwarder;
+        this.pluginId = pluginId;
 
         if (innerProcessor instanceof RequiresPeerForwarding) {
             identificationKeys = ((RequiresPeerForwarding) innerProcessor).getIdentificationKeys();
@@ -37,7 +39,7 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
 
     @Override
     public Collection<Record<Event>> execute(final Collection<Record<Event>> records) {
-        final List<Record<Event>> recordsToProcessLocally = peerForwarder.forwardRecords(records, identificationKeys);
+        final Collection<Record<Event>> recordsToProcessLocally = peerForwarder.forwardRecords(records, identificationKeys, pluginId);
 
         return innerProcessor.execute(recordsToProcessLocally);
     }

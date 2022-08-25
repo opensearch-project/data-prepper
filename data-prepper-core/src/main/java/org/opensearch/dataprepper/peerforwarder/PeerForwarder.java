@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.peerforwarder;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.peerforwarder.discovery.StaticPeerListProvider;
-import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
@@ -26,12 +25,9 @@ import java.util.Map;
 import java.util.Set;
 
 public class PeerForwarder {
-    private static final WebClient LOCAL_CLIENT = null;
-
     private final PeerForwarderClientFactory peerForwarderClientFactory;
     private final PeerForwarderClient peerForwarderClient;
     private HashRing hashRing;
-    private PeerClientPool peerClientPool;
 
     public PeerForwarder(final PeerForwarderClientFactory peerForwarderClientFactory,
                          final PeerForwarderClient peerForwarderClient) {
@@ -39,23 +35,25 @@ public class PeerForwarder {
         this.peerForwarderClient = peerForwarderClient;
     }
 
-    public List<Record<Event>> forwardRecords(final Collection<Record<Event>> records, final Set<String> identificationKeys) {
-        // TODO: decide the default behaviour of Core Peer Forwarder and move the HashRing and PeerClientPool creation to constructor
+    public List<Record<Event>> forwardRecords(final Collection<Record<Event>> records,
+                                              final Set<String> identificationKeys,
+                                              final String pluginId) {
+        // TODO: decide the default behaviour of Core Peer Forwarder and move the HashRing creation to constructor
         hashRing = peerForwarderClientFactory.createHashRing();
-        peerClientPool = peerForwarderClientFactory.setPeerClientPool();
 
         final Map<String, List<Record<Event>>> groupedRecords = groupRecordsBasedOnIdentificationKeys(records, identificationKeys);
 
         final List<Record<Event>> recordsToProcessLocally = new ArrayList<>();
 
         for (final Map.Entry<String, List<Record<Event>>> entry: groupedRecords.entrySet()) {
-            final WebClient client = getClient(entry.getKey());
+            final String destinationIp = entry.getKey();
 
-            if (isLocalClient(client)) {
+            if (isAddressDefinedLocally(destinationIp)) {
                 recordsToProcessLocally.addAll(entry.getValue());
             }
             else {
-                AggregatedHttpResponse httpResponse = peerForwarderClient.serializeRecordsAndSendHttpRequest(entry.getValue(), client);
+                AggregatedHttpResponse httpResponse = peerForwarderClient.serializeRecordsAndSendHttpRequest(entry.getValue(),
+                        destinationIp, pluginId);
                 if (httpResponse == null || httpResponse.status() != HttpStatus.OK) {
                     recordsToProcessLocally.addAll(entry.getValue());
                 }
@@ -85,10 +83,6 @@ public class PeerForwarder {
         return groupedRecords;
     }
 
-    private WebClient getClient(final String address) {
-        return isAddressDefinedLocally(address) ? LOCAL_CLIENT : peerClientPool.getClient(address);
-    }
-
     private boolean isAddressDefinedLocally(final String address) {
         final InetAddress inetAddress;
         try {
@@ -105,10 +99,6 @@ public class PeerForwarder {
                 return false;
             }
         }
-    }
-
-    private boolean isLocalClient(final WebClient client) {
-        return client == LOCAL_CLIENT;
     }
 
 }

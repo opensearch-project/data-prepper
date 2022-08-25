@@ -9,7 +9,6 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.log.JacksonLog;
 import com.amazon.dataprepper.model.record.Record;
-import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import org.junit.jupiter.api.Test;
@@ -28,8 +27,9 @@ import java.util.Set;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -39,7 +39,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PeerForwarderTest {
-    final PeerClientPool peerClientPool = new PeerClientPool();
+    private static final String TEST_PLUGIN_ID = "test_plugin_id";
 
     @Mock
     PeerForwarderClientFactory peerForwarderClientFactory;
@@ -57,7 +57,6 @@ class PeerForwarderTest {
     @Test
     void test_forwardRecords_with_two_local_ips_should_process_record_two_record_locally() {
         when(peerForwarderClientFactory.createHashRing()).thenReturn(hashRing);
-        when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
         final List<String> testIps = List.of("127.0.0.1", "128.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
         lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
@@ -65,7 +64,7 @@ class PeerForwarderTest {
         PeerForwarder peerForwarder = createObjectUnderTest();
 
         final List<Record<Event>> records = peerForwarder.forwardRecords(generateBatchRecords(2, false),
-                generateIdentificationKeys());
+                generateIdentificationKeys(), TEST_PLUGIN_ID);
         verifyNoInteractions(peerForwarderClient);
         assertThat(records.size(), equalTo(2));
     }
@@ -74,9 +73,8 @@ class PeerForwarderTest {
     void test_forwardRecords_with_one_local_ip_and_one_remote_ip_should_process_record_one_record_locally() {
         AggregatedHttpResponse aggregatedHttpResponse = mock(AggregatedHttpResponse.class);
         when(peerForwarderClientFactory.createHashRing()).thenReturn(hashRing);
-        when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
         when(aggregatedHttpResponse.status()).thenReturn(HttpStatus.OK);
-        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), any(WebClient.class))).thenReturn(aggregatedHttpResponse);
+        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString())).thenReturn(aggregatedHttpResponse);
 
         final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
@@ -85,8 +83,8 @@ class PeerForwarderTest {
         PeerForwarder peerForwarder = createObjectUnderTest();
 
         final List<Record<Event>> records = peerForwarder.forwardRecords(generateBatchRecords(2, false),
-                generateIdentificationKeys());
-        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(any(List.class), any(WebClient.class));
+                generateIdentificationKeys(), TEST_PLUGIN_ID);
+        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString());
         assertThat(records.size(), equalTo(1));
     }
 

@@ -20,7 +20,10 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.peerforwarder.PeerClientPool;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderClientFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -35,31 +38,43 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PeerForwarderClientTest {
 
     private static final String LOCAL_IP = "127.0.0.1";
+    private static final String TEST_PLUGIN_ID = "test_plugin_id";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    @Mock
+    PeerClientPool peerClientPool;
+
+    @Mock
+    PeerForwarderClientFactory peerForwarderClientFactory;
+
     PeerForwarderClient createObjectUnderTest() {
-        return new PeerForwarderClient(objectMapper);
+        return new PeerForwarderClient(objectMapper, peerForwarderClientFactory);
     }
 
     @Test
     void test_serializeRecordsAndSendHttpRequest_with_actual_client_and_server_should_return() {
+        when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
+
         final HttpServer server = createServer(2022);
-        server.createContext("/", new TestHandler());
+        server.createContext("/log/ingest", new TestHandler());
         server.start();
 
         final InetSocketAddress address = server.getAddress();
         final WebClient testClient = getTestClient(String.valueOf(address.getPort()));
+        when(peerClientPool.getClient(anyString())).thenReturn(testClient);
 
         final PeerForwarderClient peerForwarderClient = createObjectUnderTest();
 
         final AggregatedHttpResponse aggregatedHttpResponse =
-                peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), testClient);
+                peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), address.toString(), TEST_PLUGIN_ID);
 
         assertThat(aggregatedHttpResponse, notNullValue());
         assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));

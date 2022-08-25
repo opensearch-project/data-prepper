@@ -117,7 +117,8 @@ public class PipelineParser {
                             .map(processor -> {
                                 if (processor instanceof RequiresPeerForwarding) {
                                     // TODO: Create buffer per stateful processor and store map of processor, buffer
-                                    return new PeerForwardingProcessorDecorator(processor, peerForwarder);
+                                    // TODO: get plugin id from PipelineParser
+                                    return new PeerForwardingProcessorDecorator(processor, peerForwarder, "pluginId");
                                 }
                                 return processor;
                             })
