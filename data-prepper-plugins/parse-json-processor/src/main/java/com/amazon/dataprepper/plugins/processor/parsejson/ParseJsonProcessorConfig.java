@@ -6,12 +6,12 @@
 package com.amazon.dataprepper.plugins.processor.parsejson;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotBlank;
 
 public class ParseJsonProcessorConfig {
     static final String DEFAULT_SOURCE = "message";
 
-    @NotEmpty
+    @NotBlank
     @JsonProperty("source")
     private String source = DEFAULT_SOURCE;
 
