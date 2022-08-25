@@ -29,9 +29,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.opensearch.client.Request;
 import org.opensearch.client.Response;
 import org.opensearch.client.RestClient;
@@ -58,9 +55,7 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createContentParser;
 import static com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createOpenSearchClient;
@@ -713,25 +708,6 @@ public class OpenSearchSinkIT {
                 throw new RuntimeException(e);
               }
             });
-  }
-
-  /**
-   * Provides a function for mapping a String to a Record to allow the tests to run
-   * against both String and Event models.
-   */
-  static class MultipleRecordTypeArgumentProvider implements ArgumentsProvider {
-    @Override
-    public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
-      final ObjectMapper objectMapper = new ObjectMapper();
-      final Function<String, Record> eventModel = jsonString -> {
-        try {
-          return new Record(JacksonEvent.builder().withEventType(EventType.TRACE.toString()).withData(objectMapper.readValue(jsonString, Map.class)).build());
-        } catch (final JsonProcessingException e) {
-          throw new RuntimeException(e);
-        }
-      };
-      return Stream.of(Arguments.of(eventModel));
-    }
   }
 
   private Record jsonStringToRecord(final String jsonString) {

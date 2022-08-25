@@ -98,7 +98,6 @@ public class PeerForwarder extends AbstractProcessor<Record<Event>, Record<Event
     @Override
     public List<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         final List<Span> spans = new ArrayList<>();
-        final List<ExportTraceServiceRequest> exportTraceServiceRequests = new ArrayList<>();
         records.forEach(record -> {
             final Event recordData = record.getData();
             if (recordData instanceof Span) {

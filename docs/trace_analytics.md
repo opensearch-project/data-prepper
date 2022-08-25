@@ -33,7 +33,8 @@ The [OpenTelemetry source](../data-prepper-plugins/otel-trace-source/README.md) 
 ### Processor
 
 We have two processor for the Trace Analytics feature,
-* *otel_trace_raw* -  This is a processor that fills in the missing trace group related fields in the collection of [Span](../data-prepper-api/src/main/java/com/amazon/dataprepper/model/trace/Span.java) records output by [otel_trace_raw](../otel-trace-raw-processor) processor.
+* *otel_trace_raw* -  This is a processor that receives collection of [Span](../../data-prepper-api/src/main/java/com/amazon/dataprepper/model/trace/Span.java) records sent from [otel-trace-source](../dataPrepper-plugins/otel-trace-source), does stateful processing on extracting and filling-in trace group related fields.
+* *otel_trace_group* -  This is a processor that fills in the missing trace group related fields in the collection of [Span](../../data-prepper-api/src/main/java/com/amazon/dataprepper/model/trace/Span.java) records by looking up the opensearch backend.
 * *service_map_stateful* -  This processor performs the required preprocessing on the trace data and build metadata to display the service-map OpenSearch Dashboards dashboards.
 
 
@@ -115,6 +116,18 @@ raw-pipeline:
          batch_size: 64
   processor:
     - otel_trace_raw:
+    - otel_trace_group:
+        hosts: [ "https://localhost:9200" ]
+        # Change to your credentials
+        username: "admin"
+        password: "admin"
+        # Add a certificate file if you are accessing an OpenSearch cluster with a self-signed certificate  
+        #cert: /path/to/cert
+        # If you are connecting to an Amazon OpenSearch Service domain without
+        # Fine-Grained Access Control, enable these settings. Comment out the
+        # username and password above.
+        #aws_sigv4: true
+        #aws_region: us-east-1
   sink:
     - opensearch:
         hosts: [ "https://localhost:9200" ]
