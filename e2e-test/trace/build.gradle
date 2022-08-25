@@ -31,8 +31,9 @@ task removeDataPrepperNetwork(type: DockerRemoveNetwork) {
 }
 
 def RAW_SPAN_PIPELINE_YAML = "raw-span-e2e-pipeline.yml"
+// TODO: refactor this file once core-peerforwarder is ready
 def RAW_SPAN_PIPELINE_PEER_FORWARDER_YAML = "raw-span-e2e-pipeline-peer-forwarder.yml"
-// TODO: modify the content of this file to be compatible with 2.0 in future release
+// TODO: change or remove the file once core-peerforwarder is ready
 def RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML = "raw-span-e2e-pipeline-latest-release.yml"
 def SERVICE_MAP_PIPELINE_YAML = "service-map-e2e-pipeline.yml"
 
