@@ -26,3 +26,16 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.96
+            }
+        }
+    }
+}
+
+check.dependsOn jacocoTestCoverageVerification

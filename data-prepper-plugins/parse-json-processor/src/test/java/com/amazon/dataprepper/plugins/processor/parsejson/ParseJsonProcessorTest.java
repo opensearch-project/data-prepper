@@ -24,7 +24,6 @@ import java.util.Objects;
 import static java.util.Map.entry;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,8 +41,8 @@ class ParseJsonProcessorTest {
     @BeforeEach
     void setup() {
         ParseJsonProcessorConfig defaultConfig = new ParseJsonProcessorConfig();
-        lenient().when(processorConfig.getSource()).thenReturn(defaultConfig.getSource());
-        lenient().when(processorConfig.getDestination()).thenReturn(defaultConfig.getDestination());
+        when(processorConfig.getSource()).thenReturn(defaultConfig.getSource());
+        when(processorConfig.getDestination()).thenReturn(defaultConfig.getDestination());
 
         parseJsonProcessor = createObjectUnderTest();
     }

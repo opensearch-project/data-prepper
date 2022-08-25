@@ -46,7 +46,7 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
             final Event event = record.getData();
             final String message = event.get(source, String.class);
             try {
-                TypeReference<HashMap<String, Object>> hashMapTypeReference = new TypeReference<HashMap<String, Object>>() {};
+                final TypeReference<HashMap<String, Object>> hashMapTypeReference = new TypeReference<HashMap<String, Object>>() {};
                 final Map<String, Object> parsedJson = objectMapper.readValue(message, hashMapTypeReference);
 
                 if (doWriteToRoot) {
