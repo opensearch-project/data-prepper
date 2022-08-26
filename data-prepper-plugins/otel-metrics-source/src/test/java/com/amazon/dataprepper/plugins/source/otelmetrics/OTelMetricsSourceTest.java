@@ -430,14 +430,14 @@ public class OTelMetricsSourceTest {
         testPluginSetting.setPipelineName("pipeline");
 
         oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
-        final OTelMetricsSource source = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+        SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
 
-        source.start(buffer);
+        SOURCE.start(buffer);
 
         // When
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
-                        .authority("localhost:21891")
+                        .authority("127.0.0.1:21891")
                         .method(HttpMethod.GET)
                         .path("/health")
                         .build())
@@ -482,6 +482,8 @@ public class OTelMetricsSourceTest {
                         .build())
                 .aggregate()
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
+
+        source.stop();
     }
 
     private void assertSecureResponseWithStatusCode(final AggregatedHttpResponse response, final HttpStatus expectedStatus) {
