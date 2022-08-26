@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 #
 # Copyright OpenSearch Contributors
@@ -8,7 +8,7 @@ if [[ $# -ne 2 ]]
   then
     echo
     echo "Error: Paths to pipeline and data-prepper configuration files are required. Example:"
-    echo "./data-prepper-tar-install.sh config/example-pipelines.yaml config/example-data-prepper-config.yaml"
+    echo "./bin/data-prepper config/example-pipelines.yaml config/example-data-prepper-config.yaml"
     echo
     exit 1
 fi
@@ -18,14 +18,8 @@ CONFIG_FILE_LOCATION=$2
 MIN_REQ_JAVA_VERSION=1.8
 MIN_REQ_OPENJDK_VERSION=8
 DATA_PREPPER_BIN=$(dirname "$(realpath "$0")")
-DATA_PREPPER_HOME="$DATA_PREPPER_BIN/.."
-EXECUTABLE_JAR=$(ls -1 "$DATA_PREPPER_HOME"/lib/*.jar 2>/dev/null)
-
-if [[ -z "$EXECUTABLE_JAR" ]]
-then
-  echo "Jar file is missing from directory $DATA_PREPPER_HOME/lib"
-  exit 1
-fi
+DATA_PREPPER_HOME=`realpath "$DATA_PREPPER_BIN/.."`
+DATA_PREPPER_CLASSPATH="$DATA_PREPPER_HOME/lib/*"
 
 #check if java is installed
 if type -p java; then
@@ -59,4 +53,4 @@ then
 fi
 
 DATA_PREPPER_JAVA_OPTS="-Dlog4j.configurationFile=$DATA_PREPPER_HOME/config/log4j2-rolling.properties"
-java $JAVA_OPTS $DATA_PREPPER_JAVA_OPTS -jar $EXECUTABLE_JAR $PIPELINES_FILE_LOCATION $CONFIG_FILE_LOCATION
+java $JAVA_OPTS $DATA_PREPPER_JAVA_OPTS -cp "$DATA_PREPPER_CLASSPATH" org.opensearch.dataprepper.DataPrepperExecute $PIPELINES_FILE_LOCATION $CONFIG_FILE_LOCATION

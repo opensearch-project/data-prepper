@@ -29,8 +29,8 @@ if [ -z "${TAR_FILE}" ]; then
     echo -e "build.sh requires environment variable TAR_FILE to be defined."
     exit 1
 fi
-if [ -z "${NAME}" ]; then
-    echo -e "build.sh requires environment variable NAME to be defined."
+if [ -z "${SMOKE_IMAGE_NAME}" ]; then
+    echo -e "build.sh requires environment variable SMOKE_IMAGE_NAME to be defined."
     exit 1
 fi
 
@@ -41,9 +41,9 @@ docker build \
     --build-arg FROM_IMAGE_NAME="${FROM_IMAGE_NAME}" \
     --build-arg FROM_IMAGE_TAG="${FROM_IMAGE_TAG}" \
     --build-arg TAR_FILE="${TAR_FILE}" \
-    -t "${NAME}":"${DATA_PREPPER_VERSION}" \
+    -t "${SMOKE_IMAGE_NAME}":"${DATA_PREPPER_VERSION}" \
     "${DOCKER_FILE_DIR}"
 
 rm -f "${DOCKER_FILE_DIR}/${TAR_FILE}"
 
-echo "Image created: \"${NAME}:${DATA_PREPPER_VERSION}\""
+echo "Image created: \"${SMOKE_IMAGE_NAME}:${DATA_PREPPER_VERSION}\""

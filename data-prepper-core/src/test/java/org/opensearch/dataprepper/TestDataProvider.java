@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper;
 
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -21,6 +22,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class TestDataProvider {
     public static final String TEST_PIPELINE_NAME = "test-pipeline-1";
@@ -84,16 +88,23 @@ public class TestDataProvider {
         return settingsMap;
     }
 
-    public static Map.Entry<String, Map<String, Object>> validSingleConfiguration() {
-        return Map.entry(TEST_PLUGIN_NAME_1, validSettingsForPlugin());
+    public static PluginModel validSingleConfiguration() {
+        return validPluginModel(TEST_PLUGIN_NAME_1);
     }
 
-    public static List<Map.Entry<String, Map<String, Object>>> validMultipleConfiguration() {
-        return Arrays.asList(Map.entry(TEST_PLUGIN_NAME_1, validSettingsForPlugin()), Map.entry(TEST_PLUGIN_NAME_2, validSettingsForPlugin()));
+    private static PluginModel validPluginModel(final String pluginName) {
+        final PluginModel pluginModel = mock(PluginModel.class);
+        when(pluginModel.getPluginName()).thenReturn(pluginName);
+        when(pluginModel.getPluginSettings()).thenReturn(validSettingsForPlugin());
+        return pluginModel;
     }
 
-    public static List<Map.Entry<String, Map<String, Object>>> validMultipleConfigurationOfSizeOne() {
-        return Collections.singletonList(Map.entry(TEST_PLUGIN_NAME_1, validSettingsForPlugin()));
+    public static List<PluginModel> validMultipleConfiguration() {
+        return Arrays.asList(validPluginModel(TEST_PLUGIN_NAME_1), validPluginModel(TEST_PLUGIN_NAME_2));
+    }
+
+    public static List<PluginModel> validMultipleConfigurationOfSizeOne() {
+        return Collections.singletonList(validSingleConfiguration());
     }
 
     public static Map<String, PipelineConfiguration> readConfigFile(final String configFilePath) throws IOException {
