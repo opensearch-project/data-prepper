@@ -6,26 +6,42 @@
 package org.opensearch.dataprepper.peerforwarder;
 
 import com.amazon.dataprepper.model.event.Event;
+import com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.Set;
 
 public class PeerForwardingProcessorDecorator implements Processor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwardingProcessorDecorator.class);
 
     private final Processor innerProcessor;
+    private final PeerForwarder peerForwarder;
+    private final String pluginId;
+    private Set<String> identificationKeys;
 
-    public PeerForwardingProcessorDecorator(final Processor innerProcessor) {
+    public PeerForwardingProcessorDecorator(final Processor innerProcessor,
+                                            final PeerForwarder peerForwarder,
+                                            final String pluginId
+                                            ) {
         this.innerProcessor = innerProcessor;
+        this.peerForwarder = peerForwarder;
+        this.pluginId = pluginId;
+
+        if (innerProcessor instanceof RequiresPeerForwarding) {
+            identificationKeys = ((RequiresPeerForwarding) innerProcessor).getIdentificationKeys();
+        }
         LOG.info("Peer Forwarder not implemented yet, processing events locally.");
     }
 
     @Override
     public Collection<Record<Event>> execute(final Collection<Record<Event>> records) {
-        return innerProcessor.execute(records);
+        final Collection<Record<Event>> recordsToProcessLocally = peerForwarder.forwardRecords(records, identificationKeys, pluginId);
+
+        return innerProcessor.execute(recordsToProcessLocally);
     }
 
     @Override
