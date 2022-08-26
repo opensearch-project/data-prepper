@@ -143,7 +143,8 @@ class S3ObjectWorkerIT {
 
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
-            final List<RecordsGenerator> recordsGenerators = List.of(new NewlineDelimitedRecordsGenerator(), new JsonRecordsGenerator());
+            final List<RecordsGenerator> recordsGenerators = List.of(new NewlineDelimitedRecordsGenerator(), new JsonRecordsGenerator(),
+                    new CsvRecordsGenerator());
             final List<Integer> numberOfRecordsList = List.of(0, 1, 25, 500, 5000);
             final List<Integer> recordsToAccumulateList = List.of(1, 100, 1000);
             final List<Boolean> booleanList = List.of(Boolean.TRUE, Boolean.FALSE);
