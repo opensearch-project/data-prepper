@@ -585,6 +585,8 @@ public class OTelTraceSourceTest {
                         .build())
                 .aggregate()
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.UNAUTHORIZED)).join();
+
+        source.stop();
     }
 
     @Test
@@ -622,6 +624,8 @@ public class OTelTraceSourceTest {
                         .build())
                 .aggregate()
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
+
+        source.stop();
     }
 
     private void assertSecureResponseWithStatusCode(final AggregatedHttpResponse response, final HttpStatus expectedStatus) {
