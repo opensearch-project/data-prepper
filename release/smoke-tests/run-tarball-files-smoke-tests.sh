@@ -132,13 +132,14 @@ function run_smoke_test() {
         exit 1
     fi
 
+    export SMOKE_IMAGE_NAME="${NAME}-smoke-test"
     echo "Using Docker Image ${FROM_IMAGE_NAME}:${FROM_IMAGE_TAG} as base image"
     eval "${DOCKER_FILE_DIR}/build.sh"
 
     local CURRENT_DIR
     CURRENT_DIR=$(pwd)
 
-    eval "${REPO_DIR}/release/smoke-tests/run-smoke-tests.sh -i ${NAME} -v ${DATA_PREPPER_VERSION}"
+    eval "${REPO_DIR}/release/smoke-tests/run-smoke-tests.sh -i ${SMOKE_IMAGE_NAME} -v ${DATA_PREPPER_VERSION}"
 
     echo echo "Completed smoke testing tar ${TAR_FILE}"
 
