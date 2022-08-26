@@ -9,6 +9,7 @@ import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,15 +25,18 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CsvProcessorTest {
     @Mock
     private CsvProcessorConfig processorConfig;
-
     @Mock
     private PluginMetrics pluginMetrics;
+    @Mock
+    private Counter csvInvalidEventsCounter;
 
     private CsvProcessor csvProcessor;
 
@@ -45,6 +49,8 @@ class CsvProcessorTest {
         lenient().when(processorConfig.getQuoteCharacter()).thenReturn(defaultConfig.getQuoteCharacter());
         lenient().when(processorConfig.getColumnNamesSourceKey()).thenReturn(defaultConfig.getColumnNamesSourceKey());
         lenient().when(processorConfig.getColumnNames()).thenReturn(defaultConfig.getColumnNames());
+
+        lenient().when(pluginMetrics.counter(CsvProcessor.CSV_INVALID_EVENTS)).thenReturn(csvInvalidEventsCounter);
 
         csvProcessor = createObjectUnderTest();
     }
@@ -115,7 +121,7 @@ class CsvProcessorTest {
     }
 
     @Test
-    void test_when_deleteHeaderandNoHeaderSource_then_extraFieldsNotDeleted() {
+    void test_when_deleteHeaderAndNoHeaderSource_then_extraFieldsNotDeleted() {
         final Map<String, Object> eventData = new HashMap<>();
         eventData.put("message","1,2,3");
         eventData.put("header","col1,col2,col3");
@@ -142,7 +148,7 @@ class CsvProcessorTest {
     }
 
     @Test
-    void test_when_tooManyUserSpecifiedColumns_then_ommitsExtraNames() {
+    void test_when_tooManyUserSpecifiedColumns_then_omitsExtraNames() {
         final List<String> columnNames = Arrays.asList("col1","col2","col3","col4");
         when(processorConfig.getColumnNames()).thenReturn(columnNames);
 
@@ -174,7 +180,7 @@ class CsvProcessorTest {
         assertThatKeyEquals(parsedEvent, "column3", "3");
     }
     @Test
-    void test_when_tooManyHeaderSourceColumns_then_ommitsExtraNames() {
+    void test_when_tooManyHeaderSourceColumns_then_omitsExtraNames() {
         when(processorConfig.getColumnNamesSourceKey()).thenReturn("header");
 
         final Map<String, Object> eventData = new HashMap<>();
@@ -277,6 +283,9 @@ class CsvProcessorTest {
         eventData.put("header","col1,col2");
         final Record<Event> eventUnderTest = buildRecordWithEvent(eventData);
         final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
+
+        verifyNoInteractions(csvInvalidEventsCounter);
+
         final Event parsedEvent = getSingleEvent(editedEvents);
 
         assertThat(parsedEvent.containsKey("message"), equalTo(true));
@@ -286,6 +295,24 @@ class CsvProcessorTest {
         assertThatKeyEquals(parsedEvent, "col1", "1");
         assertThatKeyEquals(parsedEvent, "col2", "2");
         assertThatKeyEquals(parsedEvent, "column3", "3");
+    }
+
+    @Test
+    void test_when_invalidEvent_then_metricIncrementedAndNoException() {
+        final Map<String, Object> eventData = new HashMap<>();
+        eventData.put("message","1,2,\"3");
+
+        final Record<Event> eventUnderTest = buildRecordWithEvent(eventData);
+        final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
+
+        verify(csvInvalidEventsCounter).increment();
+
+        final Event parsedEvent = getSingleEvent(editedEvents);
+
+        assertThat(parsedEvent.containsKey("message"), equalTo(true));
+        assertThat(parsedEvent.containsKey("column1"), equalTo(false));
+        assertThat(parsedEvent.containsKey("column2"), equalTo(false));
+        assertThat(parsedEvent.containsKey("column3"), equalTo(false));
     }
 
     private Record<Event> createMessageEvent(final String message) {
