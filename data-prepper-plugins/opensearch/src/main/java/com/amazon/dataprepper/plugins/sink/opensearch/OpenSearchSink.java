@@ -12,6 +12,7 @@ import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.AbstractSink;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
+import com.amazon.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import com.amazon.dataprepper.plugins.sink.opensearch.bulk.BulkOperationWriter;
 import com.amazon.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingBulkRequest;
 import com.amazon.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
@@ -23,10 +24,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
+import org.apache.commons.lang3.StringUtils;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import org.opensearch.client.opensearch.core.bulk.CreateOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.rest_client.RestClientTransport;
@@ -46,6 +49,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 @DataPrepperPlugin(name = "opensearch", pluginType = Sink.class)
@@ -66,6 +70,7 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
   private final long bulkSize;
   private final IndexType indexType;
   private final String documentIdField;
+  private final String action;
 
   private final Timer bulkRequestTimer;
   private final Counter bulkRequestErrorsCounter;
@@ -83,6 +88,7 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
     this.indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();
     this.documentIdField = openSearchSinkConfig.getIndexConfiguration().getDocumentIdField();
+    this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.indexManagerFactory = new IndexManagerFactory();
 
     try {
@@ -123,47 +129,76 @@ public class OpenSearchSink extends AbstractSink<Record<Object>> {
       return;
     }
 
-
-
     AccumulatingBulkRequest<BulkOperation, BulkRequest> bulkRequest = bulkRequestSupplier.get();
+
     for (final Record<Object> record : records) {
       final SerializedJson document = getDocument(record.getData());
+      final Optional<String> docId = getDocumentIdFromDocument(document);
 
-      final IndexOperation.Builder<Object> indexOperationBuilder = new IndexOperation.Builder<>()
-              .index(indexManager.getIndexAlias())
-              .document(document);
+      BulkOperation bulkOperation;
 
+      if (StringUtils.equalsIgnoreCase(action, BulkAction.CREATE.toString())) {
 
-      final Map documentAsMap;
-      try {
-        documentAsMap = objectMapper.readValue(document.getSerializedJson(), Map.class);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-      if(documentAsMap != null) {
-        final String docId = (String) documentAsMap.get(documentIdField);
-        if (docId != null) {
-          indexOperationBuilder.id(docId);
+        final CreateOperation.Builder<Object> createOperationBuilder = new CreateOperation.Builder<>()
+                .index(indexManager.getIndexAlias())
+                .document(document);
+
+        if (docId.isPresent()) {
+          createOperationBuilder.id(docId.get());
         }
-      }
-      final BulkOperation indexBulkOperation = new BulkOperation.Builder()
-              .index(indexOperationBuilder.build())
-              .build();
+        
+        bulkOperation = new BulkOperation.Builder()
+                .create(createOperationBuilder.build())
+                .build();
 
-      final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(indexBulkOperation);
+      } else {
+
+        // Default to "index"
+
+        final IndexOperation.Builder<Object> indexOperationBuilder = new IndexOperation.Builder<>()
+                .index(indexManager.getIndexAlias())
+                .document(document);
+
+        if (docId.isPresent()) {
+          indexOperationBuilder.id(docId.get());
+        }
+
+        bulkOperation = new BulkOperation.Builder()
+                .index(indexOperationBuilder.build())
+                .build();
+
+      }
+
+      final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperation);
       if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.getOperationsCount() > 0) {
         flushBatch(bulkRequest);
         bulkRequest = bulkRequestSupplier.get();
       }
-      bulkRequest.addOperation(indexBulkOperation);
+      bulkRequest.addOperation(bulkOperation);
     }
 
     // Flush the remaining requests
     if (bulkRequest.getOperationsCount() > 0) {
       flushBatch(bulkRequest);
     }
+
   }
 
+  private Optional<String> getDocumentIdFromDocument(final SerializedJson document) {
+    final Map documentAsMap;
+    try {
+      documentAsMap = objectMapper.readValue(document.getSerializedJson(), Map.class);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+    if (documentAsMap != null) {
+      final String docId = (String) documentAsMap.get(documentIdField);
+      if (docId != null) {
+        return Optional.of(docId);
+      }
+    }
+    return Optional.empty();
+  }
 
   // Temporary function to support both trace and log ingestion pipelines.
   // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546

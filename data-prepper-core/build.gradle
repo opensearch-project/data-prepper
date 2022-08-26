@@ -14,7 +14,7 @@ sourceSets {
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-expression')
-    implementation project(':data-prepper-plugins')
+    implementation project(':data-prepper-plugins:blocking-buffer')
     implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-logstash-configuration')
     testImplementation project(':data-prepper-plugins:common').sourceSets.test.output
@@ -26,45 +26,28 @@ dependencies {
     implementation 'io.micrometer:micrometer-registry-cloudwatch2'
     implementation 'software.amazon.awssdk:cloudwatch'
     implementation 'org.hibernate.validator:hibernate-validator:7.0.4.Final'
-    implementation platform('org.apache.logging.log4j:log4j-bom:2.17.2')
+    implementation platform('org.apache.logging.log4j:log4j-bom:2.18.0')
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.logging.log4j:log4j-slf4j-impl'
     implementation 'javax.inject:javax.inject:1'
-    implementation('org.springframework:spring-core:5.3.21') {
+    implementation('org.springframework:spring-core:5.3.22') {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
-    implementation('org.springframework:spring-context:5.3.21') {
+    implementation('org.springframework:spring-context:5.3.22') {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
     implementation 'software.amazon.cloudwatchlogs:aws-embedded-metrics:2.0.0-beta-1'
-    testImplementation 'org.springframework:spring-test:5.3.21'
+    testImplementation 'org.springframework:spring-test:5.3.22'
+    implementation "com.linecorp.armeria:armeria:${versionMap.armeria}"
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
+    implementation "com.linecorp.armeria:armeria-grpc:${versionMap.armeriaGrpc}"
+    implementation 'software.amazon.awssdk:acm'
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:apache-client'
+    implementation 'commons-validator:commons-validator:1.7'
+    implementation 'software.amazon.awssdk:servicediscovery'
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
-}
-
-jar {
-    zip64 = true
-    dependsOn configurations.runtimeClasspath
-    manifest {
-        attributes('Implementation-Title': project.name,
-                'Implementation-Version': project.version,
-                'Main-Class': 'com.amazon.dataprepper.DataPrepperExecute')
-    }
-    from {
-        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
-        duplicatesStrategy(DuplicatesStrategy.INCLUDE)
-    }
-    from {
-        configurations.runtimeClasspath.findAll { it.name.endsWith('jar') }.collect { zipTree(it) }
-    }
-    exclude 'META-INF/*.RSA'
-    exclude 'META-INF/*.SF'
-    exclude 'META-INF/*.DSA'
-    exclude 'META-INF/services/com.linecorp.armeria.client.ClientFactoryProvider'
-
-    from ('src/main/resources/META-INF/services') {
-        into 'META-INF/services'
-    }
-
+    testImplementation 'org.apache.commons:commons-lang3:3.12.0'
 }
 
 jacocoTestCoverageVerification {

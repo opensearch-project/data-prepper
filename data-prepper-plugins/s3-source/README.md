@@ -10,10 +10,13 @@ This source requires an SQS queue which receives
 The S3 Source will load S3 objects that have Event notifications for Create events.
 A user-specified codec parses the S3 Object and creates Events from them.
 
-Currently, there are two codecs:
+Currently, there are three codecs:
 
 * `newline` - Parses files where each single line is a log event.
 * `json` - Parses the file for a JSON array. Each object in the JSON array is a log event.
+* `csv` - Parses a character separated file. Each line of data is a log event.
+
+
 
 The `compression` property defines how to handle compressed S3 objects. It has the following options.
 

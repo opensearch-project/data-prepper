@@ -12,6 +12,7 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.EventType;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexConstants;
 import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexManager;
@@ -473,6 +474,34 @@ public class OpenSearchSinkIT {
     final List<Record<Object>> testRecords = Collections.singletonList(stringToRecord.apply(generateCustomRecordJson(testIdField, testId)));
     final PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFile);
     pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
+    sink.output(testRecords);
+    final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+    MatcherAssert.assertThat(retSources.size(), equalTo(1));
+    MatcherAssert.assertThat(getDocumentCount(testIndexAlias, "_id", testId), equalTo(Integer.valueOf(1)));
+    sink.shutdown();
+
+    // verify metrics
+    final List<Measurement> bulkRequestLatencies = MetricsTestUtil.getMeasurementList(
+            new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(PLUGIN_NAME)
+                    .add(OpenSearchSink.BULKREQUEST_LATENCY).toString());
+    MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
+    // COUNT
+    Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+  }
+
+  @ParameterizedTest
+  @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
+  public void testBulkActionCreate(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+    final String testIndexAlias = "test-alias";
+    final String testTemplateFile = Objects.requireNonNull(
+            getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
+    final String testIdField = "someId";
+    final String testId = "foo";
+    final List<Record<Object>> testRecords = Collections.singletonList(stringToRecord.apply(generateCustomRecordJson(testIdField, testId)));
+    final PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFile);
+    pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
+    pluginSetting.getSettings().put(IndexConfiguration.ACTION, BulkAction.CREATE.toString());
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);

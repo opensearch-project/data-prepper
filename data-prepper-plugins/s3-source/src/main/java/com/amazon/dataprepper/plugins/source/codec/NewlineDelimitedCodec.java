@@ -15,7 +15,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -23,6 +24,7 @@ import java.util.function.Consumer;
 public class NewlineDelimitedCodec implements Codec {
     private static final String MESSAGE_FIELD_NAME = "message";
     private final int skipLines;
+    private final String headerDestination;
 
     @DataPrepperPluginConstructor
     public NewlineDelimitedCodec(final NewlineDelimitedConfig config) {
@@ -32,6 +34,8 @@ public class NewlineDelimitedCodec implements Codec {
         if (skipLines < 0) {
             throw new IllegalArgumentException("skipLines must be non-negative.");
         }
+
+        headerDestination = config.getHeaderDestination();
     }
 
     @Override
@@ -42,18 +46,34 @@ public class NewlineDelimitedCodec implements Codec {
     }
 
     private void parseBufferedReader(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {
+        final boolean doAddHeaderToOutgoingEvents = Objects.nonNull(headerDestination);
+        boolean hasReadHeader = false;
+        String header = "";
+
         int linesToSkip = skipLines;
         String line;
         while ((line = reader.readLine()) != null) {
+            final boolean shouldSkipBecauseThisLineIsHeader = doAddHeaderToOutgoingEvents && !hasReadHeader;
+            final boolean shouldSkipThisLine = linesToSkip > 0 || shouldSkipBecauseThisLineIsHeader;
 
-            if (linesToSkip > 0) {
-                linesToSkip--;
+            if (shouldSkipThisLine) {
+                if (linesToSkip > 0) {
+                    linesToSkip--;
+                } else {
+                    header = line;
+                    hasReadHeader = true;
+                }
                 continue;
             }
 
-            final Event event = JacksonLog.builder()
-                    .withData(Collections.singletonMap(MESSAGE_FIELD_NAME, line))
-                    .build();
+            final Map<String, String> eventData = new HashMap<>();
+
+            if (doAddHeaderToOutgoingEvents) {
+                eventData.put(headerDestination, header);
+            }
+            eventData.put(MESSAGE_FIELD_NAME, line);
+
+            final Event event = JacksonLog.builder().withData(eventData).build();
             eventConsumer.accept(new Record<>(event));
         }
     }

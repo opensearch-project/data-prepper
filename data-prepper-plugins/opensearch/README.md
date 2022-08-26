@@ -19,7 +19,7 @@ pipeline:
       cert: path/to/cert
       username: YOUR_USERNAME_HERE
       password: YOUR_PASSWORD_HERE
-      trace_analytics_raw: true
+      index_type: trace-analytics-raw
       dlq_file: /your/local/dlq-file
       bulk_size: 4
 ```
@@ -37,7 +37,7 @@ pipeline:
       cert: path/to/cert
       username: YOUR_USERNAME_HERE
       password: YOUR_PASSWORD_HERE
-      trace_analytics_service_map: true
+      index_type: trace-analytics-service-map
       dlq_file: /your/local/dlq-file
       bulk_size: 4
 ```

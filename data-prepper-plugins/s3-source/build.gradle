@@ -17,9 +17,12 @@ dependencies {
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:sts'
     implementation 'software.amazon.awssdk:sqs'
-    implementation 'com.amazonaws:aws-java-sdk-s3:1.12.257'
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.3'
     implementation 'org.apache.commons:commons-compress:1.21'
+    implementation 'joda-time:joda-time:2.10.14'
     implementation 'org.hibernate.validator:hibernate-validator:7.0.4.Final'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     testImplementation 'org.apache.commons:commons-lang3:3.12.0'
 }
 

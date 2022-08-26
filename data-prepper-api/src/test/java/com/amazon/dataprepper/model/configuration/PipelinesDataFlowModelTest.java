@@ -36,13 +36,13 @@ class PipelinesDataFlowModelTest {
     }
 
     @Test
-    void testSerializing_PipelinesDataFlowModel_empty_Plugins() throws JsonProcessingException {
+    void testSerializing_PipelinesDataFlowModel_empty_Plugins_with_nonEmpty_delay_and_workers() throws JsonProcessingException {
         String pipelineName = "test-pipeline";
 
         final PluginModel source = new PluginModel("testSource", null);
         final List<PluginModel> preppers = Collections.singletonList(new PluginModel("testPrepper", null));
         final List<PluginModel> sinks = Collections.singletonList(new PluginModel("testSink", null));
-        final PipelineModel pipelineModel = new PipelineModel(source, null, preppers, sinks, null, null);
+        final PipelineModel pipelineModel = new PipelineModel(source, null, preppers, null, sinks, 8, 50);
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(Collections.singletonMap(pipelineName, pipelineModel));
 

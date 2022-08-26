@@ -19,6 +19,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -49,6 +50,13 @@ class NewlineDelimitedCodecTest {
         config = null;
 
         assertThrows(NullPointerException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    void constructor_throws_if_header_destination_is_empty() throws NoSuchFieldException, IllegalAccessException {
+        final NewlineDelimitedConfig objectUnderTest = new NewlineDelimitedConfig();
+        reflectivelySetField(objectUnderTest, "headerDestination", "");
+        assertThat(objectUnderTest.isValidHeaderDestination(), equalTo(false));
     }
 
     @ParameterizedTest
@@ -110,6 +118,107 @@ class NewlineDelimitedCodecTest {
         verifyNoInteractions(eventConsumer);
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 2, 10, 50})
+    void parse_with_header_calls_Consumer_with_header_fields_no_skip(final int numberOfLines) throws IOException {
+        final String headerMessage = "HeaderOnList";
+
+        final List<String> linesList = generateLinesAsListWithHeader(numberOfLines, headerMessage);
+        final InputStream inputStream = createInputStream(linesList);
+
+        final int headerOffset = 1;
+        when(config.getHeaderDestination()).thenReturn("event_header");
+        final List<Record<Event>> actualEvents = new ArrayList<>();
+        createObjectUnderTest().parse(inputStream, actualEvents::add);
+
+        assertThat(actualEvents.size(), equalTo(numberOfLines));
+        for (int i = headerOffset; i < actualEvents.size(); i++) {
+            final Record<Event> record = actualEvents.get(i);
+            assertThat(record, notNullValue());
+            assertThat(record.getData(), notNullValue());
+            assertThat(record.getData().get("event_header", String.class), equalTo(headerMessage));
+            assertThat(record.getData().get("message", String.class), equalTo(linesList.get(i + headerOffset)));
+            assertThat(record.getData().getMetadata(), notNullValue());
+            assertThat(record.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10, 50})
+    void parse_with_header_calls_Consumer_with_header_fields_after_skip(final int numberOfLines) throws IOException {
+        final String headerMessage = "HeaderOnList";
+        final int skipLines = 1;
+
+        final List<String> linesList = generateLinesAsListWithHeaderAfterJunkLines(numberOfLines, headerMessage, skipLines);
+        final InputStream inputStream = createInputStream(linesList);
+
+        final int headerOffset = 1;
+        when(config.getHeaderDestination()).thenReturn("event_header");
+        when(config.getSkipLines()).thenReturn(skipLines);
+        final List<Record<Event>> actualEvents = new ArrayList<>();
+        createObjectUnderTest().parse(inputStream, actualEvents::add);
+
+        assertThat(actualEvents.size(), equalTo(numberOfLines));
+        for (int i = headerOffset; i < actualEvents.size(); i++) {
+            final Record<Event> record = actualEvents.get(i);
+            assertThat(record, notNullValue());
+            assertThat(record.getData(), notNullValue());
+            assertThat(record.getData().get("event_header", String.class), equalTo(headerMessage));
+            assertThat(record.getData().get("message", String.class), equalTo(linesList.get(i + skipLines + headerOffset)));
+            assertThat(record.getData().getMetadata(), notNullValue());
+            assertThat(record.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10, 50})
+    void parse_with_header_calls_Consumer_with_header_fields_after_multiple_skips(final int numberOfLines) throws IOException {
+        final String headerMessage = "HeaderOnList";
+        final int skipLines = 3;
+
+        final List<String> linesList = generateLinesAsListWithHeaderAfterJunkLines(numberOfLines, headerMessage, skipLines);
+        final InputStream inputStream = createInputStream(linesList);
+
+        final int headerOffset = 1;
+        when(config.getHeaderDestination()).thenReturn("event_header");
+        when(config.getSkipLines()).thenReturn(skipLines);
+        final List<Record<Event>> actualEvents = new ArrayList<>();
+        createObjectUnderTest().parse(inputStream, actualEvents::add);
+
+        assertThat(actualEvents.size(), equalTo(numberOfLines));
+        for (int i = headerOffset; i < actualEvents.size(); i++) {
+            final Record<Event> record = actualEvents.get(i);
+            assertThat(record, notNullValue());
+            assertThat(record.getData(), notNullValue());
+            assertThat(record.getData().get("event_header", String.class), equalTo(headerMessage));
+            assertThat(record.getData().get("message", String.class), equalTo(linesList.get(i + skipLines + headerOffset)));
+            assertThat(record.getData().getMetadata(), notNullValue());
+            assertThat(record.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
+        }
+    }
+
+    private List<String> generateLinesAsListWithHeaderAfterJunkLines(int numberOfLines, String headerMessage, int numJunkLines) {
+        final int headerOffset = 1;
+//        final int SKIP_OFFSET = 1;
+        final List<String> linesList = new ArrayList<>(numberOfLines+headerOffset+numJunkLines);
+        for (int i = 0; i < numJunkLines; i++) {
+            linesList.add("JUNK VALUE TO BE SKIPPED, Line: " + i);
+        }
+        linesList.add(headerMessage);
+        for (int i = 0; i < numberOfLines; i++)
+            linesList.add(UUID.randomUUID().toString());
+        return Collections.unmodifiableList(linesList);
+    }
+
+    private List<String> generateLinesAsListWithHeader(final int numberOfLines, final String headerMessage) {
+        final int headerOffset = 1;
+        final List<String> linesList = new ArrayList<>(numberOfLines+headerOffset);
+        linesList.add(headerMessage);
+        for (int i = 0; i < numberOfLines; i++)
+            linesList.add(UUID.randomUUID().toString());
+        return Collections.unmodifiableList(linesList);
+    }
+
     private InputStream createInputStream(final List<String> lines) {
         final String inputString = generateMultilineString(lines);
 
@@ -131,5 +240,16 @@ class NewlineDelimitedCodecTest {
         }
 
         return stringWriter.toString();
+    }
+
+    private void reflectivelySetField(final NewlineDelimitedConfig newlineDelimitedConfig, final String fieldName, final Object value)
+            throws NoSuchFieldException, IllegalAccessException {
+        final Field field = NewlineDelimitedConfig.class.getDeclaredField(fieldName);
+        try {
+            field.setAccessible(true);
+            field.set(newlineDelimitedConfig, value);
+        } finally {
+            field.setAccessible(false);
+        }
     }
 }

@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.logstash.model.LogstashPluginType;
 import java.util.Collections;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -34,17 +35,36 @@ class LogstashMapperTest {
         LogstashConfiguration logstashConfiguration = mock(LogstashConfiguration.class);
         when(logstashConfiguration.getPluginSection(LogstashPluginType.INPUT))
                 .thenReturn(Collections.singletonList(TestDataProvider.pluginData()));
+        when(logstashConfiguration.getPluginSection(LogstashPluginType.OUTPUT))
+                .thenReturn(Collections.singletonList(TestDataProvider.pluginData()));
 
         PipelineModel actualPipelineModel =  logstashMapper.mapPipeline(logstashConfiguration);
         PipelineModel expectedPipelineModel = new PipelineModel(TestDataProvider.samplePluginModel(),
-                null, null, null, null);
+                null, null, null, Collections.singletonList(TestDataProvider.samplePluginModel()), null, null);
 
         assertThat(actualPipelineModel.getSource().getPluginName(),
                 equalTo(expectedPipelineModel.getSource().getPluginName()));
         assertThat(actualPipelineModel.getSource().getPluginSettings(),
                 equalTo(expectedPipelineModel.getSource().getPluginSettings()));
+        assertThat(actualPipelineModel.getBuffer(), equalTo(expectedPipelineModel.getBuffer()));
+        assertThat(actualPipelineModel.getSinks(), notNullValue());
+        assertThat(actualPipelineModel.getSinks().size(), equalTo(1));
+        assertThat(actualPipelineModel.getSinks().get(0).getPluginName(), equalTo(expectedPipelineModel.getSinks().get(0).getPluginName()));
         assertThat(actualPipelineModel.getReadBatchDelay(), equalTo(expectedPipelineModel.getReadBatchDelay()));
         assertThat(actualPipelineModel.getWorkers(), equalTo(expectedPipelineModel.getWorkers()));
+    }
+
+    @Test
+    void mapPipeline_with_no_source_plugins_should_throw_exception() {
+        final LogstashConfiguration logstashConfiguration = TestDataProvider.sampleConfigurationWithEmptyInputPlugins();
+
+        final Exception exception = assertThrows(LogstashMappingException.class, () ->
+                logstashMapper.mapPipeline(logstashConfiguration));
+
+        final String expectedMessage = "Only logstash configurations with exactly 1 input plugin are supported";
+        final String actualMessage = exception.getMessage();
+
+        assertThat(actualMessage, equalTo(expectedMessage));
     }
 
     @Test
@@ -54,29 +74,27 @@ class LogstashMapperTest {
         Exception exception = assertThrows(LogstashMappingException.class, () ->
                 logstashMapper.mapPipeline(logstashConfiguration));
 
-        String expectedMessage = "More than 1 source plugins are not supported";
+        String expectedMessage = "Only logstash configurations with exactly 1 input plugin are supported";
         String actualMessage = exception.getMessage();
 
         assertThat(actualMessage, equalTo(expectedMessage));
     }
 
     @Test
-    void mapPipeline_with_no_plugins_should_return_pipeline_model_without_plugins_Test() {
-        LogstashConfiguration logstashConfiguration = mock(LogstashConfiguration.class);
+    void mapPipeline_with_no_sink_plugins_should_throw_Exception() {
+        final LogstashConfiguration logstashConfiguration = mock(LogstashConfiguration.class);
+
         when(logstashConfiguration.getPluginSection(LogstashPluginType.INPUT))
-                .thenReturn(Collections.emptyList());
-        when(logstashConfiguration.getPluginSection(LogstashPluginType.FILTER))
-                .thenReturn(Collections.emptyList());
+                .thenReturn(Collections.singletonList(TestDataProvider.pluginData()));
         when(logstashConfiguration.getPluginSection(LogstashPluginType.OUTPUT))
                 .thenReturn(Collections.emptyList());
 
-        PipelineModel actualPipelineModel =  logstashMapper.mapPipeline(logstashConfiguration);
+        final Exception exception = assertThrows(LogstashMappingException.class, () ->
+                logstashMapper.mapPipeline(logstashConfiguration));
 
-        assertThat(actualPipelineModel.getSource(), equalTo(null));
-        assertThat(actualPipelineModel.getProcessors(), equalTo(Collections.emptyList()));
-        assertThat(actualPipelineModel.getSinks(), equalTo(Collections.emptyList()));
-        assertThat(actualPipelineModel.getReadBatchDelay(), equalTo(null));
-        assertThat(actualPipelineModel.getWorkers(), equalTo(null));
+        final String expectedMessage = "At least one logstash output plugin is required";
+        final String actualMessage = exception.getMessage();
+
+        assertThat(actualMessage, equalTo(expectedMessage));
     }
-
 }

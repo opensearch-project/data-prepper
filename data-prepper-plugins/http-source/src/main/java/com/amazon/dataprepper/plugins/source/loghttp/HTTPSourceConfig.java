@@ -7,18 +7,18 @@ package com.amazon.dataprepper.plugins.source.loghttp;
 
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.micrometer.core.instrument.util.StringUtils;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 public class HTTPSourceConfig {
     static final String DEFAULT_LOG_INGEST_URI = "/log/ingest";
     static final String SSL = "ssl";
     static final String SSL_CERTIFICATE_FILE = "ssl_certificate_file";
     static final String SSL_KEY_FILE = "ssl_key_file";
+    static final boolean DEFAULT_USE_ACM_CERTIFICATE_FOR_SSL = false;
+    static final int DEFAULT_ACM_CERTIFICATE_TIMEOUT_MILLIS = 120000;
     static final int DEFAULT_PORT = 2021;
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final int DEFAULT_THREAD_COUNT = 200;
@@ -27,6 +27,7 @@ public class HTTPSourceConfig {
     static final boolean DEFAULT_HEALTH_CHECK = false;
     static final String HEALTH_CHECK_SERVICE = "health_check_service";
     static final String UNAUTHENTICATED_HEALTH_CHECK = "unauthenticated_health_check";
+    static final String S3_PREFIX = "s3://";
 
     @JsonProperty("port")
     @Min(0)
@@ -58,8 +59,21 @@ public class HTTPSourceConfig {
     @JsonProperty(SSL_KEY_FILE)
     private String sslKeyFile;
 
-    @JsonProperty("ssl_key_password")
-    private String sslKeyPassword;
+    @JsonProperty("use_acm_certificate_for_ssl")
+    private boolean useAcmCertificateForSsl = DEFAULT_USE_ACM_CERTIFICATE_FOR_SSL;
+
+    @JsonProperty("acm_certificate_arn")
+    private String acmCertificateArn;
+
+    @JsonProperty("acm_private_key_password")
+    private String acmPrivateKeyPassword;
+
+    @JsonProperty("acm_certificate_timeout_millis")
+    @Min(0)
+    private Integer acmCertificateTimeoutMillis = DEFAULT_ACM_CERTIFICATE_TIMEOUT_MILLIS;
+
+    @JsonProperty("aws_region")
+    private String awsRegion;
 
     @JsonProperty(HEALTH_CHECK_SERVICE)
     private boolean healthCheckService = DEFAULT_HEALTH_CHECK;
@@ -69,20 +83,38 @@ public class HTTPSourceConfig {
 
     private PluginModel authentication;
 
-    @AssertTrue(message = "ssl_certificate_file must be a valid file path when ssl is enabled")
-    boolean isSslCertificateFileValidation() {
-        return !ssl || isValidFilePath(sslCertificateFile);
+    public boolean isSslCertAndKeyFileInS3() {
+        return ssl && sslCertificateFile.toLowerCase().startsWith(S3_PREFIX) &&
+                sslKeyFile.toLowerCase().startsWith(S3_PREFIX);
     }
 
-    @AssertTrue(message = "ssl_key_file must be a valid file path when ssl is enabled")
-    boolean isSslKeyFileValidation() {
-        return !ssl || isValidFilePath(sslKeyFile);
+    @AssertTrue(message = "ssl_certificate_file cannot be a empty or null when ssl is enabled")
+    boolean isSslCertificateFileValid() {
+        return !ssl || StringUtils.isNotEmpty(sslCertificateFile);
     }
 
-    private static boolean isValidFilePath(final String filePath) {
-        return filePath != null && !filePath.isEmpty() && Files.exists(Paths.get(filePath));
+    @AssertTrue(message = "ssl_key_file cannot be a empty or null when ssl is enabled")
+    boolean isSslKeyFileValid() {
+        return !ssl || StringUtils.isNotEmpty(sslKeyFile);
     }
 
+    @AssertTrue(message = "acm_certificate_arn cannot be a empty or null when ACM is used for ssl")
+    boolean isAcmCertificateArnValid() {
+        return !useAcmCertificateForSsl || StringUtils.isNotEmpty(acmCertificateArn);
+    }
+
+    @AssertTrue(message = "acm_private_key_password cannot be a empty or null when ACM is used for ssl")
+    boolean isAcmPrivateKeyPasswordValid() {
+        return !useAcmCertificateForSsl || StringUtils.isNotEmpty(acmPrivateKeyPassword);
+    }
+
+    @AssertTrue(message = "aws_region cannot be a empty or null when ACM / S3 is used for ssl")
+    boolean isAwsRegionValid() {
+        if (ssl && (useAcmCertificateForSsl || isSslCertAndKeyFileInS3())) {
+            return StringUtils.isNotEmpty(awsRegion);
+        }
+        return true;
+    }
 
     public int getPort() {
         return port;
@@ -116,8 +148,24 @@ public class HTTPSourceConfig {
         return sslKeyFile;
     }
 
-    public String getSslKeyPassword() {
-        return sslKeyPassword;
+    public boolean isUseAcmCertificateForSsl() {
+        return useAcmCertificateForSsl;
+    }
+
+    public String getAcmCertificateArn() {
+        return acmCertificateArn;
+    }
+
+    public String getAcmPrivateKeyPassword() {
+        return acmPrivateKeyPassword;
+    }
+
+    public int getAcmCertificateTimeoutMillis() {
+        return acmCertificateTimeoutMillis;
+    }
+
+    public String getAwsRegion() {
+        return awsRegion;
     }
 
     public PluginModel getAuthentication() {
