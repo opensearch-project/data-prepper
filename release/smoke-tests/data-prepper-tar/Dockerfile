@@ -20,4 +20,4 @@ COPY ${DOCKER_FILE_DIR}/${TAR_FILE} ${DATA_PREPPER_HOME}
 RUN tar -xzf "${DATA_PREPPER_HOME}/${TAR_FILE}" -C "${DATA_PREPPER_HOME}" --strip-components=1 \
     && rm -f "${DATA_PREPPER_HOME}/${TAR_FILE}"
 
-ENTRYPOINT ${DATA_PREPPER_HOME}/data-prepper-tar-install.sh ${DATA_PREPPER_HOME}/pipelines.yaml ${DATA_PREPPER_HOME}/data-prepper-config.yaml
+ENTRYPOINT "${DATA_PREPPER_HOME}/bin/data-prepper" ${DATA_PREPPER_HOME}/pipelines.yaml ${DATA_PREPPER_HOME}/data-prepper-config.yaml
