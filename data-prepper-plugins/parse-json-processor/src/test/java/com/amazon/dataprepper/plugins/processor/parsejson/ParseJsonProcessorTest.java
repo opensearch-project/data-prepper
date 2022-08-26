@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -43,6 +44,7 @@ class ParseJsonProcessorTest {
         ParseJsonProcessorConfig defaultConfig = new ParseJsonProcessorConfig();
         when(processorConfig.getSource()).thenReturn(defaultConfig.getSource());
         when(processorConfig.getDestination()).thenReturn(defaultConfig.getDestination());
+        when(processorConfig.getPointer()).thenReturn(defaultConfig.getPointer());
 
         parseJsonProcessor = createObjectUnderTest();
     }
@@ -128,6 +130,128 @@ class ParseJsonProcessorTest {
         final String jsonPointerToValue = destination + constructDeeplyNestedJsonPointer(numberOfLayers);
 
         assertThat(parsedEvent.get(jsonPointerToValue, String.class), equalTo("value"));
+    }
+
+    @Test
+    void test_when_nestedJSONArray_then_parsedIntoArrayAndIndicesAccessible() {
+        final String key = "key";
+        final ArrayList<String> value = new ArrayList<>(List.of("Element0","Element1","Element2"));
+        final String jsonArray = "{\"key\":[\"Element0\",\"Element1\",\"Element2\"]}";
+        final Event parsedEvent = createAndParseMessageEvent(jsonArray);
+
+        assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(true));
+        assertThat(parsedEvent.get(key, ArrayList.class), equalTo(value));
+        final String pointerToFirstElement = key + "/0";
+        assertThat(parsedEvent.get(pointerToFirstElement, String.class), equalTo(value.get(0)));
+    }
+
+    @Test
+    void test_when_nestedJSONArrayOfJSON_then_parsedIntoArrayAndIndicesAccessible() {
+        final String key = "key";
+        final ArrayList<Map<String, Object>> value = new ArrayList<>(List.of(Collections.singletonMap("key0","value0"),
+                Collections.singletonMap("key1","value1")));
+        final String jsonArray = "{\"key\":[{\"key0\":\"value0\"},{\"key1\":\"value1\"}]}";
+
+        final Event parsedEvent = createAndParseMessageEvent(jsonArray);
+
+        assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(true));
+        assertThat(parsedEvent.get(key, ArrayList.class), equalTo(value));
+
+        final String pointerToInternalValue = key + "/0/key0";
+        assertThat(parsedEvent.get(pointerToInternalValue, String.class), equalTo("value0"));
+    }
+
+    @Test
+    void test_when_nestedJSONArrayOfJSONAndPointer_then_parsedIntoValue() {
+        final String pointer = "/key/0/key0";
+        when(processorConfig.getPointer()).thenReturn(pointer);
+        parseJsonProcessor = createObjectUnderTest();
+
+        final ArrayList<Map<String, Object>> value = new ArrayList<>(List.of(Collections.singletonMap("key0","value0"),
+                Collections.singletonMap("key1","value1")));
+        final String jsonArray = "{\"key\":[{\"key0\":\"value0\"},{\"key1\":\"value1\"}]}";
+
+        final Event parsedEvent = createAndParseMessageEvent(jsonArray);
+
+        assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(true));
+
+        assertThat(parsedEvent.get("key0", String.class), equalTo("value0"));
+        assertThat(parsedEvent.containsKey("key1"),equalTo(false));
+    }
+
+    @Test
+    void test_when_nestedJSONArrayAndIndexPointer_then_parsedIntoArrayAndIndicesAccessible() {
+        final String pointer = "/key/0/";
+        when(processorConfig.getPointer()).thenReturn(pointer);
+        parseJsonProcessor = createObjectUnderTest();
+        final ArrayList<String> value = new ArrayList<>(List.of("Element0","Element1","Element2"));
+        final String jsonArray = "{\"key\":[\"Element0\",\"Element1\",\"Element2\"]}";
+        final Event parsedEvent = createAndParseMessageEvent(jsonArray);
+
+        assertThat(parsedEvent.containsKey(processorConfig.getSource()), equalTo(true));
+        assertThat(parsedEvent.get("key.0", String.class), equalTo(value.get(0)));
+    }
+
+    @Test
+    void test_when_pointerKeyAlreadyPresentInEvent_then_usesAbsolutePath() {
+        final String pointer = "/log/s3/";
+        when(processorConfig.getPointer()).thenReturn(pointer);
+        parseJsonProcessor = createObjectUnderTest();
+        final Map<String, Object> s3Data = Collections.singletonMap("bucket","sampleBucket");
+        final Map<String, Object> data = new HashMap<>();
+        data.put("message", "{\"log\": {\"s3\": {\"data\":\"sample data\"}}}");
+        data.put("s3", s3Data);
+
+        Record<Event> record = buildRecordWithEvent(data);
+        final Event parsedEvent = ((List<Record<Event>>) parseJsonProcessor.doExecute(Collections.singletonList(record)))
+                .get(0).getData();
+
+        assertThatKeyEquals(parsedEvent, "message", data.get("message"));
+        assertThatKeyEquals(parsedEvent, "s3", data.get("s3"));
+
+        assertThatKeyEquals(parsedEvent, "log.s3", Collections.singletonMap("data", "sample data"));
+    }
+
+    @Test
+    void test_when_nestedDestinationField_then_writesToNestedDestination() {
+        final String destination = "/destination/nested";
+        when(processorConfig.getDestination()).thenReturn(destination);
+        parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
+        final Map<String, Object> data = Collections.singletonMap("key", "value");
+        final String serializedMessage = convertMapToJSONString(data);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+
+        final String location = destination + "/key";
+
+        assertThat(parsedEvent.get(location, String.class), equalTo("value"));
+        assertThat(parsedEvent.get(destination, Map.class), equalTo(data));
+    }
+
+    @Test
+    void test_when_invalidPointer_then_logsErrorAndParsesEntireEvent() {
+        final String pointer = "key/10000";
+        when(processorConfig.getPointer()).thenReturn(pointer);
+        parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
+
+        final ArrayList<String> value = new ArrayList<>(List.of("Element0","Element1","Element2"));
+        final String jsonArray = "{\"key\":[\"Element0\",\"Element1\",\"Element2\"]}";
+
+        final Event parsedEvent = createAndParseMessageEvent(jsonArray);
+
+        assertThatKeyEquals(parsedEvent, processorConfig.getSource(), jsonArray);
+        assertThatKeyEquals(parsedEvent, "key", value);
+    }
+
+
+
+    @Test
+    void test_when_multipleChildren_then_allAreParsedOut() {
+        final Map<String, Object> data = Collections.singletonMap("key", "{inner1:value1,inner2:value2}");
+        final String serializedMessage = convertMapToJSONString(data);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+
+        assertThatKeyEquals(parsedEvent, "key/inner1", "value1");
+        assertThatKeyEquals(parsedEvent, "key/inner2", "value2");
     }
 
     private String constructDeeplyNestedJsonPointer(final int numberOfLayers) {
