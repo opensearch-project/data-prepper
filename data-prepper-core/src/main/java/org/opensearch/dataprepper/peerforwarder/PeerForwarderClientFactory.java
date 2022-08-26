@@ -10,17 +10,12 @@ import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderF
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 import org.opensearch.dataprepper.peerforwarder.discovery.PeerListProvider;
 
-import javax.inject.Inject;
-import javax.inject.Named;
-
-@Named
 public class PeerForwarderClientFactory {
     public static final int NUM_VIRTUAL_NODES = 128;
 
     private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final PeerClientPool peerClientPool;
 
-    @Inject
     public PeerForwarderClientFactory(PeerForwarderConfiguration peerForwarderConfiguration,
                                       PeerClientPool peerClientPool) {
         this.peerForwarderConfiguration = peerForwarderConfiguration;
