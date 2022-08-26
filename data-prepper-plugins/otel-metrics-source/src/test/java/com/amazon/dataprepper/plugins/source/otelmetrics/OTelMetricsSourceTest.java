@@ -13,6 +13,7 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
 
+import com.amazon.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
@@ -120,7 +121,7 @@ public class OTelMetricsSourceTest {
     private PluginFactory pluginFactory;
 
     @Mock
-    private GrpcAuthenticationProvider authenticationProvider;
+    private GrpcBasicAuthenticationProvider authenticationProvider;
 
     private PluginSetting pluginSetting;
     private PluginSetting testPluginSetting;
@@ -408,13 +409,16 @@ public class OTelMetricsSourceTest {
     }
 
     @Test
-    public void testHealthCheck() {
+    public void testHealthCheckUnauthNotAllowed() {
         // Prepare
+        when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
+
         final Map<String, Object> settingsMap = new HashMap<>();
         settingsMap.put(SSL, false);
         settingsMap.put("health_check_service", "true");
         settingsMap.put("unframed_requests", "true");
         settingsMap.put("proto_reflection_service", "true");
+        settingsMap.put("unauthenticated_health_check", "false");
         settingsMap.put("authentication", new PluginModel("http_basic",
                 new HashMap<>()
                 {
@@ -431,7 +435,45 @@ public class OTelMetricsSourceTest {
         final OTelMetricsSource source = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
 
         source.start(buffer);
-//        source.stop();
+
+        // When
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("localhost:21891")
+                        .method(HttpMethod.GET)
+                        .path("/health")
+                        .build())
+                .aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.UNAUTHORIZED)).join();
+    }
+
+    @Test
+    public void testHealthCheckUnauthAllowed() {
+        // Prepare
+        when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
+
+        final Map<String, Object> settingsMap = new HashMap<>();
+        settingsMap.put(SSL, false);
+        settingsMap.put("health_check_service", "true");
+        settingsMap.put("unframed_requests", "true");
+        settingsMap.put("proto_reflection_service", "true");
+        settingsMap.put("unauthenticated_health_check", "true");
+        settingsMap.put("authentication", new PluginModel("http_basic",
+                new HashMap<>()
+                {
+                    {
+                        put("username", "test");
+                        put("password", "test2");
+                    }
+                }));
+
+        testPluginSetting = new PluginSetting(null, settingsMap);
+        testPluginSetting.setPipelineName("pipeline");
+
+        oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
+        final OTelMetricsSource source = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+
+        source.start(buffer);
 
         // When
         WebClient.of().execute(RequestHeaders.builder()
@@ -654,9 +696,7 @@ public class OTelMetricsSourceTest {
 
     @Test
     public void testOptionalHttpAuthServiceInPlace() {
-        final Optional<Function<? super HttpService, ? extends HttpService>> function = Optional.of(httpService -> httpService);
         when(server.stop()).thenReturn(completableFuture);
-        when(authenticationProvider.getHttpAuthenticationService()).thenReturn(function);
 
         try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
@@ -664,7 +704,6 @@ public class OTelMetricsSourceTest {
         }
 
         verify(serverBuilder).service(isA(GrpcService.class));
-        verify(serverBuilder).decorator(isA(Function.class));
     }
 
     @Test

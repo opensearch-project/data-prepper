@@ -24,7 +24,7 @@ public interface GrpcAuthenticationProvider {
      * The plugin name for the plugin which allows unauthenticated
      * requests. This plugin will disable authentication.
      */
-    String UNAUTHENTICATED_PLUGIN_NAME = "`unauthenticated`";
+    String UNAUTHENTICATED_PLUGIN_NAME = "unauthenticated";
 
     /**
      * Returns a {@link ServerInterceptor} that does authentication
