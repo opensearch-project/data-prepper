@@ -33,13 +33,14 @@ class PeerForwarderAppConfigIT {
         final PeerForwarderConfiguration objectUnderTest = createObjectUnderTest();
         assertThat(objectUnderTest.getServerPort(), equalTo(21890));
         assertThat(objectUnderTest.getRequestTimeout(), equalTo(10_000));
-        assertThat(objectUnderTest.getThreadCount(), equalTo(200));
+        assertThat(objectUnderTest.getServerThreadCount(), equalTo(200));
         assertThat(objectUnderTest.getMaxConnectionCount(), equalTo(500));
         assertThat(objectUnderTest.getMaxPendingRequests(), equalTo(1024));
         assertThat(objectUnderTest.isSsl(), equalTo(true));
         assertThat(objectUnderTest.getSslCertificateFile(), equalTo(null));
         assertThat(objectUnderTest.getSslKeyFile(), equalTo(null));
         assertThat(objectUnderTest.getDiscoveryMode(), equalTo(DiscoveryMode.STATIC));
+        assertThat(objectUnderTest.getClientThreadCount(), equalTo(200));
         assertThat(objectUnderTest.getBatchSize(), equalTo(48));
         assertThat(objectUnderTest.getBufferSize(), equalTo(512));
     }
