@@ -57,7 +57,7 @@ pipeline:
       aws_sigv4: true
       cert: path/to/cert
       insecure: false
-      trace_analytics_service_map: true
+      index_type: trace-analytics-service-map
       bulk_size: 4
 ```
 
@@ -119,13 +119,7 @@ Default is null.
       "traceGroupName": "MakePayement.auto"
     }
 ```
-- `trace_analytics_raw`(optional, deprecated in favor of `index_type`): A boolean flag indicates APM trace analytics raw span data type.
-Default value is false. Set it to true for [Raw span trace analytics](#raw_span_trace_analytics). Set it to false for [Service map trace analytics](#service_map_trace_analytics).
-
-- `trace_analytics_service_map`(optional, deprecated in favor of `index_type`): A boolean flag indicates APM trace analytics service map data type.
-Default value is false. Set it to true for [Service map trace analytics](#service_map_trace_analytics). Set it to false for [Raw span trace analytics](#raw_span_trace_analytics).
-
-- <a name="index"></a>`index`: A String used as index name for custom data type. Applicable and required only If index_type is explicitly `custom` or defaults to be `custom` while both `trace_analytics_raw` and `trace_analytics_service_map` are set to false.
+- <a name="index"></a>`index`: A String used as index name for custom data type. Applicable and required only If index_type is explicitly `custom` or defaults to be `custom`.
   * This index name can be a plain string, such as `application`, `my-index-name`.
   * This index name can also be a plain string plus a date-time pattern as a suffix, such as `application-%{yyyy.MM.dd}`, `my-index-name-%{yyyy.MM.dd.HH}`. When OpenSearch Sink is sending data to OpenSearch, the date-time pattern will be replaced by actual UTC time. The pattern supports all the symbols that represent one hour or above and are listed in [Java DateTimeFormatter](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html). For example, with an index pattern like `my-index-name-%{yyyy.MM.dd}`, a new index is created for each day such as `my-index-name-2022.01.25`. For another example, with an index pattern like `my-index-name-%{yyyy.MM.dd.HH}`, a new index is created for each hour such as `my-index-name-2022.01.25.13`.
 
@@ -145,6 +139,10 @@ all the records received from the upstream prepper at a time will be sent as a s
 If a single record turns out to be larger than the set bulk size, it will be sent as a bulk request of a single document.
 
 - `ism_policy_file` (optional): A String of absolute file path for an ISM (Index State Management) policy JSON file. This policy file is effective only when there is no built-in policy file for the index type. For example, `custom` index type is currently the only one without a built-in policy file, thus it would use the policy file here if it's provided through this parameter. OpenSearch documentation has more about [ISM policies.](https://opensearch.org/docs/latest/im-plugin/ism/policies/)
+
+- `trace_analytics_raw`: No longer supported starting Data Prepper 2.0. Use `index_type` instead.
+
+- `trace_analytics_service_map`: No longer supported starting Data Prepper 2.0. Use `index_type` instead.
 
 ### Management Disabled Index Type
 
