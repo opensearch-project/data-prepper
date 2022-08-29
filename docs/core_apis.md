@@ -14,15 +14,15 @@ curl -X POST http://localhost:4900/shutdown
 
 The following APIs are available:
 
-* /list
+* GET /list
     * lists running pipelines
-* /shutdown
+* POST /shutdown
     * starts a graceful shutdown of the Data Prepper
-* /metrics/prometheus
+* GET /metrics/prometheus
     * returns a scrape of the Data Prepper metrics in Prometheus text format. This API is available provided
       `metricsRegistries` parameter in data prepper configuration file `data-prepper-config.yaml` has `Prometheus` as one
       of the registry
-* /metrics/sys
+* GET /metrics/sys
     * returns JVM metrics in Prometheus text format. This API is available provided `metricsRegistries` parameter in data
       prepper configuration file `data-prepper-config.yaml` has `Prometheus` as one of the registry
 

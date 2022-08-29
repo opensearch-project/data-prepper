@@ -76,34 +76,6 @@ class PrometheusMetricsHandlerTest {
     }
 
     @Test
-    public void testWhenUsePostMethodThenResponseWritten() throws IOException {
-        final Headers headers = mock(Headers.class);
-        when(exchange.getResponseHeaders())
-                .thenReturn(headers);
-
-        final String testString = "I am a string used in a test";
-        when(meterRegistry.scrape())
-                .thenReturn(testString);
-
-        when(exchange.getRequestMethod())
-                .thenReturn("POST");
-
-        metricsHandler.handle(exchange);
-
-
-        verify(headers, times(1))
-                .add(eq("Content-Type"), eq("text/plain; charset=UTF-8"));
-
-        final byte[] response = testString.getBytes(StandardCharsets.UTF_8);
-        verify(exchange, times(1))
-                .sendResponseHeaders(eq(HttpURLConnection.HTTP_OK), eq((long) response.length));
-        verify(responseBody, times(1))
-                .write(response);
-        verify(responseBody, times(1))
-                .close();
-    }
-
-    @Test
     public void testWhenUseProhibitedHttpMethodThenErrorResponseWritten() throws IOException {
         when(exchange.getRequestMethod())
                 .thenReturn("DELETE");

@@ -99,38 +99,6 @@ class ListPipelinesHandlerTest {
     }
 
     @Test
-    public void testGivenPipelinesUsingPostMethodThenResponseWritten() throws IOException {
-        final DataPrepper dataPrepper = mock(DataPrepper.class);
-        final Headers headers = mock(Headers.class);
-        final Pipeline pipeline = mock(Pipeline.class);
-        final Map<String, Pipeline> transformationPipelines = new HashMap<>();
-        transformationPipelines.put("Pipeline A", pipeline);
-        transformationPipelines.put("Pipeline B", pipeline);
-        transformationPipelines.put("Pipeline C", pipeline);
-
-        when(dataPrepper.getTransformationPipelines())
-                .thenReturn(transformationPipelines);
-
-        when(httpExchange.getRequestMethod())
-                .thenReturn("POST");
-        when(httpExchange.getResponseHeaders())
-                .thenReturn(headers);
-
-        final ListPipelinesHandler handler = new ListPipelinesHandler(dataPrepper);
-
-        handler.handle(httpExchange);
-
-        verify(headers)
-                .add(eq("Content-Type"), eq("text/plain; charset=UTF-8"));
-        verify(httpExchange)
-                .sendResponseHeaders(eq(HttpURLConnection.HTTP_OK), anyLong());
-        verify(outputStream)
-                .write(any(byte[].class));
-        verify(outputStream)
-                .close();
-    }
-
-    @Test
     public void testGivenProhibitedHttpMethodThenErrorResponseWritten() throws IOException {
         final DataPrepper dataPrepper = mock(DataPrepper.class);
 
