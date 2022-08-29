@@ -107,7 +107,7 @@ public class OpenSearchSinkIT {
 
   @Test
   public void testInstantiateSinkRawSpanDefault() throws IOException {
-    final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
+    final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
     Request request = new Request(HttpMethod.HEAD, indexAlias);
@@ -153,7 +153,7 @@ public class OpenSearchSinkIT {
     final String reservedIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
     final Request request = new Request(HttpMethod.PUT, reservedIndexAlias);
     client.performRequest(request);
-    final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
+    final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
     Assert.assertThrows(String.format(IndexManager.INDEX_ALIAS_USED_AS_INDEX_ERROR, reservedIndexAlias),
             RuntimeException.class, () -> new OpenSearchSink(pluginSetting));
   }
@@ -168,7 +168,7 @@ public class OpenSearchSinkIT {
     @SuppressWarnings("unchecked") final Map<String, Object> expData2 = mapper.readValue(testDoc2, Map.class);
 
     final List<Record<Object>> testRecords = Arrays.asList(stringToRecord.apply(testDoc1), stringToRecord.apply(testDoc2));
-    final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
+    final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
 
@@ -232,7 +232,7 @@ public class OpenSearchSinkIT {
     final ObjectMapper mapper = new ObjectMapper();
     @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc2, Map.class);
     final List<Record<Object>> testRecords = Arrays.asList(stringToRecord.apply(testDoc1), stringToRecord.apply(testDoc2));
-    final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
+    final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
     // generate temporary directory for dlq file
     final File tempDirectory = Files.createTempDirectory("").toFile();
     // add dlq file path into setting
@@ -282,7 +282,7 @@ public class OpenSearchSinkIT {
 
   @Test
   public void testInstantiateSinkServiceMapDefault() throws IOException {
-    final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
+    final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue(), null, null);
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP);
     final Request request = new Request(HttpMethod.HEAD, indexAlias);
@@ -307,7 +307,7 @@ public class OpenSearchSinkIT {
     @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
 
     final List<Record<Object>> testRecords = Collections.singletonList(stringToRecord.apply(testDoc));
-    final PluginSetting pluginSetting = generatePluginSetting(false, true, null, null);
+    final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue(), null, null);
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
     final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP);
@@ -346,7 +346,7 @@ public class OpenSearchSinkIT {
     final String testIndexAlias = "test-alias";
     final String testTemplateFile = Objects.requireNonNull(
             getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
-    final PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFile);
+    final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     final Request request = new Request(HttpMethod.HEAD, testIndexAlias);
     final Response response = client.performRequest(request);
@@ -363,7 +363,7 @@ public class OpenSearchSinkIT {
     final String indexAlias = "sink-custom-index-ism-test-alias";
     final String testTemplateFile = Objects.requireNonNull(
             getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
-    final Map<String, Object> metadata = initializeConfigurationMetadata(false, false, indexAlias, testTemplateFile);
+    final Map<String, Object> metadata = initializeConfigurationMetadata(null, indexAlias, testTemplateFile);
     metadata.put(IndexConfiguration.ISM_POLICY_FILE, TEST_CUSTOM_INDEX_POLICY_FILE);
     final PluginSetting pluginSetting = generatePluginSettingByMetadata(metadata);
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
@@ -413,7 +413,7 @@ public class OpenSearchSinkIT {
     final String testTemplateFileV2 = getClass().getClassLoader().getResource(TEST_TEMPLATE_V2_FILE).getFile();
 
     // Create sink with template version 1
-    PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFileV1);
+    PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFileV1);
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
 
     Request getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
@@ -429,7 +429,7 @@ public class OpenSearchSinkIT {
     sink.shutdown();
 
     // Create sink with template version 2
-    pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFileV2);
+    pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFileV2);
     sink = new OpenSearchSink(pluginSetting);
 
     getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
@@ -445,7 +445,7 @@ public class OpenSearchSinkIT {
     sink.shutdown();
 
     // Create sink with template version 1 again
-    pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFileV1);
+    pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFileV1);
     sink = new OpenSearchSink(pluginSetting);
 
     getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
@@ -472,7 +472,7 @@ public class OpenSearchSinkIT {
     final String testIdField = "someId";
     final String testId = "foo";
     final List<Record<Object>> testRecords = Collections.singletonList(stringToRecord.apply(generateCustomRecordJson(testIdField, testId)));
-    final PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFile);
+    final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
     pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
@@ -499,7 +499,7 @@ public class OpenSearchSinkIT {
     final String testIdField = "someId";
     final String testId = "foo";
     final List<Record<Object>> testRecords = Collections.singletonList(stringToRecord.apply(generateCustomRecordJson(testIdField, testId)));
-    final PluginSetting pluginSetting = generatePluginSetting(false, false, testIndexAlias, testTemplateFile);
+    final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
     pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
     pluginSetting.getSettings().put(IndexConfiguration.ACTION, BulkAction.CREATE.toString());
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
@@ -528,7 +528,7 @@ public class OpenSearchSinkIT {
 
     final List<Record<Object>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
-    final PluginSetting pluginSetting = generatePluginSetting(true, false, null, null);
+    final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
 
@@ -560,7 +560,7 @@ public class OpenSearchSinkIT {
 
     final List<Record<Object>> testRecords = Collections.singletonList(stringToRecord.apply(generateCustomRecordJson(testIdField, testId)));
 
-    final Map<String, Object> metadata = initializeConfigurationMetadata(false, false, testIndexAlias, null);
+    final Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, null);
     metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.MANAGEMENT_DISABLED.getValue());
     metadata.put(ConnectionConfiguration.USERNAME, username);
     metadata.put(ConnectionConfiguration.PASSWORD, password);
@@ -588,11 +588,10 @@ public class OpenSearchSinkIT {
     Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
   }
 
-  private Map<String, Object> initializeConfigurationMetadata (final boolean isRaw, final boolean isServiceMap, final String indexAlias,
-                                                  final String templateFilePath) {
+  private Map<String, Object> initializeConfigurationMetadata (final String indexType, final String indexAlias,
+                                                               final String templateFilePath) {
     final Map<String, Object> metadata = new HashMap<>();
-    metadata.put(IndexConfiguration.TRACE_ANALYTICS_RAW_FLAG, isRaw);
-    metadata.put(IndexConfiguration.TRACE_ANALYTICS_SERVICE_MAP_FLAG, isServiceMap);
+    metadata.put(IndexConfiguration.INDEX_TYPE, indexType);
     metadata.put(ConnectionConfiguration.HOSTS, getHosts());
     metadata.put(IndexConfiguration.INDEX_ALIAS, indexAlias);
     metadata.put(IndexConfiguration.TEMPLATE_FILE, templateFilePath);
@@ -605,9 +604,9 @@ public class OpenSearchSinkIT {
     return metadata;
   }
 
-  private PluginSetting generatePluginSetting(final boolean isRaw, final boolean isServiceMap, final String indexAlias,
+  private PluginSetting generatePluginSetting(final String indexType, final String indexAlias,
                                               final String templateFilePath) {
-    final Map<String, Object> metadata = initializeConfigurationMetadata(isRaw, isServiceMap, indexAlias, templateFilePath);
+    final Map<String, Object> metadata = initializeConfigurationMetadata(indexType, indexAlias, templateFilePath);
     return generatePluginSettingByMetadata(metadata);
   }
 
