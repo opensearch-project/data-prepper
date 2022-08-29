@@ -8,6 +8,7 @@ package com.amazon.dataprepper.plugins.sink.opensearch;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
+import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.junit.Test;
 
 import java.util.Collections;
@@ -37,7 +38,7 @@ public class OpenSearchSinkConfigurationTests {
     public void testInvalidAction() {
 
         final Map<String, Object> metadata = new HashMap<>();
-        metadata.put(IndexConfiguration.TRACE_ANALYTICS_RAW_FLAG, true);
+        metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.TRACE_ANALYTICS_RAW.getValue());
         metadata.put(IndexConfiguration.ACTION, "invalid");
         metadata.put(ConnectionConfiguration.HOSTS, TEST_HOSTS);
 
@@ -52,7 +53,7 @@ public class OpenSearchSinkConfigurationTests {
     public void testReadESConfigWithBulkActionCreate() {
 
         final Map<String, Object> metadata = new HashMap<>();
-        metadata.put(IndexConfiguration.TRACE_ANALYTICS_RAW_FLAG, true);
+        metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.TRACE_ANALYTICS_RAW.getValue());
         metadata.put(IndexConfiguration.ACTION, BulkAction.CREATE.toString());
         metadata.put(ConnectionConfiguration.HOSTS, TEST_HOSTS);
 
@@ -69,7 +70,7 @@ public class OpenSearchSinkConfigurationTests {
 
     private PluginSetting generatePluginSetting() {
         final Map<String, Object> metadata = new HashMap<>();
-        metadata.put(IndexConfiguration.TRACE_ANALYTICS_RAW_FLAG, true);
+        metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.TRACE_ANALYTICS_RAW.getValue());
         metadata.put(ConnectionConfiguration.HOSTS, TEST_HOSTS);
 
         final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, metadata);
