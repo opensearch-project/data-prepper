@@ -45,6 +45,7 @@ import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -406,84 +407,76 @@ public class OTelMetricsSourceTest {
         verify(serverBuilder, never()).service(eq("/health"),isA(HealthCheckService.class));
     }
 
-    @Test
-    public void testHealthCheckUnauthNotAllowed() {
-        // Prepare
-        when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
-
+    @Nested
+    class UnauthTests {
         final Map<String, Object> settingsMap = new HashMap<>();
-        settingsMap.put(SSL, false);
-        settingsMap.put("health_check_service", "true");
-        settingsMap.put("unframed_requests", "true");
-        settingsMap.put("proto_reflection_service", "true");
-        settingsMap.put("unauthenticated_health_check", "false");
-        settingsMap.put("authentication", new PluginModel("http_basic",
-                new HashMap<>()
-                {
+
+        @BeforeEach
+        void setup() {
+            when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
+
+            settingsMap.clear();
+            settingsMap.put(SSL, false);
+            settingsMap.put("health_check_service", "true");
+            settingsMap.put("unframed_requests", "true");
+            settingsMap.put("proto_reflection_service", "true");
+            settingsMap.put("authentication", new PluginModel("http_basic",
+                    new HashMap<>()
                     {
-                        put("username", "test");
-                        put("password", "test2");
-                    }
-                }));
+                        {
+                            put("username", "test");
+                            put("password", "test2");
+                        }
+                    }));
+        }
 
-        testPluginSetting = new PluginSetting(null, settingsMap);
-        testPluginSetting.setPipelineName("pipeline");
+        void createObjectUnderTest() {
+            testPluginSetting = new PluginSetting(null, settingsMap);
+            testPluginSetting.setPipelineName("pipeline");
 
-        oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
-        SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+            oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
+            SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+        }
 
-        SOURCE.start(buffer);
+        @Test
+        void testHealthCheckUnauthNotAllowed() {
+            settingsMap.put("unauthenticated_health_check", "false");
+            createObjectUnderTest();
 
-        // When
-        WebClient.of().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTP)
-                        .authority("127.0.0.1:21891")
-                        .method(HttpMethod.GET)
-                        .path("/health")
-                        .build())
-                .aggregate()
-                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.UNAUTHORIZED)).join();
-    }
+            SOURCE.start(buffer);
 
-    @Test
-    public void testHealthCheckUnauthAllowed() {
-        // Prepare
-        when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
+            // When
+            WebClient.of().execute(RequestHeaders.builder()
+                            .scheme(SessionProtocol.HTTP)
+                            .authority("127.0.0.1:21891")
+                            .method(HttpMethod.GET)
+                            .path("/health")
+                            .build())
+                    .aggregate()
+                    .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.UNAUTHORIZED)).join();
 
-        final Map<String, Object> settingsMap = new HashMap<>();
-        settingsMap.put(SSL, false);
-        settingsMap.put("health_check_service", "true");
-        settingsMap.put("unframed_requests", "true");
-        settingsMap.put("proto_reflection_service", "true");
-        settingsMap.put("unauthenticated_health_check", "true");
-        settingsMap.put("authentication", new PluginModel("http_basic",
-                new HashMap<>()
-                {
-                    {
-                        put("username", "test");
-                        put("password", "test2");
-                    }
-                }));
+            SOURCE.stop();
+        }
 
-        testPluginSetting = new PluginSetting(null, settingsMap);
-        testPluginSetting.setPipelineName("pipeline");
+        @Test
+        void testHealthCheckUnauthAllowed() {
+            settingsMap.put("unauthenticated_health_check", "true");
+            createObjectUnderTest();
 
-        oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
-        final OTelMetricsSource source = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+            SOURCE.start(buffer);
 
-        source.start(buffer);
+            // When
+            WebClient.of().execute(RequestHeaders.builder()
+                            .scheme(SessionProtocol.HTTP)
+                            .authority("127.0.0.1:21891")
+                            .method(HttpMethod.GET)
+                            .path("/health")
+                            .build())
+                    .aggregate()
+                    .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
 
-        // When
-        WebClient.of().execute(RequestHeaders.builder()
-                        .scheme(SessionProtocol.HTTP)
-                        .authority("localhost:21891")
-                        .method(HttpMethod.GET)
-                        .path("/health")
-                        .build())
-                .aggregate()
-                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
-
-        source.stop();
+            SOURCE.stop();
+        }
     }
 
     private void assertSecureResponseWithStatusCode(final AggregatedHttpResponse response, final HttpStatus expectedStatus) {
