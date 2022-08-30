@@ -15,6 +15,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import javax.ws.rs.HttpMethod;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -58,7 +59,7 @@ class PrometheusMetricsHandlerTest {
                 .thenReturn(testString);
 
         when(exchange.getRequestMethod())
-                .thenReturn("GET");
+                .thenReturn(HttpMethod.GET);
 
         metricsHandler.handle(exchange);
 
@@ -78,7 +79,7 @@ class PrometheusMetricsHandlerTest {
     @Test
     public void testWhenUseProhibitedHttpMethodThenErrorResponseWritten() throws IOException {
         when(exchange.getRequestMethod())
-                .thenReturn("DELETE");
+                .thenReturn(HttpMethod.DELETE);
         metricsHandler.handle(exchange);
 
         verify(exchange, times(1))
@@ -90,7 +91,7 @@ class PrometheusMetricsHandlerTest {
     @Test
     public void testHandleException() throws IOException {
         when(exchange.getRequestMethod())
-                .thenReturn("GET");
+                .thenReturn(HttpMethod.GET);
         metricsHandler.handle(exchange);
 
         verify(exchange, times(1))

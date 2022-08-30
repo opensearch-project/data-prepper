@@ -15,6 +15,7 @@ import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import org.junit.jupiter.api.Test;
 
+import javax.ws.rs.HttpMethod;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -41,7 +42,7 @@ class ListPipelinesHandlerTest {
         when(httpExchange.getResponseBody())
                 .thenReturn(outputStream);
         when(httpExchange.getRequestMethod())
-                .thenReturn("GET");
+                .thenReturn(HttpMethod.GET);
     }
 
     @Test
@@ -103,7 +104,7 @@ class ListPipelinesHandlerTest {
         final DataPrepper dataPrepper = mock(DataPrepper.class);
 
         when(httpExchange.getRequestMethod())
-                .thenReturn("DELETE");
+                .thenReturn(HttpMethod.DELETE);
 
         final ListPipelinesHandler handler = new ListPipelinesHandler(dataPrepper);
 

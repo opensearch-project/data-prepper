@@ -12,6 +12,7 @@ import com.sun.net.httpserver.HttpHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.HttpMethod;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.util.Collections;
@@ -42,7 +43,7 @@ public class ListPipelinesHandler implements HttpHandler {
     @Override
     public void handle(final HttpExchange exchange) throws IOException {
         String requestMethod = exchange.getRequestMethod();
-        if (!requestMethod.equals("GET") && !requestMethod.equals("POST")) {
+        if (!requestMethod.equals(HttpMethod.GET) && !requestMethod.equals(HttpMethod.POST)) {
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_METHOD, 0);
             exchange.getResponseBody().close();
             return;

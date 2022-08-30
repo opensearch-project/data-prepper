@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.DataPrepper;
 
+import javax.ws.rs.HttpMethod;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -47,7 +48,7 @@ public class ShutdownHandlerTest {
     @Test
     public void testWhenShutdownWithPostRequestThenResponseWritten() throws IOException {
         when(exchange.getRequestMethod())
-                .thenReturn("POST");
+                .thenReturn(HttpMethod.POST);
 
         shutdownHandler.handle(exchange);
 
@@ -64,7 +65,7 @@ public class ShutdownHandlerTest {
     @Test
     public void testWhenShutdownWithProhibitedHttpMethodThenErrorResponseWritten() throws IOException {
         when(exchange.getRequestMethod())
-                .thenReturn("GET");
+                .thenReturn(HttpMethod.GET);
 
         shutdownHandler.handle(exchange);
 
@@ -77,7 +78,7 @@ public class ShutdownHandlerTest {
     @Test
     public void testHandleException() throws IOException {
         when(exchange.getRequestMethod())
-                .thenReturn("POST");
+                .thenReturn(HttpMethod.POST);
         doThrow(RuntimeException.class).when(dataPrepper).shutdown();
 
         shutdownHandler.handle(exchange);
