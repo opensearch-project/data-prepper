@@ -36,7 +36,7 @@ class PeerForwarderAppConfigIT {
         assertThat(objectUnderTest.getServerThreadCount(), equalTo(200));
         assertThat(objectUnderTest.getMaxConnectionCount(), equalTo(500));
         assertThat(objectUnderTest.getMaxPendingRequests(), equalTo(1024));
-        assertThat(objectUnderTest.isSsl(), equalTo(true));
+        assertThat(objectUnderTest.isSsl(), equalTo(false));
         assertThat(objectUnderTest.getSslCertificateFile(), equalTo(null));
         assertThat(objectUnderTest.getSslKeyFile(), equalTo(null));
         assertThat(objectUnderTest.getDiscoveryMode(), equalTo(DiscoveryMode.STATIC));
