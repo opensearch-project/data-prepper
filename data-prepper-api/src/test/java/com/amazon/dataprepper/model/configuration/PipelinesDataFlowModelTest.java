@@ -78,10 +78,10 @@ class PipelinesDataFlowModelTest {
         assertThat(pipelineModel.getSource(), notNullValue());
         assertThat(pipelineModel.getSource().getPluginName(), equalTo("testSource"));
 
-        assertThat(pipelineModel.getPreppers(), notNullValue());
-        assertThat(pipelineModel.getPreppers().size(), equalTo(1));
-        assertThat(pipelineModel.getPreppers().get(0), notNullValue());
-        assertThat(pipelineModel.getPreppers().get(0).getPluginName(), equalTo("testPrepper"));
+        assertThat(pipelineModel.getProcessors(), notNullValue());
+        assertThat(pipelineModel.getProcessors().size(), equalTo(1));
+        assertThat(pipelineModel.getProcessors().get(0), notNullValue());
+        assertThat(pipelineModel.getProcessors().get(0).getPluginName(), equalTo("testPrepper"));
 
         assertThat(pipelineModel.getSinks(), notNullValue());
         assertThat(pipelineModel.getSinks().size(), equalTo(1));
