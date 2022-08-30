@@ -9,8 +9,9 @@ import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -48,8 +49,9 @@ class PrometheusMetricsHandlerTest {
                 .thenReturn(responseBody);
     }
 
-    @Test
-    public void testWhenUseGetMethodThenResponseWritten() throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = { HttpMethod.GET, HttpMethod.POST })
+    public void testWhenUseValidHttpMethodThenResponseWritten(String httpMethod) throws IOException {
         final Headers headers = mock(Headers.class);
         when(exchange.getResponseHeaders())
                 .thenReturn(headers);
@@ -59,7 +61,7 @@ class PrometheusMetricsHandlerTest {
                 .thenReturn(testString);
 
         when(exchange.getRequestMethod())
-                .thenReturn(HttpMethod.GET);
+                .thenReturn(httpMethod);
 
         metricsHandler.handle(exchange);
 
@@ -76,10 +78,11 @@ class PrometheusMetricsHandlerTest {
                 .close();
     }
 
-    @Test
-    public void testWhenUseProhibitedHttpMethodThenErrorResponseWritten() throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = { HttpMethod.DELETE, HttpMethod.PATCH, HttpMethod.PUT })
+    public void testWhenUseProhibitedHttpMethodThenErrorResponseWritten(String httpMethod) throws IOException {
         when(exchange.getRequestMethod())
-                .thenReturn(HttpMethod.DELETE);
+                .thenReturn(httpMethod);
         metricsHandler.handle(exchange);
 
         verify(exchange, times(1))
@@ -88,10 +91,11 @@ class PrometheusMetricsHandlerTest {
                 .close();
     }
 
-    @Test
-    public void testHandleException() throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = { HttpMethod.GET, HttpMethod.POST })
+    public void testHandleException(String httpMethod) throws IOException {
         when(exchange.getRequestMethod())
-                .thenReturn(HttpMethod.GET);
+                .thenReturn(httpMethod);
         metricsHandler.handle(exchange);
 
         verify(exchange, times(1))

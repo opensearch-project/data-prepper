@@ -7,13 +7,14 @@ package org.opensearch.dataprepper.pipeline.server;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.DataPrepper;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
-import org.junit.jupiter.api.Test;
 
 import javax.ws.rs.HttpMethod;
 import java.io.IOException;
@@ -41,12 +42,11 @@ class ListPipelinesHandlerTest {
     public void beforeEach() {
         when(httpExchange.getResponseBody())
                 .thenReturn(outputStream);
-        when(httpExchange.getRequestMethod())
-                .thenReturn(HttpMethod.GET);
     }
 
-    @Test
-    public void testGivenNoPipelinesThenResponseWritten() throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = { HttpMethod.GET, HttpMethod.POST })
+    public void testGivenNoPipelinesThenResponseWritten(String httpMethod) throws IOException {
         final DataPrepper dataPrepper = mock(DataPrepper.class);
         final Headers headers = mock(Headers.class);
         final Map<String, Pipeline> transformationPipelines = new HashMap<>();
@@ -55,6 +55,8 @@ class ListPipelinesHandlerTest {
                 .thenReturn(transformationPipelines);
         when(httpExchange.getResponseHeaders())
                 .thenReturn(headers);
+        when(httpExchange.getRequestMethod())
+                .thenReturn(httpMethod);
 
         final ListPipelinesHandler handler = new ListPipelinesHandler(dataPrepper);
 
@@ -70,8 +72,9 @@ class ListPipelinesHandlerTest {
                 .close();
     }
 
-    @Test
-    public void testGivenPipelinesThenResponseWritten() throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = { HttpMethod.GET, HttpMethod.POST })
+    public void testGivenPipelinesThenResponseWritten(String httpMethod) throws IOException {
         final DataPrepper dataPrepper = mock(DataPrepper.class);
         final Headers headers = mock(Headers.class);
         final Pipeline pipeline = mock(Pipeline.class);
@@ -84,6 +87,8 @@ class ListPipelinesHandlerTest {
                 .thenReturn(transformationPipelines);
         when(httpExchange.getResponseHeaders())
                 .thenReturn(headers);
+        when(httpExchange.getRequestMethod())
+                .thenReturn(httpMethod);
 
         final ListPipelinesHandler handler = new ListPipelinesHandler(dataPrepper);
 
@@ -99,14 +104,14 @@ class ListPipelinesHandlerTest {
                 .close();
     }
 
-    @Test
-    public void testGivenProhibitedHttpMethodThenErrorResponseWritten() throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = { HttpMethod.DELETE, HttpMethod.PATCH, HttpMethod.PUT })
+    public void testGivenProhibitedHttpMethodThenErrorResponseWritten(String httpMethod) throws IOException {
         final DataPrepper dataPrepper = mock(DataPrepper.class);
+        final ListPipelinesHandler handler = new ListPipelinesHandler(dataPrepper);
 
         when(httpExchange.getRequestMethod())
-                .thenReturn(HttpMethod.DELETE);
-
-        final ListPipelinesHandler handler = new ListPipelinesHandler(dataPrepper);
+                .thenReturn(httpMethod);
 
         handler.handle(httpExchange);
 
@@ -116,8 +121,12 @@ class ListPipelinesHandlerTest {
                 .close();
     }
 
-    @Test
-    public void testGivenExceptionThrownThenErrorResponseWritten() throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = { HttpMethod.GET, HttpMethod.POST })
+    public void testGivenExceptionThrownThenErrorResponseWritten(String httpMethod) throws IOException {
+        when(httpExchange.getRequestMethod())
+                .thenReturn(httpMethod);
+
         final ListPipelinesHandler handler = new ListPipelinesHandler(null);
         handler.handle(httpExchange);
 

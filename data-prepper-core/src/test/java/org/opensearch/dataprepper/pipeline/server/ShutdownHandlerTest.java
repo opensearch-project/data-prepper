@@ -9,6 +9,8 @@ import com.sun.net.httpserver.HttpExchange;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -62,10 +64,11 @@ public class ShutdownHandlerTest {
                 .shutdownDataPrepperServer();
     }
 
-    @Test
-    public void testWhenShutdownWithProhibitedHttpMethodThenErrorResponseWritten() throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = { HttpMethod.DELETE, HttpMethod.GET, HttpMethod.PATCH, HttpMethod.PUT })
+    public void testWhenShutdownWithProhibitedHttpMethodThenErrorResponseWritten(String httpMethod) throws IOException {
         when(exchange.getRequestMethod())
-                .thenReturn(HttpMethod.GET);
+                .thenReturn(httpMethod);
 
         shutdownHandler.handle(exchange);
 
