@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -57,17 +58,16 @@ public class PeerForwarderClient {
 
         final WebClient client = peerClientPool.getClient(ipAddress);
 
-        final String serializedJsonString = getSerializedJsonString(records, pluginId);
-        if (serializedJsonString == null) {
-            return AggregatedHttpResponse.of(HttpStatus.BAD_REQUEST);
-        }
-
-        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture = processHttpRequest(client, serializedJsonString);
-
-        return getAggregatedHttpResponse(aggregatedHttpResponseCompletableFuture);
+        final Optional<String> serializedJsonString = getSerializedJsonString(records, pluginId);
+        return serializedJsonString.map(value -> {
+                    final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture =
+                            processHttpRequest(client, value);
+                    return getAggregatedHttpResponse(aggregatedHttpResponseCompletableFuture);
+                })
+                .orElse(AggregatedHttpResponse.of(HttpStatus.BAD_REQUEST));
     }
 
-    private String getSerializedJsonString(final Collection<Record<Event>> records, final String pluginId) {
+    private Optional<String> getSerializedJsonString(final Collection<Record<Event>> records, final String pluginId) {
         final List<WireEvent> wireEventList = getWireEventList(records);
         final WireEvents wireEvents = new WireEvents(wireEventList, pluginId);
 
@@ -77,13 +77,13 @@ public class PeerForwarderClient {
         } catch (JsonProcessingException e) {
             LOG.warn("Unable to send request to peer, processing locally.", e);
         }
-        return serializedJsonString;
+        return Optional.ofNullable(serializedJsonString);
     }
 
     private List<WireEvent> getWireEventList(final Collection<Record<Event>> records) {
-        List<WireEvent> wireEventList = new ArrayList<>();
+        final List<WireEvent> wireEventList = new ArrayList<>();
 
-        for (Record<Event> record : records) {
+        for (final Record<Event> record : records) {
             final Event event = record.getData();
             wireEventList.add(getWireEvent(event));
         }
@@ -114,13 +114,12 @@ public class PeerForwarderClient {
     }
 
     private AggregatedHttpResponse getAggregatedHttpResponse(final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture) {
-        AggregatedHttpResponse response = null;
         try {
-            response = aggregatedHttpResponseCompletableFuture.get();
+            return aggregatedHttpResponseCompletableFuture.get();
         } catch (InterruptedException | ExecutionException e) {
             LOG.error("Problem with asynchronous peer forwarding", e);
         }
-        return response;
+        return AggregatedHttpResponse.of(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
 }
