@@ -121,7 +121,7 @@ Example of deprecated prepper pipeline configuration file (pipelines.yaml):
 grok-pipeline:
   source:
     http:
-  prepper:
+  processor:
     - grok:
         match:
           log: [ "%{COMMONAPACHELOG}" ]

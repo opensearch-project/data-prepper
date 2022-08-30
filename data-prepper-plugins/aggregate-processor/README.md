@@ -10,7 +10,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
 ```yaml
   source:
     ...
-  prepper:
+  processor:
     - grok:
         match: 
           log: ["%{IPORHOST:sourceIp} %{IPORHOST:destinationIp} %{NUMBER:port:int}"]
