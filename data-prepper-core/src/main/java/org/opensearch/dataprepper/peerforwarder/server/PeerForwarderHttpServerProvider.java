@@ -46,7 +46,8 @@ public class PeerForwarderHttpServerProvider implements Provider<Server> {
             final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
             final Certificate certificate = certificateProvider.getCertificate();
             // TODO: enable encrypted key with password
-            sb.https(peerForwarderConfiguration.getServerPort()).tls(
+            sb.https(peerForwarderConfiguration.getServerPort())
+                    .tls(
                     new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
                     new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
                     )
@@ -61,10 +62,7 @@ public class PeerForwarderHttpServerProvider implements Provider<Server> {
         final int threads = peerForwarderConfiguration.getServerThreadCount();
         final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
         sb.blockingTaskExecutor(blockingTaskExecutor, true);
-//        // TODO: Add throttling service
-
-//        sb.decorator(MetricCollectingService.newDecorator(MeterIdPrefixFunction.ofDefault("/metrics/prometheus")));
-//        sb.meterRegistry(prometheusMeterRegistry);
+        // TODO: Add throttling service
 
         sb.annotatedService(PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI, peerForwarderHttpService);
 
