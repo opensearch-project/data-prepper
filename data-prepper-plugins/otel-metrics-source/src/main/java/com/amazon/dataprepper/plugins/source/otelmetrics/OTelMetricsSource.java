@@ -46,6 +46,7 @@ import java.util.function.Function;
 public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequest>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsSource.class);
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
+    private static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
     private final OTelMetricsSourceConfig oTelMetricsSourceConfig;
     private Server server;
     private final PluginMetrics pluginMetrics;
@@ -109,12 +110,20 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
             sb.service(grpcServiceBuilder.build());
 
             if(oTelMetricsSourceConfig.enableHttpHealthCheck()) {
-                sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.of());
+                sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
             }
 
-            final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
-                    authenticationProvider.getHttpAuthenticationService();
-            optionalHttpAuthenticationService.ifPresent(sb::decorator);
+            if(oTelMetricsSourceConfig.getAuthentication() != null) {
+                final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
+                        authenticationProvider.getHttpAuthenticationService();
+
+                if(oTelMetricsSourceConfig.isUnauthenticatedHealthCheck()) {
+                    optionalHttpAuthenticationService.ifPresent(httpAuthenticationService ->
+                            sb.decorator(REGEX_HEALTH, httpAuthenticationService));
+                } else {
+                    optionalHttpAuthenticationService.ifPresent(sb::decorator);
+                }
+            }
 
             sb.requestTimeoutMillis(oTelMetricsSourceConfig.getRequestTimeoutInMillis());
 

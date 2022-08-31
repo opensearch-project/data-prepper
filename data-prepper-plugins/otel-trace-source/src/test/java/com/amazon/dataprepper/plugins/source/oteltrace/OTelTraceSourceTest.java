@@ -11,6 +11,7 @@ import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
+import com.amazon.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
@@ -74,6 +75,7 @@ import java.util.stream.Stream;
 import static com.amazon.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.SSL;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
@@ -122,7 +124,7 @@ public class OTelTraceSourceTest {
     private PluginFactory pluginFactory;
 
     @Mock
-    private GrpcAuthenticationProvider authenticationProvider;
+    private GrpcBasicAuthenticationProvider authenticationProvider;
 
     private PluginSetting pluginSetting;
     private PluginSetting testPluginSetting;
@@ -192,6 +194,8 @@ public class OTelTraceSourceTest {
         lenient().when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.useBlockingTaskExecutor(anyBoolean())).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.build()).thenReturn(grpcService);
+
+        lenient().when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
 
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
@@ -544,6 +548,95 @@ public class OTelTraceSourceTest {
         verify(grpcServiceBuilder, times(1)).useBlockingTaskExecutor(true);
         verify(grpcServiceBuilder, never()).addService(isA(HealthGrpcService.class));
         verify(serverBuilder, never()).service(eq("/health"),isA(HealthCheckService.class));
+    }
+
+    @Test
+    public void testHealthCheckUnauthNotAllowed() {
+        // Prepare
+        final Map<String, Object> settingsMap = new HashMap<>();
+        settingsMap.put(SSL, false);
+        settingsMap.put("health_check_service", "true");
+        settingsMap.put("unframed_requests", "true");
+        settingsMap.put("proto_reflection_service", "true");
+        settingsMap.put("unauthenticated_health_check", "false");
+        settingsMap.put("authentication", new PluginModel("http_basic",
+                new HashMap<>()
+                {
+                    {
+                        put("username", "test");
+                        put("password", "test2");
+                    }
+                }));
+
+        testPluginSetting = new PluginSetting(null, settingsMap);
+        testPluginSetting.setPipelineName("pipeline");
+
+        oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+
+        source.start(buffer);
+
+        // When
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("localhost:21890")
+                        .method(HttpMethod.GET)
+                        .path("/health")
+                        .build())
+                .aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.UNAUTHORIZED)).join();
+
+        source.stop();
+    }
+
+    @Test
+    public void testHealthCheckUnauthAllowed() {
+        // Prepare
+        final Map<String, Object> settingsMap = new HashMap<>();
+        settingsMap.put(SSL, false);
+        settingsMap.put("health_check_service", "true");
+        settingsMap.put("unframed_requests", "true");
+        settingsMap.put("proto_reflection_service", "true");
+        settingsMap.put("unauthenticated_health_check", "true");
+        settingsMap.put("authentication", new PluginModel("http_basic",
+                new HashMap<>()
+                {
+                    {
+                        put("username", "test");
+                        put("password", "test2");
+                    }
+                }));
+
+        testPluginSetting = new PluginSetting(null, settingsMap);
+        testPluginSetting.setPipelineName("pipeline");
+
+        oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+
+        source.start(buffer);
+
+        // When
+        WebClient.of().execute(RequestHeaders.builder()
+                        .scheme(SessionProtocol.HTTP)
+                        .authority("localhost:21890")
+                        .method(HttpMethod.GET)
+                        .path("/health")
+                        .build())
+                .aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
+
+        source.stop();
+    }
+
+    private void assertSecureResponseWithStatusCode(final AggregatedHttpResponse response, final HttpStatus expectedStatus) {
+        assertThat("Http Status", response.status(), equalTo(expectedStatus));
+
+        final List<String> headerKeys = response.headers()
+                .stream()
+                .map(Map.Entry::getKey)
+                .map(AsciiString::toString)
+                .collect(Collectors.toList());
+        assertThat("Response Header Keys", headerKeys, not(contains("server")));
     }
 
     @Test
