@@ -3,7 +3,15 @@
 
 name: Data Prepper OpenSearchSink integration tests with OpenSearch
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    paths:
+      - 'data-prepper-plugins/opensearch/**'
+  pull_request:
+    paths:
+      - 'data-prepper-plugins/opensearch/**'
+  workflow_dispatch:
+
 
 jobs:
   integration-tests:

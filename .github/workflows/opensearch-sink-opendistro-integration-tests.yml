@@ -6,7 +6,11 @@ name: Data Prepper OpenSearchSink integration tests with Open Distro
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'data-prepper-plugins/opensearch/**'
   pull_request:
+    paths:
+      - 'data-prepper-plugins/opensearch/**'
   workflow_dispatch:
 
 jobs:
