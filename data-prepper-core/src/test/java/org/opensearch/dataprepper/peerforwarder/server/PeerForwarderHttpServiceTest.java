@@ -18,6 +18,8 @@ import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvent;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 
@@ -30,16 +32,20 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
 
+@ExtendWith(MockitoExtension.class)
 class PeerForwarderHttpServiceTest {
     private static final String MESSAGE_KEY = "key";
     private static final String MESSAGE = "message";
     private static final String LOG = "LOG";
     private static final String PLUGIN_ID = "plugin_id";
-    private static final ObjectMapper objectMapper = new ObjectMapper()
+
+    private final RequestExceptionHandler requestExceptionHandler = new RequestExceptionHandler();
+    private final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule());
 
+
     private PeerForwarderHttpService createObjectUnderTest() {
-        return new PeerForwarderHttpService(objectMapper);
+        return new PeerForwarderHttpService(requestExceptionHandler, objectMapper);
     }
 
 

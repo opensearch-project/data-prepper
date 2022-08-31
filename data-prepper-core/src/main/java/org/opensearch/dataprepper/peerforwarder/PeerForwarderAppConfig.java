@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpServerProvider;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServer;
+import org.opensearch.dataprepper.peerforwarder.server.RequestExceptionHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -65,8 +66,16 @@ public class PeerForwarderAppConfig {
     }
 
     @Bean
-    public PeerForwarderHttpService peerForwarderHttpService(final ObjectMapper objectMapper) {
-        return new PeerForwarderHttpService(objectMapper);
+    public RequestExceptionHandler requestExceptionHandler() {
+        return new RequestExceptionHandler();
+    }
+
+    @Bean
+    public PeerForwarderHttpService peerForwarderHttpService(
+            final RequestExceptionHandler requestExceptionHandler,
+            final ObjectMapper objectMapper
+    ) {
+        return new PeerForwarderHttpService(requestExceptionHandler, objectMapper);
     }
 
     @Bean
@@ -79,7 +88,7 @@ public class PeerForwarderAppConfig {
                 certificateProviderFactory, peerForwarderHttpService);
     }
 
-    @Bean(name="server")
+    @Bean(name="armeria_server")
     public Server server(
             final PeerForwarderHttpServerProvider peerForwarderHttpServerProvider
     ) {
@@ -87,8 +96,8 @@ public class PeerForwarderAppConfig {
     }
 
     @Bean
-    PeerForwarderServer peerForwarderServer(
-            @Qualifier("server") final Server peerForwarderServer,
+    public PeerForwarderServer peerForwarderServer(
+            @Qualifier("armeria_server") final Server peerForwarderServer,
             final PeerForwarderConfiguration peerForwarderConfiguration) {
         return new PeerForwarderServer(peerForwarderConfiguration, peerForwarderServer);
     }

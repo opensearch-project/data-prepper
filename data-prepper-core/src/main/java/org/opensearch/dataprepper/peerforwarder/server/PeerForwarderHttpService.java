@@ -14,7 +14,6 @@ import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
-import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.server.annotation.Post;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvent;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
@@ -24,9 +23,11 @@ import org.slf4j.LoggerFactory;
 public class PeerForwarderHttpService {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderHttpService.class);
 
+    private final RequestExceptionHandler requestExceptionHandler;
     private final ObjectMapper objectMapper;
 
-    public PeerForwarderHttpService(final ObjectMapper objectMapper) {
+    public PeerForwarderHttpService(final RequestExceptionHandler requestExceptionHandler, final ObjectMapper objectMapper) {
+        this.requestExceptionHandler = requestExceptionHandler;
         this.objectMapper = objectMapper;
     }
 
@@ -42,9 +43,9 @@ public class PeerForwarderHttpService {
         try {
             wireEvents = objectMapper.readValue(content.toStringUtf8(), WireEvents.class);
         } catch (JsonProcessingException e) {
-            String message = "Failed to write the request content due to bad request data format. Needs to be JSON object";
+            final String message = "Failed to write the request content due to bad request data format. Needs to be JSON object";
             LOG.error(message, e);
-            return HttpResponse.of(HttpStatus.BAD_REQUEST, MediaType.ANY_TYPE, message);
+            return requestExceptionHandler.handleException(e, message);
         }
 
         final String destinationPluginId = wireEvents.getDestinationPluginId();
