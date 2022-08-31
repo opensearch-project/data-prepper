@@ -9,7 +9,10 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.log.JacksonLog;
 import com.amazon.dataprepper.model.record.Record;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.linecorp.armeria.client.ClientBuilder;
 import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
@@ -24,6 +27,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.peerforwarder.PeerClientPool;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderClientFactory;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
+import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -39,7 +44,10 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
 
 @ExtendWith(MockitoExtension.class)
 class PeerForwarderClientTest {
@@ -47,7 +55,11 @@ class PeerForwarderClientTest {
     private static final String LOCAL_IP = "127.0.0.1";
     private static final String TEST_PLUGIN_ID = "test_plugin_id";
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule());
+
+    @Mock
+    PeerForwarderConfiguration peerForwarderConfiguration;
 
     @Mock
     PeerClientPool peerClientPool;
@@ -55,8 +67,9 @@ class PeerForwarderClientTest {
     @Mock
     PeerForwarderClientFactory peerForwarderClientFactory;
 
-    PeerForwarderClient createObjectUnderTest() {
-        return new PeerForwarderClient(objectMapper, peerForwarderClientFactory);
+    PeerForwarderClient createObjectUnderTest(final ObjectMapper objectMapper) {
+        when(peerForwarderConfiguration.getClientThreadCount()).thenReturn(200);
+        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper);
     }
 
     @Test
@@ -64,14 +77,14 @@ class PeerForwarderClientTest {
         when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
 
         final HttpServer server = createServer(2022);
-        server.createContext("/log/ingest", new TestHandler());
+        server.createContext(DEFAULT_PEER_FORWARDING_URI, new TestHandler());
         server.start();
 
         final InetSocketAddress address = server.getAddress();
         final WebClient testClient = getTestClient(String.valueOf(address.getPort()));
         when(peerClientPool.getClient(anyString())).thenReturn(testClient);
 
-        final PeerForwarderClient peerForwarderClient = createObjectUnderTest();
+        final PeerForwarderClient peerForwarderClient = createObjectUnderTest(objectMapper);
 
         final AggregatedHttpResponse aggregatedHttpResponse =
                 peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), address.toString(), TEST_PLUGIN_ID);
@@ -80,6 +93,24 @@ class PeerForwarderClientTest {
         assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
         assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
         server.stop(0);
+    }
+
+    @Test
+    void test_serializeRecordsAndSendHttpRequest_with_bad_wireEvents_should_return_BAD_REQUEST() throws JsonProcessingException {
+        ObjectMapper objectMapper = mock(ObjectMapper.class);
+        objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        lenient().when(objectMapper.writeValueAsString(instanceOf(WireEvents.class))).thenThrow(JsonProcessingException.class);
+
+        when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
+
+        final PeerForwarderClient peerForwarderClient = createObjectUnderTest(objectMapper);
+
+        final AggregatedHttpResponse aggregatedHttpResponse =
+                peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), LOCAL_IP, TEST_PLUGIN_ID);
+
+        assertThat(aggregatedHttpResponse, notNullValue());
+        assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
+        assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.BAD_REQUEST));
     }
 
     private Collection<Record<Event>> generateBatchRecords(final int numRecords) {

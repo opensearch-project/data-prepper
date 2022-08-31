@@ -15,6 +15,7 @@ import java.util.Collections;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.MatcherAssert.assertThat;
 import org.hamcrest.core.IsInstanceOf;
+import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 
 import static org.mockito.Mockito.when;
@@ -28,8 +29,11 @@ class PeerForwarderClientFactoryTest {
     @Mock
     PeerClientPool peerClientPool;
 
+    @Mock
+    CertificateProviderFactory certificateProviderFactory;
+
     private PeerForwarderClientFactory createObjectUnderTest() {
-        return new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool);
+        return new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory);
     }
 
     @Test

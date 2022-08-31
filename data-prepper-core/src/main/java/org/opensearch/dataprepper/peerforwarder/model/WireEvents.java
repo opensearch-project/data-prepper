@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.peerforwarder.client;
+package org.opensearch.dataprepper.peerforwarder.model;
 
 import org.opensearch.dataprepper.peerforwarder.PeerForwarder;
 
@@ -14,9 +14,12 @@ import java.util.List;
  *
  * @since 2.0
  */
-class WireEvents {
-    private final List<WireEvent> events;
-    private final String destinationPluginId;
+public class WireEvents {
+    private List<WireEvent> events;
+    private String destinationPluginId;
+
+    public WireEvents() {
+    }
 
     public WireEvents(final List<WireEvent> events, final String destinationPluginId) {
         this.events = events;

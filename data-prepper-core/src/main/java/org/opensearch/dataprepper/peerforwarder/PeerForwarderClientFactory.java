@@ -15,11 +15,14 @@ public class PeerForwarderClientFactory {
 
     private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final PeerClientPool peerClientPool;
+    private final CertificateProviderFactory certificateProviderFactory;
 
-    public PeerForwarderClientFactory(PeerForwarderConfiguration peerForwarderConfiguration,
-                                      PeerClientPool peerClientPool) {
+    public PeerForwarderClientFactory(final PeerForwarderConfiguration peerForwarderConfiguration,
+                                      final PeerClientPool peerClientPool,
+                                      final CertificateProviderFactory certificateProviderFactory) {
         this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.peerClientPool = peerClientPool;
+        this.certificateProviderFactory = certificateProviderFactory;
     }
 
     public HashRing createHashRing() {
@@ -40,7 +43,6 @@ public class PeerForwarderClientFactory {
         if (ssl || useAcmCertForSsl) {
             peerClientPool.setSsl(true);
 
-            final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerClientPool.setCertificate(certificateProviderFactory.getCertificateProvider().getCertificate());
         }
 
