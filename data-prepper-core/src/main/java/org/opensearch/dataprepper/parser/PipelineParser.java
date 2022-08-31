@@ -12,7 +12,6 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import com.amazon.dataprepper.model.plugin.NoPluginFoundException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
-import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
@@ -150,7 +149,7 @@ public class PipelineParser {
             LOG.warn(
                     "No plugin of type Processor found for plugin setting: {}, attempting to find comparable Prepper plugin.",
                     pluginSetting.getName());
-            return newProcessor(pluginSetting, Prepper.class)
+            return newProcessor(pluginSetting, Processor.class)
                     .stream()
                     .map(prepper -> (Processor) prepper)
                     .collect(Collectors.toList());
