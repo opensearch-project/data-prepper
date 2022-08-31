@@ -8,10 +8,12 @@ package com.amazon.dataprepper.plugins.source.otelmetrics;
 
 import com.amazon.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import com.amazon.dataprepper.metrics.PluginMetrics;
+import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
 
+import com.amazon.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
@@ -29,7 +31,6 @@ import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
-import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
@@ -44,6 +45,7 @@ import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -61,7 +63,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
@@ -70,6 +71,7 @@ import java.util.stream.Collectors;
 import static com.amazon.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.SSL;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
@@ -118,7 +120,7 @@ public class OTelMetricsSourceTest {
     private PluginFactory pluginFactory;
 
     @Mock
-    private GrpcAuthenticationProvider authenticationProvider;
+    private GrpcBasicAuthenticationProvider authenticationProvider;
 
     private PluginSetting pluginSetting;
     private PluginSetting testPluginSetting;
@@ -364,6 +366,131 @@ public class OTelMetricsSourceTest {
     }
 
     @Test
+    void start_with_Health_configured_includes_HealthCheck_service_Unauthenticated_disabled() throws IOException {
+        try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class);
+             MockedStatic<GrpcService> grpcServerMock = Mockito.mockStatic(GrpcService.class)) {
+            armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
+            grpcServerMock.when(GrpcService::builder).thenReturn(grpcServiceBuilder);
+            when(grpcServiceBuilder.addService(any(ServerServiceDefinition.class))).thenReturn(grpcServiceBuilder);
+            when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
+
+            when(server.stop()).thenReturn(completableFuture);
+            final Path certFilePath = Path.of("data/certificate/test_cert.crt");
+            final Path keyFilePath = Path.of("data/certificate/test_decrypted_key.key");
+            final String certAsString = Files.readString(certFilePath);
+            final String keyAsString = Files.readString(keyFilePath);
+            when(certificate.getCertificate()).thenReturn(certAsString);
+            when(certificate.getPrivateKey()).thenReturn(keyAsString);
+            when(certificateProvider.getCertificate()).thenReturn(certificate);
+            when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
+            final Map<String, Object> settingsMap = new HashMap<>();
+            settingsMap.put(SSL, true);
+            settingsMap.put("useAcmCertForSSL", true);
+            settingsMap.put("awsRegion", "us-east-1");
+            settingsMap.put("acmCertificateArn", "arn:aws:acm:us-east-1:account:certificate/1234-567-856456");
+            settingsMap.put("sslKeyCertChainFile", "data/certificate/test_cert.crt");
+            settingsMap.put("sslKeyFile", "data/certificate/test_decrypted_key.key");
+            settingsMap.put("health_check_service", "true");
+
+            testPluginSetting = new PluginSetting(null, settingsMap);
+            testPluginSetting.setPipelineName("pipeline");
+
+            oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
+            final OTelMetricsSource source = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+            source.start(buffer);
+            source.stop();
+        }
+
+        verify(grpcServiceBuilder, times(1)).useClientTimeoutHeader(false);
+        verify(grpcServiceBuilder, times(1)).useBlockingTaskExecutor(true);
+        verify(grpcServiceBuilder).addService(isA(HealthGrpcService.class));
+        verify(serverBuilder, never()).service(eq("/health"),isA(HealthCheckService.class));
+    }
+
+    @Nested
+    class UnauthTests {
+        final Map<String, Object> settingsMap = new HashMap<>();
+
+        @BeforeEach
+        void setup() {
+            when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
+
+            settingsMap.clear();
+            settingsMap.put(SSL, false);
+            settingsMap.put("health_check_service", "true");
+            settingsMap.put("unframed_requests", "true");
+            settingsMap.put("proto_reflection_service", "true");
+            settingsMap.put("authentication", new PluginModel("http_basic",
+                    new HashMap<>()
+                    {
+                        {
+                            put("username", "test");
+                            put("password", "test2");
+                        }
+                    }));
+        }
+
+        void createObjectUnderTest() {
+            testPluginSetting = new PluginSetting(null, settingsMap);
+            testPluginSetting.setPipelineName("pipeline");
+
+            oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
+            SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+        }
+
+        @Test
+        void testHealthCheckUnauthNotAllowed() {
+            settingsMap.put("unauthenticated_health_check", "false");
+            createObjectUnderTest();
+
+            SOURCE.start(buffer);
+
+            // When
+            WebClient.of().execute(RequestHeaders.builder()
+                            .scheme(SessionProtocol.HTTP)
+                            .authority("127.0.0.1:21891")
+                            .method(HttpMethod.GET)
+                            .path("/health")
+                            .build())
+                    .aggregate()
+                    .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.UNAUTHORIZED)).join();
+
+            SOURCE.stop();
+        }
+
+        @Test
+        void testHealthCheckUnauthAllowed() {
+            settingsMap.put("unauthenticated_health_check", "true");
+            createObjectUnderTest();
+
+            SOURCE.start(buffer);
+
+            // When
+            WebClient.of().execute(RequestHeaders.builder()
+                            .scheme(SessionProtocol.HTTP)
+                            .authority("127.0.0.1:21891")
+                            .method(HttpMethod.GET)
+                            .path("/health")
+                            .build())
+                    .aggregate()
+                    .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
+
+            SOURCE.stop();
+        }
+    }
+
+    private void assertSecureResponseWithStatusCode(final AggregatedHttpResponse response, final HttpStatus expectedStatus) {
+        assertThat("Http Status", response.status(), equalTo(expectedStatus));
+
+        final List<String> headerKeys = response.headers()
+                .stream()
+                .map(Map.Entry::getKey)
+                .map(AsciiString::toString)
+                .collect(Collectors.toList());
+        assertThat("Response Header Keys", headerKeys, not(contains("server")));
+    }
+
+    @Test
     void start_with_Health_configured_unframed_requests_includes_HealthCheck_service() throws IOException {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class);
              MockedStatic<GrpcService> grpcServerMock = Mockito.mockStatic(GrpcService.class)) {
@@ -562,9 +689,7 @@ public class OTelMetricsSourceTest {
 
     @Test
     public void testOptionalHttpAuthServiceInPlace() {
-        final Optional<Function<? super HttpService, ? extends HttpService>> function = Optional.of(httpService -> httpService);
         when(server.stop()).thenReturn(completableFuture);
-        when(authenticationProvider.getHttpAuthenticationService()).thenReturn(function);
 
         try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
@@ -572,7 +697,6 @@ public class OTelMetricsSourceTest {
         }
 
         verify(serverBuilder).service(isA(GrpcService.class));
-        verify(serverBuilder).decorator(isA(Function.class));
     }
 
     @Test
