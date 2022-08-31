@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.model.configuration;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;
@@ -50,14 +51,23 @@ public class PipelineModel {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private final Integer readBatchDelay;
 
+    /**
+     * @since 2.0
+     * @param source Deserialized source plugin configuration
+     * @param processors Deserialized processors plugin configuration
+     * @param sinks Deserialized sinks plugin configuration
+     * @param workers Deserialized workers plugin configuration, nullable
+     * @param delay Deserialized delay plugin configuration, nullable
+     */
+    @JsonCreator
     public PipelineModel(
-            final PluginModel source,
-            final PluginModel buffer,
-            final List<PluginModel> processors,
-            final List<ConditionalRoute> router,
-            final List<PluginModel> sinks,
-            final Integer workers,
-            final Integer delay) {
+            @JsonProperty("source") final PluginModel source,
+            @JsonProperty("buffer") final PluginModel buffer,
+            @JsonProperty("processor") final List<PluginModel> processors,
+            @JsonProperty("router") final List<ConditionalRoute> router,
+            @JsonProperty("sink") final List<PluginModel> sinks,
+            @JsonProperty("workers") final Integer workers,
+            @JsonProperty("delay") final Integer delay) {
         checkArgument(Objects.nonNull(source), "Source must not be null");
         checkArgument(Objects.nonNull(sinks), "Sinks must not be null");
         checkArgument(sinks.size() > 0, "PipelineModel must include at least 1 sink");
