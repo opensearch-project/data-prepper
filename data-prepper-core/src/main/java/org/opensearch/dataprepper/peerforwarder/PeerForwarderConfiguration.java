@@ -21,11 +21,12 @@ import java.util.Map;
  * @since 2.0
  */
 public class PeerForwarderConfiguration {
+    public static final String DEFAULT_PEER_FORWARDING_URI = "/event/forward";
     private static final String S3_PREFIX = "s3://";
 
     private Integer serverPort = 21890;
     private Integer requestTimeout = 10_000;
-    private Integer threadCount = 200;
+    private Integer serverThreadCount = 200;
     private Integer maxConnectionCount = 500;
     private Integer maxPendingRequests = 1024;
     private boolean ssl = true;
@@ -42,6 +43,7 @@ public class PeerForwarderConfiguration {
     private Map<String, String> awsCloudMapQueryParameters = Collections.emptyMap();
     private String domainName;
     private List<String> staticEndpoints = new ArrayList<>();
+    private Integer clientThreadCount = 200;
     private Integer batchSize = 48;
     private Integer bufferSize = 512;
     private boolean sslCertAndKeyFileInS3;
@@ -52,7 +54,7 @@ public class PeerForwarderConfiguration {
     public PeerForwarderConfiguration (
             @JsonProperty("port") final Integer serverPort,
             @JsonProperty("request_timeout") final Integer requestTimeout,
-            @JsonProperty("thread_count") final Integer threadCount,
+            @JsonProperty("server_thread_count") final Integer serverThreadCount,
             @JsonProperty("max_connection_count") final Integer maxConnectionCount,
             @JsonProperty("max_pending_requests") final Integer maxPendingRequests,
             @JsonProperty("ssl") final Boolean ssl,
@@ -69,12 +71,13 @@ public class PeerForwarderConfiguration {
             @JsonProperty("aws_cloud_map_query_parameters") final Map<String, String> awsCloudMapQueryParameters,
             @JsonProperty("domain_name") final String domainName,
             @JsonProperty("static_endpoints") final List<String> staticEndpoints,
+            @JsonProperty("client_thread_count") final Integer clientThreadCount,
             @JsonProperty("batch_size") final Integer batchSize,
             @JsonProperty("buffer_size") final Integer bufferSize
     ) {
         setServerPort(serverPort);
         setRequestTimeout(requestTimeout);
-        setThreadCount(threadCount);
+        setServerThreadCount(serverThreadCount);
         setMaxConnectionCount(maxConnectionCount);
         setMaxPendingRequests(maxPendingRequests);
         setSsl(ssl);
@@ -91,6 +94,7 @@ public class PeerForwarderConfiguration {
         setAwsCloudMapQueryParameters(awsCloudMapQueryParameters);
         setDomainName(domainName);
         setStaticEndpoints(staticEndpoints);
+        setClientThreadCount(clientThreadCount);
         setBatchSize(batchSize);
         setBufferSize(bufferSize);
         checkForCertAndKeyFileInS3();
@@ -104,8 +108,8 @@ public class PeerForwarderConfiguration {
         return requestTimeout;
     }
 
-    public int getThreadCount() {
-        return threadCount;
+    public int getServerThreadCount() {
+        return serverThreadCount;
     }
 
     public int getMaxConnectionCount() {
@@ -172,6 +176,10 @@ public class PeerForwarderConfiguration {
         return domainName;
     }
 
+    public Integer getClientThreadCount() {
+        return clientThreadCount;
+    }
+
     public int getBatchSize() {
         return batchSize;
     }
@@ -198,12 +206,12 @@ public class PeerForwarderConfiguration {
         }
     }
 
-    private void setThreadCount(final Integer threadCount) {
-        if (threadCount != null) {
-            if (threadCount <= 0) {
-                throw new IllegalArgumentException("Thread count must be a positive integer.");
+    private void setServerThreadCount(final Integer serverThreadCount) {
+        if (serverThreadCount != null) {
+            if (serverThreadCount <= 0) {
+                throw new IllegalArgumentException("Server thread count must be a positive integer.");
             }
-            this.threadCount = threadCount;
+            this.serverThreadCount = serverThreadCount;
         }
     }
 
@@ -332,6 +340,15 @@ public class PeerForwarderConfiguration {
     private void setStaticEndpoints(final List<String> staticEndpoints) {
         if (staticEndpoints != null) {
             this.staticEndpoints = staticEndpoints;
+        }
+    }
+
+    public void setClientThreadCount(final Integer clientThreadCount) {
+        if (clientThreadCount != null) {
+            if (clientThreadCount <= 0) {
+                throw new IllegalArgumentException("Client thread count must be a positive integer.");
+            }
+            this.clientThreadCount = clientThreadCount;
         }
     }
 

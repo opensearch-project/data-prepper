@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.peerforwarder;
 
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
@@ -49,7 +50,8 @@ class PeerForwarderAppConfigTest {
     void peerForwarderClientFactory_should_return_test() {
         PeerForwarderClientFactory peerForwarderClientFactory = peerForwarderAppConfig.peerForwarderClientFactory(
                 mock(PeerForwarderConfiguration.class),
-                mock(PeerClientPool.class)
+                mock(PeerClientPool.class),
+                mock(CertificateProviderFactory.class)
         );
 
         assertThat(peerForwarderClientFactory, notNullValue());
