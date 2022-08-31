@@ -12,6 +12,11 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Class to handle Peer Forwarder server
+ *
+ * @since 2.0
+ */
 public class PeerForwarderServer {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderServer.class);
 

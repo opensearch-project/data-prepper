@@ -9,6 +9,7 @@ import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarder;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
 import org.slf4j.Logger;
@@ -20,6 +21,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 
+/**
+ * A class for creating Peer Forwarder server
+ *
+ * @since 2.0
+ */
 public class PeerForwarderHttpServerProvider implements Provider<Server> {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderHttpServerProvider.class);
 

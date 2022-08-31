@@ -15,11 +15,17 @@ import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.server.annotation.Post;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarder;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvent;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * An annotated HTTP service class to handle POST requests used by {@link PeerForwarderHttpServerProvider}
+ *
+ * @since 2.0
+ */
 public class PeerForwarderHttpService {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderHttpService.class);
 
