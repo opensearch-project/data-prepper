@@ -161,5 +161,8 @@ dependencies {
     integrationTestImplementation project(':data-prepper-plugins:opensearch')
     integrationTestImplementation "com.linecorp.armeria:armeria:${versionMap.armeria}"
     integrationTestImplementation "org.awaitility:awaitility:4.1.1"
-    integrationTestImplementation "org.opensearch.client:opensearch-rest-high-level-client:${versionMap.opensearchVersion}"
+    integrationTestImplementation ("org.opensearch.client:opensearch-rest-high-level-client:${versionMap.opensearchVersion}") {
+        // todo: remove once opensearch-rest-high-level-client has been updated
+        exclude group: 'org.yaml', module: 'snakeyaml'
+    }
 }
