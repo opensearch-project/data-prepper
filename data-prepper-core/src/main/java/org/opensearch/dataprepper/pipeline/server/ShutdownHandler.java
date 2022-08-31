@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.pipeline.server;
 
 import org.opensearch.dataprepper.DataPrepper;
+import javax.ws.rs.HttpMethod;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import com.sun.net.httpserver.HttpExchange;
@@ -27,6 +28,13 @@ public class ShutdownHandler implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
+        String requestMethod = exchange.getRequestMethod();
+        if (!requestMethod.equals(HttpMethod.POST)) {
+            exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_METHOD, 0);
+            exchange.getResponseBody().close();
+            return;
+        }
+
         try {
             dataPrepper.shutdown();
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0);
