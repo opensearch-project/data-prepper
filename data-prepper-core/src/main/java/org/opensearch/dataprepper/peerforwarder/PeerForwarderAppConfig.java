@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.peerforwarder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
+import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -31,17 +32,25 @@ public class PeerForwarderAppConfig {
     }
 
     @Bean
-    public PeerForwarderClientFactory peerForwarderClientFactory(
-            final PeerForwarderConfiguration peerForwarderConfiguration,
-            final PeerClientPool peerClientPool
-    ) {
-        return new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool);
+    public CertificateProviderFactory certificateProviderFactory(final PeerForwarderConfiguration peerForwarderConfiguration) {
+        return new CertificateProviderFactory(peerForwarderConfiguration);
     }
 
     @Bean
-    public PeerForwarderClient peerForwarderClient(final ObjectMapper objectMapper,
-                                                   final PeerForwarderClientFactory peerForwarderClientFactory) {
-        return new PeerForwarderClient(objectMapper, peerForwarderClientFactory);
+    public PeerForwarderClientFactory peerForwarderClientFactory(
+            final PeerForwarderConfiguration peerForwarderConfiguration,
+            final PeerClientPool peerClientPool,
+            final CertificateProviderFactory certificateProviderFactory
+    ) {
+        return new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory);
+    }
+
+    @Bean
+    public PeerForwarderClient peerForwarderClient(final PeerForwarderConfiguration peerForwarderConfiguration,
+                                                   final PeerForwarderClientFactory peerForwarderClientFactory,
+                                                   final ObjectMapper objectMapper
+    ) {
+        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper);
     }
 
     @Bean

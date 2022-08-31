@@ -9,6 +9,8 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.peerforwarder.exception.EmptyPeerForwarderPluginIdentificationKeysException;
+import org.opensearch.dataprepper.peerforwarder.exception.UnsupportedPeerForwarderPluginException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +36,13 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
         if (innerProcessor instanceof RequiresPeerForwarding) {
             identificationKeys = ((RequiresPeerForwarding) innerProcessor).getIdentificationKeys();
         }
+        else {
+            throw new UnsupportedPeerForwarderPluginException("Peer Forwarding is only supported for plugins which implement RequiresPeerForwarding interface.");
+        }
+        if (identificationKeys.isEmpty()) {
+            throw new EmptyPeerForwarderPluginIdentificationKeysException("Peer Forwarder Plugin: %s cannot have empty identification keys." + pluginId);
+        }
+        // TODO: remove this log message after implementing peer forwarder
         LOG.info("Peer Forwarder not implemented yet, processing events locally.");
     }
 
