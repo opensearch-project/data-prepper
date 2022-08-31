@@ -9,6 +9,8 @@ import com.amazon.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import com.amazon.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import com.linecorp.armeria.server.HttpService;
+import com.linecorp.armeria.server.auth.AuthService;
 import io.grpc.Metadata;
 import io.grpc.Metadata.Key;
 import io.grpc.ServerCall;
@@ -19,6 +21,9 @@ import io.grpc.Status;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 
@@ -47,6 +52,20 @@ public class GrpcBasicAuthenticationProvider implements GrpcAuthenticationProvid
         this.authenticationInterceptor = new GrpcBasicAuthenticationInterceptor();
         this.base64EncodedCredentialsFromConfig = Base64.getEncoder()
                 .encodeToString(String.format("%s:%s", httpBasicAuthenticationConfig.getUsername(), httpBasicAuthenticationConfig.getPassword()).getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Override
+    public Optional<Function<? super HttpService, ? extends HttpService>> getHttpAuthenticationService() {
+        return Optional.of(createDecorator());
+    }
+
+    private Function<? super HttpService, ? extends HttpService> createDecorator() {
+        return AuthService.builder()
+                .addBasicAuth((context, basic) ->
+                        CompletableFuture.completedFuture(
+                                httpBasicAuthenticationConfig.getUsername().equals(basic.username()) &&
+                                        httpBasicAuthenticationConfig.getPassword().equals(basic.password())))
+                .newDecorator();
     }
 
     public ServerInterceptor getAuthenticationInterceptor() {
