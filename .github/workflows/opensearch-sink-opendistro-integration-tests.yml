@@ -8,9 +8,11 @@ on:
     branches: [ main ]
     paths:
       - 'data-prepper-plugins/opensearch/**'
+      - '*gradle*'
   pull_request:
     paths:
       - 'data-prepper-plugins/opensearch/**'
+      - '*gradle*'
   workflow_dispatch:
 
 jobs:
