@@ -41,9 +41,9 @@ class PipelinesDataFlowModelTest {
         String pipelineName = "test-pipeline";
 
         final PluginModel source = new PluginModel("testSource", (Map<String, Object>) null);
-        final List<PluginModel> preppers = Collections.singletonList(new PluginModel("testPrepper", (Map<String, Object>) null));
+        final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", (Map<String, Object>) null));
         final List<PluginModel> sinks = Collections.singletonList(new PluginModel("testSink", (Map<String, Object>) null));
-        final PipelineModel pipelineModel = new PipelineModel(source, null, preppers, null, sinks, 8, 50);
+        final PipelineModel pipelineModel = new PipelineModel(source, null, processors, null, sinks, 8, 50);
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(Collections.singletonMap(pipelineName, pipelineModel));
 
@@ -81,7 +81,7 @@ class PipelinesDataFlowModelTest {
         assertThat(pipelineModel.getProcessors(), notNullValue());
         assertThat(pipelineModel.getProcessors().size(), equalTo(1));
         assertThat(pipelineModel.getProcessors().get(0), notNullValue());
-        assertThat(pipelineModel.getProcessors().get(0).getPluginName(), equalTo("testPrepper"));
+        assertThat(pipelineModel.getProcessors().get(0).getPluginName(), equalTo("testProcessor"));
 
         assertThat(pipelineModel.getSinks(), notNullValue());
         assertThat(pipelineModel.getSinks().size(), equalTo(1));
