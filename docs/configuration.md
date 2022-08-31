@@ -113,10 +113,23 @@ To do so, add the argument below to the `docker run` command.
 ```
 
 ## Deprecated Pipeline Configuration Support
+Starting in Data Prepper 1.3.0, Prepper plugins were renamed to Processors. The use of the prepper or processor name in pipeline configuration files is still supported. However, the use of both processor and prepper in the same configuration file is **not** supported.
 
-Starting in DataPrepper 1.3.0, Prepper plugins were renamed to Processors. The use of the prepper or processor name in pipeline configuration files is still supported. However, the use of both processor and prepper in the same configuration file is **not** supported. Configuration of Processor plugins in pipelines using the Prepper name is deprecated and will be removed in a future release. See the [GitHub issue](https://github.com/opensearch-project/data-prepper/issues/619) for the latest status.
+Starting in Data Prepper 2.0, The use of the prepper name in pipeline configuration files is no longer supported.
 
-Example of deprecated prepper pipeline configuration file (pipelines.yaml):
+An example of deprecated prepper pipeline configuration file (pipelines.yaml):
+```yaml
+grok-pipeline:
+  source:
+    http:
+  prepper:
+    - grok:
+        match:
+          log: [ "%{COMMONAPACHELOG}" ]
+  sink:
+    - stdout:
+```
+To continue to use the same configuration in Data Prepper 2.0 or above, rename `prepper` to `processor`:
 ```yaml
 grok-pipeline:
   source:
