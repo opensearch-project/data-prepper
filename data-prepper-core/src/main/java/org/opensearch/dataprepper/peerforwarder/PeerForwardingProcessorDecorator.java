@@ -23,14 +23,13 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
     private final Processor innerProcessor;
     private final PeerForwarder peerForwarder;
     private final String pluginId;
-    private Set<String> identificationKeys;
+    private final Set<String> identificationKeys;
 
     public PeerForwardingProcessorDecorator(final Processor innerProcessor,
-                                            final PeerForwarder peerForwarder,
+                                            final PeerForwarderProvider peerForwarderProvider,
                                             final String pluginId
                                             ) {
         this.innerProcessor = innerProcessor;
-        this.peerForwarder = peerForwarder;
         this.pluginId = pluginId;
 
         if (innerProcessor instanceof RequiresPeerForwarding) {
@@ -42,6 +41,7 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
         if (identificationKeys.isEmpty()) {
             throw new EmptyPeerForwarderPluginIdentificationKeysException("Peer Forwarder Plugin: %s cannot have empty identification keys." + pluginId);
         }
+        this.peerForwarder = peerForwarderProvider.register();
         // TODO: remove this log message after implementing peer forwarder
         LOG.info("Peer Forwarder not implemented yet, processing events locally.");
     }

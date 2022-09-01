@@ -6,13 +6,12 @@
 package org.opensearch.dataprepper.parser.config;
 
 import com.amazon.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.parser.PipelineParser;
-import org.opensearch.dataprepper.parser.PipelineParser;
-import org.opensearch.dataprepper.peerforwarder.PeerForwarder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.parser.PipelineParser;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -31,7 +30,7 @@ class PipelineParserConfigurationTest {
     private PluginFactory pluginFactory;
 
     @Mock
-    private PeerForwarder peerForwarder;
+    private PeerForwarderProvider peerForwarderProvider;
 
     @Test
     void pipelineParser() {
@@ -39,7 +38,7 @@ class PipelineParserConfigurationTest {
         when(args.getPipelineConfigFileLocation())
                 .thenReturn(pipelineConfigFileLocation);
 
-        final PipelineParser pipelineParser = pipelineParserConfiguration.pipelineParser(args, pluginFactory, peerForwarder);
+        final PipelineParser pipelineParser = pipelineParserConfiguration.pipelineParser(args, pluginFactory, peerForwarderProvider);
 
         assertThat(pipelineParser, is(notNullValue()));
         verify(args).getPipelineConfigFileLocation();

@@ -62,9 +62,14 @@ public class PeerForwarderAppConfig {
     @Bean
     public PeerForwarder peerForwarder(final PeerForwarderClientFactory peerForwarderClientFactory,
                                        final PeerForwarderClient peerForwarderClient) {
+        // TODO: Move this so that it is constructed dynamically and only when necessary.
         return new PeerForwarder(peerForwarderClientFactory, peerForwarderClient);
     }
 
+    @Bean
+    public PeerForwarderProvider peerForwarderProvider(final PeerForwarder peerForwarder) {
+        return new PeerForwarderProvider(peerForwarder);
+    }
     @Bean
     public ResponseHandler responseHandler() {
         return new ResponseHandler();
