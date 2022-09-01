@@ -39,13 +39,13 @@ class PeerForwarderHttpServiceTest {
     private static final String LOG = "LOG";
     private static final String PLUGIN_ID = "plugin_id";
 
-    private final RequestExceptionHandler requestExceptionHandler = new RequestExceptionHandler();
+    private final ResponseHandler responseHandler = new ResponseHandler();
     private final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule());
 
 
     private PeerForwarderHttpService createObjectUnderTest() {
-        return new PeerForwarderHttpService(requestExceptionHandler, objectMapper);
+        return new PeerForwarderHttpService(responseHandler, objectMapper);
     }
 
 
@@ -68,7 +68,7 @@ class PeerForwarderHttpServiceTest {
 
         final AggregatedHttpResponse aggregatedHttpResponse = objectUnderTest.doPost(aggregatedHttpRequest).aggregate().get();
 
-        assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.BAD_REQUEST));
+        assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.INTERNAL_SERVER_ERROR));
     }
 
     private AggregatedHttpRequest generateRandomValidHTTPRequest() throws JsonProcessingException,

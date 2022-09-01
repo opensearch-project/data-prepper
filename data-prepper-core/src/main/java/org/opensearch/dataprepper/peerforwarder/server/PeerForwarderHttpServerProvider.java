@@ -9,7 +9,6 @@ import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
 import com.amazon.dataprepper.plugins.certificate.model.Certificate;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
-import org.opensearch.dataprepper.peerforwarder.PeerForwarder;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
 import org.slf4j.Logger;
@@ -65,8 +64,8 @@ public class PeerForwarderHttpServerProvider implements Provider<Server> {
 
         sb.maxNumConnections(peerForwarderConfiguration.getMaxConnectionCount());
         sb.requestTimeout(Duration.ofMillis(peerForwarderConfiguration.getRequestTimeout()));
-        final int threads = peerForwarderConfiguration.getServerThreadCount();
-        final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
+        final int threadCount = peerForwarderConfiguration.getServerThreadCount();
+        final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threadCount);
         sb.blockingTaskExecutor(blockingTaskExecutor, true);
         // TODO: Add throttling service
 

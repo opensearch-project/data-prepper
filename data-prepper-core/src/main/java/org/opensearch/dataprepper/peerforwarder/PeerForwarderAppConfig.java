@@ -13,7 +13,7 @@ import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpServerProvider;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServer;
-import org.opensearch.dataprepper.peerforwarder.server.RequestExceptionHandler;
+import org.opensearch.dataprepper.peerforwarder.server.ResponseHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -66,16 +66,16 @@ public class PeerForwarderAppConfig {
     }
 
     @Bean
-    public RequestExceptionHandler requestExceptionHandler() {
-        return new RequestExceptionHandler();
+    public ResponseHandler responseHandler() {
+        return new ResponseHandler();
     }
 
     @Bean
     public PeerForwarderHttpService peerForwarderHttpService(
-            final RequestExceptionHandler requestExceptionHandler,
+            final ResponseHandler responseHandler,
             final ObjectMapper objectMapper
     ) {
-        return new PeerForwarderHttpService(requestExceptionHandler, objectMapper);
+        return new PeerForwarderHttpService(responseHandler, objectMapper);
     }
 
     @Bean
@@ -88,7 +88,7 @@ public class PeerForwarderAppConfig {
                 certificateProviderFactory, peerForwarderHttpService);
     }
 
-    @Bean(name="armeria_server")
+    @Bean(name="peerForwarderServer")
     public Server server(
             final PeerForwarderHttpServerProvider peerForwarderHttpServerProvider
     ) {
@@ -97,7 +97,7 @@ public class PeerForwarderAppConfig {
 
     @Bean
     public PeerForwarderServer peerForwarderServer(
-            @Qualifier("armeria_server") final Server peerForwarderServer,
+            @Qualifier("peerForwarderServer") final Server peerForwarderServer,
             final PeerForwarderConfiguration peerForwarderConfiguration) {
         return new PeerForwarderServer(peerForwarderConfiguration, peerForwarderServer);
     }

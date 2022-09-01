@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.peerforwarder.server;
 
 import com.amazon.dataprepper.model.event.DefaultEventMetadata;
-import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,7 +14,6 @@ import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.server.annotation.Post;
-import org.opensearch.dataprepper.peerforwarder.PeerForwarder;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvent;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 import org.slf4j.Logger;
@@ -29,11 +27,11 @@ import org.slf4j.LoggerFactory;
 public class PeerForwarderHttpService {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderHttpService.class);
 
-    private final RequestExceptionHandler requestExceptionHandler;
+    private final ResponseHandler responseHandler;
     private final ObjectMapper objectMapper;
 
-    public PeerForwarderHttpService(final RequestExceptionHandler requestExceptionHandler, final ObjectMapper objectMapper) {
-        this.requestExceptionHandler = requestExceptionHandler;
+    public PeerForwarderHttpService(final ResponseHandler responseHandler, final ObjectMapper objectMapper) {
+        this.responseHandler = responseHandler;
         this.objectMapper = objectMapper;
     }
 
@@ -51,16 +49,16 @@ public class PeerForwarderHttpService {
         } catch (JsonProcessingException e) {
             final String message = "Failed to write the request content due to bad request data format. Needs to be JSON object";
             LOG.error(message, e);
-            return requestExceptionHandler.handleException(e, message);
+            return responseHandler.handleException(e, message);
         }
 
         final String destinationPluginId = wireEvents.getDestinationPluginId();
         // TODO: send all events to corresponding buffer based on plugin id
 
         if (wireEvents.getEvents() != null) {
-            wireEvents.getEvents().forEach(
-                    wireEvent -> {
-                        final Event event = getEvent(wireEvent);
+            wireEvents.getEvents().stream()
+                    .map(this::transformEvent)
+                    .forEach(event  -> {
                         // TODO: write event to buffer
                     }
             );
@@ -69,7 +67,7 @@ public class PeerForwarderHttpService {
         return HttpResponse.of(HttpStatus.OK);
     }
 
-    private JacksonEvent getEvent(final WireEvent wireEvent) {
+    private JacksonEvent transformEvent(final WireEvent wireEvent) {
         return JacksonEvent.builder()
                 .withEventMetadata(getEventMetadata(wireEvent))
                 .withData(wireEvent.getEventData())

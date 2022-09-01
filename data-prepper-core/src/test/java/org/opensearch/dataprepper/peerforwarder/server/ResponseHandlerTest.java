@@ -16,15 +16,15 @@ import java.util.concurrent.ExecutionException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 
-class RequestExceptionHandlerTest {
+class ResponseHandlerTest {
 
-    private RequestExceptionHandler createObjectUnderTest() {
-        return new RequestExceptionHandler();
+    private ResponseHandler createObjectUnderTest() {
+        return new ResponseHandler();
     }
 
     @Test
     void test_JsonProcessingException() throws ExecutionException, InterruptedException {
-        final RequestExceptionHandler objectUnderTest = createObjectUnderTest();
+        final ResponseHandler objectUnderTest = createObjectUnderTest();
         final JsonProcessingException jsonProcessingException = mock(JsonProcessingException.class);
 
         final String testMessage = "test exception message";
@@ -32,13 +32,13 @@ class RequestExceptionHandlerTest {
         final HttpResponse httpResponse = objectUnderTest.handleException(jsonProcessingException, testMessage);
         final AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
 
-        assertEquals(HttpStatus.BAD_REQUEST, aggregatedHttpResponse.status());
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, aggregatedHttpResponse.status());
         assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
     }
 
     @Test
     void test_UnknownException() throws ExecutionException, InterruptedException {
-        final RequestExceptionHandler objectUnderTest = createObjectUnderTest();
+        final ResponseHandler objectUnderTest = createObjectUnderTest();
         final UnknownException unknownException = new UnknownException("");
 
         final String testMessage = "test exception message";
