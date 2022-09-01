@@ -143,21 +143,8 @@ public class PipelineParser {
     }
 
     private List<Processor> newProcessor(final PluginSetting pluginSetting) {
-        try {
-            return newProcessor(pluginSetting, Processor.class);
-        } catch (NoPluginFoundException ex) {
-            LOG.warn(
-                    "No plugin of type Processor found for plugin setting: {}, attempting to find comparable Prepper plugin.",
-                    pluginSetting.getName());
-            return newProcessor(pluginSetting, Processor.class)
-                    .stream()
-                    .map(prepper -> (Processor) prepper)
-                    .collect(Collectors.toList());
-        }
-    }
-    private <T extends Processor> List<T> newProcessor(final PluginSetting pluginSetting, final Class<T> baseClass) {
         return pluginFactory.loadPlugins(
-                baseClass,
+                Processor.class,
                 pluginSetting,
                 actualClass -> actualClass.isAnnotationPresent(SingleThread.class) ?
                         pluginSetting.getNumberOfProcessWorkers() :
