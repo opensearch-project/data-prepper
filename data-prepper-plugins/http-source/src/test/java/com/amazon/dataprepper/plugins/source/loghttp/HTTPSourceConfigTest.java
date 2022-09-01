@@ -222,27 +222,6 @@ public class HTTPSourceConfigTest {
 
             assertThat(objectUnderTest.isAcmCertificateArnValid(), equalTo(true));
         }
-
-        @Test
-        void isAcmPrivateKeyPasswordValid_should_return_false_if_ssl_is_true_and_acm_is_true_and_arn_is_null() throws NoSuchFieldException, IllegalAccessException {
-            final HTTPSourceConfig objectUnderTest = new HTTPSourceConfig();
-
-            reflectivelySetField(objectUnderTest, "ssl", true);
-            reflectivelySetField(objectUnderTest, "useAcmCertificateForSsl", true);
-
-            assertThat(objectUnderTest.isAcmPrivateKeyPasswordValid(), equalTo(false));
-        }
-
-        @Test
-        void isAcmPrivateKeyPasswordValid_should_return_true_if_ssl_is_true_and_acm_is_true_and_arn_is_not_null() throws NoSuchFieldException, IllegalAccessException {
-            final HTTPSourceConfig objectUnderTest = new HTTPSourceConfig();
-
-            reflectivelySetField(objectUnderTest, "ssl", true);
-            reflectivelySetField(objectUnderTest, "useAcmCertificateForSsl", true);
-            reflectivelySetField(objectUnderTest, "acmPrivateKeyPassword", UUID.randomUUID().toString());
-
-            assertThat(objectUnderTest.isAcmPrivateKeyPasswordValid(), equalTo(true));
-        }
     }
 
         private void reflectivelySetField(final HTTPSourceConfig httpSourceConfig, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {
