@@ -10,21 +10,19 @@ import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderF
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 import org.opensearch.dataprepper.peerforwarder.discovery.PeerListProvider;
 
-import javax.inject.Inject;
-import javax.inject.Named;
-
-@Named
 public class PeerForwarderClientFactory {
     public static final int NUM_VIRTUAL_NODES = 128;
 
     private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final PeerClientPool peerClientPool;
+    private final CertificateProviderFactory certificateProviderFactory;
 
-    @Inject
-    public PeerForwarderClientFactory(PeerForwarderConfiguration peerForwarderConfiguration,
-                                      PeerClientPool peerClientPool) {
+    public PeerForwarderClientFactory(final PeerForwarderConfiguration peerForwarderConfiguration,
+                                      final PeerClientPool peerClientPool,
+                                      final CertificateProviderFactory certificateProviderFactory) {
         this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.peerClientPool = peerClientPool;
+        this.certificateProviderFactory = certificateProviderFactory;
     }
 
     public HashRing createHashRing() {
@@ -45,7 +43,6 @@ public class PeerForwarderClientFactory {
         if (ssl || useAcmCertForSsl) {
             peerClientPool.setSsl(true);
 
-            final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerClientPool.setCertificate(certificateProviderFactory.getCertificateProvider().getCertificate());
         }
 

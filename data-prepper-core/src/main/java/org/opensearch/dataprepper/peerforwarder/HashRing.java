@@ -19,7 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Consumer;
 
@@ -50,12 +49,12 @@ public class HashRing implements Consumer<List<Endpoint>> {
         peerListProvider.addListener(this);
     }
 
-    public Optional<String> getServerIp(final Set<String> identificationKeys) {
+    public Optional<String> getServerIp(final List<String> identificationKeyValues) {
         if (hashServerMap.isEmpty()) {
             return Optional.empty();
         }
 
-        final byte[] identificationKeysInBytes = String.join(DELIMITER, identificationKeys).getBytes();
+        final byte[] identificationKeysInBytes = String.join(DELIMITER, identificationKeyValues).getBytes();
 
         final MessageDigest md;
         try {

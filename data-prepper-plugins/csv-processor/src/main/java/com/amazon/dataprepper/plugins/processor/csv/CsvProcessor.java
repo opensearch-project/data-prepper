@@ -16,6 +16,7 @@ import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvParser;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
+import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,11 +33,17 @@ import java.util.Objects;
 @DataPrepperPlugin(name="csv", pluginType = Processor.class, pluginConfigurationType = CsvProcessorConfig.class)
 public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(CsvProcessor.class);
+
+    static final String CSV_INVALID_EVENTS = "csvInvalidEvents";
+
+    private final Counter csvInvalidEventsCounter;
+
     private final CsvProcessorConfig config;
 
     @DataPrepperPluginConstructor
     public CsvProcessor(final PluginMetrics pluginMetrics, final CsvProcessorConfig config) {
         super(pluginMetrics);
+        this.csvInvalidEventsCounter = pluginMetrics.counter(CSV_INVALID_EVENTS);
         this.config = config;
     }
 
@@ -67,6 +74,7 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
                     event.delete(config.getColumnNamesSourceKey());
                 }
             } catch (final IOException e) {
+                csvInvalidEventsCounter.increment();
                 LOG.error("An exception occurred while reading event [{}]", event, e);
             }
         }

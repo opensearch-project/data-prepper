@@ -36,13 +36,14 @@ class PeerForwarderConfigurationTest {
 
         assertThat(peerForwarderConfiguration.getServerPort(), equalTo(21890));
         assertThat(peerForwarderConfiguration.getRequestTimeout(), equalTo(10_000));
-        assertThat(peerForwarderConfiguration.getThreadCount(), equalTo(200));
+        assertThat(peerForwarderConfiguration.getServerThreadCount(), equalTo(200));
         assertThat(peerForwarderConfiguration.getMaxConnectionCount(), equalTo(500));
         assertThat(peerForwarderConfiguration.getMaxPendingRequests(), equalTo(1024));
         assertThat(peerForwarderConfiguration.isSsl(), equalTo(false));
         assertThat(peerForwarderConfiguration.getAcmPrivateKeyPassword(), equalTo(null));
         assertThat(peerForwarderConfiguration.isUseAcmCertificateForSsl(), equalTo(false));
         assertThat(peerForwarderConfiguration.getDiscoveryMode(), equalTo(DiscoveryMode.STATIC));
+        assertThat(peerForwarderConfiguration.getClientThreadCount(), equalTo(200));
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(48));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(512));
     }
@@ -53,7 +54,7 @@ class PeerForwarderConfigurationTest {
 
         assertThat(peerForwarderConfiguration.getServerPort(), equalTo(21895));
         assertThat(peerForwarderConfiguration.getRequestTimeout(), equalTo(1000));
-        assertThat(peerForwarderConfiguration.getThreadCount(), equalTo(100));
+        assertThat(peerForwarderConfiguration.getServerThreadCount(), equalTo(100));
         assertThat(peerForwarderConfiguration.getMaxConnectionCount(), equalTo(100));
         assertThat(peerForwarderConfiguration.getMaxPendingRequests(), equalTo(512));
         assertThat(peerForwarderConfiguration.isSsl(), equalTo(false));
@@ -64,6 +65,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getDomainName(), equalTo(null));
         assertThat(peerForwarderConfiguration.getAwsCloudMapNamespaceName(), equalTo(null));
         assertThat(peerForwarderConfiguration.getAwsCloudMapServiceName(), equalTo(null));
+        assertThat(peerForwarderConfiguration.getClientThreadCount(), equalTo(100));
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(100));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(100));
     }

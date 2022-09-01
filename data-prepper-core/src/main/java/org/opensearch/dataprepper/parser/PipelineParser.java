@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwardingProcessorDecorator;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.PipelineConnector;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,10 +49,14 @@ public class PipelineParser {
     private final String pipelineConfigurationFileLocation;
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
     private final PluginFactory pluginFactory;
+    private final PeerForwarder peerForwarder;
 
-    public PipelineParser(final String pipelineConfigurationFileLocation, final PluginFactory pluginFactory) {
+    public PipelineParser(final String pipelineConfigurationFileLocation,
+                          final PluginFactory pluginFactory,
+                          final PeerForwarder peerForwarder) {
         this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
+        this.peerForwarder = Objects.requireNonNull(peerForwarder);
     }
 
     /**
@@ -112,7 +117,8 @@ public class PipelineParser {
                             .map(processor -> {
                                 if (processor instanceof RequiresPeerForwarding) {
                                     // TODO: Create buffer per stateful processor and store map of processor, buffer
-                                    return new PeerForwardingProcessorDecorator(processor);
+                                    // TODO: get plugin id from PipelineParser
+                                    return new PeerForwardingProcessorDecorator(processor, peerForwarder, "pluginId");
                                 }
                                 return processor;
                             })

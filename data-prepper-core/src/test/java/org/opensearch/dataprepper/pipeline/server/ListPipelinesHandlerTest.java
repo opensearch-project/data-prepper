@@ -5,12 +5,18 @@
 
 package org.opensearch.dataprepper.pipeline.server;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.DataPrepper;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
-import org.junit.jupiter.api.Test;
 
+import javax.ws.rs.HttpMethod;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -24,23 +30,33 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class ListPipelinesHandlerTest {
+    @Mock
+    private HttpExchange httpExchange;
 
-    @Test
-    public void testGivenNoPipelinesThenResponseWritten() throws IOException {
+    @Mock
+    private OutputStream outputStream;
+
+    @BeforeEach
+    public void beforeEach() {
+        when(httpExchange.getResponseBody())
+                .thenReturn(outputStream);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { HttpMethod.GET, HttpMethod.POST })
+    public void testGivenNoPipelinesThenResponseWritten(String httpMethod) throws IOException {
         final DataPrepper dataPrepper = mock(DataPrepper.class);
-        final HttpExchange httpExchange = mock(HttpExchange.class);
         final Headers headers = mock(Headers.class);
-        final OutputStream outputStream = mock(OutputStream.class);
         final Map<String, Pipeline> transformationPipelines = new HashMap<>();
 
         when(dataPrepper.getTransformationPipelines())
                 .thenReturn(transformationPipelines);
-
         when(httpExchange.getResponseHeaders())
                 .thenReturn(headers);
-        when(httpExchange.getResponseBody())
-                .thenReturn(outputStream);
+        when(httpExchange.getRequestMethod())
+                .thenReturn(httpMethod);
 
         final ListPipelinesHandler handler = new ListPipelinesHandler(dataPrepper);
 
@@ -56,12 +72,11 @@ class ListPipelinesHandlerTest {
                 .close();
     }
 
-    @Test
-    public void testGivenPipelinesThenResponseWritten() throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = { HttpMethod.GET, HttpMethod.POST })
+    public void testGivenPipelinesThenResponseWritten(String httpMethod) throws IOException {
         final DataPrepper dataPrepper = mock(DataPrepper.class);
-        final HttpExchange httpExchange = mock(HttpExchange.class);
         final Headers headers = mock(Headers.class);
-        final OutputStream outputStream = mock(OutputStream.class);
         final Pipeline pipeline = mock(Pipeline.class);
         final Map<String, Pipeline> transformationPipelines = new HashMap<>();
         transformationPipelines.put("Pipeline A", pipeline);
@@ -70,11 +85,10 @@ class ListPipelinesHandlerTest {
 
         when(dataPrepper.getTransformationPipelines())
                 .thenReturn(transformationPipelines);
-
         when(httpExchange.getResponseHeaders())
                 .thenReturn(headers);
-        when(httpExchange.getResponseBody())
-                .thenReturn(outputStream);
+        when(httpExchange.getRequestMethod())
+                .thenReturn(httpMethod);
 
         final ListPipelinesHandler handler = new ListPipelinesHandler(dataPrepper);
 
@@ -90,13 +104,28 @@ class ListPipelinesHandlerTest {
                 .close();
     }
 
-    @Test
-    public void testGivenExceptionThrownThenErrorResponseWrittern() throws IOException {
-        final HttpExchange httpExchange = mock(HttpExchange.class);
-        final OutputStream outputStream = mock(OutputStream.class);
+    @ParameterizedTest
+    @ValueSource(strings = { HttpMethod.DELETE, HttpMethod.PATCH, HttpMethod.PUT })
+    public void testGivenProhibitedHttpMethodThenErrorResponseWritten(String httpMethod) throws IOException {
+        final DataPrepper dataPrepper = mock(DataPrepper.class);
+        final ListPipelinesHandler handler = new ListPipelinesHandler(dataPrepper);
 
-        when(httpExchange.getResponseBody())
-                .thenReturn(outputStream);
+        when(httpExchange.getRequestMethod())
+                .thenReturn(httpMethod);
+
+        handler.handle(httpExchange);
+
+        verify(httpExchange)
+                .sendResponseHeaders(eq(HttpURLConnection.HTTP_BAD_METHOD), eq(0L));
+        verify(outputStream)
+                .close();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { HttpMethod.GET, HttpMethod.POST })
+    public void testGivenExceptionThrownThenErrorResponseWritten(String httpMethod) throws IOException {
+        when(httpExchange.getRequestMethod())
+                .thenReturn(httpMethod);
 
         final ListPipelinesHandler handler = new ListPipelinesHandler(null);
         handler.handle(httpExchange);

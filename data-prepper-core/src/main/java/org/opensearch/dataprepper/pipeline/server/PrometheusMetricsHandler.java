@@ -11,6 +11,7 @@ import io.micrometer.prometheus.PrometheusMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.HttpMethod;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
@@ -29,6 +30,13 @@ public class PrometheusMetricsHandler implements HttpHandler {
 
     @Override
     public void handle(final HttpExchange exchange) throws IOException {
+        String requestMethod = exchange.getRequestMethod();
+        if (!requestMethod.equals(HttpMethod.GET) && !requestMethod.equals(HttpMethod.POST)) {
+            exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_METHOD, 0);
+            exchange.getResponseBody().close();
+            return;
+        }
+
         try {
             final byte[] response = prometheusMeterRegistry.scrape().getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "text/plain; charset=UTF-8");
