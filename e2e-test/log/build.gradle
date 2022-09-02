@@ -144,7 +144,7 @@ task basicLogEndToEndTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
 
     filter {
-        includeTestsMatching "com.amazon.dataprepper.integration.log.EndToEndBasicLogTest.testPipelineEndToEnd*"
+        includeTestsMatching "org.opensearch.dataprepper.integration.log.EndToEndBasicLogTest.testPipelineEndToEnd*"
     }
 
     finalizedBy stopOpenSearchDockerContainer

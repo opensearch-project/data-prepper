@@ -189,7 +189,7 @@ def createEndToEndTest(final String testName, final String includeTestsMatchPatt
     }
 }
 
-def includeRawSpanTestsMatchPattern = "com.amazon.dataprepper.integration.trace.EndToEndRawSpanTest.testPipelineEndToEnd*"
+def includeRawSpanTestsMatchPattern = "org.opensearch.dataprepper.integration.trace.EndToEndRawSpanTest.testPipelineEndToEnd*"
 
 def createRawSpanDataPrepper1Task = createDataPrepperDockerContainer(
         "rawSpanDataPrepper1", "dataprepper1", 21890, 4900, "/app/${RAW_SPAN_PIPELINE_YAML}")
@@ -208,7 +208,7 @@ def rawSpanLatestReleaseCompatibilityEndToEndTest = createEndToEndTest("rawSpanL
         includeRawSpanTestsMatchPattern,
         rawSpanDataPrepperEventFromBuild, rawSpanDataPrepperLatestFromPull)
 
-def includeServiceMapTestsMatchPattern = "com.amazon.dataprepper.integration.trace.EndToEndServiceMapTest*"
+def includeServiceMapTestsMatchPattern = "org.opensearch.dataprepper.integration.trace.EndToEndServiceMapTest*"
 
 def createServiceMapDataPrepper1Task = createDataPrepperDockerContainer(
         "serviceMapDataPrepper1", "dataprepper1", 21890, 4900, "/app/${SERVICE_MAP_PIPELINE_YAML}")
