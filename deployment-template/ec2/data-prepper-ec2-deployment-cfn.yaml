@@ -127,7 +127,7 @@ Resources:
                       pipeline:
                         name: "entry-pipeline"
                     processor:
-                      - otel_trace_raw_prepper:
+                      - otel_trace_raw:
                     sink:
                       - opensearch: ${rawSpanConfig}
                   service-map-pipeline:

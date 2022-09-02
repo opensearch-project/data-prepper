@@ -40,7 +40,6 @@ import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
@@ -127,23 +126,8 @@ public class OTelTraceGrpcServiceTest {
     }
 
     @Test
-    public void export_Success_responseObserverOnCompleted_withOTLPRecordType() throws Exception {
-        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.OTLP);
-        objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
-
-        verify(buffer, times(1)).write(recordCaptor.capture(), anyInt());
-        verify(responseObserver, times(1)).onNext(ExportTraceServiceResponse.newBuilder().build());
-        verify(responseObserver, times(1)).onCompleted();
-        verify(requestsReceivedCounter, times(1)).increment();
-        verifyNoInteractions(timeoutCounter);
-
-        Record capturedRecord = recordCaptor.getValue();
-        assertEquals(SUCCESS_REQUEST, capturedRecord.getData());
-    }
-
-    @Test
-    public void export_Success_responseObserverOnCompleted_withEventRecordType() throws Exception {
-        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.EVENT);
+    public void export_Success_responseObserverOnCompleted() throws Exception {
+        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder());
         objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
 
         verify(buffer, times(1)).writeAll(recordsCaptor.capture(), anyInt());
@@ -165,32 +149,8 @@ public class OTelTraceGrpcServiceTest {
     }
 
     @Test
-    public void export_BufferTimeout_responseObserverOnError_withOTLPRecordType() throws Exception {
-        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.OTLP);
-        doThrow(new TimeoutException()).when(buffer).write(any(Record.class), anyInt());
-
-        objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
-
-        verify(buffer, times(1)).write(any(Record.class), anyInt());
-        verify(responseObserver, times(0)).onNext(any());
-        verify(responseObserver, times(0)).onCompleted();
-        verify(responseObserver, times(1)).onError(statusExceptionArgumentCaptor.capture());
-        verify(timeoutCounter, times(1)).increment();
-        verify(requestsReceivedCounter, times(1)).increment();
-        verifyNoInteractions(successRequestsCounter);
-        verifyNoInteractions(badRequestsCounter);
-        verifyNoInteractions(requestsTooLargeCounter);
-        final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
-        verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
-        assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(SUCCESS_REQUEST.getSerializedSize()));
-        verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
-        StatusException capturedStatusException = statusExceptionArgumentCaptor.getValue();
-        assertThat(capturedStatusException.getStatus().getCode(), equalTo(Status.RESOURCE_EXHAUSTED.getCode()));
-    }
-
-    @Test
-    public void export_BufferTimeout_responseObserverOnError_withEventRecordType() throws Exception {
-        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.EVENT);
+    public void export_BufferTimeout_responseObserverOnError() throws Exception {
+        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder());
         doThrow(new TimeoutException()).when(buffer).writeAll(any(Collection.class), anyInt());
 
         objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
@@ -217,7 +177,7 @@ public class OTelTraceGrpcServiceTest {
         final String testMessage = "test message";
         final RuntimeException testException = new RuntimeException(testMessage);
         when(mockOTelProtoDecoder.parseExportTraceServiceRequest(any())).thenThrow(testException);
-        objectUnderTest = generateOTelTraceGrpcService(mockOTelProtoDecoder, RecordType.EVENT);
+        objectUnderTest = generateOTelTraceGrpcService(mockOTelProtoDecoder);
         objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
 
         verifyNoInteractions(buffer);
@@ -242,7 +202,7 @@ public class OTelTraceGrpcServiceTest {
     public void export_RequestTooLarge_responseObserverOnError() throws Exception {
         final String testMessage = "test message";
         doThrow(new SizeOverflowException(testMessage)).when(buffer).writeAll(any(Collection.class), anyInt());
-        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.EVENT);
+        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder());
         objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
 
         verify(buffer, times(1)).writeAll(any(Collection.class), anyInt());
@@ -266,7 +226,7 @@ public class OTelTraceGrpcServiceTest {
     public void export_BufferInternalException_responseObserverOnError() throws Exception {
         final String testMessage = "test message";
         doThrow(new IOException(testMessage)).when(buffer).writeAll(any(Collection.class), anyInt());
-        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder(), RecordType.EVENT);
+        objectUnderTest = generateOTelTraceGrpcService(new OTelProtoCodec.OTelProtoDecoder());
         objectUnderTest.export(SUCCESS_REQUEST, responseObserver);
 
         verify(buffer, times(1)).writeAll(any(Collection.class), anyInt());
@@ -286,8 +246,8 @@ public class OTelTraceGrpcServiceTest {
         assertThat(capturedStatusException.getStatus().getCode(), equalTo(Status.INTERNAL.getCode()));
     }
 
-    private OTelTraceGrpcService generateOTelTraceGrpcService(final OTelProtoCodec.OTelProtoDecoder decoder, final RecordType recordType) {
+    private OTelTraceGrpcService generateOTelTraceGrpcService(final OTelProtoCodec.OTelProtoDecoder decoder) {
         return new OTelTraceGrpcService(
-                bufferWriteTimeoutInMillis, recordType, decoder, buffer, mockPluginMetrics);
+                bufferWriteTimeoutInMillis, decoder, buffer, mockPluginMetrics);
     }
 }
