@@ -24,8 +24,5 @@ jobs:
           java-version: 11
       - name: Checkout Data-Prepper
         uses: actions/checkout@v2
-        # TODO: Event record type only in 2.0 (https://github.com/opensearch-project/data-prepper/issues/1272)
-      - name: Run service-map OTLP record type end-to-end tests with Gradle
-        run: ./gradlew -PendToEndJavaVersion=${{ matrix.java }} :e2e-test:trace:serviceMapOTLPEndToEndTest
-      - name: Run service-map OTLP and Event end-to-end tests with Gradle
-        run: ./gradlew -PendToEndJavaVersion=${{ matrix.java }} :e2e-test:trace:serviceMapOTLPAndEventEndToEndTest
+      - name: Run service-map end-to-end tests with Gradle
+        run: ./gradlew -PendToEndJavaVersion=${{ matrix.java }} :e2e-test:trace:serviceMapEndToEndTest

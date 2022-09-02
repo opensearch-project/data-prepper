@@ -33,7 +33,8 @@ The [OpenTelemetry source](../data-prepper-plugins/otel-trace-source/README.md) 
 ### Processor
 
 We have two processor for the Trace Analytics feature,
-* *otel_trace_raw_prepper* -  This processor is responsible for converting the trace data in [OpenTelemetry specification](https://github.com/open-telemetry/opentelemetry-proto/tree/master/opentelemetry/proto/trace/v1) to OpenSearch-friendly (JSON) docs. These OpenSearch-friendly docs have certain additional fields like duration which are not part of the original OpenTelemetry specification. These additional fields are to make the instant OpenSearch Dashboards dashboards user-friendly.
+* *otel_trace_raw* -  This is a processor that receives collection of [Span](../../data-prepper-api/src/main/java/com/amazon/dataprepper/model/trace/Span.java) records sent from [otel-trace-source](../dataPrepper-plugins/otel-trace-source), does stateful processing on extracting and filling-in trace group related fields.
+* *otel_trace_group* -  This is a processor that fills in the missing trace group related fields in the collection of [Span](../../data-prepper-api/src/main/java/com/amazon/dataprepper/model/trace/Span.java) records by looking up the opensearch backend.
 * *service_map_stateful* -  This processor performs the required preprocessing on the trace data and build metadata to display the service-map OpenSearch Dashboards dashboards.
 
 
@@ -114,7 +115,19 @@ raw-pipeline:
          # With 64 as batch size each worker thread could process upto 3200 spans (64 * 50)
          batch_size: 64
   processor:
-    - otel_trace_raw_prepper:
+    - otel_trace_raw:
+    - otel_trace_group:
+        hosts: [ "https://localhost:9200" ]
+        # Change to your credentials
+        username: "admin"
+        password: "admin"
+        # Add a certificate file if you are accessing an OpenSearch cluster with a self-signed certificate  
+        #cert: /path/to/cert
+        # If you are connecting to an Amazon OpenSearch Service domain without
+        # Fine-Grained Access Control, enable these settings. Comment out the
+        # username and password above.
+        #aws_sigv4: true
+        #aws_region: us-east-1
   sink:
     - opensearch:
         hosts: [ "https://localhost:9200" ]

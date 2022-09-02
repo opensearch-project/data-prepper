@@ -2,7 +2,6 @@ entry-pipeline:
   source:
     otel_trace_source:
       ssl: false
-      record_type: "event"
   processor:
     - peer_forwarder:
         discovery_mode: "static"

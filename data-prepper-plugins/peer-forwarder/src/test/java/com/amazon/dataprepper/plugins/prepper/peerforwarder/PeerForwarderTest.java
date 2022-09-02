@@ -8,18 +8,16 @@ package com.amazon.dataprepper.plugins.prepper.peerforwarder;
 import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
 import com.amazon.dataprepper.model.trace.JacksonSpan;
 import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.plugins.otel.codec.OTelProtoCodec;
-import com.google.protobuf.ByteString;
 import io.grpc.Channel;
 import io.micrometer.core.instrument.Measurement;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
-import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
-import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import org.apache.commons.codec.DecoderException;
@@ -66,23 +64,6 @@ import static org.mockito.Mockito.when;
 public class PeerForwarderTest {
     private static final String TEST_PIPELINE_NAME = "testPipeline";
     private static final String LOCAL_IP = "127.0.0.1";
-    private static final io.opentelemetry.proto.trace.v1.Span OTLP_SPAN_1 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdA")).setSpanId(ByteString.copyFromUtf8("spanId1")).build();
-    private static final io.opentelemetry.proto.trace.v1.Span OTLP_SPAN_2 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdA")).setSpanId(ByteString.copyFromUtf8("spanId2")).build();
-    private static final io.opentelemetry.proto.trace.v1.Span OTLP_SPAN_3 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdA")).setSpanId(ByteString.copyFromUtf8("spanId3")).build();
-    private static final io.opentelemetry.proto.trace.v1.Span OTLP_SPAN_4 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdB")).setSpanId(ByteString.copyFromUtf8("spanId4")).build();
-    private static final io.opentelemetry.proto.trace.v1.Span OTLP_SPAN_5 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdB")).setSpanId(ByteString.copyFromUtf8("spanId5")).build();
-    private static final io.opentelemetry.proto.trace.v1.Span OTLP_SPAN_6 = io.opentelemetry.proto.trace.v1.Span.newBuilder()
-            .setTraceId(ByteString.copyFromUtf8("traceIdB")).setSpanId(ByteString.copyFromUtf8("spanId6")).build();
-
-    private static final ExportTraceServiceRequest REQUEST_1 = generateRequest(OTLP_SPAN_1, OTLP_SPAN_2, OTLP_SPAN_4);
-    private static final ExportTraceServiceRequest REQUEST_2 = generateRequest(OTLP_SPAN_3, OTLP_SPAN_5, OTLP_SPAN_6);
-    private static final ExportTraceServiceRequest REQUEST_3 = generateRequest(OTLP_SPAN_1, OTLP_SPAN_2, OTLP_SPAN_3);
-    private static final ExportTraceServiceRequest REQUEST_4 = generateRequest(OTLP_SPAN_4, OTLP_SPAN_5, OTLP_SPAN_6);
 
     private static final String TEST_TRACE_ID_1 = "b1";
     private static final String TEST_TRACE_ID_2 = "b2";
@@ -137,24 +118,6 @@ public class PeerForwarderTest {
         peerClientPoolClassMock.close();
     }
 
-    private static ExportTraceServiceRequest generateRequest(final io.opentelemetry.proto.trace.v1.Span... spans) {
-        return ExportTraceServiceRequest.newBuilder()
-                .addResourceSpans(ResourceSpans.newBuilder()
-                        .setResource(Resource.newBuilder().build())
-                        .addInstrumentationLibrarySpans(
-                                InstrumentationLibrarySpans.newBuilder()
-                                        .setInstrumentationLibrary(InstrumentationLibrary.newBuilder().build())
-                                        .addAllSpans(Arrays.asList(spans)))
-                        .build()).build();
-    }
-
-    private static ResourceSpans generateResourceSpans(final io.opentelemetry.proto.trace.v1.Span... spans) {
-        return ResourceSpans.newBuilder().setResource(Resource.newBuilder().build()).addInstrumentationLibrarySpans(
-                InstrumentationLibrarySpans.newBuilder()
-                        .setInstrumentationLibrary(InstrumentationLibrary.newBuilder().build())
-                        .addAllSpans(Arrays.asList(spans))).build();
-    }
-
     public static Span getSpan(final String traceId, final String spanId, final String parentId,
                                final String serviceName, final String spanName, final io.opentelemetry.proto.trace.v1.Span.SpanKind spanKind) {
         final long startTimeNanos = System.nanoTime();
@@ -203,44 +166,20 @@ public class PeerForwarderTest {
         }
     }
 
-    // TODO: remove in 2.0
     @Test
-    public void testLocalIpOnlyWithExportTraceServiceRequestRecordData() {
-        final PeerForwarder testPeerForwarder = generatePeerForwarder(Collections.singletonList(LOCAL_IP), 2);
-        final List<Record<Object>> exportedRecords =
-                testPeerForwarder.doExecute(Arrays.asList(new Record<>(REQUEST_1), new Record<>(REQUEST_2)));
-        assertTrue(exportedRecords.size() >= 3);
-        final List<ResourceSpans> exportedResourceSpans = new ArrayList<>();
-        for (final Record<Object> record: exportedRecords) {
-            final Object recordData = record.getData();
-            assertTrue(recordData instanceof ExportTraceServiceRequest);
-            exportedResourceSpans.addAll(((ExportTraceServiceRequest) recordData).getResourceSpansList());
-        }
-        final List<ResourceSpans> expectedResourceSpans = Arrays.asList(
-                generateResourceSpans(OTLP_SPAN_1, OTLP_SPAN_2),
-                generateResourceSpans(OTLP_SPAN_3),
-                generateResourceSpans(OTLP_SPAN_4),
-                generateResourceSpans(OTLP_SPAN_5, OTLP_SPAN_6)
-        );
-        assertTrue(exportedResourceSpans.containsAll(expectedResourceSpans));
-        assertTrue(expectedResourceSpans.containsAll(exportedResourceSpans));
-    }
-
-    @Test
-    public void testLocalIpOnlyWithEventRecordData() {
+    public void testLocalIpOnly() {
         final PeerForwarder testPeerForwarder = generatePeerForwarder(Collections.singletonList(LOCAL_IP), 2);
         final List<Span> inputSpans = Arrays.asList(SPAN_1, SPAN_2, SPAN_4, SPAN_5);
-        final List<Record<Object>> exportedRecords = testPeerForwarder.doExecute(
-                inputSpans.stream().map(span -> new Record<Object>(span)).collect(Collectors.toList()));
+        final List<Record<Event>> exportedRecords = testPeerForwarder.doExecute(
+                inputSpans.stream().map(span -> new Record<Event>(span)).collect(Collectors.toList()));
         assertEquals(4, exportedRecords.size());
         final List<Span> exportedSpans = exportedRecords.stream().map(record -> (Span) record.getData()).collect(Collectors.toList());
         assertTrue(exportedSpans.containsAll(inputSpans));
         assertTrue(inputSpans.containsAll(exportedSpans));
     }
 
-    // TODO: remove in 2.0
     @Test
-    public void testSingleRemoteIpBothLocalAndForwardedRequestWithExportTraceServiceRequestRecordData() {
+    public void testSingleRemoteIpBothLocalAndForwardedRequest() throws DecoderException {
         final List<String> testIps = generateTestIps(2);
         final Channel channel = mock(Channel.class);
         final String peerIp = testIps.get(1);
@@ -258,50 +197,8 @@ public class PeerForwarderTest {
         MetricsTestUtil.initMetrics();
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
 
-        final List<Record<Object>> exportedRecords = testPeerForwarder
-                .doExecute(Arrays.asList(new Record<>(REQUEST_1), new Record<>(REQUEST_2)));
-
-        final List<ResourceSpans> expectedLocalResourceSpans = Arrays.asList(
-                generateResourceSpans(OTLP_SPAN_1, OTLP_SPAN_2),
-                generateResourceSpans(OTLP_SPAN_3)
-        );
-        final List<ResourceSpans> expectedForwardedResourceSpans = Arrays.asList(
-                generateResourceSpans(OTLP_SPAN_5, OTLP_SPAN_6),
-                generateResourceSpans(OTLP_SPAN_4)
-        );
-        assertEquals(1, exportedRecords.size());
-        final ExportTraceServiceRequest localRequest = (ExportTraceServiceRequest) exportedRecords.get(0).getData();
-        final List<ResourceSpans> localResourceSpans = localRequest.getResourceSpansList();
-        assertTrue(localResourceSpans.containsAll(expectedLocalResourceSpans));
-        assertTrue(expectedLocalResourceSpans.containsAll(localResourceSpans));
-        assertEquals(1, requestsByIp.get(peerIp).size());
-        final ExportTraceServiceRequest forwardedRequest = requestsByIp.get(peerIp).get(0);
-        final List<ResourceSpans> forwardedResourceSpans = forwardedRequest.getResourceSpansList();
-        assertTrue(forwardedResourceSpans.containsAll(expectedForwardedResourceSpans));
-        assertTrue(expectedForwardedResourceSpans.containsAll(forwardedResourceSpans));
-    }
-
-    @Test
-    public void testSingleRemoteIpBothLocalAndForwardedRequestWithEventRecordData() throws DecoderException {
-        final List<String> testIps = generateTestIps(2);
-        final Channel channel = mock(Channel.class);
-        final String peerIp = testIps.get(1);
-        when(channel.authority()).thenReturn(String.format("%s:21890", peerIp));
-        when(peerClientPool.getClient(peerIp)).thenReturn(client);
-        when(client.getChannel()).thenReturn(channel);
-        final Map<String, List<ExportTraceServiceRequest>> requestsByIp = testIps.stream()
-                .collect(Collectors.toMap(ip-> ip, ip-> new ArrayList<>()));
-        doAnswer(invocation -> {
-            final ExportTraceServiceRequest exportTraceServiceRequest = invocation.getArgument(0);
-            requestsByIp.get(peerIp).add(exportTraceServiceRequest);
-            return null;
-        }).when(client).export(any(ExportTraceServiceRequest.class));
-
-        MetricsTestUtil.initMetrics();
-        final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
-
-        final List<Record<Object>> exportedRecords = testPeerForwarder
-                .doExecute(TEST_SPANS_ALL.stream().map(span -> new Record<Object>(span)).collect(Collectors.toList()));
+        final List<Record<Event>> exportedRecords = testPeerForwarder
+                .doExecute(TEST_SPANS_ALL.stream().map(span -> new Record<Event>(span)).collect(Collectors.toList()));
 
         final List<Span> expectedLocalSpans = Arrays.asList(SPAN_1, SPAN_2, SPAN_3);
         Assert.assertEquals(3, exportedRecords.size());
@@ -322,31 +219,13 @@ public class PeerForwarderTest {
         });
     }
 
-    // TODO: remove in 2.0
     @Test
-    public void testSingleRemoteIpLocalRequestOnlyWithExportTraceServiceRequestRecordData() throws Exception {
+    public void testSingleRemoteIpLocalRequestOnly() throws Exception {
         final List<String> testIps = generateTestIps(2);
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
 
-        final List<Record<Object>> exportedRecords = testPeerForwarder
-                .doExecute(Collections.singletonList(new Record<>(REQUEST_3)));
-
-        final List<ResourceSpans> expectedLocalResourceSpans = Collections.singletonList(
-                generateResourceSpans(OTLP_SPAN_1, OTLP_SPAN_2, OTLP_SPAN_3));
-        assertEquals(1, exportedRecords.size());
-        final ExportTraceServiceRequest localRequest = (ExportTraceServiceRequest) exportedRecords.get(0).getData();
-        final List<ResourceSpans> localResourceSpans = localRequest.getResourceSpansList();
-        assertTrue(localResourceSpans.containsAll(expectedLocalResourceSpans));
-        assertTrue(expectedLocalResourceSpans.containsAll(localResourceSpans));
-    }
-
-    @Test
-    public void testSingleRemoteIpLocalRequestOnlyWithEventRecordData() throws Exception {
-        final List<String> testIps = generateTestIps(2);
-        final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
-
-        final List<Record<Object>> exportedRecords = testPeerForwarder
-                .doExecute(TEST_SPANS_A.stream().map(span -> new Record<Object>(span)).collect(Collectors.toList()));
+        final List<Record<Event>> exportedRecords = testPeerForwarder
+                .doExecute(TEST_SPANS_A.stream().map(span -> new Record<Event>(span)).collect(Collectors.toList()));
 
         Assert.assertEquals(3, exportedRecords.size());
         final List<Span> localSpans = exportedRecords.stream().map(record -> (Span) record.getData()).collect(Collectors.toList());
@@ -354,9 +233,8 @@ public class PeerForwarderTest {
         assertTrue(TEST_SPANS_A.containsAll(localSpans));
     }
 
-    // TODO: remove in 2.0
     @Test
-    public void testSingleRemoteIpForwardedRequestOnlyWithExportTraceServiceRequestRecordData() throws Exception {
+    public void testSingleRemoteIpForwardedRequestOnly() throws Exception {
         final List<String> testIps = generateTestIps(2);
         final Channel channel = mock(Channel.class);
         final String peerIp = testIps.get(1);
@@ -375,63 +253,8 @@ public class PeerForwarderTest {
         MetricsTestUtil.initMetrics();
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
 
-        final List<Record<Object>> exportedRecords = testPeerForwarder
-                .doExecute(Collections.singletonList(new Record<>(REQUEST_4)));
-
-        final List<ResourceSpans> expectedForwardedResourceSpans = Collections.singletonList(
-                generateResourceSpans(OTLP_SPAN_4, OTLP_SPAN_5, OTLP_SPAN_6));
-        assertEquals(1, requestsByIp.get(peerIp).size());
-        final ExportTraceServiceRequest forwardedRequest = requestsByIp.get(peerIp).get(0);
-        final List<ResourceSpans> forwardedResourceSpans = forwardedRequest.getResourceSpansList();
-        assertTrue(forwardedResourceSpans.containsAll(expectedForwardedResourceSpans));
-        assertTrue(expectedForwardedResourceSpans.containsAll(forwardedResourceSpans));
-        assertEquals(0, exportedRecords.size());
-
-        // Verify metrics
-        final List<Measurement> forwardRequestErrorMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
-                        .add(PeerForwarder.ERRORS).toString());
-        assertEquals(1, forwardRequestErrorMeasurements.size());
-        assertEquals(0.0, forwardRequestErrorMeasurements.get(0).getValue(), 0);
-        final List<Measurement> forwardRequestSuccessMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
-                        .add(PeerForwarder.REQUESTS).toString());
-        assertEquals(1, forwardRequestSuccessMeasurements.size());
-        assertEquals(1.0, forwardRequestSuccessMeasurements.get(0).getValue(), 0);
-        final List<Measurement> forwardRequestLatencyMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
-                        .add(PeerForwarder.LATENCY).toString());
-        assertEquals(3, forwardRequestLatencyMeasurements.size());
-        // COUNT
-        assertEquals(1.0, forwardRequestLatencyMeasurements.get(0).getValue(), 0);
-        // TOTAL_TIME
-        assertTrue(forwardRequestLatencyMeasurements.get(1).getValue() > 0.0);
-        // MAX
-        assertTrue(forwardRequestLatencyMeasurements.get(2).getValue() > 0.0);
-    }
-
-    @Test
-    public void testSingleRemoteIpForwardedRequestOnlyWithEventRecordData() throws Exception {
-        final List<String> testIps = generateTestIps(2);
-        final Channel channel = mock(Channel.class);
-        final String peerIp = testIps.get(1);
-        final String fullPeerIp = String.format("%s:21890", peerIp);
-        when(channel.authority()).thenReturn(fullPeerIp);
-        when(peerClientPool.getClient(peerIp)).thenReturn(client);
-        when(client.getChannel()).thenReturn(channel);
-        final Map<String, List<ExportTraceServiceRequest>> requestsByIp = testIps.stream()
-                .collect(Collectors.toMap(ip-> ip, ip-> new ArrayList<>()));
-        doAnswer(invocation -> {
-            final ExportTraceServiceRequest exportTraceServiceRequest = invocation.getArgument(0);
-            requestsByIp.get(peerIp).add(exportTraceServiceRequest);
-            return null;
-        }).when(client).export(any(ExportTraceServiceRequest.class));
-
-        MetricsTestUtil.initMetrics();
-        final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
-
-        final List<Record<Object>> exportedRecords = testPeerForwarder
-                .doExecute(TEST_SPANS_B.stream().map(span -> new Record<Object>(span)).collect(Collectors.toList()));
+        final List<Record<Event>> exportedRecords = testPeerForwarder
+                .doExecute(TEST_SPANS_B.stream().map(span -> new Record<Event>(span)).collect(Collectors.toList()));
 
         Assert.assertEquals(1, requestsByIp.get(peerIp).size());
         final ExportTraceServiceRequest forwardedRequest = requestsByIp.get(peerIp).get(0);
@@ -470,9 +293,8 @@ public class PeerForwarderTest {
         assertTrue(forwardRequestLatencyMeasurements.get(2).getValue() > 0.0);
     }
 
-    // TODO: remove in 2.0
     @Test
-    public void testSingleRemoteIpForwardRequestClientErrorWithExportTraceServiceRequestRecordData() {
+    public void testSingleRemoteIpForwardRequestClientError() {
         final List<String> testIps = generateTestIps(2);
         final Channel channel = mock(Channel.class);
         final String peerIp = testIps.get(1);
@@ -485,56 +307,8 @@ public class PeerForwarderTest {
         MetricsTestUtil.initMetrics();
         final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
 
-        final List<Record<Object>> exportedRecords = testPeerForwarder
-                .doExecute(Collections.singletonList(new Record<>(REQUEST_4)));
-
-        final List<ResourceSpans> expectedLocalResourceSpans = Collections.singletonList(
-                generateResourceSpans(OTLP_SPAN_4, OTLP_SPAN_5, OTLP_SPAN_6));
-        assertEquals(1, exportedRecords.size());
-        final ExportTraceServiceRequest exportedRequest = (ExportTraceServiceRequest) exportedRecords.get(0).getData();
-        final List<ResourceSpans> forwardedResourceSpans = exportedRequest.getResourceSpansList();
-        assertTrue(forwardedResourceSpans.containsAll(expectedLocalResourceSpans));
-        assertTrue(expectedLocalResourceSpans.containsAll(forwardedResourceSpans));
-
-        // Verify metrics
-        final List<Measurement> forwardRequestErrorMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
-                        .add(PeerForwarder.ERRORS).toString());
-        assertEquals(1, forwardRequestErrorMeasurements.size());
-        assertEquals(1.0, forwardRequestErrorMeasurements.get(0).getValue(), 0);
-        final List<Measurement> forwardRequestSuccessMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
-                        .add(PeerForwarder.REQUESTS).toString());
-        assertEquals(1, forwardRequestSuccessMeasurements.size());
-        assertEquals(1.0, forwardRequestSuccessMeasurements.get(0).getValue(), 0);
-        final List<Measurement> forwardRequestLatencyMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(TEST_PIPELINE_NAME).add("peer_forwarder")
-                        .add(PeerForwarder.LATENCY).toString());
-        assertEquals(3, forwardRequestLatencyMeasurements.size());
-        // COUNT
-        assertEquals(1.0, forwardRequestLatencyMeasurements.get(0).getValue(), 0);
-        // TOTAL_TIME
-        assertTrue(forwardRequestLatencyMeasurements.get(1).getValue() > 0.0);
-        // MAX
-        assertTrue(forwardRequestLatencyMeasurements.get(2).getValue() > 0.0);
-    }
-
-    @Test
-    public void testSingleRemoteIpForwardRequestClientErrorWithEventRecordData() {
-        final List<String> testIps = generateTestIps(2);
-        final Channel channel = mock(Channel.class);
-        final String peerIp = testIps.get(1);
-        final String fullPeerIp = String.format("%s:21890", peerIp);
-        when(channel.authority()).thenReturn(fullPeerIp);
-        when(peerClientPool.getClient(peerIp)).thenReturn(client);
-        when(client.export(any(ExportTraceServiceRequest.class))).thenThrow(new RuntimeException());
-        when(client.getChannel()).thenReturn(channel);
-
-        MetricsTestUtil.initMetrics();
-        final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
-
-        final List<Record<Object>> exportedRecords = testPeerForwarder
-                .doExecute(TEST_SPANS_B.stream().map(span -> new Record<Object>(span)).collect(Collectors.toList()));
+        final List<Record<Event>> exportedRecords = testPeerForwarder
+                .doExecute(TEST_SPANS_B.stream().map(span -> new Record<Event>(span)).collect(Collectors.toList()));
 
         Assert.assertEquals(3, exportedRecords.size());
         final List<Span> exportedSpans = exportedRecords.stream().map(record -> (Span) record.getData()).collect(Collectors.toList());
@@ -582,8 +356,8 @@ public class PeerForwarderTest {
             MetricsTestUtil.initMetrics();
             final PeerForwarder testPeerForwarder = generatePeerForwarder(testIps, 3);
 
-            final List<Record<Object>> exportedRecords = testPeerForwarder
-                    .doExecute(TEST_SPANS_B.stream().map(span -> new Record<Object>(span)).collect(Collectors.toList()));
+            final List<Record<Event>> exportedRecords = testPeerForwarder
+                    .doExecute(TEST_SPANS_B.stream().map(span -> new Record<Event>(span)).collect(Collectors.toList()));
 
             verify(completableFuture, times(1)).get();
             Assert.assertEquals(3, exportedRecords.size());
@@ -605,8 +379,8 @@ public class PeerForwarderTest {
         when(oTelProtoEncoder.convertToResourceSpans(any(Span.class))).thenThrow(new DecoderException());
         reflectivelySetEncoder(testPeerForwarder, oTelProtoEncoder);
 
-        final List<Record<Object>> exportedRecords = testPeerForwarder
-                .doExecute(TEST_SPANS_B.stream().map(span -> new Record<Object>(span)).collect(Collectors.toList()));
+        final List<Record<Event>> exportedRecords = testPeerForwarder
+                .doExecute(TEST_SPANS_B.stream().map(span -> new Record<Event>(span)).collect(Collectors.toList()));
 
         verifyNoInteractions(client);
         Assert.assertEquals(3, exportedRecords.size());

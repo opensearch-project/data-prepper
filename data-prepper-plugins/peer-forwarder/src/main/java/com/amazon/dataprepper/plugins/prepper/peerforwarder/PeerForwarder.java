@@ -7,6 +7,7 @@ package com.amazon.dataprepper.plugins.prepper.peerforwarder;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.processor.AbstractProcessor;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
@@ -38,10 +39,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @DataPrepperPlugin(name = "peer_forwarder", pluginType = Processor.class)
-public class PeerForwarder extends AbstractProcessor<Record<Object>, Record<Object>> {
+public class PeerForwarder extends AbstractProcessor<Record<Event>, Record<Event>> {
     public static final String REQUESTS = "requests";
     public static final String LATENCY = "latency";
     public static final String ERRORS = "errors";
@@ -96,88 +96,18 @@ public class PeerForwarder extends AbstractProcessor<Record<Object>, Record<Obje
     }
 
     @Override
-    public List<Record<Object>> doExecute(final Collection<Record<Object>> records) {
+    public List<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         final List<Span> spans = new ArrayList<>();
-        final List<ExportTraceServiceRequest> exportTraceServiceRequests = new ArrayList<>();
         records.forEach(record -> {
-            final Object recordData = record.getData();
-            // TODO: remove support for ExportTraceServiceRequest in 2.0
-            if (recordData instanceof ExportTraceServiceRequest) {
-                exportTraceServiceRequests.add((ExportTraceServiceRequest) recordData);
-            } else if (recordData instanceof Span) {
+            final Event recordData = record.getData();
+            if (recordData instanceof Span) {
                 spans.add((Span) recordData);
             } else {
                 throw new RuntimeException("Unsupported record data type: " + recordData.getClass());
             }
         });
-        final List<ExportTraceServiceRequest> requestsToProcessLocally = executeExportTraceServiceRequests(exportTraceServiceRequests);
         final List<Span> spansToProcessLocally = executeSpans(spans);
-        return Stream.concat(requestsToProcessLocally.stream(), spansToProcessLocally.stream()).map(Record::new).collect(Collectors.toList());
-    }
-
-    private List<ExportTraceServiceRequest> executeExportTraceServiceRequests(final List<ExportTraceServiceRequest> requests) {
-        final Map<String, List<ResourceSpans>> groupedRS = new HashMap<>();
-
-        // Group ResourceSpans by consistent hashing of traceId
-        for (final ExportTraceServiceRequest request : requests) {
-            for (final ResourceSpans rs : request.getResourceSpansList()) {
-                final List<Map.Entry<String, ResourceSpans>> rsBatch = PeerForwarderUtils.splitByTrace(rs);
-                for (final Map.Entry<String, ResourceSpans> entry : rsBatch) {
-                    final String traceId = entry.getKey();
-                    final ResourceSpans newRS = entry.getValue();
-                    final String dataPrepperIp = hashRing.getServerIp(traceId).orElse(StaticPeerListProvider.LOCAL_ENDPOINT);
-                    groupedRS.computeIfAbsent(dataPrepperIp, x -> new ArrayList<>()).add(newRS);
-                }
-            }
-        }
-
-        final List<ExportTraceServiceRequest> requestsToProcessLocally = new ArrayList<>();
-        final List<CompletableFuture<ExportTraceServiceRequest>> forwardedRequestFutures = new ArrayList<>();
-
-        for (final Map.Entry<String, List<ResourceSpans>> entry : groupedRS.entrySet()) {
-            final TraceServiceGrpc.TraceServiceBlockingStub client = getClient(entry.getKey());
-
-            // Create ExportTraceRequest for storing single batch of spans
-            ExportTraceServiceRequest.Builder currRequestBuilder = ExportTraceServiceRequest.newBuilder();
-            int currSpansCount = 0;
-            for (final ResourceSpans rs : entry.getValue()) {
-                final int rsSize = PeerForwarderUtils.getResourceSpansSize(rs);
-                if (currSpansCount >= maxNumSpansPerRequest) {
-                    final ExportTraceServiceRequest currRequest = currRequestBuilder.build();
-                    if (isLocalClient(client)) {
-                        requestsToProcessLocally.add(currRequest);
-                    } else {
-                        forwardedRequestFutures.add(processRequest(client, currRequest));
-                    }
-                    currRequestBuilder = ExportTraceServiceRequest.newBuilder();
-                    currSpansCount = 0;
-                }
-                currRequestBuilder.addResourceSpans(rs);
-                currSpansCount += rsSize;
-            }
-            // Dealing with the last batch request
-            if (currSpansCount > 0) {
-                final ExportTraceServiceRequest currRequest = currRequestBuilder.build();
-                if (client == null) {
-                    requestsToProcessLocally.add(currRequest);
-                } else {
-                    forwardedRequestFutures.add(processRequest(client, currRequest));
-                }
-            }
-        }
-
-        for (final CompletableFuture<ExportTraceServiceRequest> future : forwardedRequestFutures) {
-            try {
-                final ExportTraceServiceRequest request = future.get();
-                if (request != null) {
-                    requestsToProcessLocally.add(request);
-                }
-            } catch (InterruptedException | ExecutionException e) {
-                LOG.error("Problem with asynchronous peer forwarding", e);
-            }
-        }
-
-        return requestsToProcessLocally;
+        return spansToProcessLocally.stream().map(span -> new Record<Event>(span)).collect(Collectors.toList());
     }
 
     private List<Span> executeSpans(final List<Span> spans) {

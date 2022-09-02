@@ -51,8 +51,8 @@ Resources:
                     source:
                       pipeline:
                         name: "entry-pipeline"
-                    prepper:
-                      - otel_trace_raw_prepper:
+                    processor:
+                      - otel_trace_raw:
                     sink:
                       - stdout:
             - Name: DATA_PREPPER_CONFIG_YAML
