@@ -16,14 +16,14 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.BiFunction;
 
-public class MapDbPrepperStateTest extends PrepperStateTest {
+public class MapDbPrepperStateTest extends ProcessorStateTest {
 
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Override
-    public void setPrepperState() throws Exception {
-        this.prepperState = new MapDbPrepperState<>(temporaryFolder.newFolder(), "testDb", 16);
+    public void setProcessorState() throws Exception {
+        this.processorState = new MapDbPrepperState<>(temporaryFolder.newFolder(), "testDb", 16);
     }
 
     @Test
@@ -38,19 +38,19 @@ public class MapDbPrepperStateTest extends PrepperStateTest {
         final DataClass data3 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
         final DataClass data4 = new DataClass(UUID.randomUUID().toString(), random.nextInt());
 
-        prepperState.put(key3, data3);
-        prepperState.put(key4, data4);
-        prepperState.put(key1, data1);
-        prepperState.put(key2, data2);
+        processorState.put(key3, data3);
+        processorState.put(key4, data4);
+        processorState.put(key1, data1);
+        processorState.put(key2, data2);
 
-        final List<String> values = prepperState.iterate(new BiFunction<byte[], DataClass, String>() {
+        final List<String> values = processorState.iterate(new BiFunction<byte[], DataClass, String>() {
             @Override
             public String apply(byte[] bytes, DataClass s) {
                 return s.stringVal;
             }
         }, 2, 0);
 
-        final List<String> values2 = prepperState.iterate(new BiFunction<byte[], DataClass, String>() {
+        final List<String> values2 = processorState.iterate(new BiFunction<byte[], DataClass, String>() {
             @Override
             public String apply(byte[] bytes, DataClass s) {
                 return s.stringVal;
