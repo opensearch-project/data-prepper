@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.integration.trace;
+package org.opensearch.dataprepper.integration.trace;
 
 
 import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
