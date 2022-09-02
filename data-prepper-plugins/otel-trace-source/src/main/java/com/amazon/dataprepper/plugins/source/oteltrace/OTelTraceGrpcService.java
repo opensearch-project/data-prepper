@@ -41,7 +41,6 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
 
     private final int bufferWriteTimeoutInMillis;
-    private final RecordType recordType;
     private final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder;
     private final Buffer<Record<Object>> buffer;
 
@@ -56,12 +55,10 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
 
 
     public OTelTraceGrpcService(int bufferWriteTimeoutInMillis,
-                                final RecordType recordType,
                                 final OTelProtoCodec.OTelProtoDecoder oTelProtoDecoder,
                                 final Buffer<Record<Object>> buffer,
                                 final PluginMetrics pluginMetrics) {
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
-        this.recordType = recordType;
         this.buffer = buffer;
         this.oTelProtoDecoder = oTelProtoDecoder;
 
@@ -78,36 +75,7 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
 
     @Override
     public void export(ExportTraceServiceRequest request, StreamObserver<ExportTraceServiceResponse> responseObserver) {
-        if (recordType == RecordType.OTLP) {
-            requestProcessDuration.record(() -> processRequestWithoutDecoding(request, responseObserver));
-        } else {
-            requestProcessDuration.record(() -> processRequest(request, responseObserver));
-        }
-    }
-
-    // TODO: remove in 2.0
-    private void processRequestWithoutDecoding(
-            final ExportTraceServiceRequest request, final StreamObserver<ExportTraceServiceResponse> responseObserver) {
-        requestsReceivedCounter.increment();
-        payloadSizeSummary.record(request.getSerializedSize());
-
-        if (Context.current().isCancelled()) {
-            requestTimeoutCounter.increment();
-            responseObserver.onError(Status.CANCELLED.withDescription("Cancelled by client").asRuntimeException());
-            return;
-        }
-
-        try {
-            buffer.write(new Record<>(request), bufferWriteTimeoutInMillis);
-            responseObserver.onNext(ExportTraceServiceResponse.newBuilder().build());
-            responseObserver.onCompleted();
-        } catch (TimeoutException e) {
-            LOG.error("Buffer is full, unable to write");
-            requestTimeoutCounter.increment();
-            responseObserver
-                    .onError(Status.RESOURCE_EXHAUSTED.withDescription("Buffer is full, request timed out.")
-                            .asException());
-        }
+        requestProcessDuration.record(() -> processRequest(request, responseObserver));
     }
 
     private void processRequest(

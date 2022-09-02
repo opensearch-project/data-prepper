@@ -29,11 +29,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.ArgumentsProvider;
-import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.opensearch.client.Request;
 import org.opensearch.client.Response;
 import org.opensearch.client.RestClient;
@@ -60,9 +55,7 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createContentParser;
 import static com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createOpenSearchClient;
@@ -158,16 +151,15 @@ public class OpenSearchSinkIT {
             RuntimeException.class, () -> new OpenSearchSink(pluginSetting));
   }
 
-  @ParameterizedTest
-  @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
-  public void testOutputRawSpanDefault(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+  @Test
+  public void testOutputRawSpanDefault() throws IOException, InterruptedException {
     final String testDoc1 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
     final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_2);
     final ObjectMapper mapper = new ObjectMapper();
     @SuppressWarnings("unchecked") final Map<String, Object> expData1 = mapper.readValue(testDoc1, Map.class);
     @SuppressWarnings("unchecked") final Map<String, Object> expData2 = mapper.readValue(testDoc2, Map.class);
 
-    final List<Record<Object>> testRecords = Arrays.asList(stringToRecord.apply(testDoc1), stringToRecord.apply(testDoc2));
+    final List<Record<Event>> testRecords = Arrays.asList(jsonStringToRecord(testDoc1), jsonStringToRecord(testDoc2));
     final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
@@ -223,15 +215,15 @@ public class OpenSearchSinkIT {
     MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(2058.0, 0));
   }
 
-  @ParameterizedTest
-  @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
-  public void testOutputRawSpanWithDLQ(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+  @Test
+  public void testOutputRawSpanWithDLQ() throws IOException, InterruptedException {
     // TODO: write test case
     final String testDoc1 = readDocFromFile("raw-span-error.json");
     final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
     final ObjectMapper mapper = new ObjectMapper();
     @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc2, Map.class);
-    final List<Record<Object>> testRecords = Arrays.asList(stringToRecord.apply(testDoc1), stringToRecord.apply(testDoc2));
+
+    final List<Record<Event>> testRecords = Arrays.asList(jsonStringToRecord(testDoc1), jsonStringToRecord(testDoc2));
     final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
     // generate temporary directory for dlq file
     final File tempDirectory = Files.createTempDirectory("").toFile();
@@ -299,14 +291,13 @@ public class OpenSearchSinkIT {
     }
   }
 
-  @ParameterizedTest
-  @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
-  public void testOutputServiceMapDefault(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+  @Test
+  public void testOutputServiceMapDefault() throws IOException, InterruptedException {
     final String testDoc = readDocFromFile(DEFAULT_SERVICE_MAP_FILE);
     final ObjectMapper mapper = new ObjectMapper();
     @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
 
-    final List<Record<Object>> testRecords = Collections.singletonList(stringToRecord.apply(testDoc));
+    final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(testDoc));
     final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue(), null, null);
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
@@ -463,15 +454,14 @@ public class OpenSearchSinkIT {
 
   }
 
-  @ParameterizedTest
-  @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
-  public void testOutputCustomIndex(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+  @Test
+  public void testOutputCustomIndex() throws IOException, InterruptedException {
     final String testIndexAlias = "test-alias";
     final String testTemplateFile = Objects.requireNonNull(
             getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
     final String testIdField = "someId";
     final String testId = "foo";
-    final List<Record<Object>> testRecords = Collections.singletonList(stringToRecord.apply(generateCustomRecordJson(testIdField, testId)));
+    final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
     final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
     pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
@@ -490,15 +480,14 @@ public class OpenSearchSinkIT {
     Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
   }
 
-  @ParameterizedTest
-  @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
-  public void testBulkActionCreate(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+  @Test
+  public void testBulkActionCreate() throws IOException, InterruptedException {
     final String testIndexAlias = "test-alias";
     final String testTemplateFile = Objects.requireNonNull(
             getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
     final String testIdField = "someId";
     final String testId = "foo";
-    final List<Record<Object>> testRecords = Collections.singletonList(stringToRecord.apply(generateCustomRecordJson(testIdField, testId)));
+    final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
     final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
     pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
     pluginSetting.getSettings().put(IndexConfiguration.ACTION, BulkAction.CREATE.toString());
@@ -526,7 +515,7 @@ public class OpenSearchSinkIT {
             .withEventType("event")
             .build();
 
-    final List<Record<Object>> testRecords = Collections.singletonList(new Record<>(testEvent));
+    final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
     final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
@@ -543,10 +532,9 @@ public class OpenSearchSinkIT {
     sink.shutdown();
   }
 
-  @ParameterizedTest
-  @ArgumentsSource(MultipleRecordTypeArgumentProvider.class)
+  @Test
   @Timeout(value = 1, unit = TimeUnit.MINUTES)
-  public void testOutputManagementDisabled(final Function<String, Record> stringToRecord) throws IOException, InterruptedException {
+  public void testOutputManagementDisabled() throws IOException, InterruptedException {
     final String testIndexAlias = "test-" + UUID.randomUUID();
     final String roleName = UUID.randomUUID().toString();
     final String username = UUID.randomUUID().toString();
@@ -558,7 +546,7 @@ public class OpenSearchSinkIT {
     final String testIdField = "someId";
     final String testId = "foo";
 
-    final List<Record<Object>> testRecords = Collections.singletonList(stringToRecord.apply(generateCustomRecordJson(testIdField, testId)));
+    final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
 
     final Map<String, Object> metadata = initializeConfigurationMetadata(null, testIndexAlias, null);
     metadata.put(IndexConfiguration.INDEX_TYPE, IndexType.MANAGEMENT_DISABLED.getValue());
@@ -722,33 +710,12 @@ public class OpenSearchSinkIT {
             });
   }
 
-  /**
-   * Provides a function for mapping a String to a Record to allow the tests to run
-   * against both String and Event models.
-   */
-  static class MultipleRecordTypeArgumentProvider implements ArgumentsProvider {
-    @Override
-    public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
-      final ObjectMapper objectMapper = new ObjectMapper();
-      final Function<String, Record> stringModel = jsonString -> {
-        try {
-          // Normalize the JSON string.
-          return new Record(objectMapper.writeValueAsString(objectMapper.readValue(jsonString, Map.class)));
-        } catch (final JsonProcessingException e) {
-          throw new RuntimeException(e);
-        }
-      };
-      final Function<String, Record> eventModel = jsonString -> {
-        try {
-          return new Record(JacksonEvent.builder().withEventType(EventType.TRACE.toString()).withData(objectMapper.readValue(jsonString, Map.class)).build());
-        } catch (final JsonProcessingException e) {
-          throw new RuntimeException(e);
-        }
-      };
-      return Stream.of(
-              Arguments.of(stringModel),
-              Arguments.of(eventModel)
-      );
+  private Record jsonStringToRecord(final String jsonString) {
+    final ObjectMapper objectMapper = new ObjectMapper();
+    try {
+      return new Record(JacksonEvent.builder().withEventType(EventType.TRACE.toString()).withData(objectMapper.readValue(jsonString, Map.class)).build());
+    } catch (final JsonProcessingException e) {
+      throw new RuntimeException(e);
     }
   }
 

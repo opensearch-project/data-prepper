@@ -8,8 +8,6 @@ package com.amazon.dataprepper.plugins.source.oteltrace;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -49,7 +47,6 @@ public class OtelTraceSourceConfigTests {
         assertEquals(OTelTraceSourceConfig.DEFAULT_PORT, otelTraceSourceConfig.getPort());
         assertEquals(OTelTraceSourceConfig.DEFAULT_THREAD_COUNT, otelTraceSourceConfig.getThreadCount());
         assertEquals(OTelTraceSourceConfig.DEFAULT_MAX_CONNECTION_COUNT, otelTraceSourceConfig.getMaxConnectionCount());
-        assertEquals(OTelTraceSourceConfig.DEFAULT_RECORD_TYPE, otelTraceSourceConfig.getRecordType());
         assertFalse(otelTraceSourceConfig.hasHealthCheck());
         assertFalse(otelTraceSourceConfig.hasProtoReflectionService());
         assertFalse(otelTraceSourceConfig.enableHttpHealthCheck());
@@ -107,7 +104,6 @@ public class OtelTraceSourceConfigTests {
                 true,
                 TEST_KEY_CERT,
                 TEST_KEY,
-                RecordType.OTLP.toString(),
                 TEST_THREAD_COUNT,
                 TEST_MAX_CONNECTION_COUNT);
 
@@ -141,7 +137,6 @@ public class OtelTraceSourceConfigTests {
                 true,
                 TEST_KEY_CERT_S3,
                 TEST_KEY_S3,
-                RecordType.OTLP.toString(),
                 TEST_THREAD_COUNT,
                 TEST_MAX_CONNECTION_COUNT);
 
@@ -174,7 +169,6 @@ public class OtelTraceSourceConfigTests {
                 false,
                 true, null,
                 TEST_KEY,
-                RecordType.OTLP.toString(),
                 DEFAULT_THREAD_COUNT,
                 DEFAULT_MAX_CONNECTION_COUNT);
 
@@ -197,7 +191,6 @@ public class OtelTraceSourceConfigTests {
                 true,
                 "",
                 TEST_KEY,
-                RecordType.OTLP.toString(),
                 DEFAULT_THREAD_COUNT,
                 DEFAULT_MAX_CONNECTION_COUNT);
 
@@ -220,7 +213,6 @@ public class OtelTraceSourceConfigTests {
                 true,
                 TEST_KEY_CERT,
                 "",
-                RecordType.OTLP.toString(),
                 DEFAULT_THREAD_COUNT,
                 DEFAULT_MAX_CONNECTION_COUNT);
 
@@ -228,45 +220,6 @@ public class OtelTraceSourceConfigTests {
 
         // When/Then
         assertThrows(IllegalArgumentException.class, otelTraceSourceConfig::validateAndInitializeCertAndKeyFileInS3);
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"otlp", "event"})
-    public void testConfigWithValidRecordType(final String recordType) {
-        final PluginSetting pluginSetting = completePluginSettingForOtelTraceSource(
-                TEST_REQUEST_TIMEOUT_MS,
-                TEST_PORT,
-                false,
-                false,
-                false,
-                false,
-                null,
-                null,
-                recordType,
-                TEST_THREAD_COUNT,
-                TEST_MAX_CONNECTION_COUNT);
-
-        final OTelTraceSourceConfig otelTraceSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class);
-        assertEquals(recordType, otelTraceSourceConfig.getRecordType().toString());
-    }
-
-    @Test
-    public void testConfigWithInValidRecordType() {
-        final String invalidRecordType = "unknown";
-        final PluginSetting pluginSetting = completePluginSettingForOtelTraceSource(
-                TEST_REQUEST_TIMEOUT_MS,
-                TEST_PORT,
-                false,
-                false,
-                false,
-                false,
-                null,
-                null,
-                invalidRecordType,
-                TEST_THREAD_COUNT,
-                TEST_MAX_CONNECTION_COUNT);
-
-        assertThrows(IllegalArgumentException.class, () -> OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class));
     }
 
     private PluginSetting completePluginSettingForOtelTraceSource(final int requestTimeoutInMillis,
@@ -277,7 +230,6 @@ public class OtelTraceSourceConfigTests {
                                                                   final boolean isSSL,
                                                                   final String sslKeyCertChainFile,
                                                                   final String sslKeyFile,
-                                                                  final String recordType,
                                                                   final int threadCount,
                                                                   final int maxConnectionCount) {
         final Map<String, Object> settings = new HashMap<>();
@@ -289,7 +241,6 @@ public class OtelTraceSourceConfigTests {
         settings.put(OTelTraceSourceConfig.SSL, isSSL);
         settings.put(OTelTraceSourceConfig.SSL_KEY_CERT_FILE, sslKeyCertChainFile);
         settings.put(OTelTraceSourceConfig.SSL_KEY_FILE, sslKeyFile);
-        settings.put(OTelTraceSourceConfig.RECORD_TYPE, recordType);
         settings.put(OTelTraceSourceConfig.THREAD_COUNT, threadCount);
         settings.put(OTelTraceSourceConfig.MAX_CONNECTION_COUNT, maxConnectionCount);
         return new PluginSetting(PLUGIN_NAME, settings);
