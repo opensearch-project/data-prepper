@@ -10,7 +10,6 @@ import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PipelinesDataFlowModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding;
-import com.amazon.dataprepper.model.plugin.NoPluginFoundException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.sink.Sink;
