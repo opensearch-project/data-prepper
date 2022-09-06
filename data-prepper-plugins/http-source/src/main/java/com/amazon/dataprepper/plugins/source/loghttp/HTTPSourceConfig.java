@@ -103,11 +103,6 @@ public class HTTPSourceConfig {
         return !useAcmCertificateForSsl || StringUtils.isNotEmpty(acmCertificateArn);
     }
 
-    @AssertTrue(message = "acm_private_key_password cannot be a empty or null when ACM is used for ssl")
-    boolean isAcmPrivateKeyPasswordValid() {
-        return !useAcmCertificateForSsl || StringUtils.isNotEmpty(acmPrivateKeyPassword);
-    }
-
     @AssertTrue(message = "aws_region cannot be a empty or null when ACM / S3 is used for ssl")
     boolean isAwsRegionValid() {
         if (ssl && (useAcmCertificateForSsl || isSslCertAndKeyFileInS3())) {
