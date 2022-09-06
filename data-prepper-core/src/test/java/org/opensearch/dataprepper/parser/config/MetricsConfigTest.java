@@ -5,6 +5,9 @@
 
 package org.opensearch.dataprepper.parser.config;
 
+import io.micrometer.core.instrument.Metrics;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.opensearch.dataprepper.DataPrepper;
 import org.opensearch.dataprepper.meter.EMFLoggingMeterRegistry;
 import com.amazon.dataprepper.metrics.MetricNames;
@@ -54,7 +57,18 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class MetricsConfigTest {
-    private static final MetricsConfig metricsConfig = new MetricsConfig();
+    private static MetricsConfig metricsConfig;
+
+    @BeforeAll
+    static void setResources() {
+        metricsConfig = new MetricsConfig();
+    }
+
+    @AfterAll
+    static void clearResources() {
+        metricsConfig = null;
+        Metrics.globalRegistry.close();
+    }
 
     @Test
     public void testYamlFactory() {

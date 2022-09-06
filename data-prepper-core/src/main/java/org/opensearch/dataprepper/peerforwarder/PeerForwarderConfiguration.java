@@ -29,7 +29,7 @@ public class PeerForwarderConfiguration {
     private Integer serverThreadCount = 200;
     private Integer maxConnectionCount = 500;
     private Integer maxPendingRequests = 1024;
-    private boolean ssl = true;
+    private boolean ssl = false;
     private String sslCertificateFile;
     private String sslKeyFile;
     private boolean useAcmCertificateForSsl = false;
