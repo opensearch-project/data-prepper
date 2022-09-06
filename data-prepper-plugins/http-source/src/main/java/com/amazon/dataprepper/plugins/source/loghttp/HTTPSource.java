@@ -5,7 +5,7 @@
 
 package com.amazon.dataprepper.plugins.source.loghttp;
 
-import com.amazon.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
+import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -16,8 +16,8 @@ import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.log.Log;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
-import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
-import com.amazon.dataprepper.plugins.certificate.model.Certificate;
+import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import com.amazon.dataprepper.plugins.source.loghttp.certificate.CertificateProviderFactory;
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
