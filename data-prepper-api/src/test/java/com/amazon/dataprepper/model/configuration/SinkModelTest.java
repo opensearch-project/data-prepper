@@ -51,7 +51,6 @@ class SinkModelTest {
                 () -> assertThat(sinkModel.getPluginSettings(), notNullValue()),
                 () -> assertThat(sinkModel.getRoutes(), notNullValue())
         );
-        ;
         assertAll(
                 () -> assertThat(sinkModel.getPluginSettings().size(), equalTo(2)),
                 () -> assertThat(sinkModel.getPluginSettings(), hasKey("key1")),
