@@ -25,6 +25,7 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
+import static org.junit.jupiter.api.Assertions.assertAll;
 
 class SinkModelTest {
     private ObjectMapper objectMapper;
@@ -44,15 +45,24 @@ class SinkModelTest {
         final SinkModel sinkModel = objectMapper.readValue(inputStream, SinkModel.class);
 
         assertThat(sinkModel, notNullValue());
-        assertThat(sinkModel.getPluginName(), equalTo("customSinkPlugin"));
-        assertThat(sinkModel.getPluginSettings(), notNullValue());
-        assertThat(sinkModel.getPluginSettings().size(), equalTo(2));
-        assertThat(sinkModel.getPluginSettings(), hasKey("key1"));
-        assertThat(sinkModel.getPluginSettings(), hasKey("key2"));
-        assertThat(sinkModel.getRoutes(), notNullValue());
-        assertThat(sinkModel.getRoutes().size(), equalTo(2));
-        assertThat(sinkModel.getRoutes(), hasItem("routeA"));
-        assertThat(sinkModel.getRoutes(), hasItem("routeB"));
+
+        assertAll(
+                () -> assertThat(sinkModel.getPluginName(), equalTo("customSinkPlugin")),
+                () -> assertThat(sinkModel.getPluginSettings(), notNullValue()),
+                () -> assertThat(sinkModel.getRoutes(), notNullValue())
+        );
+        ;
+        assertAll(
+                () -> assertThat(sinkModel.getPluginSettings().size(), equalTo(2)),
+                () -> assertThat(sinkModel.getPluginSettings(), hasKey("key1")),
+                () -> assertThat(sinkModel.getPluginSettings(), hasKey("key2"))
+        );
+
+        assertAll(
+                () -> assertThat(sinkModel.getRoutes().size(), equalTo(2)),
+                () -> assertThat(sinkModel.getRoutes(), hasItem("routeA")),
+                () -> assertThat(sinkModel.getRoutes(), hasItem("routeB"))
+        );
     }
 
     @Test
@@ -64,10 +74,9 @@ class SinkModelTest {
 
         final String actualJson = objectMapper.writeValueAsString(sinkModel);
 
-        final String expectedJson = createStringFromInputStream(this.getClass().getResourceAsStream("sink_plugin.yaml"))
-                .replace("---\n", "");
+        final String expectedJson = createStringFromInputStream(this.getClass().getResourceAsStream("sink_plugin.yaml"));
 
-        assertThat(actualJson, equalTo(expectedJson));
+        assertThat("---\n" + actualJson, equalTo(expectedJson));
     }
 
     @Test
@@ -77,13 +86,17 @@ class SinkModelTest {
         final SinkModel sinkModel = objectMapper.readValue(inputStream, SinkModel.class);
 
         assertThat(sinkModel, notNullValue());
-        assertThat(sinkModel.getPluginName(), equalTo("customPlugin"));
-        assertThat(sinkModel.getPluginSettings(), notNullValue());
-        assertThat(sinkModel.getPluginSettings().size(), equalTo(3));
-        assertThat(sinkModel.getPluginSettings(), hasKey("key1"));
-        assertThat(sinkModel.getPluginSettings(), hasKey("key2"));
-        assertThat(sinkModel.getPluginSettings(), hasKey("key3"));
-        assertThat(sinkModel.getRoutes(), notNullValue());
+        assertAll(
+                () -> assertThat(sinkModel.getPluginName(), equalTo("customPlugin")),
+                () -> assertThat(sinkModel.getPluginSettings(), notNullValue()),
+                () -> assertThat(sinkModel.getRoutes(), notNullValue())
+        );
+        assertAll(
+                () -> assertThat(sinkModel.getPluginSettings().size(), equalTo(3)),
+                () -> assertThat(sinkModel.getPluginSettings(), hasKey("key1")),
+                () -> assertThat(sinkModel.getPluginSettings(), hasKey("key2")),
+                () -> assertThat(sinkModel.getPluginSettings(), hasKey("key3"))
+        );
         assertThat(sinkModel.getRoutes().size(), equalTo(0));
     }
 
@@ -110,10 +123,9 @@ class SinkModelTest {
 
         final String actualJson = objectMapper.writeValueAsString(sinkModel);
 
-        final String expectedJson = createStringFromInputStream(this.getClass().getResourceAsStream("/serialized_with_plugin_settings.yaml"))
-                .replace("---\n", "");
+        final String expectedJson = createStringFromInputStream(this.getClass().getResourceAsStream("/serialized_with_plugin_settings.yaml"));
 
-        assertThat(actualJson, equalTo(expectedJson));
+        assertThat("---\n" + actualJson, equalTo(expectedJson));
     }
 
     private static String createStringFromInputStream(final InputStream inputStream) throws IOException {
