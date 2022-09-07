@@ -12,6 +12,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -29,7 +31,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
 
-public class PluginModelTests {
+class PluginModelTests {
 
     private static class PluginHolder {
         private PluginModel singlePlugin;
@@ -53,7 +55,7 @@ public class PluginModelTests {
     }
 
     @Test
-    public final void testSerializingPluginModel_noExceptions() throws JsonGenerationException, JsonMappingException, IOException {
+    final void testSerializingPluginModel_noExceptions() throws JsonGenerationException, JsonMappingException, IOException {
         final PluginModel pluginModel = new PluginModel("customPlugin", new HashMap<>());
         final String serialized = new ObjectMapper().writeValueAsString(pluginModel);
         assertThat(serialized, notNullValue());
@@ -62,21 +64,34 @@ public class PluginModelTests {
     }
 
     @Test
-    public final void testSerialization_empty_plugin_to_YAML() throws JsonGenerationException, JsonMappingException, IOException {
+    final void testSerialization_empty_plugin_to_YAML() throws JsonGenerationException, JsonMappingException, IOException {
         final PluginModel pluginModel = new PluginModel("customPlugin", new HashMap<>());
 
         final ObjectMapper mapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
         final String serialized = mapper.writeValueAsString(pluginModel);
 
-        InputStream inputStream = PluginModelTests.class.getResourceAsStream("/empty_plugin_serialized.yaml");
+        InputStream inputStream = PluginModelTests.class.getResourceAsStream("plugin_model_null.yaml");
 
         assertThat(serialized, notNullValue());
         assertThat(serialized, equalTo(convertInputStreamToString(inputStream)));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"plugin_model_empty.yaml", "plugin_model_not_present.yaml", "plugin_model_null.yaml"})
+    final void deserialize_with_empty_inner(final String resourceName) throws IOException {
+        final InputStream inputStream = PluginModelTests.class.getResourceAsStream(resourceName);
+
+        final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+
+        final PluginModel pluginModel = mapper.readValue(inputStream, PluginModel.class);
+        assertThat(pluginModel.getPluginName(), equalTo("customPlugin"));
+        assertThat(pluginModel.getPluginSettings(), notNullValue());
+        assertThat(pluginModel.getPluginSettings().size(), equalTo(0));
+    }
+
     @Test
-    public final void testUsingCustomSerializerWithPluginSettings_noExceptions() throws JsonGenerationException, JsonMappingException, IOException {
+    final void testUsingCustomSerializerWithPluginSettings_noExceptions() throws JsonGenerationException, JsonMappingException, IOException {
         final PluginModel pluginModel = new PluginModel("customPlugin", validPluginSettings());
 
         final ObjectMapper mapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
@@ -89,7 +104,7 @@ public class PluginModelTests {
     }
 
     @Test
-    public final void testUsingCustomDeserializer_noExceptions() throws JsonParseException, JsonMappingException, IOException {
+    final void testUsingCustomDeserializer_noExceptions() throws JsonParseException, JsonMappingException, IOException {
         InputStream inputStream = PluginModelTests.class.getResourceAsStream("/single_plugin.yaml");
 
         final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
@@ -103,7 +118,7 @@ public class PluginModelTests {
     }
 
     @Test
-    public final void testUsingCustomDeserializer_with_array() throws JsonParseException, JsonMappingException, IOException {
+    final void testUsingCustomDeserializer_with_array() throws JsonParseException, JsonMappingException, IOException {
         InputStream inputStream = PluginModelTests.class.getResourceAsStream("/list_of_plugins.yaml");
 
         final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
@@ -122,7 +137,7 @@ public class PluginModelTests {
         assertThat(readValue.listOfPlugins.get(1).getPluginSettings().get("key2"), equalTo("value2"));
     }
 
-    public static Map<String, Object> validPluginSettings() {
+    static Map<String, Object> validPluginSettings() {
         final Map<String, Object> settings = new HashMap<>();
         settings.put("key1", "value1");
         settings.put("key2", "value2");
@@ -130,7 +145,7 @@ public class PluginModelTests {
         return settings;
     }
 
-    public static String convertInputStreamToString(InputStream inputStream) {
+    static String convertInputStreamToString(InputStream inputStream) {
         StringBuilder stringBuilder = new StringBuilder();
         try (Reader reader = new BufferedReader(new InputStreamReader(inputStream, Charset.forName(StandardCharsets.UTF_8.name())))) {
             int counter = 0;
