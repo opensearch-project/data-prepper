@@ -2,7 +2,7 @@ test-pipeline:
   source:
     testSource: null
   processor:
-  - testPrepper: null
+  - testProcessor: null
   sink:
   - testSink: null
   workers: 8

@@ -10,9 +10,7 @@ import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PipelinesDataFlowModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding;
-import com.amazon.dataprepper.model.plugin.NoPluginFoundException;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
-import com.amazon.dataprepper.model.prepper.Prepper;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
@@ -144,21 +142,8 @@ public class PipelineParser {
     }
 
     private List<Processor> newProcessor(final PluginSetting pluginSetting) {
-        try {
-            return newProcessor(pluginSetting, Processor.class);
-        } catch (NoPluginFoundException ex) {
-            LOG.warn(
-                    "No plugin of type Processor found for plugin setting: {}, attempting to find comparable Prepper plugin.",
-                    pluginSetting.getName());
-            return newProcessor(pluginSetting, Prepper.class)
-                    .stream()
-                    .map(prepper -> (Processor) prepper)
-                    .collect(Collectors.toList());
-        }
-    }
-    private <T extends Processor> List<T> newProcessor(final PluginSetting pluginSetting, final Class<T> baseClass) {
         return pluginFactory.loadPlugins(
-                baseClass,
+                Processor.class,
                 pluginSetting,
                 actualClass -> actualClass.isAnnotationPresent(SingleThread.class) ?
                         pluginSetting.getNumberOfProcessWorkers() :

@@ -19,7 +19,7 @@ grok-pipeline:
       path: "/full/path/to/grok_logs_json.log"
       record_type: "event"
       format: "json"
-  prepper:
+  processor:
     - grok:
         match:
           message: ['%{IPORHOST:clientip} \[%{HTTPDATE:timestamp}\] %{NUMBER:response_status:int}']
@@ -57,7 +57,7 @@ It will then check logs for a `timestamp` key, and if it exists, will attempt to
 Note that by default, matching will be done until there is a successful match. So if there is a successful match against the value in the `message` key for a pattern of `SYSLOGBASE`, no attempted matching will be done 
 for either the `COMMONAPACHELOG` or `TIMESTAMP_ISO8601` pattern. If you would like to match logs against every pattern in `match` no matter what, then see [break_on_match](#break_on_match).
 ```yaml
-prepper:
+processor:
   - grok:
       match:
         message: ['%{SYSLOGBASE}', "%{COMMONAPACHELOG}"]
@@ -77,7 +77,7 @@ prepper:
   Given the same setup from [Basic Grok Example](#basic-grok-example), modify the `pipeline.yaml` grok configuration to remove the `clientip` name from the `%{IPORHOST}` pattern..
 
 ```yaml
-  prepper:
+  processor:
     - grok:
         match:
           message: ['%{IPORHOST} \[%{HTTPDATE:timestamp}\] %{NUMBER:response_status:int}']
@@ -98,7 +98,7 @@ Notice that the `clientip` key is no longer there, because the `%{IPORHOST}` pat
 Now set `named_captures_only` to `false` as seen below.
 
 ```yaml
-  prepper:
+  processor:
     - grok:
         match:
           named_captures_only: false
@@ -137,7 +137,7 @@ are being used by the `HTTPDATE` pattern, which can be seen in the [default patt
 Given the same setup from [Basic Grok Example](#basic-grok-example), modify the `pipeline.yaml` grok configuration to the following:
 
 ```yaml
-  prepper:
+  processor:
     - grok:
         match:
           keys_to_overwrite: ["message"]
@@ -163,7 +163,7 @@ As you can see, the original `message` key was overwritten with the `NUMBER` 200
 The following grok configuration creates a custom pattern named `CUSTOM_PATTERN`, and the pattern itself is a regex pattern.
 
 ```yaml
-prepper:
+processor:
   - grok:
       pattern_definitions:
         CUSTOM_PATTERN: 'this-is-regex'
@@ -186,7 +186,7 @@ extra_patterns_folder/
 The following grok configuration will register all patterns in `patterns1.txt`, `patterns2.txt`, and `extra_patterns1.txt`
 
 ```yaml
-prepper:
+processor:
   - grok:
       patterns_directories: ["path/to/patterns_folder", "path/to/extra_patterns_folder"]
       match:
@@ -208,7 +208,7 @@ CAT persian|siamese|siberian
   Given the same setup from [Basic Grok Example](#basic-grok-example), modify the `pipeline.yaml` grok configuration to add a `target_key` named `grokked`
 
 ```yaml
-  prepper:
+  processor:
     - grok:
         target_key: "grok"
         match:

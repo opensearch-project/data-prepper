@@ -11,7 +11,7 @@ To get started with date processor, create the following `pipeline.yaml`.
       path: "/full/path/to/logs_json.log"
       record_type: "event"
       format: "json"
-  prepper:          
+  processor:          
     - date:
         match:
           - key: timestamp
@@ -51,7 +51,7 @@ When you run Data Prepper with this `pipeline.yaml` passed in, you should see th
   The following example of date configuration will use timestamp when the event is first seen by Data Prepper source and uses it as a 
   default timestamp for the event and stores it in `@timestamp`.
 ```yaml
-prepper:
+processor:
   - date:
       from_time_received: true
       destination: "@timestamp"
@@ -71,7 +71,7 @@ valid key and at least one pattern is required if match is configured.
 The following example of date configuration will use `timestamp` key to match against given patterns and stores the timestamp in ISO 8601
 format in destination. 
 ```yaml
-prepper:
+processor:
   - date:
       match:
         - key: timestamp

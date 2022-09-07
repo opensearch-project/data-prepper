@@ -46,7 +46,6 @@ class PipelineConfigurationTests {
         final PipelineModel pipelineModel = mock(PipelineModel.class);
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getProcessors()).thenReturn(processors);
-        when(pipelineModel.getPreppers()).thenReturn(null);
         when(pipelineModel.getSinks()).thenReturn(sinks);
         when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
         when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
@@ -90,7 +89,6 @@ class PipelineConfigurationTests {
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getSinks()).thenReturn(sinks);
         when(pipelineModel.getProcessors()).thenReturn(null);
-        when(pipelineModel.getPreppers()).thenReturn(null);
         when(pipelineModel.getWorkers()).thenReturn(null);
         when(pipelineModel.getReadBatchDelay()).thenReturn(null);
         final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(pipelineModel);
@@ -114,7 +112,6 @@ class PipelineConfigurationTests {
     void testNoSourceConfiguration() {
         final PipelineModel pipelineModel = mock(PipelineModel.class);
         when(pipelineModel.getProcessors()).thenReturn(processors);
-        when(pipelineModel.getPreppers()).thenReturn(null);
         when(pipelineModel.getSinks()).thenReturn(sinks);
         when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
         when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
@@ -125,11 +122,10 @@ class PipelineConfigurationTests {
     }
 
     @Test
-    void testNullProcessorAndNoPrepperConfiguration() {
+    void testNullProcessorConfiguration() {
         final PipelineModel pipelineModel = mock(PipelineModel.class);
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getProcessors()).thenReturn(null);
-        when(pipelineModel.getPreppers()).thenReturn(null);
         when(pipelineModel.getSinks()).thenReturn(sinks);
         when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
         when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
@@ -139,11 +135,10 @@ class PipelineConfigurationTests {
     }
 
     @Test
-    void testEmptyProcessorAndNoPrepperConfiguration() {
+    void testEmptyProcessorConfiguration() {
         final PipelineModel pipelineModel = mock(PipelineModel.class);
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getProcessors()).thenReturn(new ArrayList<>());
-        when(pipelineModel.getPreppers()).thenReturn(null);
         when(pipelineModel.getSinks()).thenReturn(sinks);
         when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
         when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
@@ -157,7 +152,6 @@ class PipelineConfigurationTests {
         final PipelineModel pipelineModel = mock(PipelineModel.class);
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getProcessors()).thenReturn(processors);
-        when(pipelineModel.getPreppers()).thenReturn(null);
         when(pipelineModel.getSinks()).thenReturn(Collections.emptyList());
         when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
         when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
@@ -172,7 +166,6 @@ class PipelineConfigurationTests {
         final PipelineModel pipelineModel = mock(PipelineModel.class);
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getProcessors()).thenReturn(processors);
-        when(pipelineModel.getPreppers()).thenReturn(null);
         when(pipelineModel.getSinks()).thenReturn(new ArrayList<>());
         when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
         when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
@@ -187,7 +180,6 @@ class PipelineConfigurationTests {
         final PipelineModel pipelineModel = mock(PipelineModel.class);
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getProcessors()).thenReturn(processors);
-        when(pipelineModel.getPreppers()).thenReturn(null);
         when(pipelineModel.getSinks()).thenReturn(sinks);
         when(pipelineModel.getWorkers()).thenReturn(0);
         when(pipelineModel.getReadBatchDelay()).thenReturn(TestDataProvider.TEST_DELAY);
@@ -200,7 +192,6 @@ class PipelineConfigurationTests {
         final PipelineModel pipelineModel = mock(PipelineModel.class);
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getProcessors()).thenReturn(processors);
-        when(pipelineModel.getPreppers()).thenReturn(null);
         when(pipelineModel.getSinks()).thenReturn(sinks);
         when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
         when(pipelineModel.getReadBatchDelay()).thenReturn(0);

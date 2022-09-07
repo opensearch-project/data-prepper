@@ -5,7 +5,7 @@
 
 package com.amazon.dataprepper.plugins.prepper.state;
 
-import com.amazon.dataprepper.prepper.state.PrepperState;
+import com.amazon.dataprepper.processor.state.ProcessorState;
 import com.google.common.primitives.SignedBytes;
 import org.mapdb.BTreeMap;
 import org.mapdb.DBMaker;
@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 
-public class MapDbPrepperState<V> implements PrepperState<byte[], V> {
+public class MapDbPrepperState<V> implements ProcessorState<byte[], V> {
 
 
     private static class SignedByteArraySerializer extends SerializerByteArray {

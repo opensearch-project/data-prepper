@@ -46,7 +46,7 @@ public interface Buffer<T extends Record<?>> {
     Map.Entry<Collection<T>, CheckpointState> read(int timeoutInMillis);
 
     /**
-     * Check summary of records processed by data-prepper downstreams(preppers, sinks, pipelines).
+     * Check summary of records processed by data-prepper downstreams(processors, sinks, pipelines).
      *
      * @param checkpointState the summary object of checkpoint variables
      */
