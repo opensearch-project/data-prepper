@@ -11,7 +11,7 @@ import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
-import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;

@@ -13,7 +13,7 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

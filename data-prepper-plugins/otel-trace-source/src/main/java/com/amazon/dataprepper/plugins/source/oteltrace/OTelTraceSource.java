@@ -5,7 +5,7 @@
 
 package com.amazon.dataprepper.plugins.source.oteltrace;
 
-import com.amazon.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
+import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -15,8 +15,8 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.source.Source;
-import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
-import com.amazon.dataprepper.plugins.certificate.model.Certificate;
+import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import com.amazon.dataprepper.plugins.health.HealthGrpcService;
 import com.amazon.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import com.amazon.dataprepper.plugins.source.oteltrace.certificate.CertificateProviderFactory;
