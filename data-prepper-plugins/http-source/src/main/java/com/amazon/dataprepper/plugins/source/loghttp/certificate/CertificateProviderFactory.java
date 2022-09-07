@@ -25,8 +25,6 @@ import software.amazon.awssdk.services.s3.S3Client;
 public class CertificateProviderFactory {
     private static final Logger LOG = LoggerFactory.getLogger(CertificateProviderFactory.class);
 
-    private final ApacheHttpClient.Builder apacheHttpClientBuilder = ApacheHttpClient.builder();
-
     final HTTPSourceConfig httpSourceConfig;
     public CertificateProviderFactory(final HTTPSourceConfig httpSourceConfig) {
         this.httpSourceConfig = httpSourceConfig;
@@ -47,7 +45,7 @@ public class CertificateProviderFactory {
                     .region(Region.of(httpSourceConfig.getAwsRegion()))
                     .credentialsProvider(credentialsProvider)
                     .overrideConfiguration(clientConfig)
-                    .httpClientBuilder(apacheHttpClientBuilder)
+                    .httpClientBuilder(ApacheHttpClient.builder())
                     .build();
 
             return new ACMCertificateProvider(awsCertificateManager,
@@ -62,7 +60,7 @@ public class CertificateProviderFactory {
             final S3Client s3Client = S3Client.builder()
                     .region(Region.of(httpSourceConfig.getAwsRegion()))
                     .credentialsProvider(credentialsProvider)
-                    .httpClientBuilder(apacheHttpClientBuilder)
+                    .httpClientBuilder(ApacheHttpClient.builder())
                     .build();
 
             return new S3CertificateProvider(
