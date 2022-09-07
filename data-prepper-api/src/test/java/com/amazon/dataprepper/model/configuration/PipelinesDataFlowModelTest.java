@@ -62,9 +62,9 @@ class PipelinesDataFlowModelTest {
     void testSerializing_PipelinesDataFlowModel_empty_Plugins_with_nonEmpty_delay_and_workers_and_route() throws JsonProcessingException {
         String pipelineName = "test-pipeline";
 
-        final PluginModel source = new PluginModel("testSource", null);
-        final List<PluginModel> preppers = Collections.singletonList(new PluginModel("testPrepper", null));
-        final List<PluginModel> sinks = Collections.singletonList(new PluginModel("testSink", null));
+        final PluginModel source = new PluginModel("testSource", (Map<String, Object>) null);
+        final List<PluginModel> preppers = Collections.singletonList(new PluginModel("testPrepper", (Map<String, Object>) null));
+        final List<PluginModel> sinks = Collections.singletonList(new PluginModel("testSink", (Map<String, Object>) null));
         final PipelineModel pipelineModel = new PipelineModel(source, null, preppers, Collections.singletonList(new ConditionalRoute("my-route", "/a==b")), sinks, 8, 50);
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(Collections.singletonMap(pipelineName, pipelineModel));
@@ -135,10 +135,10 @@ class PipelinesDataFlowModelTest {
         assertThat(pipelineModel.getSource(), notNullValue());
         assertThat(pipelineModel.getSource().getPluginName(), equalTo("testSource"));
 
-        assertThat(pipelineModel.getPreppers(), notNullValue());
-        assertThat(pipelineModel.getPreppers().size(), equalTo(1));
-        assertThat(pipelineModel.getPreppers().get(0), notNullValue());
-        assertThat(pipelineModel.getPreppers().get(0).getPluginName(), equalTo("testPrepper"));
+        assertThat(pipelineModel.getProcessors(), notNullValue());
+        assertThat(pipelineModel.getProcessors().size(), equalTo(1));
+        assertThat(pipelineModel.getProcessors().get(0), notNullValue());
+        assertThat(pipelineModel.getProcessors().get(0).getPluginName(), equalTo("testPrepper"));
 
         assertThat(pipelineModel.getSinks(), notNullValue());
         assertThat(pipelineModel.getSinks().size(), equalTo(1));
