@@ -4,22 +4,29 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 #
-if [[ $# -ne 2 ]]
-  then
-    echo
-    echo "Error: Paths to pipeline and data-prepper configuration files are required. Example:"
-    echo "./bin/data-prepper config/example-pipelines.yaml config/example-data-prepper-config.yaml"
-    echo
-    exit 1
-fi
 
-PIPELINES_FILE_LOCATION=$1
-CONFIG_FILE_LOCATION=$2
 MIN_REQ_JAVA_VERSION=11
 MIN_REQ_OPENJDK_VERSION=11
 DATA_PREPPER_BIN=$(dirname "$(realpath "$0")")
 DATA_PREPPER_HOME=`realpath "$DATA_PREPPER_BIN/.."`
 DATA_PREPPER_CLASSPATH="$DATA_PREPPER_HOME/lib/*"
+
+if [[ $# == 2 ]]; then
+  PIPELINES_FILE_LOCATION=$1
+  CONFIG_FILE_LOCATION=$2
+elif [[ $# == 0 ]]; then
+  PIPELINES_FILE_LOCATION="$DATA_PREPPER_HOME/pipelines/pipelines.yaml"
+  CONFIG_FILE_LOCATION="$DATA_PREPPER_HOME/config/data-prepper-config.yaml"
+  echo "Reading pipelines and data-prepper configuration files from Data Prepper home directory."
+else
+    echo
+    echo "Error: Invalid number of arguments. Expected 0 or 2, received $#."
+    echo "Use configuration files from Data Prepper home directory and specify no arguments,"
+    echo "or specify both paths to pipeline and data-prepper configuration files, for example:"
+    echo "./bin/data-prepper config/example-pipelines.yaml config/example-data-prepper-config.yaml"
+    echo
+    exit 1
+fi
 
 #check if java is installed
 if type -p java; then
