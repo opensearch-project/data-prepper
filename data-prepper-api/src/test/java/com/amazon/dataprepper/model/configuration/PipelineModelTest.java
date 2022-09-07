@@ -92,51 +92,11 @@ class PipelineModelTest {
     }
 
     @Test
-    void testPipelineModelWithPrepperAndProcessorConfigThrowsException() {
-
-        final Exception exception = assertThrows(IllegalArgumentException.class, () -> new PipelineModel(
-                validSourcePluginModel(),
-                validBufferPluginModel(),
-                validPreppersPluginModel(),
-                validPreppersPluginModel(),
-                validPipelineRouter(),
-                validSinksPluginModel(),
-                TEST_WORKERS,
-                TEST_READ_BATCH_DELAY
-        ));
-
-        final String expected = "Pipeline model cannot specify a prepper and processor configuration. It is " +
-                "recommended to move prepper configurations to the processor section to maintain compatibility with " +
-                "DataPrepper version 1.2 and above.";
-
-        assertTrue(exception.getMessage().contains(expected));
-    }
-
-    @Test
-    void testPipelineModelWithValidPrepperConfig() {
-        final List<PluginModel> expectedPreppersPluginModel = validPreppersPluginModel();
-        final PipelineModel pipelineModel = new PipelineModel(
-                validSourcePluginModel(),
-                null,
-                expectedPreppersPluginModel,
-                null,
-                null,
-                validSinksPluginModel(),
-                TEST_WORKERS,
-                TEST_READ_BATCH_DELAY
-        );
-
-        assertEquals(expectedPreppersPluginModel, pipelineModel.getPreppers());
-        assertEquals(expectedPreppersPluginModel, pipelineModel.getProcessors());
-    }
-
-    @Test
     void testPipelineModelWithValidProcessorConfig() {
         final List<PluginModel> expectedPreppersPluginModel = validPreppersPluginModel();
         final PipelineModel pipelineModel = new PipelineModel(
                 validSourcePluginModel(),
                 null,
-                null,
                 expectedPreppersPluginModel,
                 validPipelineRouter(),
                 validSinksPluginModel(),
@@ -144,7 +104,6 @@ class PipelineModelTest {
                 TEST_READ_BATCH_DELAY
         );
 
-        assertEquals(expectedPreppersPluginModel, pipelineModel.getPreppers());
         assertEquals(expectedPreppersPluginModel, pipelineModel.getProcessors());
     }
 

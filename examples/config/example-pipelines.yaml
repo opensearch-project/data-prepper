@@ -33,4 +33,3 @@ service-map-pipeline:
         aws_sigv4: true
         aws_region: "us-east-1"
         index_type: trace-analytics-service-map
-  

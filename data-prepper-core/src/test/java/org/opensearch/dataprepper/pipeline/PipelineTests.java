@@ -17,7 +17,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.pipeline.common.FutureHelper;
-import org.opensearch.dataprepper.pipeline.common.TestPrepper;
 import org.opensearch.dataprepper.pipeline.common.TestProcessor;
 import org.opensearch.dataprepper.plugins.TestSink;
 import org.opensearch.dataprepper.plugins.TestSource;
@@ -73,7 +72,7 @@ class PipelineTests {
     void testPipelineStateWithPrepper() {
         final Source<Record<String>> testSource = new TestSource();
         final TestSink testSink = new TestSink();
-        final TestProcessor testProcessor = new TestPrepper(new PluginSetting("test_processor", new HashMap<>()));
+        final TestProcessor testProcessor = new TestProcessor(new PluginSetting("test_processor", new HashMap<>()));
         final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
                 Collections.singletonList(Collections.singletonList(testProcessor)),
                 Collections.singletonList(testSink),
