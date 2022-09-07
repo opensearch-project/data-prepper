@@ -13,7 +13,7 @@ import java.util.Map;
  * An event can be defined as a collection of key-value pairs and the following interface represents the contract with this model.
  * <p>
  * Data Prepper will be migrating away from the original use of {@link com.amazon.dataprepper.model.record.Record}s.
- * Internal interfaces for {@link com.amazon.dataprepper.model.prepper.Prepper}, {@link com.amazon.dataprepper.model.buffer.Buffer},
+ * Internal interfaces for {@link com.amazon.dataprepper.model.processor.Processor}, {@link com.amazon.dataprepper.model.buffer.Buffer},
  * {@link com.amazon.dataprepper.model.sink.Sink} and {@link com.amazon.dataprepper.model.source.Source} will be extended to support
  * the new internal model. The use of {@link com.amazon.dataprepper.model.record.Record}s will be deprecated in 2.0.
  * <p>

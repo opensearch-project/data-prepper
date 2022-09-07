@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.parser.config;
 
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.parser.PipelineParser;
-import org.opensearch.dataprepper.parser.PipelineParser;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
