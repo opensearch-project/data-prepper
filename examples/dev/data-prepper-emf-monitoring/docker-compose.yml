@@ -3,8 +3,10 @@ services:
   data-prepper:
     container_name: data-prepper
     build:
+      args:
+        DATA_PREPPER_VERSION: "2.0.0-SNAPSHOT"
       context: ../../..
-      dockerfile: examples/dev/data-prepper-monitoring/firelens.Dockerfile
+      dockerfile: examples/dev/data-prepper-emf-monitoring/Dockerfile
     environment:
       AWS_EMF_AGENT_ENDPOINT: "tcp://fluent-bit:25888"
     volumes:
