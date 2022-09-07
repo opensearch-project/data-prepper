@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.peerforwarder.server;
 
-import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
-import com.amazon.dataprepper.plugins.certificate.model.Certificate;
+import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;

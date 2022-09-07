@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.plugins.prepper.state;
 
+import org.opensearch.dataprepper.plugins.prepper.state.PrepperStateTest;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;

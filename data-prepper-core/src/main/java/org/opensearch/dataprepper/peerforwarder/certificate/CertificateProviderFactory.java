@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.peerforwarder.certificate;
 
-import com.amazon.dataprepper.plugins.certificate.CertificateProvider;
-import com.amazon.dataprepper.plugins.certificate.acm.ACMCertificateProvider;
-import com.amazon.dataprepper.plugins.certificate.file.FileCertificateProvider;
-import com.amazon.dataprepper.plugins.certificate.s3.S3CertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.acm.ACMCertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.file.FileCertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.s3.S3CertificateProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

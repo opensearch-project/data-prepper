@@ -5,8 +5,8 @@
 
 package com.amazon.dataprepper.plugins.source.loghttp;
 
-import com.amazon.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
-import com.amazon.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
+import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
+import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
 import com.amazon.dataprepper.metrics.MetricNames;
 import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.metrics.PluginMetrics;
@@ -16,8 +16,8 @@ import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.log.Log;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
-import com.amazon.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
+import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.ResponseTimeoutException;
 import com.linecorp.armeria.client.WebClient;
