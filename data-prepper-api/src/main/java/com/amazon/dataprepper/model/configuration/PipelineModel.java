@@ -36,9 +36,9 @@ public class PipelineModel {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private final PluginModel buffer;
 
-    @JsonProperty("router")
+    @JsonProperty("route")
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private List<ConditionalRoute> router;
+    private List<ConditionalRoute> routes;
 
     @JsonProperty("sink")
     private final List<PluginModel> sinks;
@@ -64,7 +64,7 @@ public class PipelineModel {
             @JsonProperty("source") final PluginModel source,
             @JsonProperty("buffer") final PluginModel buffer,
             @JsonProperty("processor") final List<PluginModel> processors,
-            @JsonProperty("router") final List<ConditionalRoute> router,
+            @JsonProperty("router") final List<ConditionalRoute> routes,
             @JsonProperty("sink") final List<PluginModel> sinks,
             @JsonProperty("workers") final Integer workers,
             @JsonProperty("delay") final Integer delay) {
@@ -76,7 +76,7 @@ public class PipelineModel {
         this.source = source;
         this.buffer = buffer;
         this.processors = processors;
-        this.router = router != null ? router : new ArrayList<>();
+        this.routes = routes != null ? routes : new ArrayList<>();
         this.sinks = sinks;
         this.workers = workers;
         this.readBatchDelay = delay;
@@ -92,8 +92,8 @@ public class PipelineModel {
         return processors;
     }
 
-    public List<ConditionalRoute> getRouter() {
-        return router;
+    public List<ConditionalRoute> getRoutes() {
+        return routes;
     }
 
     public List<PluginModel> getSinks() {
