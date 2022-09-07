@@ -17,12 +17,15 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProviderChain;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryMode;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.acm.AcmClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
 public class CertificateProviderFactory {
     private static final Logger LOG = LoggerFactory.getLogger(CertificateProviderFactory.class);
+
+    private final ApacheHttpClient.Builder apacheHttpClientBuilder = ApacheHttpClient.builder();
 
     final HTTPSourceConfig httpSourceConfig;
     public CertificateProviderFactory(final HTTPSourceConfig httpSourceConfig) {
@@ -44,6 +47,7 @@ public class CertificateProviderFactory {
                     .region(Region.of(httpSourceConfig.getAwsRegion()))
                     .credentialsProvider(credentialsProvider)
                     .overrideConfiguration(clientConfig)
+                    .httpClientBuilder(apacheHttpClientBuilder)
                     .build();
 
             return new ACMCertificateProvider(awsCertificateManager,
@@ -58,6 +62,7 @@ public class CertificateProviderFactory {
             final S3Client s3Client = S3Client.builder()
                     .region(Region.of(httpSourceConfig.getAwsRegion()))
                     .credentialsProvider(credentialsProvider)
+                    .httpClientBuilder(apacheHttpClientBuilder)
                     .build();
 
             return new S3CertificateProvider(
