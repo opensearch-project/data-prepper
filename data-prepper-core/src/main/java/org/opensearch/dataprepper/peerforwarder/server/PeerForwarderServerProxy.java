@@ -21,7 +21,7 @@ public class PeerForwarderServerProxy implements PeerForwarderServer {
 
     @Override
     public void start() {
-        // update this conditional based on PeerForwarderProvider
+        // TODO: update this conditional based on PeerForwarderProvider
         if (true) {
             peerForwarderServer = new RemotePeerForwarderServer(peerForwarderConfiguration, server);
         }
@@ -33,6 +33,8 @@ public class PeerForwarderServerProxy implements PeerForwarderServer {
 
     @Override
     public void stop() {
-        peerForwarderServer.stop();
+        if (peerForwarderServer != null) {
+            peerForwarderServer.stop();
+        }
     }
 }

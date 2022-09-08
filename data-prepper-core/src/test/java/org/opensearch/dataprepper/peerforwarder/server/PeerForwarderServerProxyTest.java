@@ -17,6 +17,7 @@ import java.util.concurrent.ExecutionException;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,11 +47,20 @@ class PeerForwarderServerProxyTest {
     }
 
     @Test
-    void stop_should_stop_server_if_peers_configured() throws ExecutionException, InterruptedException {
+    void stop_should_not_stop_server_if_server_is_not_started() throws ExecutionException, InterruptedException {
+        final PeerForwarderServerProxy objectUnderTest = createObjectUnderTest();
+        objectUnderTest.stop();
+        verifyNoInteractions(server);
+    }
+
+    @Test
+    void stop_should_stop_server_if_server_started() throws ExecutionException, InterruptedException {
+        when(server.start()).thenReturn(completableFuture);
         when(server.stop()).thenReturn(completableFuture);
         when(completableFuture.get()).thenReturn(mock(Void.class));
 
         final PeerForwarderServerProxy objectUnderTest = createObjectUnderTest();
+        objectUnderTest.start();
         objectUnderTest.stop();
         verify(server).stop();
     }
