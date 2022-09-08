@@ -10,4 +10,4 @@ until [[ $(curl --write-out %{http_code} --output /dev/null --silent --head --fa
   sleep 1
 done
 
-java -Dlog4j.configurationFile=log4j.properties -Xms128m -Xmx128m -jar data-prepper.jar pipelines.yaml data-prepper-config.yaml
+./bin/data-prepper pipelines.yaml data-prepper-config.yaml
