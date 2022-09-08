@@ -5,16 +5,30 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
-public class PeerForwarderProvider {
-    private final PeerForwarder peerForwarder;
+import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
 
-    public PeerForwarderProvider(final PeerForwarder peerForwarder) {
-        this.peerForwarder = peerForwarder;
+import java.util.Set;
+
+public class PeerForwarderProvider {
+
+    private final PeerForwarderClientFactory peerForwarderClientFactory;
+    private final PeerForwarderClient peerForwarderClient;
+    private HashRing hashRing;
+
+    PeerForwarderProvider(final PeerForwarderClientFactory peerForwarderClientFactory, final PeerForwarderClient peerForwarderClient) {
+        this.peerForwarderClientFactory = peerForwarderClientFactory;
+        this.peerForwarderClient = peerForwarderClient;
     }
 
-    public PeerForwarder register() {
-        // TODO: Refactor the AppConfig and PeerForwarder so that we only create these objects when necessary.
-        // TODO: Refactor PeerForward to make it an interface. Support both a configured peer-forward and a no-op local-only. Provide the one appropriate based on user configuration.
-        return peerForwarder;
+    public PeerForwarder register(final String pipelineName, final String pluginId, final Set<String> identificationKeys) {
+
+        // TODO: Data Prepper 2.0 will only support a single peer-forwarder per pipeline/plugin type. Check this condition.
+
+        if(hashRing == null) {
+            hashRing = peerForwarderClientFactory.createHashRing();
+        }
+
+        // TODO: Support a local-only PeerForwarder when no peers are configured.
+        return new RemotePeerForwarder(peerForwarderClientFactory, peerForwarderClient, hashRing, pipelineName, pluginId, identificationKeys);
     }
 }

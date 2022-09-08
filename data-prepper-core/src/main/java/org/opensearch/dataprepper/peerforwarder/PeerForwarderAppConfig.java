@@ -20,7 +20,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class PeerForwarderAppConfig {
+class PeerForwarderAppConfig {
 
     @Bean
     public PeerForwarderConfiguration peerForwarderConfiguration(
@@ -60,15 +60,9 @@ public class PeerForwarderAppConfig {
     }
 
     @Bean
-    public PeerForwarder peerForwarder(final PeerForwarderClientFactory peerForwarderClientFactory,
-                                       final PeerForwarderClient peerForwarderClient) {
-        // TODO: Move this so that it is constructed dynamically and only when necessary.
-        return new PeerForwarder(peerForwarderClientFactory, peerForwarderClient);
-    }
-
-    @Bean
-    public PeerForwarderProvider peerForwarderProvider(final PeerForwarder peerForwarder) {
-        return new PeerForwarderProvider(peerForwarder);
+    public PeerForwarderProvider peerForwarderProvider(final PeerForwarderClientFactory peerForwarderClientFactory,
+                                                       final PeerForwarderClient peerForwarderClient) {
+        return new PeerForwarderProvider(peerForwarderClientFactory, peerForwarderClient);
     }
     @Bean
     public ResponseHandler responseHandler() {
