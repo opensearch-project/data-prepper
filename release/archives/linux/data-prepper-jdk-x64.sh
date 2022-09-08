@@ -5,8 +5,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-MIN_REQ_JAVA_VERSION=1.8
-MIN_REQ_OPENJDK_VERSION=8
 DATA_PREPPER_BIN=$(dirname "$(realpath "$0")")
 DATA_PREPPER_HOME=`realpath "$DATA_PREPPER_BIN/.."`
 DATA_PREPPER_CLASSPATH="$DATA_PREPPER_HOME/lib/*"
