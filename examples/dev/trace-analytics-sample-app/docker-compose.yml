@@ -52,6 +52,8 @@ services:
     dns: 10.10.1.1
     container_name: data-prepper
     build:
+      args:
+        DATA_PREPPER_VERSION: "2.0.0-SNAPSHOT"
       context: ../../..
       dockerfile: examples/dev/trace-analytics-sample-app/Dockerfile
     working_dir: /usr/share/data-prepper/
