@@ -90,17 +90,32 @@ public class HTTPSourceConfig {
 
     @AssertTrue(message = "ssl_certificate_file cannot be a empty or null when ssl is enabled")
     boolean isSslCertificateFileValid() {
-        return !ssl || StringUtils.isNotEmpty(sslCertificateFile);
+        if (ssl && !useAcmCertificateForSsl) {
+            return StringUtils.isNotEmpty(sslCertificateFile);
+        }
+        else {
+            return true;
+        }
     }
 
     @AssertTrue(message = "ssl_key_file cannot be a empty or null when ssl is enabled")
     boolean isSslKeyFileValid() {
-        return !ssl || StringUtils.isNotEmpty(sslKeyFile);
+        if (ssl && !useAcmCertificateForSsl) {
+            return StringUtils.isNotEmpty(sslKeyFile);
+        }
+        else {
+            return true;
+        }
     }
 
     @AssertTrue(message = "acm_certificate_arn cannot be a empty or null when ACM is used for ssl")
     boolean isAcmCertificateArnValid() {
-        return !useAcmCertificateForSsl || StringUtils.isNotEmpty(acmCertificateArn);
+        if (ssl && useAcmCertificateForSsl) {
+            return StringUtils.isNotEmpty(acmCertificateArn);
+        }
+        else {
+            return true;
+        }
     }
 
     @AssertTrue(message = "aws_region cannot be a empty or null when ACM / S3 is used for ssl")
