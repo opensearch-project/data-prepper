@@ -1,4 +1,4 @@
-FROM amazoncorretto:15-al2-full
+FROM eclipse-temurin:17-jdk-alpine
 ARG PIPELINE_FILEPATH
 ARG CONFIG_FILEPATH
 ARG ARCHIVE_FILE
@@ -9,8 +9,8 @@ ENV ENV_CONFIG_FILEPATH=$CONFIG_FILEPATH
 ENV ENV_PIPELINE_FILEPATH=$PIPELINE_FILEPATH
 
 # Update all packages
-RUN yum update -y && yum clean all
-RUN yum install -y bc
+RUN apk update
+RUN apk add --no-cache bash bc
 
 RUN mkdir -p /var/log/data-prepper
 ADD $ARCHIVE_FILE /usr/share
