@@ -5,6 +5,11 @@
 
 package org.opensearch.dataprepper.peerforwarder.server;
 
+/**
+ * Class to handle NoOp Peer Forwarder server if no peers are configured
+ *
+ * @since 2.0
+ */
 public class NoOpPeerForwarderServer implements PeerForwarderServer {
 
     @Override

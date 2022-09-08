@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.ExecutionException;
 
 /**
- * Class to handle remote Peer Forwarder server
+ * Class to handle remote Peer Forwarder server if peers are configured
  *
  * @since 2.0
  */
