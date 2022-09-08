@@ -26,6 +26,7 @@ import static org.hamcrest.Matchers.hasKey;
 class PipelinesDataFlowModelTest {
 
     private static final String RESOURCE_PATH = "/pipelines_data_flow_serialized.yaml";
+    private static final String RESOURCE_PATH_WITH_ROUTE = "/pipelines_data_flow_route.yaml";
     private ObjectMapper objectMapper;
 
     @BeforeEach
@@ -50,6 +51,27 @@ class PipelinesDataFlowModelTest {
         final String serializedString = objectMapper.writeValueAsString(pipelinesDataFlowModel);
 
         InputStream inputStream = this.getClass().getResourceAsStream(RESOURCE_PATH);
+
+        final String expectedYaml = PluginModelTests.convertInputStreamToString(inputStream);
+
+        assertThat(serializedString, notNullValue());
+        assertThat(serializedString, equalTo(expectedYaml));
+    }
+
+    @Test
+    void testSerializing_PipelinesDataFlowModel_empty_Plugins_with_nonEmpty_delay_and_workers_and_route() throws JsonProcessingException {
+        String pipelineName = "test-pipeline";
+
+        final PluginModel source = new PluginModel("testSource", (Map<String, Object>) null);
+        final List<PluginModel> preppers = Collections.singletonList(new PluginModel("testPrepper", (Map<String, Object>) null));
+        final List<PluginModel> sinks = Collections.singletonList(new PluginModel("testSink", (Map<String, Object>) null));
+        final PipelineModel pipelineModel = new PipelineModel(source, null, preppers, Collections.singletonList(new ConditionalRoute("my-route", "/a==b")), sinks, 8, 50);
+
+        final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(Collections.singletonMap(pipelineName, pipelineModel));
+
+        final String serializedString = objectMapper.writeValueAsString(pipelinesDataFlowModel);
+
+        InputStream inputStream = this.getClass().getResourceAsStream(RESOURCE_PATH_WITH_ROUTE);
 
         final String expectedYaml = PluginModelTests.convertInputStreamToString(inputStream);
 
@@ -87,5 +109,47 @@ class PipelinesDataFlowModelTest {
         assertThat(pipelineModel.getSinks().size(), equalTo(1));
         assertThat(pipelineModel.getSinks().get(0), notNullValue());
         assertThat(pipelineModel.getSinks().get(0).getPluginName(), equalTo("testSink"));
+
+        assertThat(pipelineModel.getRoutes(), notNullValue());
+        assertThat(pipelineModel.getRoutes().size(), equalTo(0));
+    }
+
+    @Test
+    void deserialize_PipelinesDataFlowModel_with_route() throws IOException {
+
+        final InputStream inputStream = this.getClass().getResourceAsStream(RESOURCE_PATH_WITH_ROUTE);
+
+        final PipelinesDataFlowModel actualModel = objectMapper.readValue(inputStream, PipelinesDataFlowModel.class);
+
+        final String pipelineName = "test-pipeline";
+
+        assertThat(actualModel, notNullValue());
+        assertThat(actualModel.getPipelines(), notNullValue());
+        assertThat(actualModel.getPipelines().size(), equalTo(1));
+        assertThat(actualModel.getPipelines(), hasKey(pipelineName));
+
+        final PipelineModel pipelineModel = actualModel.getPipelines().get(pipelineName);
+
+        assertThat(pipelineModel, notNullValue());
+
+        assertThat(pipelineModel.getSource(), notNullValue());
+        assertThat(pipelineModel.getSource().getPluginName(), equalTo("testSource"));
+
+        assertThat(pipelineModel.getProcessors(), notNullValue());
+        assertThat(pipelineModel.getProcessors().size(), equalTo(1));
+        assertThat(pipelineModel.getProcessors().get(0), notNullValue());
+        assertThat(pipelineModel.getProcessors().get(0).getPluginName(), equalTo("testPrepper"));
+
+        assertThat(pipelineModel.getSinks(), notNullValue());
+        assertThat(pipelineModel.getSinks().size(), equalTo(1));
+        assertThat(pipelineModel.getSinks().get(0), notNullValue());
+        assertThat(pipelineModel.getSinks().get(0).getPluginName(), equalTo("testSink"));
+
+        assertThat(pipelineModel.getRoutes(), notNullValue());
+        assertThat(pipelineModel.getRoutes().size(), equalTo(1));
+        assertThat(pipelineModel.getRoutes().get(0), notNullValue());
+        assertThat(pipelineModel.getRoutes().get(0).getName(), equalTo("my-route"));
+        assertThat(pipelineModel.getRoutes().get(0).getCondition(), equalTo("/a==b"));
+
     }
 }

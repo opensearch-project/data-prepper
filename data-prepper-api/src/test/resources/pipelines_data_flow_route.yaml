@@ -1,0 +1,11 @@
+test-pipeline:
+  source:
+    testSource: null
+  processor:
+  - testPrepper: null
+  sink:
+  - testSink: null
+  workers: 8
+  delay: 50
+  route:
+  - my-route: "/a==b"
