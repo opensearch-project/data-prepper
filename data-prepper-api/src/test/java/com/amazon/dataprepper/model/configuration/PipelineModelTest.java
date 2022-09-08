@@ -57,8 +57,8 @@ class PipelineModelTest {
         assertThat(originalBuffer.getPluginSettings(), is(equalTo(TEST_VALID_BUFFER_PLUGIN_MODEL.getPluginSettings())));
         assertThat(originalPreppers.get(0).getPluginName(), is(equalTo(TEST_VALID_PREPPERS_PLUGIN_MODEL.getPluginName())));
         assertThat(originalPreppers.get(0).getPluginSettings(), is(equalTo(TEST_VALID_PREPPERS_PLUGIN_MODEL.getPluginSettings())));
-        assertThat(pipelineModel.getRouter(), notNullValue());
-        assertThat(pipelineModel.getRouter().size(), equalTo(1));
+        assertThat(pipelineModel.getRoutes(), notNullValue());
+        assertThat(pipelineModel.getRoutes().size(), equalTo(1));
         assertThat(originalSinks.get(0).getPluginName(), is(equalTo(TEST_VALID_SINKS_PLUGIN_MODEL.getPluginName())));
         assertThat(originalSinks.get(0).getPluginSettings(), is(equalTo(TEST_VALID_SINKS_PLUGIN_MODEL.getPluginSettings())));
         assertThat(pipelineModel.getWorkers(), is(TEST_WORKERS));
@@ -84,7 +84,7 @@ class PipelineModelTest {
     }
 
     private static List<ConditionalRoute> validPipelineRouter() {
-        return Collections.singletonList(new ConditionalRoute("router", "/a==b"));
+        return Collections.singletonList(new ConditionalRoute("my-route", "/a==b"));
     }
 
     static List<PluginModel> validSinksPluginModel() {
@@ -189,8 +189,8 @@ class PipelineModelTest {
         assertThat(pipelineModel.getWorkers(), is(TEST_WORKERS));
         assertThat(pipelineModel.getReadBatchDelay(), is(TEST_READ_BATCH_DELAY));
 
-        assertThat(pipelineModel.getRouter(), notNullValue());
-        assertThat(pipelineModel.getRouter().size(), equalTo(0));
+        assertThat(pipelineModel.getRoutes(), notNullValue());
+        assertThat(pipelineModel.getRoutes().size(), equalTo(0));
     }
 
 }
