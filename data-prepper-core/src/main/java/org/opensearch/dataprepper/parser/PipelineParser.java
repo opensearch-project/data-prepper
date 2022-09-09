@@ -18,10 +18,10 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwardingProcessorDecorator;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.PipelineConnector;
-import org.opensearch.dataprepper.peerforwarder.PeerForwarder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,14 +47,14 @@ public class PipelineParser {
     private final String pipelineConfigurationFileLocation;
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
     private final PluginFactory pluginFactory;
-    private final PeerForwarder peerForwarder;
+    private final PeerForwarderProvider peerForwarderProvider;
 
     public PipelineParser(final String pipelineConfigurationFileLocation,
                           final PluginFactory pluginFactory,
-                          final PeerForwarder peerForwarder) {
+                          final PeerForwarderProvider peerForwarderProvider) {
         this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
-        this.peerForwarder = Objects.requireNonNull(peerForwarder);
+        this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
     }
 
     /**
@@ -116,7 +116,7 @@ public class PipelineParser {
                                 if (processor instanceof RequiresPeerForwarding) {
                                     // TODO: Create buffer per stateful processor and store map of processor, buffer
                                     // TODO: get plugin id from PipelineParser
-                                    return new PeerForwardingProcessorDecorator(processor, peerForwarder, "pluginId");
+                                    return new PeerForwardingProcessorDecorator(processor, peerForwarderProvider, pipelineName, "pluginId");
                                 }
                                 return processor;
                             })

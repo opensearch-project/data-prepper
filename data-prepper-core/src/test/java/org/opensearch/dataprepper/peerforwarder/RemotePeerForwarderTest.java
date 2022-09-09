@@ -11,6 +11,7 @@ import com.amazon.dataprepper.model.log.JacksonLog;
 import com.amazon.dataprepper.model.record.Record;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -38,33 +40,36 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class PeerForwarderTest {
-    private static final String TEST_PLUGIN_ID = "test_plugin_id";
-
-    @Mock
-    PeerForwarderClientFactory peerForwarderClientFactory;
-
+class RemotePeerForwarderTest {
     @Mock
     PeerForwarderClient peerForwarderClient;
 
     @Mock
     HashRing hashRing;
+    private String pipelineName;
+    private String pluginId;
+    private Set<String> identificationKeys;
 
-    private PeerForwarder createObjectUnderTest() {
-        return new PeerForwarder(peerForwarderClientFactory, peerForwarderClient);
+    @BeforeEach
+    void setUp() {
+        pipelineName = UUID.randomUUID().toString();
+        pluginId = UUID.randomUUID().toString();
+        identificationKeys = generateIdentificationKeys();
+    }
+
+    private RemotePeerForwarder createObjectUnderTest() {
+        return new RemotePeerForwarder(peerForwarderClient, hashRing, pipelineName, pluginId, identificationKeys);
     }
 
     @Test
     void test_forwardRecords_with_two_local_ips_should_process_record_two_record_locally() {
-        when(peerForwarderClientFactory.createHashRing()).thenReturn(hashRing);
         final List<String> testIps = List.of("127.0.0.1", "128.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
         lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
 
-        PeerForwarder peerForwarder = createObjectUnderTest();
+        RemotePeerForwarder peerForwarder = createObjectUnderTest();
 
-        final List<Record<Event>> records = peerForwarder.forwardRecords(generateBatchRecords(2, false),
-                generateIdentificationKeys(), TEST_PLUGIN_ID);
+        final Collection<Record<Event>> records = peerForwarder.forwardRecords(generateBatchRecords(2, false));
         verifyNoInteractions(peerForwarderClient);
         assertThat(records.size(), equalTo(2));
     }
@@ -72,7 +77,6 @@ class PeerForwarderTest {
     @Test
     void test_forwardRecords_with_one_local_ip_and_one_remote_ip_should_process_record_one_record_locally() {
         AggregatedHttpResponse aggregatedHttpResponse = mock(AggregatedHttpResponse.class);
-        when(peerForwarderClientFactory.createHashRing()).thenReturn(hashRing);
         when(aggregatedHttpResponse.status()).thenReturn(HttpStatus.OK);
         when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString())).thenReturn(aggregatedHttpResponse);
 
@@ -80,10 +84,9 @@ class PeerForwarderTest {
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
         lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
 
-        PeerForwarder peerForwarder = createObjectUnderTest();
+        RemotePeerForwarder peerForwarder = createObjectUnderTest();
 
-        final List<Record<Event>> records = peerForwarder.forwardRecords(generateBatchRecords(2, false),
-                generateIdentificationKeys(), TEST_PLUGIN_ID);
+        final Collection<Record<Event>> records = peerForwarder.forwardRecords(generateBatchRecords(2, false));
         verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString());
         assertThat(records.size(), equalTo(1));
     }

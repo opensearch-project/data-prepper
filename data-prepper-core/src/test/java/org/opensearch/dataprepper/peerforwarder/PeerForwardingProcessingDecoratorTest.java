@@ -11,6 +11,7 @@ import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -22,6 +23,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -29,64 +31,42 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PeerForwardingProcessingDecoratorTest {
-    private static final String TEST_PLUGIN_ID = "test_plugin_id";
     private static final String TEST_IDENTIFICATION_KEY = "identification_key";
 
     private Record<Event> record;
 
     @Mock
-    Processor processor;
+    private Processor processor;
 
     @Mock
-    RequiresPeerForwarding requiresPeerForwarding;
+    private RequiresPeerForwarding requiresPeerForwarding;
 
     @Mock
-    PeerForwarder peerForwarder;
+    private PeerForwarderProvider peerForwarderProvider;
+    private String pipelineName;
+    private String pluginId;
 
     @BeforeEach
     void setUp() {
         record = mock(Record.class);
+        pipelineName = UUID.randomUUID().toString();
+        pluginId = UUID.randomUUID().toString();
     }
 
-    private PeerForwardingProcessorDecorator createObjectUnderTest(Processor processor) {
-        return new PeerForwardingProcessorDecorator(processor, peerForwarder, TEST_PLUGIN_ID);
-    }
-
-    @Test
-    void PeerForwardingProcessingDecorator_should_have_interaction_with_getIdentificationKeys() {
-        when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(Set.of(TEST_IDENTIFICATION_KEY));
-
-        createObjectUnderTest(requiresPeerForwarding);
-        verify(requiresPeerForwarding).getIdentificationKeys();
+    private PeerForwardingProcessorDecorator createObjectUnderTest(final Processor processor) {
+        return new PeerForwardingProcessorDecorator(processor, peerForwarderProvider, pipelineName, pluginId);
     }
 
     @Test
     void PeerForwardingProcessingDecorator_should_not_have_any_interactions_if_its_not_an_instance_of_RequiresPeerForwarding() {
         assertThrows(UnsupportedPeerForwarderPluginException.class, () -> createObjectUnderTest(processor));
-    }
 
-    @Test
-    void PeerForwardingProcessingDecorator_execute_should_forwardRecords_with_correct_values() {
-        Set<String> identificationKeys = Set.of(TEST_IDENTIFICATION_KEY);
-        List<Record<Event>> testData = Collections.singletonList(record);
-
-        when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(identificationKeys);
-        when(peerForwarder.forwardRecords(testData, identificationKeys, TEST_PLUGIN_ID)).thenReturn(testData);
-
-        when(requiresPeerForwarding.execute(testData)).thenReturn(testData);
-
-        final PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(requiresPeerForwarding);
-        final Collection<Record<Event>> records = objectUnderTest.execute(testData);
-
-        verify(requiresPeerForwarding).getIdentificationKeys();
-        verify(peerForwarder).forwardRecords(testData, identificationKeys, TEST_PLUGIN_ID);
-        Assertions.assertNotNull(records);
-        assertThat(records.size(), equalTo(testData.size()));
-        assertThat(records, equalTo(testData));
+        verifyNoInteractions(peerForwarderProvider);
     }
 
     @Test
@@ -96,40 +76,76 @@ class PeerForwardingProcessingDecoratorTest {
         assertThrows(EmptyPeerForwarderPluginIdentificationKeysException.class, () -> createObjectUnderTest(requiresPeerForwarding));
     }
 
-    @Test
-    void PeerForwardingProcessingDecorator_execute_will_call_inner_processors_execute() {
-        when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(Set.of(TEST_IDENTIFICATION_KEY));
-        PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(requiresPeerForwarding);
-        Collection<Record<Event>> testData = Collections.singletonList(record);
-        objectUnderTest.execute(testData);
-        verify(requiresPeerForwarding).execute(anyCollection());
-    }
+    @Nested
+    class WithRegisteredPeerForwarder {
+        @Mock
+        private RemotePeerForwarder peerForwarder;
+        private Set<String> identificationKeys;
 
-    @Test
-    void PeerForwardingProcessingDecorator_prepareForShutdown_will_call_inner_processors_prepareForShutdown() {
-        when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(Set.of(TEST_IDENTIFICATION_KEY));
-        PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(requiresPeerForwarding);
+        @BeforeEach
+        void setUp() {
+            identificationKeys = Set.of(TEST_IDENTIFICATION_KEY);
 
-        objectUnderTest.prepareForShutdown();
-        verify(requiresPeerForwarding).prepareForShutdown();
-    }
+            when(peerForwarderProvider.register(pipelineName, pluginId, identificationKeys)).thenReturn(peerForwarder);
+            when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(identificationKeys);
+        }
 
-    @Test
-    void PeerForwardingProcessingDecorator_isReadyForShutdown_will_call_inner_processors_isReadyForShutdown() {
-        when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(Set.of(TEST_IDENTIFICATION_KEY));
-        PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(requiresPeerForwarding);
+        @Test
+        void PeerForwardingProcessingDecorator_should_have_interaction_with_getIdentificationKeys() {
+            createObjectUnderTest(requiresPeerForwarding);
+            verify(requiresPeerForwarding).getIdentificationKeys();
+            verify(peerForwarderProvider).register(pipelineName, pluginId, identificationKeys);
+        }
 
-        objectUnderTest.isReadyForShutdown();
-        verify(requiresPeerForwarding).isReadyForShutdown();
-    }
+        @Test
+        void PeerForwardingProcessingDecorator_execute_should_forwardRecords_with_correct_values() {
+            List<Record<Event>> testData = Collections.singletonList(record);
 
-    @Test
-    void PeerForwardingProcessingDecorator_shutdown_will_call_inner_processors_shutdown() {
-        when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(Set.of(TEST_IDENTIFICATION_KEY));
-        PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(requiresPeerForwarding);
+            when(peerForwarder.forwardRecords(testData)).thenReturn(testData);
 
-        objectUnderTest.shutdown();
-        verify(requiresPeerForwarding).shutdown();
+            when(requiresPeerForwarding.execute(testData)).thenReturn(testData);
+
+            final PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(requiresPeerForwarding);
+            final Collection<Record<Event>> records = objectUnderTest.execute(testData);
+
+            verify(requiresPeerForwarding).getIdentificationKeys();
+            verify(peerForwarder).forwardRecords(testData);
+            Assertions.assertNotNull(records);
+            assertThat(records.size(), equalTo(testData.size()));
+            assertThat(records, equalTo(testData));
+        }
+
+        @Test
+        void PeerForwardingProcessingDecorator_execute_will_call_inner_processors_execute() {
+            PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(requiresPeerForwarding);
+            Collection<Record<Event>> testData = Collections.singletonList(record);
+            objectUnderTest.execute(testData);
+            verify(requiresPeerForwarding).execute(anyCollection());
+        }
+
+        @Test
+        void PeerForwardingProcessingDecorator_prepareForShutdown_will_call_inner_processors_prepareForShutdown() {
+            PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(requiresPeerForwarding);
+
+            objectUnderTest.prepareForShutdown();
+            verify(requiresPeerForwarding).prepareForShutdown();
+        }
+
+        @Test
+        void PeerForwardingProcessingDecorator_isReadyForShutdown_will_call_inner_processors_isReadyForShutdown() {
+            PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(requiresPeerForwarding);
+
+            objectUnderTest.isReadyForShutdown();
+            verify(requiresPeerForwarding).isReadyForShutdown();
+        }
+
+        @Test
+        void PeerForwardingProcessingDecorator_shutdown_will_call_inner_processors_shutdown() {
+            PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(requiresPeerForwarding);
+
+            objectUnderTest.shutdown();
+            verify(requiresPeerForwarding).shutdown();
+        }
     }
 
 }
