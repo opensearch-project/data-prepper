@@ -12,11 +12,11 @@ First, please read our [contribution guide](../CONTRIBUTING.md) for more informa
 
 Building Data Prepper requires JDK 11 or 17. The Data Prepper Gradle build runs in a Java 11 or 17 JVM, but uses
 [Gradle toolchains](https://docs.gradle.org/current/userguide/toolchains.html) to compile the Java
-code using Java 8. If you have a JDK 8 installed locally, Gradle will use your installed JDK 8. If you
-do not, Gradle will install JDK 8.
+code using Java 11. If you have a JDK 11 installed locally, Gradle will use your installed JDK 11. If you
+do not, Gradle will install JDK 11.
 
-All main source code builds on JDK 8, so it must be compatible with Java 8. The test code
-(unit and integration tests) runs using JDK 11 and may use Java 11 features.
+All main source code builds on JDK 11, so it must be compatible with Java 11. The test code
+(unit and integration tests) runs using JDK 11.
 
 
 ## Building from source
