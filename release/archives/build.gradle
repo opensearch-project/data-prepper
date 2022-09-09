@@ -140,10 +140,7 @@ CopySpec archiveToTar() {
         into('config') {
             from("${rootDir}/shared-config/log4j2-rolling.properties")
             from("${rootDir}/examples/config/example-data-prepper-config.yaml")
-                    .rename("example-data-prepper-config.yaml", "data-prepper-config.yaml")
-        }
-        into('pipelines') {
-            from("${rootDir}/examples/config/example-pipelines.yaml").rename("example-pipelines.yaml", "pipelines.yaml")
+            from("${rootDir}/examples/config/example-pipelines.yaml")
         }
         into('') {
             from("${rootDir}/LICENSE")
