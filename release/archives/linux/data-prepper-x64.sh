@@ -4,13 +4,6 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 #
-if [[ $# -ne 0 ]]
-  then
-    echo
-    echo "Invalid number of arguments. Expected 0, received $#"
-    echo
-    exit 1
-fi
 
 MIN_REQ_JAVA_VERSION=11
 MIN_REQ_OPENJDK_VERSION=11

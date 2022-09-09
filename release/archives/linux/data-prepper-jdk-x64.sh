@@ -4,13 +4,6 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 #
-if [[ $# -ne 0 ]]
-  then
-    echo
-    echo "Invalid number of arguments. Expected 0, received $#"
-    echo
-    exit 1
-fi
 
 DATA_PREPPER_BIN=$(dirname "$(realpath "$0")")
 DATA_PREPPER_HOME=`realpath "$DATA_PREPPER_BIN/.."`
