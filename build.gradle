@@ -69,22 +69,9 @@ subprojects {
 
     java {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(8)
-        }
-    }
-    tasks.withType(JavaCompile).findAll { task -> task.name.containsIgnoreCase('test') }.forEach { task ->
-        task.configure {
-            javaCompiler = javaToolchains.compilerFor {
-                languageVersion = JavaLanguageVersion.of(11)
-            }
-        }
-    }
-    tasks.withType(Test).configureEach() {
-        javaLauncher = javaToolchains.launcherFor {
             languageVersion = JavaLanguageVersion.of(11)
         }
     }
-
 
     spotless {
         java {
