@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpServerProvider;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServer;
+import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServerProxy;
 import org.opensearch.dataprepper.peerforwarder.server.ResponseHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -88,7 +89,7 @@ public class PeerForwarderAppConfig {
                 certificateProviderFactory, peerForwarderHttpService);
     }
 
-    @Bean(name="peerForwarderServer")
+    @Bean(name="peerForwarderHttpServer")
     public Server server(
             final PeerForwarderHttpServerProvider peerForwarderHttpServerProvider
     ) {
@@ -97,9 +98,9 @@ public class PeerForwarderAppConfig {
 
     @Bean
     public PeerForwarderServer peerForwarderServer(
-            @Qualifier("peerForwarderServer") final Server peerForwarderServer,
+            @Qualifier("peerForwarderHttpServer") final Server peerForwarderServer,
             final PeerForwarderConfiguration peerForwarderConfiguration) {
-        return new PeerForwarderServer(peerForwarderConfiguration, peerForwarderServer);
+        return new PeerForwarderServerProxy(peerForwarderConfiguration, peerForwarderServer);
     }
 
 }
