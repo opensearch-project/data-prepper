@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.parser.config;
 
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.parser.PipelineParser;
-import org.opensearch.dataprepper.peerforwarder.PeerForwarder;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -18,10 +18,10 @@ public class PipelineParserConfiguration {
     public PipelineParser pipelineParser(
             final DataPrepperArgs dataPrepperArgs,
             final PluginFactory pluginFactory,
-            final PeerForwarder peerForwarder
+            final PeerForwarderProvider peerForwarderProvider
             ) {
         return new PipelineParser(dataPrepperArgs.getPipelineConfigFileLocation(),
                 pluginFactory,
-                peerForwarder);
+                peerForwarderProvider);
     }
 }
