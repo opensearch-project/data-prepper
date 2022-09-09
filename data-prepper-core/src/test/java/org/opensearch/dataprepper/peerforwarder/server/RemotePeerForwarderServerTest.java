@@ -21,7 +21,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class PeerForwarderServerTest {
+class RemotePeerForwarderServerTest {
 
     @Mock
     Server server;
@@ -32,16 +32,16 @@ class PeerForwarderServerTest {
     @Mock
     CompletableFuture<Void> completableFuture;
 
-    private PeerForwarderServer createObjectUnderTest() {
-        return new PeerForwarderServer(peerForwarderConfiguration, server);
+    private RemotePeerForwarderServer createObjectUnderTest() {
+        return new RemotePeerForwarderServer(peerForwarderConfiguration, server);
     }
 
     @Test
     void start_should_invoke_server_start() throws ExecutionException, InterruptedException {
         when(server.start()).thenReturn(completableFuture);
         when(completableFuture.get()).thenReturn(mock(Void.class));
-        final PeerForwarderServer peerForwarderServer = createObjectUnderTest();
-        peerForwarderServer.start();
+        final RemotePeerForwarderServer remotePeerForwarderServer = createObjectUnderTest();
+        remotePeerForwarderServer.start();
 
         verify(server).start();
     }
@@ -50,26 +50,26 @@ class PeerForwarderServerTest {
     void start_should_throw_if_future_completed_exceptionally() throws ExecutionException, InterruptedException {
         when(server.start()).thenReturn(completableFuture);
         when(completableFuture.get()).thenThrow(ExecutionException.class);
-        final PeerForwarderServer peerForwarderServer = createObjectUnderTest();
+        final RemotePeerForwarderServer remotePeerForwarderServer = createObjectUnderTest();
 
-        assertThrows(RuntimeException.class, peerForwarderServer::start);
+        assertThrows(RuntimeException.class, remotePeerForwarderServer::start);
     }
 
     @Test
     void start_should_throw_if_current_thread_is_interrupted() throws ExecutionException, InterruptedException {
         when(server.start()).thenReturn(completableFuture);
         when(completableFuture.get()).thenThrow(InterruptedException.class);
-        final PeerForwarderServer peerForwarderServer = createObjectUnderTest();
+        final RemotePeerForwarderServer remotePeerForwarderServer = createObjectUnderTest();
 
-        assertThrows(RuntimeException.class, peerForwarderServer::start);
+        assertThrows(RuntimeException.class, remotePeerForwarderServer::start);
     }
 
     @Test
     void stop_should_invoke_server_stop() throws ExecutionException, InterruptedException {
         when(server.stop()).thenReturn(completableFuture);
         when(completableFuture.get()).thenReturn(mock(Void.class));
-        final PeerForwarderServer peerForwarderServer = createObjectUnderTest();
-        peerForwarderServer.stop();
+        final RemotePeerForwarderServer remotePeerForwarderServer = createObjectUnderTest();
+        remotePeerForwarderServer.stop();
 
         verify(server).stop();
     }
@@ -78,17 +78,17 @@ class PeerForwarderServerTest {
     void stop_should_throw_if_future_completed_exceptionally() throws ExecutionException, InterruptedException {
         when(server.stop()).thenReturn(completableFuture);
         when(completableFuture.get()).thenThrow(ExecutionException.class);
-        final PeerForwarderServer peerForwarderServer = createObjectUnderTest();
+        final RemotePeerForwarderServer remotePeerForwarderServer = createObjectUnderTest();
 
-        assertThrows(RuntimeException.class, peerForwarderServer::stop);
+        assertThrows(RuntimeException.class, remotePeerForwarderServer::stop);
     }
 
     @Test
     void stop_should_throw_if_current_thread_is_interrupted() throws ExecutionException, InterruptedException {
         when(server.stop()).thenReturn(completableFuture);
         when(completableFuture.get()).thenThrow(InterruptedException.class);
-        final PeerForwarderServer peerForwarderServer = createObjectUnderTest();
+        final RemotePeerForwarderServer remotePeerForwarderServer = createObjectUnderTest();
 
-        assertThrows(RuntimeException.class, peerForwarderServer::stop);
+        assertThrows(RuntimeException.class, remotePeerForwarderServer::stop);
     }
 }
