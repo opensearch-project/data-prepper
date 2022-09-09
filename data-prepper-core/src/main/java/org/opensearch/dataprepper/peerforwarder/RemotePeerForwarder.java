@@ -25,20 +25,17 @@ import java.util.Map;
 import java.util.Set;
 
 class RemotePeerForwarder implements PeerForwarder {
-    private final PeerForwarderClientFactory peerForwarderClientFactory;
     private final PeerForwarderClient peerForwarderClient;
     private final HashRing hashRing;
     private final String pipelineName;
     private final String pluginId;
     private final Set<String> identificationKeys;
 
-    RemotePeerForwarder(final PeerForwarderClientFactory peerForwarderClientFactory,
-                        final PeerForwarderClient peerForwarderClient,
+    RemotePeerForwarder(final PeerForwarderClient peerForwarderClient,
                         final HashRing hashRing,
                         final String pipelineName,
                         final String pluginId,
                         final Set<String> identificationKeys) {
-        this.peerForwarderClientFactory = peerForwarderClientFactory;
         this.peerForwarderClient = peerForwarderClient;
         this.hashRing = hashRing;
         this.pipelineName = pipelineName;

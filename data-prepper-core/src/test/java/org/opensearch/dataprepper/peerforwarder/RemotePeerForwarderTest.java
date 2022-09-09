@@ -42,9 +42,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class RemotePeerForwarderTest {
     @Mock
-    PeerForwarderClientFactory peerForwarderClientFactory;
-
-    @Mock
     PeerForwarderClient peerForwarderClient;
 
     @Mock
@@ -61,7 +58,7 @@ class RemotePeerForwarderTest {
     }
 
     private RemotePeerForwarder createObjectUnderTest() {
-        return new RemotePeerForwarder(peerForwarderClientFactory, peerForwarderClient, hashRing, pipelineName, pluginId, identificationKeys);
+        return new RemotePeerForwarder(peerForwarderClient, hashRing, pipelineName, pluginId, identificationKeys);
     }
 
     @Test

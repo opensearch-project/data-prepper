@@ -29,6 +29,6 @@ public class PeerForwarderProvider {
         }
 
         // TODO: Support a local-only PeerForwarder when no peers are configured.
-        return new RemotePeerForwarder(peerForwarderClientFactory, peerForwarderClient, hashRing, pipelineName, pluginId, identificationKeys);
+        return new RemotePeerForwarder(peerForwarderClient, hashRing, pipelineName, pluginId, identificationKeys);
     }
 }
