@@ -195,5 +195,5 @@ fi
 
 echo -e "Using tarball source ${TAR_SOURCE_TYPE}"
 
-run_smoke_test "openjdk" "8" "opensearch-data-prepper"
+run_smoke_test "openjdk" "11" "opensearch-data-prepper"
 run_smoke_test "ubuntu" "latest" "opensearch-data-prepper-jdk"
