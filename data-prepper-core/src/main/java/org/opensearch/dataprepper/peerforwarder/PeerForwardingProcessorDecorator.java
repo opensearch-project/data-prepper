@@ -23,32 +23,31 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
     private final Processor innerProcessor;
     private final PeerForwarder peerForwarder;
     private final String pluginId;
-    private Set<String> identificationKeys;
+    private final Set<String> identificationKeys;
 
     public PeerForwardingProcessorDecorator(final Processor innerProcessor,
-                                            final PeerForwarder peerForwarder,
-                                            final String pluginId
-                                            ) {
+                                            final PeerForwarderProvider peerForwarderProvider,
+                                            final String pipelineName,
+                                            final String pluginId) {
         this.innerProcessor = innerProcessor;
-        this.peerForwarder = peerForwarder;
         this.pluginId = pluginId;
 
         if (innerProcessor instanceof RequiresPeerForwarding) {
             identificationKeys = ((RequiresPeerForwarding) innerProcessor).getIdentificationKeys();
-        }
-        else {
+        } else {
             throw new UnsupportedPeerForwarderPluginException("Peer Forwarding is only supported for plugins which implement RequiresPeerForwarding interface.");
         }
         if (identificationKeys.isEmpty()) {
             throw new EmptyPeerForwarderPluginIdentificationKeysException("Peer Forwarder Plugin: %s cannot have empty identification keys." + pluginId);
         }
+        this.peerForwarder = peerForwarderProvider.register(pipelineName, pluginId, identificationKeys);
         // TODO: remove this log message after implementing peer forwarder
         LOG.info("Peer Forwarder not implemented yet, processing events locally.");
     }
 
     @Override
     public Collection<Record<Event>> execute(final Collection<Record<Event>> records) {
-        final Collection<Record<Event>> recordsToProcessLocally = peerForwarder.forwardRecords(records, identificationKeys, pluginId);
+        final Collection<Record<Event>> recordsToProcessLocally = peerForwarder.forwardRecords(records);
 
         return innerProcessor.execute(recordsToProcessLocally);
     }

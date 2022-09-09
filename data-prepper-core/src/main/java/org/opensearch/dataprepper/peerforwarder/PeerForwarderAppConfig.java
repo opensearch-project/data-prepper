@@ -21,7 +21,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class PeerForwarderAppConfig {
+class PeerForwarderAppConfig {
 
     @Bean
     public PeerForwarderConfiguration peerForwarderConfiguration(
@@ -61,11 +61,10 @@ public class PeerForwarderAppConfig {
     }
 
     @Bean
-    public PeerForwarder peerForwarder(final PeerForwarderClientFactory peerForwarderClientFactory,
-                                       final PeerForwarderClient peerForwarderClient) {
-        return new PeerForwarder(peerForwarderClientFactory, peerForwarderClient);
+    public PeerForwarderProvider peerForwarderProvider(final PeerForwarderClientFactory peerForwarderClientFactory,
+                                                       final PeerForwarderClient peerForwarderClient) {
+        return new PeerForwarderProvider(peerForwarderClientFactory, peerForwarderClient);
     }
-
     @Bean
     public ResponseHandler responseHandler() {
         return new ResponseHandler();
