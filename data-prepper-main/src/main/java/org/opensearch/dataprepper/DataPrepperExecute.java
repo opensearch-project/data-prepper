@@ -19,7 +19,14 @@ public class DataPrepperExecute {
     public static void main(final String ... args) {
         java.security.Security.setProperty("networkaddress.cache.ttl", "60");
 
-        final ContextManager contextManager = new ContextManager();
+        final String dataPrepperHome = System.getProperty("data-prepper.dir");
+        if (dataPrepperHome == null) {
+            throw new RuntimeException("Data Prepper home directory (data-prepper.dir) not set in system properties.");
+        }
+
+        final String dataPrepperPipelines = dataPrepperHome + "/pipelines/pipelines.yaml";
+        final String dataPrepperConfig = dataPrepperHome + "/config/data-prepper-config.yaml";
+        final ContextManager contextManager = new ContextManager(dataPrepperPipelines, dataPrepperConfig);
         final DataPrepper dataPrepper = contextManager.getDataPrepperBean();
 
         LOG.trace("Starting Data Prepper execution");
