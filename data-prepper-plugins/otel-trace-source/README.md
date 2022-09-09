@@ -7,8 +7,15 @@ This is a source which follows the [OTLP Protocol](https://github.com/open-telem
 Example `.yaml` configuration:
 ```yaml
 source:
-    otel_trace_source:
+  otel_trace_source:
+    record_type: event
 ```
+
+### Migrating to Data Prepper 2.0
+
+This documentation uses the `record_type: event` configuration which is compatible with Data Prepper 1.4 and above. For
+more information see _Migrating to Data Prepper 2.0_ in the 
+[Trace Analytics documentation](https://github.com/opensearch-project/data-prepper/blob/main/docs/trace_analytics.md).
 
 ## Configurations
 
@@ -21,6 +28,7 @@ source:
 * thread_count(Optional) => the number of threads to keep in the ScheduledThreadPool. Default is `200`.
 * max_connection_count(Optional) => the maximum allowed number of open connections. Default is `500`. 
 * authentication(Optional) => An authentication configuration. By default, this runs an unauthenticated server. See below for more information.
+* record_type(Optional) => A string represents the supported record data type that is written into the buffer plugin. Value options are `otlp` or `event`. Default is `otlp`.
 
 ### Authentication Configurations
 
@@ -31,6 +39,7 @@ The following is an example of how to run the server with HTTP Basic authenticat
 ```yaml
 source:
   otel_trace_source:
+    record_type: event
     authentication:
       http_basic:
         username: my-user
@@ -42,6 +51,7 @@ You can also explicitly disable authentication with:
 ```yaml
 source:
   otel_trace_source:
+    record_type: event
     authentication:
       unauthenticated:
 ```
@@ -66,10 +76,11 @@ Create the following otel-trace-source configuration in your `pipeline.yaml`.
 ```yaml
 source:
   otel_trace_source:
-      ssl: true
-      sslKeyCertChainFile: "/full/path/to/certfile.crt"
-      sslKeyFile: "/full/path/to/keyfile.key"
-      unframed_requests: true
+    record_type: event
+    ssl: true
+    sslKeyCertChainFile: "/full/path/to/certfile.crt"
+    sslKeyFile: "/full/path/to/keyfile.key"
+    unframed_requests: true
 ```
 
 Generate a private key named `keyfile.key`, along with a self-signed certificate named `certfile.crt`.
