@@ -55,7 +55,7 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     implementation "org.apache.commons:commons-lang3:3.12.0"
     testImplementation 'commons-io:commons-io:2.11.0'
-    testImplementation 'net.bytebuddy:byte-buddy:1.12.14'
+    testImplementation 'net.bytebuddy:byte-buddy:1.12.16'
     testImplementation 'net.bytebuddy:byte-buddy-agent:1.12.14'
     testImplementation 'org.slf4j:slf4j-simple:1.7.36'
 }
