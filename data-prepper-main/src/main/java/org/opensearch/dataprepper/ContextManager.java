@@ -26,6 +26,14 @@ public class ContextManager {
 
     private final AnnotationConfigApplicationContext coreApplicationContext;
 
+    private static final String DATA_PREPPER_HOME = System.getProperty("user.dir");
+    private static final String PIPELINES_CONFIG = DATA_PREPPER_HOME + "/pipelines/pipelines.yaml";
+    private static final String DATA_PREPPER_CONFIG = DATA_PREPPER_HOME + "/config/data-prepper-config.yaml";
+
+    public ContextManager() {
+        this(PIPELINES_CONFIG, DATA_PREPPER_CONFIG);
+    }
+
     /**
      * @since 1.3
      * @param args Application command line arguments

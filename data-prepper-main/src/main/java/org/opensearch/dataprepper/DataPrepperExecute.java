@@ -19,7 +19,7 @@ public class DataPrepperExecute {
     public static void main(final String ... args) {
         java.security.Security.setProperty("networkaddress.cache.ttl", "60");
 
-        final ContextManager contextManager = new ContextManager(args);
+        final ContextManager contextManager = new ContextManager();
         final DataPrepper dataPrepper = contextManager.getDataPrepperBean();
 
         LOG.trace("Starting Data Prepper execution");

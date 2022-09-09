@@ -4,17 +4,14 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 #
-if [[ $# -ne 2 ]]
+if [[ $# -ne 0 ]]
   then
     echo
-    echo "Error: Paths to pipeline and data-prepper configuration files are required. Example:"
-    echo "./bin/data-prepper config/example-pipelines.yaml config/example-data-prepper-config.yaml"
+    echo "Invalid number of arguments. Expected 0, received $#"
     echo
     exit 1
 fi
 
-PIPELINES_FILE_LOCATION=$1
-CONFIG_FILE_LOCATION=$2
 MIN_REQ_JAVA_VERSION=11
 MIN_REQ_OPENJDK_VERSION=11
 DATA_PREPPER_BIN=$(dirname "$(realpath "$0")")
@@ -53,4 +50,4 @@ then
 fi
 
 DATA_PREPPER_JAVA_OPTS="-Dlog4j.configurationFile=$DATA_PREPPER_HOME/config/log4j2-rolling.properties"
-java $JAVA_OPTS $DATA_PREPPER_JAVA_OPTS -cp "$DATA_PREPPER_CLASSPATH" org.opensearch.dataprepper.DataPrepperExecute $PIPELINES_FILE_LOCATION $CONFIG_FILE_LOCATION
+java $JAVA_OPTS $DATA_PREPPER_JAVA_OPTS -cp "$DATA_PREPPER_CLASSPATH" org.opensearch.dataprepper.DataPrepperExecute
