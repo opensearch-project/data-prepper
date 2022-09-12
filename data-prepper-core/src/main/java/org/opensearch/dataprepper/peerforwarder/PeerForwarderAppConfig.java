@@ -102,8 +102,9 @@ class PeerForwarderAppConfig {
     @Bean
     public PeerForwarderServer peerForwarderServer(
             @Qualifier("peerForwarderHttpServer") final Server peerForwarderServer,
-            final PeerForwarderConfiguration peerForwarderConfiguration) {
-        return new PeerForwarderServerProxy(peerForwarderConfiguration, peerForwarderServer);
+            final PeerForwarderConfiguration peerForwarderConfiguration,
+            final PeerForwarderProvider peerForwarderProvider) {
+        return new PeerForwarderServerProxy(peerForwarderConfiguration, peerForwarderServer, peerForwarderProvider);
     }
 
 }
