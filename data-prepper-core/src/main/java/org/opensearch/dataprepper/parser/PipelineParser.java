@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -104,7 +105,8 @@ public class PipelineParser {
                 throw new ParseException(format("Pipeline configuration file %s not found.", configurationLocation), e);
             }
         } else if (configurationLocation.isDirectory()) {
-            List<InputStream> configurationFiles = Stream.of(configurationLocation.listFiles()).map(file -> {
+            FileFilter yamlFilter = pathname -> (pathname.getName().endsWith(".yaml") || pathname.getName().endsWith(".yml"));
+            List<InputStream> configurationFiles = Stream.of(configurationLocation.listFiles(yamlFilter)).map(file -> {
                 try {
                     return new FileInputStream(file);
                 } catch (FileNotFoundException e) {
