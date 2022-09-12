@@ -39,7 +39,7 @@ class PluginArgumentsContext {
 
         typedArgumentsSuppliers = new HashMap<>();
 
-        typedArgumentsSuppliers.put(builder.pluginSetting.getClass(), () -> builder.pluginSetting);
+        typedArgumentsSuppliers.put(PluginSetting.class, () -> builder.pluginSetting);
 
         if(builder.pluginConfiguration != null) {
             typedArgumentsSuppliers.put(builder.pluginConfiguration.getClass(), () -> builder.pluginConfiguration);

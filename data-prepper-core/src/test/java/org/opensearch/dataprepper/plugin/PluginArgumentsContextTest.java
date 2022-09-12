@@ -18,6 +18,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 
+import java.util.Map;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -43,6 +45,12 @@ class PluginArgumentsContextTest {
 
     private static class TestPluginConfiguration { }
 
+    private static class SubPluginSetting extends PluginSetting {
+        public SubPluginSetting(final String name, final Map<String, Object> settings) {
+            super(name, settings);
+        }
+    }
+
     @Test
     void createArguments_with_unavailable_argument_should_throw() {
         final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
@@ -62,6 +70,18 @@ class PluginArgumentsContextTest {
 
         assertThat(objectUnderTest.createArguments(new Class[] { TestPluginConfiguration.class }),
                 equalTo(new Object[] { testPluginConfiguration}));
+    }
+
+    @Test
+    void createArguments_with_single_class_when_PluginSetting_is_inherited() {
+        pluginSetting = mock(SubPluginSetting.class);
+        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+                .withPluginConfiguration(testPluginConfiguration)
+                .withPluginSetting(pluginSetting)
+                .build();
+
+        assertThat(objectUnderTest.createArguments(new Class[] { PluginSetting.class }),
+                equalTo(new Object[] { pluginSetting}));
     }
 
     @Test
