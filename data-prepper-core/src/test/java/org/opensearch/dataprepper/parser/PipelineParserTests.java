@@ -121,6 +121,28 @@ class PipelineParserTests {
     void parseConfiguration_with_a_configuration_file_which_does_not_exist_should_throw() {
         final PipelineParser pipelineParser = new PipelineParser("file_does_no_exist.yml", pluginFactory, peerForwarderProvider);
         final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
-        assertThat(actualException.getMessage(), equalTo("Failed to parse the configuration file file_does_no_exist.yml"));
+        assertThat(actualException.getMessage(), equalTo("Pipelines configuration file not found at file_does_no_exist.yml"));
+    }
+
+    @Test
+    void parseConfiguration_from_directory_with_multiple_files_creates_the_correct_pipelineMap() {
+        final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.MULTI_FILE_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarder);
+        final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
+        assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
+    }
+
+    @Test
+    void parseConfiguration_from_directory_with_single_file_creates_the_correct_pipelineMap() {
+        final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.SINGLE_FILE_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarder);
+        final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
+        assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
+    }
+
+    @Test
+    void parseConfiguration_from_directory_with_no_files_should_throw() {
+        final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.EMPTY_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarder);
+        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
+        assertThat(actualException.getMessage(), equalTo(
+                String.format("Pipelines configuration file not found at %s", TestDataProvider.EMPTY_PIPELINE_DIRECTOTRY)));
     }
 }
