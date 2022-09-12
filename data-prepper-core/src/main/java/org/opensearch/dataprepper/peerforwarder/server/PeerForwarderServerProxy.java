@@ -26,7 +26,7 @@ public class PeerForwarderServerProxy implements PeerForwarderServer {
 
     @Override
     public void start() {
-        if (peerForwarderProvider.isAtLeastOnePeerForwarderRegistered()) {
+        if (peerForwarderProvider.isPeerForwardingRequired()) {
             peerForwarderServer = new RemotePeerForwarderServer(peerForwarderConfiguration, server);
         }
         else {

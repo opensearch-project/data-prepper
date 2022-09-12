@@ -44,7 +44,7 @@ class PeerForwarderServerProxyTest {
     void start_should_start_server_if_peers_are_registered() throws ExecutionException, InterruptedException {
         when(server.start()).thenReturn(completableFuture);
         when(completableFuture.get()).thenReturn(mock(Void.class));
-        when(peerForwarderProvider.isAtLeastOnePeerForwarderRegistered()).thenReturn(true);
+        when(peerForwarderProvider.isPeerForwardingRequired()).thenReturn(true);
 
         final PeerForwarderServerProxy objectUnderTest = createObjectUnderTest();
         objectUnderTest.start();
@@ -71,7 +71,7 @@ class PeerForwarderServerProxyTest {
         when(server.start()).thenReturn(completableFuture);
         when(server.stop()).thenReturn(completableFuture);
         when(completableFuture.get()).thenReturn(mock(Void.class));
-        when(peerForwarderProvider.isAtLeastOnePeerForwarderRegistered()).thenReturn(true);
+        when(peerForwarderProvider.isPeerForwardingRequired()).thenReturn(true);
 
         final PeerForwarderServerProxy objectUnderTest = createObjectUnderTest();
         objectUnderTest.start();
@@ -81,7 +81,7 @@ class PeerForwarderServerProxyTest {
 
     @Test
     void stop_should_do_nothing_if_noop_server_is_started() {
-        when(peerForwarderProvider.isAtLeastOnePeerForwarderRegistered()).thenReturn(false);
+        when(peerForwarderProvider.isPeerForwardingRequired()).thenReturn(false);
 
         final PeerForwarderServerProxy objectUnderTest = createObjectUnderTest();
         objectUnderTest.start();
