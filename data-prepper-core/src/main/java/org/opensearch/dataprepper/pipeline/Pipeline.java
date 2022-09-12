@@ -35,7 +35,6 @@ import static java.lang.String.format;
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class Pipeline {
     private static final Logger LOG = LoggerFactory.getLogger(Pipeline.class);
-    private static final int PROCESSOR_DEFAULT_TERMINATION_IN_MILLISECONDS = 10_000;
     private volatile boolean stopRequested;
 
     private final String name;
@@ -45,6 +44,7 @@ public class Pipeline {
     private final List<Sink> sinks;
     private final int processorThreads;
     private final int readBatchTimeoutInMillis;
+    private final long processorShutdownTimeoutInMillis;
     private final ExecutorService processorExecutorService;
     private final ExecutorService sinkExecutorService;
 
@@ -71,7 +71,8 @@ public class Pipeline {
             @Nonnull final List<List<Processor>> processorSets,
             @Nonnull final List<Sink> sinks,
             final int processorThreads,
-            final int readBatchTimeoutInMillis) {
+            final int readBatchTimeoutInMillis,
+            final long processorShutdownTimeoutInMillis) {
         Preconditions.checkArgument(processorSets.stream().allMatch(
                 processorSet -> Objects.nonNull(processorSet) && (processorSet.size() == 1 || processorSet.size() == processorThreads)));
         this.name = name;
@@ -81,6 +82,7 @@ public class Pipeline {
         this.sinks = sinks;
         this.processorThreads = processorThreads;
         this.readBatchTimeoutInMillis = readBatchTimeoutInMillis;
+        this.processorShutdownTimeoutInMillis = processorShutdownTimeoutInMillis;
         this.processorExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(processorThreads,
                 new PipelineThreadFactory(format("%s-processor-worker", name)), this);
 
@@ -163,13 +165,6 @@ public class Pipeline {
     }
 
     /**
-     * Initiates shutdown of the pipeline.
-     */
-    public void shutdown() {
-        shutdown(PROCESSOR_DEFAULT_TERMINATION_IN_MILLISECONDS);
-    }
-
-    /**
      * Initiates shutdown of the pipeline by:
      * 1. Stopping the source to prevent new items from being consumed
      * 2. Notifying processors to prepare for shutdown (e.g. flushing batched items)
@@ -177,12 +172,10 @@ public class Pipeline {
      * 4. Stopping the ProcessWorkers if they are unable to exit gracefully
      * 5. Shutting down processors and sinks
      * 6. Stopping the sink ExecutorService
-     *
-     * @param processorTimeout the maximum time to wait after initiating shutdown to forcefully shutdown process worker
      */
-    public void shutdown(int processorTimeout) {
-        LOG.info("Pipeline [{}] - Received shutdown signal with timeout {}, will initiate the shutdown process",
-                name, processorTimeout);
+    public void shutdown() {
+        LOG.info("Pipeline [{}] - Received shutdown signal with processor shutdown timeout {}, will initiate the shutdown process",
+                name, processorShutdownTimeoutInMillis);
         try {
             source.stop();
             stopRequested = true;
@@ -192,15 +185,15 @@ public class Pipeline {
                     "proceeding with termination of process workers", name);
         }
 
-        shutdownExecutorService(processorExecutorService, processorTimeout);
+        shutdownExecutorService(processorExecutorService, processorShutdownTimeoutInMillis);
 
         processorSets.forEach(processorSet -> processorSet.forEach(Processor::shutdown));
         sinks.forEach(Sink::shutdown);
 
-        shutdownExecutorService(sinkExecutorService, processorTimeout);
+        shutdownExecutorService(sinkExecutorService, processorShutdownTimeoutInMillis);
     }
 
-    private void shutdownExecutorService(final ExecutorService executorService, int timeoutForTerminationInMillis) {
+    private void shutdownExecutorService(final ExecutorService executorService, long timeoutForTerminationInMillis) {
         LOG.info("Pipeline [{}] - Shutting down process workers", name);
 
         executorService.shutdown();

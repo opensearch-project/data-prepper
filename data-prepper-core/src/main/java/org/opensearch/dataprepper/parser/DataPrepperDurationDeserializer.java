@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugin;
+package org.opensearch.dataprepper.parser;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -22,15 +22,15 @@ import java.util.regex.Pattern;
  * Whitespace is ignored and leading zeroes are not allowed.
  * @since 1.3
  */
-class PluginDurationDeserializer extends StdDeserializer<Duration> {
+public class DataPrepperDurationDeserializer extends StdDeserializer<Duration> {
 
     private static final String SIMPLE_DURATION_REGEX = "^([1-9]\\d*)(s|ms)$";
     private static final Pattern SIMPLE_DURATION_PATTERN = Pattern.compile(SIMPLE_DURATION_REGEX);
 
-    public PluginDurationDeserializer() {
+    public DataPrepperDurationDeserializer() {
         this(null);
     }
-    protected PluginDurationDeserializer(Class<?> vc) {
+    protected DataPrepperDurationDeserializer(Class<?> vc) {
         super(vc);
     }
 

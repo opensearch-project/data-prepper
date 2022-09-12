@@ -17,6 +17,7 @@ import com.amazon.dataprepper.model.source.Source;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwardingProcessorDecorator;
@@ -45,16 +46,19 @@ public class PipelineParser {
     private static final String PIPELINE_TYPE = "pipeline";
     private static final String ATTRIBUTE_NAME = "name";
     private final String pipelineConfigurationFileLocation;
+    private final DataPrepperConfiguration dataPrepperConfiguration;
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
     private final PluginFactory pluginFactory;
     private final PeerForwarderProvider peerForwarderProvider;
 
     public PipelineParser(final String pipelineConfigurationFileLocation,
                           final PluginFactory pluginFactory,
-                          final PeerForwarderProvider peerForwarderProvider) {
+                          final PeerForwarderProvider peerForwarderProvider,
+                          final DataPrepperConfiguration dataPrepperConfiguration) {
         this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
+        this.dataPrepperConfiguration = Objects.requireNonNull(dataPrepperConfiguration);
     }
 
     /**
@@ -130,7 +134,8 @@ public class PipelineParser {
                     .map(this::buildSinkOrConnector)
                     .collect(Collectors.toList());
 
-            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, decoratedProcessorSets, sinks, processorThreads, readBatchDelay);
+            final long processorShutdownTimeout = dataPrepperConfiguration.getProcessorShutdownTimeout().toMillis();
+            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, decoratedProcessorSets, sinks, processorThreads, readBatchDelay, processorShutdownTimeout);
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
             //If pipeline construction errors out, we will skip that pipeline and proceed

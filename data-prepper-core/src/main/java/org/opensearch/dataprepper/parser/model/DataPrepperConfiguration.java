@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -21,6 +22,8 @@ import java.util.Map;
  * Class to hold configuration for DataPrepper, including server port and Log4j settings
  */
 public class DataPrepperConfiguration {
+    static final Duration DEFAULT_SHUTDOWN_DURATION = Duration.ofSeconds(10L);
+
     static final int MAX_TAGS_NUMBER = 3;
     private static final List<MetricRegistryType> DEFAULT_METRIC_REGISTRY_TYPE = Collections.singletonList(MetricRegistryType.Prometheus);
     private int serverPort = 4900;
@@ -32,6 +35,7 @@ public class DataPrepperConfiguration {
     private PluginModel authentication;
     private Map<String, String> metricTags = new HashMap<>();
     private PeerForwarderConfiguration peerForwarderConfiguration;
+    private Duration processorShutdownTimeout;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
 
@@ -50,7 +54,8 @@ public class DataPrepperConfiguration {
             @JsonProperty("metricRegistries") final List<MetricRegistryType> metricRegistries,
             @JsonProperty("authentication") final PluginModel authentication,
             @JsonProperty("metricTags") final Map<String, String> metricTags,
-            @JsonProperty("peer_forwarder") final PeerForwarderConfiguration peerForwarderConfiguration
+            @JsonProperty("peer_forwarder") final PeerForwarderConfiguration peerForwarderConfiguration,
+            @JsonProperty("processorShutdownTimeout") final Duration processorShutdownTimeout
             ) {
         this.authentication = authentication;
         setSsl(ssl);
@@ -61,6 +66,7 @@ public class DataPrepperConfiguration {
         setMetricTags(metricTags);
         setServerPort(serverPort);
         this.peerForwarderConfiguration = peerForwarderConfiguration;
+        this.processorShutdownTimeout = processorShutdownTimeout != null ? processorShutdownTimeout : DEFAULT_SHUTDOWN_DURATION;
     }
 
     public int getServerPort() {
@@ -126,5 +132,9 @@ public class DataPrepperConfiguration {
             }
             this.metricTags = metricTags;
         }
+    }
+
+    public Duration getProcessorShutdownTimeout() {
+        return processorShutdownTimeout;
     }
 }
