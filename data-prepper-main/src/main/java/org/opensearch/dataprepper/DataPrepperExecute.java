@@ -26,7 +26,7 @@ public class DataPrepperExecute {
             throw new RuntimeException("Data Prepper home directory (data-prepper.dir) not set in system properties.");
         }
 
-        final String dataPrepperPipelines = Paths.get(dataPrepperHome).resolve("pipelines/pipelines.yaml").toString();
+        final String dataPrepperPipelines = Paths.get(dataPrepperHome).resolve("pipelines/").toString();
         final String dataPrepperConfig = Paths.get(dataPrepperHome).resolve("config/data-prepper-config.yaml").toString();
         final ContextManager contextManager = new ContextManager(dataPrepperPipelines, dataPrepperConfig);
         final DataPrepper dataPrepper = contextManager.getDataPrepperBean();

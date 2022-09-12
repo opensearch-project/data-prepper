@@ -26,7 +26,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.SequenceInputStream;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,6 +39,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static java.lang.String.format;
 
@@ -61,8 +67,8 @@ public class PipelineParser {
      * Parses the configuration file into Pipeline
      */
     public Map<String, Pipeline> parseConfiguration() {
-        try {
-            final PipelinesDataFlowModel pipelinesDataFlowModel = OBJECT_MAPPER.readValue(new File(pipelineConfigurationFileLocation),
+        try (final InputStream mergedPipelineConfigurationFiles = mergePipelineConfigurationFiles()) {
+            final PipelinesDataFlowModel pipelinesDataFlowModel = OBJECT_MAPPER.readValue(mergedPipelineConfigurationFiles,
                     PipelinesDataFlowModel.class);
 
             final Map<String, PipelineConfiguration> pipelineConfigurationMap = pipelinesDataFlowModel.getPipelines().entrySet()
@@ -85,6 +91,33 @@ public class PipelineParser {
             return pipelineMap;
         } catch (IOException e) {
             throw new ParseException(format("Failed to parse the configuration file %s", pipelineConfigurationFileLocation), e);
+        }
+    }
+
+    private InputStream mergePipelineConfigurationFiles() {
+        final File configurationLocation = new File(pipelineConfigurationFileLocation);
+
+        if (configurationLocation.isFile()) {
+            try {
+                return new FileInputStream(configurationLocation);
+            } catch (FileNotFoundException e) {
+                throw new ParseException(format("Pipeline configuration file %s not found.", configurationLocation), e);
+            }
+        } else if (configurationLocation.isDirectory()) {
+            List<InputStream> configurationFiles = Stream.of(configurationLocation.listFiles()).map(file -> {
+                try {
+                    return new FileInputStream(file);
+                } catch (FileNotFoundException e) {
+                    throw new ParseException("Pipelines configuration file not found", e);
+                }
+            }).collect(Collectors.toList());
+            if (configurationFiles.isEmpty()) {
+                throw new ParseException(
+                        format("Pipelines configuration file not found at %s", pipelineConfigurationFileLocation));
+            }
+            return new SequenceInputStream(Collections.enumeration(configurationFiles));
+        } else {
+            throw new ParseException(format("Pipelines configuration file not found at %s", pipelineConfigurationFileLocation));
         }
     }
 
