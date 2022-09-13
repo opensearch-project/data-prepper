@@ -52,13 +52,14 @@ public class PeerForwarderClient {
     public AggregatedHttpResponse serializeRecordsAndSendHttpRequest(
             final Collection<Record<Event>> records,
             final String ipAddress,
-            final String pluginId) {
+            final String pluginId,
+            final String pipelineName) {
         // TODO: decide the default values of peer forwarder configuration and move the PeerClientPool to constructor
         peerClientPool = peerForwarderClientFactory.setPeerClientPool();
 
         final WebClient client = peerClientPool.getClient(ipAddress);
 
-        final Optional<String> serializedJsonString = getSerializedJsonString(records, pluginId);
+        final Optional<String> serializedJsonString = getSerializedJsonString(records, pluginId, pipelineName);
         return serializedJsonString.map(value -> {
                     final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture =
                             processHttpRequest(client, value);
@@ -67,9 +68,12 @@ public class PeerForwarderClient {
                 .orElse(AggregatedHttpResponse.of(HttpStatus.BAD_REQUEST));
     }
 
-    private Optional<String> getSerializedJsonString(final Collection<Record<Event>> records, final String pluginId) {
+    private Optional<String> getSerializedJsonString(
+            final Collection<Record<Event>> records,
+            final String pluginId,
+            final String pipelineName) {
         final List<WireEvent> wireEventList = getWireEventList(records);
-        final WireEvents wireEvents = new WireEvents(wireEventList, pluginId);
+        final WireEvents wireEvents = new WireEvents(wireEventList, pluginId, pipelineName);
 
         String serializedJsonString = null;
         try {

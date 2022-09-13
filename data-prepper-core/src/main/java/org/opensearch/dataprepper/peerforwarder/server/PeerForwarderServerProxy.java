@@ -7,22 +7,26 @@ package org.opensearch.dataprepper.peerforwarder.server;
 
 import com.linecorp.armeria.server.Server;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 
 public class PeerForwarderServerProxy implements PeerForwarderServer {
     private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final Server server;
+    private final PeerForwarderProvider peerForwarderProvider;
 
     private PeerForwarderServer peerForwarderServer;
 
-    public PeerForwarderServerProxy(final PeerForwarderConfiguration peerForwarderConfiguration, final Server server) {
+    public PeerForwarderServerProxy(final PeerForwarderConfiguration peerForwarderConfiguration,
+                                    final Server server,
+                                    final PeerForwarderProvider peerForwarderProvider) {
         this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.server = server;
+        this.peerForwarderProvider = peerForwarderProvider;
     }
 
     @Override
     public void start() {
-        // TODO: update this conditional based on PeerForwarderProvider
-        if (true) {
+        if (peerForwarderProvider.isPeerForwardingRequired()) {
             peerForwarderServer = new RemotePeerForwarderServer(peerForwarderConfiguration, server);
         }
         else {

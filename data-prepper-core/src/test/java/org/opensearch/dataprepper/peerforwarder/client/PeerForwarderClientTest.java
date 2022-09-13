@@ -54,6 +54,7 @@ class PeerForwarderClientTest {
 
     private static final String LOCAL_IP = "127.0.0.1";
     private static final String TEST_PLUGIN_ID = "test_plugin_id";
+    private static final String TEST_PIPELINE_NAME = "test_pipeline_name";
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule());
@@ -87,7 +88,7 @@ class PeerForwarderClientTest {
         final PeerForwarderClient peerForwarderClient = createObjectUnderTest(objectMapper);
 
         final AggregatedHttpResponse aggregatedHttpResponse =
-                peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), address.toString(), TEST_PLUGIN_ID);
+                peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), address.toString(), TEST_PLUGIN_ID, TEST_PIPELINE_NAME);
 
         assertThat(aggregatedHttpResponse, notNullValue());
         assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
@@ -106,7 +107,7 @@ class PeerForwarderClientTest {
         final PeerForwarderClient peerForwarderClient = createObjectUnderTest(objectMapper);
 
         final AggregatedHttpResponse aggregatedHttpResponse =
-                peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), LOCAL_IP, TEST_PLUGIN_ID);
+                peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), LOCAL_IP, TEST_PLUGIN_ID, TEST_PIPELINE_NAME);
 
         assertThat(aggregatedHttpResponse, notNullValue());
         assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
