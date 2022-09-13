@@ -17,13 +17,15 @@ import java.util.List;
 public class WireEvents {
     private List<WireEvent> events;
     private String destinationPluginId;
+    private String destinationPipelineName;
 
     public WireEvents() {
     }
 
-    public WireEvents(final List<WireEvent> events, final String destinationPluginId) {
+    public WireEvents(final List<WireEvent> events, final String destinationPluginId, final String destinationPipelineName) {
         this.events = events;
         this.destinationPluginId = destinationPluginId;
+        this.destinationPipelineName = destinationPipelineName;
     }
 
     public List<WireEvent> getEvents() {
@@ -32,5 +34,9 @@ public class WireEvents {
 
     public String getDestinationPluginId() {
         return destinationPluginId;
+    }
+
+    public String getDestinationPipelineName() {
+        return destinationPipelineName;
     }
 }

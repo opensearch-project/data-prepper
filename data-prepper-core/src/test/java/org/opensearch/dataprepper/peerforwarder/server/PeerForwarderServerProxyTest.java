@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -24,22 +25,26 @@ import static org.mockito.Mockito.when;
 class PeerForwarderServerProxyTest {
 
     @Mock
-    Server server;
+    private Server server;
 
     @Mock
-    PeerForwarderConfiguration peerForwarderConfiguration;
+    private PeerForwarderConfiguration peerForwarderConfiguration;
+
+    @Mock
+    private PeerForwarderProvider peerForwarderProvider;
 
     @Mock
     CompletableFuture<Void> completableFuture;
 
     PeerForwarderServerProxy createObjectUnderTest() {
-        return new PeerForwarderServerProxy(peerForwarderConfiguration, server);
+        return new PeerForwarderServerProxy(peerForwarderConfiguration, server, peerForwarderProvider);
     }
 
     @Test
-    void start_should_start_server_if_peers_configured() throws ExecutionException, InterruptedException {
+    void start_should_start_server_if_peers_are_registered() throws ExecutionException, InterruptedException {
         when(server.start()).thenReturn(completableFuture);
         when(completableFuture.get()).thenReturn(mock(Void.class));
+        when(peerForwarderProvider.isPeerForwardingRequired()).thenReturn(true);
 
         final PeerForwarderServerProxy objectUnderTest = createObjectUnderTest();
         objectUnderTest.start();
@@ -47,7 +52,15 @@ class PeerForwarderServerProxyTest {
     }
 
     @Test
-    void stop_should_not_stop_server_if_server_is_not_started() throws ExecutionException, InterruptedException {
+    void start_should_not_start_server_if_no_peers_are_registered() {
+        final PeerForwarderServerProxy objectUnderTest = createObjectUnderTest();
+        objectUnderTest.start();
+
+        verifyNoInteractions(server);
+    }
+
+    @Test
+    void stop_should_not_stop_server_if_server_is_not_started() {
         final PeerForwarderServerProxy objectUnderTest = createObjectUnderTest();
         objectUnderTest.stop();
         verifyNoInteractions(server);
@@ -58,11 +71,22 @@ class PeerForwarderServerProxyTest {
         when(server.start()).thenReturn(completableFuture);
         when(server.stop()).thenReturn(completableFuture);
         when(completableFuture.get()).thenReturn(mock(Void.class));
+        when(peerForwarderProvider.isPeerForwardingRequired()).thenReturn(true);
 
         final PeerForwarderServerProxy objectUnderTest = createObjectUnderTest();
         objectUnderTest.start();
         objectUnderTest.stop();
         verify(server).stop();
+    }
+
+    @Test
+    void no_server_interaction_if_peer_forwarding_not_required() {
+        when(peerForwarderProvider.isPeerForwardingRequired()).thenReturn(false);
+
+        final PeerForwarderServerProxy objectUnderTest = createObjectUnderTest();
+        objectUnderTest.start();
+        objectUnderTest.stop();
+        verifyNoInteractions(server);
     }
 
 }
