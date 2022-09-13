@@ -9,6 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.ComponentScan;
 
+import java.nio.file.Paths;
+
 /**
  * Execute entry into Data Prepper.
  */
@@ -24,8 +26,8 @@ public class DataPrepperExecute {
             throw new RuntimeException("Data Prepper home directory (data-prepper.dir) not set in system properties.");
         }
 
-        final String dataPrepperPipelines = dataPrepperHome + "/pipelines/pipelines.yaml";
-        final String dataPrepperConfig = dataPrepperHome + "/config/data-prepper-config.yaml";
+        final String dataPrepperPipelines = Paths.get(dataPrepperHome).resolve("pipelines/pipelines.yaml").toString();
+        final String dataPrepperConfig = Paths.get(dataPrepperHome).resolve("config/data-prepper-config.yaml").toString();
         final ContextManager contextManager = new ContextManager(dataPrepperPipelines, dataPrepperConfig);
         final DataPrepper dataPrepper = contextManager.getDataPrepperBean();
 
