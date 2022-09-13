@@ -39,11 +39,11 @@ task createDataPrepperDockerFile(type: Dockerfile) {
     dependsOn copyDataPrepperJar
     destFile = project.file('build/docker/Dockerfile')
     from(dataPrepperBaseImage)
-    workingDir("/app")
-    copyFile("${dataPrepperJarFilepath}", "/app/data-prepper")
-    copyFile("src/integrationTest/resources/${BASIC_GROK_PIPELINE_YAML}", "/app/${BASIC_GROK_PIPELINE_YAML}")
-    copyFile("src/integrationTest/resources/data_prepper.yml", "/app/data_prepper.yml")
-    defaultCommand('java', '-cp', 'data-prepper/*', 'org.opensearch.dataprepper.DataPrepperExecute', "/app/${BASIC_GROK_PIPELINE_YAML}", "/app/data_prepper.yml")
+    workingDir("/app/data-prepper")
+    copyFile("${dataPrepperJarFilepath}", "/app/data-prepper/lib")
+    copyFile("src/integrationTest/resources/${BASIC_GROK_PIPELINE_YAML}", "/app/data-prepper/pipelines/pipelines.yaml")
+    copyFile("src/integrationTest/resources/data_prepper.yml", "/app/data-prepper/config/data-prepper-config.yaml")
+    defaultCommand('java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute')
 }
 
 task buildDataPrepperDockerImage(type: DockerBuildImage) {
@@ -54,7 +54,7 @@ task buildDataPrepperDockerImage(type: DockerBuildImage) {
 }
 
 def createDataPrepperDockerContainer(final String taskBaseName, final String dataPrepperName, final int sourcePort,
-                                     final int serverPort, final String pipelineConfigYAML) {
+                                     final int serverPort) {
     return tasks.create("create${taskBaseName}", DockerCreateContainer) {
         dependsOn buildDataPrepperDockerImage
         dependsOn createDataPrepperNetwork
@@ -62,7 +62,7 @@ def createDataPrepperDockerContainer(final String taskBaseName, final String dat
         exposePorts("tcp", [2021, 4900])
         hostConfig.portBindings = [String.format('%d:2021', sourcePort), String.format('%d:4900', serverPort)]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
-        cmd = ['java', '-cp', 'data-prepper/*', 'org.opensearch.dataprepper.DataPrepperExecute', pipelineConfigYAML, "/app/data_prepper.yml"]
+        cmd = ['java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute']
         targetImageId buildDataPrepperDockerImage.getImageId()
     }
 }
@@ -129,7 +129,7 @@ task basicLogEndToEndTest(type: Test) {
     dependsOn build
     dependsOn startOpenSearchDockerContainer
     def createDataPrepperTask = createDataPrepperDockerContainer(
-            "basicLogDataPrepper", "dataprepper", 2021, 4900, "/app/${BASIC_GROK_PIPELINE_YAML}")
+            "basicLogDataPrepper", "dataprepper", 2021, 4900)
     def startDataPrepperTask = startDataPrepperDockerContainer(createDataPrepperTask as DockerCreateContainer)
     dependsOn startDataPrepperTask
     startDataPrepperTask.mustRunAfter 'startOpenSearchDockerContainer'
