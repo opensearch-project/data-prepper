@@ -5,18 +5,23 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
-import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import com.linecorp.armeria.client.WebClient;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 @ExtendWith(MockitoExtension.class)
 class PeerClientPoolTest {
@@ -24,18 +29,21 @@ class PeerClientPoolTest {
     private static final String LOCALHOST = "localhost";
     private static final int PORT = 21890;
 
-    @Test
-    void testGetClientValidAddress() {
+    @ParameterizedTest
+    @ValueSource(strings = {VALID_ADDRESS, LOCALHOST})
+    void testGetClientValidAddress(final String address) {
         PeerClientPool pool = new PeerClientPool();
         pool.setPort(PORT);
 
-        WebClient client = pool.getClient(VALID_ADDRESS);
+        WebClient client = pool.getClient(address);
 
         Assertions.assertNotNull(client);
+        assertThat(client.uri(), equalTo(URI.create("http://" + address + ":" + PORT + "/")));
     }
 
-    @Test
-    void testGetClientWithSSL() throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = {VALID_ADDRESS, LOCALHOST})
+    void testGetClientWithSSL(final String address) throws IOException {
         PeerClientPool pool = new PeerClientPool();
         pool.setSsl(true);
         pool.setPort(PORT);
@@ -48,9 +56,10 @@ class PeerClientPoolTest {
 
         pool.setCertificate(certificate);
 
-        WebClient client = pool.getClient(LOCALHOST);
+        WebClient client = pool.getClient(address);
 
         Assertions.assertNotNull(client);
+        assertThat(client.uri(), equalTo(URI.create("https://" + address + ":" + PORT + "/")));
     }
 
 }

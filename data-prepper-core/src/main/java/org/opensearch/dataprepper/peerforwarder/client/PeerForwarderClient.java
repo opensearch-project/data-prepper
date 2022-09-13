@@ -9,9 +9,9 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.linecorp.armeria.client.UnprocessedRequestException;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
-import com.linecorp.armeria.common.HttpStatus;
 import org.opensearch.dataprepper.peerforwarder.PeerClientPool;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderClientFactory;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
@@ -23,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -59,29 +58,23 @@ public class PeerForwarderClient {
 
         final WebClient client = peerClientPool.getClient(ipAddress);
 
-        final Optional<String> serializedJsonString = getSerializedJsonString(records, pluginId, pipelineName);
-        return serializedJsonString.map(value -> {
-                    final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture =
-                            processHttpRequest(client, value);
-                    return getAggregatedHttpResponse(aggregatedHttpResponseCompletableFuture);
-                })
-                .orElse(AggregatedHttpResponse.of(HttpStatus.BAD_REQUEST));
+        final String serializedJsonString = getSerializedJsonString(records, pluginId, pipelineName);
+
+        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture =
+                processHttpRequest(client, serializedJsonString);
+        return getAggregatedHttpResponse(aggregatedHttpResponseCompletableFuture);
     }
 
-    private Optional<String> getSerializedJsonString(
-            final Collection<Record<Event>> records,
-            final String pluginId,
-            final String pipelineName) {
+    private String getSerializedJsonString(final Collection<Record<Event>> records, final String pluginId, final String pipelineName) {
         final List<WireEvent> wireEventList = getWireEventList(records);
         final WireEvents wireEvents = new WireEvents(wireEventList, pluginId, pipelineName);
 
-        String serializedJsonString = null;
         try {
-            serializedJsonString = objectMapper.writeValueAsString(wireEvents);
+            return objectMapper.writeValueAsString(wireEvents);
         } catch (JsonProcessingException e) {
             LOG.warn("Unable to send request to peer, processing locally.", e);
+            throw new RuntimeException(e);
         }
-        return Optional.ofNullable(serializedJsonString);
     }
 
     private List<WireEvent> getWireEventList(final Collection<Record<Event>> records) {
@@ -112,18 +105,23 @@ public class PeerForwarderClient {
                 return aggregate.join();
             } catch (Exception e) {
                 LOG.error("Failed to forward request to address: {}", authority, e);
-                return null;
+                throw e;
             }
         }, executorService);
     }
 
-    private AggregatedHttpResponse getAggregatedHttpResponse(final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture) {
+    private AggregatedHttpResponse getAggregatedHttpResponse(final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture) throws UnprocessedRequestException {
         try {
             return aggregatedHttpResponseCompletableFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
             LOG.error("Problem with asynchronous peer forwarding", e);
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            LOG.error("Problem with asynchronous peer forwarding", e);
+            if(e.getCause() instanceof RuntimeException)
+                throw (RuntimeException) e.getCause();
+            throw new RuntimeException(e.getCause());
         }
-        return AggregatedHttpResponse.of(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
 }

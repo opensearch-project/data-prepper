@@ -54,8 +54,13 @@ class RemotePeerForwarder implements PeerForwarder {
             if (isAddressDefinedLocally(destinationIp)) {
                 recordsToProcessLocally.addAll(entry.getValue());
             } else {
-                final AggregatedHttpResponse httpResponse = peerForwarderClient.serializeRecordsAndSendHttpRequest(entry.getValue(),
-                        destinationIp, pluginId, pipelineName);
+                AggregatedHttpResponse httpResponse = null;
+                try {
+                    httpResponse = peerForwarderClient.serializeRecordsAndSendHttpRequest(entry.getValue(),
+                            destinationIp, pluginId, pipelineName);
+                } catch (Exception ex) {
+                }
+
                 if (httpResponse == null || httpResponse.status() != HttpStatus.OK) {
                     recordsToProcessLocally.addAll(entry.getValue());
                 }
