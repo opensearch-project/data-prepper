@@ -68,26 +68,29 @@ class RemotePeerForwarderTest {
         lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
 
         RemotePeerForwarder peerForwarder = createObjectUnderTest();
+        final Collection<Record<Event>> testRecords = generateBatchRecords(2, false);
 
-        final Collection<Record<Event>> records = peerForwarder.forwardRecords(generateBatchRecords(2, false));
+        final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
         verifyNoInteractions(peerForwarderClient);
         assertThat(records.size(), equalTo(2));
+        assertThat(records, equalTo(testRecords));
     }
 
     @Test
     void test_forwardRecords_with_one_local_ip_and_one_remote_ip_should_process_record_one_record_locally() {
         AggregatedHttpResponse aggregatedHttpResponse = mock(AggregatedHttpResponse.class);
         when(aggregatedHttpResponse.status()).thenReturn(HttpStatus.OK);
-        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString())).thenReturn(aggregatedHttpResponse);
+        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString())).thenReturn(aggregatedHttpResponse);
 
         final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
         lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
 
         RemotePeerForwarder peerForwarder = createObjectUnderTest();
+        final Collection<Record<Event>> testRecords = generateBatchRecords(2, false);
 
-        final Collection<Record<Event>> records = peerForwarder.forwardRecords(generateBatchRecords(2, false));
-        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString());
+        final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
+        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
         assertThat(records.size(), equalTo(1));
     }
 

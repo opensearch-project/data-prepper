@@ -5,30 +5,78 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
+import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 public class PeerForwarderProvider {
 
     private final PeerForwarderClientFactory peerForwarderClientFactory;
     private final PeerForwarderClient peerForwarderClient;
+    private final PeerForwarderConfiguration peerForwarderConfiguration;
+    private final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<?>>>> pipelinePeerForwarderReceiveBufferMap = new HashMap<>();
     private HashRing hashRing;
 
-    PeerForwarderProvider(final PeerForwarderClientFactory peerForwarderClientFactory, final PeerForwarderClient peerForwarderClient) {
+    PeerForwarderProvider(final PeerForwarderClientFactory peerForwarderClientFactory,
+                          final PeerForwarderClient peerForwarderClient,
+                          final PeerForwarderConfiguration peerForwarderConfiguration) {
         this.peerForwarderClientFactory = peerForwarderClientFactory;
         this.peerForwarderClient = peerForwarderClient;
+        this.peerForwarderConfiguration = peerForwarderConfiguration;
     }
 
     public PeerForwarder register(final String pipelineName, final String pluginId, final Set<String> identificationKeys) {
-
-        // TODO: Data Prepper 2.0 will only support a single peer-forwarder per pipeline/plugin type. Check this condition.
-
-        if(hashRing == null) {
-            hashRing = peerForwarderClientFactory.createHashRing();
+        if (pipelinePeerForwarderReceiveBufferMap.containsKey(pipelineName) &&
+                pipelinePeerForwarderReceiveBufferMap.get(pipelineName).containsKey(pluginId)) {
+            throw new RuntimeException("Data Prepper 2.0 will only support a single peer-forwarder per pipeline/plugin type");
         }
 
-        // TODO: Support a local-only PeerForwarder when no peers are configured.
-        return new RemotePeerForwarder(peerForwarderClient, hashRing, pipelineName, pluginId, identificationKeys);
+        final PeerForwarderReceiveBuffer<Record<?>> peerForwarderReceiveBuffer = createBufferPerPipelineProcessor(pipelineName, pluginId);
+        // TODO: pass buffer to RemotePeerForwarder constructor
+
+        if (isPeerForwardingRequired()) {
+            if (hashRing == null) {
+                hashRing = peerForwarderClientFactory.createHashRing();
+            }
+            return new RemotePeerForwarder(peerForwarderClient, hashRing, pipelineName, pluginId, identificationKeys);
+        }
+        else {
+            return new LocalPeerForwarder();
+        }
+    }
+
+    private PeerForwarderReceiveBuffer<Record<?>> createBufferPerPipelineProcessor(final String pipelineName, final String pluginId) {
+        final PeerForwarderReceiveBuffer<Record<?>> peerForwarderReceiveBuffer = new
+                PeerForwarderReceiveBuffer<>(peerForwarderConfiguration.getBufferSize(), peerForwarderConfiguration.getBatchSize());
+
+        final Map<String, PeerForwarderReceiveBuffer<Record<?>>> pluginsBufferMap =
+                pipelinePeerForwarderReceiveBufferMap.computeIfAbsent(pipelineName, k -> new HashMap<>());
+
+        pluginsBufferMap.put(pluginId, peerForwarderReceiveBuffer);
+
+        return peerForwarderReceiveBuffer;
+    }
+
+    public boolean isPeerForwardingRequired() {
+        return arePeersConfigured() && pipelinePeerForwarderReceiveBufferMap.size() > 0;
+    }
+
+    private boolean arePeersConfigured() {
+        final DiscoveryMode discoveryMode = peerForwarderConfiguration.getDiscoveryMode();
+        if (discoveryMode.equals(DiscoveryMode.LOCAL_NODE)) {
+            return false;
+        }
+        else if (discoveryMode.equals(DiscoveryMode.STATIC) && peerForwarderConfiguration.getStaticEndpoints().size() <= 1) {
+            return false;
+        }
+        return true;
+    }
+
+    public Map<String, Map<String, PeerForwarderReceiveBuffer<Record<?>>>> getPipelinePeerForwarderReceiveBufferMap() {
+        return pipelinePeerForwarderReceiveBufferMap;
     }
 }

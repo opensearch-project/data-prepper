@@ -62,9 +62,11 @@ class PeerForwarderAppConfig {
 
     @Bean
     public PeerForwarderProvider peerForwarderProvider(final PeerForwarderClientFactory peerForwarderClientFactory,
-                                                       final PeerForwarderClient peerForwarderClient) {
-        return new PeerForwarderProvider(peerForwarderClientFactory, peerForwarderClient);
+                                                       final PeerForwarderClient peerForwarderClient,
+                                                       final PeerForwarderConfiguration peerForwarderConfiguration) {
+        return new PeerForwarderProvider(peerForwarderClientFactory, peerForwarderClient, peerForwarderConfiguration);
     }
+
     @Bean
     public ResponseHandler responseHandler() {
         return new ResponseHandler();
@@ -73,9 +75,11 @@ class PeerForwarderAppConfig {
     @Bean
     public PeerForwarderHttpService peerForwarderHttpService(
             final ResponseHandler responseHandler,
+            final PeerForwarderProvider peerForwarderProvider,
+            final PeerForwarderConfiguration peerForwarderConfiguration,
             final ObjectMapper objectMapper
     ) {
-        return new PeerForwarderHttpService(responseHandler, objectMapper);
+        return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration, objectMapper);
     }
 
     @Bean
@@ -98,8 +102,9 @@ class PeerForwarderAppConfig {
     @Bean
     public PeerForwarderServer peerForwarderServer(
             @Qualifier("peerForwarderHttpServer") final Server peerForwarderServer,
-            final PeerForwarderConfiguration peerForwarderConfiguration) {
-        return new PeerForwarderServerProxy(peerForwarderConfiguration, peerForwarderServer);
+            final PeerForwarderConfiguration peerForwarderConfiguration,
+            final PeerForwarderProvider peerForwarderProvider) {
+        return new PeerForwarderServerProxy(peerForwarderConfiguration, peerForwarderServer, peerForwarderProvider);
     }
 
 }
