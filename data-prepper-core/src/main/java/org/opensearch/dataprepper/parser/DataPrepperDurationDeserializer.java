@@ -16,7 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * This deserializer is used for all plugin configurations that use a {@link Duration} type that is mapped to by Jackson in the {@link PluginConfigurationConverter}.
+ * This deserializer is used for configurations that use a {@link Duration} type when deserialized by Jackson
  * It supports ISO 8601 notation ("PT20.345S", "PT15M", etc.) and simple durations for
  * seconds (60s) and milliseconds (100ms). It does not support combining the units for simple durations ("60s 100ms" is not allowed).
  * Whitespace is ignored and leading zeroes are not allowed.
