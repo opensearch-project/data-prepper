@@ -99,7 +99,7 @@ class PeerForwarderHttpServiceTest {
     }
 
     @Test
-    void test() throws ExecutionException, JsonProcessingException, InterruptedException {
+    void test_doPost_with_HTTP_request_size_greater_than_buffer_size_should_return_REQUEST_ENTITY_TOO_LARGE() throws ExecutionException, JsonProcessingException, InterruptedException {
         final HashMap<String, Map<String, PeerForwarderReceiveBuffer<Record<?>>>> pipelinePeerForwarderReceiveBufferMap = new HashMap<>();
         pipelinePeerForwarderReceiveBufferMap.put(PIPELINE_NAME, Map.of(PLUGIN_ID, peerForwarderReceiveBuffer));
         when(peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap()).thenReturn(pipelinePeerForwarderReceiveBufferMap);
