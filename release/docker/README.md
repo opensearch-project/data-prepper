@@ -29,7 +29,7 @@ Below is an example command which can also be used to run the built image.
 docker run \
  --name data-prepper-test \
  -p 21890:21890 -p 4900:4900 \
- -v ${PWD}/examples/config/example-pipelines.yaml:/usr/share/data-prepper/pipelines.yaml \
- -v ${PWD}/examples/config/example-data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml \
- opensearch-data-prepper:1.2.0-SNAPSHOT
+ -v ${PWD}/examples/config/example-pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml \
+ -v ${PWD}/examples/config/example-data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml \
+ opensearch-data-prepper:2.0.0-SNAPSHOT
 ```
