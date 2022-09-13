@@ -5,6 +5,15 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+if [[ $# -gt 0 ]]
+  then
+    echo
+    echo "Data Prepper expects no command line arguments. Configuration files should be placed in "
+    echo "the application home directory and will be read automatically."
+    echo
+    exit 1
+fi
+
 MIN_REQ_JAVA_VERSION=11
 MIN_REQ_OPENJDK_VERSION=11
 DATA_PREPPER_BIN=$(dirname "$(realpath "$0")")

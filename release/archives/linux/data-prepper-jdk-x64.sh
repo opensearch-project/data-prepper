@@ -5,6 +5,15 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+if [[ $# -gt 0 ]]
+  then
+    echo
+    echo "Data Prepper expects no command line arguments. Configuration files should be placed in "
+    echo "the application home directory and will be read automatically."
+    echo
+    exit 1
+fi
+
 DATA_PREPPER_BIN=$(dirname "$(realpath "$0")")
 DATA_PREPPER_HOME=`realpath "$DATA_PREPPER_BIN/.."`
 DATA_PREPPER_CLASSPATH="$DATA_PREPPER_HOME/lib/*"
