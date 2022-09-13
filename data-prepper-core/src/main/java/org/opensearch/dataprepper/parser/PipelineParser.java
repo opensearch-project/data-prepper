@@ -95,28 +95,29 @@ public class PipelineParser {
         }
     }
 
-    private InputStream mergePipelineConfigurationFiles() {
+    private InputStream mergePipelineConfigurationFiles() throws IOException {
         final File configurationLocation = new File(pipelineConfigurationFileLocation);
 
         if (configurationLocation.isFile()) {
-            try {
-                return new FileInputStream(configurationLocation);
-            } catch (FileNotFoundException e) {
-                throw new ParseException(format("Pipeline configuration file %s not found.", configurationLocation), e);
-            }
+            return new FileInputStream(configurationLocation);
         } else if (configurationLocation.isDirectory()) {
             FileFilter yamlFilter = pathname -> (pathname.getName().endsWith(".yaml") || pathname.getName().endsWith(".yml"));
-            List<InputStream> configurationFiles = Stream.of(configurationLocation.listFiles(yamlFilter)).map(file -> {
-                try {
-                    return new FileInputStream(file);
-                } catch (FileNotFoundException e) {
-                    throw new ParseException("Pipelines configuration file not found", e);
-                }
-            }).collect(Collectors.toList());
+            List<InputStream> configurationFiles = Stream.of(configurationLocation.listFiles(yamlFilter))
+                    .map(file -> {
+                        try {
+                            return new FileInputStream(file);
+                        } catch (FileNotFoundException e) {
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
             if (configurationFiles.isEmpty()) {
                 throw new ParseException(
                         format("Pipelines configuration file not found at %s", pipelineConfigurationFileLocation));
             }
+
             return new SequenceInputStream(Collections.enumeration(configurationFiles));
         } else {
             throw new ParseException(format("Pipelines configuration file not found at %s", pipelineConfigurationFileLocation));
