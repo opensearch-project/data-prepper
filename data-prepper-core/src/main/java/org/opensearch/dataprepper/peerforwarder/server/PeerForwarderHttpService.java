@@ -68,12 +68,18 @@ public class PeerForwarderHttpService {
             return responseHandler.handleException(e, message);
         }
 
-        writeEventsToBuffer(wireEvents, content);
+        try {
+            writeEventsToBuffer(wireEvents);
+        } catch (Exception e) {
+            final String message = String.format("Failed to write the request content [%s] due to:", content.toStringUtf8());
+            LOG.error(message, e);
+            return responseHandler.handleException(e, message);
+        }
 
         return HttpResponse.of(HttpStatus.OK);
     }
 
-    private void writeEventsToBuffer(final WireEvents wireEvents, final HttpData content) {
+    private void writeEventsToBuffer(final WireEvents wireEvents) throws Exception {
         final PeerForwarderReceiveBuffer<Record<?>> recordPeerForwarderReceiveBuffer = getPeerForwarderBuffer(wireEvents);
 
         if (wireEvents.getEvents() != null) {
@@ -81,11 +87,7 @@ public class PeerForwarderHttpService {
                     .map(this::transformEvent)
                     .collect(Collectors.toList());
 
-            try {
-                recordPeerForwarderReceiveBuffer.writeAll(jacksonEvents, peerForwarderConfiguration.getRequestTimeout());
-            } catch (Exception e) {
-                LOG.error("Failed to write the request content [{}] due to:", content.toStringUtf8(), e);
-            }
+            recordPeerForwarderReceiveBuffer.writeAll(jacksonEvents, peerForwarderConfiguration.getRequestTimeout());
         }
     }
 
