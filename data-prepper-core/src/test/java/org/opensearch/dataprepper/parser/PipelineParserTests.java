@@ -15,7 +15,7 @@ import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.mock;
+import org.mockito.Mock;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.time.Duration;
