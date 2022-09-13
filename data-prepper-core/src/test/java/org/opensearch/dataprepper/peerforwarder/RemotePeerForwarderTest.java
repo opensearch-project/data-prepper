@@ -98,7 +98,7 @@ class RemotePeerForwarderTest {
 
     @Test
     void forwardRecords_should_return_all_input_events_when_client_throws() {
-        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString())).thenThrow(RuntimeException.class);
+        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString())).thenThrow(RuntimeException.class);
 
         final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
@@ -108,7 +108,7 @@ class RemotePeerForwarderTest {
 
         final Collection<Record<Event>> inputRecords = generateBatchRecords(2, false);
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(inputRecords);
-        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString());
+        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
         assertThat(records, notNullValue());
         assertThat(records.size(), equalTo(inputRecords.size()));
         for (Record<Event> inputRecord : inputRecords) {
