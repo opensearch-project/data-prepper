@@ -72,7 +72,6 @@ public class PeerForwarderClient {
         try {
             return objectMapper.writeValueAsString(wireEvents);
         } catch (JsonProcessingException e) {
-            LOG.warn("Unable to send request to peer, processing locally.", e);
             throw new RuntimeException(e);
         }
     }
@@ -97,28 +96,21 @@ public class PeerForwarderClient {
     }
 
     private CompletableFuture<AggregatedHttpResponse> processHttpRequest(final WebClient client, final String content) {
-        final String authority = client.uri().getAuthority();
         return CompletableFuture.supplyAsync(() ->
         {
-            try {
-                final CompletableFuture<AggregatedHttpResponse> aggregate = client.post(DEFAULT_PEER_FORWARDING_URI, content).aggregate();
-                return aggregate.join();
-            } catch (Exception e) {
-                LOG.error("Failed to forward request to address: {}", authority, e);
-                throw e;
-            }
+            final CompletableFuture<AggregatedHttpResponse> aggregate = client.post(DEFAULT_PEER_FORWARDING_URI, content).aggregate();
+            return aggregate.join();
         }, executorService);
     }
 
     private AggregatedHttpResponse getAggregatedHttpResponse(final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture) throws UnprocessedRequestException {
         try {
             return aggregatedHttpResponseCompletableFuture.get();
-        } catch (InterruptedException e) {
-            LOG.error("Problem with asynchronous peer forwarding", e);
+        } catch (final InterruptedException e) {
+            LOG.error("Peer forwarding interrupted.");
             throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-            LOG.error("Problem with asynchronous peer forwarding", e);
-            if(e.getCause() instanceof RuntimeException)
+        } catch (final ExecutionException e) {
+            if (e.getCause() instanceof RuntimeException)
                 throw (RuntimeException) e.getCause();
             throw new RuntimeException(e.getCause());
         }
