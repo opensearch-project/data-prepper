@@ -80,7 +80,7 @@ class PeerForwarderServerProxyTest {
     }
 
     @Test
-    void stop_should_do_nothing_if_noop_server_is_started() {
+    void no_server_interaction_if_peer_forwarding_not_required() {
         when(peerForwarderProvider.isPeerForwardingRequired()).thenReturn(false);
 
         final PeerForwarderServerProxy objectUnderTest = createObjectUnderTest();

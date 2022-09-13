@@ -59,7 +59,7 @@ class PeerForwarderProviderTest {
         lenient().when(peerForwarderClientFactory.createHashRing()).thenReturn(hashRing);
         lenient().when(peerForwarderConfiguration.getBufferSize()).thenReturn(512);
         lenient().when(peerForwarderConfiguration.getBatchSize()).thenReturn(48);
-        when(peerForwarderConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.LOCAL);
+        when(peerForwarderConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.LOCAL_NODE);
     }
 
     private PeerForwarderProvider createObjectUnderTest() {

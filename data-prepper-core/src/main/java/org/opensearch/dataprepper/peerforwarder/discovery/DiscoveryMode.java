@@ -14,7 +14,7 @@ public enum DiscoveryMode {
     STATIC(StaticPeerListProvider::createPeerListProvider),
     DNS(DnsPeerListProvider::createPeerListProvider),
     AWS_CLOUD_MAP(AwsCloudMapPeerListProvider::createPeerListProvider),
-    LOCAL(LocalPeerListProvider::createPeerListProvider);
+    LOCAL_NODE(LocalPeerListProvider::createPeerListProvider);
 
     private final Function<PeerForwarderConfiguration, PeerListProvider> creationFunction;
 

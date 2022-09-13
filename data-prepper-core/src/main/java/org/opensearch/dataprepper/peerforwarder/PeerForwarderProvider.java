@@ -52,18 +52,12 @@ public class PeerForwarderProvider {
     private PeerForwarderReceiveBuffer<Record<?>> createBufferPerPipelineProcessor(final String pipelineName, final String pluginId) {
         final PeerForwarderReceiveBuffer<Record<?>> peerForwarderReceiveBuffer = new
                 PeerForwarderReceiveBuffer<>(peerForwarderConfiguration.getBufferSize(), peerForwarderConfiguration.getBatchSize());
-        if (pipelinePeerForwarderReceiveBufferMap.containsKey(pipelineName)) {
-            pipelinePeerForwarderReceiveBufferMap.get(pipelineName).put(
-                    pluginId, peerForwarderReceiveBuffer
-            );
-        }
-        else {
-            Map<String, PeerForwarderReceiveBuffer<Record<?>>> peerForwarderReceiveBufferMap = new HashMap<>();
-            peerForwarderReceiveBufferMap.put(
-                    pluginId, peerForwarderReceiveBuffer
-            );
-            pipelinePeerForwarderReceiveBufferMap.put(pipelineName, peerForwarderReceiveBufferMap);
-        }
+
+        final Map<String, PeerForwarderReceiveBuffer<Record<?>>> pluginsBufferMap =
+                pipelinePeerForwarderReceiveBufferMap.computeIfAbsent(pipelineName, k -> new HashMap<>());
+
+        pluginsBufferMap.put(pluginId, peerForwarderReceiveBuffer);
+
         return peerForwarderReceiveBuffer;
     }
 
@@ -73,7 +67,7 @@ public class PeerForwarderProvider {
 
     private boolean arePeersConfigured() {
         final DiscoveryMode discoveryMode = peerForwarderConfiguration.getDiscoveryMode();
-        if (discoveryMode.equals(DiscoveryMode.LOCAL)) {
+        if (discoveryMode.equals(DiscoveryMode.LOCAL_NODE)) {
             return false;
         }
         else if (discoveryMode.equals(DiscoveryMode.STATIC) && peerForwarderConfiguration.getStaticEndpoints().size() <= 1) {

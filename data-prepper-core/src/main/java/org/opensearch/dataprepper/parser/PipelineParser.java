@@ -106,9 +106,6 @@ public class PipelineParser {
 
             LOG.info("Building processors for the pipeline [{}]", pipelineName);
             final int processorThreads = pipelineConfiguration.getWorkers();
-            final List<List<Processor>> processorSets = pipelineConfiguration.getProcessorPluginSettings().stream()
-                    .map(this::newProcessor)
-                    .collect(Collectors.toList());
 
             final Map<List<Processor>, String> processorMap = pipelineConfiguration.getProcessorPluginSettings().stream()
                     .collect(Collectors.toMap(this::newProcessor, PluginSetting::getName));
@@ -117,8 +114,6 @@ public class PipelineParser {
                     .map(processorMapEntry -> processorMapEntry.getKey().stream()
                             .map(processor -> {
                                 if (processor instanceof RequiresPeerForwarding) {
-                                    // TODO: Create buffer per stateful processor and store map of processor, buffer
-                                    // TODO: get plugin id from PipelineParser
                                     return new PeerForwardingProcessorDecorator(
                                             processor, peerForwarderProvider, pipelineName, processorMapEntry.getValue()
                                     );

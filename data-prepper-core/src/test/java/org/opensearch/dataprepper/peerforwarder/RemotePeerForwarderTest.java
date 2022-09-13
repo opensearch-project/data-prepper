@@ -68,10 +68,12 @@ class RemotePeerForwarderTest {
         lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
 
         RemotePeerForwarder peerForwarder = createObjectUnderTest();
+        final Collection<Record<Event>> testRecords = generateBatchRecords(2, false);
 
-        final Collection<Record<Event>> records = peerForwarder.forwardRecords(generateBatchRecords(2, false));
+        final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
         verifyNoInteractions(peerForwarderClient);
         assertThat(records.size(), equalTo(2));
+        assertThat(records, equalTo(testRecords));
     }
 
     @Test
@@ -85,8 +87,9 @@ class RemotePeerForwarderTest {
         lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
 
         RemotePeerForwarder peerForwarder = createObjectUnderTest();
+        final Collection<Record<Event>> testRecords = generateBatchRecords(2, false);
 
-        final Collection<Record<Event>> records = peerForwarder.forwardRecords(generateBatchRecords(2, false));
+        final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
         verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
         assertThat(records.size(), equalTo(1));
     }
