@@ -107,21 +107,23 @@ public class PipelineParser {
             LOG.info("Building processors for the pipeline [{}]", pipelineName);
             final int processorThreads = pipelineConfiguration.getWorkers();
 
-            final Map<List<Processor>, String> processorMap = pipelineConfiguration.getProcessorPluginSettings().stream()
-                    .collect(Collectors.toMap(this::newProcessor, PluginSetting::getName));
+            final List<List<IdentifiedComponent<Processor>>> processorSets = pipelineConfiguration.getProcessorPluginSettings().stream()
+                    .map(this::newProcessor)
+                    .collect(Collectors.toList());
 
-            final List<List<Processor>> decoratedProcessorSets = processorMap.entrySet().stream()
-                    .map(processorMapEntry -> processorMapEntry.getKey().stream()
-                            .map(processor -> {
-                                if (processor instanceof RequiresPeerForwarding) {
+            final List<List<Processor>> decoratedProcessorSets = processorSets.stream()
+                    .map(processorComponentList -> processorComponentList.stream()
+                            .map(processorComponent -> {
+                                if (processorComponent.getComponent() instanceof RequiresPeerForwarding) {
                                     return new PeerForwardingProcessorDecorator(
-                                            processor, peerForwarderProvider, pipelineName, processorMapEntry.getValue()
+                                            processorComponent.getComponent(), peerForwarderProvider, pipelineName, processorComponent.getName()
                                     );
                                 }
-                                return processor;
+                                return processorComponent.getComponent();
                             })
                             .collect(Collectors.toList())
-                    ).collect(Collectors.toList());
+                        ).collect(Collectors.toList());
+
 
             final int readBatchDelay = pipelineConfiguration.getReadBatchDelay();
 
@@ -141,13 +143,17 @@ public class PipelineParser {
 
     }
 
-    private List<Processor> newProcessor(final PluginSetting pluginSetting) {
-        return pluginFactory.loadPlugins(
+    private List<IdentifiedComponent<Processor>> newProcessor(final PluginSetting pluginSetting) {
+        final List<Processor> processors = pluginFactory.loadPlugins(
                 Processor.class,
                 pluginSetting,
                 actualClass -> actualClass.isAnnotationPresent(SingleThread.class) ?
                         pluginSetting.getNumberOfProcessWorkers() :
                         1);
+
+        return processors.stream()
+                .map(processor -> new IdentifiedComponent<>(processor, pluginSetting.getName()))
+                .collect(Collectors.toList());
     }
 
     private Optional<Source> getSourceIfPipelineType(
@@ -233,6 +239,24 @@ public class PipelineParser {
             pipelineMap.remove(pipelineName);
             sourceConnectorMap.remove(pipelineName);
             removeConnectedPipelines(pipelineName, pipelineConfigurationMap, pipelineMap);
+        }
+    }
+
+    private static class IdentifiedComponent<T> {
+        private final T component;
+        private final String name;
+
+        private IdentifiedComponent(final T component, final String name) {
+            this.component = component;
+            this.name = name;
+        }
+
+        T getComponent() {
+            return component;
+        }
+
+        String getName() {
+            return name;
         }
     }
 }
