@@ -11,6 +11,8 @@ import org.opensearch.dataprepper.peerforwarder.discovery.StaticPeerListProvider
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.NetworkInterface;
@@ -25,6 +27,8 @@ import java.util.Map;
 import java.util.Set;
 
 class RemotePeerForwarder implements PeerForwarder {
+    private static final Logger LOG = LoggerFactory.getLogger(RemotePeerForwarder.class);
+
     private final PeerForwarderClient peerForwarderClient;
     private final HashRing hashRing;
     private final String pipelineName;
@@ -54,8 +58,15 @@ class RemotePeerForwarder implements PeerForwarder {
             if (isAddressDefinedLocally(destinationIp)) {
                 recordsToProcessLocally.addAll(entry.getValue());
             } else {
-                final AggregatedHttpResponse httpResponse = peerForwarderClient.serializeRecordsAndSendHttpRequest(entry.getValue(),
-                        destinationIp, pluginId, pipelineName);
+                AggregatedHttpResponse httpResponse;
+                try {
+                    httpResponse = peerForwarderClient.serializeRecordsAndSendHttpRequest(entry.getValue(),
+                            destinationIp, pluginId, pipelineName);
+                } catch (final Exception ex) {
+                    httpResponse = null;
+                    LOG.warn("Unable to send request to peer, processing locally.", ex);
+                }
+
                 if (httpResponse == null || httpResponse.status() != HttpStatus.OK) {
                     recordsToProcessLocally.addAll(entry.getValue());
                 }

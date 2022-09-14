@@ -52,7 +52,7 @@ public class PeerClientPool {
     }
 
     private WebClient getHTTPClient(final String ipAddress) {
-        final String protocol = ssl ? HTTP : HTTPS;
+        final String protocol = ssl ? HTTPS : HTTP;
 
         ClientBuilder clientBuilder = Clients.builder(String.format("%s://%s:%s/", protocol, ipAddress, port))
                 .writeTimeout(Duration.ofSeconds(clientTimeoutSeconds));

@@ -11,7 +11,6 @@ import com.amazon.dataprepper.model.log.JacksonLog;
 import com.amazon.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.linecorp.armeria.client.ClientBuilder;
 import com.linecorp.armeria.client.Clients;
@@ -21,6 +20,7 @@ import com.linecorp.armeria.common.HttpStatus;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -43,8 +43,9 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.lenient;
+import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
@@ -56,8 +57,7 @@ class PeerForwarderClientTest {
     private static final String TEST_PLUGIN_ID = "test_plugin_id";
     private static final String TEST_PIPELINE_NAME = "test_pipeline_name";
 
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule());
+    private ObjectMapper objectMapper;
 
     @Mock
     PeerForwarderConfiguration peerForwarderConfiguration;
@@ -68,7 +68,15 @@ class PeerForwarderClientTest {
     @Mock
     PeerForwarderClientFactory peerForwarderClientFactory;
 
-    PeerForwarderClient createObjectUnderTest(final ObjectMapper objectMapper) {
+    @BeforeEach
+    void setUp() {
+        objectMapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule());
+
+        when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
+    }
+
+    private PeerForwarderClient createObjectUnderTest(final ObjectMapper objectMapper) {
         when(peerForwarderConfiguration.getClientThreadCount()).thenReturn(200);
         return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper);
     }
@@ -97,21 +105,18 @@ class PeerForwarderClientTest {
     }
 
     @Test
-    void test_serializeRecordsAndSendHttpRequest_with_bad_wireEvents_should_return_BAD_REQUEST() throws JsonProcessingException {
+    void test_serializeRecordsAndSendHttpRequest_with_bad_wireEvents_should_throw() throws JsonProcessingException {
         ObjectMapper objectMapper = mock(ObjectMapper.class);
-        objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-        lenient().when(objectMapper.writeValueAsString(instanceOf(WireEvents.class))).thenThrow(JsonProcessingException.class);
+        when(objectMapper.writeValueAsString(isA(WireEvents.class))).thenThrow(JsonProcessingException.class);
 
-        when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
+        final PeerForwarderClient objectUnderTest = createObjectUnderTest(objectMapper);
 
-        final PeerForwarderClient peerForwarderClient = createObjectUnderTest(objectMapper);
+        final Collection<Record<Event>> records = generateBatchRecords(1);
 
-        final AggregatedHttpResponse aggregatedHttpResponse =
-                peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), LOCAL_IP, TEST_PLUGIN_ID, TEST_PIPELINE_NAME);
+        final RuntimeException actualException = assertThrows(RuntimeException.class,
+                () -> objectUnderTest.serializeRecordsAndSendHttpRequest(records, "127.0.0.1", TEST_PLUGIN_ID, TEST_PIPELINE_NAME));
 
-        assertThat(aggregatedHttpResponse, notNullValue());
-        assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
-        assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.BAD_REQUEST));
+        assertThat(actualException.getCause(), instanceOf(JsonProcessingException.class));
     }
 
     private Collection<Record<Event>> generateBatchRecords(final int numRecords) {
