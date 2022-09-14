@@ -11,6 +11,7 @@ import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.event.Event;
+import com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import com.amazon.dataprepper.model.processor.AbstractProcessor;
 import com.amazon.dataprepper.model.processor.Processor;
@@ -26,9 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @DataPrepperPlugin(name = "aggregate", pluginType = Processor.class, pluginConfigurationType = AggregateProcessorConfig.class)
-public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private static final Logger LOG = LoggerFactory.getLogger(AggregateProcessor.class);
-
+public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> implements RequiresPeerForwarding {
     static final String ACTION_HANDLE_EVENTS_OUT = "actionHandleEventsOut";
     static final String ACTION_HANDLE_EVENTS_DROPPED = "actionHandleEventsDropped";
     static final String ACTION_CONCLUDE_GROUP_EVENTS_OUT = "actionConcludeGroupEventsOut";
@@ -126,5 +125,10 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     @Override
     public void shutdown() {
 
+    }
+
+    @Override
+    public Collection<String> getIdentificationKeys() {
+        return aggregateProcessorConfig.getIdentificationKeys();
     }
 }

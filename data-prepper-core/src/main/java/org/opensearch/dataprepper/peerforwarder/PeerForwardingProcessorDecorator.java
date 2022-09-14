@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
 
 public class PeerForwardingProcessorDecorator implements Processor<Record<Event>, Record<Event>> {
@@ -33,7 +34,7 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
         this.pluginId = pluginId;
 
         if (innerProcessor instanceof RequiresPeerForwarding) {
-            identificationKeys = ((RequiresPeerForwarding) innerProcessor).getIdentificationKeys();
+            identificationKeys = new HashSet<> (((RequiresPeerForwarding) innerProcessor).getIdentificationKeys());
         } else {
             throw new UnsupportedPeerForwarderPluginException("Peer Forwarding is only supported for plugins which implement RequiresPeerForwarding interface.");
         }
