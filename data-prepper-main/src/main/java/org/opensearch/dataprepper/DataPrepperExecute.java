@@ -21,14 +21,20 @@ public class DataPrepperExecute {
     public static void main(final String ... args) {
         java.security.Security.setProperty("networkaddress.cache.ttl", "60");
 
-        final String dataPrepperHome = System.getProperty("data-prepper.dir");
-        if (dataPrepperHome == null) {
-            throw new RuntimeException("Data Prepper home directory (data-prepper.dir) not set in system properties.");
+        final ContextManager contextManager;
+        if (args.length == 0) {
+            final String dataPrepperHome = System.getProperty("data-prepper.dir");
+            if (dataPrepperHome == null) {
+                throw new RuntimeException("Data Prepper home directory (data-prepper.dir) not set in system properties.");
+            }
+
+            final String dataPrepperPipelines = Paths.get(dataPrepperHome).resolve("pipelines/").toString();
+            final String dataPrepperConfig = Paths.get(dataPrepperHome).resolve("config/data-prepper-config.yaml").toString();
+            contextManager = new ContextManager(dataPrepperPipelines, dataPrepperConfig);
+        } else {
+            contextManager = new ContextManager(args);
         }
 
-        final String dataPrepperPipelines = Paths.get(dataPrepperHome).resolve("pipelines/").toString();
-        final String dataPrepperConfig = Paths.get(dataPrepperHome).resolve("config/data-prepper-config.yaml").toString();
-        final ContextManager contextManager = new ContextManager(dataPrepperPipelines, dataPrepperConfig);
         final DataPrepper dataPrepper = contextManager.getDataPrepperBean();
 
         LOG.trace("Starting Data Prepper execution");
