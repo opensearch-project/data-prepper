@@ -139,7 +139,7 @@ class PipelineParserTests {
     }
 
     @Test
-    void parseConfiguration_from_directory_with_no_files_should_throw() {
+    void parseConfiguration_from_directory_with_no_yaml_files_should_throw() {
         final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.EMPTY_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider);
         final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
         assertThat(actualException.getMessage(), equalTo(
