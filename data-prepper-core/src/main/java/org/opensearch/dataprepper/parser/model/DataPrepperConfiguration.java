@@ -36,6 +36,7 @@ public class DataPrepperConfiguration {
     private Map<String, String> metricTags = new HashMap<>();
     private PeerForwarderConfiguration peerForwarderConfiguration;
     private Duration processorShutdownTimeout;
+    private Duration sinkShutdownTimeout;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
 
@@ -55,7 +56,8 @@ public class DataPrepperConfiguration {
             @JsonProperty("authentication") final PluginModel authentication,
             @JsonProperty("metricTags") final Map<String, String> metricTags,
             @JsonProperty("peer_forwarder") final PeerForwarderConfiguration peerForwarderConfiguration,
-            @JsonProperty("processorShutdownTimeout") final Duration processorShutdownTimeout
+            @JsonProperty("processorShutdownTimeout") final Duration processorShutdownTimeout,
+            @JsonProperty("sinkShutdownTimeout") final Duration sinkShutdownTimeout
             ) {
         this.authentication = authentication;
         setSsl(ssl);
@@ -66,7 +68,16 @@ public class DataPrepperConfiguration {
         setMetricTags(metricTags);
         setServerPort(serverPort);
         this.peerForwarderConfiguration = peerForwarderConfiguration;
+
         this.processorShutdownTimeout = processorShutdownTimeout != null ? processorShutdownTimeout : DEFAULT_SHUTDOWN_DURATION;
+        if (this.processorShutdownTimeout.isNegative()) {
+            throw new IllegalArgumentException("processorShutdownTimeout must be non-negative.");
+        }
+
+        this.sinkShutdownTimeout = sinkShutdownTimeout != null ? sinkShutdownTimeout : DEFAULT_SHUTDOWN_DURATION;
+        if (this.sinkShutdownTimeout.isNegative()) {
+            throw new IllegalArgumentException("sinkShutdownTimeout must be non-negative.");
+        }
     }
 
     public int getServerPort() {
@@ -136,5 +147,9 @@ public class DataPrepperConfiguration {
 
     public Duration getProcessorShutdownTimeout() {
         return processorShutdownTimeout;
+    }
+
+    public Duration getSinkShutdownTimeout() {
+        return sinkShutdownTimeout;
     }
 }

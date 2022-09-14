@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -44,7 +45,8 @@ public class Pipeline {
     private final List<Sink> sinks;
     private final int processorThreads;
     private final int readBatchTimeoutInMillis;
-    private final long processorShutdownTimeoutInMillis;
+    private final Duration processorShutdownTimeout;
+    private final Duration sinkShutdownTimeout;
     private final ExecutorService processorExecutorService;
     private final ExecutorService sinkExecutorService;
 
@@ -63,6 +65,8 @@ public class Pipeline {
      * @param sinks                    sink to which the transformed records are posted
      * @param processorThreads         configured or default threads to parallelize processor work
      * @param readBatchTimeoutInMillis configured or default timeout for reading batch of records from buffer
+     * @param processorShutdownTimeout configured or default timeout before forcefully terminating the processor workers
+     * @param sinkShutdownTimeout      configured or default timeout before forcefully terminating the sink workers
      */
     public Pipeline(
             @Nonnull final String name,
@@ -72,7 +76,8 @@ public class Pipeline {
             @Nonnull final List<Sink> sinks,
             final int processorThreads,
             final int readBatchTimeoutInMillis,
-            final long processorShutdownTimeoutInMillis) {
+            final Duration processorShutdownTimeout,
+            final Duration sinkShutdownTimeout) {
         Preconditions.checkArgument(processorSets.stream().allMatch(
                 processorSet -> Objects.nonNull(processorSet) && (processorSet.size() == 1 || processorSet.size() == processorThreads)));
         this.name = name;
@@ -82,7 +87,8 @@ public class Pipeline {
         this.sinks = sinks;
         this.processorThreads = processorThreads;
         this.readBatchTimeoutInMillis = readBatchTimeoutInMillis;
-        this.processorShutdownTimeoutInMillis = processorShutdownTimeoutInMillis;
+        this.processorShutdownTimeout = processorShutdownTimeout;
+        this.sinkShutdownTimeout = sinkShutdownTimeout;
         this.processorExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(processorThreads,
                 new PipelineThreadFactory(format("%s-processor-worker", name)), this);
 
@@ -174,8 +180,9 @@ public class Pipeline {
      * 6. Stopping the sink ExecutorService
      */
     public void shutdown() {
-        LOG.info("Pipeline [{}] - Received shutdown signal with processor shutdown timeout {}, will initiate the shutdown process",
-                name, processorShutdownTimeoutInMillis);
+        LOG.info("Pipeline [{}] - Received shutdown signal with processor shutdown timeout {} and sink shutdown timeout {}." +
+                        " Initiating the shutdown process",
+                name, processorShutdownTimeout, sinkShutdownTimeout);
         try {
             source.stop();
             stopRequested = true;
@@ -185,15 +192,15 @@ public class Pipeline {
                     "proceeding with termination of process workers", name);
         }
 
-        shutdownExecutorService(processorExecutorService, processorShutdownTimeoutInMillis);
+        shutdownExecutorService(processorExecutorService, processorShutdownTimeout.toMillis());
 
         processorSets.forEach(processorSet -> processorSet.forEach(Processor::shutdown));
         sinks.forEach(Sink::shutdown);
 
-        shutdownExecutorService(sinkExecutorService, processorShutdownTimeoutInMillis);
+        shutdownExecutorService(sinkExecutorService, sinkShutdownTimeout.toMillis());
     }
 
-    private void shutdownExecutorService(final ExecutorService executorService, long timeoutForTerminationInMillis) {
+    private void shutdownExecutorService(final ExecutorService executorService, final long timeoutForTerminationInMillis) {
         LOG.info("Pipeline [{}] - Shutting down process workers", name);
 
         executorService.shutdown();

@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.Mock;
@@ -27,6 +28,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
 
@@ -52,6 +54,11 @@ class PipelineParserTests {
         pluginFactory = coreContext.getBean(DefaultPluginFactory.class);
     }
 
+    @AfterEach
+    void tearDown() {
+        verifyNoMoreInteractions(dataPrepperConfiguration);
+    }
+
     @Test
     void parseConfiguration_with_multiple_valid_pipelines_creates_the_correct_pipelineMap() {
         mockDataPrepperConfigurationAccesses();
@@ -72,10 +79,12 @@ class PipelineParserTests {
 
     @Test
     void parseConfiguration_with_incorrect_child_pipeline_returns_empty_pipelinesMap() {
+        mockDataPrepperConfigurationAccesses();
         final PipelineParser pipelineParser =
                 new PipelineParser(TestDataProvider.CONNECTED_PIPELINE_CHILD_PIPELINE_INCORRECT, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
         final Map<String, Pipeline> connectedPipelines = pipelineParser.parseConfiguration();
         assertThat(connectedPipelines.size(), equalTo(0));
+        verifyDataPrepperConfigurationAccesses();
     }
 
     @Test
@@ -156,7 +165,8 @@ class PipelineParserTests {
     }
 
     private void mockDataPrepperConfigurationAccesses() {
-        when(dataPrepperConfiguration.getProcessorShutdownTimeout()).thenReturn(Duration.ofSeconds(new Random().nextInt()));
+        when(dataPrepperConfiguration.getProcessorShutdownTimeout()).thenReturn(Duration.ofSeconds(Math.abs(new Random().nextInt())));
+        when(dataPrepperConfiguration.getSinkShutdownTimeout()).thenReturn(Duration.ofSeconds(Math.abs(new Random().nextInt())));
     }
 
     private void verifyDataPrepperConfigurationAccesses() {
@@ -165,5 +175,6 @@ class PipelineParserTests {
 
     private void verifyDataPrepperConfigurationAccesses(final int times) {
         verify(dataPrepperConfiguration, times(times)).getProcessorShutdownTimeout();
+        verify(dataPrepperConfiguration, times(times)).getSinkShutdownTimeout();
     }
 }

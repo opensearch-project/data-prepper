@@ -134,8 +134,8 @@ public class PipelineParser {
                     .map(this::buildSinkOrConnector)
                     .collect(Collectors.toList());
 
-            final long processorShutdownTimeout = dataPrepperConfiguration.getProcessorShutdownTimeout().toMillis();
-            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, decoratedProcessorSets, sinks, processorThreads, readBatchDelay, processorShutdownTimeout);
+            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, decoratedProcessorSets, sinks, processorThreads, readBatchDelay,
+                    dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout());
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
             //If pipeline construction errors out, we will skip that pipeline and proceed
