@@ -46,24 +46,24 @@ class RemotePeerForwarderTest {
     private static final int TEST_BUFFER_CAPACITY = 3;
     private static final int TEST_BATCH_SIZE = 3;
     private static final int TEST_TIMEOUT_IN_MILLIS = 500;
-    private static final PeerForwarderReceiveBuffer<Record<Event>> peerForwarderReceiveBuffer =
-            new PeerForwarderReceiveBuffer<>(TEST_BUFFER_CAPACITY, TEST_BATCH_SIZE);
 
     @Mock
-    PeerForwarderClient peerForwarderClient;
+    private PeerForwarderClient peerForwarderClient;
 
     @Mock
-    HashRing hashRing;
+    private HashRing hashRing;
 
     private String pipelineName;
     private String pluginId;
     private Set<String> identificationKeys;
+    private PeerForwarderReceiveBuffer<Record<Event>> peerForwarderReceiveBuffer;
 
     @BeforeEach
     void setUp() {
         pipelineName = UUID.randomUUID().toString();
         pluginId = UUID.randomUUID().toString();
         identificationKeys = generateIdentificationKeys();
+        peerForwarderReceiveBuffer = new PeerForwarderReceiveBuffer<>(TEST_BUFFER_CAPACITY, TEST_BATCH_SIZE);
     }
 
     private RemotePeerForwarder createObjectUnderTest() {
