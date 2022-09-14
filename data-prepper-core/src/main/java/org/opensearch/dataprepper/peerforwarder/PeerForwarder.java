@@ -12,4 +12,6 @@ import java.util.Collection;
 
 public interface PeerForwarder {
     Collection<Record<Event>> forwardRecords(final Collection<Record<Event>> records);
+
+    Collection<Record<Event>> receiveRecords();
 }

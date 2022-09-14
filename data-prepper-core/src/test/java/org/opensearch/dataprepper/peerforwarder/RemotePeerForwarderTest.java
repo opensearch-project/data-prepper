@@ -43,11 +43,18 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class RemotePeerForwarderTest {
+    private static final int TEST_BUFFER_CAPACITY = 3;
+    private static final int TEST_BATCH_SIZE = 3;
+    private static final int TEST_TIMEOUT_IN_MILLIS = 500;
+    private static final PeerForwarderReceiveBuffer<Record<Event>> peerForwarderReceiveBuffer =
+            new PeerForwarderReceiveBuffer<>(TEST_BUFFER_CAPACITY, TEST_BATCH_SIZE);
+
     @Mock
     PeerForwarderClient peerForwarderClient;
 
     @Mock
     HashRing hashRing;
+
     private String pipelineName;
     private String pluginId;
     private Set<String> identificationKeys;
@@ -60,7 +67,7 @@ class RemotePeerForwarderTest {
     }
 
     private RemotePeerForwarder createObjectUnderTest() {
-        return new RemotePeerForwarder(peerForwarderClient, hashRing, pipelineName, pluginId, identificationKeys);
+        return new RemotePeerForwarder(peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId, identificationKeys);
     }
 
     @Test
@@ -114,6 +121,18 @@ class RemotePeerForwarderTest {
         for (Record<Event> inputRecord : inputRecords) {
             assertThat(records, hasItem(inputRecord));
         }
+    }
+
+    @Test
+    void test_receiveRecords_should_return_record_from_buffer() throws Exception {
+        final Collection testRecords = generateBatchRecords(3, false);
+        peerForwarderReceiveBuffer.writeAll(testRecords, TEST_TIMEOUT_IN_MILLIS);
+
+        final RemotePeerForwarder objectUnderTest = createObjectUnderTest();
+        final Collection<Record<Event>> records = objectUnderTest.receiveRecords();
+
+        assertThat(records.size(), equalTo(testRecords.size()));
+        assertThat(records, equalTo(testRecords));
     }
 
     private Collection<Record<Event>> generateBatchRecords(final int numRecords, final boolean isSameValues) {

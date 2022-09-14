@@ -14,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.apache.commons.collections.CollectionUtils;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.peerforwarder.exception.EmptyPeerForwarderPluginIdentificationKeysException;
@@ -113,6 +114,29 @@ class PeerForwardingProcessingDecoratorTest {
             Assertions.assertNotNull(records);
             assertThat(records.size(), equalTo(testData.size()));
             assertThat(records, equalTo(testData));
+        }
+
+        @Test
+        void PeerForwardingProcessingDecorator_execute_should_receiveRecords() {
+            Collection<Record<Event>> forwardTestData = Collections.singletonList(record);
+            Collection<Record<Event>> receiveTestData = Collections.singletonList(mock(Record.class));
+
+            when(peerForwarder.forwardRecords(forwardTestData)).thenReturn(forwardTestData);
+            when(peerForwarder.receiveRecords()).thenReturn(receiveTestData);
+
+            final Collection<Record<Event>> recordsToProcessLocally = CollectionUtils.union(forwardTestData, receiveTestData);
+
+            when(requiresPeerForwarding.execute(anyCollection())).thenReturn(recordsToProcessLocally);
+
+            final PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(requiresPeerForwarding);
+            final Collection<Record<Event>> records = objectUnderTest.execute(forwardTestData);
+
+            verify(requiresPeerForwarding).getIdentificationKeys();
+            verify(peerForwarder).forwardRecords(forwardTestData);
+            verify(peerForwarder).receiveRecords();
+            Assertions.assertNotNull(records);
+            assertThat(records.size(), equalTo(recordsToProcessLocally.size()));
+            assertThat(records, equalTo(recordsToProcessLocally));
         }
 
         @Test

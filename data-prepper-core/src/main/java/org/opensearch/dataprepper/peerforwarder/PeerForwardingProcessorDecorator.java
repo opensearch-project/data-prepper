@@ -9,17 +9,14 @@ import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
+import org.apache.commons.collections.CollectionUtils;
 import org.opensearch.dataprepper.peerforwarder.exception.EmptyPeerForwarderPluginIdentificationKeysException;
 import org.opensearch.dataprepper.peerforwarder.exception.UnsupportedPeerForwarderPluginException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Set;
 
 public class PeerForwardingProcessorDecorator implements Processor<Record<Event>, Record<Event>> {
-    private static final Logger LOG = LoggerFactory.getLogger(PeerForwardingProcessorDecorator.class);
-
     private final Processor innerProcessor;
     private final PeerForwarder peerForwarder;
     private final String pluginId;
@@ -41,13 +38,14 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
             throw new EmptyPeerForwarderPluginIdentificationKeysException("Peer Forwarder Plugin: %s cannot have empty identification keys." + pluginId);
         }
         this.peerForwarder = peerForwarderProvider.register(pipelineName, pluginId, identificationKeys);
-        // TODO: remove this log message after implementing peer forwarder
-        LOG.info("Peer Forwarder not implemented yet, processing events locally.");
     }
 
     @Override
     public Collection<Record<Event>> execute(final Collection<Record<Event>> records) {
-        final Collection<Record<Event>> recordsToProcessLocally = peerForwarder.forwardRecords(records);
+        final Collection<Record<Event>> recordsToProcessOnLocalPeer = peerForwarder.forwardRecords(records);
+        final Collection<Record<Event>> receivedRecordsFromBuffer = peerForwarder.receiveRecords();
+
+        final Collection<Record<Event>> recordsToProcessLocally = CollectionUtils.union(recordsToProcessOnLocalPeer, receivedRecordsFromBuffer);
 
         return innerProcessor.execute(recordsToProcessLocally);
     }

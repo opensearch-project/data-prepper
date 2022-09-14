@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.peerforwarder.discovery.StaticPeerListProvider;
@@ -28,20 +29,25 @@ import java.util.Set;
 
 class RemotePeerForwarder implements PeerForwarder {
     private static final Logger LOG = LoggerFactory.getLogger(RemotePeerForwarder.class);
+    private static final int READ_BATCH_DELAY = 3_000;
+
 
     private final PeerForwarderClient peerForwarderClient;
     private final HashRing hashRing;
+    private final PeerForwarderReceiveBuffer<Record<Event>> peerForwarderReceiveBuffer;
     private final String pipelineName;
     private final String pluginId;
     private final Set<String> identificationKeys;
 
     RemotePeerForwarder(final PeerForwarderClient peerForwarderClient,
                         final HashRing hashRing,
+                        final PeerForwarderReceiveBuffer<Record<Event>> peerForwarderReceiveBuffer,
                         final String pipelineName,
                         final String pluginId,
                         final Set<String> identificationKeys) {
         this.peerForwarderClient = peerForwarderClient;
         this.hashRing = hashRing;
+        this.peerForwarderReceiveBuffer = peerForwarderReceiveBuffer;
         this.pipelineName = pipelineName;
         this.pluginId = pluginId;
         this.identificationKeys = identificationKeys;
@@ -73,6 +79,20 @@ class RemotePeerForwarder implements PeerForwarder {
             }
         }
         return recordsToProcessLocally;
+    }
+
+    public Collection<Record<Event>> receiveRecords() {
+        // TODO: Make the read timeout configurable? This is the default read batch delay in PipelineConfiguration
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> readResult =
+                peerForwarderReceiveBuffer.read(READ_BATCH_DELAY);
+
+        final Collection<Record<Event>> records = readResult.getKey();
+        final CheckpointState checkpointState = readResult.getValue();
+
+        // Checkpoint the current batch read from the buffer after reading from buffer
+        peerForwarderReceiveBuffer.checkpoint(checkpointState);
+
+        return records;
     }
 
     private Map<String, List<Record<Event>>> groupRecordsBasedOnIdentificationKeys(
