@@ -62,6 +62,8 @@ public class ShutdownHandlerTest {
                 .close();
         verify(dataPrepper, times(1))
                 .shutdownDataPrepperServer();
+        verify(dataPrepper, times(1))
+                .shutdownPeerForwarderServer();
     }
 
     @ParameterizedTest
