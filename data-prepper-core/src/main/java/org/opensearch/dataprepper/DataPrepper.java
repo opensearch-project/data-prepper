@@ -7,6 +7,7 @@ package org.opensearch.dataprepper;
 
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.parser.PipelineParser;
+import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServer;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.server.DataPrepperServer;
 import io.micrometer.core.instrument.util.StringUtils;
@@ -32,6 +33,7 @@ public class DataPrepper {
 
     private final PluginFactory pluginFactory;
     private Map<String, Pipeline> transformationPipelines;
+    private final PeerForwarderServer peerForwarderServer;
 
     // TODO: Remove DataPrepperServer dependency on DataPrepper
     @Inject
@@ -50,7 +52,8 @@ public class DataPrepper {
     @Inject
     public DataPrepper(
             final PipelineParser pipelineParser,
-            final PluginFactory pluginFactory
+            final PluginFactory pluginFactory,
+            final PeerForwarderServer peerForwarderServer
     ) {
         this.pluginFactory = pluginFactory;
 
@@ -58,6 +61,7 @@ public class DataPrepper {
         if (transformationPipelines.size() == 0) {
             throw new RuntimeException("No valid pipeline is available for execution, exiting");
         }
+        this.peerForwarderServer = peerForwarderServer;
     }
 
     /**
@@ -66,6 +70,7 @@ public class DataPrepper {
      * @return true if execute successfully initiates the Data Prepper
      */
     public boolean execute() {
+        peerForwarderServer.start();
         transformationPipelines.forEach((name, pipeline) -> {
             pipeline.execute();
         });
@@ -88,6 +93,13 @@ public class DataPrepper {
      */
     public void shutdownDataPrepperServer() {
         dataPrepperServer.stop();
+    }
+
+    /**
+     * Triggers shutdown of the Peer Forwarder server.
+     */
+    public void shutdownPeerForwarderServer() {
+        peerForwarderServer.stop();
     }
 
     /**

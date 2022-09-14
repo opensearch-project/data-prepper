@@ -7,6 +7,7 @@ package org.opensearch.dataprepper;
 
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.parser.PipelineParser;
+import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServer;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.server.DataPrepperServer;
 import org.hamcrest.Matchers;
@@ -38,6 +39,8 @@ public class DataPrepperTests {
     private PluginFactory pluginFactory;
     @Mock
     private DataPrepperServer dataPrepperServer;
+    @Mock
+    private PeerForwarderServer peerForwarderServer;
     @InjectMocks
     private DataPrepper dataPrepper;
 
@@ -73,7 +76,7 @@ public class DataPrepperTests {
 
         assertThrows(
                 RuntimeException.class,
-                () -> new DataPrepper(pipelineParser, pluginFactory),
+                () -> new DataPrepper(pipelineParser, pluginFactory, peerForwarderServer),
                 "Exception should be thrown if pipeline parser has no pipeline configuration");
     }
 
@@ -93,6 +96,7 @@ public class DataPrepperTests {
 
         verify(pipeline).execute();
         verify(dataPrepperServer).start();
+        verify(peerForwarderServer).start();
     }
 
     @Test
@@ -120,6 +124,13 @@ public class DataPrepperTests {
         dataPrepper.shutdownDataPrepperServer();
 
         verify(dataPrepperServer).stop();
+    }
+
+    @Test
+    public void testShutdownPeerForwarderServer() {
+        dataPrepper.shutdownPeerForwarderServer();
+
+        verify(peerForwarderServer).stop();
     }
     
     @Test

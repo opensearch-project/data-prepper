@@ -44,6 +44,7 @@ public class ShutdownHandler implements HttpHandler {
         } finally {
             exchange.getResponseBody().close();
             dataPrepper.shutdownDataPrepperServer();
+            dataPrepper.shutdownPeerForwarderServer();
         }
     }
 }
