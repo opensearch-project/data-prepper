@@ -42,7 +42,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.isSsl(), equalTo(false));
         assertThat(peerForwarderConfiguration.getAcmPrivateKeyPassword(), equalTo(null));
         assertThat(peerForwarderConfiguration.isUseAcmCertificateForSsl(), equalTo(false));
-        assertThat(peerForwarderConfiguration.getDiscoveryMode(), equalTo(DiscoveryMode.STATIC));
+        assertThat(peerForwarderConfiguration.getDiscoveryMode(), equalTo(DiscoveryMode.LOCAL_NODE));
         assertThat(peerForwarderConfiguration.getClientThreadCount(), equalTo(200));
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(48));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(512));
