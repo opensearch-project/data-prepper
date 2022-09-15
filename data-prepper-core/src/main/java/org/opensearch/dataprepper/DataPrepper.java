@@ -7,6 +7,7 @@ package org.opensearch.dataprepper;
 
 import com.amazon.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.parser.PipelineParser;
+import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServer;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.server.DataPrepperServer;
 import io.micrometer.core.instrument.util.StringUtils;
@@ -31,6 +32,7 @@ public class DataPrepper {
     private static final String DEFAULT_SERVICE_NAME = "dataprepper";
 
     private final PluginFactory pluginFactory;
+    private final PeerForwarderServer peerForwarderServer;
     private Map<String, Pipeline> transformationPipelines;
 
     // TODO: Remove DataPrepperServer dependency on DataPrepper
@@ -50,14 +52,16 @@ public class DataPrepper {
     @Inject
     public DataPrepper(
             final PipelineParser pipelineParser,
-            final PluginFactory pluginFactory
-    ) {
+            final PluginFactory pluginFactory,
+            final PeerForwarderServer peerForwarderServer
+            ) {
         this.pluginFactory = pluginFactory;
 
         transformationPipelines = pipelineParser.parseConfiguration();
         if (transformationPipelines.size() == 0) {
             throw new RuntimeException("No valid pipeline is available for execution, exiting");
         }
+        this.peerForwarderServer = peerForwarderServer;
     }
 
     /**
@@ -66,6 +70,7 @@ public class DataPrepper {
      * @return true if execute successfully initiates the Data Prepper
      */
     public boolean execute() {
+        peerForwarderServer.start();
         transformationPipelines.forEach((name, pipeline) -> {
             pipeline.execute();
         });
@@ -84,10 +89,11 @@ public class DataPrepper {
     }
 
     /**
-     * Triggers shutdown of the Data Prepper server.
+     * Triggers shutdown of the Data Prepper and Peer Forwarder server.
      */
-    public void shutdownDataPrepperServer() {
+    public void shutdownServers() {
         dataPrepperServer.stop();
+        peerForwarderServer.stop();
     }
 
     /**
