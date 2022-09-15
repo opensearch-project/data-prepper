@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugin;
+package org.opensearch.dataprepper.parser;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -16,21 +16,21 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * This deserializer is used for all plugin configurations that use a {@link Duration} type that is mapped to by Jackson in the {@link PluginConfigurationConverter}.
+ * This deserializer is used for configurations that use a {@link Duration} type when deserialized by Jackson
  * It supports ISO 8601 notation ("PT20.345S", "PT15M", etc.) and simple durations for
  * seconds (60s) and milliseconds (100ms). It does not support combining the units for simple durations ("60s 100ms" is not allowed).
  * Whitespace is ignored and leading zeroes are not allowed.
  * @since 1.3
  */
-class PluginDurationDeserializer extends StdDeserializer<Duration> {
+public class DataPrepperDurationDeserializer extends StdDeserializer<Duration> {
 
     private static final String SIMPLE_DURATION_REGEX = "^([1-9]\\d*)(s|ms)$";
     private static final Pattern SIMPLE_DURATION_PATTERN = Pattern.compile(SIMPLE_DURATION_REGEX);
 
-    public PluginDurationDeserializer() {
+    public DataPrepperDurationDeserializer() {
         this(null);
     }
-    protected PluginDurationDeserializer(Class<?> vc) {
+    protected DataPrepperDurationDeserializer(Class<?> vc) {
         super(vc);
     }
 
