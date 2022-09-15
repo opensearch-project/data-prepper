@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
 
 import javax.inject.Named;
 import java.time.Duration;
@@ -33,7 +34,7 @@ class PluginConfigurationConverter {
 
     PluginConfigurationConverter(final Validator validator) {
         final SimpleModule simpleModule = new SimpleModule();
-        simpleModule.addDeserializer(Duration.class, new PluginDurationDeserializer());
+        simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
 
         this.objectMapper = new ObjectMapper()
                 .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugin;
+package org.opensearch.dataprepper.parser;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -18,13 +18,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class PluginDurationDeserializerTest {
+public class DataPrepperDurationDeserializerTest {
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void setup() {
         final SimpleModule simpleModule = new SimpleModule();
-        simpleModule.addDeserializer(Duration.class, new PluginDurationDeserializer());
+        simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
 
         objectMapper = new ObjectMapper();
         objectMapper.registerModule(simpleModule);

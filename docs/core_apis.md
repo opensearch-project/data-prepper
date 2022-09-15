@@ -92,3 +92,13 @@ your Data Prepper instance.
 authentication:
   unauthenticated:
 ```
+
+### Shutdown Timeouts
+When the DataPrepper `shutdown` API is invoked, the sink and processor `ExecutorService`'s are given time to gracefully shutdown and clear any in-flight data. The default graceful shutdown timeout for these `ExecutorService`'s is 10 seconds. This can be configured with the following optional parameters:
+
+```yaml
+processorShutdownTimeout: "PT15M"
+sinkShutdownTimeout: 30s
+```
+
+The values for these parameters are parsed into a `Duration` object via the [DataPrepperDurationDeserializer](https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-core/src/main/java/org/opensearch/dataprepper/parser/DataPrepperDurationDeserializer.java).
