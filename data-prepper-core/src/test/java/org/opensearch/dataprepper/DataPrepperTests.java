@@ -120,16 +120,10 @@ public class DataPrepperTests {
     }
 
     @Test
-    public void testShutdownDataPrepperServer() {
-        dataPrepper.shutdownDataPrepperServer();
+    public void testShutdownServers() {
+        dataPrepper.shutdownServers();
 
         verify(dataPrepperServer).stop();
-    }
-
-    @Test
-    public void testShutdownPeerForwarderServer() {
-        dataPrepper.shutdownPeerForwarderServer();
-
         verify(peerForwarderServer).stop();
     }
     

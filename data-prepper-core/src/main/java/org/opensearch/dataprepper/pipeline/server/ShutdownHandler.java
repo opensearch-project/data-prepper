@@ -43,8 +43,7 @@ public class ShutdownHandler implements HttpHandler {
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_INTERNAL_ERROR, 0);
         } finally {
             exchange.getResponseBody().close();
-            dataPrepper.shutdownDataPrepperServer();
-            dataPrepper.shutdownPeerForwarderServer();
+            dataPrepper.shutdownServers();
         }
     }
 }

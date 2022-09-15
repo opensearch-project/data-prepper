@@ -89,16 +89,10 @@ public class DataPrepper {
     }
 
     /**
-     * Triggers shutdown of the Data Prepper server.
+     * Triggers shutdown of the Data Prepper and Peer Forwarder server.
      */
-    public void shutdownDataPrepperServer() {
+    public void shutdownServers() {
         dataPrepperServer.stop();
-    }
-
-    /**
-     * Triggers shutdown of the Peer Forwarder server.
-     */
-    public void shutdownPeerForwarderServer() {
         peerForwarderServer.stop();
     }
 
