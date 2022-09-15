@@ -33,6 +33,7 @@ subprojects {
         def distName = "${platform}${architecture}" //eg linuxarm64
         def distNameWithJDK = "${distName}WithJDK"
         def downloadJDKTask = "download${architecture}JDK"
+        def installTaskName = "install${distName.capitalize()}Dist"
 
         //This adds two distributions for each supported architecture e.g. linuxarm64DistTar, linuxarm64WithJDKDistTar
         distributions {
@@ -66,6 +67,12 @@ subprojects {
             project.version = ""
         }
 
+        tasks.getByName(installTaskName) {
+            dependsOn ':release:releasePrerequisites'
+        }
+
+        assemble.dependsOn(installTaskName)
+
         //Adds one task per supported architecture for downloading appropriate JDK e.g. downloadarm64JDK
         tasks.create("${downloadJDKTask}") {
             doLast {
@@ -76,6 +83,10 @@ subprojects {
                 }
             }
         }
+    }
+
+    tasks.withType(Zip) {
+        enabled false
     }
 
     tasks.withType(Tar) {
@@ -122,7 +133,6 @@ subprojects {
         }
     }
 }
-
 
 CopySpec archiveToTar() {
     return copySpec {
