@@ -124,9 +124,9 @@ class PeerForwardingProcessingDecoratorTest {
             when(peerForwarder.forwardRecords(forwardTestData)).thenReturn(forwardTestData);
             when(peerForwarder.receiveRecords()).thenReturn(receiveTestData);
 
-            final Collection<Record<Event>> recordsToProcessLocally = CollectionUtils.union(forwardTestData, receiveTestData);
+            final Collection<Record<Event>> expectedRecordsToProcessLocally = CollectionUtils.union(forwardTestData, receiveTestData);
 
-            when(requiresPeerForwarding.execute(anyCollection())).thenReturn(recordsToProcessLocally);
+            when(requiresPeerForwarding.execute(anyCollection())).thenReturn(expectedRecordsToProcessLocally);
 
             final PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(requiresPeerForwarding);
             final Collection<Record<Event>> records = objectUnderTest.execute(forwardTestData);
@@ -135,8 +135,8 @@ class PeerForwardingProcessingDecoratorTest {
             verify(peerForwarder).forwardRecords(forwardTestData);
             verify(peerForwarder).receiveRecords();
             Assertions.assertNotNull(records);
-            assertThat(records.size(), equalTo(recordsToProcessLocally.size()));
-            assertThat(records, equalTo(recordsToProcessLocally));
+            assertThat(records.size(), equalTo(expectedRecordsToProcessLocally.size()));
+            assertThat(records, equalTo(expectedRecordsToProcessLocally));
         }
 
         @Test
