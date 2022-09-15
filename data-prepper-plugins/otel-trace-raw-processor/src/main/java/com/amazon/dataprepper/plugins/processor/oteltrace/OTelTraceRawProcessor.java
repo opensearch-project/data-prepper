@@ -7,6 +7,7 @@ package com.amazon.dataprepper.plugins.processor.oteltrace;
 
 import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import com.amazon.dataprepper.model.processor.AbstractProcessor;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
@@ -20,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -33,7 +35,7 @@ import java.util.stream.Collectors;
 
 
 @DataPrepperPlugin(name = "otel_trace_raw", pluginType = Processor.class)
-public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Record<Span>> {
+public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Record<Span>> implements RequiresPeerForwarding {
     private static final long SEC_TO_MILLIS = 1_000L;
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceRawProcessor.class);
 
@@ -245,5 +247,10 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
     @Override
     public void shutdown() {
         traceIdTraceGroupCache.cleanUp();
+    }
+
+    @Override
+    public Collection<String> getIdentificationKeys() {
+        return Collections.singleton("traceId");
     }
 }

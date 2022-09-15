@@ -139,9 +139,9 @@ public class AggregateProcessorTest {
         final List<String> keys = List.of("key");
         when(aggregateProcessorConfig.getIdentificationKeys()).thenReturn(keys);
         final AggregateProcessor objectUnderTest = createObjectUnderTest();
-        final Collection<String> identificationKeys = objectUnderTest.getIdentificationKeys();
+        final Collection<String> expectedIdentificationKeys = objectUnderTest.getIdentificationKeys();
 
-        assertThat(identificationKeys, equalTo(keys));
+        assertThat(expectedIdentificationKeys, equalTo(keys));
     }
 
     @Nested
