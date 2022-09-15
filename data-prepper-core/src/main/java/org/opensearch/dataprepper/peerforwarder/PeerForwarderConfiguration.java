@@ -81,9 +81,9 @@ public class PeerForwarderConfiguration {
         setMaxConnectionCount(maxConnectionCount);
         setMaxPendingRequests(maxPendingRequests);
         setSsl(ssl);
+        setUseAcmCertificateForSsl(useAcmCertificateForSsl);
         setSslCertificateFile(sslCertificateFile);
         setSslKeyFile(sslKeyFile);
-        setUseAcmCertificateForSsl(useAcmCertificateForSsl);
         setAcmCertificateArn(acmCertificateArn);
         this.acmPrivateKeyPassword = acmPrivateKeyPassword;
         setAcmCertificateTimeoutMillis(acmCertificateTimeoutMillis);
