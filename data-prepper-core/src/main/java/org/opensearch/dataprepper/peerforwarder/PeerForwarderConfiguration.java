@@ -36,7 +36,7 @@ public class PeerForwarderConfiguration {
     private String acmCertificateArn;
     private String acmPrivateKeyPassword;
     private Integer acmCertificateTimeoutMillis = 120000;
-    private DiscoveryMode discoveryMode = DiscoveryMode.STATIC;
+    private DiscoveryMode discoveryMode = DiscoveryMode.LOCAL_NODE;
     private String awsCloudMapNamespaceName;
     private String awsCloudMapServiceName;
     private String awsRegion;
@@ -46,7 +46,7 @@ public class PeerForwarderConfiguration {
     private Integer clientThreadCount = 200;
     private Integer batchSize = 48;
     private Integer bufferSize = 512;
-    private boolean sslCertAndKeyFileInS3;
+    private boolean sslCertAndKeyFileInS3 = false;
 
     public PeerForwarderConfiguration() {}
 
@@ -81,9 +81,9 @@ public class PeerForwarderConfiguration {
         setMaxConnectionCount(maxConnectionCount);
         setMaxPendingRequests(maxPendingRequests);
         setSsl(ssl);
+        setUseAcmCertificateForSsl(useAcmCertificateForSsl);
         setSslCertificateFile(sslCertificateFile);
         setSslKeyFile(sslKeyFile);
-        setUseAcmCertificateForSsl(useAcmCertificateForSsl);
         setAcmCertificateArn(acmCertificateArn);
         this.acmPrivateKeyPassword = acmPrivateKeyPassword;
         setAcmCertificateTimeoutMillis(acmCertificateTimeoutMillis);
@@ -240,20 +240,22 @@ public class PeerForwarderConfiguration {
     }
 
     private void setSslCertificateFile(final String sslCertificateFile) {
-        if (!ssl || StringUtils.isNotEmpty(sslCertificateFile)) {
-            this.sslCertificateFile = sslCertificateFile;
-        }
-        else {
-            throw new IllegalArgumentException("SSL certificate file path must be a valid file path when ssl is enabled.");
+        if (ssl && !useAcmCertificateForSsl) {
+            if (StringUtils.isNotBlank(sslCertificateFile)) {
+                this.sslCertificateFile = sslCertificateFile;
+            } else {
+                throw new IllegalArgumentException("SSL certificate file path must be a valid file path when ssl is enabled and not using ACM.");
+            }
         }
     }
 
     private void setSslKeyFile(final String sslKeyFile) {
-        if (!ssl || StringUtils.isNotEmpty(sslKeyFile)) {
-            this.sslKeyFile = sslKeyFile;
-        }
-        else {
-            throw new IllegalArgumentException("SSL key file path must be a valid file path when ssl is enabled.");
+        if (ssl && !useAcmCertificateForSsl) {
+            if (StringUtils.isNotBlank(sslKeyFile)) {
+                this.sslKeyFile = sslKeyFile;
+            } else {
+                throw new IllegalArgumentException("SSL key file path must be a valid file path when ssl is enabled and not using ACM.");
+            }
         }
     }
 
@@ -371,7 +373,7 @@ public class PeerForwarderConfiguration {
     }
 
     private void checkForCertAndKeyFileInS3() {
-        if (ssl && sslCertificateFile.toLowerCase().startsWith(S3_PREFIX) &&
+        if (ssl && !useAcmCertificateForSsl && sslCertificateFile.toLowerCase().startsWith(S3_PREFIX) &&
                     sslKeyFile.toLowerCase().startsWith(S3_PREFIX)) {
             sslCertAndKeyFileInS3 = true;
         }
