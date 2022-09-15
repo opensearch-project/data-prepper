@@ -42,7 +42,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.isSsl(), equalTo(false));
         assertThat(peerForwarderConfiguration.getAcmPrivateKeyPassword(), equalTo(null));
         assertThat(peerForwarderConfiguration.isUseAcmCertificateForSsl(), equalTo(false));
-        assertThat(peerForwarderConfiguration.getDiscoveryMode(), equalTo(DiscoveryMode.STATIC));
+        assertThat(peerForwarderConfiguration.getDiscoveryMode(), equalTo(DiscoveryMode.LOCAL_NODE));
         assertThat(peerForwarderConfiguration.getClientThreadCount(), equalTo(200));
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(48));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(512));
@@ -70,6 +70,14 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(100));
     }
 
+    @Test
+    void test_with_acm_should_create_PeerForwarderConfiguration_object_even_with_null_files() throws IOException {
+        final PeerForwarderConfiguration peerForwarderConfiguration = makeConfig(TestDataProvider.VALID_PEER_FORWARDER_WITH_ACM_SSL_CONFIG_FILE);
+
+        assertThat(peerForwarderConfiguration.isSsl(), equalTo(true));
+        assertThat(peerForwarderConfiguration.isUseAcmCertificateForSsl(), equalTo(true));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_PORT_CONFIG_FILE,
@@ -84,7 +92,8 @@ class PeerForwarderConfigurationTest {
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_CLOUD_MAP_WITHOUT_SERVICE_NAME_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_CLOUD_MAP_WITHOUT_NAMESPACE_NAME_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_CLOUD_MAP_WITHOUT_REGION_CONFIG_FILE,
-            TestDataProvider.INVALID_PEER_FORWARDER_WITH_DNS_WITHOUT_DOMAIN_NAME_CONFIG_FILE
+            TestDataProvider.INVALID_PEER_FORWARDER_WITH_DNS_WITHOUT_DOMAIN_NAME_CONFIG_FILE,
+            TestDataProvider.INVALID_PEER_FORWARDER_WITH_SSL
     })
     void invalid_InvalidPeerForwarderConfig_test(final String filePath) {
         assertThrows(ValueInstantiationException.class, () -> makeConfig(filePath));
