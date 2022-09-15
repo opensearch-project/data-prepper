@@ -91,6 +91,7 @@ public class PipelineParser {
             }
             return pipelineMap;
         } catch (IOException e) {
+            LOG.error("Failed to parse the configuration file {}", pipelineConfigurationFileLocation);
             throw new ParseException(format("Failed to parse the configuration file %s", pipelineConfigurationFileLocation), e);
         }
     }
@@ -104,22 +105,28 @@ public class PipelineParser {
             FileFilter yamlFilter = pathname -> (pathname.getName().endsWith(".yaml") || pathname.getName().endsWith(".yml"));
             List<InputStream> configurationFiles = Stream.of(configurationLocation.listFiles(yamlFilter))
                     .map(file -> {
+                        InputStream inputStream;
                         try {
-                            return new FileInputStream(file);
+                            inputStream = new FileInputStream(file);
+                            LOG.info("Reading pipeline configuration from {}", file.getName());
                         } catch (FileNotFoundException e) {
-                            return null;
+                            inputStream = null;
+                            LOG.warn("Pipeline configuration file {} not found", file.getName());
                         }
+                        return inputStream;
                     })
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
 
             if (configurationFiles.isEmpty()) {
+                LOG.error("Pipelines configuration file not found at {}", pipelineConfigurationFileLocation);
                 throw new ParseException(
                         format("Pipelines configuration file not found at %s", pipelineConfigurationFileLocation));
             }
 
             return new SequenceInputStream(Collections.enumeration(configurationFiles));
         } else {
+            LOG.error("Pipelines configuration file not found at {}", pipelineConfigurationFileLocation);
             throw new ParseException(format("Pipelines configuration file not found at %s", pipelineConfigurationFileLocation));
         }
     }
