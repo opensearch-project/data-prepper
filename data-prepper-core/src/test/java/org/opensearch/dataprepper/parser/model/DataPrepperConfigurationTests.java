@@ -17,6 +17,8 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.hamcrest.Matchers;
 import org.junit.Assert;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.File;
 import java.io.IOException;
@@ -125,6 +127,20 @@ public class DataPrepperConfigurationTests {
     }
 
     @Test
+    void testConfigWithISO8601ShutdownTimeouts() throws IOException {
+        final DataPrepperConfiguration dataPrepperConfiguration = makeConfig(
+                TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE_WITH_ISO8601_SHUTDOWN_TIMEOUTS);
+
+        assertThat(dataPrepperConfiguration, notNullValue());
+        final Duration sinkShutdownTimeout = dataPrepperConfiguration.getSinkShutdownTimeout();
+        assertThat(sinkShutdownTimeout, notNullValue());
+        assertThat(sinkShutdownTimeout, equalTo(Duration.ofMinutes(15)));
+        final Duration processorShutdownTimeout = dataPrepperConfiguration.getProcessorShutdownTimeout();
+        assertThat(processorShutdownTimeout, notNullValue());
+        assertThat(processorShutdownTimeout, equalTo(Duration.ofSeconds(45)));
+    }
+
+    @Test
     void testPeerForwarderConfig() throws IOException {
         final DataPrepperConfiguration dataPrepperConfiguration = makeConfig(TestDataProvider.VALID_PEER_FORWARDER_DATA_PREPPER_CONFIG_FILE);
 
@@ -149,27 +165,21 @@ public class DataPrepperConfigurationTests {
                 makeConfig(TestDataProvider.INVALID_DATA_PREPPER_CONFIG_FILE_WITH_TAGS));
     }
 
-    @Test
-    void testConfigWithInValidProcessorShutdownTimeout() {
-        assertThrows(JsonMappingException.class, () ->
-                makeConfig(TestDataProvider.INVALID_DATA_PREPPER_CONFIG_FILE_WITH_BAD_PROCESSOR_SHUTDOWN_TIMEOUT));
+    @ParameterizedTest
+    @ValueSource(strings = {
+            TestDataProvider.INVALID_DATA_PREPPER_CONFIG_FILE_WITH_BAD_PROCESSOR_SHUTDOWN_TIMEOUT,
+            TestDataProvider.INVALID_DATA_PREPPER_CONFIG_FILE_WITH_BAD_SINK_SHUTDOWN_TIMEOUT
+    })
+    void testConfigWithInValidShutdownTimeout(final String configFile) {
+        assertThrows(JsonMappingException.class, () -> makeConfig(configFile));
     }
 
-    @Test
-    void testConfigWithInValidSinkShutdownTimeout() {
-        assertThrows(JsonMappingException.class, () ->
-                makeConfig(TestDataProvider.INVALID_DATA_PREPPER_CONFIG_FILE_WITH_BAD_SINK_SHUTDOWN_TIMEOUT));
-    }
-
-    @Test
-    void testConfigWithNegativeProcessorShutdownTimeout() {
-        assertThrows(ValueInstantiationException.class, () ->
-                makeConfig(TestDataProvider.INVALID_DATA_PREPPER_CONFIG_FILE_WITH_NEGATIVE_PROCESSOR_SHUTDOWN_TIMEOUT));
-    }
-
-    @Test
-    void testConfigWithNegativeSinkShutdownTimeout() {
-        assertThrows(ValueInstantiationException.class, () ->
-                makeConfig(TestDataProvider.INVALID_DATA_PREPPER_CONFIG_FILE_WITH_NEGATIVE_SINK_SHUTDOWN_TIMEOUT));
+    @ParameterizedTest
+    @ValueSource(strings = {
+            TestDataProvider.INVALID_DATA_PREPPER_CONFIG_FILE_WITH_NEGATIVE_PROCESSOR_SHUTDOWN_TIMEOUT,
+            TestDataProvider.INVALID_DATA_PREPPER_CONFIG_FILE_WITH_NEGATIVE_SINK_SHUTDOWN_TIMEOUT
+    })
+    void testConfigWithNegativeShutdownTimeout(final String configFile) {
+        assertThrows(ValueInstantiationException.class, () -> makeConfig(configFile));
     }
 }

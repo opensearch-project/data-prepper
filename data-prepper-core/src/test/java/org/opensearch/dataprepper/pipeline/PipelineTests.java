@@ -51,8 +51,8 @@ class PipelineTests {
 
     @BeforeEach
     void setup() {
-        processorShutdownTimeout = Duration.ofSeconds(Math.abs(new Random().nextInt()));
-        sinkShutdownTimeout = Duration.ofSeconds(Math.abs(new Random().nextInt()));
+        processorShutdownTimeout = Duration.ofSeconds(Math.abs(new Random().nextInt(10)));
+        sinkShutdownTimeout = Duration.ofSeconds(Math.abs(new Random().nextInt(10)));
     }
 
     @AfterEach
