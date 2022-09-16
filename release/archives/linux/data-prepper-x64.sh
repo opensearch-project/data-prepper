@@ -5,6 +5,25 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+if [[ $# == 0 ]]; then
+    echo "Reading pipelines and data-prepper configuration files from Data Prepper home directory."
+elif [[ $# == 2 ]]; then
+    echo
+    echo "Data Prepper now supports reading pipeline and data-prepper configuration files"
+    echo "from Data Prepper home directory automatically."
+    echo "You can continue to specify paths to configuration files as command line arguments,"
+    echo "but that support will be dropped in a future release."
+    echo
+else
+    echo
+    echo "Error: Invalid number of arguments. Expected 0 or 2, received $#."
+    echo "Put configuration files in Data Prepper home directory and specify no arguments,"
+    echo "or specify paths to pipeline and data-prepper configuration files, for example:"
+    echo "bin/data-prepper config/example-pipelines.yaml config/example-data-prepper-config.yaml"
+    echo
+    exit 1
+fi
+
 MIN_REQ_JAVA_VERSION=11
 MIN_REQ_OPENJDK_VERSION=11
 DATA_PREPPER_BIN=$(dirname "$(realpath "$0")")
@@ -44,4 +63,11 @@ fi
 
 DATA_PREPPER_HOME_OPTS="-Ddata-prepper.dir=$DATA_PREPPER_HOME"
 DATA_PREPPER_JAVA_OPTS="-Dlog4j.configurationFile=$DATA_PREPPER_HOME/config/log4j2-rolling.properties"
-java $JAVA_OPTS $DATA_PREPPER_HOME_OPTS $DATA_PREPPER_JAVA_OPTS -cp "$DATA_PREPPER_CLASSPATH" org.opensearch.dataprepper.DataPrepperExecute
+
+if [[ $# == 0 ]]; then
+    java $JAVA_OPTS $DATA_PREPPER_HOME_OPTS $DATA_PREPPER_JAVA_OPTS -cp "$DATA_PREPPER_CLASSPATH" org.opensearch.dataprepper.DataPrepperExecute
+else
+    PIPELINES_FILE_LOCATION=$1
+    CONFIG_FILE_LOCATION=$2
+    java $JAVA_OPTS $DATA_PREPPER_HOME_OPTS $DATA_PREPPER_JAVA_OPTS -cp "$DATA_PREPPER_CLASSPATH" org.opensearch.dataprepper.DataPrepperExecute $PIPELINES_FILE_LOCATION $CONFIG_FILE_LOCATION
+fi
