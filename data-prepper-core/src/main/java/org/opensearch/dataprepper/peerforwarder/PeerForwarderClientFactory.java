@@ -40,6 +40,8 @@ public class PeerForwarderClientFactory {
         final boolean ssl = peerForwarderConfiguration.isSsl();
         final boolean useAcmCertForSsl = peerForwarderConfiguration.isUseAcmCertificateForSsl();
 
+        peerClientPool.setAuthentication(peerForwarderConfiguration.getAuthentication());
+
         if (ssl || useAcmCertForSsl) {
             peerClientPool.setSsl(true);
 

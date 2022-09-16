@@ -7,17 +7,21 @@ package org.opensearch.dataprepper.peerforwarder;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.MatcherAssert.assertThat;
 import org.hamcrest.core.IsInstanceOf;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -58,10 +62,16 @@ class PeerForwarderClientFactoryTest {
     void testCreatePeerClientPool_should_return() {
         PeerForwarderClientFactory peerForwarderClientFactory = createObjectUnderTest();
 
-        PeerClientPool peerClientPool = peerForwarderClientFactory.setPeerClientPool();
+        PeerClientPool returnedPeerClientPool = peerForwarderClientFactory.setPeerClientPool();
 
-        assertThat(peerClientPool, new IsInstanceOf(PeerClientPool.class));
+        assertThat(returnedPeerClientPool, equalTo(peerClientPool));
     }
 
-
+    @ParameterizedTest
+    @EnumSource(ForwardingAuthentication.class)
+    void testCreatePeerClientPool_should_set_the_authentication(final ForwardingAuthentication authentication) {
+        when(peerForwarderConfiguration.getAuthentication()).thenReturn(authentication);
+        createObjectUnderTest().setPeerClientPool();
+        verify(peerClientPool).setAuthentication(authentication);
+    }
 }
