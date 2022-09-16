@@ -25,6 +25,7 @@ import java.lang.reflect.Field;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -40,6 +41,8 @@ import java.util.stream.Collectors;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 
 public class ServiceMapStatefulPrepperTest {
@@ -325,6 +328,18 @@ public class ServiceMapStatefulPrepperTest {
         assertTrue(serviceMapStateful.isReadyForShutdown());
 
         serviceMapStateful.shutdown();
+    }
+
+    @Test
+    public void testGetIdentificationKeys() {
+        final PluginSetting pluginSetting = new PluginSetting("testPluginSetting", Collections.emptyMap());
+        pluginSetting.setProcessWorkers(4);
+        pluginSetting.setPipelineName("TestPipeline");
+
+        final ServiceMapStatefulPrepper serviceMapStatefulPrepper = new ServiceMapStatefulPrepper(pluginSetting);
+        final Collection<String> expectedIdentificationKeys = serviceMapStatefulPrepper.getIdentificationKeys();
+
+        assertThat(expectedIdentificationKeys, equalTo(Collections.singleton("traceId")));
     }
 
     private static class ServiceMapSourceDest {
