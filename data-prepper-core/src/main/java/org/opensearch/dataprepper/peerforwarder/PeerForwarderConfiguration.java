@@ -32,6 +32,7 @@ public class PeerForwarderConfiguration {
     private boolean ssl = false;
     private String sslCertificateFile;
     private String sslKeyFile;
+    private ForwardingAuthentication authentication = ForwardingAuthentication.UNAUTHENTICATED;
     private boolean useAcmCertificateForSsl = false;
     private String acmCertificateArn;
     private String acmPrivateKeyPassword;
@@ -60,6 +61,7 @@ public class PeerForwarderConfiguration {
             @JsonProperty("ssl") final Boolean ssl,
             @JsonProperty("ssl_certificate_file") final String sslCertificateFile,
             @JsonProperty("ssl_key_file") final String sslKeyFile,
+            @JsonProperty("authentication") final Map<String, Object> authentication,
             @JsonProperty("use_acm_certificate_for_ssl") final Boolean useAcmCertificateForSsl,
             @JsonProperty("acm_certificate_arn") final String acmCertificateArn,
             @JsonProperty("acm_private_key_password") final String acmPrivateKeyPassword,
@@ -84,6 +86,7 @@ public class PeerForwarderConfiguration {
         setUseAcmCertificateForSsl(useAcmCertificateForSsl);
         setSslCertificateFile(sslCertificateFile);
         setSslKeyFile(sslKeyFile);
+        setAuthentication(authentication);
         setAcmCertificateArn(acmCertificateArn);
         this.acmPrivateKeyPassword = acmPrivateKeyPassword;
         setAcmCertificateTimeoutMillis(acmCertificateTimeoutMillis);
@@ -98,6 +101,7 @@ public class PeerForwarderConfiguration {
         setBatchSize(batchSize);
         setBufferSize(bufferSize);
         checkForCertAndKeyFileInS3();
+        validateSslAndAuthentication();
     }
 
     public int getServerPort() {
@@ -259,6 +263,25 @@ public class PeerForwarderConfiguration {
         }
     }
 
+    private void setAuthentication(final Map<String, Object> authentication) {
+        if(authentication == null)
+            return;
+
+        if (authentication.isEmpty())
+            return;
+
+        if (authentication.size() > 1)
+            throw new IllegalArgumentException("Invalid authentication configuration.");
+
+        final String authenticationName = authentication.keySet().iterator().next();
+
+        this.authentication = ForwardingAuthentication.getByName(authenticationName);
+    }
+
+    public ForwardingAuthentication getAuthentication() {
+        return authentication;
+    }
+
     private void setUseAcmCertificateForSsl(final Boolean useAcmCertificateForSsl) {
         if (useAcmCertificateForSsl != null) {
             this.useAcmCertificateForSsl = useAcmCertificateForSsl;
@@ -381,5 +404,10 @@ public class PeerForwarderConfiguration {
 
     public boolean isSslCertAndKeyFileInS3() {
         return sslCertAndKeyFileInS3;
+    }
+
+    private void validateSslAndAuthentication() {
+        if(authentication == ForwardingAuthentication.MUTUAL_TLS && !ssl)
+            throw new IllegalArgumentException("Mutual TLS is only available when SSL is enabled.");
     }
 }
