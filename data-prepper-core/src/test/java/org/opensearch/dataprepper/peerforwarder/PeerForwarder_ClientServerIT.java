@@ -139,12 +139,12 @@ class PeerForwarder_ClientServerIT {
 
             assertThat(httpResponse.status(), equalTo(HttpStatus.OK));
 
-            final Map<String, PeerForwarderReceiveBuffer<Record<?>>> pluginBufferMap = peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap().get(pipelineName);
+            final Map<String, PeerForwarderReceiveBuffer<Record<Event>>> pluginBufferMap = peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap().get(pipelineName);
             assertThat(pluginBufferMap, notNullValue());
-            final PeerForwarderReceiveBuffer<Record<?>> receiveBuffer = pluginBufferMap.get(pluginId);
+            final PeerForwarderReceiveBuffer<Record<Event>> receiveBuffer = pluginBufferMap.get(pluginId);
 
-            final Map.Entry<Collection<Record<?>>, CheckpointState> bufferEntry = receiveBuffer.read(1000);
-            final Collection<Record<?>> receivedRecords = bufferEntry.getKey();
+            final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferEntry = receiveBuffer.read(1000);
+            final Collection<Record<Event>> receivedRecords = bufferEntry.getKey();
             assertThat(receivedRecords, notNullValue());
             assertThat(receivedRecords.size(), equalTo(outgoingRecords.size()));
 
@@ -209,12 +209,12 @@ class PeerForwarder_ClientServerIT {
 
             assertThat(httpResponse.status(), equalTo(HttpStatus.OK));
 
-            final Map<String, PeerForwarderReceiveBuffer<Record<?>>> pluginBufferMap = peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap().get(pipelineName);
+            final Map<String, PeerForwarderReceiveBuffer<Record<Event>>> pluginBufferMap = peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap().get(pipelineName);
             assertThat(pluginBufferMap, notNullValue());
-            final PeerForwarderReceiveBuffer<Record<?>> receiveBuffer = pluginBufferMap.get(pluginId);
+            final PeerForwarderReceiveBuffer<Record<Event>> receiveBuffer = pluginBufferMap.get(pluginId);
 
-            final Map.Entry<Collection<Record<?>>, CheckpointState> bufferEntry = receiveBuffer.read(1000);
-            final Collection<Record<?>> receivedRecords = bufferEntry.getKey();
+            final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferEntry = receiveBuffer.read(1000);
+            final Collection<Record<Event>> receivedRecords = bufferEntry.getKey();
             assertThat(receivedRecords, notNullValue());
             assertThat(receivedRecords.size(), equalTo(outgoingRecords.size()));
 
