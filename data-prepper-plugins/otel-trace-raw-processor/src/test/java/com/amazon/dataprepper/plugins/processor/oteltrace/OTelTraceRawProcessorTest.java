@@ -41,6 +41,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 public class OTelTraceRawProcessorTest {
 
@@ -198,6 +200,12 @@ public class OTelTraceRawProcessorTest {
 
         // Assert records have been flushed
         assertTrue(oTelTraceRawProcessor.isReadyForShutdown());
+    }
+
+    @Test
+    public void testGetIdentificationKeys() {
+        final Collection<String> expectedIdentificationKeys = oTelTraceRawProcessor.getIdentificationKeys();
+        assertThat(expectedIdentificationKeys, equalTo(Collections.singleton("traceId")));
     }
 
     private static Span buildSpanFromJsonFile(final String jsonFileName) {
