@@ -166,21 +166,21 @@ class PipelineParserTests {
 
     @Test
     void parseConfiguration_from_directory_with_multiple_files_creates_the_correct_pipelineMap() {
-        final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.MULTI_FILE_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider);
+        final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.MULTI_FILE_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
         final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
     }
 
     @Test
     void parseConfiguration_from_directory_with_single_file_creates_the_correct_pipelineMap() {
-        final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.SINGLE_FILE_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider);
+        final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.SINGLE_FILE_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
         final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
     }
 
     @Test
     void parseConfiguration_from_directory_with_no_yaml_files_should_throw() {
-        final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.EMPTY_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider);
+        final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.EMPTY_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
         final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
         assertThat(actualException.getMessage(), equalTo(
                 String.format("Pipelines configuration file not found at %s", TestDataProvider.EMPTY_PIPELINE_DIRECTOTRY)));
