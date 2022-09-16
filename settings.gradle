@@ -12,13 +12,6 @@ pluginManagement {
 
 rootProject.name = 'opensearch-data-prepper'
 
-if(startParameter.getProjectProperties().containsKey('release')){
-    include 'release'
-    include 'release:archives'
-    include 'release:archives:linux'
-    include 'release:docker'
-    include 'release:maven'
-}
 include 'data-prepper-api'
 include 'data-prepper-plugins'
 include 'data-prepper-core'
@@ -56,3 +49,8 @@ include 'data-prepper-plugins:s3-source'
 include 'data-prepper-plugins:csv-processor'
 include 'data-prepper-plugins:parse-json-processor'
 include 'data-prepper-plugins:trace-peer-forwarder-processor'
+include 'release'
+include 'release:archives'
+include 'release:archives:linux'
+include 'release:docker'
+include 'release:maven'

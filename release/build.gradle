@@ -24,7 +24,7 @@ allprojects {
     }
 
     dependencies {
-        implementation project(':data-prepper-core')
+        implementation project(':data-prepper-main')
     }
 }
 

@@ -78,4 +78,3 @@ or
 ./gradlew uploadArchives -Prelease 
 
 ```
-
