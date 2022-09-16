@@ -128,9 +128,9 @@ class PeerForwardingProcessingDecoratorTest {
 
             final Collection<Record<Event>> expectedRecordsToProcessLocally = CollectionUtils.union(forwardTestData, receiveTestData);
 
-            when(requiresPeerForwarding.execute(anyCollection())).thenReturn(expectedRecordsToProcessLocally);
+            when(((Processor) requiresPeerForwarding).execute(anyCollection())).thenReturn(expectedRecordsToProcessLocally);
 
-            final PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(requiresPeerForwarding);
+            final PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest((Processor) requiresPeerForwarding);
             final Collection<Record<Event>> records = objectUnderTest.execute(forwardTestData);
 
             verify(requiresPeerForwarding).getIdentificationKeys();
