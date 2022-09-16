@@ -5,11 +5,12 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
-import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import com.linecorp.armeria.client.ClientBuilder;
 import com.linecorp.armeria.client.ClientFactory;
+import com.linecorp.armeria.client.ClientFactoryBuilder;
 import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
+import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -26,6 +27,7 @@ public class PeerClientPool {
     private int clientTimeoutSeconds = 3;
     private boolean ssl;
     private Certificate certificate;
+    private ForwardingAuthentication authentication;
 
     public PeerClientPool() {
         peerClients = new ConcurrentHashMap<>();
@@ -47,6 +49,10 @@ public class PeerClientPool {
         this.certificate = certificate;
     }
 
+    public void setAuthentication(ForwardingAuthentication authentication) {
+        this.authentication = authentication;
+    }
+
     public WebClient getClient(final String address) {
         return peerClients.computeIfAbsent(address, this::getHTTPClient);
     }
@@ -58,14 +64,20 @@ public class PeerClientPool {
                 .writeTimeout(Duration.ofSeconds(clientTimeoutSeconds));
 
         if (ssl) {
-            final ClientFactory clientFactory = ClientFactory.builder()
+            final ClientFactoryBuilder clientFactoryBuilder = ClientFactory.builder()
                     .tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(
-                                new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8))
+                                    new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8))
                             )
-                    ).tlsNoVerifyHosts(ipAddress)
-                    .build();
-
-            clientBuilder = clientBuilder.factory(clientFactory);
+                    )
+                    .tlsNoVerifyHosts(ipAddress);
+            // TODO: Add keyManager configuration here
+            if (authentication == ForwardingAuthentication.MUTUAL_TLS) {
+                clientFactoryBuilder.tlsCustomizer(sslContextBuilder -> sslContextBuilder.keyManager(
+                        new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8)),
+                        new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8))
+                ));
+            }
+            clientBuilder = clientBuilder.factory(clientFactoryBuilder.build());
         }
 
         return clientBuilder.build(WebClient.class);

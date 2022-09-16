@@ -46,6 +46,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getClientThreadCount(), equalTo(200));
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(48));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(512));
+        assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
     }
 
     @Test
@@ -68,6 +69,23 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getClientThreadCount(), equalTo(100));
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(100));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(100));
+        assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
+    }
+
+    @Test
+    void testValidPeerForwarderConfig_with_Mutual_TLS() throws IOException {
+        final PeerForwarderConfiguration peerForwarderConfiguration = makeConfig("src/test/resources/valid_peer_forwarder_config_with_mutual_tls.yml");
+
+        assertThat(peerForwarderConfiguration.isSsl(), equalTo(true));
+        assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.MUTUAL_TLS));
+    }
+
+    @Test
+    void testValidPeerForwarderConfig_with_Unauthenticated() throws IOException {
+        final PeerForwarderConfiguration peerForwarderConfiguration = makeConfig("src/test/resources/valid_peer_forwarder_config_with_unauthenticated.yml");
+
+        assertThat(peerForwarderConfiguration.isSsl(), equalTo(false));
+        assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
     }
 
     @Test
@@ -93,7 +111,9 @@ class PeerForwarderConfigurationTest {
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_CLOUD_MAP_WITHOUT_NAMESPACE_NAME_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_CLOUD_MAP_WITHOUT_REGION_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_DNS_WITHOUT_DOMAIN_NAME_CONFIG_FILE,
-            TestDataProvider.INVALID_PEER_FORWARDER_WITH_SSL
+            TestDataProvider.INVALID_PEER_FORWARDER_WITH_SSL,
+            "src/test/resources/invalid_peer_forwarder_config_with_many_authentication.yml",
+            "src/test/resources/invalid_peer_forwarder_config_with_mutual_tls_not_ssl.yml"
     })
     void invalid_InvalidPeerForwarderConfig_test(final String filePath) {
         assertThrows(ValueInstantiationException.class, () -> makeConfig(filePath));

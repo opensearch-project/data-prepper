@@ -5,12 +5,14 @@
 
 package org.opensearch.dataprepper.peerforwarder.server;
 
-import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
-import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
+import io.netty.handler.ssl.ClientAuth;
+import org.opensearch.dataprepper.peerforwarder.ForwardingAuthentication;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
+import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,9 +49,9 @@ public class PeerForwarderHttpServerProvider implements Provider<Server> {
         sb.disableServerHeader();
 
         if (peerForwarderConfiguration.isSsl()) {
-            LOG.info("Creating http source with SSL/TLS enabled.");
             final CertificateProvider certificateProvider = certificateProviderFactory.getCertificateProvider();
             final Certificate certificate = certificateProvider.getCertificate();
+            LOG.info("Creating http source with SSL/TLS enabled.");
             // TODO: enable encrypted key with password
             sb.https(peerForwarderConfiguration.getServerPort())
                     .tls(
@@ -57,10 +59,18 @@ public class PeerForwarderHttpServerProvider implements Provider<Server> {
                     new ByteArrayInputStream(certificate.getPrivateKey().getBytes(StandardCharsets.UTF_8)
                     )
             );
+
+            if (peerForwarderConfiguration.getAuthentication() == ForwardingAuthentication.MUTUAL_TLS) {
+                sb.tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(
+                                new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8))
+                        )
+                        .clientAuth(ClientAuth.REQUIRE));
+            }
         } else {
             LOG.warn("Creating Peer Forwarder server without SSL/TLS. This is not secure.");
             sb.http(peerForwarderConfiguration.getServerPort());
         }
+
 
         sb.maxNumConnections(peerForwarderConfiguration.getMaxConnectionCount());
         sb.requestTimeout(Duration.ofMillis(peerForwarderConfiguration.getRequestTimeout()));
