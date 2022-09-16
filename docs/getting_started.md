@@ -46,6 +46,14 @@ built from source, you will need to make some modifications to the example comma
 However you configure your pipeline, you will run Data Prepper the same way. You run the Docker
 image and supply both the `pipelines.yaml` and `data-prepper-config.yaml` files.
 
+For Data Prepper 2.0 or above, use this command:
+
+```
+docker run --name data-prepper -p 4900:4900 -v ${PWD}/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml -v ${PWD}/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml opensearchproject/data-prepper:latest
+```
+
+For Data Prepper before version 2.0:
+
 ```
 docker run --name data-prepper -p 4900:4900 -v ${PWD}/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml -v ${PWD}/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml opensearchproject/data-prepper:latest
 ```
