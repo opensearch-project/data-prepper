@@ -80,10 +80,10 @@ public class PeerForwarderHttpService {
     }
 
     private void writeEventsToBuffer(final WireEvents wireEvents) throws Exception {
-        final PeerForwarderReceiveBuffer<Record<?>> recordPeerForwarderReceiveBuffer = getPeerForwarderBuffer(wireEvents);
+        final PeerForwarderReceiveBuffer<Record<Event>> recordPeerForwarderReceiveBuffer = getPeerForwarderBuffer(wireEvents);
 
         if (wireEvents.getEvents() != null) {
-            final Collection<Record<?>> jacksonEvents = wireEvents.getEvents().stream()
+            final Collection<Record<Event>> jacksonEvents = wireEvents.getEvents().stream()
                     .map(this::transformEvent)
                     .collect(Collectors.toList());
 
@@ -91,11 +91,11 @@ public class PeerForwarderHttpService {
         }
     }
 
-    private PeerForwarderReceiveBuffer<Record<?>> getPeerForwarderBuffer(final WireEvents wireEvents) {
+    private PeerForwarderReceiveBuffer<Record<Event>> getPeerForwarderBuffer(final WireEvents wireEvents) {
         final String destinationPluginId = wireEvents.getDestinationPluginId();
         final String destinationPipelineName = wireEvents.getDestinationPipelineName();
 
-        final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<?>>>> pipelinePeerForwarderReceiveBufferMap =
+        final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> pipelinePeerForwarderReceiveBufferMap =
                 peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap();
 
         return pipelinePeerForwarderReceiveBufferMap

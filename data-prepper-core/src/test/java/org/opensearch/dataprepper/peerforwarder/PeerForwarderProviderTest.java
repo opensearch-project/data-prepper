@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -159,7 +160,7 @@ class PeerForwarderProviderTest {
         final PeerForwarderProvider objectUnderTest = createObjectUnderTest();
 
 
-        final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<?>>>> pipelinePeerForwarderReceiveBufferMap = objectUnderTest
+        final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> pipelinePeerForwarderReceiveBufferMap = objectUnderTest
                 .getPipelinePeerForwarderReceiveBufferMap();
 
         assertThat(objectUnderTest.isPeerForwardingRequired(), equalTo(false));
@@ -173,7 +174,7 @@ class PeerForwarderProviderTest {
 
         objectUnderTest.register(pipelineName, UUID.randomUUID().toString(), identificationKeys);
 
-        final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<?>>>> pipelinePeerForwarderReceiveBufferMap = objectUnderTest
+        final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> pipelinePeerForwarderReceiveBufferMap = objectUnderTest
                 .getPipelinePeerForwarderReceiveBufferMap();
 
         assertThat(objectUnderTest.isPeerForwardingRequired(), equalTo(false));
