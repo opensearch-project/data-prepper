@@ -10,6 +10,7 @@ import com.amazon.dataprepper.model.annotations.SingleThread;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
+import com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import com.amazon.dataprepper.model.processor.AbstractProcessor;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
@@ -37,7 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @SingleThread
 @DataPrepperPlugin(name = "service_map_stateful", pluginType = Processor.class)
-public class ServiceMapStatefulPrepper extends AbstractProcessor<Record<Event>, Record<Event>> {
+public class ServiceMapStatefulPrepper extends AbstractProcessor<Record<Event>, Record<Event>> implements RequiresPeerForwarding {
 
     public static final String SPANS_DB_SIZE = "spansDbSize";
     public static final String TRACE_GROUP_DB_SIZE = "traceGroupDbSize";
@@ -351,6 +352,11 @@ public class ServiceMapStatefulPrepper extends AbstractProcessor<Record<Event>, 
      */
     private boolean isMasterInstance() {
         return thisPrepperId == 0;
+    }
+
+    @Override
+    public Collection<String> getIdentificationKeys() {
+        return Collections.singleton("traceId");
     }
 
     private static class ServiceMapStateData implements Serializable {
