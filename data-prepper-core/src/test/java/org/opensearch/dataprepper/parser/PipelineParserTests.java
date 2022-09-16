@@ -169,6 +169,7 @@ class PipelineParserTests {
         final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.MULTI_FILE_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
         final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
+        verifyDataPrepperConfigurationAccesses(actualPipelineMap.keySet().size());
     }
 
     @Test
@@ -176,6 +177,7 @@ class PipelineParserTests {
         final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.SINGLE_FILE_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
         final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
+        verifyDataPrepperConfigurationAccesses(actualPipelineMap.keySet().size());
     }
 
     @Test
