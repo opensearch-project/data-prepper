@@ -32,6 +32,7 @@ public class PeerForwarderConfiguration {
     private boolean ssl = false;
     private String sslCertificateFile;
     private String sslKeyFile;
+    private boolean sslDisableVerification = false;
     private ForwardingAuthentication authentication = ForwardingAuthentication.UNAUTHENTICATED;
     private boolean useAcmCertificateForSsl = false;
     private String acmCertificateArn;
@@ -61,6 +62,7 @@ public class PeerForwarderConfiguration {
             @JsonProperty("ssl") final Boolean ssl,
             @JsonProperty("ssl_certificate_file") final String sslCertificateFile,
             @JsonProperty("ssl_key_file") final String sslKeyFile,
+            @JsonProperty("ssl_insecure_disable_verification") final boolean sslDisableVerification,
             @JsonProperty("authentication") final Map<String, Object> authentication,
             @JsonProperty("use_acm_certificate_for_ssl") final Boolean useAcmCertificateForSsl,
             @JsonProperty("acm_certificate_arn") final String acmCertificateArn,
@@ -86,6 +88,7 @@ public class PeerForwarderConfiguration {
         setUseAcmCertificateForSsl(useAcmCertificateForSsl);
         setSslCertificateFile(sslCertificateFile);
         setSslKeyFile(sslKeyFile);
+        setDisableVerification(sslDisableVerification);
         setAuthentication(authentication);
         setAcmCertificateArn(acmCertificateArn);
         this.acmPrivateKeyPassword = acmPrivateKeyPassword;
@@ -261,6 +264,14 @@ public class PeerForwarderConfiguration {
                 throw new IllegalArgumentException("SSL key file path must be a valid file path when ssl is enabled and not using ACM.");
             }
         }
+    }
+
+    private void setDisableVerification(final boolean sslDisableVerification) {
+        this.sslDisableVerification = sslDisableVerification;
+    }
+
+    public boolean isSslDisableVerification() {
+        return sslDisableVerification;
     }
 
     private void setAuthentication(final Map<String, Object> authentication) {

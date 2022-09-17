@@ -45,6 +45,7 @@ public class PeerForwarderClientFactory {
         if (ssl || useAcmCertForSsl) {
             peerClientPool.setSsl(true);
 
+            peerClientPool.setSslDisableVerification(peerForwarderConfiguration.isSslDisableVerification());
             peerClientPool.setCertificate(certificateProviderFactory.getCertificateProvider().getCertificate());
         }
 

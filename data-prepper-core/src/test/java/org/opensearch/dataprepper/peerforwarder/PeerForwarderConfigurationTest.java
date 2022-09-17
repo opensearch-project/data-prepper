@@ -40,6 +40,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getMaxConnectionCount(), equalTo(500));
         assertThat(peerForwarderConfiguration.getMaxPendingRequests(), equalTo(1024));
         assertThat(peerForwarderConfiguration.isSsl(), equalTo(false));
+        assertThat(peerForwarderConfiguration.isSslDisableVerification(), equalTo(false));
         assertThat(peerForwarderConfiguration.getAcmPrivateKeyPassword(), equalTo(null));
         assertThat(peerForwarderConfiguration.isUseAcmCertificateForSsl(), equalTo(false));
         assertThat(peerForwarderConfiguration.getDiscoveryMode(), equalTo(DiscoveryMode.LOCAL_NODE));
@@ -59,6 +60,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getMaxConnectionCount(), equalTo(100));
         assertThat(peerForwarderConfiguration.getMaxPendingRequests(), equalTo(512));
         assertThat(peerForwarderConfiguration.isSsl(), equalTo(false));
+        assertThat(peerForwarderConfiguration.isSslDisableVerification(), equalTo(false));
         assertThat(peerForwarderConfiguration.isUseAcmCertificateForSsl(), equalTo(false));
         assertThat(peerForwarderConfiguration.getAcmCertificateArn(), equalTo(null));
         assertThat(peerForwarderConfiguration.getDiscoveryMode(), equalTo(DiscoveryMode.STATIC));
@@ -86,6 +88,14 @@ class PeerForwarderConfigurationTest {
 
         assertThat(peerForwarderConfiguration.isSsl(), equalTo(false));
         assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
+    }
+
+    @Test
+    void testValidPeerForwarderConfig_with_InsecureTls() throws IOException {
+        final PeerForwarderConfiguration peerForwarderConfiguration = makeConfig("src/test/resources/valid_peer_forwarder_config_with_insecure.yml");
+
+        assertThat(peerForwarderConfiguration.isSsl(), equalTo(true));
+        assertThat(peerForwarderConfiguration.isSslDisableVerification(), equalTo(true));
     }
 
     @Test
