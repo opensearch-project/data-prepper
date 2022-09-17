@@ -47,9 +47,9 @@ dependencies {
     implementation 'software.amazon.awssdk:apache-client'
     implementation 'commons-validator:commons-validator:1.7'
     implementation 'software.amazon.awssdk:servicediscovery'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
     testImplementation 'org.apache.commons:commons-lang3:3.12.0'
-    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 }
 
 jacocoTestCoverageVerification {
