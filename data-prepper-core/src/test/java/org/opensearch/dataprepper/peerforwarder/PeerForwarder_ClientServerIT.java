@@ -58,6 +58,8 @@ class PeerForwarder_ClientServerIT {
     private static final String LOCALHOST = "127.0.0.1";
     private static final String SSL_CERTIFICATE_FILE = "src/test/resources/test-crt.crt";
     private static final String SSL_KEY_FILE = "src/test/resources/test-key.key";
+    private static final String ALTERNATE_SSL_CERTIFICATE_FILE = "src/test/resources/test-alternate-crt.crt";
+    private static final String ALTERNATE_SSL_KEY_FILE = "src/test/resources/test-alternate-key.key";
     private ObjectMapper objectMapper;
     private String pipelineName;
     private String pluginId;
@@ -185,6 +187,20 @@ class PeerForwarder_ClientServerIT {
             assertThat(receivedRecords, notNullValue());
             assertThat(receivedRecords, is(empty()));
         }
+
+        @Test
+        void send_Events_to_an_unknown_server_should_throw() {
+            final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
+                    true, ForwardingAuthentication.UNAUTHENTICATED, ALTERNATE_SSL_CERTIFICATE_FILE, ALTERNATE_SSL_KEY_FILE, false);
+
+            final PeerForwarderClient client = createClient(peerForwarderConfiguration);
+
+            assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+
+            final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
+            assertThat(receivedRecords, notNullValue());
+            assertThat(receivedRecords, is(empty()));
+        }
     }
 
     @Nested
@@ -300,7 +316,7 @@ class PeerForwarder_ClientServerIT {
         }
 
         @Test
-        void send_Events_to_server_without_client_certificate_closes() {
+        void send_Events_to_server_when_client_has_no_certificate_closes() {
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(false, ForwardingAuthentication.UNAUTHENTICATED);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
@@ -313,12 +329,25 @@ class PeerForwarder_ClientServerIT {
         }
 
         @Test
-        void send_Events_to_server_with_unknown_certificate_key_closes() {
-            final String alternateSigningKeyFile = "src/test/resources/test-alternate-key.key";
+        void send_Events_to_server_when_client_has_unknown_certificate_key_closes() {
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
-                    true, ForwardingAuthentication.MUTUAL_TLS, alternateSigningKeyFile);
+                    true, ForwardingAuthentication.MUTUAL_TLS, SSL_CERTIFICATE_FILE, ALTERNATE_SSL_KEY_FILE, true);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
+            assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+
+            final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
+            assertThat(receivedRecords, notNullValue());
+            assertThat(receivedRecords, is(empty()));
+        }
+
+        @Test
+        void send_Events_to_an_unknown_server_should_throw() {
+            final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
+                    true, ForwardingAuthentication.MUTUAL_TLS, ALTERNATE_SSL_CERTIFICATE_FILE, SSL_KEY_FILE, true);
+
+            final PeerForwarderClient client = createClient(peerForwarderConfiguration);
+
             assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
@@ -328,13 +357,15 @@ class PeerForwarder_ClientServerIT {
     }
 
     private PeerForwarderConfiguration createConfiguration(final boolean ssl, final ForwardingAuthentication authentication) {
-        return createConfiguration(ssl, authentication, SSL_KEY_FILE);
+        return createConfiguration(ssl, authentication, SSL_CERTIFICATE_FILE, SSL_KEY_FILE, true);
     }
 
     private PeerForwarderConfiguration createConfiguration(
             final boolean ssl,
             final ForwardingAuthentication authentication,
-            final String sslKeyFile) {
+            final String sslCertificateFile,
+            final String sslKeyFile,
+            final boolean sslDisableVerification) {
         final Map<String, Object> authenticationMap = Collections.singletonMap(authentication.getName(), null);
         return new PeerForwarderConfiguration(
                 21890,
@@ -343,8 +374,9 @@ class PeerForwarder_ClientServerIT {
                 500,
                 1024,
                 ssl,
-                SSL_CERTIFICATE_FILE,
+                sslCertificateFile,
                 sslKeyFile,
+                sslDisableVerification,
                 authenticationMap,
                 false,
                 null,

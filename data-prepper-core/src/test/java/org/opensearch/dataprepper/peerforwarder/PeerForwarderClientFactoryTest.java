@@ -5,10 +5,13 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -20,7 +23,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import org.hamcrest.core.IsInstanceOf;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
+import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -65,6 +72,43 @@ class PeerForwarderClientFactoryTest {
         PeerClientPool returnedPeerClientPool = peerForwarderClientFactory.setPeerClientPool();
 
         assertThat(returnedPeerClientPool, equalTo(peerClientPool));
+    }
+
+    @Nested
+    class WithSsl {
+
+        @Mock
+        private CertificateProvider certificateProvider;
+
+        @Mock
+        private Certificate certificate;
+
+        @BeforeEach
+        void setUp() {
+            when(peerForwarderConfiguration.isSsl()).thenReturn(true);
+            when(certificateProviderFactory.getCertificateProvider()).thenReturn(certificateProvider);
+
+            when(certificateProvider.getCertificate()).thenReturn(certificate);
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = { true, false })
+        void setPeerClientPool_should_supply_sslDisableVerification_when_ssl_true(final boolean sslDisableVerification) {
+            when(peerForwarderConfiguration.isSslDisableVerification())
+                    .thenReturn(sslDisableVerification);
+
+
+            createObjectUnderTest().setPeerClientPool();
+
+            verify(peerClientPool).setSslDisableVerification(sslDisableVerification);
+        }
+    }
+
+    @Test
+    void setPeerClientPool_should_not_supply_sslDisableVerification_when_ssl_false() {
+        createObjectUnderTest().setPeerClientPool();
+
+        verify(peerClientPool, never()).setSslDisableVerification(anyBoolean());
     }
 
     @ParameterizedTest

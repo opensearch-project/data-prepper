@@ -27,6 +27,7 @@ public class PeerClientPool {
     private int clientTimeoutSeconds = 3;
     private boolean ssl;
     private Certificate certificate;
+    private boolean sslDisableVerification;
     private ForwardingAuthentication authentication;
 
     public PeerClientPool() {
@@ -49,6 +50,10 @@ public class PeerClientPool {
         this.certificate = certificate;
     }
 
+    public void setSslDisableVerification(final boolean sslDisableVerification) {
+        this.sslDisableVerification = sslDisableVerification;
+    }
+
     public void setAuthentication(ForwardingAuthentication authentication) {
         this.authentication = authentication;
     }
@@ -68,8 +73,12 @@ public class PeerClientPool {
                     .tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(
                                     new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8))
                             )
-                    )
-                    .tlsNoVerifyHosts(ipAddress);
+                    );
+
+            if(sslDisableVerification) {
+                clientFactoryBuilder.tlsNoVerifyHosts(ipAddress);
+            }
+
             // TODO: Add keyManager configuration here
             if (authentication == ForwardingAuthentication.MUTUAL_TLS) {
                 clientFactoryBuilder.tlsCustomizer(sslContextBuilder -> sslContextBuilder.keyManager(
