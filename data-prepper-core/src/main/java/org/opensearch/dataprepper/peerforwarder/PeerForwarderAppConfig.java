@@ -25,7 +25,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 class PeerForwarderAppConfig {
 
-    @Bean
+    @Bean(name = "peerForwarderObjectMapper")
     public ObjectMapper objectMapper(final YAMLFactory yamlFactory) {
         final JavaTimeModule javaTimeModule = new JavaTimeModule();
         return new ObjectMapper(yamlFactory).registerModule(javaTimeModule);
@@ -63,7 +63,7 @@ class PeerForwarderAppConfig {
     @Bean
     public PeerForwarderClient peerForwarderClient(final PeerForwarderConfiguration peerForwarderConfiguration,
                                                    final PeerForwarderClientFactory peerForwarderClientFactory,
-                                                   final ObjectMapper objectMapper
+                                                   @Qualifier("peerForwarderObjectMapper") final ObjectMapper objectMapper
     ) {
         return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper);
     }
@@ -85,7 +85,7 @@ class PeerForwarderAppConfig {
             final ResponseHandler responseHandler,
             final PeerForwarderProvider peerForwarderProvider,
             final PeerForwarderConfiguration peerForwarderConfiguration,
-            final ObjectMapper objectMapper
+            @Qualifier("peerForwarderObjectMapper") final ObjectMapper objectMapper
     ) {
         return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration, objectMapper);
     }
