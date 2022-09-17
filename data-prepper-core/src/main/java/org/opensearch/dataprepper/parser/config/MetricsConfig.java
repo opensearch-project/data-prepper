@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.parser.config;
 
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.opensearch.dataprepper.meter.EMFLoggingMeterRegistry;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.MetricRegistryType;
@@ -53,7 +52,7 @@ public class MetricsConfig {
 
     @Bean
     public ObjectMapper objectMapper(final YAMLFactory yamlFactory) {
-        return new ObjectMapper(yamlFactory).registerModule(new JavaTimeModule());
+        return new ObjectMapper(yamlFactory);
     }
 
     @Bean
