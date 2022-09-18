@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.peerforwarder;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.linecorp.armeria.server.Server;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
@@ -22,6 +24,12 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 class PeerForwarderAppConfig {
+
+    @Bean(name = "peerForwarderObjectMapper")
+    public ObjectMapper objectMapper(final YAMLFactory yamlFactory) {
+        final JavaTimeModule javaTimeModule = new JavaTimeModule();
+        return new ObjectMapper(yamlFactory).registerModule(javaTimeModule);
+    }
 
     @Bean
     public PeerForwarderConfiguration peerForwarderConfiguration(
@@ -55,7 +63,7 @@ class PeerForwarderAppConfig {
     @Bean
     public PeerForwarderClient peerForwarderClient(final PeerForwarderConfiguration peerForwarderConfiguration,
                                                    final PeerForwarderClientFactory peerForwarderClientFactory,
-                                                   final ObjectMapper objectMapper
+                                                   @Qualifier("peerForwarderObjectMapper") final ObjectMapper objectMapper
     ) {
         return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper);
     }
@@ -77,7 +85,7 @@ class PeerForwarderAppConfig {
             final ResponseHandler responseHandler,
             final PeerForwarderProvider peerForwarderProvider,
             final PeerForwarderConfiguration peerForwarderConfiguration,
-            final ObjectMapper objectMapper
+            @Qualifier("peerForwarderObjectMapper") final ObjectMapper objectMapper
     ) {
         return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration, objectMapper);
     }
