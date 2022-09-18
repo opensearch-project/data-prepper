@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -48,8 +48,8 @@ class PeerForwarderAppConfigIT {
     static class InnerAppConfig {
 
         @Bean
-        ObjectMapper objectMapper() {
-            return new ObjectMapper();
+        YAMLFactory yamlFactory() {
+            return new YAMLFactory();
         }
     }
 
