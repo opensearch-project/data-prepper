@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/opensearch-project/data-prepper/main/docs/images/DataPrepper_auto.svg" height="64px" alt="Data Prepper">
+
 [![codecov](https://codecov.io/gh/opensearch-project/data-prepper/branch/main/graph/badge.svg?token=IS7GOIY622)](https://codecov.io/gh/opensearch-project/data-prepper)
 # Data Prepper
 
