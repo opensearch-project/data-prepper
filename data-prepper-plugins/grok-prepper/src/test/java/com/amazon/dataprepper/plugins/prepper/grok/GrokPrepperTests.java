@@ -5,6 +5,7 @@
 
 package com.amazon.dataprepper.plugins.prepper.grok;
 
+import static com.amazon.dataprepper.plugins.prepper.grok.GrokPrepper.EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
@@ -433,13 +434,38 @@ public class GrokPrepperTests {
     public void testPrepareForShutdown() {
         grokPrepper = createObjectUnderTest();
         grokPrepper.prepareForShutdown();
-        verify(executorService).shutdown();
     }
 
     @Test
-    public void testShutdown() {
+    public void testShutdown_Successful() throws InterruptedException {
         grokPrepper = createObjectUnderTest();
+        lenient().when(executorService.awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.MILLISECONDS))).thenReturn(true);
+
         grokPrepper.shutdown();
+        verify(executorService).shutdown();
+        verify(executorService).awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    public void testShutdown_Timeout() throws InterruptedException {
+        grokPrepper = createObjectUnderTest();
+        lenient().when(executorService.awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.MILLISECONDS))).thenReturn(false);
+
+        grokPrepper.shutdown();
+        verify(executorService).shutdown();
+        verify(executorService).awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.MILLISECONDS));
+        verify(executorService).shutdownNow();
+    }
+
+    @Test
+    public void testShutdown_InterruptedException() throws InterruptedException {
+        grokPrepper = createObjectUnderTest();
+        lenient().when(executorService.awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.MILLISECONDS)))
+                .thenThrow(new InterruptedException());
+
+        grokPrepper.shutdown();
+        verify(executorService).shutdown();
+        verify(executorService).awaitTermination(eq(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT), eq(TimeUnit.MILLISECONDS));
         verify(executorService).shutdownNow();
     }
 

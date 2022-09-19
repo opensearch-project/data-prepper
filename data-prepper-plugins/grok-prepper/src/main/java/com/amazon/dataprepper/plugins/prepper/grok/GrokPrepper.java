@@ -54,6 +54,7 @@ import java.util.stream.Collectors;
 @SingleThread
 @DataPrepperPlugin(name = "grok", pluginType = Processor.class)
 public class GrokPrepper extends AbstractProcessor<Record<Event>, Record<Event>> {
+    static final long EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT = 300L;
 
     private static final Logger LOG = LoggerFactory.getLogger(GrokPrepper.class);
 
@@ -143,24 +144,28 @@ public class GrokPrepper extends AbstractProcessor<Record<Event>, Record<Event>>
 
     @Override
     public void prepareForShutdown() {
-        executorService.shutdown();
+
     }
 
     @Override
     public boolean isReadyForShutdown() {
-        try {
-            if (executorService.awaitTermination(300, TimeUnit.MILLISECONDS)) {
-                LOG.info("Successfully waited for running task to terminate");
-            }
-        } catch (InterruptedException e) {
-            LOG.error("Interrupted while waiting for running task to terminate", e);
-        }
         return true;
     }
 
     @Override
     public void shutdown() {
-        executorService.shutdownNow();
+        executorService.shutdown();
+        try {
+            if (executorService.awaitTermination(EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT, TimeUnit.MILLISECONDS)) {
+                LOG.info("Successfully waited for running task to terminate");
+            } else {
+                LOG.warn("Running task did not terminate in time, forcing termination");
+                executorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            LOG.error("Interrupted while waiting for running task to terminate", e);
+            executorService.shutdownNow();
+        }
     }
 
     private void registerPatterns() {
