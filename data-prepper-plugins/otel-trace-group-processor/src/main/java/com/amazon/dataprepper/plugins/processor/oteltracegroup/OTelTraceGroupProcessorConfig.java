@@ -6,9 +6,9 @@
 package com.amazon.dataprepper.plugins.processor.oteltracegroup;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
-import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexConstants;
-import com.amazon.dataprepper.plugins.sink.opensearch.index.IndexType;
+import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 
 public class OTelTraceGroupProcessorConfig {
     protected static final String TRACE_ID_FIELD = "traceId";

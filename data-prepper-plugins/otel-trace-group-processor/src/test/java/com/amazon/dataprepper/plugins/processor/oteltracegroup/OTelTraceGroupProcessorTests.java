@@ -13,7 +13,7 @@ import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
 import com.amazon.dataprepper.model.trace.JacksonSpan;
 import com.amazon.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.plugins.processor.oteltracegroup.model.TraceGroup;
-import com.amazon.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Measurement;
