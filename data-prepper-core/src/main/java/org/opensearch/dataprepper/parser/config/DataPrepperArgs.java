@@ -10,6 +10,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -22,11 +24,28 @@ public class DataPrepperArgs {
     private static final Integer MAXIMUM_SUPPORTED_NUMBER_OF_ARGS = 2;
 
     private static String checkForLogstashConfigurationAndConvert(String configurationFileLocation) {
-        if (configurationFileLocation.endsWith(".conf")) {
+        final File configurationLocationAsFile = new File(configurationFileLocation);
+        final LogstashConfigConverter logstashConfigConverter = new LogstashConfigConverter();
+        final Path configurationDirectory;
+
+        if (configurationLocationAsFile.isDirectory()) {
+            configurationDirectory = Paths.get(configurationFileLocation).toAbsolutePath();
+            FileFilter confFilter = pathname -> (pathname.getName().endsWith(".conf"));
+            for (File file : configurationLocationAsFile.listFiles(confFilter)) {
+                LOG.info("Detected logstash configuration file {}, attempting to convert to Data Prepper pipeline", file.getName());
+
+                try {
+                    logstashConfigConverter.convertLogstashConfigurationToPipeline(
+                            file.getAbsolutePath(), String.valueOf(configurationDirectory));
+                } catch (final IOException e) {
+                    LOG.warn("Unable to read the Logstash configuration file", e);
+                    throw new IllegalArgumentException("Invalid Logstash configuration file", e);
+                }
+            }
+        } else if (configurationFileLocation.endsWith(".conf")) {
             LOG.debug("Detected logstash configuration file, attempting to convert to Data Prepper pipeline");
 
-            final LogstashConfigConverter logstashConfigConverter = new LogstashConfigConverter();
-            final Path configurationDirectory = Paths.get(configurationFileLocation).toAbsolutePath().getParent();
+            configurationDirectory = Paths.get(configurationFileLocation).toAbsolutePath().getParent();
 
             try {
                 configurationFileLocation = logstashConfigConverter.convertLogstashConfigurationToPipeline(

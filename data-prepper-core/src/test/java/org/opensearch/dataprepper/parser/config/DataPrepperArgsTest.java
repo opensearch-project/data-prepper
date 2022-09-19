@@ -77,6 +77,19 @@ class DataPrepperArgsTest {
     }
 
     @Test
+    public void testGivenLogstashConfigDirectoryThenPipelineConfigCreated() {
+        final DataPrepperArgs args = new DataPrepperArgs("src/test/resources/logstash-conf/", DP_CONFIG_YAML_FILE_PATH);
+
+        final String configFileEnding = Paths.get("src", "test", "resources", "logstash-conf").toString();
+
+        assertThat(args, is(notNullValue()));
+        assertThat(
+                Paths.get(args.getPipelineConfigFileLocation()).toString(),
+                endsWith(configFileEnding));
+        assertThat(args.getDataPrepperConfigFileLocation(), is(DP_CONFIG_YAML_FILE_PATH));
+    }
+
+    @Test
     public void testGivenInvalidLogstashConfigPathThenThrowException() {
         assertThrows(
                 IllegalArgumentException.class,
