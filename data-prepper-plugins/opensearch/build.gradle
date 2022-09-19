@@ -117,8 +117,8 @@ jacocoTestCoverageVerification {
             element = 'CLASS'
             excludes = [
                     // TODO: find a way to include the classes covered by OpenSearch test framework
-                    'com.amazon.dataprepper.plugins.sink.opensearch.OpenSearchSink',
-                    'com.amazon.dataprepper.plugins.sink.opensearch.IndexStateManagement'
+                    'org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink',
+                    'org.opensearch.dataprepper.plugins.sink.opensearch.IndexStateManagement'
             ]
             limit {
                 minimum = 0.90
