@@ -46,8 +46,6 @@ public class TargetRpsSimulation extends Simulation {
     {
         setUp(
                 runScenarioWithTargetRps(smallBatchScenario, 400),
-                runScenarioWithTargetRps(smallBatchScenario, 500),
-                runScenarioWithTargetRps(smallBatchScenario, 600),
                 runScenarioWithTargetRps(largeBatchScenario, 100)
         );
     }
