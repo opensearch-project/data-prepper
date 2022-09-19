@@ -6,7 +6,7 @@
 package com.amazon.dataprepper.plugins.processor.oteltracegroup;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
