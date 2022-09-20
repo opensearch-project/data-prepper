@@ -21,10 +21,8 @@ All main source code builds on JDK 11, so it must be compatible with Java 11. Th
 
 ## Building from source
 
-The assemble task will build the Jar files without running the integration
-tests. You can use these jar files for running DataPrepper. If you are just
-looking to build Data Prepper from source, this build
-is faster than running the integration test suite.
+The assemble task will build the Jar files and create a runnable distribution without running the integration
+tests. If you are just looking to build Data Prepper from source, this build is faster than running the integration test suite.
 
 To build the project from source, run the following command from the project root:
 
@@ -48,20 +46,33 @@ To build, run the following command from the project root:
 
 ## Running the project
 
-After building, the project can be run from the executable JAR **data-prepper-core-$VERSION**
-found in the **build/libs** directory of the **data-prepper-core** subproject. The executable JAR takes
-two arguments:
-1. A Pipeline configuration file
-2. A Data Prepper configuration file
+Before running Data Prepper, check that configuration files (see [configuration](configuration.md) docs for more 
+information) have been put in the respective folders under Data Prepper home directory. When building from source, 
+Data Prepper home directory is at `release/archives/linux/build/install/opensearch-data-prepper-$VERSION-linux-x64` 
+($VERSION is the current version as defined in [gradle.properties](../gradle.properties)). The configuration files 
+should be put in the following folders:
 
-See [configuration](configuration.md) docs for more information.
+1. `data-prepper-config.yaml` in `config/` folder
+2. `pipelines.yaml` in `pipelines/` folder
 
-Example java command:
+Go to home directory:
 ```
-java -jar data-prepper-core-$VERSION.jar pipelines.yaml data-prepper-config.yaml
+cd release/archives/linux/build/install/opensearch-data-prepper-$VERSION-linux-x64
 ```
 
-Optionally add `"-Dlog4j.configurationFile=config/log4j2.properties"` to the command if you would like to pass a custom log4j2 properties file. If no properties file is provided, Data Prepper will default to the log4j2.properties file in the *shared-config* directory.
+Data Prepper can then be run with the following commands:
+```
+bin/data-prepper
+```
+
+You can also supply your own pipeline configuration file path followed by the server configuration file path, but the support for this 
+method will be dropped in a future release. Example:
+```
+bin/data-prepper pipelines.yaml data-prepper-config.yaml
+```
+
+Additionally, Log4j 2 configuration file is read from `config/log4j2.properties` in the application's home directory.
+
 
 ## Building & Running the Docker Image
 
@@ -73,7 +84,7 @@ Docker image, are looking to run a bleeding-edge Docker image, or are needing a 
 To build the Docker image, run:
 
 ```
-./gradlew clean :release:docker:docker -Prelease
+./gradlew clean :release:docker:docker
 ```
 
 If successful, the Docker image will be available locally.
@@ -89,7 +100,7 @@ docker images | grep opensearch-data-prepper
 
 The results will look somewhat like the following:
 ```
-opensearch-data-prepper   1.2.0-SNAPSHOT   3e81ef26250c   23 hours ago   566MB
+opensearch-data-prepper   2.0.0-SNAPSHOT   3e81ef26250c   23 hours ago   566MB
 ```
 
 ### Running from a Local Docker Image
@@ -100,9 +111,9 @@ may wish to change the ports you map depending on your specific pipeline configu
 ```
 docker run \
 -p 21890:21890 \
--v ${PWD}/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml \
--v ${PWD}/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml \
-opensearch-data-prepper:1.2.0-SNAPSHOT
+-v ${PWD}/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml \
+-v ${PWD}/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml \
+opensearch-data-prepper:2.0.0-SNAPSHOT
 ```
 
 

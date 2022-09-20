@@ -38,6 +38,12 @@ simple-sample-pipeline:
 The remainder of this page shows examples for running from the Docker image. If you
 built from source, you will need to make some modifications to the example commands.
 
+For Data Prepper 2.0 or above, use this command:
+```
+docker run --name data-prepper -p 4900:4900 -v ${PWD}/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml -v ${PWD} /data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml opensearchproject/data-prepper:latest
+```
+
+For Data Prepper before version 2.0, use this command:
 ```
 docker run --name data-prepper -p 4900:4900 -v ${PWD}/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml -v ${PWD}/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml opensearchproject/data-prepper:latest
 ```
@@ -107,6 +113,12 @@ simple-sample-pipeline:
 
 Once configured, run Data Prepper again.
 
+For Data Prepper 2.0 or above, use this command:
+```
+docker run --name data-prepper -p 4900:4900 -v ${PWD}/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml -v ${PWD} /data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml opensearchproject/data-prepper:latest
+```
+
+For Data Prepper before version 2.0, use this command:
 ```
 docker run --name data-prepper -p 4900:4900 -v ${PWD}/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml -v ${PWD}/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml opensearchproject/data-prepper:latest
 ```
