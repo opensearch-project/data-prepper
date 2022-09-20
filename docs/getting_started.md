@@ -41,7 +41,7 @@ Depending on what you want to do, we have a few different guides to configuring 
 ## Running
 
 The remainder of this page shows examples for running from the Docker image. If you
-built from source, you will need to make some modifications to the example commands.
+built from source, refer to [Developer Guide](developer_guide.md) for more information.
 
 However you configure your pipeline, you will run Data Prepper the same way. You run the Docker
 image and supply both the `pipelines.yaml` and `data-prepper-config.yaml` files.
@@ -66,7 +66,11 @@ curl -X POST http://localhost:4900/shutdown
 
 ### Additional Configurations
 
-Optionally add `"-Dlog4j.configurationFile=config/log4j2.properties"` to the command if you would like to pass a custom log4j2 properties file. If no properties file is provided, Data Prepper will default to the log4j2.properties file in the *shared-config* directory.
+For Data Prepper 2.0 or above, Log4j 2 configuration file is read from `config/log4j2.properties` in the application's home directory. 
+By default, it's using `log4j2-rolling.properties` in the *shared-config* directory.
+
+For Data Prepper before version 2.0, optionally add `"-Dlog4j.configurationFile=config/log4j2.properties"` to the command if you would 
+like to pass a custom log4j2 properties file. If no properties file is provided, Data Prepper will default to the log4j2.properties file in the *shared-config* directory.
 
 ## Next Steps
 
