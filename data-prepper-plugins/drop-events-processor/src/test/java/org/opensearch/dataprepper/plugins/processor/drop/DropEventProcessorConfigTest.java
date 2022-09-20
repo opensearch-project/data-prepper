@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.drop;
 
-import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +27,7 @@ class DropEventProcessorConfigTest {
 
     @Test
     void getHandleFailedEventsOption() {
-        assertThat(config.getHandleFailedEventsOption(), CoreMatchers.is(HandleFailedEventsOption.SKIP));
+        assertThat(config.getHandleFailedEventsOption(), is(HandleFailedEventsOption.SKIP));
     }
 
 }
