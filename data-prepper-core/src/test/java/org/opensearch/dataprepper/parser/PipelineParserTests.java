@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.TestDataProvider;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
@@ -38,6 +39,8 @@ class PipelineParserTests {
 
     @Mock
     private DataPrepperConfiguration dataPrepperConfiguration;
+    @Mock
+    private PeerForwarderConfiguration peerForwarderConfiguration;
 
     private PluginFactory pluginFactory;
 
@@ -166,6 +169,7 @@ class PipelineParserTests {
 
     @Test
     void parseConfiguration_from_directory_with_multiple_files_creates_the_correct_pipelineMap() {
+        mockDataPrepperConfigurationAccesses();
         final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.MULTI_FILE_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
         final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
@@ -174,6 +178,7 @@ class PipelineParserTests {
 
     @Test
     void parseConfiguration_from_directory_with_single_file_creates_the_correct_pipelineMap() {
+        mockDataPrepperConfigurationAccesses();
         final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.SINGLE_FILE_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
         final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
@@ -191,6 +196,8 @@ class PipelineParserTests {
     private void mockDataPrepperConfigurationAccesses() {
         when(dataPrepperConfiguration.getProcessorShutdownTimeout()).thenReturn(Duration.ofSeconds(Math.abs(new Random().nextInt())));
         when(dataPrepperConfiguration.getSinkShutdownTimeout()).thenReturn(Duration.ofSeconds(Math.abs(new Random().nextInt())));
+        when(dataPrepperConfiguration.getPeerForwarderConfiguration()).thenReturn(peerForwarderConfiguration);
+        when(peerForwarderConfiguration.getDrainTimeout()).thenReturn(Duration.ofSeconds(Math.abs(new Random().nextInt())));
     }
 
     private void verifyDataPrepperConfigurationAccesses() {
@@ -200,5 +207,7 @@ class PipelineParserTests {
     private void verifyDataPrepperConfigurationAccesses(final int times) {
         verify(dataPrepperConfiguration, times(times)).getProcessorShutdownTimeout();
         verify(dataPrepperConfiguration, times(times)).getSinkShutdownTimeout();
+        verify(dataPrepperConfiguration, times(times)).getPeerForwarderConfiguration();
+        verify(peerForwarderConfiguration, times(times)).getDrainTimeout();
     }
 }

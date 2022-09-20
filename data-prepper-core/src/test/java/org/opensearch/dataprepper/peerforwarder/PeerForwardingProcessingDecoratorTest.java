@@ -14,6 +14,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.apache.commons.collections.CollectionUtils;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,10 +31,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -187,13 +194,23 @@ class PeerForwardingProcessingDecoratorTest {
             verify(processor).prepareForShutdown();
         }
 
-        @Test
-        void PeerForwardingProcessingDecorator_isReadyForShutdown_will_call_inner_processors_isReadyForShutdown() {
-            final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.singletonList(processor));
+        @ParameterizedTest
+        @ArgumentsSource(IsReadyForShutdownArgs.class)
+        void PeerForwardingProcessingDecorator_isReadyForShutdown(final boolean isPeerForwarderReady, final boolean isInnerProcessorReady,
+                                                                  final boolean expectedResult) {
+            when(peerForwarder.isReadyForShutdown()).thenReturn(isPeerForwarderReady);
+            if (isPeerForwarderReady) {
+                when(processor.isReadyForShutdown()).thenReturn(isInnerProcessorReady);
+            }
+            PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(processor);
 
-            assertThat(processors.size(), equalTo(1));
-            processors.get(0).isReadyForShutdown();
-            verify(processor).isReadyForShutdown();
+            final boolean result = objectUnderTest.isReadyForShutdown();
+            assertThat(result, is(expectedResult));
+
+            verify(peerForwarder).isReadyForShutdown();
+            if (isPeerForwarderReady) {
+                verify(processor).isReadyForShutdown();
+            }
         }
 
         @Test
@@ -206,4 +223,15 @@ class PeerForwardingProcessingDecoratorTest {
         }
     }
 
+    static class IsReadyForShutdownArgs implements ArgumentsProvider {
+        @Override
+        public Stream<Arguments> provideArguments(ExtensionContext context) {
+            return Stream.of(
+                    Arguments.of(true, true, true),
+                    Arguments.of(true, false, false),
+                    Arguments.of(false, true, false),
+                    Arguments.of(false, false, false)
+            );
+        }
+    }
 }

@@ -47,6 +47,7 @@ public class Pipeline {
     private final int readBatchTimeoutInMillis;
     private final Duration processorShutdownTimeout;
     private final Duration sinkShutdownTimeout;
+    private final Duration peerForwarderDrainTimeout;
     private final ExecutorService processorExecutorService;
     private final ExecutorService sinkExecutorService;
 
@@ -77,7 +78,8 @@ public class Pipeline {
             final int processorThreads,
             final int readBatchTimeoutInMillis,
             final Duration processorShutdownTimeout,
-            final Duration sinkShutdownTimeout) {
+            final Duration sinkShutdownTimeout,
+            final Duration peerForwarderDrainTimeout) {
         Preconditions.checkArgument(processorSets.stream().allMatch(
                 processorSet -> Objects.nonNull(processorSet) && (processorSet.size() == 1 || processorSet.size() == processorThreads)));
         this.name = name;
@@ -89,6 +91,7 @@ public class Pipeline {
         this.readBatchTimeoutInMillis = readBatchTimeoutInMillis;
         this.processorShutdownTimeout = processorShutdownTimeout;
         this.sinkShutdownTimeout = sinkShutdownTimeout;
+        this.peerForwarderDrainTimeout = peerForwarderDrainTimeout;
         this.processorExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(processorThreads,
                 new PipelineThreadFactory(format("%s-processor-worker", name)), this);
 
@@ -129,6 +132,10 @@ public class Pipeline {
 
     public boolean isStopRequested() {
         return stopRequested;
+    }
+
+    public Duration getPeerForwarderDrainTimeout() {
+        return peerForwarderDrainTimeout;
     }
 
     /**
@@ -186,7 +193,6 @@ public class Pipeline {
         try {
             source.stop();
             stopRequested = true;
-            processorSets.forEach(processorSet -> processorSet.forEach(Processor::prepareForShutdown));
         } catch (Exception ex) {
             LOG.error("Pipeline [{}] - Encountered exception while stopping the source, " +
                     "proceeding with termination of process workers", name);

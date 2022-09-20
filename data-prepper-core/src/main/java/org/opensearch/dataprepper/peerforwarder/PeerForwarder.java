@@ -28,4 +28,10 @@ public interface PeerForwarder {
      * @return collection of records forwarded by peers
      */
     Collection<Record<Event>> receiveRecords();
+
+    /**
+     * Returns a boolean denoting if the PeerForwarder is ready for shutdown
+     * @retyrn boolean denoting if the PeerForwarder is ready for shutdown
+     */
+    boolean isReadyForShutdown();
 }

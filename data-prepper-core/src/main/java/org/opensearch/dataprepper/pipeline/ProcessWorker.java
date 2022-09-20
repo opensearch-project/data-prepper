@@ -40,41 +40,58 @@ public class ProcessWorker implements Runnable {
     @Override
     public void run() {
         try {
-            do {
-                final Map.Entry<Collection, CheckpointState> readResult = readBuffer.read(pipeline.getReadBatchTimeoutInMillis());
-                Collection records = readResult.getKey();
-                final CheckpointState checkpointState = readResult.getValue();
-                //TODO Hacky way to avoid logging continuously - Will be removed as part of metrics implementation
-                if (records.isEmpty()) {
-                    if(!isEmptyRecordsLogged) {
-                        LOG.info(" {} Worker: No records received from buffer", pipeline.getName());
-                        isEmptyRecordsLogged = true;
-                    }
-                } else {
-                    LOG.info(" {} Worker: Processing {} records from buffer", pipeline.getName(), records.size());
-                }
-                //Should Empty list from buffer should be sent to the processors? For now sending as the Stateful processors expects it.
-                for (final Processor processor : processors) {
-                    records = processor.execute(records);
-                }
-                if (!records.isEmpty()) {
-                    postToSink(records);
-                }
-                // Checkpoint the current batch read from the buffer after being processed by processors and sinks.
-                readBuffer.checkpoint(checkpointState);
-            } while (!shouldStop());
+            // Phase 1 - execute until stop requested and local buffer drained
+            while (!pipeline.isStopRequested() && !readBuffer.isEmpty()) {
+                doRun();
+            }
+            LOG.info("Processor shutdown phase 1 complete.");
+
+            // Phase 2 - execute until peer forwarder drain period expires (best effort to process all peer forwarder data)
+            final long drainTimeoutExpiration = System.currentTimeMillis() + pipeline.getPeerForwarderDrainTimeout().toMillis();
+            LOG.info("Beginning processor shutdown phase 2, iterating until {}.", drainTimeoutExpiration);
+            while (System.currentTimeMillis() < drainTimeoutExpiration) {
+                doRun();
+            }
+            LOG.info("Processor shutdown phase 2 complete.");
+
+            // Phase 3 - prepare processors for shutdown
+            LOG.info("Beginning processor shutdown phase 3, preparing processors for shutdown.");
+            processors.forEach(Processor::prepareForShutdown);
+            LOG.info("Processor shutdown phase 3 complete.");
+
+            // Phase 4 - execute until processors are ready to shutdown
+            LOG.info("Beginning processor shutdown phase 4, iterating until processors are ready to shutdown.");
+            while (!areComponentsReadyForShutdown()) {
+                doRun();
+            }
+            LOG.info("Processor shutdown phase 4 complete.");
         } catch (final Exception e) {
             LOG.error("Encountered exception during pipeline {} processing", pipeline.getName(), e);
         }
     }
 
-    /**
-     * Shutdown should be handled end to end.
-     *
-     * @return
-     */
-    private boolean shouldStop() {
-        return pipeline.isStopRequested() && areComponentsReadyForShutdown();
+    private void doRun() {
+        final Map.Entry<Collection, CheckpointState> readResult = readBuffer.read(pipeline.getReadBatchTimeoutInMillis());
+        Collection records = readResult.getKey();
+        final CheckpointState checkpointState = readResult.getValue();
+        //TODO Hacky way to avoid logging continuously - Will be removed as part of metrics implementation
+        if (records.isEmpty()) {
+            if(!isEmptyRecordsLogged) {
+                LOG.info(" {} Worker: No records received from buffer", pipeline.getName());
+                isEmptyRecordsLogged = true;
+            }
+        } else {
+            LOG.info(" {} Worker: Processing {} records from buffer", pipeline.getName(), records.size());
+        }
+        //Should Empty list from buffer should be sent to the processors? For now sending as the Stateful processors expects it.
+        for (final Processor processor : processors) {
+            records = processor.execute(records);
+        }
+        if (!records.isEmpty()) {
+            postToSink(records);
+        }
+        // Checkpoint the current batch read from the buffer after being processed by processors and sinks.
+        readBuffer.checkpoint(checkpointState);
     }
 
     private boolean areComponentsReadyForShutdown() {
