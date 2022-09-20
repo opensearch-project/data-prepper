@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.parser.model;
 import com.amazon.dataprepper.model.configuration.PipelineModel;
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.configuration.SinkModel;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,9 +16,12 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.TestDataProvider;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -32,13 +36,13 @@ class PipelineConfigurationTests {
 
     private PluginModel source;
     private List<PluginModel> processors;
-    private List<PluginModel> sinks;
+    private List<SinkModel> sinks;
 
     @BeforeEach
     void setUp() {
         source = TestDataProvider.validSingleConfiguration();
         processors = TestDataProvider.validMultipleConfigurationOfSizeOne();
-        sinks = TestDataProvider.validMultipleConfiguration();
+        sinks = TestDataProvider.validMultipleSinkConfiguration();
     }
 
     @Test
@@ -54,7 +58,7 @@ class PipelineConfigurationTests {
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
         final PluginSetting actualBufferPluginSetting = pipelineConfiguration.getBufferPluginSetting();
         final List<PluginSetting> actualProcesserPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
-        final List<PluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
+        final List<RoutedPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         comparePluginSettings(actualSourcePluginSetting, TestDataProvider.VALID_PLUGIN_SETTING_1);
         assertThat(pipelineConfiguration.getBufferPluginSetting(), notNullValue());
@@ -84,7 +88,7 @@ class PipelineConfigurationTests {
 
     @Test
     void testOnlySourceAndSink() {
-        sinks = TestDataProvider.validMultipleConfigurationOfSizeOne();
+        sinks = TestDataProvider.validMultipleSinkConfigurationOfSizeOne();
         final PipelineModel pipelineModel = mock(PipelineModel.class);
         when(pipelineModel.getSource()).thenReturn(source);
         when(pipelineModel.getSinks()).thenReturn(sinks);
@@ -95,7 +99,7 @@ class PipelineConfigurationTests {
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
         final PluginSetting actualBufferPluginSetting = pipelineConfiguration.getBufferPluginSetting();
         final List<PluginSetting> actualProcessorPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
-        final List<PluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
+        final List<RoutedPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         comparePluginSettings(actualSourcePluginSetting, TestDataProvider.VALID_PLUGIN_SETTING_1);
         assertThat(pipelineConfiguration.getBufferPluginSetting(), notNullValue());
@@ -197,6 +201,33 @@ class PipelineConfigurationTests {
         when(pipelineModel.getReadBatchDelay()).thenReturn(0);
         final IllegalArgumentException actual = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(pipelineModel));
         assertThat(actual.getMessage(), equalTo("Invalid configuration, delay cannot be 0"));
+    }
+
+    @Test
+    void testSinksWithRoutes() {
+        final List<Collection<String>> orderedSinkRoutes = new ArrayList<>();
+        for (SinkModel sink : sinks) {
+            final Set<String> routes = Collections.singleton(UUID.randomUUID().toString());
+            when(sink.getRoutes()).thenReturn(routes);
+            orderedSinkRoutes.add(routes);
+        }
+
+        final PipelineModel pipelineModel = mock(PipelineModel.class);
+        when(pipelineModel.getSource()).thenReturn(source);
+        when(pipelineModel.getSinks()).thenReturn(sinks);
+        when(pipelineModel.getProcessors()).thenReturn(null);
+        when(pipelineModel.getWorkers()).thenReturn(null);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(null);
+
+        final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(pipelineModel);
+
+        final List<RoutedPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
+
+        assertThat(actualSinkPluginSettings.size(), equalTo(2));
+        comparePluginSettings(actualSinkPluginSettings.get(0), TestDataProvider.VALID_PLUGIN_SETTING_1);
+        comparePluginSettings(actualSinkPluginSettings.get(1), TestDataProvider.VALID_PLUGIN_SETTING_2);
+        assertThat(actualSinkPluginSettings.get(0).getRoutes(), equalTo(orderedSinkRoutes.get(0)));
+        assertThat(actualSinkPluginSettings.get(1).getRoutes(), equalTo(orderedSinkRoutes.get(1)));
     }
 
     private void comparePluginSettings(final PluginSetting actual, final PluginSetting expected) {

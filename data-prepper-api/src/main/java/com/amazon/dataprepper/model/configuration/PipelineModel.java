@@ -41,7 +41,7 @@ public class PipelineModel {
     private List<ConditionalRoute> routes;
 
     @JsonProperty("sink")
-    private final List<PluginModel> sinks;
+    private final List<SinkModel> sinks;
 
     @JsonProperty("workers")
     @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -65,7 +65,7 @@ public class PipelineModel {
             @JsonProperty("buffer") final PluginModel buffer,
             @JsonProperty("processor") final List<PluginModel> processors,
             @JsonProperty("router") final List<ConditionalRoute> routes,
-            @JsonProperty("sink") final List<PluginModel> sinks,
+            @JsonProperty("sink") final List<SinkModel> sinks,
             @JsonProperty("workers") final Integer workers,
             @JsonProperty("delay") final Integer delay) {
         checkArgument(Objects.nonNull(source), "Source must not be null");
@@ -96,7 +96,7 @@ public class PipelineModel {
         return routes;
     }
 
-    public List<PluginModel> getSinks() {
+    public List<SinkModel> getSinks() {
         return sinks;
     }
 

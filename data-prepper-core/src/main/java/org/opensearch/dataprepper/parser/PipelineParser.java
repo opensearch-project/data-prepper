@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
+import org.opensearch.dataprepper.parser.model.RoutedPluginSetting;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwardingProcessorDecorator;
 import org.opensearch.dataprepper.pipeline.Pipeline;
@@ -233,7 +234,8 @@ public class PipelineParser {
         return Optional.empty();
     }
 
-    private Sink buildSinkOrConnector(final PluginSetting pluginSetting) {
+    private Sink buildSinkOrConnector(final RoutedPluginSetting pluginSetting) {
+        // TODO: This will return an object which can perform routing.
         LOG.info("Building [{}] as sink component", pluginSetting.getName());
         final Optional<String> pipelineNameOptional = getPipelineNameIfPipelineType(pluginSetting);
         if (pipelineNameOptional.isPresent()) { //update to ifPresentOrElse when using JDK9
@@ -272,7 +274,7 @@ public class PipelineParser {
                 sourcePipeline, pipelineConfigurationMap, pipelineMap));
 
         //remove sink connected pipelines
-        final List<PluginSetting> sinkPluginSettings = failedPipelineConfiguration.getSinkPluginSettings();
+        final List<RoutedPluginSetting> sinkPluginSettings = failedPipelineConfiguration.getSinkPluginSettings();
         sinkPluginSettings.forEach(sinkPluginSetting -> {
             getPipelineNameIfPipelineType(sinkPluginSetting).ifPresent(sinkPipeline -> processRemoveIfRequired(
                     sinkPipeline, pipelineConfigurationMap, pipelineMap));

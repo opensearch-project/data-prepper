@@ -40,7 +40,7 @@ class LogstashMapperTest {
 
         PipelineModel actualPipelineModel =  logstashMapper.mapPipeline(logstashConfiguration);
         PipelineModel expectedPipelineModel = new PipelineModel(TestDataProvider.samplePluginModel(),
-                null, null, null, Collections.singletonList(TestDataProvider.samplePluginModel()), null, null);
+                null, null, null, Collections.singletonList(TestDataProvider.sampleSinkModel()), null, null);
 
         assertThat(actualPipelineModel.getSource().getPluginName(),
                 equalTo(expectedPipelineModel.getSource().getPluginName()));

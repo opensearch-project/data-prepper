@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.logstash.mapping;
 
 import com.amazon.dataprepper.model.configuration.PluginModel;
+import com.amazon.dataprepper.model.configuration.SinkModel;
 import org.opensearch.dataprepper.logstash.model.LogstashConfiguration;
 import org.opensearch.dataprepper.logstash.model.LogstashPlugin;
 import org.opensearch.dataprepper.logstash.model.LogstashPluginType;
@@ -31,6 +32,12 @@ public class TestDataProvider {
         pluginSettings.put("insecure", false);
 
         return new PluginModel("opensearch", pluginSettings);
+    }
+
+    static SinkModel sampleSinkModel() {
+        final PluginModel pluginModel = samplePluginModel();
+
+        return SinkModel.builder(pluginModel).build();
     }
 
     public static LogstashConfiguration sampleConfigurationWithMoreThanOnePlugin() {
