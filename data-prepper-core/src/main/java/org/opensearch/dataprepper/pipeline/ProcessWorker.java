@@ -62,9 +62,10 @@ public class ProcessWorker implements Runnable {
 
             // Phase 4 - execute until processors are ready to shutdown
             LOG.info("Beginning processor shutdown phase 4, iterating until processors are ready to shutdown.");
-            while (!areComponentsReadyForShutdown()) {
+            do {
                 doRun();
             }
+            while (!areComponentsReadyForShutdown());
             LOG.info("Processor shutdown phase 4 complete.");
         } catch (final Exception e) {
             LOG.error("Encountered exception during pipeline {} processing", pipeline.getName(), e);
