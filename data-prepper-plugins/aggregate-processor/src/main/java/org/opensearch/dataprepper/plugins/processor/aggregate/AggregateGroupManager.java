@@ -25,7 +25,11 @@ class AggregateGroupManager {
         return allGroups.computeIfAbsent(identificationHash, (hash) -> new AggregateGroup());
     }
 
-    List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> getGroupsToConclude() {
+    List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> getGroupsToConclude(final boolean isShuttingDown) {
+        if (isShuttingDown) {
+            return allGroups;
+        }
+
         final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> groupsToConclude = new ArrayList<>();
         for (final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry : allGroups.entrySet()) {
             if (groupEntry.getValue().shouldConcludeGroup(groupDuration)) {

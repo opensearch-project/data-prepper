@@ -157,7 +157,7 @@ public class AggregateProcessorTest {
         @Test
         void handleEvent_returning_with_no_event_does_not_add_event_to_records_out() {
             final AggregateProcessor objectUnderTest = createObjectUnderTest();
-            when(aggregateGroupManager.getGroupsToConclude()).thenReturn(Collections.emptyList());
+            when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.emptyList());
             when(aggregateActionResponse.getEvent()).thenReturn(null);
 
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
@@ -168,12 +168,14 @@ public class AggregateProcessorTest {
             verify(actionHandleEventsOutCounter).increment(0);
             verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
             verifyNoInteractions(actionConcludeGroupEventsOutCounter);
+
+            verify(aggregateGroupManager).getGroupsToConclude(eq(false));
         }
 
         @Test
         void handleEvent_returning_with_event_adds_event_to_records_out() {
             final AggregateProcessor objectUnderTest = createObjectUnderTest();
-            when(aggregateGroupManager.getGroupsToConclude()).thenReturn(Collections.emptyList());
+            when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.emptyList());
             when(aggregateActionResponse.getEvent()).thenReturn(event);
 
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
@@ -186,6 +188,8 @@ public class AggregateProcessorTest {
             verify(actionHandleEventsDroppedCounter).increment(0);
             verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
             verifyNoInteractions(actionConcludeGroupEventsOutCounter);
+
+            verify(aggregateGroupManager).getGroupsToConclude(eq(false));
         }
 
         @Test
@@ -193,7 +197,7 @@ public class AggregateProcessorTest {
             final AggregateProcessor objectUnderTest = createObjectUnderTest();
 
             final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>(identificationHash, aggregateGroup);
-            when(aggregateGroupManager.getGroupsToConclude()).thenReturn(Collections.singletonList(groupEntry));
+            when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.singletonList(groupEntry));
             when(aggregateActionResponse.getEvent()).thenReturn(null);
             when(aggregateActionSynchronizer.concludeGroup(identificationHash, aggregateGroup)).thenReturn(Optional.empty());
 
@@ -206,6 +210,7 @@ public class AggregateProcessorTest {
             verify(actionHandleEventsOutCounter).increment(0);
             verifyNoInteractions(actionConcludeGroupEventsOutCounter);
 
+            verify(aggregateGroupManager).getGroupsToConclude(eq(false));
         }
 
         @Test
@@ -213,7 +218,7 @@ public class AggregateProcessorTest {
             final AggregateProcessor objectUnderTest = createObjectUnderTest();
 
             final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>(identificationHash, aggregateGroup);
-            when(aggregateGroupManager.getGroupsToConclude()).thenReturn(Collections.singletonList(groupEntry));
+            when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.singletonList(groupEntry));
             when(aggregateActionResponse.getEvent()).thenReturn(null);
             when(aggregateActionSynchronizer.concludeGroup(identificationHash, aggregateGroup)).thenReturn(Optional.of(event));
 
@@ -227,6 +232,52 @@ public class AggregateProcessorTest {
             verify(actionHandleEventsDroppedCounter).increment(1);
             verify(actionHandleEventsOutCounter).increment(0);
             verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
+
+            verify(aggregateGroupManager).getGroupsToConclude(eq(false));
         }
+
+        @Test
+        void concludeGroup_after_prepare_for_shutdown() {
+            final AggregateProcessor objectUnderTest = createObjectUnderTest();
+            objectUnderTest.prepareForShutdown();
+
+            final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>(identificationHash, aggregateGroup);
+            when(aggregateGroupManager.getGroupsToConclude(eq(true))).thenReturn(Collections.singletonList(groupEntry));
+            when(aggregateActionResponse.getEvent()).thenReturn(null);
+            when(aggregateActionSynchronizer.concludeGroup(identificationHash, aggregateGroup)).thenReturn(Optional.of(event));
+
+            final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
+
+            assertThat(recordsOut.size(), equalTo(1));
+            assertThat(recordsOut.get(0), notNullValue());
+            assertThat(recordsOut.get(0).getData(), equalTo(event));
+
+            verify(actionConcludeGroupEventsOutCounter).increment();
+            verify(actionHandleEventsDroppedCounter).increment(1);
+            verify(actionHandleEventsOutCounter).increment(0);
+            verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
+
+            verify(aggregateGroupManager).getGroupsToConclude(eq(true));
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("isReadyForShutdownArgs")
+    public void isReadyForShutdown(final long groupsSize, final boolean expectedResult) {
+        when(aggregateGroupManager.getAllGroupsSize()).thenReturn(groupsSize);
+
+        final AggregateProcessor objectUnderTest = createObjectUnderTest();
+        final boolean result = objectUnderTest.isReadyForShutdown();
+        assertThat(result, equalTo(expectedResult));
+
+        verify(aggregateGroupManager).getAllGroupsSize();
+    }
+
+    private static Stream<Arguments> isReadyForShutdownArgs() {
+        return Stream.of(
+                Arguments.of(0, true),
+                Arguments.of(Math.abs(new Random().nextLong(50000)) + 1L, false),
+                Arguments.of((Math.abs(new Random().nextInt(50000)) * -1L) - 1L, false)
+        );
     }
 }
