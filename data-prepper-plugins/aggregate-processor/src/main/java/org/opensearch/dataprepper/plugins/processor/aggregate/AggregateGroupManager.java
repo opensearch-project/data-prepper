@@ -26,13 +26,9 @@ class AggregateGroupManager {
     }
 
     List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> getGroupsToConclude(final boolean isShuttingDown) {
-        if (isShuttingDown) {
-            return allGroups;
-        }
-
         final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> groupsToConclude = new ArrayList<>();
         for (final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry : allGroups.entrySet()) {
-            if (groupEntry.getValue().shouldConcludeGroup(groupDuration)) {
+            if (groupEntry.getValue().shouldConcludeGroup(groupDuration) || isShuttingDown) {
                 groupsToConclude.add(groupEntry);
             }
         }
