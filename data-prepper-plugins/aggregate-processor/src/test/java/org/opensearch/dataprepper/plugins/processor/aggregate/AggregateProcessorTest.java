@@ -281,8 +281,8 @@ public class AggregateProcessorTest {
     private static Stream<Arguments> isReadyForShutdownArgs() {
         return Stream.of(
                 Arguments.of(0, true),
-                Arguments.of(Math.abs(new Random().nextLong(50000)) + 1L, false),
-                Arguments.of((Math.abs(new Random().nextInt(50000)) * -1L) - 1L, false)
+                Arguments.of(Math.abs(new Random().nextLong()) + 1L, false),
+                Arguments.of((Math.abs(new Random().nextInt()) * -1L) - 1L, false)
         );
     }
 }
