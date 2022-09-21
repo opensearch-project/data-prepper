@@ -13,7 +13,7 @@ RUN gradle bootJar --daemon
 
 RUN wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.0.1/opentelemetry-javaagent-all.jar
 
-FROM alpine:3.7
+FROM openjdk:8-jre-alpine
 
 RUN apk update \
 && apk upgrade \
@@ -24,7 +24,6 @@ RUN apk update \
 && apk add --no-cache bash \
 && apk add --no-cache --virtual=build-dependencies unzip \
 && apk add --no-cache curl \
-&& apk add --no-cache openjdk8-jre \
 # add python3-dev for grpcio
 && apk add --no-cache python3 python3-dev
 
