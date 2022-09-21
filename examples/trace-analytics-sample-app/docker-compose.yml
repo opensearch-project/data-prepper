@@ -4,10 +4,13 @@ services:
     restart: unless-stopped
     container_name: data-prepper
     image: opensearchproject/data-prepper:latest
+    working_dir: /usr/share/data-prepper/
+    command: sh data-prepper-wait-for-os-and-start.sh
     volumes:
       - ../trace_analytics_no_ssl.yml:/usr/share/data-prepper/pipelines.yaml
       - ../data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
       - ../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
+      - ./data-prepper-wait-for-os-and-start.sh:/usr/share/data-prepper/data-prepper-wait-for-os-and-start.sh
     ports:
       - "21890:21890"
     networks:

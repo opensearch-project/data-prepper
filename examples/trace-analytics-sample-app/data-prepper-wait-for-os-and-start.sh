@@ -10,4 +10,4 @@ until [[ $(curl --write-out %{http_code} --output /dev/null --silent --head --fa
   sleep 1
 done
 
-./bin/data-prepper
+java -jar data-prepper.jar pipelines.yaml data-prepper-config.yaml

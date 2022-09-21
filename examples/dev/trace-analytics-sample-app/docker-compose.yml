@@ -60,9 +60,9 @@ services:
     command: sh data-prepper-wait-for-os-and-start.sh
     volumes:
       - ./resources/data-prepper-wait-for-os-and-start.sh:/usr/share/data-prepper/data-prepper-wait-for-os-and-start.sh
-      - ./resources/pipelines.yaml:/usr/share/data-prepper/pipelines.yaml
-      - ./resources/data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
-      - ../../../shared-config/log4j2.properties:/usr/share/data-prepper/log4j.properties
+      - ./resources/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml
+      - ./resources/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
+      - ../../../shared-config/log4j2.properties:/usr/share/data-prepper/config/log4j.properties
       - ../../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
       - ../../demo/test_keystore.p12:/usr/share/data-prepper/test_keystore.p12
       - ../../demo/demo-data-prepper.crt:/usr/share/data-prepper/demo-data-prepper.crt
