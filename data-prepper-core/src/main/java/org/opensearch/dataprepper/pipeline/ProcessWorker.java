@@ -41,9 +41,10 @@ public class ProcessWorker implements Runnable {
     public void run() {
         try {
             // Phase 1 - execute until stop requested and buffers drained
-            while (!pipeline.isStopRequested() && !areBuffersEmpty()) {
+            do {
                 doRun();
             }
+            while (!pipeline.isStopRequested() && !areBuffersEmpty());
             LOG.info("Processor shutdown phase 1 complete.");
 
             // Phase 2 - execute until peer forwarder drain period expires (best effort to process all peer forwarder data)
