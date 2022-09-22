@@ -126,10 +126,18 @@ public class AggregateGroupManagerTest {
 
         assertThat(groupsToConclude.size(), equalTo(2));
         assertThat(groupsToConclude.get(0), notNullValue());
-        assertThat(groupsToConclude.get(0).getKey(), equalTo(hashForGroupToConclude1));
-        assertThat(groupsToConclude.get(0).getValue(), equalTo(groupToConclude1));
         assertThat(groupsToConclude.get(1), notNullValue());
-        assertThat(groupsToConclude.get(1).getKey(), equalTo(hashForGroupToConclude2));
-        assertThat(groupsToConclude.get(1).getValue(), equalTo(groupToConclude2));
+
+        if (groupsToConclude.get(0).getKey().equals(hashForGroupToConclude1)) {
+            assertThat(groupsToConclude.get(0).getKey(), equalTo(hashForGroupToConclude1));
+            assertThat(groupsToConclude.get(0).getValue(), equalTo(groupToConclude1));
+            assertThat(groupsToConclude.get(1).getKey(), equalTo(hashForGroupToConclude2));
+            assertThat(groupsToConclude.get(1).getValue(), equalTo(groupToConclude2));
+        } else {
+            assertThat(groupsToConclude.get(0).getKey(), equalTo(hashForGroupToConclude2));
+            assertThat(groupsToConclude.get(0).getValue(), equalTo(groupToConclude2));
+            assertThat(groupsToConclude.get(1).getKey(), equalTo(hashForGroupToConclude1));
+            assertThat(groupsToConclude.get(1).getValue(), equalTo(groupToConclude1));
+        }
     }
 }
