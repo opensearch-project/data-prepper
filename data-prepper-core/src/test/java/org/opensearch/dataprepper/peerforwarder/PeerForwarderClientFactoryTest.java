@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,9 @@ class PeerForwarderClientFactoryTest {
     @Mock
     CertificateProviderFactory certificateProviderFactory;
 
+    @Mock
+    PluginMetrics pluginMetrics;
+
     private PeerForwarderClientFactory createObjectUnderTest() {
         return new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory);
     }
@@ -52,7 +56,7 @@ class PeerForwarderClientFactoryTest {
         when(peerForwarderConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.STATIC);
         when(peerForwarderConfiguration.getStaticEndpoints()).thenReturn(Collections.singletonList("10.10.0.1"));
 
-        HashRing hashRing = createObjectUnderTest().createHashRing();
+        HashRing hashRing = createObjectUnderTest().createHashRing(pluginMetrics);
         assertThat(hashRing, new IsInstanceOf(HashRing.class));
     }
 
@@ -62,7 +66,7 @@ class PeerForwarderClientFactoryTest {
 
         PeerForwarderClientFactory peerForwarderClientFactory = createObjectUnderTest();
 
-        assertThrows(RuntimeException.class, peerForwarderClientFactory::createHashRing);
+        assertThrows(RuntimeException.class, () -> peerForwarderClientFactory.createHashRing(pluginMetrics));
     }
 
     @Test

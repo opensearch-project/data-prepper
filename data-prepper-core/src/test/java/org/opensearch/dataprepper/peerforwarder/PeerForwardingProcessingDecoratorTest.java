@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import com.amazon.dataprepper.model.processor.Processor;
@@ -30,6 +31,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anySet;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -88,7 +92,7 @@ class PeerForwardingProcessingDecoratorTest {
         void setUp() {
             identificationKeys = Set.of(TEST_IDENTIFICATION_KEY);
 
-            when(peerForwarderProvider.register(pipelineName, pluginId, identificationKeys)).thenReturn(peerForwarder);
+            when(peerForwarderProvider.register(anyString(), anyString(), anySet(), any(PluginMetrics.class))).thenReturn(peerForwarder);
             when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(identificationKeys);
             processor = (Processor) requiresPeerForwarding;
         }
@@ -97,7 +101,7 @@ class PeerForwardingProcessingDecoratorTest {
         void PeerForwardingProcessingDecorator_should_have_interaction_with_getIdentificationKeys() {
             createObjectUnderTest(processor);
             verify(requiresPeerForwarding).getIdentificationKeys();
-            verify(peerForwarderProvider).register(pipelineName, pluginId, identificationKeys);
+            verify(peerForwarderProvider).register(anyString(), anyString(), anySet(), any(PluginMetrics.class));
         }
 
         @Test

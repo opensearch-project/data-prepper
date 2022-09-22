@@ -5,9 +5,11 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
+import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.peerforwarder.discovery.StaticPeerListProvider;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
@@ -26,6 +28,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient.DESTINATION;
+import static org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient.ERRORS;
 
 class RemotePeerForwarder implements PeerForwarder {
     private static final Logger LOG = LoggerFactory.getLogger(RemotePeerForwarder.class);
@@ -38,19 +44,24 @@ class RemotePeerForwarder implements PeerForwarder {
     private final String pipelineName;
     private final String pluginId;
     private final Set<String> identificationKeys;
+    private final PluginMetrics pluginMetrics;
+    private final Map<String, Counter> forwardRequestErrorCounters;
 
     RemotePeerForwarder(final PeerForwarderClient peerForwarderClient,
                         final HashRing hashRing,
                         final PeerForwarderReceiveBuffer<Record<Event>> peerForwarderReceiveBuffer,
                         final String pipelineName,
                         final String pluginId,
-                        final Set<String> identificationKeys) {
+                        final Set<String> identificationKeys,
+                        final PluginMetrics pluginMetrics) {
         this.peerForwarderClient = peerForwarderClient;
         this.hashRing = hashRing;
         this.peerForwarderReceiveBuffer = peerForwarderReceiveBuffer;
         this.pipelineName = pipelineName;
         this.pluginId = pluginId;
         this.identificationKeys = identificationKeys;
+        this.pluginMetrics = pluginMetrics;
+        forwardRequestErrorCounters = new ConcurrentHashMap<>();
     }
 
     public Collection<Record<Event>> forwardRecords(final Collection<Record<Event>> records) {
@@ -67,7 +78,7 @@ class RemotePeerForwarder implements PeerForwarder {
                 AggregatedHttpResponse httpResponse;
                 try {
                     httpResponse = peerForwarderClient.serializeRecordsAndSendHttpRequest(entry.getValue(),
-                            destinationIp, pluginId, pipelineName);
+                            destinationIp, pluginId, pipelineName, pluginMetrics);
                 } catch (final Exception ex) {
                     httpResponse = null;
                     LOG.warn("Unable to send request to peer, processing locally.", ex);
@@ -75,6 +86,9 @@ class RemotePeerForwarder implements PeerForwarder {
 
                 if (httpResponse == null || httpResponse.status() != HttpStatus.OK) {
                     recordsToProcessLocally.addAll(entry.getValue());
+                    final Counter forwardRequestErrorCounter = forwardRequestErrorCounters.computeIfAbsent(
+                            destinationIp, ip -> pluginMetrics.counterWithTags(ERRORS, DESTINATION, ip));
+                    forwardRequestErrorCounter.increment();
                 }
             }
         }
@@ -91,7 +105,7 @@ class RemotePeerForwarder implements PeerForwarder {
 
         // Checkpoint the current batch read from the buffer after reading from buffer
         peerForwarderReceiveBuffer.checkpoint(checkpointState);
-
+        // recordsReceivedFromRemotePeersCounter
         return records;
     }
 

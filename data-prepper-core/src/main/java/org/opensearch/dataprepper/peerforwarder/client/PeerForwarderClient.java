@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.client;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -12,6 +13,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.UnprocessedRequestException;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.peerforwarder.PeerClientPool;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderClientFactory;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
@@ -22,8 +25,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -32,12 +37,19 @@ import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguratio
 
 public class PeerForwarderClient {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderClient.class);
+    public static final String REQUESTS = "requests";
+    public static final String LATENCY = "latency";
+    public static final String ERRORS = "errors";
+    public static final String DESTINATION = "destination";
 
     private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final PeerForwarderClientFactory peerForwarderClientFactory;
     private final ObjectMapper objectMapper;
     private ExecutorService executorService;
     private PeerClientPool peerClientPool;
+
+    private final Map<String, Timer> forwardRequestTimers;
+    private final Map<String, Counter> forwardedRequestCounters;
 
     public PeerForwarderClient(final PeerForwarderConfiguration peerForwarderConfiguration,
                                final PeerForwarderClientFactory peerForwarderClientFactory,
@@ -46,13 +58,17 @@ public class PeerForwarderClient {
         this.peerForwarderClientFactory = peerForwarderClientFactory;
         this.objectMapper = objectMapper;
         executorService = Executors.newFixedThreadPool(peerForwarderConfiguration.getClientThreadCount());
+        forwardedRequestCounters = new ConcurrentHashMap<>();
+
+        forwardRequestTimers = new ConcurrentHashMap<>();
     }
 
     public AggregatedHttpResponse serializeRecordsAndSendHttpRequest(
             final Collection<Record<Event>> records,
             final String ipAddress,
             final String pluginId,
-            final String pipelineName) {
+            final String pipelineName,
+            final PluginMetrics pluginMetrics) {
         // TODO: decide the default values of peer forwarder configuration and move the PeerClientPool to constructor
         peerClientPool = peerForwarderClientFactory.setPeerClientPool();
 
@@ -60,8 +76,17 @@ public class PeerForwarderClient {
 
         final String serializedJsonString = getSerializedJsonString(records, pluginId, pipelineName);
 
-        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture =
-                processHttpRequest(client, serializedJsonString);
+        final Timer forwardRequestTimer = forwardRequestTimers.computeIfAbsent(
+                ipAddress, ip -> pluginMetrics.timerWithTags(LATENCY, DESTINATION, ip));
+        final Counter forwardedRequestCounter = forwardedRequestCounters.computeIfAbsent(
+                ipAddress, ip -> pluginMetrics.counterWithTags(REQUESTS, DESTINATION, ip));
+
+//        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture = forwardRequestTimer.record(() -> {
+        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture = processHttpRequest(client, serializedJsonString);
+//                }
+//        );
+        forwardedRequestCounter.increment();
+
         return getAggregatedHttpResponse(aggregatedHttpResponseCompletableFuture);
     }
 

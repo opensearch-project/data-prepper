@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.linecorp.armeria.client.Endpoint;
 import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
 import org.junit.Before;
@@ -40,6 +41,9 @@ public class DnsPeerListProviderTest {
     @Mock
     private HashRing hashRing;
 
+    @Mock
+    private PluginMetrics pluginMetrics;
+
     private CompletableFuture completableFuture;
 
     private DnsPeerListProvider dnsPeerListProvider;
@@ -49,12 +53,12 @@ public class DnsPeerListProviderTest {
         completableFuture = CompletableFuture.completedFuture(null);
         when(dnsAddressEndpointGroup.whenReady()).thenReturn(completableFuture);
 
-        dnsPeerListProvider = new DnsPeerListProvider(dnsAddressEndpointGroup);
+        dnsPeerListProvider = new DnsPeerListProvider(dnsAddressEndpointGroup, pluginMetrics);
     }
 
     @Test(expected = NullPointerException.class)
     public void testDefaultListProviderWithNullHostname() {
-        new DnsPeerListProvider(null);
+        new DnsPeerListProvider(null, pluginMetrics);
     }
 
     @Test(expected = RuntimeException.class)
@@ -63,7 +67,7 @@ public class DnsPeerListProviderTest {
         when(mockFuture.get()).thenThrow(new InterruptedException());
         when(dnsAddressEndpointGroup.whenReady()).thenReturn(mockFuture);
 
-        new DnsPeerListProvider(dnsAddressEndpointGroup);
+        new DnsPeerListProvider(dnsAddressEndpointGroup, pluginMetrics);
     }
 
     @Test

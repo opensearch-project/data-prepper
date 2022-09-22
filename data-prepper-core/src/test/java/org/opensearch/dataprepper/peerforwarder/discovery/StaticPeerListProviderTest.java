@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -29,21 +30,24 @@ public class StaticPeerListProviderTest {
     @Mock
     private HashRing hashRing;
 
+    @Mock
+    private PluginMetrics pluginMetrics;
+
     private StaticPeerListProvider staticPeerListProvider;
 
     @Before
     public void setup() {
-        staticPeerListProvider = new StaticPeerListProvider(ENDPOINT_LIST);
+        staticPeerListProvider = new StaticPeerListProvider(ENDPOINT_LIST, pluginMetrics);
     }
 
     @Test(expected = RuntimeException.class)
     public void testListProviderWithEmptyList() {
-        new StaticPeerListProvider(Collections.emptyList());
+        new StaticPeerListProvider(Collections.emptyList(), pluginMetrics);
     }
 
     @Test(expected = RuntimeException.class)
     public void testListProviderWithNullList() {
-        new StaticPeerListProvider(null);
+        new StaticPeerListProvider(null, pluginMetrics);
     }
 
     @Test

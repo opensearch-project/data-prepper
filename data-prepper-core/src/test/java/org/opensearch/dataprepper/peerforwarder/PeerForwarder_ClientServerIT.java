@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
@@ -65,6 +66,7 @@ class PeerForwarder_ClientServerIT {
     private String pluginId;
     private List<Record<Event>> outgoingRecords;
     private Set<String> expectedMessages;
+    private PluginMetrics pluginMetrics;
 
     @BeforeEach
     void setUp() {
@@ -77,6 +79,8 @@ class PeerForwarder_ClientServerIT {
                 .collect(Collectors.toList());
         pipelineName = UUID.randomUUID().toString();
         pluginId = UUID.randomUUID().toString();
+
+        pluginMetrics = PluginMetrics.fromNames(pluginId, pipelineName);
 
         expectedMessages = outgoingRecords.stream()
                 .map(Record::getData)
@@ -140,7 +144,7 @@ class PeerForwarder_ClientServerIT {
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
-            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()));
+            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()), pluginMetrics);
             server = createServer(peerForwarderConfiguration, certificateProviderFactory, peerForwarderProvider);
             server.start();
         }
@@ -154,7 +158,7 @@ class PeerForwarder_ClientServerIT {
         void send_Events_to_server() {
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            final AggregatedHttpResponse httpResponse = client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName);
+            final AggregatedHttpResponse httpResponse = client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName, pluginMetrics);
 
             assertThat(httpResponse.status(), equalTo(HttpStatus.OK));
 
@@ -181,7 +185,7 @@ class PeerForwarder_ClientServerIT {
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            assertThrows(ClosedSessionException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+            assertThrows(ClosedSessionException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName, pluginMetrics));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
             assertThat(receivedRecords, notNullValue());
@@ -195,7 +199,7 @@ class PeerForwarder_ClientServerIT {
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+            assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName, pluginMetrics));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
             assertThat(receivedRecords, notNullValue());
@@ -216,7 +220,7 @@ class PeerForwarder_ClientServerIT {
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
-            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()));
+            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()), pluginMetrics);
             server = createServer(peerForwarderConfiguration, certificateProviderFactory, peerForwarderProvider);
             server.start();
         }
@@ -230,7 +234,7 @@ class PeerForwarder_ClientServerIT {
         void send_Events_to_server() {
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            final AggregatedHttpResponse httpResponse = client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName);
+            final AggregatedHttpResponse httpResponse = client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName, pluginMetrics);
 
             assertThat(httpResponse.status(), equalTo(HttpStatus.OK));
 
@@ -257,7 +261,7 @@ class PeerForwarder_ClientServerIT {
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            final UnprocessedRequestException actualException = assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+            final UnprocessedRequestException actualException = assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName, pluginMetrics));
 
             assertThat(actualException.getCause(), instanceOf(SSLHandshakeException.class));
 
@@ -280,7 +284,7 @@ class PeerForwarder_ClientServerIT {
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
-            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()));
+            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()), pluginMetrics);
             server = createServer(peerForwarderConfiguration, certificateProviderFactory, peerForwarderProvider);
             server.start();
         }
@@ -294,7 +298,7 @@ class PeerForwarder_ClientServerIT {
         void send_Events_to_server() {
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            final AggregatedHttpResponse httpResponse = client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName);
+            final AggregatedHttpResponse httpResponse = client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName, pluginMetrics);
 
             assertThat(httpResponse.status(), equalTo(HttpStatus.OK));
 
@@ -321,7 +325,7 @@ class PeerForwarder_ClientServerIT {
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            assertThrows(ClosedSessionException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+            assertThrows(ClosedSessionException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName,pluginMetrics));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
             assertThat(receivedRecords, notNullValue());
@@ -334,7 +338,7 @@ class PeerForwarder_ClientServerIT {
                     true, ForwardingAuthentication.MUTUAL_TLS, SSL_CERTIFICATE_FILE, ALTERNATE_SSL_KEY_FILE, true);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
-            assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+            assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName, pluginMetrics));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
             assertThat(receivedRecords, notNullValue());
@@ -348,7 +352,7 @@ class PeerForwarder_ClientServerIT {
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+            assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName, pluginMetrics));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
             assertThat(receivedRecords, notNullValue());

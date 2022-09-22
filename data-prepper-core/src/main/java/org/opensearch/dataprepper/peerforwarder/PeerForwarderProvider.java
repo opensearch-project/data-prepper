@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
@@ -30,7 +31,7 @@ public class PeerForwarderProvider {
         this.peerForwarderConfiguration = peerForwarderConfiguration;
     }
 
-    public PeerForwarder register(final String pipelineName, final String pluginId, final Set<String> identificationKeys) {
+    public PeerForwarder register(final String pipelineName, final String pluginId, final Set<String> identificationKeys, final PluginMetrics pluginMetrics) {
         if (pipelinePeerForwarderReceiveBufferMap.containsKey(pipelineName) &&
                 pipelinePeerForwarderReceiveBufferMap.get(pipelineName).containsKey(pluginId)) {
             throw new RuntimeException("Data Prepper 2.0 will only support a single peer-forwarder per pipeline/plugin type");
@@ -40,10 +41,10 @@ public class PeerForwarderProvider {
 
         if (isPeerForwardingRequired()) {
             if (hashRing == null) {
-                hashRing = peerForwarderClientFactory.createHashRing();
+                hashRing = peerForwarderClientFactory.createHashRing(pluginMetrics);
             }
             return new RemotePeerForwarder(
-                    peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId, identificationKeys
+                    peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId, identificationKeys, pluginMetrics
             );
         }
         else {

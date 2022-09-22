@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.log.JacksonLog;
@@ -31,6 +32,7 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -53,6 +55,9 @@ class RemotePeerForwarderTest {
     @Mock
     private HashRing hashRing;
 
+    @Mock
+    private PluginMetrics pluginMetrics;
+
     private String pipelineName;
     private String pluginId;
     private Set<String> identificationKeys;
@@ -67,7 +72,7 @@ class RemotePeerForwarderTest {
     }
 
     private RemotePeerForwarder createObjectUnderTest() {
-        return new RemotePeerForwarder(peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId, identificationKeys);
+        return new RemotePeerForwarder(peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId, identificationKeys, pluginMetrics);
     }
 
     @Test
@@ -89,7 +94,7 @@ class RemotePeerForwarderTest {
     void test_forwardRecords_with_one_local_ip_and_one_remote_ip_should_process_record_one_record_locally() {
         AggregatedHttpResponse aggregatedHttpResponse = mock(AggregatedHttpResponse.class);
         when(aggregatedHttpResponse.status()).thenReturn(HttpStatus.OK);
-        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString())).thenReturn(aggregatedHttpResponse);
+        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString(), any(PluginMetrics.class))).thenReturn(aggregatedHttpResponse);
 
         final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
@@ -99,13 +104,13 @@ class RemotePeerForwarderTest {
         final Collection<Record<Event>> testRecords = generateBatchRecords(2);
 
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
-        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
+        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString(), any(PluginMetrics.class));
         assertThat(records.size(), equalTo(1));
     }
 
     @Test
     void forwardRecords_should_return_all_input_events_when_client_throws() {
-        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString())).thenThrow(RuntimeException.class);
+        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString(), any(PluginMetrics.class))).thenThrow(RuntimeException.class);
 
         final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
@@ -115,7 +120,7 @@ class RemotePeerForwarderTest {
 
         final Collection<Record<Event>> inputRecords = generateBatchRecords(2);
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(inputRecords);
-        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
+        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString(), any(PluginMetrics.class));
         assertThat(records, notNullValue());
         assertThat(records.size(), equalTo(inputRecords.size()));
         for (Record<Event> inputRecord : inputRecords) {
