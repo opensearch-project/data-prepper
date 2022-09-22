@@ -31,7 +31,7 @@ public interface PeerForwarder {
 
     /**
      * Returns a boolean denoting if the PeerForwarder is ready for shutdown
-     * @retyrn boolean denoting if the PeerForwarder is ready for shutdown
+     * @return boolean denoting if the PeerForwarder is ready for shutdown
      */
     boolean isReadyForShutdown();
 }
