@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.logstash.mapping;
 
-import com.amazon.dataprepper.plugins.processor.date.DateProcessorConfig;
 import org.opensearch.dataprepper.logstash.exception.LogstashConfigurationException;
 import org.opensearch.dataprepper.logstash.model.LogstashAttribute;
 import org.opensearch.dataprepper.logstash.model.LogstashValueType;
+import org.opensearch.dataprepper.plugins.processor.date.DateProcessorConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

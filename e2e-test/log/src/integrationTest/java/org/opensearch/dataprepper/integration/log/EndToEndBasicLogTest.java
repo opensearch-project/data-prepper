@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.integration.log;
 
 import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
-import com.amazon.dataprepper.plugins.source.loggenerator.ApacheLogFaker;
+import org.opensearch.dataprepper.plugins.source.loggenerator.ApacheLogFaker;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.WebClient;
