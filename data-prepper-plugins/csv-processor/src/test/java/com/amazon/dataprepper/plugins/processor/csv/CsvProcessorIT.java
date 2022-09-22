@@ -8,7 +8,7 @@ package com.amazon.dataprepper.plugins.processor.csv;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.plugins.source.loggenerator.logtypes.VpcFlowLogTypeGenerator;
+import org.opensearch.dataprepper.plugins.source.loggenerator.logtypes.VpcFlowLogTypeGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
