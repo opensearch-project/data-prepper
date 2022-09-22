@@ -179,12 +179,9 @@ public class PipelineParser {
                     .map(this::buildSinkOrConnector)
                     .collect(Collectors.toList());
 
-            final Duration peerForwarderDrainTimeout = Optional.ofNullable(dataPrepperConfiguration)
-                    .map(DataPrepperConfiguration::getPeerForwarderConfiguration)
-                    .map(PeerForwarderConfiguration::getDrainTimeout)
-                    .orElse(Duration.ofSeconds(0));
             final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, decoratedProcessorSets, sinks, processorThreads, readBatchDelay,
-                    dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(), peerForwarderDrainTimeout);
+                    dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
+                    getPeerForwarderDrainTimeout(dataPrepperConfiguration));
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
             //If pipeline construction errors out, we will skip that pipeline and proceed
@@ -311,5 +308,12 @@ public class PipelineParser {
         String getName() {
             return name;
         }
+    }
+
+    Duration getPeerForwarderDrainTimeout(final DataPrepperConfiguration dataPrepperConfiguration) {
+        return Optional.ofNullable(dataPrepperConfiguration)
+                .map(DataPrepperConfiguration::getPeerForwarderConfiguration)
+                .map(PeerForwarderConfiguration::getDrainTimeout)
+                .orElse(Duration.ofSeconds(0));
     }
 }

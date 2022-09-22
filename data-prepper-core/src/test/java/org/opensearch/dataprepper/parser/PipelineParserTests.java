@@ -26,6 +26,7 @@ import java.util.Random;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -191,6 +192,47 @@ class PipelineParserTests {
         final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
         assertThat(actualException.getMessage(), equalTo(
                 String.format("Pipelines configuration file not found at %s", TestDataProvider.EMPTY_PIPELINE_DIRECTOTRY)));
+    }
+
+    @Test
+    void getPeerForwarderDrainDuration_peerForwarderConfigurationNotSet() {
+        when(dataPrepperConfiguration.getPeerForwarderConfiguration()).thenReturn(null);
+
+        final PipelineParser pipelineParser =
+                new PipelineParser(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+        final Duration result = pipelineParser.getPeerForwarderDrainTimeout(dataPrepperConfiguration);
+        assertThat(result, is(Duration.ofSeconds(0)));
+
+        verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
+    }
+
+    @Test
+    void getPeerForwarderDrainDuration_peerForwarderDrainTimeoutNotSet() {
+        when(dataPrepperConfiguration.getPeerForwarderConfiguration()).thenReturn(peerForwarderConfiguration);
+        when(peerForwarderConfiguration.getDrainTimeout()).thenReturn(null);
+
+        final PipelineParser pipelineParser =
+                new PipelineParser(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+        final Duration result = pipelineParser.getPeerForwarderDrainTimeout(dataPrepperConfiguration);
+        assertThat(result, is(Duration.ofSeconds(0)));
+
+        verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
+        verify(peerForwarderConfiguration).getDrainTimeout();
+    }
+
+    @Test
+    void getPeerForwarderDrainDuration_IsSet() {
+        final Duration expectedResult = Duration.ofSeconds(Math.abs(new Random().nextInt()));
+        when(dataPrepperConfiguration.getPeerForwarderConfiguration()).thenReturn(peerForwarderConfiguration);
+        when(peerForwarderConfiguration.getDrainTimeout()).thenReturn(expectedResult);
+
+        final PipelineParser pipelineParser =
+                new PipelineParser(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+        final Duration result = pipelineParser.getPeerForwarderDrainTimeout(dataPrepperConfiguration);
+        assertThat(result, is(expectedResult));
+
+        verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
+        verify(peerForwarderConfiguration).getDrainTimeout();
     }
 
     private void mockDataPrepperConfigurationAccesses() {

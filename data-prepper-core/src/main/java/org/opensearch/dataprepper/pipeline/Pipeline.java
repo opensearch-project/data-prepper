@@ -67,6 +67,7 @@ public class Pipeline {
      * @param processorThreads         configured or default threads to parallelize processor work
      * @param readBatchTimeoutInMillis configured or default timeout for reading batch of records from buffer
      * @param processorShutdownTimeout configured or default timeout before forcefully terminating the processor workers
+     * @param peerForwarderDrainTimeout configured or default timeout before considering the peer forwarder drained and ready for termination
      * @param sinkShutdownTimeout      configured or default timeout before forcefully terminating the sink workers
      */
     public Pipeline(
