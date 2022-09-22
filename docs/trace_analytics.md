@@ -216,12 +216,14 @@ processors:
 exporters:
   otlp/data-prepper:
     endpoint: localhost:21890
-    insecure: true
+    tls:
+      insecure: true
 
 service:
   pipelines:
     traces:
       receivers: [jaeger, otlp, zipkin]
+      processors: [batch/traces]
       exporters: [otlp/data-prepper]
 ```
 
