@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.logstash.mapping;
 
 import com.amazon.dataprepper.model.configuration.PluginModel;
-import com.amazon.dataprepper.plugins.processor.date.DateProcessorConfig;
+import org.opensearch.dataprepper.plugins.processor.date.DateProcessorConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.logstash.exception.LogstashConfigurationException;
