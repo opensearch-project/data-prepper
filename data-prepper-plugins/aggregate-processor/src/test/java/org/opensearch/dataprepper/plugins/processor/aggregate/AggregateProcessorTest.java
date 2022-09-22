@@ -204,7 +204,7 @@ public class AggregateProcessorTest {
             final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>(identificationHash, aggregateGroup);
             when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.singletonList(groupEntry));
             when(aggregateActionResponse.getEvent()).thenReturn(null);
-            when(aggregateActionSynchronizer.concludeGroup(identificationHash, aggregateGroup)).thenReturn(Optional.empty());
+            when(aggregateActionSynchronizer.concludeGroup(identificationHash, aggregateGroup, false)).thenReturn(Optional.empty());
 
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
 
@@ -216,6 +216,7 @@ public class AggregateProcessorTest {
             verifyNoInteractions(actionConcludeGroupEventsOutCounter);
 
             verify(aggregateGroupManager).getGroupsToConclude(eq(false));
+            verify(aggregateActionSynchronizer).concludeGroup(identificationHash, aggregateGroup, false);
         }
 
         @Test
@@ -225,7 +226,7 @@ public class AggregateProcessorTest {
             final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>(identificationHash, aggregateGroup);
             when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.singletonList(groupEntry));
             when(aggregateActionResponse.getEvent()).thenReturn(null);
-            when(aggregateActionSynchronizer.concludeGroup(identificationHash, aggregateGroup)).thenReturn(Optional.of(event));
+            when(aggregateActionSynchronizer.concludeGroup(identificationHash, aggregateGroup, false)).thenReturn(Optional.of(event));
 
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
 
@@ -239,6 +240,7 @@ public class AggregateProcessorTest {
             verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
 
             verify(aggregateGroupManager).getGroupsToConclude(eq(false));
+            verify(aggregateActionSynchronizer).concludeGroup(identificationHash, aggregateGroup, false);
         }
 
         @Test
@@ -249,7 +251,7 @@ public class AggregateProcessorTest {
             final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>(identificationHash, aggregateGroup);
             when(aggregateGroupManager.getGroupsToConclude(eq(true))).thenReturn(Collections.singletonList(groupEntry));
             when(aggregateActionResponse.getEvent()).thenReturn(null);
-            when(aggregateActionSynchronizer.concludeGroup(identificationHash, aggregateGroup)).thenReturn(Optional.of(event));
+            when(aggregateActionSynchronizer.concludeGroup(identificationHash, aggregateGroup, true)).thenReturn(Optional.of(event));
 
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
 
@@ -263,6 +265,7 @@ public class AggregateProcessorTest {
             verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
 
             verify(aggregateGroupManager).getGroupsToConclude(eq(true));
+            verify(aggregateActionSynchronizer).concludeGroup(identificationHash, aggregateGroup, true);
         }
     }
 
