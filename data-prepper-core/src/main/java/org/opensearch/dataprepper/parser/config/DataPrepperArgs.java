@@ -18,11 +18,18 @@ import java.nio.file.Paths;
 
 public class DataPrepperArgs {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperArgs.class);
-
     private static final Integer DATA_PREPPER_PIPELINE_CONFIG_POSITON = 0;
     private static final Integer DATA_PREPPER_CONFIG_POSITON = 1;
     private static final Integer MAXIMUM_SUPPORTED_NUMBER_OF_ARGS = 2;
 
+    /**
+     * Converts Logstash configuration to Data Prepper pipeline configuration. If input is a directory path, converts all Logstash
+     * configurations in the directory and return the directory path; if input is a file path, convert the file if necessary and
+     * return the pipeline configuration path.
+     *
+     * @param configurationFileLocation String path to a configuration or to a directory containing configurations
+     * @return String path to a pipeline configuration or a directory containing pipeline configurations
+     */
     private static String checkForLogstashConfigurationAndConvert(String configurationFileLocation) {
         final File configurationLocationAsFile = new File(configurationFileLocation);
         final LogstashConfigConverter logstashConfigConverter = new LogstashConfigConverter();
@@ -30,8 +37,8 @@ public class DataPrepperArgs {
 
         if (configurationLocationAsFile.isDirectory()) {
             configurationDirectory = Paths.get(configurationFileLocation).toAbsolutePath();
-            FileFilter confFilter = pathname -> (pathname.getName().endsWith(".conf"));
-            for (File file : configurationLocationAsFile.listFiles(confFilter)) {
+            final FileFilter confFilter = pathname -> (pathname.getName().endsWith(".conf"));
+            for (final File file : configurationLocationAsFile.listFiles(confFilter)) {
                 LOG.info("Detected logstash configuration file {}, attempting to convert to Data Prepper pipeline", file.getName());
 
                 try {
