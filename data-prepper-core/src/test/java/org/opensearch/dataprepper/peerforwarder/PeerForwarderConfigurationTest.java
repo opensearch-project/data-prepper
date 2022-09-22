@@ -7,8 +7,11 @@ package org.opensearch.dataprepper.peerforwarder;
 
 import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
+import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -16,6 +19,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -23,7 +27,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class PeerForwarderConfigurationTest {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
+    private static SimpleModule simpleModule = new SimpleModule().addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
+    private static ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory()).registerModule(simpleModule);
 
     private static PeerForwarderConfiguration makeConfig(final String filePath) throws IOException {
         final File configurationFile = new File(filePath);
@@ -49,6 +54,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(48));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(512));
         assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
+        assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(null));
     }
 
     @Test
@@ -74,6 +80,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(100));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(100));
         assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
+        assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(null));
     }
 
     @Test
@@ -109,6 +116,25 @@ class PeerForwarderConfigurationTest {
     }
 
     @Test
+    void testValidPeerForwarderConfig_with_DrainTimeout() throws IOException {
+        final PeerForwarderConfiguration peerForwarderConfiguration = makeConfig(TestDataProvider.VALID_PEER_FORWARDER_CONFIG_WITH_DRAIN_TIMEOUT_FILE);
+
+        assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(Duration.ofSeconds(60)));
+    }
+
+    @Test
+    void testValidPeerForwarderConfig_with_iso8601_DrainTimeout() throws IOException {
+        final PeerForwarderConfiguration peerForwarderConfiguration = makeConfig(TestDataProvider.VALID_PEER_FORWARDER_CONFIG_WITH_ISO8601_DRAIN_TIMEOUT_FILE);
+
+        assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(Duration.ofSeconds(15)));
+    }
+
+    @Test
+    void testInvalidPeerForwarderConfig_with_bad_DrainTimeout() throws IOException {
+        assertThrows(JsonMappingException.class, () -> makeConfig(TestDataProvider.INVALID_PEER_FORWARDER_WITH_BAD_DRAIN_TIMEOUT));
+    }
+
+    @Test
     void test_with_acm_should_create_PeerForwarderConfiguration_object_even_with_null_files() throws IOException {
         final PeerForwarderConfiguration peerForwarderConfiguration = makeConfig(TestDataProvider.VALID_PEER_FORWARDER_WITH_ACM_SSL_CONFIG_FILE);
 
@@ -132,6 +158,7 @@ class PeerForwarderConfigurationTest {
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_CLOUD_MAP_WITHOUT_REGION_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_DNS_WITHOUT_DOMAIN_NAME_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_SSL,
+            TestDataProvider.INVALID_PEER_FORWARDER_WITH_NEGATIVE_DRAIN_TIMEOUT,
             "src/test/resources/invalid_peer_forwarder_config_with_many_authentication.yml",
             "src/test/resources/invalid_peer_forwarder_config_with_mutual_tls_not_ssl.yml"
     })
