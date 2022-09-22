@@ -23,6 +23,7 @@ class DataPrepperArgsTest {
     private static final String PIPELINE_FILE_PATH = "pipeline.yml";
     private static final String DP_CONFIG_YAML_FILE_PATH = "config.yml";
     private static final String LOGSTASH_PIPELINE_FILE_PATH = "src/test/resources/logstash-filter.conf";
+    private static final String LOGSTASH_PIPELINE_DIRECTORY_PATH = "src/test/resources/logstash-conf";
 
     @Test
     public void testGivenSingleArgumentThenAssignedToPipelineConfig() {
@@ -73,6 +74,17 @@ class DataPrepperArgsTest {
         assertThat(
                 args.getPipelineConfigFileLocation(),
                 endsWith(configFileEnding));
+        assertThat(args.getDataPrepperConfigFileLocation(), is(DP_CONFIG_YAML_FILE_PATH));
+    }
+
+    @Test
+    public void testGivenLogstashConfigDirectoryThenPipelineConfigCreated() {
+        final DataPrepperArgs args = new DataPrepperArgs(LOGSTASH_PIPELINE_DIRECTORY_PATH, DP_CONFIG_YAML_FILE_PATH);
+
+        final String configFile = Paths.get("src", "test", "resources", "logstash-conf/").toString();
+
+        assertThat(args, is(notNullValue()));
+        assertThat(args.getPipelineConfigFileLocation(), is(configFile));
         assertThat(args.getDataPrepperConfigFileLocation(), is(DP_CONFIG_YAML_FILE_PATH));
     }
 
