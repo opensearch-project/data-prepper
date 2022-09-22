@@ -82,7 +82,7 @@ public class PeerForwarderConfiguration {
             @JsonProperty("client_thread_count") final Integer clientThreadCount,
             @JsonProperty("batch_size") final Integer batchSize,
             @JsonProperty("buffer_size") final Integer bufferSize,
-            @JsonProperty("drainTimeout") final Duration drainTimeout
+            @JsonProperty("drain_timeout") final Duration drainTimeout
     ) {
         setServerPort(serverPort);
         setRequestTimeout(requestTimeout);

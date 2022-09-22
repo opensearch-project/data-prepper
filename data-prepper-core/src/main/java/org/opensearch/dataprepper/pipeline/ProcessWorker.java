@@ -41,32 +41,37 @@ public class ProcessWorker implements Runnable {
     public void run() {
         try {
             // Phase 1 - execute until stop requested and buffers drained
-            do {
+            while (!pipeline.isStopRequested()) {
                 doRun();
             }
-            while (!pipeline.isStopRequested() && !areBuffersEmpty());
             LOG.info("Processor shutdown phase 1 complete.");
 
-            // Phase 2 - execute until peer forwarder drain period expires (best effort to process all peer forwarder data)
-            final long drainTimeoutExpiration = System.currentTimeMillis() + pipeline.getPeerForwarderDrainTimeout().toMillis();
-            LOG.info("Beginning processor shutdown phase 2, iterating until {}.", drainTimeoutExpiration);
-            while (System.currentTimeMillis() < drainTimeoutExpiration) {
+            // Phase 2 - execute until read buffer and peer forwarder buffer are empty
+            LOG.info("Beginning processor shutdown phase 2, iterating until buffers empty.");
+            while (!areBuffersEmpty()) {
                 doRun();
             }
             LOG.info("Processor shutdown phase 2 complete.");
 
-            // Phase 3 - prepare processors for shutdown
-            LOG.info("Beginning processor shutdown phase 3, preparing processors for shutdown.");
-            processors.forEach(Processor::prepareForShutdown);
-            LOG.info("Processor shutdown phase 3 complete.");
-
-            // Phase 4 - execute until processors are ready to shutdown
-            LOG.info("Beginning processor shutdown phase 4, iterating until processors are ready to shutdown.");
-            do {
+            // Phase 3 - execute until peer forwarder drain period expires (best effort to process all peer forwarder data)
+            final long drainTimeoutExpiration = System.currentTimeMillis() + pipeline.getPeerForwarderDrainTimeout().toMillis();
+            LOG.info("Beginning processor shutdown phase 3, iterating until {}.", drainTimeoutExpiration);
+            while (System.currentTimeMillis() < drainTimeoutExpiration) {
                 doRun();
             }
-            while (!areComponentsReadyForShutdown());
+            LOG.info("Processor shutdown phase 3 complete.");
+
+            // Phase 4 - prepare processors for shutdown
+            LOG.info("Beginning processor shutdown phase 4, preparing processors for shutdown.");
+            processors.forEach(Processor::prepareForShutdown);
             LOG.info("Processor shutdown phase 4 complete.");
+
+            // Phase 5 - execute until processors are ready to shutdown
+            LOG.info("Beginning processor shutdown phase 5, iterating until processors are ready to shutdown.");
+            while (!areComponentsReadyForShutdown()) {
+                doRun();
+            }
+            LOG.info("Processor shutdown phase 5 complete.");
         } catch (final Exception e) {
             LOG.error("Encountered exception during pipeline {} processing", pipeline.getName(), e);
         }
