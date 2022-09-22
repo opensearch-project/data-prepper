@@ -221,6 +221,14 @@ class PeerForwardingProcessingDecoratorTest {
             processors.get(0).shutdown();
             verify(processor).shutdown();
         }
+
+        @Test
+        void PeerForwardingProcessingDecorator_is_peer_forwarder_ready_for_shutdown_will_call_peer_forwarder() {
+            PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(processor);
+
+            objectUnderTest.isPeerForwarderReadyForShutdown();
+            verify(peerForwarder).isReadyForShutdown();
+        }
     }
 
     static class IsReadyForShutdownArgs implements ArgumentsProvider {
