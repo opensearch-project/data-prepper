@@ -42,7 +42,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     private final AggregateActionSynchronizer aggregateActionSynchronizer;
     private final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher;
 
-    private boolean isShuttingDown = false;
+    private boolean forceConclude = false;
 
     @DataPrepperPluginConstructor
     public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
@@ -76,9 +76,9 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
         final List<Record<Event>> recordsOut = new LinkedList<>();
 
-        final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(isShuttingDown);
+        final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(forceConclude);
         for (final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry : groupsToConclude) {
-            final Optional<Event> concludeGroupEvent = aggregateActionSynchronizer.concludeGroup(groupEntry.getKey(), groupEntry.getValue(), isShuttingDown);
+            final Optional<Event> concludeGroupEvent = aggregateActionSynchronizer.concludeGroup(groupEntry.getKey(), groupEntry.getValue(), forceConclude);
 
             if (concludeGroupEvent.isPresent()) {
                 recordsOut.add(new Record(concludeGroupEvent.get()));
@@ -114,7 +114,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
 
     @Override
     public void prepareForShutdown() {
-        isShuttingDown = true;
+        forceConclude = true;
     }
 
     @Override

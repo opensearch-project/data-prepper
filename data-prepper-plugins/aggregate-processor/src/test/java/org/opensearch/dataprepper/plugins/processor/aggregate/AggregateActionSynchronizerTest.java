@@ -202,7 +202,7 @@ public class AggregateActionSynchronizerTest {
     }
 
     @Test
-    void conclude_group_with_should_conclude_group_false_shutting_down_true_returns_correct_event() {
+    void conclude_group_with_should_conclude_group_false_force_conclude_true_returns_correct_event() {
         final AggregateActionSynchronizer objectUnderTest = createObjectUnderTest();
         when(concludeGroupLock.tryLock()).thenReturn(true);
         when(aggregateGroup.shouldConcludeGroup(any(Duration.class))).thenReturn(false);

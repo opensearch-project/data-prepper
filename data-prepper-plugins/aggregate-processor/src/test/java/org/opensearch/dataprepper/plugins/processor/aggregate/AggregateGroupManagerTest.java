@@ -110,7 +110,7 @@ public class AggregateGroupManagerTest {
     }
 
     @Test
-    void getGroupsToConclude_is_shutting_down_return_all() {
+    void getGroupsToConclude_with_force_conclude_return_all() {
         aggregateGroupManager = createObjectUnderTest();
 
         final AggregateGroup groupToConclude1 = mock(AggregateGroup.class);
