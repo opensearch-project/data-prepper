@@ -38,14 +38,15 @@ import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguratio
 public class PeerForwarderClient {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderClient.class);
     public static final String REQUESTS = "requests";
-    public static final String LATENCY = "latency";
-    public static final String ERRORS = "errors";
+    public static final String LATENCY = "request_latency";
+    public static final String ERRORS = "failed_requests";
     public static final String DESTINATION = "destination";
 
     private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final PeerForwarderClientFactory peerForwarderClientFactory;
     private final ObjectMapper objectMapper;
     private ExecutorService executorService;
+    private final PluginMetrics pluginMetrics;
     private PeerClientPool peerClientPool;
 
     private final Map<String, Timer> forwardRequestTimers;
@@ -53,10 +54,12 @@ public class PeerForwarderClient {
 
     public PeerForwarderClient(final PeerForwarderConfiguration peerForwarderConfiguration,
                                final PeerForwarderClientFactory peerForwarderClientFactory,
-                               final ObjectMapper objectMapper) {
+                               final ObjectMapper objectMapper,
+                               final PluginMetrics pluginMetrics) {
         this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.peerForwarderClientFactory = peerForwarderClientFactory;
         this.objectMapper = objectMapper;
+        this.pluginMetrics = pluginMetrics;
         executorService = Executors.newFixedThreadPool(peerForwarderConfiguration.getClientThreadCount());
         forwardedRequestCounters = new ConcurrentHashMap<>();
 
@@ -67,8 +70,7 @@ public class PeerForwarderClient {
             final Collection<Record<Event>> records,
             final String ipAddress,
             final String pluginId,
-            final String pipelineName,
-            final PluginMetrics pluginMetrics) {
+            final String pipelineName) {
         // TODO: decide the default values of peer forwarder configuration and move the PeerClientPool to constructor
         peerClientPool = peerForwarderClientFactory.setPeerClientPool();
 
@@ -81,10 +83,9 @@ public class PeerForwarderClient {
         final Counter forwardedRequestCounter = forwardedRequestCounters.computeIfAbsent(
                 ipAddress, ip -> pluginMetrics.counterWithTags(REQUESTS, DESTINATION, ip));
 
-//        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture = forwardRequestTimer.record(() -> {
-        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture = processHttpRequest(client, serializedJsonString);
-//                }
-//        );
+        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture = forwardRequestTimer.record(() ->
+            processHttpRequest(client, serializedJsonString)
+        );
         forwardedRequestCounter.increment();
 
         return getAggregatedHttpResponse(aggregatedHttpResponseCompletableFuture);

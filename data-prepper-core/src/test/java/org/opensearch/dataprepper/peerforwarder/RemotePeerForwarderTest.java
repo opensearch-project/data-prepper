@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.metrics.MetricNames;
+import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
@@ -12,6 +14,8 @@ import com.amazon.dataprepper.model.log.JacksonLog;
 import com.amazon.dataprepper.model.record.Record;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
+import io.micrometer.core.instrument.Measurement;
+import io.micrometer.core.instrument.Statistic;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,13 +30,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -42,12 +46,15 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient.ERRORS;
 
 @ExtendWith(MockitoExtension.class)
 class RemotePeerForwarderTest {
     private static final int TEST_BUFFER_CAPACITY = 3;
     private static final int TEST_BATCH_SIZE = 3;
     private static final int TEST_TIMEOUT_IN_MILLIS = 500;
+    private static final String COMPONENT_SCOPE = "testComponentScope";
+    private static final String COMPONENT_ID = "testComponentId";
 
     @Mock
     private PeerForwarderClient peerForwarderClient;
@@ -55,9 +62,7 @@ class RemotePeerForwarderTest {
     @Mock
     private HashRing hashRing;
 
-    @Mock
     private PluginMetrics pluginMetrics;
-
     private String pipelineName;
     private String pluginId;
     private Set<String> identificationKeys;
@@ -65,10 +70,12 @@ class RemotePeerForwarderTest {
 
     @BeforeEach
     void setUp() {
+        MetricsTestUtil.initMetrics();
         pipelineName = UUID.randomUUID().toString();
         pluginId = UUID.randomUUID().toString();
         identificationKeys = generateIdentificationKeys();
         peerForwarderReceiveBuffer = new PeerForwarderReceiveBuffer<>(TEST_BUFFER_CAPACITY, TEST_BATCH_SIZE);
+        pluginMetrics = PluginMetrics.fromNames(COMPONENT_ID, COMPONENT_SCOPE);
     }
 
     private RemotePeerForwarder createObjectUnderTest() {
@@ -94,7 +101,7 @@ class RemotePeerForwarderTest {
     void test_forwardRecords_with_one_local_ip_and_one_remote_ip_should_process_record_one_record_locally() {
         AggregatedHttpResponse aggregatedHttpResponse = mock(AggregatedHttpResponse.class);
         when(aggregatedHttpResponse.status()).thenReturn(HttpStatus.OK);
-        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString(), any(PluginMetrics.class))).thenReturn(aggregatedHttpResponse);
+        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString())).thenReturn(aggregatedHttpResponse);
 
         final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
@@ -104,13 +111,14 @@ class RemotePeerForwarderTest {
         final Collection<Record<Event>> testRecords = generateBatchRecords(2);
 
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
-        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString(), any(PluginMetrics.class));
+        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
         assertThat(records.size(), equalTo(1));
     }
 
     @Test
     void forwardRecords_should_return_all_input_events_when_client_throws() {
-        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString(), any(PluginMetrics.class))).thenThrow(RuntimeException.class);
+        MetricsTestUtil.initMetrics();
+        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString())).thenThrow(RuntimeException.class);
 
         final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
@@ -120,12 +128,17 @@ class RemotePeerForwarderTest {
 
         final Collection<Record<Event>> inputRecords = generateBatchRecords(2);
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(inputRecords);
-        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString(), any(PluginMetrics.class));
+        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
         assertThat(records, notNullValue());
         assertThat(records.size(), equalTo(inputRecords.size()));
         for (Record<Event> inputRecord : inputRecords) {
             assertThat(records, hasItem(inputRecord));
         }
+        final List<Measurement> forwardRequestErrorCounterMeasurement = MetricsTestUtil.getMeasurementList(new StringJoiner(MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID)
+                .add(ERRORS).toString());
+        final Measurement measurementFromList = MetricsTestUtil.getMeasurementFromList(forwardRequestErrorCounterMeasurement, Statistic.COUNT);
+        assertThat(forwardRequestErrorCounterMeasurement.size(), equalTo(1));
+        assertThat(measurementFromList.getValue(), equalTo(1.0));
     }
 
     @Test

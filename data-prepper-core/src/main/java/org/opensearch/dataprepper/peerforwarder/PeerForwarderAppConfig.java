@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -24,6 +25,13 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 class PeerForwarderAppConfig {
+    static final String COMPONENT_SCOPE = "core";
+    static final String COMPONENT_ID = "peerForwarder";
+
+    @Bean(name = "peerForwarderMetrics")
+    public PluginMetrics pluginMetrics() {
+        return PluginMetrics.fromNames(COMPONENT_ID, COMPONENT_SCOPE);
+    }
 
     @Bean(name = "peerForwarderObjectMapper")
     public ObjectMapper objectMapper(final YAMLFactory yamlFactory) {
@@ -55,24 +63,27 @@ class PeerForwarderAppConfig {
     public PeerForwarderClientFactory peerForwarderClientFactory(
             final PeerForwarderConfiguration peerForwarderConfiguration,
             final PeerClientPool peerClientPool,
-            final CertificateProviderFactory certificateProviderFactory
+            final CertificateProviderFactory certificateProviderFactory,
+            @Qualifier("peerForwarderMetrics") PluginMetrics pluginMetrics
     ) {
-        return new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory);
+        return new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory, pluginMetrics);
     }
 
     @Bean
     public PeerForwarderClient peerForwarderClient(final PeerForwarderConfiguration peerForwarderConfiguration,
                                                    final PeerForwarderClientFactory peerForwarderClientFactory,
-                                                   @Qualifier("peerForwarderObjectMapper") final ObjectMapper objectMapper
+                                                   @Qualifier("peerForwarderObjectMapper") final ObjectMapper objectMapper,
+                                                   @Qualifier("peerForwarderMetrics") PluginMetrics pluginMetrics
     ) {
-        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper);
+        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper, pluginMetrics);
     }
 
     @Bean
     public PeerForwarderProvider peerForwarderProvider(final PeerForwarderClientFactory peerForwarderClientFactory,
                                                        final PeerForwarderClient peerForwarderClient,
-                                                       final PeerForwarderConfiguration peerForwarderConfiguration) {
-        return new PeerForwarderProvider(peerForwarderClientFactory, peerForwarderClient, peerForwarderConfiguration);
+                                                       final PeerForwarderConfiguration peerForwarderConfiguration,
+                                                       @Qualifier("peerForwarderMetrics") PluginMetrics pluginMetrics) {
+        return new PeerForwarderProvider(peerForwarderClientFactory, peerForwarderClient, peerForwarderConfiguration, pluginMetrics);
     }
 
     @Bean

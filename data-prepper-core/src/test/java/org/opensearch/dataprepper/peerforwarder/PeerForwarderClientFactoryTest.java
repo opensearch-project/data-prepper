@@ -48,7 +48,7 @@ class PeerForwarderClientFactoryTest {
     PluginMetrics pluginMetrics;
 
     private PeerForwarderClientFactory createObjectUnderTest() {
-        return new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory);
+        return new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory, pluginMetrics);
     }
 
     @Test
@@ -56,7 +56,7 @@ class PeerForwarderClientFactoryTest {
         when(peerForwarderConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.STATIC);
         when(peerForwarderConfiguration.getStaticEndpoints()).thenReturn(Collections.singletonList("10.10.0.1"));
 
-        HashRing hashRing = createObjectUnderTest().createHashRing(pluginMetrics);
+        HashRing hashRing = createObjectUnderTest().createHashRing();
         assertThat(hashRing, new IsInstanceOf(HashRing.class));
     }
 
@@ -66,7 +66,7 @@ class PeerForwarderClientFactoryTest {
 
         PeerForwarderClientFactory peerForwarderClientFactory = createObjectUnderTest();
 
-        assertThrows(RuntimeException.class, () -> peerForwarderClientFactory.createHashRing(pluginMetrics));
+        assertThrows(RuntimeException.class, () -> peerForwarderClientFactory.createHashRing());
     }
 
     @Test

@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import com.amazon.dataprepper.model.processor.Processor;
@@ -23,7 +22,6 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
     private final PeerForwarder peerForwarder;
     private final String pluginId;
     private final Set<String> identificationKeys;
-    private final PluginMetrics pluginMetrics;
 
     public PeerForwardingProcessorDecorator(final Processor innerProcessor,
                                             final PeerForwarderProvider peerForwarderProvider,
@@ -40,8 +38,7 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
         if (identificationKeys.isEmpty()) {
             throw new EmptyPeerForwarderPluginIdentificationKeysException("Peer Forwarder Plugin: %s cannot have empty identification keys." + pluginId);
         }
-        this.pluginMetrics = PluginMetrics.fromNames(pluginId, pipelineName);
-        this.peerForwarder = peerForwarderProvider.register(pipelineName, pluginId, identificationKeys, pluginMetrics);
+        this.peerForwarder = peerForwarderProvider.register(pipelineName, pluginId, identificationKeys);
     }
 
     @Override

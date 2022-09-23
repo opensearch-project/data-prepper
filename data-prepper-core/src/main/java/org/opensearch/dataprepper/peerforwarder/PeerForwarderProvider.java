@@ -20,18 +20,21 @@ public class PeerForwarderProvider {
     private final PeerForwarderClientFactory peerForwarderClientFactory;
     private final PeerForwarderClient peerForwarderClient;
     private final PeerForwarderConfiguration peerForwarderConfiguration;
+    private final PluginMetrics pluginMetrics;
     private final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> pipelinePeerForwarderReceiveBufferMap = new HashMap<>();
     private HashRing hashRing;
 
     PeerForwarderProvider(final PeerForwarderClientFactory peerForwarderClientFactory,
                           final PeerForwarderClient peerForwarderClient,
-                          final PeerForwarderConfiguration peerForwarderConfiguration) {
+                          final PeerForwarderConfiguration peerForwarderConfiguration,
+                          final PluginMetrics pluginMetrics) {
         this.peerForwarderClientFactory = peerForwarderClientFactory;
         this.peerForwarderClient = peerForwarderClient;
         this.peerForwarderConfiguration = peerForwarderConfiguration;
+        this.pluginMetrics = pluginMetrics;
     }
 
-    public PeerForwarder register(final String pipelineName, final String pluginId, final Set<String> identificationKeys, final PluginMetrics pluginMetrics) {
+    public PeerForwarder register(final String pipelineName, final String pluginId, final Set<String> identificationKeys) {
         if (pipelinePeerForwarderReceiveBufferMap.containsKey(pipelineName) &&
                 pipelinePeerForwarderReceiveBufferMap.get(pipelineName).containsKey(pluginId)) {
             throw new RuntimeException("Data Prepper 2.0 will only support a single peer-forwarder per pipeline/plugin type");
@@ -41,7 +44,7 @@ public class PeerForwarderProvider {
 
         if (isPeerForwardingRequired()) {
             if (hashRing == null) {
-                hashRing = peerForwarderClientFactory.createHashRing(pluginMetrics);
+                hashRing = peerForwarderClientFactory.createHashRing();
             }
             return new RemotePeerForwarder(
                     peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId, identificationKeys, pluginMetrics

@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.peerforwarder.client;
 
+import com.amazon.dataprepper.metrics.MetricNames;
+import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
@@ -21,8 +23,8 @@ import com.linecorp.armeria.common.HttpStatus;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.Measurement;
+import io.micrometer.core.instrument.Statistic;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,7 +42,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -50,10 +54,10 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
+import static org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient.LATENCY;
+import static org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient.REQUESTS;
 
 @ExtendWith(MockitoExtension.class)
 class PeerForwarderClientTest {
@@ -61,8 +65,11 @@ class PeerForwarderClientTest {
     private static final String LOCAL_IP = "127.0.0.1";
     private static final String TEST_PLUGIN_ID = "test_plugin_id";
     private static final String TEST_PIPELINE_NAME = "test_pipeline_name";
+    private static final String COMPONENT_SCOPE = "testComponentScope";
+    private static final String COMPONENT_ID = "testComponentId";
 
     private ObjectMapper objectMapper;
+    private PluginMetrics pluginMetrics;
 
     @Mock
     PeerForwarderConfiguration peerForwarderConfiguration;
@@ -73,33 +80,24 @@ class PeerForwarderClientTest {
     @Mock
     PeerForwarderClientFactory peerForwarderClientFactory;
 
-    @Mock
-    private PluginMetrics pluginMetrics;
-
-    @Mock
-    private Counter forwardedRequestCounter;
-
-    @Mock
-    private Timer forwardRequestTimer;
-
     @BeforeEach
     void setUp() {
+        MetricsTestUtil.initMetrics();
         objectMapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule());
-
-        when(pluginMetrics.counterWithTags(anyString(), anyString(), anyString())).thenReturn(forwardedRequestCounter);
-        when(pluginMetrics.timerWithTags(anyString(), anyString(), anyString())).thenReturn(forwardRequestTimer);
+        pluginMetrics = PluginMetrics.fromNames(COMPONENT_ID, COMPONENT_SCOPE);
 
         when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
     }
 
     private PeerForwarderClient createObjectUnderTest(final ObjectMapper objectMapper) {
         when(peerForwarderConfiguration.getClientThreadCount()).thenReturn(200);
-        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper);
+        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper, pluginMetrics);
     }
 
     @Test
     void test_serializeRecordsAndSendHttpRequest_with_actual_client_and_server_should_return() {
+        MetricsTestUtil.initMetrics();
         when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
 
         final HttpServer server = createServer(2022);
@@ -113,14 +111,24 @@ class PeerForwarderClientTest {
         final PeerForwarderClient peerForwarderClient = createObjectUnderTest(objectMapper);
 
         final AggregatedHttpResponse aggregatedHttpResponse =
-                peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), address.toString(), TEST_PLUGIN_ID, TEST_PIPELINE_NAME, pluginMetrics);
+                peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), address.toString(), TEST_PLUGIN_ID, TEST_PIPELINE_NAME);
 
         assertThat(aggregatedHttpResponse, notNullValue());
         assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
         assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
-        server.stop(0);
 
-        verify(forwardedRequestCounter, times(1)).increment();
+        final List<Measurement> forwardRequestTimerMeasurement = MetricsTestUtil.getMeasurementList(new StringJoiner(MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID)
+                .add(LATENCY).toString());
+        final List<Measurement> forwardedRequestCounterMeasurement = MetricsTestUtil.getMeasurementList(new StringJoiner(MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID)
+                .add(REQUESTS).toString());
+        assertThat(forwardedRequestCounterMeasurement.size(), equalTo(1));
+
+        final Measurement forwardRequestTimerCount = MetricsTestUtil.getMeasurementFromList(forwardRequestTimerMeasurement, Statistic.COUNT);
+        final Measurement forwardedRequestCounterCount = MetricsTestUtil.getMeasurementFromList(forwardedRequestCounterMeasurement, Statistic.COUNT);
+        assertThat(forwardRequestTimerCount.getValue(), equalTo(1.0));
+        assertThat(forwardedRequestCounterCount.getValue(), equalTo(1.0));
+
+        server.stop(0);
     }
 
     @Test
@@ -133,7 +141,7 @@ class PeerForwarderClientTest {
         final Collection<Record<Event>> records = generateBatchRecords(1);
 
         final RuntimeException actualException = assertThrows(RuntimeException.class,
-                () -> objectUnderTest.serializeRecordsAndSendHttpRequest(records, "127.0.0.1", TEST_PLUGIN_ID, TEST_PIPELINE_NAME, pluginMetrics));
+                () -> objectUnderTest.serializeRecordsAndSendHttpRequest(records, "127.0.0.1", TEST_PLUGIN_ID, TEST_PIPELINE_NAME));
 
         assertThat(actualException.getCause(), instanceOf(JsonProcessingException.class));
     }

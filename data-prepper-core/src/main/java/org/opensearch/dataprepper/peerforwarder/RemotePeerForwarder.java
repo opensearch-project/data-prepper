@@ -37,7 +37,6 @@ class RemotePeerForwarder implements PeerForwarder {
     private static final Logger LOG = LoggerFactory.getLogger(RemotePeerForwarder.class);
     private static final int READ_BATCH_DELAY = 3_000;
 
-
     private final PeerForwarderClient peerForwarderClient;
     private final HashRing hashRing;
     private final PeerForwarderReceiveBuffer<Record<Event>> peerForwarderReceiveBuffer;
@@ -78,7 +77,7 @@ class RemotePeerForwarder implements PeerForwarder {
                 AggregatedHttpResponse httpResponse;
                 try {
                     httpResponse = peerForwarderClient.serializeRecordsAndSendHttpRequest(entry.getValue(),
-                            destinationIp, pluginId, pipelineName, pluginMetrics);
+                            destinationIp, pluginId, pipelineName);
                 } catch (final Exception ex) {
                     httpResponse = null;
                     LOG.warn("Unable to send request to peer, processing locally.", ex);
