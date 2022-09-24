@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.concurrent.Callable;
+import java.util.function.BiConsumer;
 
 /**
  * Class responsible for taking an {@link S3ObjectReference} and creating all the necessary {@link Event}
@@ -35,8 +36,6 @@ class S3ObjectWorker {
     static final String S3_OBJECTS_FAILED_METRIC_NAME = "s3ObjectsFailed";
     static final String S3_OBJECTS_SUCCEEDED_METRIC_NAME = "s3ObjectsSucceeded";
     static final String S3_OBJECTS_TIME_ELAPSED_METRIC_NAME = "s3ObjectReadTimeElapsed";
-    private static final String BUCKET_FIELD_NAME = "bucket";
-    private static final String KEY_FIELD_NAME = "key";
 
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
@@ -45,6 +44,7 @@ class S3ObjectWorker {
     private final BucketOwnerProvider bucketOwnerProvider;
     private final Duration bufferTimeout;
     private final int numberOfRecordsToAccumulate;
+    private final BiConsumer<Event, S3ObjectReference> eventConsumer;
     private final Counter s3ObjectsFailedCounter;
     private final Counter s3ObjectsSucceededCounter;
     private final Timer s3ObjectReadTimer;
@@ -56,6 +56,7 @@ class S3ObjectWorker {
                           final BucketOwnerProvider bucketOwnerProvider,
                           final Duration bufferTimeout,
                           final int numberOfRecordsToAccumulate,
+                          final BiConsumer<Event, S3ObjectReference> eventConsumer,
                           final PluginMetrics pluginMetrics) {
         this.s3Client = s3Client;
         this.buffer = buffer;
@@ -64,6 +65,7 @@ class S3ObjectWorker {
         this.bucketOwnerProvider = bucketOwnerProvider;
         this.bufferTimeout = bufferTimeout;
         this.numberOfRecordsToAccumulate = numberOfRecordsToAccumulate;
+        this.eventConsumer = eventConsumer;
 
         s3ObjectsFailedCounter = pluginMetrics.counter(S3_OBJECTS_FAILED_METRIC_NAME);
         s3ObjectsSucceededCounter = pluginMetrics.counter(S3_OBJECTS_SUCCEEDED_METRIC_NAME);
@@ -101,8 +103,7 @@ class S3ObjectWorker {
              final InputStream inputStream = compressionEngine.createInputStream(getObjectRequest.key(), responseInputStream)) {
             codec.parse(inputStream, record -> {
                 try {
-                    record.getData().put(BUCKET_FIELD_NAME, s3ObjectReference.getBucketName());
-                    record.getData().put(KEY_FIELD_NAME, s3ObjectReference.getKey());
+                    eventConsumer.accept(record.getData(), s3ObjectReference);
                     bufferAccumulator.add(record);
                 } catch (final Exception e) {
                     LOG.error("Failed writing S3 objects to buffer.", e);
