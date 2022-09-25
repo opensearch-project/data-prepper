@@ -5,12 +5,15 @@
 
 package org.opensearch.dataprepper.peerforwarder.server;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.buffer.SizeOverflowException;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
+import io.micrometer.core.instrument.Counter;
 
 import java.util.Objects;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Class to handle exceptions while processing HTTP POST requests by {@link PeerForwarderHttpService}
@@ -18,14 +21,34 @@ import java.util.Objects;
  * @since 2.0
  */
 public class ResponseHandler {
+    public static final String REQUESTS_TOO_LARGE = "requestsTooLarge";
+    public static final String REQUEST_TIMEOUTS = "requestTimeouts";
+    public static final String REQUEST_INTERNAL_SERVER_ERRORS = "requestInternalServerErrors";
+
+    private final Counter requestsTooLargeCounter;
+    private final Counter requestTimeoutsCounter;
+    private final Counter internalServerErrorCounter;
+
+    public ResponseHandler(final PluginMetrics pluginMetrics) {
+        requestsTooLargeCounter = pluginMetrics.counter(REQUESTS_TOO_LARGE);
+        requestTimeoutsCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
+        internalServerErrorCounter = pluginMetrics.counter(REQUEST_INTERNAL_SERVER_ERRORS);
+    }
 
     public HttpResponse handleException(final Exception e, final String message) {
         Objects.requireNonNull(message);
 
         if (e instanceof SizeOverflowException) {
+            requestsTooLargeCounter.increment();
             return HttpResponse.of(HttpStatus.REQUEST_ENTITY_TOO_LARGE, MediaType.ANY_TYPE, message);
         }
 
+        if (e instanceof TimeoutException) {
+            requestTimeoutsCounter.increment();
+            return HttpResponse.of(HttpStatus.REQUEST_TIMEOUT, MediaType.ANY_TYPE, message);
+        }
+
+        internalServerErrorCounter.increment();
         return HttpResponse.of(HttpStatus.INTERNAL_SERVER_ERROR, MediaType.ANY_TYPE, message);
     }
 }

@@ -64,7 +64,7 @@ class PeerForwarderAppConfig {
             final PeerForwarderConfiguration peerForwarderConfiguration,
             final PeerClientPool peerClientPool,
             final CertificateProviderFactory certificateProviderFactory,
-            @Qualifier("peerForwarderMetrics") PluginMetrics pluginMetrics
+            @Qualifier("peerForwarderMetrics") final PluginMetrics pluginMetrics
     ) {
         return new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory, pluginMetrics);
     }
@@ -73,7 +73,7 @@ class PeerForwarderAppConfig {
     public PeerForwarderClient peerForwarderClient(final PeerForwarderConfiguration peerForwarderConfiguration,
                                                    final PeerForwarderClientFactory peerForwarderClientFactory,
                                                    @Qualifier("peerForwarderObjectMapper") final ObjectMapper objectMapper,
-                                                   @Qualifier("peerForwarderMetrics") PluginMetrics pluginMetrics
+                                                   @Qualifier("peerForwarderMetrics") final PluginMetrics pluginMetrics
     ) {
         return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper, pluginMetrics);
     }
@@ -82,13 +82,13 @@ class PeerForwarderAppConfig {
     public PeerForwarderProvider peerForwarderProvider(final PeerForwarderClientFactory peerForwarderClientFactory,
                                                        final PeerForwarderClient peerForwarderClient,
                                                        final PeerForwarderConfiguration peerForwarderConfiguration,
-                                                       @Qualifier("peerForwarderMetrics") PluginMetrics pluginMetrics) {
+                                                       @Qualifier("peerForwarderMetrics") final PluginMetrics pluginMetrics) {
         return new PeerForwarderProvider(peerForwarderClientFactory, peerForwarderClient, peerForwarderConfiguration, pluginMetrics);
     }
 
     @Bean
-    public ResponseHandler responseHandler() {
-        return new ResponseHandler();
+    public ResponseHandler responseHandler(@Qualifier("peerForwarderMetrics") final PluginMetrics pluginMetrics) {
+        return new ResponseHandler(pluginMetrics);
     }
 
     @Bean

@@ -25,6 +25,8 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.Statistic;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,8 +58,8 @@ import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
-import static org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient.LATENCY;
 import static org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient.REQUESTS;
+import static org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient.REQUESTS_FORWARDING_LATENCY;
 
 @ExtendWith(MockitoExtension.class)
 class PeerForwarderClientTest {
@@ -80,9 +82,13 @@ class PeerForwarderClientTest {
     @Mock
     PeerForwarderClientFactory peerForwarderClientFactory;
 
+    @BeforeAll
+    static void beforeAll() {
+        MetricsTestUtil.initMetrics();
+    }
+
     @BeforeEach
     void setUp() {
-        MetricsTestUtil.initMetrics();
         objectMapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule());
         pluginMetrics = PluginMetrics.fromNames(COMPONENT_ID, COMPONENT_SCOPE);
@@ -97,7 +103,6 @@ class PeerForwarderClientTest {
 
     @Test
     void test_serializeRecordsAndSendHttpRequest_with_actual_client_and_server_should_return() {
-        MetricsTestUtil.initMetrics();
         when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
 
         final HttpServer server = createServer(2022);
@@ -116,19 +121,19 @@ class PeerForwarderClientTest {
         assertThat(aggregatedHttpResponse, notNullValue());
         assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
         assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
-
-        final List<Measurement> forwardRequestTimerMeasurement = MetricsTestUtil.getMeasurementList(new StringJoiner(MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID)
-                .add(LATENCY).toString());
-        final List<Measurement> forwardedRequestCounterMeasurement = MetricsTestUtil.getMeasurementList(new StringJoiner(MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID)
-                .add(REQUESTS).toString());
-        assertThat(forwardedRequestCounterMeasurement.size(), equalTo(1));
-
-        final Measurement forwardRequestTimerCount = MetricsTestUtil.getMeasurementFromList(forwardRequestTimerMeasurement, Statistic.COUNT);
-        final Measurement forwardedRequestCounterCount = MetricsTestUtil.getMeasurementFromList(forwardedRequestCounterMeasurement, Statistic.COUNT);
-        assertThat(forwardRequestTimerCount.getValue(), equalTo(1.0));
-        assertThat(forwardedRequestCounterCount.getValue(), equalTo(1.0));
-
         server.stop(0);
+
+        final List<Measurement> requestsMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
+                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(REQUESTS).toString());
+        final Measurement requestsMeasurement = MetricsTestUtil.getMeasurementFromList(requestsMeasurementList, Statistic.COUNT);
+        assertThat(requestsMeasurement.getValue(), equalTo(1.0));
+
+        final List<Measurement> requestsForwardingLatencyMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
+                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(REQUESTS_FORWARDING_LATENCY).toString());
+        final Measurement requestsForwardingLatencyCount = MetricsTestUtil.getMeasurementFromList(requestsForwardingLatencyMeasurementList, Statistic.COUNT);
+        final Measurement requestsForwardingLatencyTotalTime = MetricsTestUtil.getMeasurementFromList(requestsForwardingLatencyMeasurementList, Statistic.TOTAL_TIME);
+        assertThat(requestsForwardingLatencyCount.getValue(), equalTo(1.0));
+        Assertions.assertTrue(MetricsTestUtil.isBetween(requestsForwardingLatencyTotalTime.getValue(),0.0, 0.1));
     }
 
     @Test

@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.server;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.log.JacksonLog;
@@ -54,7 +55,8 @@ class PeerForwarderHttpServiceTest {
     private static final int TEST_BUFFER_CAPACITY = 3;
     private static final int TEST_BATCH_SIZE = 3;
 
-    private final ResponseHandler responseHandler = new ResponseHandler();
+    private final PluginMetrics pluginMetrics = PluginMetrics.fromNames(PLUGIN_ID, PIPELINE_NAME);
+    private final ResponseHandler responseHandler = new ResponseHandler(pluginMetrics);
     private final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule());
     private final PeerForwarderReceiveBuffer peerForwarderReceiveBuffer =

@@ -25,10 +25,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Map;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -38,19 +36,16 @@ import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguratio
 public class PeerForwarderClient {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderClient.class);
     public static final String REQUESTS = "requests";
-    public static final String LATENCY = "request_latency";
-    public static final String ERRORS = "failed_requests";
-    public static final String DESTINATION = "destination";
+    public static final String REQUESTS_FORWARDING_LATENCY = "requestForwardingLatency";
 
     private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final PeerForwarderClientFactory peerForwarderClientFactory;
     private final ObjectMapper objectMapper;
-    private ExecutorService executorService;
-    private final PluginMetrics pluginMetrics;
-    private PeerClientPool peerClientPool;
+    private final Counter requestsCounter;
+    private final Timer requestsForwardingLatencyTimer;
 
-    private final Map<String, Timer> forwardRequestTimers;
-    private final Map<String, Counter> forwardedRequestCounters;
+    private ExecutorService executorService;
+    private PeerClientPool peerClientPool;
 
     public PeerForwarderClient(final PeerForwarderConfiguration peerForwarderConfiguration,
                                final PeerForwarderClientFactory peerForwarderClientFactory,
@@ -59,11 +54,9 @@ public class PeerForwarderClient {
         this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.peerForwarderClientFactory = peerForwarderClientFactory;
         this.objectMapper = objectMapper;
-        this.pluginMetrics = pluginMetrics;
         executorService = Executors.newFixedThreadPool(peerForwarderConfiguration.getClientThreadCount());
-        forwardedRequestCounters = new ConcurrentHashMap<>();
-
-        forwardRequestTimers = new ConcurrentHashMap<>();
+        requestsCounter = pluginMetrics.counter(REQUESTS);
+        requestsForwardingLatencyTimer = pluginMetrics.timer(REQUESTS_FORWARDING_LATENCY);
     }
 
     public AggregatedHttpResponse serializeRecordsAndSendHttpRequest(
@@ -78,15 +71,10 @@ public class PeerForwarderClient {
 
         final String serializedJsonString = getSerializedJsonString(records, pluginId, pipelineName);
 
-        final Timer forwardRequestTimer = forwardRequestTimers.computeIfAbsent(
-                ipAddress, ip -> pluginMetrics.timerWithTags(LATENCY, DESTINATION, ip));
-        final Counter forwardedRequestCounter = forwardedRequestCounters.computeIfAbsent(
-                ipAddress, ip -> pluginMetrics.counterWithTags(REQUESTS, DESTINATION, ip));
-
-        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture = forwardRequestTimer.record(() ->
+        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture = requestsForwardingLatencyTimer.record(() ->
             processHttpRequest(client, serializedJsonString)
         );
-        forwardedRequestCounter.increment();
+        requestsCounter.increment();
 
         return getAggregatedHttpResponse(aggregatedHttpResponseCompletableFuture);
     }
