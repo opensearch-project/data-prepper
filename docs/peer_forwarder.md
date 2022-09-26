@@ -89,6 +89,7 @@ IAM policy shows the necessary permissions.
 * `buffer_size`(Optional): An `int` representing max number of unchecked records the buffer accepts (num of unchecked records = num of records written into the buffer + num of in-flight records not yet checked by the Checkpointing API). Default is `512`.
 * `batch_size`(Optional): An `int` representing max number of records the buffer returns on read. Default is `48`.
 * `aws_region`(Optional) : A `String` represents the AWS region to use `ACM`, `S3` or `AWS Cloud Map`. Required if `use_acm_certificate_for_ssl` is set to `true` or `ssl_certificate_file` and `ssl_key_file` is `AWS S3` path or if `discovery_mode` is set to `aws_cloud_map`.
+* `drain_timeout`(Optional) : A `Duration` representing the wait time for the peer forwarder to complete processing data before shutdown.
 
 ### SSL
 The SSL configuration for setting up trust manager for peer forwarding client to connect to other Data Prepper instances.
