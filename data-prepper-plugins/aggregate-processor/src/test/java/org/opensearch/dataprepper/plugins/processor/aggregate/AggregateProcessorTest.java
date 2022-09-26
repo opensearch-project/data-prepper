@@ -19,6 +19,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -29,7 +32,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -157,7 +162,7 @@ public class AggregateProcessorTest {
         @Test
         void handleEvent_returning_with_no_event_does_not_add_event_to_records_out() {
             final AggregateProcessor objectUnderTest = createObjectUnderTest();
-            when(aggregateGroupManager.getGroupsToConclude()).thenReturn(Collections.emptyList());
+            when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.emptyList());
             when(aggregateActionResponse.getEvent()).thenReturn(null);
 
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
@@ -168,12 +173,14 @@ public class AggregateProcessorTest {
             verify(actionHandleEventsOutCounter).increment(0);
             verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
             verifyNoInteractions(actionConcludeGroupEventsOutCounter);
+
+            verify(aggregateGroupManager).getGroupsToConclude(eq(false));
         }
 
         @Test
         void handleEvent_returning_with_event_adds_event_to_records_out() {
             final AggregateProcessor objectUnderTest = createObjectUnderTest();
-            when(aggregateGroupManager.getGroupsToConclude()).thenReturn(Collections.emptyList());
+            when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.emptyList());
             when(aggregateActionResponse.getEvent()).thenReturn(event);
 
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
@@ -186,6 +193,8 @@ public class AggregateProcessorTest {
             verify(actionHandleEventsDroppedCounter).increment(0);
             verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
             verifyNoInteractions(actionConcludeGroupEventsOutCounter);
+
+            verify(aggregateGroupManager).getGroupsToConclude(eq(false));
         }
 
         @Test
@@ -193,9 +202,9 @@ public class AggregateProcessorTest {
             final AggregateProcessor objectUnderTest = createObjectUnderTest();
 
             final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>(identificationHash, aggregateGroup);
-            when(aggregateGroupManager.getGroupsToConclude()).thenReturn(Collections.singletonList(groupEntry));
+            when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.singletonList(groupEntry));
             when(aggregateActionResponse.getEvent()).thenReturn(null);
-            when(aggregateActionSynchronizer.concludeGroup(identificationHash, aggregateGroup)).thenReturn(Optional.empty());
+            when(aggregateActionSynchronizer.concludeGroup(identificationHash, aggregateGroup, false)).thenReturn(Optional.empty());
 
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
 
@@ -206,6 +215,8 @@ public class AggregateProcessorTest {
             verify(actionHandleEventsOutCounter).increment(0);
             verifyNoInteractions(actionConcludeGroupEventsOutCounter);
 
+            verify(aggregateGroupManager).getGroupsToConclude(eq(false));
+            verify(aggregateActionSynchronizer).concludeGroup(identificationHash, aggregateGroup, false);
         }
 
         @Test
@@ -213,9 +224,9 @@ public class AggregateProcessorTest {
             final AggregateProcessor objectUnderTest = createObjectUnderTest();
 
             final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>(identificationHash, aggregateGroup);
-            when(aggregateGroupManager.getGroupsToConclude()).thenReturn(Collections.singletonList(groupEntry));
+            when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.singletonList(groupEntry));
             when(aggregateActionResponse.getEvent()).thenReturn(null);
-            when(aggregateActionSynchronizer.concludeGroup(identificationHash, aggregateGroup)).thenReturn(Optional.of(event));
+            when(aggregateActionSynchronizer.concludeGroup(identificationHash, aggregateGroup, false)).thenReturn(Optional.of(event));
 
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
 
@@ -227,6 +238,55 @@ public class AggregateProcessorTest {
             verify(actionHandleEventsDroppedCounter).increment(1);
             verify(actionHandleEventsOutCounter).increment(0);
             verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
+
+            verify(aggregateGroupManager).getGroupsToConclude(eq(false));
+            verify(aggregateActionSynchronizer).concludeGroup(identificationHash, aggregateGroup, false);
         }
+
+        @Test
+        void concludeGroup_after_prepare_for_shutdown() {
+            final AggregateProcessor objectUnderTest = createObjectUnderTest();
+            objectUnderTest.prepareForShutdown();
+
+            final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>(identificationHash, aggregateGroup);
+            when(aggregateGroupManager.getGroupsToConclude(eq(true))).thenReturn(Collections.singletonList(groupEntry));
+            when(aggregateActionResponse.getEvent()).thenReturn(null);
+            when(aggregateActionSynchronizer.concludeGroup(identificationHash, aggregateGroup, true)).thenReturn(Optional.of(event));
+
+            final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
+
+            assertThat(recordsOut.size(), equalTo(1));
+            assertThat(recordsOut.get(0), notNullValue());
+            assertThat(recordsOut.get(0).getData(), equalTo(event));
+
+            verify(actionConcludeGroupEventsOutCounter).increment();
+            verify(actionHandleEventsDroppedCounter).increment(1);
+            verify(actionHandleEventsOutCounter).increment(0);
+            verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
+
+            verify(aggregateGroupManager).getGroupsToConclude(eq(true));
+            verify(aggregateActionSynchronizer).concludeGroup(identificationHash, aggregateGroup, true);
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("isReadyForShutdownArgs")
+    public void isReadyForShutdown(final long groupsSize, final boolean expectedResult) {
+        when(aggregateGroupManager.getAllGroupsSize()).thenReturn(groupsSize);
+
+        final AggregateProcessor objectUnderTest = createObjectUnderTest();
+        final boolean result = objectUnderTest.isReadyForShutdown();
+        assertThat(result, equalTo(expectedResult));
+
+        verify(aggregateGroupManager).getAllGroupsSize();
+    }
+
+    private static Stream<Arguments> isReadyForShutdownArgs() {
+        return Stream.of(
+                Arguments.of(0, true),
+                Arguments.of(1, false),
+                Arguments.of(Math.abs(new Random().nextLong()) + 1L, false),
+                Arguments.of((Math.abs(new Random().nextInt()) * -1L) - 1L, false)
+        );
     }
 }
