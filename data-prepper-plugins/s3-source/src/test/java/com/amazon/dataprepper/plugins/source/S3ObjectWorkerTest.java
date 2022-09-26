@@ -34,6 +34,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -84,6 +85,8 @@ class S3ObjectWorkerTest {
     private Counter s3ObjectsSucceededCounter;
     @Mock
     private Timer s3ObjectReadTimer;
+    @Mock
+    private BiConsumer<Event, S3ObjectReference> eventConsumer;
 
     private String bucketName;
     private String key;
@@ -122,7 +125,7 @@ class S3ObjectWorkerTest {
     }
 
     private S3ObjectWorker createObjectUnderTest() {
-        return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider, bufferTimeout, recordsToAccumulate, pluginMetrics);
+        return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider, bufferTimeout, recordsToAccumulate, eventConsumer, pluginMetrics);
     }
 
     @Test
@@ -200,9 +203,8 @@ class S3ObjectWorkerTest {
 
         consumerUnderTest.accept(record);
 
-        final InOrder inOrder = inOrder(event, bufferAccumulator);
-        inOrder.verify(event).put("bucket", bucketName);
-        inOrder.verify(event).put("key", key);
+        final InOrder inOrder = inOrder(eventConsumer, bufferAccumulator);
+        inOrder.verify(eventConsumer).accept(event, s3ObjectReference);
         inOrder.verify(bufferAccumulator).add(record);
     }
 

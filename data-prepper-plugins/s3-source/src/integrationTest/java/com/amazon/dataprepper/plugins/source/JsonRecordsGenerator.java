@@ -60,7 +60,7 @@ class JsonRecordsGenerator implements RecordsGenerator {
     @Override
     public void assertEventIsCorrect(final Event event) {
 
-        final Map<String, Object> messageMap = event.get("message", Map.class);
+        final Map<String, Object> messageMap = event.toMap();
         assertThat(messageMap, notNullValue());
         assertThat(messageMap.size(), greaterThanOrEqualTo(KNOWN_FIELD_COUNT_PER_EVENT));
         assertThat(messageMap.get(EVENT_VERSION_FIELD), equalTo(EVENT_VERSION_VALUE));

@@ -61,6 +61,7 @@ class S3ObjectWorkerIT {
     private int recordsReceived;
     private PluginMetrics pluginMetrics;
     private BucketOwnerProvider bucketOwnerProvider;
+    private EventMetadataModifier eventMetadataModifier;
 
     @BeforeEach
     void setUp() {
@@ -69,6 +70,7 @@ class S3ObjectWorkerIT {
                 .build();
         bucket = System.getProperty("tests.s3source.bucket");
         s3ObjectGenerator = new S3ObjectGenerator(s3Client, bucket);
+        eventMetadataModifier = new EventMetadataModifier(S3SourceConfig.DEFAULT_METADATA_ROOT_KEY);
 
         buffer = mock(Buffer.class);
         recordsReceived = 0;
@@ -89,8 +91,8 @@ class S3ObjectWorkerIT {
             for (Record<Event> eventRecord : recordsCollection) {
                 assertThat(eventRecord, notNullValue());
                 assertThat(eventRecord.getData(), notNullValue());
-                assertThat(eventRecord.getData().get("bucket", String.class), equalTo(bucket));
-                assertThat(eventRecord.getData().get("key", String.class), equalTo(key));
+                assertThat(eventRecord.getData().get("s3/bucket", String.class), equalTo(bucket));
+                assertThat(eventRecord.getData().get("s3/key", String.class), equalTo(key));
                 additionalEventAssertions.accept(eventRecord.getData());
 
             }
@@ -101,7 +103,7 @@ class S3ObjectWorkerIT {
     }
 
     private S3ObjectWorker createObjectUnderTest(final Codec codec, final int numberOfRecordsToAccumulate, final CompressionEngine compressionEngine) {
-        return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider, Duration.ofMillis(TIMEOUT_IN_MILLIS), numberOfRecordsToAccumulate, pluginMetrics);
+        return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider, Duration.ofMillis(TIMEOUT_IN_MILLIS), numberOfRecordsToAccumulate, eventMetadataModifier, pluginMetrics);
     }
 
     @ParameterizedTest
