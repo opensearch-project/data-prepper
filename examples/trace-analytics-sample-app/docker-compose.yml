@@ -5,12 +5,12 @@ services:
     container_name: data-prepper
     image: opensearchproject/data-prepper:latest
     working_dir: /usr/share/data-prepper/
-    command: sh data-prepper-wait-for-os-and-start.sh
+    command: sh data-prepper-wait-for-opensearch-and-start.sh
     volumes:
       - ../trace_analytics_no_ssl.yml:/usr/share/data-prepper/pipelines.yaml
       - ../data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
       - ../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
-      - ./data-prepper-wait-for-os-and-start.sh:/usr/share/data-prepper/data-prepper-wait-for-os-and-start.sh
+      - ./data-prepper-wait-for-opensearch-and-start.sh:/usr/share/data-prepper/data-prepper-wait-for-opensearch-and-start.sh
     ports:
       - "21890:21890"
     networks:
@@ -19,7 +19,7 @@ services:
       - opensearch
   opensearch:
     container_name: node-0.example.com
-    image: opensearchproject/opensearch:latest
+    image: opensearchproject/opensearch:2
     environment:
       - discovery.type=single-node
       - bootstrap.memory_lock=true # along with the memlock settings below, disables swapping
@@ -37,7 +37,7 @@ services:
     networks:
       - my_network
   dashboards:
-    image: opensearchproject/opensearch-dashboards:latest
+    image: opensearchproject/opensearch-dashboards:2
     container_name: opensearch-dashboards
     ports:
       - 5601:5601

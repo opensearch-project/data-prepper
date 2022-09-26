@@ -10,7 +10,7 @@ services:
     environment:
       AWS_EMF_AGENT_ENDPOINT: "tcp://fluent-bit:25888"
     volumes:
-      - ./pipelines-raw-trace-stdout.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml
+      - ./pipelines-raw-trace-stdout.yaml:/usr/share/data-prepper/pipelines/pipelines-raw-trace-stdout.yaml
       - ./data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
     ports:
       - "4900:4900" # DataPrepperServer port

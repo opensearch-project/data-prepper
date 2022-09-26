@@ -57,9 +57,9 @@ services:
       context: ../../..
       dockerfile: examples/dev/trace-analytics-sample-app/Dockerfile
     working_dir: /usr/share/data-prepper/
-    command: sh data-prepper-wait-for-os-and-start.sh
+    command: sh data-prepper-wait-for-opensearch-and-start.sh
     volumes:
-      - ./resources/data-prepper-wait-for-os-and-start.sh:/usr/share/data-prepper/data-prepper-wait-for-os-and-start.sh
+      - ./resources/data-prepper-wait-for-opensearch-and-start.sh:/usr/share/data-prepper/data-prepper-wait-for-opensearch-and-start.sh
       - ./resources/pipelines.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml
       - ./resources/data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
       - ../../../shared-config/log4j2.properties:/usr/share/data-prepper/config/log4j.properties
@@ -78,7 +78,7 @@ services:
 
   opensearch:
     container_name: node-0.example.com
-    image: opensearchproject/opensearch:latest
+    image: opensearchproject/opensearch:2
     ports:
       - "9200:9200"
       - "9600:9600"
@@ -89,7 +89,7 @@ services:
 
   opensearch-dashboard:
     container_name: opensearch-dashboard
-    image: opensearchproject/opensearch-dashboards:latest
+    image: opensearchproject/opensearch-dashboards:2
     ports:
       - 5601:5601
     expose:

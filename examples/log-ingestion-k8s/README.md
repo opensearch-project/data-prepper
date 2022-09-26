@@ -20,12 +20,12 @@ A Data Prepper endpoint with [example_log_pipeline.yaml](data-prepper-pipeline-c
 
 For Data Prepper 2.0 or above:
 ```
-docker run -p 2021:2021 -p 4900:4900 --name data-prepper -v ${PWD}/data-prepper-pipeline-config/example_log_pipeline.yaml:/usr/share/data-prepper/pipelines.yaml opensearchproject/data-prepper:latest
+docker run -p 2021:2021 -p 4900:4900 --name data-prepper -v ${PWD}/data-prepper-pipeline-config/example_log_pipeline.yaml:/usr/share/data-prepper/pipelines/example_log_pipeline.yaml opensearchproject/data-prepper:latest
 ```
 
 For Data Prepper before version 2.0:
 ```
-docker run -p 2021:2021 -p 4900:4900 --name data-prepper -v ${PWD}/data-prepper-pipeline-config/example_log_pipeline.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml opensearchproject/data-prepper:latest
+docker run -p 2021:2021 -p 4900:4900 --name data-prepper -v ${PWD}/data-prepper-pipeline-config/example_log_pipeline.yaml:/usr/share/data-prepper/pipelines.yaml opensearchproject/data-prepper:latest
 ```
 
 ### Steps

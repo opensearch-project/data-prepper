@@ -50,7 +50,7 @@ FluentBit is able to send logs to the http source of Data Prepper.
 
 For Data Prepper 2.0 or above:
 ```
-docker run --name data-prepper -v /full/path/to/log_pipeline.yaml:/usr/share/data-prepper/pipelines/pipelines.yaml --network "data-prepper_opensearch-net" opensearchproject/data-prepper:latest
+docker run --name data-prepper -v /full/path/to/log_pipeline.yaml:/usr/share/data-prepper/pipelines/log_pipeline.yaml --network "data-prepper_opensearch-net" opensearchproject/data-prepper:latest
 ```
 
 For Data Prepper before version 2.0:
