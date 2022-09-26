@@ -20,6 +20,7 @@ import java.time.Duration;
 public class S3SourceConfig {
     static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(10);
     static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 100;
+    static final String DEFAULT_METADATA_ROOT_KEY = "s3/";
 
     @JsonProperty("notification_type")
     @NotNull
@@ -52,6 +53,9 @@ public class S3SourceConfig {
 
     @JsonProperty("disable_bucket_ownership_validation")
     private boolean disableBucketOwnershipValidation = false;
+
+    @JsonProperty("metadata_root_key")
+    private String metadataRootKey = DEFAULT_METADATA_ROOT_KEY;
 
     public NotificationTypeOption getNotificationType() {
         return notificationType;
@@ -87,5 +91,9 @@ public class S3SourceConfig {
 
     public boolean isDisableBucketOwnershipValidation() {
         return disableBucketOwnershipValidation;
+    }
+
+    public String getMetadataRootKey() {
+        return metadataRootKey;
     }
 }
