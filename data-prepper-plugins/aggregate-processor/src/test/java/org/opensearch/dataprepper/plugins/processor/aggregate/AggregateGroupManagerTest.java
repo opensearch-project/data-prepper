@@ -101,11 +101,43 @@ public class AggregateGroupManagerTest {
         aggregateGroupManager.putGroupWithHash(hashForGroupToConclude, groupToConclude);
         aggregateGroupManager.putGroupWithHash(hashForGroupToNotConclude, groupToNotConclude);
 
-        final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude();
+        final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(false);
 
         assertThat(groupsToConclude.size(), equalTo(1));
         assertThat(groupsToConclude.get(0), notNullValue());
         assertThat(groupsToConclude.get(0).getKey(), equalTo(hashForGroupToConclude));
         assertThat(groupsToConclude.get(0).getValue(), equalTo(groupToConclude));
+    }
+
+    @Test
+    void getGroupsToConclude_with_force_conclude_return_all() {
+        aggregateGroupManager = createObjectUnderTest();
+
+        final AggregateGroup groupToConclude1 = mock(AggregateGroup.class);
+        final AggregateIdentificationKeysHasher.IdentificationHash hashForGroupToConclude1 = mock(AggregateIdentificationKeysHasher.IdentificationHash.class);
+
+        final AggregateGroup groupToConclude2 = mock(AggregateGroup.class);
+        final AggregateIdentificationKeysHasher.IdentificationHash hashForGroupToConclude2 = mock(AggregateIdentificationKeysHasher.IdentificationHash.class);
+
+        aggregateGroupManager.putGroupWithHash(hashForGroupToConclude1, groupToConclude1);
+        aggregateGroupManager.putGroupWithHash(hashForGroupToConclude2, groupToConclude2);
+
+        final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(true);
+
+        assertThat(groupsToConclude.size(), equalTo(2));
+        assertThat(groupsToConclude.get(0), notNullValue());
+        assertThat(groupsToConclude.get(1), notNullValue());
+
+        if (groupsToConclude.get(0).getKey().equals(hashForGroupToConclude1)) {
+            assertThat(groupsToConclude.get(0).getKey(), equalTo(hashForGroupToConclude1));
+            assertThat(groupsToConclude.get(0).getValue(), equalTo(groupToConclude1));
+            assertThat(groupsToConclude.get(1).getKey(), equalTo(hashForGroupToConclude2));
+            assertThat(groupsToConclude.get(1).getValue(), equalTo(groupToConclude2));
+        } else {
+            assertThat(groupsToConclude.get(0).getKey(), equalTo(hashForGroupToConclude2));
+            assertThat(groupsToConclude.get(0).getValue(), equalTo(groupToConclude2));
+            assertThat(groupsToConclude.get(1).getKey(), equalTo(hashForGroupToConclude1));
+            assertThat(groupsToConclude.get(1).getValue(), equalTo(groupToConclude1));
+        }
     }
 }

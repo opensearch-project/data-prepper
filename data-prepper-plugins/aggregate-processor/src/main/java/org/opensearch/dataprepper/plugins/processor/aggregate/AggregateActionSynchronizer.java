@@ -49,7 +49,7 @@ class AggregateActionSynchronizer {
         this.actionConcludeGroupEventsProcessingErrors = pluginMetrics.counter(ACTION_CONCLUDE_GROUP_EVENTS_PROCESSING_ERRORS);
     }
 
-    Optional<Event> concludeGroup(final AggregateIdentificationKeysHasher.IdentificationHash hash, final AggregateGroup aggregateGroup) {
+    Optional<Event> concludeGroup(final AggregateIdentificationKeysHasher.IdentificationHash hash, final AggregateGroup aggregateGroup, final boolean forceConclude) {
         final Lock concludeGroupLock = aggregateGroup.getConcludeGroupLock();
         final Lock handleEventForGroupLock = aggregateGroup.getHandleEventForGroupLock();
 
@@ -58,7 +58,7 @@ class AggregateActionSynchronizer {
             handleEventForGroupLock.lock();
 
             try {
-                if (aggregateGroup.shouldConcludeGroup(aggregateGroupManager.getGroupDuration())) {
+                if (aggregateGroup.shouldConcludeGroup(aggregateGroupManager.getGroupDuration()) || forceConclude) {
                     LOG.debug("Start critical section in concludeGroup");
                     concludeGroupEvent = aggregateAction.concludeGroup(aggregateGroup);
                     aggregateGroupManager.closeGroup(hash, aggregateGroup);
