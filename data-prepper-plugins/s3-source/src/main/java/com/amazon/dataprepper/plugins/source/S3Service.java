@@ -19,6 +19,7 @@ import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
+import java.util.function.BiConsumer;
 
 public class S3Service {
     private static final Logger LOG = LoggerFactory.getLogger(S3Service.class);
@@ -32,11 +33,11 @@ public class S3Service {
     private final BucketOwnerProvider bucketOwnerProvider;
     private final S3ObjectWorker s3ObjectWorker;
 
-    public S3Service(final S3SourceConfig s3SourceConfig,
-                     final Buffer<Record<Event>> buffer,
-                     final Codec codec,
-                     final PluginMetrics pluginMetrics,
-                     final BucketOwnerProvider bucketOwnerProvider) {
+    S3Service(final S3SourceConfig s3SourceConfig,
+              final Buffer<Record<Event>> buffer,
+              final Codec codec,
+              final PluginMetrics pluginMetrics,
+              final BucketOwnerProvider bucketOwnerProvider) {
         this.s3SourceConfig = s3SourceConfig;
         this.buffer = buffer;
         this.codec = codec;
@@ -44,8 +45,9 @@ public class S3Service {
         this.bucketOwnerProvider = bucketOwnerProvider;
         this.s3Client = createS3Client();
         this.compressionEngine = s3SourceConfig.getCompression().getEngine();
+        final BiConsumer<Event, S3ObjectReference> eventMetadataModifier = new EventMetadataModifier(s3SourceConfig.getMetadataRootKey());
         this.s3ObjectWorker = new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider,
-                s3SourceConfig.getBufferTimeout(), s3SourceConfig.getNumberOfRecordsToAccumulate(), pluginMetrics);
+                s3SourceConfig.getBufferTimeout(), s3SourceConfig.getNumberOfRecordsToAccumulate(), eventMetadataModifier, pluginMetrics);
     }
 
     void addS3Object(final S3ObjectReference s3ObjectReference) {
