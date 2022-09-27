@@ -30,6 +30,8 @@ public class HTTPSourceConfigTest {
         assertEquals(HTTPSourceConfig.DEFAULT_MAX_PENDING_REQUESTS, sourceConfig.getMaxPendingRequests());
         assertEquals(HTTPSourceConfig.DEFAULT_USE_ACM_CERTIFICATE_FOR_SSL, sourceConfig.isUseAcmCertificateForSsl());
         assertEquals(HTTPSourceConfig.DEFAULT_ACM_CERTIFICATE_TIMEOUT_MILLIS, sourceConfig.getAcmCertificateTimeoutMillis());
+        assertEquals((int)(HTTPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS * HTTPSourceConfig.BUFFER_TIMEOUT_FRACTION),
+                     sourceConfig.getBufferTimeoutInMillis());
     }
 
     @Nested
