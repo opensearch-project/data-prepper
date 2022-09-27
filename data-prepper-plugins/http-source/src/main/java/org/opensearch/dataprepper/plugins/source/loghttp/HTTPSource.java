@@ -108,9 +108,7 @@ public class HTTPSource implements Source<Record<Log>> {
             }
 
             sb.maxNumConnections(sourceConfig.getMaxConnectionCount());
-            final int requestTimeoutInMillis = sourceConfig.getRequestTimeoutInMillis();
-            // Allow 2*requestTimeoutInMillis to accommodate non-blocking operations other than buffer writing.
-            sb.requestTimeout(Duration.ofMillis(2*requestTimeoutInMillis));
+            sb.requestTimeout(Duration.ofMillis(sourceConfig.getRequestTimeoutInMillis()));
             final int threads = sourceConfig.getThreadCount();
             final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threads);
             sb.blockingTaskExecutor(blockingTaskExecutor, true);
@@ -120,7 +118,7 @@ public class HTTPSource implements Source<Record<Log>> {
             final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests, pluginMetrics);
             // TODO: allow customization on URI path for log ingestion
             sb.decorator(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
-            final LogHTTPService logHTTPService = new LogHTTPService(requestTimeoutInMillis, buffer, pluginMetrics);
+            final LogHTTPService logHTTPService = new LogHTTPService(sourceConfig.getBufferTimeoutInMillis(), buffer, pluginMetrics);
             sb.annotatedService(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI, logHTTPService);
 
             if (sourceConfig.hasHealthCheckService()) {

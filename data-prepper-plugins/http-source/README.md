@@ -15,8 +15,8 @@ source:
 
 * `200`: the request data has been successfully written into the buffer.
 * `400`: the request data is either in mal-format or unsupported codec.
+* `408`: the request data fails to be written into the buffer within the timeout.
 * `413`: the request data size is larger than the configured capacity.
-* `415`: the request fails to be written into the buffer within the timeout.
 * `429`: the request has been rejected due to the HTTP source executor being in full capacity.
 
 ## Configurations
