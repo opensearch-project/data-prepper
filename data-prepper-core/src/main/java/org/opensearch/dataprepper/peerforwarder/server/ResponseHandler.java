@@ -21,10 +21,10 @@ import java.util.concurrent.TimeoutException;
  * @since 2.0
  */
 public class ResponseHandler {
-    public static final String REQUESTS_TOO_LARGE = "requestsTooLarge";
-    public static final String REQUEST_TIMEOUTS = "requestTimeouts";
-    public static final String REQUESTS_UNPROCESSABLE = "requestsUnprocessable";
-    public static final String BAD_REQUESTS = "badRequests";
+    static final String REQUESTS_TOO_LARGE = "requestsTooLarge";
+    static final String REQUEST_TIMEOUTS = "requestTimeouts";
+    static final String REQUESTS_UNPROCESSABLE = "requestsUnprocessable";
+    static final String BAD_REQUESTS = "badRequests";
 
     private final Counter requestsTooLargeCounter;
     private final Counter requestTimeoutsCounter;

@@ -32,12 +32,12 @@ import java.util.Set;
 class RemotePeerForwarder implements PeerForwarder {
     private static final Logger LOG = LoggerFactory.getLogger(RemotePeerForwarder.class);
     private static final int READ_BATCH_DELAY = 3_000;
-    public static final String RECORDS_ACTUALLY_PROCESSED_LOCALLY = "recordsActuallyProcessedLocally";
-    public static final String RECORDS_TO_BE_PROCESSED_LOCALLY = "recordsToBeProcessedLocally";
-    public static final String RECORDS_TO_BE_FORWARDED = "recordsToBeForwarded";
-    public static final String RECORDS_FAILED_FORWARDING = "recordsFailedForwarding";
-    public static final String RECORDS_RECEIVED_FROM_PEERS = "recordsReceivedFromPeers";
-    public static final String REQUESTS_FAILED = "requestsFailed";
+    static final String RECORDS_ACTUALLY_PROCESSED_LOCALLY = "recordsActuallyProcessedLocally";
+    static final String RECORDS_TO_BE_PROCESSED_LOCALLY = "recordsToBeProcessedLocally";
+    static final String RECORDS_TO_BE_FORWARDED = "recordsToBeForwarded";
+    static final String RECORDS_FAILED_FORWARDING = "recordsFailedForwarding";
+    static final String RECORDS_RECEIVED_FROM_PEERS = "recordsReceivedFromPeers";
+    static final String REQUESTS_FAILED = "requestsFailed";
 
     private final PeerForwarderClient peerForwarderClient;
     private final HashRing hashRing;
