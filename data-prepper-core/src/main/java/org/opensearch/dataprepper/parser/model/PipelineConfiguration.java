@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class PipelineConfiguration {
@@ -113,13 +114,17 @@ public class PipelineConfiguration {
 
 
     private static PluginSetting getPluginSettingFromPluginModel(final PluginModel pluginModel) {
-        final Map<String, Object> settingsMap = pluginModel.getPluginSettings();
-        return new PluginSetting(pluginModel.getPluginName(), settingsMap == null ? new HashMap<>() : settingsMap);
+        final Map<String, Object> settingsMap = Optional
+                .ofNullable(pluginModel.getPluginSettings())
+                .orElseGet(HashMap::new);
+        return new PluginSetting(pluginModel.getPluginName(), settingsMap);
     }
 
     private static RoutedPluginSetting getRoutedPluginSettingFromSinkModel(final SinkModel sinkModel) {
-        final Map<String, Object> settingsMap = sinkModel.getPluginSettings();
-        return new RoutedPluginSetting(sinkModel.getPluginName(), settingsMap == null ? new HashMap<>() : settingsMap, sinkModel.getRoutes());
+        final Map<String, Object> settingsMap = Optional
+                .ofNullable(sinkModel.getPluginSettings())
+                .orElseGet(HashMap::new);
+        return new RoutedPluginSetting(sinkModel.getPluginName(), settingsMap, sinkModel.getRoutes());
     }
 
     private Integer getWorkersFromPipelineModel(final PipelineModel pipelineModel) {

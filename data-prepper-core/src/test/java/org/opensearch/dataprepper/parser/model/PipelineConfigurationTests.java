@@ -206,7 +206,7 @@ class PipelineConfigurationTests {
     @Test
     void testSinksWithRoutes() {
         final List<Collection<String>> orderedSinkRoutes = new ArrayList<>();
-        for (SinkModel sink : sinks) {
+        for (final SinkModel sink : sinks) {
             final Set<String> routes = Collections.singleton(UUID.randomUUID().toString());
             when(sink.getRoutes()).thenReturn(routes);
             orderedSinkRoutes.add(routes);
