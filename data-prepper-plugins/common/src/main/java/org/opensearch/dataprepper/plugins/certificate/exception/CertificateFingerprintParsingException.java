@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.peerforwarder.exception;
+package org.opensearch.dataprepper.plugins.certificate.exception;
 
 /**
  * This exception is thrown when the fingerprint associated with a certificate cannot be parsed
