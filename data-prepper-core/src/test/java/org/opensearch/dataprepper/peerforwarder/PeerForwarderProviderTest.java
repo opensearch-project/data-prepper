@@ -48,17 +48,18 @@ class PeerForwarderProviderTest {
     @Mock
     private HashRing hashRing;
 
+    @Mock
+    private PluginMetrics pluginMetrics;
+
     private String pipelineName;
     private String pluginId;
     private Set<String> identificationKeys;
-    private PluginMetrics pluginMetrics;
 
     @BeforeEach
     void setUp() {
         pipelineName = UUID.randomUUID().toString();
         pluginId = UUID.randomUUID().toString();
         identificationKeys = Collections.singleton(UUID.randomUUID().toString());
-        pluginMetrics = PluginMetrics.fromNames(pluginId, pipelineName);
 
         lenient().when(peerForwarderClientFactory.createHashRing()).thenReturn(hashRing);
         lenient().when(peerForwarderConfiguration.getBufferSize()).thenReturn(512);

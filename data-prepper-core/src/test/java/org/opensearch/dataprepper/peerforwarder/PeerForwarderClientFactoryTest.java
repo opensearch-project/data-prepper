@@ -66,7 +66,7 @@ class PeerForwarderClientFactoryTest {
 
         PeerForwarderClientFactory peerForwarderClientFactory = createObjectUnderTest();
 
-        assertThrows(RuntimeException.class, () -> peerForwarderClientFactory.createHashRing());
+        assertThrows(RuntimeException.class, peerForwarderClientFactory::createHashRing);
     }
 
     @Test

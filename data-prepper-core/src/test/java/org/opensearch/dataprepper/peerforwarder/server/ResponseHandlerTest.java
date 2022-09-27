@@ -59,7 +59,7 @@ class ResponseHandlerTest {
 
     @AfterEach
     void tearDown() {
-        verifyNoMoreInteractions(requestsTooLargeCounter, requestTimeoutsCounter, badRequestsCounter);
+        verifyNoMoreInteractions(requestsTooLargeCounter, requestTimeoutsCounter, requestsUnprocessableCounter, badRequestsCounter);
     }
 
     private ResponseHandler createObjectUnderTest() {
