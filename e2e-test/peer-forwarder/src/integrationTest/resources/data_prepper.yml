@@ -1,0 +1,3 @@
+ssl: false
+peer_forwarder:
+  discovery_mode: "local_node"
