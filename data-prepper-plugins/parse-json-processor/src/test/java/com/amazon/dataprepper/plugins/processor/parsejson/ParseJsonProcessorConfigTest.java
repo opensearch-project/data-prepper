@@ -11,8 +11,7 @@ import org.junit.jupiter.api.Test;
 import static com.amazon.dataprepper.plugins.processor.parsejson.ParseJsonProcessorConfig.DEFAULT_SOURCE;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-
-import static com.amazon.dataprepper.test.helper.ReflectivelySetField.setField;
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 public class ParseJsonProcessorConfigTest {
 

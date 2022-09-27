@@ -8,18 +8,17 @@ package com.amazon.dataprepper.plugins.processor.csv;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.loggenerator.logtypes.VpcFlowLogTypeGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.opensearch.dataprepper.plugins.source.loggenerator.logtypes.VpcFlowLogTypeGenerator;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-
-import static com.amazon.dataprepper.test.helper.ReflectivelySetField.setField;
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 public class CsvProcessorIT {
     private static final String PLUGIN_NAME = "csv";
