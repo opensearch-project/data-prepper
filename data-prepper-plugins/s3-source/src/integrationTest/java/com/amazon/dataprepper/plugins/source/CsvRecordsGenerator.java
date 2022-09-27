@@ -14,9 +14,9 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.Random;
 
-import static com.amazon.dataprepper.test.helper.ReflectivelySetField.setField;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 /**
  * Generates comma-separated CSV records where each record is on a single line.

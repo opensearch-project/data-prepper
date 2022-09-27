@@ -3,15 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.test.helper;
+package org.opensearch.dataprepper.test.helper;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static com.amazon.dataprepper.test.helper.ReflectivelySetField.setField;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 class ReflectivelySetFieldTest {
     private ReflectivelySetFieldTestHelper configuration;
