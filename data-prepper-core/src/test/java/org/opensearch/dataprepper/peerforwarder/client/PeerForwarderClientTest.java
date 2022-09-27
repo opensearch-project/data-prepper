@@ -58,7 +58,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
 import static org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient.REQUESTS;
-import static org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient.REQUESTS_FORWARDING_LATENCY;
+import static org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient.CLIENT_REQUEST_FORWARDING_LATENCY;
 
 @ExtendWith(MockitoExtension.class)
 class PeerForwarderClientTest {
@@ -82,14 +82,13 @@ class PeerForwarderClientTest {
 
     @Mock
     private Counter requestsCounter;
-
-    private NoopTimer timer;
+    private NoopTimer clientRequestForwardingLatencyTimer;
 
     @BeforeEach
     void setUp() {
-        timer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
+        clientRequestForwardingLatencyTimer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
         when(pluginMetrics.counter(REQUESTS)).thenReturn(requestsCounter);
-        when(pluginMetrics.timer(REQUESTS_FORWARDING_LATENCY)).thenReturn(timer);
+        when(pluginMetrics.timer(CLIENT_REQUEST_FORWARDING_LATENCY)).thenReturn(clientRequestForwardingLatencyTimer);
         objectMapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule());
 

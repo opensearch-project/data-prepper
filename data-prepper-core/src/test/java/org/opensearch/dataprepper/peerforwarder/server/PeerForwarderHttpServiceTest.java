@@ -53,7 +53,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
-import static org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService.REQUEST_PROCESSING_LATENCY;
+import static org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService.SERVER_REQUEST_PROCESSING_LATENCY;
 
 @ExtendWith(MockitoExtension.class)
 class PeerForwarderHttpServiceTest {
@@ -79,15 +79,14 @@ class PeerForwarderHttpServiceTest {
     @Mock
     private PluginMetrics pluginMetrics;
 
-    private Timer timer;
-
     @Mock
     private ResponseHandler responseHandler;
+    private Timer serverRequestProcessingLatencyTimer;
 
     @BeforeEach
     void setUp() {
-        timer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
-        when(pluginMetrics.timer(REQUEST_PROCESSING_LATENCY)).thenReturn(timer);
+        serverRequestProcessingLatencyTimer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
+        when(pluginMetrics.timer(SERVER_REQUEST_PROCESSING_LATENCY)).thenReturn(serverRequestProcessingLatencyTimer);
     }
 
     private PeerForwarderHttpService createObjectUnderTest() {

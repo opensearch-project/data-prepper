@@ -36,13 +36,13 @@ import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguratio
 public class PeerForwarderClient {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderClient.class);
     static final String REQUESTS = "requests";
-    static final String REQUESTS_FORWARDING_LATENCY = "requestForwardingLatency";
+    static final String CLIENT_REQUEST_FORWARDING_LATENCY = "clientRequestForwardingLatency";
 
     private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final PeerForwarderClientFactory peerForwarderClientFactory;
     private final ObjectMapper objectMapper;
     private final Counter requestsCounter;
-    private final Timer requestsForwardingLatencyTimer;
+    private final Timer clientRequestForwardingLatencyTimer;
 
     private ExecutorService executorService;
     private PeerClientPool peerClientPool;
@@ -56,7 +56,7 @@ public class PeerForwarderClient {
         this.objectMapper = objectMapper;
         executorService = Executors.newFixedThreadPool(peerForwarderConfiguration.getClientThreadCount());
         requestsCounter = pluginMetrics.counter(REQUESTS);
-        requestsForwardingLatencyTimer = pluginMetrics.timer(REQUESTS_FORWARDING_LATENCY);
+        clientRequestForwardingLatencyTimer = pluginMetrics.timer(CLIENT_REQUEST_FORWARDING_LATENCY);
     }
 
     public AggregatedHttpResponse serializeRecordsAndSendHttpRequest(
@@ -71,7 +71,7 @@ public class PeerForwarderClient {
 
         final String serializedJsonString = getSerializedJsonString(records, pluginId, pipelineName);
 
-        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture = requestsForwardingLatencyTimer.record(() ->
+        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture = clientRequestForwardingLatencyTimer.record(() ->
             processHttpRequest(client, serializedJsonString)
         );
         requestsCounter.increment();

@@ -37,13 +37,13 @@ import java.util.stream.Collectors;
  */
 public class PeerForwarderHttpService {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderHttpService.class);
-    static final String REQUEST_PROCESSING_LATENCY = "requestProcessingLatency";
+    static final String SERVER_REQUEST_PROCESSING_LATENCY = "serverRequestProcessingLatency";
 
     private final ResponseHandler responseHandler;
     private final PeerForwarderProvider peerForwarderProvider;
     private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final ObjectMapper objectMapper;
-    private final Timer requestProcessingLatencyTimer;
+    private final Timer serverRequestProcessingLatencyTimer;
 
     public PeerForwarderHttpService(final ResponseHandler responseHandler,
                                     final PeerForwarderProvider peerForwarderProvider,
@@ -54,12 +54,12 @@ public class PeerForwarderHttpService {
         this.peerForwarderProvider = peerForwarderProvider;
         this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.objectMapper = objectMapper;
-        requestProcessingLatencyTimer = pluginMetrics.timer(REQUEST_PROCESSING_LATENCY);
+        serverRequestProcessingLatencyTimer = pluginMetrics.timer(SERVER_REQUEST_PROCESSING_LATENCY);
     }
 
     @Post
     public HttpResponse doPost(final AggregatedHttpRequest aggregatedHttpRequest) {
-        return requestProcessingLatencyTimer.record(() -> processRequest(aggregatedHttpRequest));
+        return serverRequestProcessingLatencyTimer.record(() -> processRequest(aggregatedHttpRequest));
     }
 
     private HttpResponse processRequest(final AggregatedHttpRequest aggregatedHttpRequest) {
