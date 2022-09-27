@@ -20,7 +20,7 @@ public class HTTPSourceConfig {
     static final boolean DEFAULT_USE_ACM_CERTIFICATE_FOR_SSL = false;
     static final int DEFAULT_ACM_CERTIFICATE_TIMEOUT_MILLIS = 120000;
     static final int DEFAULT_PORT = 2021;
-    static final int DEFAULT_REQUEST_TIMEOUT_MS = 20000;
+    static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final double BUFFER_TIMEOUT_FRACTION = 0.8;
     static final int DEFAULT_THREAD_COUNT = 200;
     static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
@@ -36,7 +36,7 @@ public class HTTPSourceConfig {
     private int port = DEFAULT_PORT;
 
     @JsonProperty("request_timeout")
-    @Min(0)
+    @Min(2)
     private int requestTimeoutInMillis = DEFAULT_REQUEST_TIMEOUT_MS;
 
     @JsonProperty("thread_count")
