@@ -56,6 +56,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -367,12 +368,14 @@ class HTTPSourceTest {
     }
 
     @Test
-    public void testHTTPJsonResponse415() {
+    public void testHTTPJsonResponse408() {
         // Prepare
         final int testMaxPendingRequests = 1;
         final int testThreadCount = 1;
         final int serverTimeoutInMillis = 500;
+        final int bufferTimeoutInMillis = 400;
         when(sourceConfig.getRequestTimeoutInMillis()).thenReturn(serverTimeoutInMillis);
+        when(sourceConfig.getBufferTimeoutInMillis()).thenReturn(bufferTimeoutInMillis);
         when(sourceConfig.getMaxPendingRequests()).thenReturn(testMaxPendingRequests);
         when(sourceConfig.getThreadCount()).thenReturn(testThreadCount);
         HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
@@ -411,18 +414,21 @@ class HTTPSourceTest {
         final Measurement requestProcessDurationMax = MetricsTestUtil.getMeasurementFromList(
                 requestProcessDurationMeasurements, Statistic.MAX);
         final double maxDurationInMillis = 1000 * requestProcessDurationMax.getValue();
-        Assertions.assertTrue(maxDurationInMillis > serverTimeoutInMillis);
+        Assertions.assertTrue(maxDurationInMillis > bufferTimeoutInMillis);
     }
 
     @Test
     public void testHTTPJsonResponse429() throws InterruptedException {
         // Prepare
-        final Map<String, Object> settings = new HashMap<>();
         final int testMaxPendingRequests = 1;
         final int testThreadCount = 1;
         final int clientTimeoutInMillis = 100;
         final int serverTimeoutInMillis = (testMaxPendingRequests + testThreadCount + 1) * clientTimeoutInMillis;
-        when(sourceConfig.getRequestTimeoutInMillis()).thenReturn(serverTimeoutInMillis);
+        final Random rand = new Random();
+        final double randomFactor = rand.nextDouble() + 1.5;
+        final int requestTimeoutInMillis = (int)(serverTimeoutInMillis * randomFactor);
+        when(sourceConfig.getRequestTimeoutInMillis()).thenReturn(requestTimeoutInMillis);
+        when(sourceConfig.getBufferTimeoutInMillis()).thenReturn(serverTimeoutInMillis);
         when(sourceConfig.getMaxPendingRequests()).thenReturn(testMaxPendingRequests);
         when(sourceConfig.getThreadCount()).thenReturn(testThreadCount);
         HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
