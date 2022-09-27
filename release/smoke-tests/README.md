@@ -35,12 +35,12 @@ To run automated smoke test on the default archive file you can use the followin
 ```
 
 You can also customize what it tests against. The `-b` parameter specifies a base Docker image. The `-t` parameter determines which tar archive file to use.
-The value values for `-t` are `opensearch-data-prepper` or `opensearch-data-prepper-jdk`.
+The values for `-t` are `opensearch-data-prepper` or `opensearch-data-prepper-jdk`.
 
 ```shell
-./release/smoke-tests/run-tarball-files-smoke-test.sh -i openjdk:11 -t opensearch-data-prepper
-./release/smoke-tests/run-tarball-files-smoke-test.sh -i openjdk:17 -t opensearch-data-prepper
-./release/smoke-tests/run-tarball-files-smoke-test.sh -i ubuntu:latest -t opensearch-data-prepper-jdk
+./release/smoke-tests/run-tarball-files-smoke-tests.sh -i openjdk:11 -t opensearch-data-prepper
+./release/smoke-tests/run-tarball-files-smoke-tests.sh -i openjdk:17 -t opensearch-data-prepper
+./release/smoke-tests/run-tarball-files-smoke-tests.sh -i ubuntu:latest -t opensearch-data-prepper-jdk
 ```
 
 ## Troubleshooting smoke tests
