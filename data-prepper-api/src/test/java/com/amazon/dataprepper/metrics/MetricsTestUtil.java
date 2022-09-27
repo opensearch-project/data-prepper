@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import io.micrometer.core.instrument.Measurement;
-import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Statistic;
@@ -18,10 +17,8 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 public class MetricsTestUtil {
 
     public static void initMetrics() {
-        final List<MeterRegistry> registriesToRemove = Metrics.globalRegistry.getRegistries().stream().collect(Collectors.toList());
-        registriesToRemove.forEach(registry -> Metrics.globalRegistry.remove(registry));
-        final List<Meter> metersToRemove = Metrics.globalRegistry.getMeters().stream().collect(Collectors.toList());
-        metersToRemove.forEach(registry -> Metrics.globalRegistry.remove(registry));
+        Metrics.globalRegistry.getRegistries().forEach(meterRegistry -> Metrics.globalRegistry.remove(meterRegistry));
+        Metrics.globalRegistry.getMeters().forEach(meter -> Metrics.globalRegistry.remove(meter));
         Metrics.addRegistry(new SimpleMeterRegistry());
     }
 
