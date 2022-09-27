@@ -20,7 +20,8 @@ public class HTTPSourceConfig {
     static final boolean DEFAULT_USE_ACM_CERTIFICATE_FOR_SSL = false;
     static final int DEFAULT_ACM_CERTIFICATE_TIMEOUT_MILLIS = 120000;
     static final int DEFAULT_PORT = 2021;
-    static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
+    static final int DEFAULT_REQUEST_TIMEOUT_MS = 20000;
+    static final double BUFFER_TIMEOUT_FRACTION = 0.8;
     static final int DEFAULT_THREAD_COUNT = 200;
     static final int DEFAULT_MAX_CONNECTION_COUNT = 500;
     static final int DEFAULT_MAX_PENDING_REQUESTS = 1024;
@@ -132,6 +133,10 @@ public class HTTPSourceConfig {
 
     public int getRequestTimeoutInMillis() {
         return requestTimeoutInMillis;
+    }
+
+    public int getBufferTimeoutInMillis() {
+        return (int)(BUFFER_TIMEOUT_FRACTION * requestTimeoutInMillis);
     }
 
     public int getThreadCount() {

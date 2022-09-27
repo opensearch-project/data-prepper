@@ -367,12 +367,14 @@ class HTTPSourceTest {
     }
 
     @Test
-    public void testHTTPJsonResponse415() {
+    public void testHTTPJsonResponse408() {
         // Prepare
         final int testMaxPendingRequests = 1;
         final int testThreadCount = 1;
         final int serverTimeoutInMillis = 500;
+        final int bufferTimeoutInMillis = 400;
         when(sourceConfig.getRequestTimeoutInMillis()).thenReturn(serverTimeoutInMillis);
+        when(sourceConfig.getBufferTimeoutInMillis()).thenReturn(bufferTimeoutInMillis);
         when(sourceConfig.getMaxPendingRequests()).thenReturn(testMaxPendingRequests);
         when(sourceConfig.getThreadCount()).thenReturn(testThreadCount);
         HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
@@ -411,7 +413,7 @@ class HTTPSourceTest {
         final Measurement requestProcessDurationMax = MetricsTestUtil.getMeasurementFromList(
                 requestProcessDurationMeasurements, Statistic.MAX);
         final double maxDurationInMillis = 1000 * requestProcessDurationMax.getValue();
-        Assertions.assertTrue(maxDurationInMillis > serverTimeoutInMillis);
+        Assertions.assertTrue(maxDurationInMillis > bufferTimeoutInMillis);
     }
 
     @Test
@@ -422,7 +424,9 @@ class HTTPSourceTest {
         final int testThreadCount = 1;
         final int clientTimeoutInMillis = 100;
         final int serverTimeoutInMillis = (testMaxPendingRequests + testThreadCount + 1) * clientTimeoutInMillis;
-        when(sourceConfig.getRequestTimeoutInMillis()).thenReturn(serverTimeoutInMillis);
+        final int requestTimeoutInMillis = serverTimeoutInMillis * 2;
+        when(sourceConfig.getRequestTimeoutInMillis()).thenReturn(requestTimeoutInMillis);
+        when(sourceConfig.getBufferTimeoutInMillis()).thenReturn(serverTimeoutInMillis);
         when(sourceConfig.getMaxPendingRequests()).thenReturn(testMaxPendingRequests);
         when(sourceConfig.getThreadCount()).thenReturn(testThreadCount);
         HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory);
