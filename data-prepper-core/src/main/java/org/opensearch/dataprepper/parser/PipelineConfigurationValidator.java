@@ -6,10 +6,12 @@
 package org.opensearch.dataprepper.parser;
 
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import org.apache.commons.collections.CollectionUtils;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -23,6 +25,7 @@ public class PipelineConfigurationValidator {
     private static final Logger LOG = LoggerFactory.getLogger(PipelineConfigurationValidator.class);
     private static final String PIPELINE_ATTRIBUTE_NAME = "name";
     private static final String PIPELINE_TYPE = "pipeline";
+    private static final Set<String> INVALID_PIPELINE_NAMES = new HashSet<>(List.of("data-prepper", "dataPrepper", "core"));
 
     /**
      * Sorts the pipelines in topological order while also validating for
@@ -38,6 +41,8 @@ public class PipelineConfigurationValidator {
         final Set<String> visitedAndProcessedPipelineSet = new HashSet<>();
         final List<String> orderedPipelineNames = new LinkedList<>();
 
+        checkInvalidPipelineNames(pipelineConfigurationMap);
+
         pipelineConfigurationMap.forEach((pipeline, configuration) -> {
             if (!visitedAndProcessedPipelineSet.contains(pipeline)) {
                 visitAndValidate(pipeline, pipelineConfigurationMap, touchedPipelineSet, visitedAndProcessedPipelineSet,
@@ -47,6 +52,15 @@ public class PipelineConfigurationValidator {
         Collections.reverse(orderedPipelineNames); // reverse to put the root at the top
         //validateForOrphans(orderedPipelineNames, pipelineConfigurationMap); //TODO: Should we disable orphan pipelines ?
         return orderedPipelineNames;
+    }
+
+    private static void checkInvalidPipelineNames(Map<String, PipelineConfiguration> pipelineConfigurationMap) {
+        final Set<String> pipelineNames = pipelineConfigurationMap.keySet();
+
+        final Collection<String> invalidPipelineNamesUsed = CollectionUtils.retainAll(pipelineNames, INVALID_PIPELINE_NAMES);
+        if (!invalidPipelineNamesUsed.isEmpty()) {
+            throw new RuntimeException(format("Cannot use %s as pipeline names.", invalidPipelineNamesUsed));
+        }
     }
 
     private static void visitAndValidate(
