@@ -96,9 +96,10 @@ class PeerForwarderAppConfig {
             final ResponseHandler responseHandler,
             final PeerForwarderProvider peerForwarderProvider,
             final PeerForwarderConfiguration peerForwarderConfiguration,
-            @Qualifier("peerForwarderObjectMapper") final ObjectMapper objectMapper
+            @Qualifier("peerForwarderObjectMapper") final ObjectMapper objectMapper,
+            @Qualifier("peerForwarderMetrics") final PluginMetrics pluginMetrics
     ) {
-        return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration, objectMapper);
+        return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration, objectMapper, pluginMetrics);
     }
 
     @Bean

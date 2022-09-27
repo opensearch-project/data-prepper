@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.peerforwarder.client;
 
-import com.amazon.dataprepper.metrics.MetricNames;
-import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
@@ -23,10 +21,11 @@ import com.linecorp.armeria.common.HttpStatus;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import io.micrometer.core.instrument.Measurement;
-import io.micrometer.core.instrument.Statistic;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.noop.NoopTimer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,9 +43,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.StringJoiner;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -56,6 +53,8 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
 import static org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient.REQUESTS;
@@ -67,33 +66,39 @@ class PeerForwarderClientTest {
     private static final String LOCAL_IP = "127.0.0.1";
     private static final String TEST_PLUGIN_ID = "test_plugin_id";
     private static final String TEST_PIPELINE_NAME = "test_pipeline_name";
-    private static final String COMPONENT_SCOPE = "testComponentScope";
-    private static final String COMPONENT_ID = "testComponentId";
 
     private ObjectMapper objectMapper;
+    @Mock
     private PluginMetrics pluginMetrics;
 
     @Mock
-    PeerForwarderConfiguration peerForwarderConfiguration;
+    private PeerForwarderConfiguration peerForwarderConfiguration;
 
     @Mock
-    PeerClientPool peerClientPool;
+    private PeerClientPool peerClientPool;
 
     @Mock
-    PeerForwarderClientFactory peerForwarderClientFactory;
+    private PeerForwarderClientFactory peerForwarderClientFactory;
 
-    @BeforeAll
-    static void beforeAll() {
-        MetricsTestUtil.initMetrics();
-    }
+    @Mock
+    private Counter requestsCounter;
+
+    private NoopTimer timer;
 
     @BeforeEach
     void setUp() {
+        timer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
+        when(pluginMetrics.counter(REQUESTS)).thenReturn(requestsCounter);
+        when(pluginMetrics.timer(REQUESTS_FORWARDING_LATENCY)).thenReturn(timer);
         objectMapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule());
-        pluginMetrics = PluginMetrics.fromNames(COMPONENT_ID, COMPONENT_SCOPE);
 
         when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
+    }
+
+    @AfterEach
+    void tearDown() {
+        verifyNoMoreInteractions(requestsCounter);
     }
 
     private PeerForwarderClient createObjectUnderTest(final ObjectMapper objectMapper) {
@@ -123,17 +128,7 @@ class PeerForwarderClientTest {
         assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
         server.stop(0);
 
-        final List<Measurement> requestsMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(REQUESTS).toString());
-        final Measurement requestsMeasurement = MetricsTestUtil.getMeasurementFromList(requestsMeasurementList, Statistic.COUNT);
-        assertThat(requestsMeasurement.getValue(), equalTo(1.0));
-
-        final List<Measurement> requestsForwardingLatencyMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(REQUESTS_FORWARDING_LATENCY).toString());
-        final Measurement requestsForwardingLatencyCount = MetricsTestUtil.getMeasurementFromList(requestsForwardingLatencyMeasurementList, Statistic.COUNT);
-        final Measurement requestsForwardingLatencyTotalTime = MetricsTestUtil.getMeasurementFromList(requestsForwardingLatencyMeasurementList, Statistic.TOTAL_TIME);
-        assertThat(requestsForwardingLatencyCount.getValue(), equalTo(1.0));
-        Assertions.assertTrue(MetricsTestUtil.isBetween(requestsForwardingLatencyTotalTime.getValue(),0.0, 0.1));
+        verify(requestsCounter).increment();
     }
 
     @Test

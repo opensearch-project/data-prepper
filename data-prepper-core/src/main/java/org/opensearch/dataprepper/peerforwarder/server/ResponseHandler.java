@@ -23,16 +23,19 @@ import java.util.concurrent.TimeoutException;
 public class ResponseHandler {
     public static final String REQUESTS_TOO_LARGE = "requestsTooLarge";
     public static final String REQUEST_TIMEOUTS = "requestTimeouts";
-    public static final String REQUEST_INTERNAL_SERVER_ERRORS = "requestInternalServerErrors";
+    public static final String REQUESTS_UNPROCESSABLE = "requestsUnprocessable";
+    public static final String BAD_REQUESTS = "badRequests";
 
     private final Counter requestsTooLargeCounter;
     private final Counter requestTimeoutsCounter;
-    private final Counter internalServerErrorCounter;
+    private final Counter requestsUnprocessableCounter;
+    private final Counter badRequestsCounter;
 
     public ResponseHandler(final PluginMetrics pluginMetrics) {
         requestsTooLargeCounter = pluginMetrics.counter(REQUESTS_TOO_LARGE);
         requestTimeoutsCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
-        internalServerErrorCounter = pluginMetrics.counter(REQUEST_INTERNAL_SERVER_ERRORS);
+        requestsUnprocessableCounter = pluginMetrics.counter(REQUESTS_UNPROCESSABLE);
+        badRequestsCounter = pluginMetrics.counter(BAD_REQUESTS);
     }
 
     public HttpResponse handleException(final Exception e, final String message) {
@@ -48,7 +51,12 @@ public class ResponseHandler {
             return HttpResponse.of(HttpStatus.REQUEST_TIMEOUT, MediaType.ANY_TYPE, message);
         }
 
-        internalServerErrorCounter.increment();
-        return HttpResponse.of(HttpStatus.INTERNAL_SERVER_ERROR, MediaType.ANY_TYPE, message);
+        if (e instanceof NullPointerException) {
+            requestsUnprocessableCounter.increment();
+            return HttpResponse.of(HttpStatus.UNPROCESSABLE_ENTITY, MediaType.ANY_TYPE, message);
+        }
+
+        badRequestsCounter.increment();
+        return HttpResponse.of(HttpStatus.BAD_REQUEST, MediaType.ANY_TYPE, message);
     }
 }

@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.peerforwarder.server;
 
 import com.amazon.dataprepper.metrics.PluginMetrics;
+import com.amazon.dataprepper.model.buffer.SizeOverflowException;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.log.JacksonLog;
@@ -18,9 +19,15 @@ import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.noop.NoopTimer;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -42,8 +49,11 @@ import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
+import static org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService.REQUEST_PROCESSING_LATENCY;
 
 @ExtendWith(MockitoExtension.class)
 class PeerForwarderHttpServiceTest {
@@ -55,8 +65,6 @@ class PeerForwarderHttpServiceTest {
     private static final int TEST_BUFFER_CAPACITY = 3;
     private static final int TEST_BATCH_SIZE = 3;
 
-    private final PluginMetrics pluginMetrics = PluginMetrics.fromNames(PLUGIN_ID, PIPELINE_NAME);
-    private final ResponseHandler responseHandler = new ResponseHandler(pluginMetrics);
     private final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new JavaTimeModule());
     private final PeerForwarderReceiveBuffer peerForwarderReceiveBuffer =
@@ -68,9 +76,22 @@ class PeerForwarderHttpServiceTest {
     @Mock
     private PeerForwarderConfiguration peerForwarderConfiguration;
 
+    @Mock
+    private PluginMetrics pluginMetrics;
+
+    private Timer timer;
+
+    @Mock
+    private ResponseHandler responseHandler;
+
+    @BeforeEach
+    void setUp() {
+        timer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
+        when(pluginMetrics.timer(REQUEST_PROCESSING_LATENCY)).thenReturn(timer);
+    }
 
     private PeerForwarderHttpService createObjectUnderTest() {
-        return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration, objectMapper);
+        return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration, objectMapper, pluginMetrics);
     }
 
 
@@ -91,17 +112,19 @@ class PeerForwarderHttpServiceTest {
 
     @Test
     void test_doPost_with_bad_HTTP_request_should_return_BAD_REQUEST() throws ExecutionException, InterruptedException {
+        when(responseHandler.handleException(any(JsonProcessingException.class), anyString())).thenReturn(HttpResponse.of(HttpStatus.BAD_REQUEST));
         final AggregatedHttpRequest aggregatedHttpRequest = generateBadHTTPRequest();
 
         final PeerForwarderHttpService objectUnderTest = createObjectUnderTest();
 
         final AggregatedHttpResponse aggregatedHttpResponse = objectUnderTest.doPost(aggregatedHttpRequest).aggregate().get();
 
-        assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.INTERNAL_SERVER_ERROR));
+        assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.BAD_REQUEST));
     }
 
     @Test
     void test_doPost_with_HTTP_request_size_greater_than_buffer_size_should_return_REQUEST_ENTITY_TOO_LARGE() throws ExecutionException, JsonProcessingException, InterruptedException {
+        when(responseHandler.handleException(any(SizeOverflowException.class), anyString())).thenReturn(HttpResponse.of(HttpStatus.REQUEST_ENTITY_TOO_LARGE));
         final HashMap<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> pipelinePeerForwarderReceiveBufferMap = new HashMap<>();
         pipelinePeerForwarderReceiveBufferMap.put(PIPELINE_NAME, Map.of(PLUGIN_ID, peerForwarderReceiveBuffer));
         when(peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap()).thenReturn(pipelinePeerForwarderReceiveBufferMap);

@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
-import com.amazon.dataprepper.metrics.MetricNames;
-import com.amazon.dataprepper.metrics.MetricsTestUtil;
 import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
@@ -14,8 +12,8 @@ import com.amazon.dataprepper.model.log.JacksonLog;
 import com.amazon.dataprepper.model.record.Record;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
-import io.micrometer.core.instrument.Measurement;
-import io.micrometer.core.instrument.Statistic;
+import io.micrometer.core.instrument.Counter;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.StringJoiner;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.hasItem;
@@ -45,20 +42,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_ACTUALLY_PROCESSED_LOCALLY;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_FAILED_FORWARDING;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_RECEIVED_FROM_PEERS;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_TO_BE_FORWARDED;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_TO_BE_PROCESSED_LOCALLY;
+import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.REQUESTS_FAILED;
 
 @ExtendWith(MockitoExtension.class)
 class RemotePeerForwarderTest {
     private static final int TEST_BUFFER_CAPACITY = 3;
     private static final int TEST_BATCH_SIZE = 3;
     private static final int TEST_TIMEOUT_IN_MILLIS = 500;
-    private static final String COMPONENT_SCOPE = "testComponentScope";
-    private static final String COMPONENT_ID = "testComponentId";
 
     @Mock
     private PeerForwarderClient peerForwarderClient;
@@ -66,7 +63,27 @@ class RemotePeerForwarderTest {
     @Mock
     private HashRing hashRing;
 
+    @Mock
     private PluginMetrics pluginMetrics;
+
+    @Mock
+    private Counter recordsToBeProcessedLocallyCounter;
+
+    @Mock
+    private Counter recordsActuallyProcessedLocallyCounter;
+
+    @Mock
+    private Counter recordsToBeForwardedCounter;
+
+    @Mock
+    private Counter recordsFailedForwardingCounter;
+
+    @Mock
+    private Counter recordsReceivedFromPeersCounter;
+
+    @Mock
+    private Counter requestsFailedCounter;
+
     private String pipelineName;
     private String pluginId;
     private Set<String> identificationKeys;
@@ -74,12 +91,29 @@ class RemotePeerForwarderTest {
 
     @BeforeEach
     void setUp() {
-        MetricsTestUtil.initMetrics();
         pipelineName = UUID.randomUUID().toString();
         pluginId = UUID.randomUUID().toString();
         identificationKeys = generateIdentificationKeys();
         peerForwarderReceiveBuffer = new PeerForwarderReceiveBuffer<>(TEST_BUFFER_CAPACITY, TEST_BATCH_SIZE);
-        pluginMetrics = PluginMetrics.fromNames(COMPONENT_ID, COMPONENT_SCOPE);
+
+        when(pluginMetrics.counter(RECORDS_TO_BE_PROCESSED_LOCALLY)).thenReturn(recordsToBeProcessedLocallyCounter);
+        when(pluginMetrics.counter(RECORDS_ACTUALLY_PROCESSED_LOCALLY)).thenReturn(recordsActuallyProcessedLocallyCounter);
+        when(pluginMetrics.counter(RECORDS_TO_BE_FORWARDED)).thenReturn(recordsToBeForwardedCounter);
+        when(pluginMetrics.counter(RECORDS_FAILED_FORWARDING)).thenReturn(recordsFailedForwardingCounter);
+        when(pluginMetrics.counter(RECORDS_RECEIVED_FROM_PEERS)).thenReturn(recordsReceivedFromPeersCounter);
+        when(pluginMetrics.counter(REQUESTS_FAILED)).thenReturn(requestsFailedCounter);
+    }
+
+    @AfterEach
+    void tearDown() {
+        verifyNoMoreInteractions(
+                recordsToBeProcessedLocallyCounter,
+                recordsActuallyProcessedLocallyCounter,
+                recordsToBeForwardedCounter,
+                recordsFailedForwardingCounter,
+                recordsReceivedFromPeersCounter,
+                requestsFailedCounter
+        );
     }
 
     private RemotePeerForwarder createObjectUnderTest() {
@@ -100,30 +134,8 @@ class RemotePeerForwarderTest {
         assertThat(records.size(), equalTo(2));
         assertThat(records, equalTo(testRecords));
 
-        final List<Measurement> recordsToBeProcessedLocallyMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_TO_BE_PROCESSED_LOCALLY).toString());
-        final Measurement recordsToBeProcessedLocallyMeasurement = MetricsTestUtil.getMeasurementFromList(recordsToBeProcessedLocallyMeasurementList, Statistic.COUNT);
-        assertThat(recordsToBeProcessedLocallyMeasurement.getValue(), equalTo(2.0));
-
-        final List<Measurement> recordsActuallyProcessedLocallyMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_ACTUALLY_PROCESSED_LOCALLY).toString());
-        final Measurement recordsActuallyProcessedLocallyMeasurement = MetricsTestUtil.getMeasurementFromList(recordsActuallyProcessedLocallyMeasurementList, Statistic.COUNT);
-        assertThat(recordsActuallyProcessedLocallyMeasurement.getValue(), equalTo(2.0));
-
-        final List<Measurement> recordsToBeForwardedMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_TO_BE_FORWARDED).toString());
-        final Measurement recordsToBeForwardedMeasurement = MetricsTestUtil.getMeasurementFromList(recordsToBeForwardedMeasurementList, Statistic.COUNT);
-        assertThat(recordsToBeForwardedMeasurement.getValue(), equalTo(0.0));
-
-        final List<Measurement> recordsFailedForwardingMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_FAILED_FORWARDING).toString());
-        final Measurement recordsFailedForwardingMeasurement = MetricsTestUtil.getMeasurementFromList(recordsFailedForwardingMeasurementList, Statistic.COUNT);
-        assertThat(recordsFailedForwardingMeasurement.getValue(), equalTo(0.0));
-
-        final List<Measurement> requestsFailedMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_FAILED_FORWARDING).toString());
-        final Measurement requestsFailedMeasurement = MetricsTestUtil.getMeasurementFromList(requestsFailedMeasurementList, Statistic.COUNT);
-        assertThat(requestsFailedMeasurement.getValue(), equalTo(0.0));
+        verify(recordsToBeProcessedLocallyCounter).increment(2.0);
+        verify(recordsActuallyProcessedLocallyCounter).increment(2.0);
     }
 
     @Test
@@ -143,30 +155,9 @@ class RemotePeerForwarderTest {
         verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
         assertThat(records.size(), equalTo(1));
 
-        final List<Measurement> recordsToBeProcessedLocallyMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_TO_BE_PROCESSED_LOCALLY).toString());
-        final Measurement recordsToBeProcessedLocallyMeasurement = MetricsTestUtil.getMeasurementFromList(recordsToBeProcessedLocallyMeasurementList, Statistic.COUNT);
-        assertThat(recordsToBeProcessedLocallyMeasurement.getValue(), equalTo(1.0));
-
-        final List<Measurement> recordsActuallyProcessedLocallyMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_ACTUALLY_PROCESSED_LOCALLY).toString());
-        final Measurement recordsActuallyProcessedLocallyMeasurement = MetricsTestUtil.getMeasurementFromList(recordsActuallyProcessedLocallyMeasurementList, Statistic.COUNT);
-        assertThat(recordsActuallyProcessedLocallyMeasurement.getValue(), equalTo(1.0));
-
-        final List<Measurement> recordsToBeForwardedMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_TO_BE_FORWARDED).toString());
-        final Measurement recordsToBeForwardedMeasurement = MetricsTestUtil.getMeasurementFromList(recordsToBeForwardedMeasurementList, Statistic.COUNT);
-        assertThat(recordsToBeForwardedMeasurement.getValue(), equalTo(1.0));
-
-        final List<Measurement> recordsFailedForwardingMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_FAILED_FORWARDING).toString());
-        final Measurement recordsFailedForwardingMeasurement = MetricsTestUtil.getMeasurementFromList(recordsFailedForwardingMeasurementList, Statistic.COUNT);
-        assertThat(recordsFailedForwardingMeasurement.getValue(), equalTo(0.0));
-
-        final List<Measurement> requestsFailedMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_FAILED_FORWARDING).toString());
-        final Measurement requestsFailedMeasurement = MetricsTestUtil.getMeasurementFromList(requestsFailedMeasurementList, Statistic.COUNT);
-        assertThat(requestsFailedMeasurement.getValue(), equalTo(0.0));
+        verify(recordsToBeProcessedLocallyCounter).increment(1.0);
+        verify(recordsActuallyProcessedLocallyCounter).increment(1.0);
+        verify(recordsToBeForwardedCounter).increment(1.0);
     }
 
     @Test
@@ -188,30 +179,11 @@ class RemotePeerForwarderTest {
             assertThat(records, hasItem(inputRecord));
         }
 
-        final List<Measurement> recordsToBeProcessedLocallyMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_TO_BE_PROCESSED_LOCALLY).toString());
-        final Measurement recordsToBeProcessedLocallyMeasurement = MetricsTestUtil.getMeasurementFromList(recordsToBeProcessedLocallyMeasurementList, Statistic.COUNT);
-        assertThat(recordsToBeProcessedLocallyMeasurement.getValue(), equalTo(1.0));
-
-        final List<Measurement> recordsActuallyProcessedLocallyMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_ACTUALLY_PROCESSED_LOCALLY).toString());
-        final Measurement recordsActuallyProcessedLocallyMeasurement = MetricsTestUtil.getMeasurementFromList(recordsActuallyProcessedLocallyMeasurementList, Statistic.COUNT);
-        assertThat(recordsActuallyProcessedLocallyMeasurement.getValue(), equalTo(2.0));
-
-        final List<Measurement> recordsToBeForwardedMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_TO_BE_FORWARDED).toString());
-        final Measurement recordsToBeForwardedMeasurement = MetricsTestUtil.getMeasurementFromList(recordsToBeForwardedMeasurementList, Statistic.COUNT);
-        assertThat(recordsToBeForwardedMeasurement.getValue(), equalTo(1.0));
-
-        final List<Measurement> recordsFailedForwardingMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_FAILED_FORWARDING).toString());
-        final Measurement recordsFailedForwardingMeasurement = MetricsTestUtil.getMeasurementFromList(recordsFailedForwardingMeasurementList, Statistic.COUNT);
-        assertThat(recordsFailedForwardingMeasurement.getValue(), equalTo(1.0));
-
-        final List<Measurement> requestsFailedMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_FAILED_FORWARDING).toString());
-        final Measurement requestsFailedMeasurement = MetricsTestUtil.getMeasurementFromList(requestsFailedMeasurementList, Statistic.COUNT);
-        assertThat(requestsFailedMeasurement.getValue(), equalTo(1.0));
+        verify(recordsToBeProcessedLocallyCounter).increment(1.0);
+        verify(recordsActuallyProcessedLocallyCounter).increment(2.0);
+        verify(recordsToBeForwardedCounter).increment(1.0);
+        verify(recordsFailedForwardingCounter).increment(1.0);
+        verify(requestsFailedCounter).increment();
     }
 
     @Test
@@ -225,10 +197,7 @@ class RemotePeerForwarderTest {
         assertThat(records.size(), equalTo(testRecords.size()));
         assertThat(records, equalTo(testRecords));
 
-        final List<Measurement> recordsReceivedFromPeersMeasurementList = MetricsTestUtil.getMeasurementList(new StringJoiner
-                (MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID).add(RECORDS_RECEIVED_FROM_PEERS).toString());
-        final Measurement recordsReceivedFromPeersMeasurement = MetricsTestUtil.getMeasurementFromList(recordsReceivedFromPeersMeasurementList, Statistic.COUNT);
-        assertThat(recordsReceivedFromPeersMeasurement.getValue(), equalTo(3.0));
+        verify(recordsReceivedFromPeersCounter).increment(3.0);
     }
 
     private Collection<Record<Event>> generateBatchRecords(final int numRecords) {

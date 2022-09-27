@@ -92,7 +92,7 @@ class PeerForwarder_ClientServerIT {
             final PeerForwarderConfiguration peerForwarderConfiguration,
             final CertificateProviderFactory certificateProviderFactory,
             final PeerForwarderProvider peerForwarderProvider) {
-        final PeerForwarderHttpService peerForwarderHttpService = new PeerForwarderHttpService(new ResponseHandler(pluginMetrics), peerForwarderProvider, peerForwarderConfiguration, objectMapper);
+        final PeerForwarderHttpService peerForwarderHttpService = new PeerForwarderHttpService(new ResponseHandler(pluginMetrics), peerForwarderProvider, peerForwarderConfiguration, objectMapper, pluginMetrics);
         Objects.requireNonNull(peerForwarderConfiguration, "Nested classes must supply peerForwarderConfiguration");
         Objects.requireNonNull(certificateProviderFactory, "Nested classes must supply certificateProviderFactory");
         final PeerForwarderHttpServerProvider serverProvider = new PeerForwarderHttpServerProvider(peerForwarderConfiguration,

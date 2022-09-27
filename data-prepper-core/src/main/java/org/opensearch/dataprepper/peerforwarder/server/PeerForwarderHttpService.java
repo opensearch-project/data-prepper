@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.server;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.DefaultEventMetadata;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
@@ -16,6 +17,7 @@ import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.server.annotation.Post;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
@@ -35,25 +37,29 @@ import java.util.stream.Collectors;
  */
 public class PeerForwarderHttpService {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderHttpService.class);
+    static final String REQUEST_PROCESSING_LATENCY = "requestProcessingLatency";
 
     private final ResponseHandler responseHandler;
     private final PeerForwarderProvider peerForwarderProvider;
     private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final ObjectMapper objectMapper;
+    private final Timer requestProcessingLatencyTimer;
 
     public PeerForwarderHttpService(final ResponseHandler responseHandler,
                                     final PeerForwarderProvider peerForwarderProvider,
                                     final PeerForwarderConfiguration peerForwarderConfiguration,
-                                    final ObjectMapper objectMapper) {
+                                    final ObjectMapper objectMapper,
+                                    final PluginMetrics pluginMetrics) {
         this.responseHandler = responseHandler;
         this.peerForwarderProvider = peerForwarderProvider;
         this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.objectMapper = objectMapper;
+        requestProcessingLatencyTimer = pluginMetrics.timer(REQUEST_PROCESSING_LATENCY);
     }
 
     @Post
     public HttpResponse doPost(final AggregatedHttpRequest aggregatedHttpRequest) {
-        return processRequest(aggregatedHttpRequest);
+        return requestProcessingLatencyTimer.record(() -> processRequest(aggregatedHttpRequest));
     }
 
     private HttpResponse processRequest(final AggregatedHttpRequest aggregatedHttpRequest) {

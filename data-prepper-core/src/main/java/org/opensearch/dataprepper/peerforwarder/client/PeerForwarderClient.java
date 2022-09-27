@@ -35,8 +35,8 @@ import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguratio
 
 public class PeerForwarderClient {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderClient.class);
-    public static final String REQUESTS = "requests";
-    public static final String REQUESTS_FORWARDING_LATENCY = "requestForwardingLatency";
+    static final String REQUESTS = "requests";
+    static final String REQUESTS_FORWARDING_LATENCY = "requestForwardingLatency";
 
     private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final PeerForwarderClientFactory peerForwarderClientFactory;
