@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.integration.trace;
 
 
 import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
-import com.amazon.dataprepper.plugins.processor.oteltracegroup.model.TraceGroup;
+import org.opensearch.dataprepper.plugins.processor.oteltracegroup.model.TraceGroup;
 import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import com.google.protobuf.ByteString;
 import com.linecorp.armeria.client.Clients;
