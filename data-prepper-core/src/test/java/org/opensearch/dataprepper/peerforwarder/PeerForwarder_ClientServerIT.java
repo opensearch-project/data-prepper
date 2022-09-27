@@ -377,6 +377,7 @@ class PeerForwarder_ClientServerIT {
                 sslCertificateFile,
                 sslKeyFile,
                 sslDisableVerification,
+                false,
                 authenticationMap,
                 false,
                 null,
