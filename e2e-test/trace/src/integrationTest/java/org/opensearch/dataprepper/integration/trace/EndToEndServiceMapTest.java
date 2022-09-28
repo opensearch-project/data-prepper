@@ -82,7 +82,7 @@ public class EndToEndServiceMapTest {
         builder.withPassword("admin");
         final RestHighLevelClient restHighLevelClient = builder.build().createClient();
 
-        // Wait for service map prepper by 2 * window_duration
+        // Wait for service map processor by 2 * window_duration
         await().atLeast(8, TimeUnit.SECONDS).atMost(20, TimeUnit.SECONDS).untilAsserted(
                 () -> {
                     final List<Map<String, Object>> foundSources = getSourcesFromIndex(restHighLevelClient, SERVICE_MAP_INDEX_NAME);
@@ -109,7 +109,7 @@ public class EndToEndServiceMapTest {
         final List<EndToEndTestSpan> testDataSet2 = Stream.of(TEST_TRACE_2_BATCH_1, TEST_TRACE_2_BATCH_2)
                 .flatMap(Collection::stream).collect(Collectors.toList());
         possibleEdges.addAll(getPossibleEdges(TEST_TRACEID_2, testDataSet2));
-        // Wait for service map prepper by 2 * window_duration
+        // Wait for service map processor by 2 * window_duration
         await().atLeast(8, TimeUnit.SECONDS).atMost(20, TimeUnit.SECONDS).untilAsserted(
                 () -> {
                     final List<Map<String, Object>> foundSources = getSourcesFromIndex(restHighLevelClient, SERVICE_MAP_INDEX_NAME);

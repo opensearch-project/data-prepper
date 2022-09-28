@@ -38,12 +38,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @SingleThread
 @DataPrepperPlugin(name = "service_map_stateful", pluginType = Processor.class)
-public class ServiceMapStatefulPrepper extends AbstractProcessor<Record<Event>, Record<Event>> implements RequiresPeerForwarding {
+public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>, Record<Event>> implements RequiresPeerForwarding {
 
     public static final String SPANS_DB_SIZE = "spansDbSize";
     public static final String TRACE_GROUP_DB_SIZE = "traceGroupDbSize";
 
-    private static final Logger LOG = LoggerFactory.getLogger(ServiceMapStatefulPrepper.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ServiceMapStatefulProcessor.class);
     private static final String EMPTY_SUFFIX = "-empty";
     private static final String EVENT_TYPE = "event";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -67,28 +67,28 @@ public class ServiceMapStatefulPrepper extends AbstractProcessor<Record<Event>, 
 
     private final int thisPrepperId;
 
-    public ServiceMapStatefulPrepper(final PluginSetting pluginSetting) {
-        this(pluginSetting.getIntegerOrDefault(ServiceMapPrepperConfig.WINDOW_DURATION, ServiceMapPrepperConfig.DEFAULT_WINDOW_DURATION) * TO_MILLIS,
-                new File(ServiceMapPrepperConfig.DEFAULT_DB_PATH),
+    public ServiceMapStatefulProcessor(final PluginSetting pluginSetting) {
+        this(pluginSetting.getIntegerOrDefault(ServiceMapProcessorConfig.WINDOW_DURATION, ServiceMapProcessorConfig.DEFAULT_WINDOW_DURATION) * TO_MILLIS,
+                new File(ServiceMapProcessorConfig.DEFAULT_DB_PATH),
                 Clock.systemUTC(),
                 pluginSetting.getNumberOfProcessWorkers(),
                 pluginSetting);
     }
 
-    public ServiceMapStatefulPrepper(final long windowDurationMillis,
-                                     final File databasePath,
-                                     final Clock clock,
-                                     final int processWorkers,
-                                     final PluginSetting pluginSetting) {
+    public ServiceMapStatefulProcessor(final long windowDurationMillis,
+                                       final File databasePath,
+                                       final Clock clock,
+                                       final int processWorkers,
+                                       final PluginSetting pluginSetting) {
         super(pluginSetting);
 
-        ServiceMapStatefulPrepper.clock = clock;
+        ServiceMapStatefulProcessor.clock = clock;
         this.thisPrepperId = preppersCreated.getAndIncrement();
 
         if (isMasterInstance()) {
-            previousTimestamp = ServiceMapStatefulPrepper.clock.millis();
-            ServiceMapStatefulPrepper.windowDurationMillis = windowDurationMillis;
-            ServiceMapStatefulPrepper.dbPath = createPath(databasePath);
+            previousTimestamp = ServiceMapStatefulProcessor.clock.millis();
+            ServiceMapStatefulProcessor.windowDurationMillis = windowDurationMillis;
+            ServiceMapStatefulProcessor.dbPath = createPath(databasePath);
 
             currentWindow = new MapDbPrepperState<>(dbPath, getNewDbName(), processWorkers);
             previousWindow = new MapDbPrepperState<>(dbPath, getNewDbName() + EMPTY_SUFFIX, processWorkers);
@@ -348,7 +348,7 @@ public class ServiceMapStatefulPrepper extends AbstractProcessor<Record<Event>, 
     /**
      * Master instance is needed to do things like window rotation that should only be done once
      *
-     * @return Boolean indicating whether this object is the master ServiceMapStatefulPrepper instance
+     * @return Boolean indicating whether this object is the master ServiceMapStatefulProcessor instance
      */
     private boolean isMasterInstance() {
         return thisPrepperId == 0;

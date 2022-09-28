@@ -45,7 +45,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 
-public class ServiceMapStatefulPrepperTest {
+public class ServiceMapStatefulProcessorTest {
 
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -56,28 +56,28 @@ public class ServiceMapStatefulPrepperTest {
     private static final String PASSWORD_DATABASE = "PASS";
     private static final String PAYMENT_SERVICE = "PAY";
     private static final String CART_SERVICE = "CART";
-    private static final PluginSetting PLUGIN_SETTING = new PluginSetting("testServiceMapPrepper", Collections.emptyMap()) {{
+    private static final PluginSetting PLUGIN_SETTING = new PluginSetting("testServiceMapProcessor", Collections.emptyMap()) {{
         setPipelineName("testPipelineName");
     }};
 
     @Before
     public void setup() throws NoSuchFieldException, IllegalAccessException {
-        resetServiceMapStatefulPrepperStatic();
+        resetServiceMapStatefulProcessorStatic();
         MetricsTestUtil.initMetrics();
     }
 
-    public void resetServiceMapStatefulPrepperStatic() throws NoSuchFieldException, IllegalAccessException {
-        reflectivelySetField(ServiceMapStatefulPrepper.class, "RELATIONSHIP_STATE", Sets.newConcurrentHashSet());
-        reflectivelySetField(ServiceMapStatefulPrepper.class, "preppersCreated", new AtomicInteger(0));
-        reflectivelySetField(ServiceMapStatefulPrepper.class, "previousTimestamp", 0);
-        reflectivelySetField(ServiceMapStatefulPrepper.class, "windowDurationMillis", 0);
-        reflectivelySetField(ServiceMapStatefulPrepper.class, "dbPath", null);
-        reflectivelySetField(ServiceMapStatefulPrepper.class, "clock", null);
-        reflectivelySetField(ServiceMapStatefulPrepper.class, "currentWindow", null);
-        reflectivelySetField(ServiceMapStatefulPrepper.class, "previousWindow", null);
-        reflectivelySetField(ServiceMapStatefulPrepper.class, "currentTraceGroupWindow", null);
-        reflectivelySetField(ServiceMapStatefulPrepper.class, "previousTraceGroupWindow", null);
-        reflectivelySetField(ServiceMapStatefulPrepper.class, "allThreadsCyclicBarrier", null);
+    public void resetServiceMapStatefulProcessorStatic() throws NoSuchFieldException, IllegalAccessException {
+        reflectivelySetField(ServiceMapStatefulProcessor.class, "RELATIONSHIP_STATE", Sets.newConcurrentHashSet());
+        reflectivelySetField(ServiceMapStatefulProcessor.class, "preppersCreated", new AtomicInteger(0));
+        reflectivelySetField(ServiceMapStatefulProcessor.class, "previousTimestamp", 0);
+        reflectivelySetField(ServiceMapStatefulProcessor.class, "windowDurationMillis", 0);
+        reflectivelySetField(ServiceMapStatefulProcessor.class, "dbPath", null);
+        reflectivelySetField(ServiceMapStatefulProcessor.class, "clock", null);
+        reflectivelySetField(ServiceMapStatefulProcessor.class, "currentWindow", null);
+        reflectivelySetField(ServiceMapStatefulProcessor.class, "previousWindow", null);
+        reflectivelySetField(ServiceMapStatefulProcessor.class, "currentTraceGroupWindow", null);
+        reflectivelySetField(ServiceMapStatefulProcessor.class, "previousTraceGroupWindow", null);
+        reflectivelySetField(ServiceMapStatefulProcessor.class, "allThreadsCyclicBarrier", null);
     }
 
     private void reflectivelySetField(final Class<?> clazz, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {
@@ -124,7 +124,7 @@ public class ServiceMapStatefulPrepperTest {
         pluginSetting.setProcessWorkers(4);
         pluginSetting.setPipelineName("TestPipeline");
         //Nothing is accessible to validate, so just verify that no exception is thrown.
-        final ServiceMapStatefulPrepper serviceMapStatefulPrepper = new ServiceMapStatefulPrepper(pluginSetting);
+        final ServiceMapStatefulProcessor serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(pluginSetting);
     }
 
     @Test
@@ -133,9 +133,9 @@ public class ServiceMapStatefulPrepperTest {
         Mockito.when(clock.millis()).thenReturn(1L);
         Mockito.when(clock.instant()).thenReturn(Instant.now());
         ExecutorService threadpool = Executors.newCachedThreadPool();
-        final File path = new File(ServiceMapPrepperConfig.DEFAULT_DB_PATH);
-        final ServiceMapStatefulPrepper serviceMapStateful1 = new ServiceMapStatefulPrepper(100, path, clock, 2, PLUGIN_SETTING);
-        final ServiceMapStatefulPrepper serviceMapStateful2 = new ServiceMapStatefulPrepper(100, path, clock, 2, PLUGIN_SETTING);
+        final File path = new File(ServiceMapProcessorConfig.DEFAULT_DB_PATH);
+        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 2, PLUGIN_SETTING);
+        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 2, PLUGIN_SETTING);
 
         final byte[] rootSpanId1Bytes = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] rootSpanId2Bytes = ServiceMapTestUtils.getRandomBytes(8);
@@ -263,13 +263,13 @@ public class ServiceMapStatefulPrepperTest {
 
         // Verify gauges
         final List<Measurement> spansDbSizeMeasurement = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add("testPipelineName").add("testServiceMapPrepper")
-                        .add(ServiceMapStatefulPrepper.SPANS_DB_SIZE).toString());
+                new StringJoiner(MetricNames.DELIMITER).add("testPipelineName").add("testServiceMapProcessor")
+                        .add(ServiceMapStatefulProcessor.SPANS_DB_SIZE).toString());
         Assert.assertEquals(1, spansDbSizeMeasurement.size());
 
         final List<Measurement> traceGroupDbSizeMeasurement = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add("testPipelineName").add("testServiceMapPrepper")
-                        .add(ServiceMapStatefulPrepper.TRACE_GROUP_DB_SIZE).toString());
+                new StringJoiner(MetricNames.DELIMITER).add("testPipelineName").add("testServiceMapProcessor")
+                        .add(ServiceMapStatefulProcessor.TRACE_GROUP_DB_SIZE).toString());
         Assert.assertEquals(1, traceGroupDbSizeMeasurement.size());
 
 
@@ -303,8 +303,8 @@ public class ServiceMapStatefulPrepperTest {
 
     @Test
     public void testPrepareForShutdownWithEventRecordData() {
-        final File path = new File(ServiceMapPrepperConfig.DEFAULT_DB_PATH);
-        final ServiceMapStatefulPrepper serviceMapStateful = new ServiceMapStatefulPrepper(100, path, Clock.systemUTC(), 1, PLUGIN_SETTING);
+        final File path = new File(ServiceMapProcessorConfig.DEFAULT_DB_PATH);
+        final ServiceMapStatefulProcessor serviceMapStateful = new ServiceMapStatefulProcessor(100, path, Clock.systemUTC(), 1, PLUGIN_SETTING);
 
         final byte[] rootSpanId1Bytes = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] traceId1Bytes = ServiceMapTestUtils.getRandomBytes(16);
@@ -336,8 +336,8 @@ public class ServiceMapStatefulPrepperTest {
         pluginSetting.setProcessWorkers(4);
         pluginSetting.setPipelineName("TestPipeline");
 
-        final ServiceMapStatefulPrepper serviceMapStatefulPrepper = new ServiceMapStatefulPrepper(pluginSetting);
-        final Collection<String> expectedIdentificationKeys = serviceMapStatefulPrepper.getIdentificationKeys();
+        final ServiceMapStatefulProcessor serviceMapStatefulProcessor = new ServiceMapStatefulProcessor(pluginSetting);
+        final Collection<String> expectedIdentificationKeys = serviceMapStatefulProcessor.getIdentificationKeys();
 
         assertThat(expectedIdentificationKeys, equalTo(Collections.singleton("traceId")));
     }

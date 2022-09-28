@@ -34,10 +34,10 @@ public class ServiceMapTestUtils {
         return bytes;
     }
 
-    public static Future<Set<ServiceMapRelationship>> startExecuteAsync(ExecutorService threadpool, ServiceMapStatefulPrepper prepper,
+    public static Future<Set<ServiceMapRelationship>> startExecuteAsync(ExecutorService threadpool, ServiceMapStatefulProcessor processor,
                                                                         Collection<Record<Event>> records) {
         return threadpool.submit(() -> {
-            return prepper.execute(records)
+            return processor.execute(records)
                     .stream()
                     .map(record -> {
                         try {
