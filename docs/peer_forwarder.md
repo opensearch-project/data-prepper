@@ -97,6 +97,7 @@ The SSL configuration for setting up trust manager for peer forwarding client to
 * `ssl_certificate_file`(Optional) : A `String` representing the SSL certificate chain file path or AWS S3 path. S3 path example `s3://<bucketName>/<path>`. Required if `ssl` is set to `true`.
 * `ssl_key_file`(Optional) : A `String` represents the SSL key file path or AWS S3 path. S3 path example `s3://<bucketName>/<path>`. Required if `ssl` is set to `true`.
 * `ssl_insecure_disable_verification`(Optional) : A `boolean` that disables the verification of server's TLS certificate chain. Default value is `false`.
+* `ssl_fingerprint_verification_only`(Optional) : A `boolean` that disables the verification of server's TLS certificate chain and instead verifies only the certificate fingerprint. Default value is `false`.
 * `use_acm_certificate_for_ssl`(Optional) : A `boolean` that enables TLS/SSL using certificate and private key from AWS Certificate Manager (ACM). Default is `false`.
 * `acm_certificate_arn`(Optional) : A `String` represents the ACM certificate ARN. ACM certificate take preference over S3 or local file system certificate. Required if `use_acm_certificate_for_ssl` is set to `true`.
 * `acm_certificate_timeout_millis`(Optional) : An `int` representing the timeout in milliseconds for ACM to get certificates. Default value is `120000`.

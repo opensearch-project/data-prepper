@@ -102,6 +102,18 @@ class PeerForwarderClientFactoryTest {
 
             verify(peerClientPool).setSslDisableVerification(sslDisableVerification);
         }
+
+        @ParameterizedTest
+        @ValueSource(booleans = { true, false })
+        void setPeerClientPool_should_supply_sslFingerprintVerificationOnly_when_ssl_true(final boolean sslFingerprintVerificationOnly) {
+            when(peerForwarderConfiguration.isSslFingerprintVerificationOnly())
+                    .thenReturn(sslFingerprintVerificationOnly);
+
+
+            createObjectUnderTest().setPeerClientPool();
+
+            verify(peerClientPool).setSslFingerprintVerificationOnly(sslFingerprintVerificationOnly);
+        }
     }
 
     @Test
@@ -109,6 +121,13 @@ class PeerForwarderClientFactoryTest {
         createObjectUnderTest().setPeerClientPool();
 
         verify(peerClientPool, never()).setSslDisableVerification(anyBoolean());
+    }
+
+    @Test
+    void setPeerClientPool_should_not_supply_sslFingerprintVerificationOnly_when_ssl_false() {
+        createObjectUnderTest().setPeerClientPool();
+
+        verify(peerClientPool, never()).setSslFingerprintVerificationOnly(anyBoolean());
     }
 
     @ParameterizedTest

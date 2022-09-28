@@ -46,6 +46,7 @@ public class PeerForwarderClientFactory {
             peerClientPool.setSsl(true);
 
             peerClientPool.setSslDisableVerification(peerForwarderConfiguration.isSslDisableVerification());
+            peerClientPool.setSslFingerprintVerificationOnly(peerForwarderConfiguration.isSslFingerprintVerificationOnly());
             peerClientPool.setCertificate(certificateProviderFactory.getCertificateProvider().getCertificate());
         }
 

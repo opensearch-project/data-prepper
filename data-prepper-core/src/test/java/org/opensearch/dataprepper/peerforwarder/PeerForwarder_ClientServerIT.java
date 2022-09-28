@@ -191,7 +191,49 @@ class PeerForwarder_ClientServerIT {
         @Test
         void send_Events_to_an_unknown_server_should_throw() {
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
-                    true, ForwardingAuthentication.UNAUTHENTICATED, ALTERNATE_SSL_CERTIFICATE_FILE, ALTERNATE_SSL_KEY_FILE, false);
+                    true, ForwardingAuthentication.UNAUTHENTICATED, ALTERNATE_SSL_CERTIFICATE_FILE, ALTERNATE_SSL_KEY_FILE, false, false);
+
+            final PeerForwarderClient client = createClient(peerForwarderConfiguration);
+
+            assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+
+            final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
+            assertThat(receivedRecords, notNullValue());
+            assertThat(receivedRecords, is(empty()));
+        }
+
+        @Test
+        void send_Events_to_server_with_fingerprint_verification() {
+            final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
+                        true, ForwardingAuthentication.UNAUTHENTICATED, SSL_CERTIFICATE_FILE, SSL_KEY_FILE, false, true);
+
+            final PeerForwarderClient client = createClient(peerForwarderConfiguration);
+
+            final AggregatedHttpResponse httpResponse = client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName);
+
+            assertThat(httpResponse.status(), equalTo(HttpStatus.OK));
+
+            final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
+            assertThat(receivedRecords, notNullValue());
+            assertThat(receivedRecords.size(), equalTo(outgoingRecords.size()));
+
+            final Set<String> receivedMessages = new HashSet<>();
+            for (Record receivedRecord : receivedRecords) {
+                assertThat(receivedRecord, notNullValue());
+                assertThat(receivedRecord.getData(), instanceOf(Event.class));
+                final Event event = (Event) receivedRecord.getData();
+                final String message = event.get("message", String.class);
+                assertThat(message, notNullValue());
+                receivedMessages.add(message);
+            }
+
+            assertThat(receivedMessages, equalTo(expectedMessages));
+        }
+
+        @Test
+        void send_Events_with_fingerprint_verification_to_unknown_server_should_throw() {
+            final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
+                    true, ForwardingAuthentication.UNAUTHENTICATED, ALTERNATE_SSL_CERTIFICATE_FILE, ALTERNATE_SSL_KEY_FILE, false, true);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
@@ -331,7 +373,7 @@ class PeerForwarder_ClientServerIT {
         @Test
         void send_Events_to_server_when_client_has_unknown_certificate_key_closes() {
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
-                    true, ForwardingAuthentication.MUTUAL_TLS, SSL_CERTIFICATE_FILE, ALTERNATE_SSL_KEY_FILE, true);
+                    true, ForwardingAuthentication.MUTUAL_TLS, SSL_CERTIFICATE_FILE, ALTERNATE_SSL_KEY_FILE, true, false);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
             assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
@@ -344,7 +386,49 @@ class PeerForwarder_ClientServerIT {
         @Test
         void send_Events_to_an_unknown_server_should_throw() {
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
-                    true, ForwardingAuthentication.MUTUAL_TLS, ALTERNATE_SSL_CERTIFICATE_FILE, SSL_KEY_FILE, true);
+                    true, ForwardingAuthentication.MUTUAL_TLS, ALTERNATE_SSL_CERTIFICATE_FILE, SSL_KEY_FILE, true, false);
+
+            final PeerForwarderClient client = createClient(peerForwarderConfiguration);
+
+            assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+
+            final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
+            assertThat(receivedRecords, notNullValue());
+            assertThat(receivedRecords, is(empty()));
+        }
+
+        @Test
+        void send_Events_to_server_with_fingerprint_verification() {
+            final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
+                    true, ForwardingAuthentication.MUTUAL_TLS, SSL_CERTIFICATE_FILE, SSL_KEY_FILE, false, true);
+
+            final PeerForwarderClient client = createClient(peerForwarderConfiguration);
+
+            final AggregatedHttpResponse httpResponse = client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName);
+
+            assertThat(httpResponse.status(), equalTo(HttpStatus.OK));
+
+            final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
+            assertThat(receivedRecords, notNullValue());
+            assertThat(receivedRecords.size(), equalTo(outgoingRecords.size()));
+
+            final Set<String> receivedMessages = new HashSet<>();
+            for (Record receivedRecord : receivedRecords) {
+                assertThat(receivedRecord, notNullValue());
+                assertThat(receivedRecord.getData(), instanceOf(Event.class));
+                final Event event = (Event) receivedRecord.getData();
+                final String message = event.get("message", String.class);
+                assertThat(message, notNullValue());
+                receivedMessages.add(message);
+            }
+
+            assertThat(receivedMessages, equalTo(expectedMessages));
+        }
+
+        @Test
+        void send_Events_with_fingerprint_verification_to_unknown_server_should_throw() {
+            final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
+                    true, ForwardingAuthentication.MUTUAL_TLS, ALTERNATE_SSL_CERTIFICATE_FILE, SSL_KEY_FILE, false, true);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
@@ -357,7 +441,7 @@ class PeerForwarder_ClientServerIT {
     }
 
     private PeerForwarderConfiguration createConfiguration(final boolean ssl, final ForwardingAuthentication authentication) {
-        return createConfiguration(ssl, authentication, SSL_CERTIFICATE_FILE, SSL_KEY_FILE, true);
+        return createConfiguration(ssl, authentication, SSL_CERTIFICATE_FILE, SSL_KEY_FILE, true, false);
     }
 
     private PeerForwarderConfiguration createConfiguration(
@@ -365,7 +449,8 @@ class PeerForwarder_ClientServerIT {
             final ForwardingAuthentication authentication,
             final String sslCertificateFile,
             final String sslKeyFile,
-            final boolean sslDisableVerification) {
+            final boolean sslDisableVerification,
+            final boolean sslFingerprintVerificationOnly) {
         final Map<String, Object> authenticationMap = Collections.singletonMap(authentication.getName(), null);
         return new PeerForwarderConfiguration(
                 21890,
@@ -377,6 +462,7 @@ class PeerForwarder_ClientServerIT {
                 sslCertificateFile,
                 sslKeyFile,
                 sslDisableVerification,
+                sslFingerprintVerificationOnly,
                 authenticationMap,
                 false,
                 null,
