@@ -202,9 +202,10 @@ class PeerForwardingProcessingDecoratorTest {
             if (isPeerForwarderReady) {
                 when(processor.isReadyForShutdown()).thenReturn(isInnerProcessorReady);
             }
-            PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(processor);
+            final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.singletonList(processor));
 
-            final boolean result = objectUnderTest.isReadyForShutdown();
+            assertThat(processors.size(), equalTo(1));
+            final boolean result = processors.get(0).isReadyForShutdown();
             assertThat(result, is(expectedResult));
 
             verify(peerForwarder).isReadyForShutdown();
@@ -220,14 +221,6 @@ class PeerForwardingProcessingDecoratorTest {
             assertThat(processors.size(), equalTo(1));
             processors.get(0).shutdown();
             verify(processor).shutdown();
-        }
-
-        @Test
-        void PeerForwardingProcessingDecorator_is_peer_forwarder_ready_for_shutdown_will_call_peer_forwarder() {
-            PeerForwardingProcessorDecorator objectUnderTest = createObjectUnderTest(processor);
-
-            objectUnderTest.isPeerForwarderReadyForShutdown();
-            verify(peerForwarder).isReadyForShutdown();
         }
     }
 
