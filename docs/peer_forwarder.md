@@ -75,7 +75,7 @@ IAM policy shows the necessary permissions.
 ---
 ## Configuration
 
-* `port`(Optional): An `int` between 0 and 65535 represents the port peer forwarder server is running on. Default value is `21892`.
+* `port`(Optional): An `int` between 0 and 65535 represents the port peer forwarder server is running on. Default value is `4994`.
 * `request_timeout`(Optional): Duration - An `int` representing the request timeout in milliseconds for Peer Forwarder HTTP server. Default value is `10000`.
 * `server_thread_count`(Optional): An `int` representing number of threads used by Peer Forwarder server. Defaults to `200`.
 * `client_thread_count`(Optional): An `int` representing number of threads used by Peer Forwarder client. Defaults to `200`.

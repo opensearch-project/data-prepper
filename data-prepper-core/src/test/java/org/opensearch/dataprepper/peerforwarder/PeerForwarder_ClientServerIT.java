@@ -368,7 +368,7 @@ class PeerForwarder_ClientServerIT {
             final boolean sslDisableVerification) {
         final Map<String, Object> authenticationMap = Collections.singletonMap(authentication.getName(), null);
         return new PeerForwarderConfiguration(
-                21890,
+                4994,
                 10_000,
                 200,
                 500,

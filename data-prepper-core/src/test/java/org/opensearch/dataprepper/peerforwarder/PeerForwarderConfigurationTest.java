@@ -34,7 +34,7 @@ class PeerForwarderConfigurationTest {
     void testPeerForwarderDefaultConfig() throws IOException {
         final PeerForwarderConfiguration peerForwarderConfiguration = makeConfig(TestDataProvider.VALID_PEER_FORWARDER_CONFIG_WITHOUT_SSL_FILE);
 
-        assertThat(peerForwarderConfiguration.getServerPort(), equalTo(21890));
+        assertThat(peerForwarderConfiguration.getServerPort(), equalTo(4994));
         assertThat(peerForwarderConfiguration.getRequestTimeout(), equalTo(10_000));
         assertThat(peerForwarderConfiguration.getServerThreadCount(), equalTo(200));
         assertThat(peerForwarderConfiguration.getMaxConnectionCount(), equalTo(500));
