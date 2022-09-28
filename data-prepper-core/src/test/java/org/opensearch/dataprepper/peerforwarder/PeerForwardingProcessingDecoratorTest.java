@@ -205,4 +205,5 @@ class PeerForwardingProcessingDecoratorTest {
             verify(processor).shutdown();
         }
     }
+
 }
