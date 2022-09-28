@@ -3,11 +3,11 @@ test-pipeline:
     testSource: null
   processor:
   - testPrepper: null
+  route:
+  - my-route: "/a==b"
   sink:
   - testSink:
       routes:
       - "my-route"
   workers: 8
   delay: 50
-  route:
-  - my-route: "/a==b"

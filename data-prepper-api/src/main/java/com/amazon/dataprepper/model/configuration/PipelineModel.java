@@ -38,7 +38,7 @@ public class PipelineModel {
 
     @JsonProperty("route")
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private List<ConditionalRoute> routes;
+    private final List<ConditionalRoute> routes;
 
     @JsonProperty("sink")
     private final List<SinkModel> sinks;
@@ -64,7 +64,7 @@ public class PipelineModel {
             @JsonProperty("source") final PluginModel source,
             @JsonProperty("buffer") final PluginModel buffer,
             @JsonProperty("processor") final List<PluginModel> processors,
-            @JsonProperty("router") final List<ConditionalRoute> routes,
+            @JsonProperty("route") final List<ConditionalRoute> routes,
             @JsonProperty("sink") final List<SinkModel> sinks,
             @JsonProperty("workers") final Integer workers,
             @JsonProperty("delay") final Integer delay) {
