@@ -9,7 +9,6 @@ import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.pipeline.common.FutureHelper;
 import org.opensearch.dataprepper.pipeline.common.FutureHelperResult;
 import org.slf4j.Logger;
@@ -26,18 +25,15 @@ public class ProcessWorker implements Runnable {
 
     private final Buffer readBuffer;
     private final List<Processor> processors;
-    private final Collection<Sink> sinks;
     private final Pipeline pipeline;
     private boolean isEmptyRecordsLogged = false;
 
     public ProcessWorker(
             final Buffer readBuffer,
             final List<Processor> processors,
-            final Collection<Sink> sinks,
             final Pipeline pipeline) {
         this.readBuffer = readBuffer;
         this.processors = processors;
-        this.sinks = sinks;
         this.pipeline = pipeline;
     }
 

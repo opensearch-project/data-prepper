@@ -19,9 +19,11 @@ import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
+import static org.junit.jupiter.api.Assertions.assertAll;
 
 class PipelinesDataFlowModelTest {
 
@@ -43,7 +45,7 @@ class PipelinesDataFlowModelTest {
 
         final PluginModel source = new PluginModel("testSource", (Map<String, Object>) null);
         final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", (Map<String, Object>) null));
-        final List<PluginModel> sinks = Collections.singletonList(new PluginModel("testSink", (Map<String, Object>) null));
+        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null));
         final PipelineModel pipelineModel = new PipelineModel(source, null, processors, null, sinks, 8, 50);
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(Collections.singletonMap(pipelineName, pipelineModel));
@@ -64,7 +66,7 @@ class PipelinesDataFlowModelTest {
 
         final PluginModel source = new PluginModel("testSource", (Map<String, Object>) null);
         final List<PluginModel> preppers = Collections.singletonList(new PluginModel("testPrepper", (Map<String, Object>) null));
-        final List<PluginModel> sinks = Collections.singletonList(new PluginModel("testSink", (Map<String, Object>) null));
+        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.singletonList("my-route"), null));
         final PipelineModel pipelineModel = new PipelineModel(source, null, preppers, Collections.singletonList(new ConditionalRoute("my-route", "/a==b")), sinks, 8, 50);
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(Collections.singletonMap(pipelineName, pipelineModel));
@@ -144,6 +146,11 @@ class PipelinesDataFlowModelTest {
         assertThat(pipelineModel.getSinks().size(), equalTo(1));
         assertThat(pipelineModel.getSinks().get(0), notNullValue());
         assertThat(pipelineModel.getSinks().get(0).getPluginName(), equalTo("testSink"));
+        assertThat(pipelineModel.getSinks().get(0).getRoutes(), notNullValue());
+        assertAll(
+                () -> assertThat(pipelineModel.getSinks().get(0).getRoutes().size(), equalTo(1)),
+                () -> assertThat(pipelineModel.getSinks().get(0).getRoutes(), hasItem("my-route"))
+        );
 
         assertThat(pipelineModel.getRoutes(), notNullValue());
         assertThat(pipelineModel.getRoutes().size(), equalTo(1));
