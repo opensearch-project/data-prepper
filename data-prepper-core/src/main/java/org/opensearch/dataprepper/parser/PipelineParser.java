@@ -162,7 +162,7 @@ public class PipelineParser {
             final List<List<Processor>> decoratedProcessorSets = processorSets.stream()
                     .map(processorComponentList -> {
                         final List<Processor> processors = processorComponentList.stream().map(IdentifiedComponent::getComponent).collect(Collectors.toList());
-                        if (processorComponentList.get(0) instanceof RequiresPeerForwarding) {
+                        if (!processors.isEmpty() && processors.get(0) instanceof RequiresPeerForwarding) {
                             return PeerForwardingProcessorDecorator.decorateProcessors(
                                     processors, peerForwarderProvider, pipelineName, processorComponentList.get(0).getName()
                             );
