@@ -10,7 +10,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import java.util.List;
 import java.util.Map;
 
-public class GrokPrepperConfig {
+public class GrokProcessorConfig {
     static final String BREAK_ON_MATCH = "break_on_match";
     static final String KEEP_EMPTY_CAPTURES = "keep_empty_captures";
     static final String MATCH = "match";
@@ -40,16 +40,16 @@ public class GrokPrepperConfig {
     private final int timeoutMillis;
     private final String targetKey;
 
-    private GrokPrepperConfig(final boolean breakOnMatch,
-                              final boolean keepEmptyCaptures,
-                              final Map<String, List<String>> match,
-                              final boolean namedCapturesOnly,
-                              final List<String> keysToOverwrite,
-                              final List<String> patternsDirectories,
-                              final String patternsFilesGlob,
-                              final Map<String, String> patternDefinitions,
-                              final int timeoutMillis,
-                              final String targetKey) {
+    private GrokProcessorConfig(final boolean breakOnMatch,
+                                final boolean keepEmptyCaptures,
+                                final Map<String, List<String>> match,
+                                final boolean namedCapturesOnly,
+                                final List<String> keysToOverwrite,
+                                final List<String> patternsDirectories,
+                                final String patternsFilesGlob,
+                                final Map<String, String> patternDefinitions,
+                                final int timeoutMillis,
+                                final String targetKey) {
 
         this.breakOnMatch = breakOnMatch;
         this.keepEmptyCaptures = keepEmptyCaptures;
@@ -63,8 +63,8 @@ public class GrokPrepperConfig {
         this.targetKey = targetKey;
     }
 
-    public static GrokPrepperConfig buildConfig(final PluginSetting pluginSetting) {
-        return new GrokPrepperConfig(pluginSetting.getBooleanOrDefault(BREAK_ON_MATCH, DEFAULT_BREAK_ON_MATCH),
+    public static GrokProcessorConfig buildConfig(final PluginSetting pluginSetting) {
+        return new GrokProcessorConfig(pluginSetting.getBooleanOrDefault(BREAK_ON_MATCH, DEFAULT_BREAK_ON_MATCH),
                 pluginSetting.getBooleanOrDefault(KEEP_EMPTY_CAPTURES, DEFAULT_KEEP_EMPTY_CAPTURES),
                 pluginSetting.getTypedListMap(MATCH, String.class, String.class),
                 pluginSetting.getBooleanOrDefault(NAMED_CAPTURES_ONLY, DEFAULT_NAMED_CAPTURES_ONLY),

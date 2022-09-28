@@ -25,11 +25,11 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.opensearch.dataprepper.plugins.prepper.grok.GrokPrepperTests.buildRecordWithEvent;
+import static org.opensearch.dataprepper.plugins.prepper.grok.GrokProcessorTests.buildRecordWithEvent;
 
-public class GrokPrepperIT {
+public class GrokProcessorIT {
     private PluginSetting pluginSetting;
-    private GrokPrepper grokPrepper;
+    private GrokProcessor grokProcessor;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
     private final String PLUGIN_NAME = "grok";
@@ -38,17 +38,17 @@ public class GrokPrepperIT {
     @BeforeEach
     public void setup() {
 
-        pluginSetting = completePluginSettingForGrokPrepper(
-                GrokPrepperConfig.DEFAULT_BREAK_ON_MATCH,
-                GrokPrepperConfig.DEFAULT_KEEP_EMPTY_CAPTURES,
+        pluginSetting = completePluginSettingForGrokProcessor(
+                GrokProcessorConfig.DEFAULT_BREAK_ON_MATCH,
+                GrokProcessorConfig.DEFAULT_KEEP_EMPTY_CAPTURES,
                 Collections.emptyMap(),
-                GrokPrepperConfig.DEFAULT_NAMED_CAPTURES_ONLY,
+                GrokProcessorConfig.DEFAULT_NAMED_CAPTURES_ONLY,
                 Collections.emptyList(),
                 Collections.emptyList(),
-                GrokPrepperConfig.DEFAULT_PATTERNS_FILES_GLOB,
+                GrokProcessorConfig.DEFAULT_PATTERNS_FILES_GLOB,
                 Collections.emptyMap(),
-                GrokPrepperConfig.DEFAULT_TIMEOUT_MILLIS,
-                GrokPrepperConfig.DEFAULT_TARGET_KEY);
+                GrokProcessorConfig.DEFAULT_TIMEOUT_MILLIS,
+                GrokProcessorConfig.DEFAULT_TARGET_KEY);
 
         pluginSetting.setPipelineName("grokPipeline");
 
@@ -60,10 +60,10 @@ public class GrokPrepperIT {
 
     @AfterEach
     public void tearDown() {
-        grokPrepper.shutdown();
+        grokProcessor.shutdown();
     }
 
-    private PluginSetting completePluginSettingForGrokPrepper(final boolean breakOnMatch,
+    private PluginSetting completePluginSettingForGrokProcessor(final boolean breakOnMatch,
                                                               final boolean keepEmptyCaptures,
                                                               final Map<String, List<String>> match,
                                                               final boolean namedCapturesOnly,
@@ -74,16 +74,16 @@ public class GrokPrepperIT {
                                                               final int timeoutMillis,
                                                               final String targetKey) {
         final Map<String, Object> settings = new HashMap<>();
-        settings.put(GrokPrepperConfig.BREAK_ON_MATCH, breakOnMatch);
-        settings.put(GrokPrepperConfig.NAMED_CAPTURES_ONLY, namedCapturesOnly);
-        settings.put(GrokPrepperConfig.MATCH, match);
-        settings.put(GrokPrepperConfig.KEEP_EMPTY_CAPTURES, keepEmptyCaptures);
-        settings.put(GrokPrepperConfig.KEYS_TO_OVERWRITE, keysToOverwrite);
-        settings.put(GrokPrepperConfig.PATTERNS_DIRECTORIES, patternsDirectories);
-        settings.put(GrokPrepperConfig.PATTERN_DEFINITIONS, patternDefinitions);
-        settings.put(GrokPrepperConfig.PATTERNS_FILES_GLOB, patternsFilesGlob);
-        settings.put(GrokPrepperConfig.TIMEOUT_MILLIS, timeoutMillis);
-        settings.put(GrokPrepperConfig.TARGET_KEY, targetKey);
+        settings.put(GrokProcessorConfig.BREAK_ON_MATCH, breakOnMatch);
+        settings.put(GrokProcessorConfig.NAMED_CAPTURES_ONLY, namedCapturesOnly);
+        settings.put(GrokProcessorConfig.MATCH, match);
+        settings.put(GrokProcessorConfig.KEEP_EMPTY_CAPTURES, keepEmptyCaptures);
+        settings.put(GrokProcessorConfig.KEYS_TO_OVERWRITE, keysToOverwrite);
+        settings.put(GrokProcessorConfig.PATTERNS_DIRECTORIES, patternsDirectories);
+        settings.put(GrokProcessorConfig.PATTERN_DEFINITIONS, patternDefinitions);
+        settings.put(GrokProcessorConfig.PATTERNS_FILES_GLOB, patternsFilesGlob);
+        settings.put(GrokProcessorConfig.TIMEOUT_MILLIS, timeoutMillis);
+        settings.put(GrokProcessorConfig.TARGET_KEY, targetKey);
 
         return new PluginSetting(PLUGIN_NAME, settings);
     }
@@ -95,15 +95,15 @@ public class GrokPrepperIT {
         matchConfig.put("message", Collections.singletonList(nonMatchingPattern));
         matchConfig.put("bad_key", Collections.singletonList(nonMatchingPattern));
 
-        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
-        grokPrepper = new GrokPrepper(pluginSetting);
+        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
+        grokProcessor = new GrokProcessor(pluginSetting);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", messageInput);
 
         final Record<Event> record = buildRecordWithEvent(testData);
 
-        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
@@ -115,8 +115,8 @@ public class GrokPrepperIT {
         final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList("%{COMMONAPACHELOG}"));
 
-        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
-        grokPrepper = new GrokPrepper(pluginSetting);
+        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
+        grokProcessor = new GrokProcessor(pluginSetting);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", messageInput);
@@ -136,7 +136,7 @@ public class GrokPrepperIT {
 
         final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
@@ -152,9 +152,9 @@ public class GrokPrepperIT {
 
         matchConfig.put("message", patternsToMatchMessage);
 
-        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
-        pluginSetting.getSettings().put(GrokPrepperConfig.BREAK_ON_MATCH, false);
-        grokPrepper = new GrokPrepper(pluginSetting);
+        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
+        pluginSetting.getSettings().put(GrokProcessorConfig.BREAK_ON_MATCH, false);
+        grokProcessor = new GrokProcessor(pluginSetting);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", messageInput);
@@ -176,7 +176,7 @@ public class GrokPrepperIT {
 
         final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
@@ -188,8 +188,8 @@ public class GrokPrepperIT {
         final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList("\"(?:%{WORD:verb} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})\" %{NUMBER:response:int} (?:%{NUMBER:bytes:float}|-)"));
 
-        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
-        grokPrepper = new GrokPrepper(pluginSetting);
+        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
+        grokProcessor = new GrokProcessor(pluginSetting);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", messageInput);
@@ -206,7 +206,7 @@ public class GrokPrepperIT {
 
         final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
@@ -219,9 +219,9 @@ public class GrokPrepperIT {
         matchConfig.put("message", Collections.singletonList("%{COMMONAPACHELOG}"));
         matchConfig.put("extra_field", Collections.singletonList("%{GREEDYDATA} %{IPORHOST:host}"));
 
-        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
-        pluginSetting.getSettings().put(GrokPrepperConfig.BREAK_ON_MATCH, false);
-        grokPrepper = new GrokPrepper(pluginSetting);
+        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
+        pluginSetting.getSettings().put(GrokProcessorConfig.BREAK_ON_MATCH, false);
+        grokProcessor = new GrokProcessor(pluginSetting);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", messageInput);
@@ -245,7 +245,7 @@ public class GrokPrepperIT {
 
         final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
@@ -257,9 +257,9 @@ public class GrokPrepperIT {
         final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList("%{COMMONAPACHELOG}"));
 
-        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
-        pluginSetting.getSettings().put(GrokPrepperConfig.KEEP_EMPTY_CAPTURES, true);
-        grokPrepper = new GrokPrepper(pluginSetting);
+        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
+        pluginSetting.getSettings().put(GrokProcessorConfig.KEEP_EMPTY_CAPTURES, true);
+        grokProcessor = new GrokProcessor(pluginSetting);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", messageInput);
@@ -281,7 +281,7 @@ public class GrokPrepperIT {
 
         final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
@@ -293,9 +293,9 @@ public class GrokPrepperIT {
         final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList("%{GREEDYDATA} %{IPORHOST:host} %{NUMBER}"));
 
-        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
-        pluginSetting.getSettings().put(GrokPrepperConfig.NAMED_CAPTURES_ONLY, false);
-        grokPrepper = new GrokPrepper(pluginSetting);
+        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
+        pluginSetting.getSettings().put(GrokProcessorConfig.NAMED_CAPTURES_ONLY, false);
+        grokProcessor = new GrokProcessor(pluginSetting);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", "This is my greedy data before matching 192.0.2.1 123456");
@@ -310,7 +310,7 @@ public class GrokPrepperIT {
 
         final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
@@ -325,9 +325,9 @@ public class GrokPrepperIT {
         final Map<String, String> patternDefinitions = new HashMap<>();
         patternDefinitions.put("CUSTOMPHONENUMBERPATTERN", "\\d\\d\\d-\\d\\d\\d-\\d\\d\\d");
 
-        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
-        pluginSetting.getSettings().put(GrokPrepperConfig.PATTERN_DEFINITIONS, patternDefinitions);
-        grokPrepper = new GrokPrepper(pluginSetting);
+        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
+        pluginSetting.getSettings().put(GrokProcessorConfig.PATTERN_DEFINITIONS, patternDefinitions);
+        grokProcessor = new GrokProcessor(pluginSetting);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", "This is my greedy data before matching with my phone number 123-456-789");
@@ -341,7 +341,7 @@ public class GrokPrepperIT {
 
         final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
@@ -368,13 +368,13 @@ public class GrokPrepperIT {
         resultData.put("my_birthday", "April 15, 1991");
         resultData.put("my_number", "123-456-789");
 
-        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
-        pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_DIRECTORIES, patternsDirectories);
-        grokPrepper = new GrokPrepper(pluginSetting);
+        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
+        pluginSetting.getSettings().put(GrokProcessorConfig.PATTERNS_DIRECTORIES, patternsDirectories);
+        grokProcessor = new GrokProcessor(pluginSetting);
 
         final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
@@ -400,14 +400,14 @@ public class GrokPrepperIT {
         resultData.put("message", "My phone number is 123-456-789");
         resultData.put("my_number", "123-456-789");
 
-        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
-        pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_DIRECTORIES, patternsDirectories);
-        pluginSetting.getSettings().put(GrokPrepperConfig.PATTERNS_FILES_GLOB, "*1.txt");
-        grokPrepper = new GrokPrepper(pluginSetting);
+        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
+        pluginSetting.getSettings().put(GrokProcessorConfig.PATTERNS_DIRECTORIES, patternsDirectories);
+        pluginSetting.getSettings().put(GrokProcessorConfig.PATTERNS_FILES_GLOB, "*1.txt");
+        grokProcessor = new GrokProcessor(pluginSetting);
 
         final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
@@ -416,9 +416,9 @@ public class GrokPrepperIT {
         final Map<String, List<String>> matchConfigWithPatterns2Pattern = new HashMap<>();
         matchConfigWithPatterns2Pattern.put("message", Collections.singletonList("My birthday is %{CUSTOMBIRTHDAYPATTERN:my_birthday}"));
 
-        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfigWithPatterns2Pattern);
+        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfigWithPatterns2Pattern);
 
-        Throwable throwable = assertThrows(IllegalArgumentException.class, () -> new GrokPrepper((pluginSetting)));
+        Throwable throwable = assertThrows(IllegalArgumentException.class, () -> new GrokProcessor((pluginSetting)));
         assertThat("No definition for key 'CUSTOMBIRTHDAYPATTERN' found, aborting", equalTo(throwable.getMessage()));
     }
 
@@ -427,8 +427,8 @@ public class GrokPrepperIT {
         final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList("%{GREEDYDATA:greedy_data} (?<mynumber>\\d\\d\\d-\\d\\d\\d-\\d\\d\\d)"));
 
-        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
-        grokPrepper = new GrokPrepper(pluginSetting);
+        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
+        grokProcessor = new GrokProcessor(pluginSetting);
 
         final Map<String, Object> testData = new HashMap();
         testData.put("message", "This is my greedy data before matching with my phone number 123-456-789");
@@ -442,7 +442,7 @@ public class GrokPrepperIT {
 
         final Record<Event> resultRecord = buildRecordWithEvent(resultData);
 
-        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokPrepper.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
@@ -452,14 +452,14 @@ public class GrokPrepperIT {
     @Test
     public void testCompileNonRegisteredPatternThrowsIllegalArgumentException() {
 
-        grokPrepper = new GrokPrepper(pluginSetting);
+        grokProcessor = new GrokProcessor(pluginSetting);
 
         final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList("%{NONEXISTENTPATTERN}"));
 
-        pluginSetting.getSettings().put(GrokPrepperConfig.MATCH, matchConfig);
+        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
 
-        assertThrows(IllegalArgumentException.class, () -> new GrokPrepper(pluginSetting));
+        assertThrows(IllegalArgumentException.class, () -> new GrokProcessor(pluginSetting));
     }
 
     private void assertRecordsAreEqual(final Record<Event> first, final Record<Event> second) throws JsonProcessingException {

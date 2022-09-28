@@ -53,10 +53,10 @@ import java.util.stream.Collectors;
 
 @SingleThread
 @DataPrepperPlugin(name = "grok", pluginType = Processor.class)
-public class GrokPrepper extends AbstractProcessor<Record<Event>, Record<Event>> {
+public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     static final long EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT = 300L;
 
-    private static final Logger LOG = LoggerFactory.getLogger(GrokPrepper.class);
+    private static final Logger LOG = LoggerFactory.getLogger(GrokProcessor.class);
 
     static final String GROK_PROCESSING_MATCH_SUCCESS = "grokProcessingMatchSuccess";
     static final String GROK_PROCESSING_MATCH_FAILURE = "grokProcessingMatchFailure";
@@ -72,18 +72,18 @@ public class GrokPrepper extends AbstractProcessor<Record<Event>, Record<Event>>
 
     private final GrokCompiler grokCompiler;
     private final Map<String, List<Grok>> fieldToGrok;
-    private final GrokPrepperConfig grokPrepperConfig;
+    private final GrokProcessorConfig grokProcessorConfig;
     private final Set<String> keysToOverwrite;
     private final ExecutorService executorService;
 
-    public GrokPrepper(final PluginSetting pluginSetting) {
+    public GrokProcessor(final PluginSetting pluginSetting) {
         this(pluginSetting, GrokCompiler.newInstance(), Executors.newSingleThreadExecutor());
     }
 
-    GrokPrepper(final PluginSetting pluginSetting, final GrokCompiler grokCompiler, final ExecutorService executorService) {
+    GrokProcessor(final PluginSetting pluginSetting, final GrokCompiler grokCompiler, final ExecutorService executorService) {
         super(pluginSetting);
-        this.grokPrepperConfig = GrokPrepperConfig.buildConfig(pluginSetting);
-        this.keysToOverwrite = new HashSet<>(grokPrepperConfig.getkeysToOverwrite());
+        this.grokProcessorConfig = GrokProcessorConfig.buildConfig(pluginSetting);
+        this.keysToOverwrite = new HashSet<>(grokProcessorConfig.getkeysToOverwrite());
         this.grokCompiler = grokCompiler;
         this.fieldToGrok = new LinkedHashMap<>();
         this.executorService = executorService;
@@ -113,7 +113,7 @@ public class GrokPrepper extends AbstractProcessor<Record<Event>, Record<Event>>
             try {
                 final Event event = record.getData();
 
-                if (grokPrepperConfig.getTimeoutMillis() == 0) {
+                if (grokProcessorConfig.getTimeoutMillis() == 0) {
                     grokProcessingTime.record(() -> matchAndMerge(event));
                 } else {
                     runWithTimeout(() -> grokProcessingTime.record(() -> matchAndMerge(event)));
@@ -122,7 +122,7 @@ public class GrokPrepper extends AbstractProcessor<Record<Event>, Record<Event>>
                 final Record<Event> grokkedRecord = new Record<>(event, record.getMetadata());
                 recordsOut.add(grokkedRecord);
             } catch (TimeoutException e) {
-                LOG.error("Matching on record [{}] took longer than [{}] and timed out", record.getData(), grokPrepperConfig.getTimeoutMillis());
+                LOG.error("Matching on record [{}] took longer than [{}] and timed out", record.getData(), grokProcessorConfig.getTimeoutMillis());
                 recordsOut.add(record);
                 grokProcessingTimeoutsCounter.increment();
             } catch (ExecutionException e) {
@@ -170,20 +170,20 @@ public class GrokPrepper extends AbstractProcessor<Record<Event>, Record<Event>>
 
     private void registerPatterns() {
         grokCompiler.registerDefaultPatterns();
-        grokCompiler.register(grokPrepperConfig.getPatternDefinitions());
+        grokCompiler.register(grokProcessorConfig.getPatternDefinitions());
         registerPatternsDirectories();
     }
 
     private void registerPatternsDirectories() {
-        for (final String directory : grokPrepperConfig.getPatternsDirectories()) {
+        for (final String directory : grokProcessorConfig.getPatternsDirectories()) {
             final Path path = FileSystems.getDefault().getPath(directory);
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(path, grokPrepperConfig.getPatternsFilesGlob())) {
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(path, grokProcessorConfig.getPatternsFilesGlob())) {
                 for (final Path patternFile : stream) {
                     registerPatternsForFile(patternFile.toFile());
                 }
             }
             catch (PatternSyntaxException e) {
-                LOG.error("Glob pattern {} is invalid", grokPrepperConfig.getPatternsFilesGlob());
+                LOG.error("Glob pattern {} is invalid", grokProcessorConfig.getPatternsFilesGlob());
             } catch (NotDirectoryException e) {
                 LOG.error("{} is not a directory", directory, e);
             } catch (IOException e) {
@@ -203,10 +203,10 @@ public class GrokPrepper extends AbstractProcessor<Record<Event>, Record<Event>>
     }
 
     private void compileMatchPatterns() {
-        for (final Map.Entry<String, List<String>> entry : grokPrepperConfig.getMatch().entrySet()) {
+        for (final Map.Entry<String, List<String>> entry : grokProcessorConfig.getMatch().entrySet()) {
             fieldToGrok.put(entry.getKey(), entry.getValue()
                             .stream()
-                            .map(item -> grokCompiler.compile(item, grokPrepperConfig.isNamedCapturesOnly()))
+                            .map(item -> grokCompiler.compile(item, grokProcessorConfig.isNamedCapturesOnly()))
                             .collect(Collectors.toList()));
         }
     }
@@ -219,7 +219,7 @@ public class GrokPrepper extends AbstractProcessor<Record<Event>, Record<Event>>
                 final String value = event.get(entry.getKey(), String.class);
                 if (value != null && !value.isEmpty()) {
                     final Match match = grok.match(value);
-                    match.setKeepEmptyCaptures(grokPrepperConfig.isKeepEmptyCaptures());
+                    match.setKeepEmptyCaptures(grokProcessorConfig.isKeepEmptyCaptures());
 
                     final Map<String, Object> captures = match.capture();
                     mergeCaptures(grokkedCaptures, captures);
@@ -234,8 +234,8 @@ public class GrokPrepper extends AbstractProcessor<Record<Event>, Record<Event>>
             }
         }
 
-        if (grokPrepperConfig.getTargetKey() != null) {
-            event.put(grokPrepperConfig.getTargetKey(), grokkedCaptures);
+        if (grokProcessorConfig.getTargetKey() != null) {
+            event.put(grokProcessorConfig.getTargetKey(), grokkedCaptures);
         } else {
             mergeCaptures(event, grokkedCaptures);
         }
@@ -294,11 +294,11 @@ public class GrokPrepper extends AbstractProcessor<Record<Event>, Record<Event>>
     }
 
     private boolean shouldBreakOnMatch(final Map<String, Object> captures) {
-        return captures.size() > 0 && grokPrepperConfig.isBreakOnMatch();
+        return captures.size() > 0 && grokProcessorConfig.isBreakOnMatch();
     }
 
     private void runWithTimeout(final Runnable runnable) throws TimeoutException, ExecutionException, InterruptedException {
         Future<?> task = executorService.submit(runnable);
-        task.get(grokPrepperConfig.getTimeoutMillis(), TimeUnit.MILLISECONDS);
+        task.get(grokProcessorConfig.getTimeoutMillis(), TimeUnit.MILLISECONDS);
     }
 }
