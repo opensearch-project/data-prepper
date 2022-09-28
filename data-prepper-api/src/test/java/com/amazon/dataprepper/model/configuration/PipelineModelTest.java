@@ -45,7 +45,7 @@ class PipelineModelTest {
         final PluginModel originalSource = pipelineModel.getSource();
         final PluginModel originalBuffer = pipelineModel.getBuffer();
         final List<PluginModel> originalPreppers = pipelineModel.getProcessors();
-        final List<PluginModel> originalSinks = pipelineModel.getSinks();
+        final List<SinkModel> originalSinks = pipelineModel.getSinks();
 
         assertThat(originalSource, notNullValue());
         assertThat(originalBuffer, notNullValue());
@@ -87,8 +87,8 @@ class PipelineModelTest {
         return Collections.singletonList(new ConditionalRoute("my-route", "/a==b"));
     }
 
-    static List<PluginModel> validSinksPluginModel() {
-        return Collections.singletonList(new PluginModel("sink", validPluginSettings()));
+    static List<SinkModel> validSinksPluginModel() {
+        return Collections.singletonList(SinkModel.builder(new PluginModel("sink", validPluginSettings())).build());
     }
 
     @Test
@@ -172,7 +172,7 @@ class PipelineModelTest {
         final PluginModel originalSource = pipelineModel.getSource();
         final PluginModel originalBuffer = pipelineModel.getBuffer();
         final List<PluginModel> originalPreppers = pipelineModel.getProcessors();
-        final List<PluginModel> originalSinks = pipelineModel.getSinks();
+        final List<SinkModel> originalSinks = pipelineModel.getSinks();
 
         assertThat(originalSource, notNullValue());
         assertThat(originalBuffer, notNullValue());

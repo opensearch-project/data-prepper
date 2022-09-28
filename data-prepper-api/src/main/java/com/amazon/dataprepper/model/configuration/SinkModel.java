@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -43,6 +44,25 @@ public class SinkModel extends PluginModel {
      */
     public Collection<String> getRoutes() {
         return this.<SinkInternalJsonModel>getInternalJsonModel().routes;
+    }
+
+    public static class SinkModelBuilder {
+
+        private final PluginModel pluginModel;
+        private final List<String> routes;
+
+        private SinkModelBuilder(final PluginModel pluginModel) {
+            this.pluginModel = pluginModel;
+            this.routes = Collections.emptyList();
+        }
+
+        public SinkModel build() {
+            return new SinkModel(pluginModel.getPluginName(), routes, pluginModel.getPluginSettings());
+        }
+    }
+
+    public static SinkModelBuilder builder(final PluginModel pluginModel) {
+        return new SinkModelBuilder(pluginModel);
     }
 
     private static class SinkInternalJsonModel extends InternalJsonModel {

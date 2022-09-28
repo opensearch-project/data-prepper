@@ -7,6 +7,7 @@ package org.opensearch.dataprepper;
 
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.configuration.SinkModel;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -111,12 +112,28 @@ public class TestDataProvider {
         return pluginModel;
     }
 
+    private static SinkModel validSinkModel(final String pluginName) {
+        final SinkModel sinkModel = mock(SinkModel.class);
+        when(sinkModel.getPluginName()).thenReturn(pluginName);
+        when(sinkModel.getPluginSettings()).thenReturn(validSettingsForPlugin());
+        when(sinkModel.getRoutes()).thenReturn(Collections.emptyList());
+        return sinkModel;
+    }
+
     public static List<PluginModel> validMultipleConfiguration() {
         return Arrays.asList(validPluginModel(TEST_PLUGIN_NAME_1), validPluginModel(TEST_PLUGIN_NAME_2));
     }
 
+    public static List<SinkModel> validMultipleSinkConfiguration() {
+        return Arrays.asList(validSinkModel(TEST_PLUGIN_NAME_1), validSinkModel(TEST_PLUGIN_NAME_2));
+    }
+
     public static List<PluginModel> validMultipleConfigurationOfSizeOne() {
         return Collections.singletonList(validSingleConfiguration());
+    }
+
+    public static List<SinkModel> validMultipleSinkConfigurationOfSizeOne() {
+        return Collections.singletonList(validSinkModel(TEST_PLUGIN_NAME_1));
     }
 
     public static Map<String, PipelineConfiguration> readConfigFile(final String configFilePath) throws IOException {

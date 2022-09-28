@@ -8,12 +8,14 @@ package org.opensearch.dataprepper.parser.model;
 import com.amazon.dataprepper.model.configuration.PipelineModel;
 import com.amazon.dataprepper.model.configuration.PluginModel;
 import com.amazon.dataprepper.model.configuration.PluginSetting;
+import com.amazon.dataprepper.model.configuration.SinkModel;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class PipelineConfiguration {
@@ -25,7 +27,7 @@ public class PipelineConfiguration {
     private final PluginSetting sourcePluginSetting;
     private final PluginSetting bufferPluginSetting;
     private final List<PluginSetting> processorPluginSettings;
-    private final List<PluginSetting> sinkPluginSettings;
+    private final List<RoutedPluginSetting> sinkPluginSettings;
     private final Integer workers;
     private final Integer readBatchDelay;
 
@@ -50,7 +52,7 @@ public class PipelineConfiguration {
         return processorPluginSettings;
     }
 
-    public List<PluginSetting> getSinkPluginSettings() {
+    public List<RoutedPluginSetting> getSinkPluginSettings() {
         return sinkPluginSettings;
     }
 
@@ -92,12 +94,12 @@ public class PipelineConfiguration {
         return getPluginSettingFromPluginModel(pluginModel);
     }
 
-    private List<PluginSetting> getSinksFromPluginModel(
-            final List<PluginModel> sinkConfigurations) {
+    private List<RoutedPluginSetting> getSinksFromPluginModel(
+            final List<SinkModel> sinkConfigurations) {
         if (sinkConfigurations == null || sinkConfigurations.isEmpty()) {
             throw new IllegalArgumentException("Invalid configuration, at least one sink is required");
         }
-        return sinkConfigurations.stream().map(PipelineConfiguration::getPluginSettingFromPluginModel)
+        return sinkConfigurations.stream().map(PipelineConfiguration::getRoutedPluginSettingFromSinkModel)
                 .collect(Collectors.toList());
     }
 
@@ -112,8 +114,17 @@ public class PipelineConfiguration {
 
 
     private static PluginSetting getPluginSettingFromPluginModel(final PluginModel pluginModel) {
-        final Map<String, Object> settingsMap = pluginModel.getPluginSettings();
-        return new PluginSetting(pluginModel.getPluginName(), settingsMap == null ? new HashMap<>() : settingsMap);
+        final Map<String, Object> settingsMap = Optional
+                .ofNullable(pluginModel.getPluginSettings())
+                .orElseGet(HashMap::new);
+        return new PluginSetting(pluginModel.getPluginName(), settingsMap);
+    }
+
+    private static RoutedPluginSetting getRoutedPluginSettingFromSinkModel(final SinkModel sinkModel) {
+        final Map<String, Object> settingsMap = Optional
+                .ofNullable(sinkModel.getPluginSettings())
+                .orElseGet(HashMap::new);
+        return new RoutedPluginSetting(sinkModel.getPluginName(), settingsMap, sinkModel.getRoutes());
     }
 
     private Integer getWorkersFromPipelineModel(final PipelineModel pipelineModel) {

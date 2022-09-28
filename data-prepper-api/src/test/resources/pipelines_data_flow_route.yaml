@@ -4,7 +4,9 @@ test-pipeline:
   processor:
   - testPrepper: null
   sink:
-  - testSink: null
+  - testSink:
+      routes:
+      - "my-route"
   workers: 8
   delay: 50
   route:

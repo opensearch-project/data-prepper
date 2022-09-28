@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -19,13 +20,17 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasKey;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class SinkModelTest {
     private ObjectMapper objectMapper;
@@ -125,6 +130,33 @@ class SinkModelTest {
         final String expectedJson = createStringFromInputStream(this.getClass().getResourceAsStream("/serialized_with_plugin_settings.yaml"));
 
         assertThat("---\n" + actualJson, equalTo(expectedJson));
+    }
+
+    @Nested
+    class BuilderTest {
+        private PluginModel pluginModel;
+        private String pluginName;
+        private Map<String, Object> pluginSettings;
+
+        @BeforeEach
+        void setUp() {
+            pluginName = UUID.randomUUID().toString();
+            pluginSettings = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+            pluginModel = mock(PluginModel.class);
+            when(pluginModel.getPluginName()).thenReturn(pluginName);
+            when(pluginModel.getPluginSettings()).thenReturn(pluginSettings);
+        }
+
+        @Test
+        void build_with_only_PluginModel_should_return_expected_SinkModel() {
+            final SinkModel actualSinkModel = SinkModel.builder(pluginModel).build();
+
+            assertThat(actualSinkModel, notNullValue());
+            assertThat(actualSinkModel.getPluginName(), equalTo(pluginName));
+            assertThat(actualSinkModel.getPluginSettings(), equalTo(pluginSettings));
+            assertThat(actualSinkModel.getRoutes(), notNullValue());
+            assertThat(actualSinkModel.getRoutes(), empty());
+        }
     }
 
     private static String createStringFromInputStream(final InputStream inputStream) throws IOException {
