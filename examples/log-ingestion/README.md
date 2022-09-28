@@ -48,6 +48,12 @@ and send the processed logs to a local [OpenSearch sink](../../data-prepper-plug
 3. Run the Data Prepper docker image with the `log_pipeline.yaml` from step 2 passed in. This command attaches the Data Prepper Docker image to the Docker network `log-ingestion_opensearch_net` so that 
 FluentBit is able to send logs to the http source of Data Prepper.
 
+For Data Prepper 2.0 or above:
+```
+docker run --name data-prepper -v /full/path/to/log_pipeline.yaml:/usr/share/data-prepper/pipelines/log_pipeline.yaml --network "data-prepper_opensearch-net" opensearchproject/data-prepper:latest
+```
+
+For Data Prepper before version 2.0:
 ```
 docker run --name data-prepper -v /full/path/to/log_pipeline.yaml:/usr/share/data-prepper/pipelines.yaml --network "data-prepper_opensearch-net" opensearchproject/data-prepper:latest
 ```

@@ -24,6 +24,6 @@ dependencies {
 }
 
 bootJar {
-    mainClassName = 'com.example.restservice.RestServiceApplication'
+    mainClass = 'com.example.restservice.RestServiceApplication'
 }
 
