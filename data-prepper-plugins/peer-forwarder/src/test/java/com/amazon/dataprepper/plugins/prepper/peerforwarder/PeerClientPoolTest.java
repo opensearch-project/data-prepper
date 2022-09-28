@@ -25,7 +25,7 @@ import static org.junit.Assert.assertNotNull;
 public class PeerClientPoolTest {
     private static final String VALID_ADDRESS = "10.10.10.5";
     private static final String LOCALHOST = "localhost";
-    private static final int PORT = 21890;
+    private static final int PORT = 4994;
     private static final File SSL_KEY_FILE = new File(
             PeerClientPoolTest.class.getClassLoader().getResource("test-key.key").getFile());
     private static final File SSL_CRT_FILE = new File(
