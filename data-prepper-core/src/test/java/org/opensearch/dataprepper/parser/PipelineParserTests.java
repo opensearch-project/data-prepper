@@ -5,24 +5,35 @@
 
 package org.opensearch.dataprepper.parser;
 
+import com.amazon.dataprepper.model.buffer.Buffer;
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
+import com.amazon.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.Mock;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Stream;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -42,6 +53,8 @@ class PipelineParserTests {
     private DataPrepperConfiguration dataPrepperConfiguration;
     @Mock
     private PeerForwarderConfiguration peerForwarderConfiguration;
+    @Mock
+    private PeerForwarderReceiveBuffer buffer;
 
     private PluginFactory pluginFactory;
 
@@ -237,5 +250,49 @@ class PipelineParserTests {
         verify(dataPrepperConfiguration, times(times)).getSinkShutdownTimeout();
         verify(dataPrepperConfiguration, times(times)).getPeerForwarderConfiguration();
         verify(peerForwarderConfiguration, times(times)).getDrainTimeout();
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideGetSecondaryBufferArgs")
+    void getSecondaryBuffers(final int outerMapEntryCount, final int innerMapEntryCount) {
+        final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> bufferMap = generateBufferMap(outerMapEntryCount, innerMapEntryCount);
+        when(peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap()).thenReturn(bufferMap);
+
+        final PipelineParser pipelineParser =
+                new PipelineParser(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+        final List<Buffer> secondaryBuffers = pipelineParser.getSecondaryBuffers();
+        assertThat(secondaryBuffers.size(), is(outerMapEntryCount * innerMapEntryCount));
+        secondaryBuffers.forEach(retrievedBuffer -> assertThat(retrievedBuffer, is(buffer)));
+
+        verify(peerForwarderProvider).getPipelinePeerForwarderReceiveBufferMap();
+    }
+
+    private static Stream<Arguments> provideGetSecondaryBufferArgs() {
+        return Stream.of(
+                Arguments.of(0, 0),
+                Arguments.of(0, 1),
+                Arguments.of(0, 2),
+                Arguments.of(0, 3),
+                Arguments.of(1, 0),
+                Arguments.of(1, 1),
+                Arguments.of(1, 2),
+                Arguments.of(1, 3),
+                Arguments.of(2, 2),
+                Arguments.of(new Random().nextInt(5) + 3, new Random().nextInt(5) + 1)
+        );
+    }
+
+    private Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> generateBufferMap(final int outerMapEntryCount, final int innerMapEntryCount) {
+        final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> bufferMap = new HashMap<>();
+        for (int i = 0; i < outerMapEntryCount; i++) {
+            final Map<String, PeerForwarderReceiveBuffer<Record<Event>>> innerMap = new HashMap<>();
+            for (int j = 0; j < innerMapEntryCount; j++) {
+                innerMap.put(UUID.randomUUID().toString(), buffer);
+            }
+
+            bufferMap.put(UUID.randomUUID().toString(), innerMap);
+        }
+
+        return bufferMap;
     }
 }

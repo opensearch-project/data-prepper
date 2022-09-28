@@ -180,7 +180,8 @@ public class PipelineParser {
                     .map(this::buildSinkOrConnector)
                     .collect(Collectors.toList());
 
-            final MultiBufferDecorator multiBufferDecorator = new MultiBufferDecorator(buffer, Collections.emptyList());
+            final List<Buffer> secondaryBuffers = getSecondaryBuffers();
+            final MultiBufferDecorator multiBufferDecorator = new MultiBufferDecorator(buffer, secondaryBuffers);
 
             final Pipeline pipeline = new Pipeline(pipelineName, source, multiBufferDecorator, decoratedProcessorSets, sinks, processorThreads, readBatchDelay,
                     dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
@@ -318,5 +319,12 @@ public class PipelineParser {
                 .map(DataPrepperConfiguration::getPeerForwarderConfiguration)
                 .map(PeerForwarderConfiguration::getDrainTimeout)
                 .orElse(Duration.ofSeconds(0));
+    }
+
+    List<Buffer> getSecondaryBuffers() {
+        return peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap().entrySet().stream()
+                .flatMap(entry -> entry.getValue().entrySet().stream())
+                .map(innerEntry -> innerEntry.getValue())
+                .collect(Collectors.toList());
     }
 }
