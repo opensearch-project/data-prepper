@@ -13,7 +13,9 @@ ext {
 }
 
 dependencies {
-    antlr 'org.antlr:antlr4:4.10.1'
+    antlr('org.antlr:antlr4:4.10.1') {
+        exclude group: 'org.glassfish', module: 'javax.json'
+    }
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:date-processor')
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'

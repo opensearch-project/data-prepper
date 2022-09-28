@@ -1,11 +1,11 @@
-FROM gradle:6.5.0-jdk8 as cache
+FROM gradle:jdk11 as cache
 RUN mkdir -p /home/gradle/cache_home
 ENV GRADLE_USER_HOME /home/gradle/cache_home
 COPY build.gradle /home/gradle/src/
 WORKDIR /home/gradle/src
 RUN gradle clean build --daemon
 
-FROM gradle:6.5.0-jdk8 AS build
+FROM gradle:jdk11 AS build
 COPY --from=cache /home/gradle/cache_home /home/gradle/.gradle
 COPY . /home/gradle/src/
 WORKDIR /home/gradle/src
