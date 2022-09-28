@@ -43,7 +43,7 @@ fi
 if [[ "$_java" ]]
 then
     java_type=$("$_java" -version 2>&1 | awk -F '"' '/version/ {print $1}')
-    java_version=$("$_java" -version 2>&1 | awk -F '"' '/version/ {print $2}' | sed 's/\(.*\..*\)\..*/\1/g')
+    java_version=$("$_java" -version 2>&1 | awk -F '"' '/version/ {print $2}' | sed 's/\([0-9]*\.[0-9]*\)\..*/\1/g')
     echo "Found $java_type of $java_version"
     if [[ $java_type == *"openjdk"* ]]
     then
