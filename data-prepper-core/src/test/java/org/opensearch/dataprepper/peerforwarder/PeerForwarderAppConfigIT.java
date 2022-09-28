@@ -30,7 +30,7 @@ class PeerForwarderAppConfigIT {
     @Test
     void PeerForwarderConfiguration_default_values_test() {
         final PeerForwarderConfiguration objectUnderTest = createObjectUnderTest();
-        assertThat(objectUnderTest.getServerPort(), equalTo(21890));
+        assertThat(objectUnderTest.getServerPort(), equalTo(4994));
         assertThat(objectUnderTest.getRequestTimeout(), equalTo(10_000));
         assertThat(objectUnderTest.getServerThreadCount(), equalTo(200));
         assertThat(objectUnderTest.getMaxConnectionCount(), equalTo(500));

@@ -28,7 +28,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 class PeerClientPoolTest {
     private static final String VALID_ADDRESS = "10.10.10.5";
     private static final String LOCALHOST = "localhost";
-    private static final int PORT = 21890;
+    private static final int PORT = 4994;
 
     @ParameterizedTest
     @ValueSource(strings = {VALID_ADDRESS, LOCALHOST})

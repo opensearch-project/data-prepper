@@ -24,7 +24,7 @@ public class PeerForwarderConfiguration {
     public static final String DEFAULT_PEER_FORWARDING_URI = "/event/forward";
     private static final String S3_PREFIX = "s3://";
 
-    private Integer serverPort = 21890;
+    private Integer serverPort = 4994;
     private Integer requestTimeout = 10_000;
     private Integer serverThreadCount = 200;
     private Integer maxConnectionCount = 500;
