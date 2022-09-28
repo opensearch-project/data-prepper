@@ -155,7 +155,7 @@ CopySpec archiveToTar() {
             from("${rootDir}/examples/certificates/default_private_key.pem")
         }
         into('pipelines') {
-            from("${rootDir}/examples/config/example-pipelines.yaml").rename("example-pipelines.yaml", "pipelines.yaml")
+            from("${rootDir}/examples/config/pipelines-readme.txt").rename("pipelines-readme.txt", "README")
         }
         into('') {
             from("${rootDir}/LICENSE")
