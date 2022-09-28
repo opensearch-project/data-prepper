@@ -15,30 +15,58 @@ import org.opensearch.dataprepper.peerforwarder.exception.UnsupportedPeerForward
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PeerForwardingProcessorDecorator implements Processor<Record<Event>, Record<Event>> {
-    private final Processor innerProcessor;
     private final PeerForwarder peerForwarder;
-    private final String pluginId;
-    private final Set<String> identificationKeys;
+    private final Processor innerProcessor;
 
-    public PeerForwardingProcessorDecorator(final Processor innerProcessor,
-                                            final PeerForwarderProvider peerForwarderProvider,
-                                            final String pipelineName,
-                                            final String pluginId) {
-        this.innerProcessor = innerProcessor;
-        this.pluginId = pluginId;
+    public static List<Processor> decorateProcessors(
+            final List<Processor> processors,
+            final PeerForwarderProvider peerForwarderProvider,
+            final String pipelineName,
+            final String pluginId) {
 
-        if (innerProcessor instanceof RequiresPeerForwarding) {
-            identificationKeys = new HashSet<> (((RequiresPeerForwarding) innerProcessor).getIdentificationKeys());
-        } else {
-            throw new UnsupportedPeerForwarderPluginException("Peer Forwarding is only supported for plugins which implement RequiresPeerForwarding interface.");
+        Set<String> identificationKeys;
+        final Processor firstInnerProcessor = processors.get(0);
+
+        if (firstInnerProcessor instanceof RequiresPeerForwarding) {
+            identificationKeys = new HashSet<> (((RequiresPeerForwarding) firstInnerProcessor).getIdentificationKeys());
         }
+        else {
+            throw new UnsupportedPeerForwarderPluginException(
+                    "Peer Forwarding is only supported for plugins which implement RequiresPeerForwarding interface."
+            );
+        }
+
+        // verify if identification keys of all processors are same with
+        // identification keys of first processor in case Processor is annotated with SingleThread.
+        processors.forEach(processor -> {
+            if (processor instanceof RequiresPeerForwarding) {
+                final Set<String> processorIdentificationKeys = new HashSet<>(((RequiresPeerForwarding) processor).getIdentificationKeys());
+                if (!identificationKeys.equals(processorIdentificationKeys)) {
+                    throw new RuntimeException(
+                            "All the processors of same type within a single pipeline should have same identification keys.");
+                }
+            }
+        });
+
         if (identificationKeys.isEmpty()) {
-            throw new EmptyPeerForwarderPluginIdentificationKeysException("Peer Forwarder Plugin: %s cannot have empty identification keys." + pluginId);
+            throw new EmptyPeerForwarderPluginIdentificationKeysException(
+                    "Peer Forwarder Plugin: %s cannot have empty identification keys." + pluginId);
         }
-        this.peerForwarder = peerForwarderProvider.register(pipelineName, pluginId, identificationKeys);
+
+        final PeerForwarder peerForwarder = peerForwarderProvider.register(pipelineName, pluginId, identificationKeys);
+
+        return processors.stream().map(processor -> new PeerForwardingProcessorDecorator(peerForwarder, processor))
+                .collect(Collectors.toList());
+    }
+
+    private PeerForwardingProcessorDecorator(final PeerForwarder peerForwarder, final Processor innerProcessor) {
+        this.peerForwarder = peerForwarder;
+        this.innerProcessor = innerProcessor;
     }
 
     @Override
@@ -46,7 +74,8 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
         final Collection<Record<Event>> recordsToProcessOnLocalPeer = peerForwarder.forwardRecords(records);
         final Collection<Record<Event>> receivedRecordsFromBuffer = peerForwarder.receiveRecords();
 
-        final Collection<Record<Event>> recordsToProcessLocally = CollectionUtils.union(recordsToProcessOnLocalPeer, receivedRecordsFromBuffer);
+        final Collection<Record<Event>> recordsToProcessLocally = CollectionUtils.union(
+                recordsToProcessOnLocalPeer, receivedRecordsFromBuffer);
 
         return innerProcessor.execute(recordsToProcessLocally);
     }

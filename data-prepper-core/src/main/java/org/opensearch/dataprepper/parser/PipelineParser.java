@@ -159,18 +159,15 @@ public class PipelineParser {
                     .collect(Collectors.toList());
 
             final List<List<Processor>> decoratedProcessorSets = processorSets.stream()
-                    .map(processorComponentList -> processorComponentList.stream()
-                            .map(processorComponent -> {
-                                if (processorComponent.getComponent() instanceof RequiresPeerForwarding) {
-                                    return new PeerForwardingProcessorDecorator(
-                                            processorComponent.getComponent(), peerForwarderProvider, pipelineName, processorComponent.getName()
-                                    );
-                                }
-                                return processorComponent.getComponent();
-                            })
-                            .collect(Collectors.toList())
-                        ).collect(Collectors.toList());
-
+                    .map(processorComponentList -> {
+                        final List<Processor> processors = processorComponentList.stream().map(IdentifiedComponent::getComponent).collect(Collectors.toList());
+                        if (processorComponentList.get(0) instanceof RequiresPeerForwarding) {
+                            return PeerForwardingProcessorDecorator.decorateProcessors(
+                                    processors, peerForwarderProvider, pipelineName, processorComponentList.get(0).getName()
+                            );
+                        }
+                        return processors;
+                    }).collect(Collectors.toList());
 
             final int readBatchDelay = pipelineConfiguration.getReadBatchDelay();
 
