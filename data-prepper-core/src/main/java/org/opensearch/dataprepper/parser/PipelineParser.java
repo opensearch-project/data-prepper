@@ -181,6 +181,7 @@ public class PipelineParser {
                     .collect(Collectors.toList());
 
             final List<Buffer> secondaryBuffers = getSecondaryBuffers();
+            LOG.info("Constructing MultiBufferDecorator with [{}] secondary buffers for pipeline [{}]", secondaryBuffers.size(), pipelineName);
             final MultiBufferDecorator multiBufferDecorator = new MultiBufferDecorator(buffer, secondaryBuffers);
 
             final Pipeline pipeline = new Pipeline(pipelineName, source, multiBufferDecorator, decoratedProcessorSets, sinks, processorThreads, readBatchDelay,
