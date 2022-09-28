@@ -207,20 +207,6 @@ class PipelineParserTests {
     }
 
     @Test
-    void getPeerForwarderDrainDuration_peerForwarderDrainTimeoutNotSet() {
-        when(dataPrepperConfiguration.getPeerForwarderConfiguration()).thenReturn(peerForwarderConfiguration);
-        when(peerForwarderConfiguration.getDrainTimeout()).thenReturn(null);
-
-        final PipelineParser pipelineParser =
-                new PipelineParser(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
-        final Duration result = pipelineParser.getPeerForwarderDrainTimeout(dataPrepperConfiguration);
-        assertThat(result, is(Duration.ofSeconds(0)));
-
-        verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
-        verify(peerForwarderConfiguration).getDrainTimeout();
-    }
-
-    @Test
     void getPeerForwarderDrainDuration_IsSet() {
         final Duration expectedResult = Duration.ofSeconds(Math.abs(new Random().nextInt()));
         when(dataPrepperConfiguration.getPeerForwarderConfiguration()).thenReturn(peerForwarderConfiguration);

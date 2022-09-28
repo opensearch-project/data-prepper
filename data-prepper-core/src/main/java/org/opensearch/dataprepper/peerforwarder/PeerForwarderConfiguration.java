@@ -23,6 +23,7 @@ import java.util.Map;
  */
 public class PeerForwarderConfiguration {
     public static final String DEFAULT_PEER_FORWARDING_URI = "/event/forward";
+    public static final Duration DEFAULT_DRAIN_TIMEOUT = Duration.ofSeconds(10L);
     private static final String S3_PREFIX = "s3://";
 
     private Integer serverPort = 4994;
@@ -51,7 +52,7 @@ public class PeerForwarderConfiguration {
     private Integer batchSize = 48;
     private Integer bufferSize = 512;
     private boolean sslCertAndKeyFileInS3 = false;
-    private Duration drainTimeout;
+    private Duration drainTimeout = DEFAULT_DRAIN_TIMEOUT;
 
     public PeerForwarderConfiguration() {}
 

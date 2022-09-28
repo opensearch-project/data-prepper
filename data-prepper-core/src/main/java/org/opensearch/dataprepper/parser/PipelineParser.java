@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.parser;
 
+import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_DRAIN_TIMEOUT;
+
 import com.amazon.dataprepper.model.annotations.SingleThread;
 import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.configuration.PipelinesDataFlowModel;

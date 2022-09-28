@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_DRAIN_TIMEOUT;
+
 import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
@@ -54,7 +56,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(48));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(512));
         assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
-        assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(null));
+        assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(DEFAULT_DRAIN_TIMEOUT));
     }
 
     @Test
@@ -80,7 +82,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(100));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(100));
         assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
-        assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(null));
+        assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(DEFAULT_DRAIN_TIMEOUT));
     }
 
     @Test
