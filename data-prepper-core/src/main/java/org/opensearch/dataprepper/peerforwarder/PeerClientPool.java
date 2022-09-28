@@ -10,6 +10,7 @@ import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.ClientFactoryBuilder;
 import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
+import io.netty.handler.ssl.util.FingerprintTrustManagerFactory;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 
 import java.io.ByteArrayInputStream;
@@ -28,6 +29,7 @@ public class PeerClientPool {
     private boolean ssl;
     private Certificate certificate;
     private boolean sslDisableVerification;
+    private boolean sslFingerprintVerificationOnly;
     private ForwardingAuthentication authentication;
 
     public PeerClientPool() {
@@ -54,6 +56,10 @@ public class PeerClientPool {
         this.sslDisableVerification = sslDisableVerification;
     }
 
+    public void setSslFingerprintVerificationOnly(final boolean sslFingerprintVerificationOnly) {
+        this.sslFingerprintVerificationOnly = sslFingerprintVerificationOnly;
+    }
+
     public void setAuthentication(ForwardingAuthentication authentication) {
         this.authentication = authentication;
     }
@@ -69,11 +75,17 @@ public class PeerClientPool {
                 .writeTimeout(Duration.ofSeconds(clientTimeoutSeconds));
 
         if (ssl) {
-            final ClientFactoryBuilder clientFactoryBuilder = ClientFactory.builder()
-                    .tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(
-                                    new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8))
-                            )
-                    );
+            final ClientFactoryBuilder clientFactoryBuilder = ClientFactory.builder();
+
+            if (sslFingerprintVerificationOnly) {
+                final FingerprintTrustManagerFactory fingerprintTrustManagerFactory = new FingerprintTrustManagerFactory(certificate.getFingerprint());
+                clientFactoryBuilder.tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(fingerprintTrustManagerFactory));
+            } else {
+                clientFactoryBuilder.tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(
+                                new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8))
+                        )
+                );
+            }
 
             if(sslDisableVerification) {
                 clientFactoryBuilder.tlsNoVerifyHosts(ipAddress);

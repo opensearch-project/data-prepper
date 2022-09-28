@@ -33,6 +33,7 @@ public class PeerForwarderConfiguration {
     private String sslCertificateFile;
     private String sslKeyFile;
     private boolean sslDisableVerification = false;
+    private boolean sslFingerprintVerificationOnly = false;
     private ForwardingAuthentication authentication = ForwardingAuthentication.UNAUTHENTICATED;
     private boolean useAcmCertificateForSsl = false;
     private String acmCertificateArn;
@@ -63,6 +64,7 @@ public class PeerForwarderConfiguration {
             @JsonProperty("ssl_certificate_file") final String sslCertificateFile,
             @JsonProperty("ssl_key_file") final String sslKeyFile,
             @JsonProperty("ssl_insecure_disable_verification") final boolean sslDisableVerification,
+            @JsonProperty("ssl_fingerprint_verification_only") final boolean sslFingerprintVerificationOnly,
             @JsonProperty("authentication") final Map<String, Object> authentication,
             @JsonProperty("use_acm_certificate_for_ssl") final Boolean useAcmCertificateForSsl,
             @JsonProperty("acm_certificate_arn") final String acmCertificateArn,
@@ -89,6 +91,7 @@ public class PeerForwarderConfiguration {
         setSslCertificateFile(sslCertificateFile);
         setSslKeyFile(sslKeyFile);
         setDisableVerification(sslDisableVerification);
+        setFingerprintVerificationOnly(sslFingerprintVerificationOnly);
         setAuthentication(authentication);
         setAcmCertificateArn(acmCertificateArn);
         this.acmPrivateKeyPassword = acmPrivateKeyPassword;
@@ -272,6 +275,14 @@ public class PeerForwarderConfiguration {
 
     public boolean isSslDisableVerification() {
         return sslDisableVerification;
+    }
+
+    private void setFingerprintVerificationOnly(final boolean sslFingerprintVerificationOnly) {
+        this.sslFingerprintVerificationOnly = sslFingerprintVerificationOnly;
+    }
+
+    public boolean isSslFingerprintVerificationOnly() {
+        return sslFingerprintVerificationOnly;
     }
 
     private void setAuthentication(final Map<String, Object> authentication) {
