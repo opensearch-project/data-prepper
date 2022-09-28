@@ -10,9 +10,9 @@ import com.amazon.dataprepper.model.processor.Processor;
 import com.amazon.dataprepper.model.record.Record;
 import com.amazon.dataprepper.model.sink.Sink;
 import com.amazon.dataprepper.model.source.Source;
+import com.google.common.base.Preconditions;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadFactory;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadPoolExecutor;
-import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -162,7 +162,7 @@ public class Pipeline {
                             }
                         }
                 ).collect(Collectors.toList());
-                processorExecutorService.submit(new ProcessWorker(buffer, processors, sinks, this));
+                processorExecutorService.submit(new ProcessWorker(buffer, processors, this));
             }
         } catch (Exception ex) {
             //source failed to start - Cannot proceed further with the current pipeline, skipping further execution
