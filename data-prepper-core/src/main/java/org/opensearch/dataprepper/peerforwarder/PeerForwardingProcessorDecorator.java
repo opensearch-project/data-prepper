@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.peerforwarder.exception.EmptyPeerForwarderPlug
 import org.opensearch.dataprepper.peerforwarder.exception.UnsupportedPeerForwarderPluginException;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -30,7 +31,13 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
             final String pluginId) {
 
         Set<String> identificationKeys;
-        final Processor firstInnerProcessor = processors.get(0);
+        Processor firstInnerProcessor;
+        if (!processors.isEmpty()) {
+            firstInnerProcessor = processors.get(0);
+        }
+        else {
+            return Collections.emptyList();
+        }
 
         if (firstInnerProcessor instanceof RequiresPeerForwarding) {
             identificationKeys = new HashSet<> (((RequiresPeerForwarding) firstInnerProcessor).getIdentificationKeys());

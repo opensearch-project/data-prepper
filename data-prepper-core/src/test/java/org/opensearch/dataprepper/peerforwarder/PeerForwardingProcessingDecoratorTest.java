@@ -95,6 +95,13 @@ class PeerForwardingProcessingDecoratorTest {
         assertThrows(RuntimeException.class, () -> createObjectUnderTesDecoratedProcessors(List.of(((Processor) requiresPeerForwarding), (Processor) requiresPeerForwardingCopy)));
     }
 
+
+    @Test
+    void decorateProcessors_with_empty_processors_should_return_empty_list_of_processors() {
+        final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.emptyList());
+        assertThat(processors.size(), equalTo(0));
+    }
+
     @Nested
     class WithRegisteredPeerForwarder {
         @Mock
@@ -127,6 +134,7 @@ class PeerForwardingProcessingDecoratorTest {
             when(processor.execute(testData)).thenReturn(testData);
 
             final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.singletonList(processor));
+            assertThat(processors.size(), equalTo(1));
             final Collection<Record<Event>> records = processors.get(0).execute(testData);
 
             verify(requiresPeerForwarding, times(2)).getIdentificationKeys();
@@ -149,6 +157,7 @@ class PeerForwardingProcessingDecoratorTest {
             when(((Processor) requiresPeerForwarding).execute(anyCollection())).thenReturn(expectedRecordsToProcessLocally);
 
             final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.singletonList((Processor) requiresPeerForwarding));
+            assertThat(processors.size(), equalTo(1));
             final Collection<Record<Event>> records = processors.get(0).execute(forwardTestData);
 
             verify(requiresPeerForwarding, times(2)).getIdentificationKeys();
@@ -163,6 +172,8 @@ class PeerForwardingProcessingDecoratorTest {
         void PeerForwardingProcessingDecorator_execute_will_call_inner_processors_execute() {
             final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.singletonList(processor));
             Collection<Record<Event>> testData = Collections.singletonList(record);
+
+            assertThat(processors.size(), equalTo(1));
             processors.get(0).execute(testData);
             verify(processor).execute(anyCollection());
         }
@@ -171,6 +182,7 @@ class PeerForwardingProcessingDecoratorTest {
         void PeerForwardingProcessingDecorator_prepareForShutdown_will_call_inner_processors_prepareForShutdown() {
             final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.singletonList(processor));
 
+            assertThat(processors.size(), equalTo(1));
             processors.get(0).prepareForShutdown();
             verify(processor).prepareForShutdown();
         }
@@ -179,6 +191,7 @@ class PeerForwardingProcessingDecoratorTest {
         void PeerForwardingProcessingDecorator_isReadyForShutdown_will_call_inner_processors_isReadyForShutdown() {
             final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.singletonList(processor));
 
+            assertThat(processors.size(), equalTo(1));
             processors.get(0).isReadyForShutdown();
             verify(processor).isReadyForShutdown();
         }
@@ -187,6 +200,7 @@ class PeerForwardingProcessingDecoratorTest {
         void PeerForwardingProcessingDecorator_shutdown_will_call_inner_processors_shutdown() {
             final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.singletonList(processor));
 
+            assertThat(processors.size(), equalTo(1));
             processors.get(0).shutdown();
             verify(processor).shutdown();
         }
