@@ -136,24 +136,6 @@ class RemotePeerForwarderTest {
         assertThat(records, equalTo(testRecords));
     }
 
-    @Test
-    void test_isReadyForShutdown_empty_buffer() {
-        final RemotePeerForwarder objectUnderTest = createObjectUnderTest();
-
-        final boolean result = objectUnderTest.isReadyForShutdown();
-        assertThat(result, equalTo(true));
-    }
-
-    @Test
-    void test_isReadyForShutdown_non_empty_buffer() throws Exception {
-        final Collection<Record<Event>> testRecords = generateBatchRecords(new Random().nextInt(TEST_BUFFER_CAPACITY - 1) + 1);
-        peerForwarderReceiveBuffer.writeAll(testRecords, TEST_TIMEOUT_IN_MILLIS);
-        final RemotePeerForwarder objectUnderTest = createObjectUnderTest();
-
-        final boolean result = objectUnderTest.isReadyForShutdown();
-        assertThat(result, equalTo(false));
-    }
-
     private Collection<Record<Event>> generateBatchRecords(final int numRecords) {
         final Collection<Record<Event>> results = new ArrayList<>();
         for (int i = 0; i < numRecords; i++) {

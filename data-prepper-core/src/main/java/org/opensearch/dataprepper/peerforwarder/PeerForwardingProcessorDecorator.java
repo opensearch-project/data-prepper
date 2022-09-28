@@ -94,15 +94,11 @@ public class PeerForwardingProcessorDecorator implements Processor<Record<Event>
 
     @Override
     public boolean isReadyForShutdown() {
-        return isPeerForwarderReadyForShutdown() && innerProcessor.isReadyForShutdown();
+        return innerProcessor.isReadyForShutdown();
     }
 
     @Override
     public void shutdown() {
         innerProcessor.shutdown();
-    }
-
-    public boolean isPeerForwarderReadyForShutdown() {
-        return peerForwarder.isReadyForShutdown();
     }
 }

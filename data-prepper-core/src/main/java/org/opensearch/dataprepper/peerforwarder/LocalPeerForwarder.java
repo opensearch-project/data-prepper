@@ -22,9 +22,4 @@ public class LocalPeerForwarder implements PeerForwarder {
     public Collection<Record<Event>> receiveRecords() {
         return Collections.emptyList();
     }
-
-    @Override
-    public boolean isReadyForShutdown() {
-        return true;
-    }
 }

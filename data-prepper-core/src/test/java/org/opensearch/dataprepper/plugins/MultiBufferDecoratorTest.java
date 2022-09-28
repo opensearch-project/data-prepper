@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.model.buffer;
+package org.opensearch.dataprepper.plugins;
 
+import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.record.Record;
 import org.junit.jupiter.api.AfterEach;
@@ -90,21 +91,30 @@ public class MultiBufferDecoratorTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, 1, 2, 3, 46})
+    @ValueSource(ints = {1, 2, 3, 46})
     void isEmpty_AllBuffersAreEmpty(final int secondaryBufferCount) {
         when(primaryBuffer.isEmpty()).thenReturn(true);
-        if (secondaryBufferCount > 0) {
-            when(secondaryBuffer.isEmpty()).thenReturn(true);
-        }
+        when(secondaryBuffer.isEmpty()).thenReturn(true);
+
         final MultiBufferDecorator multiBufferDecorator = createObjectUnderTest(secondaryBufferCount);
 
         final boolean result = multiBufferDecorator.isEmpty();
         assertThat(result, equalTo(true));
 
         verify(primaryBuffer).isEmpty();
-        if (secondaryBufferCount > 0) {
-            verify(secondaryBuffer, times(secondaryBufferCount)).isEmpty();
-        }
+        verify(secondaryBuffer, times(secondaryBufferCount)).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void isEmpty_NoSecondaryBuffers(final boolean isPrimaryBufferEmpty) {
+        when(primaryBuffer.isEmpty()).thenReturn(isPrimaryBufferEmpty);
+        final MultiBufferDecorator multiBufferDecorator = createObjectUnderTest(0);
+
+        final boolean result = multiBufferDecorator.isEmpty();
+        assertThat(result, equalTo(isPrimaryBufferEmpty));
+
+        verify(primaryBuffer).isEmpty();
     }
 
     @Test

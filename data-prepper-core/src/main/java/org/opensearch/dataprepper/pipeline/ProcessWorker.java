@@ -40,15 +40,15 @@ public class ProcessWorker implements Runnable {
     @Override
     public void run() {
         try {
-            // Phase 1 - execute until stop requested and buffers drained
+            // Phase 1 - execute until stop requested
             while (!pipeline.isStopRequested()) {
                 doRun();
             }
             LOG.info("Processor shutdown phase 1 complete.");
 
-            // Phase 2 - execute until read buffer and peer forwarder buffer are empty
+            // Phase 2 - execute until buffers are empty
             LOG.info("Beginning processor shutdown phase 2, iterating until buffers empty.");
-            while (!areBuffersEmpty()) {
+            while (!readBuffer.isEmpty()) {
                 doRun();
             }
             LOG.info("Processor shutdown phase 2 complete.");
@@ -99,14 +99,6 @@ public class ProcessWorker implements Runnable {
         }
         // Checkpoint the current batch read from the buffer after being processed by processors and sinks.
         readBuffer.checkpoint(checkpointState);
-    }
-
-    private boolean areBuffersEmpty() {
-        return readBuffer.isEmpty() && processors.stream()
-                .filter(processor -> processor instanceof PeerForwardingProcessorDecorator)
-                .map(processor -> (PeerForwardingProcessorDecorator) processor)
-                .map(PeerForwardingProcessorDecorator::isPeerForwarderReadyForShutdown)
-                .allMatch(result -> result == true);
     }
 
     private boolean areComponentsReadyForShutdown() {

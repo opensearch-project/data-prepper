@@ -133,10 +133,4 @@ class RemotePeerForwarder implements PeerForwarder {
             }
         }
     }
-
-    @Override
-    public boolean isReadyForShutdown() {
-        return peerForwarderReceiveBuffer.isEmpty();
-    }
-
 }

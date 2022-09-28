@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.model.buffer;
+package org.opensearch.dataprepper.plugins;
 
+import com.amazon.dataprepper.model.buffer.Buffer;
 import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.record.Record;
 

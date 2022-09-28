@@ -194,24 +194,13 @@ class PeerForwardingProcessingDecoratorTest {
             verify(processor).prepareForShutdown();
         }
 
-        @ParameterizedTest
-        @ArgumentsSource(IsReadyForShutdownArgs.class)
-        void PeerForwardingProcessingDecorator_isReadyForShutdown(final boolean isPeerForwarderReady, final boolean isInnerProcessorReady,
-                                                                  final boolean expectedResult) {
-            when(peerForwarder.isReadyForShutdown()).thenReturn(isPeerForwarderReady);
-            if (isPeerForwarderReady) {
-                when(processor.isReadyForShutdown()).thenReturn(isInnerProcessorReady);
-            }
+        @Test
+        void PeerForwardingProcessingDecorator_isReadyForShutdown_will_call_inner_processors_isReadyForShutdown() {
             final List<Processor> processors = createObjectUnderTesDecoratedProcessors(Collections.singletonList(processor));
 
             assertThat(processors.size(), equalTo(1));
-            final boolean result = processors.get(0).isReadyForShutdown();
-            assertThat(result, is(expectedResult));
-
-            verify(peerForwarder).isReadyForShutdown();
-            if (isPeerForwarderReady) {
-                verify(processor).isReadyForShutdown();
-            }
+            processors.get(0).isReadyForShutdown();
+            verify(processor).isReadyForShutdown();
         }
 
         @Test
@@ -221,18 +210,6 @@ class PeerForwardingProcessingDecoratorTest {
             assertThat(processors.size(), equalTo(1));
             processors.get(0).shutdown();
             verify(processor).shutdown();
-        }
-    }
-
-    static class IsReadyForShutdownArgs implements ArgumentsProvider {
-        @Override
-        public Stream<Arguments> provideArguments(ExtensionContext context) {
-            return Stream.of(
-                    Arguments.of(true, true, true),
-                    Arguments.of(true, false, false),
-                    Arguments.of(false, true, false),
-                    Arguments.of(false, false, false)
-            );
         }
     }
 }
