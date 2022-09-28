@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.integration.peerforwarder;
 
+import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
+import org.opensearch.dataprepper.plugins.source.loggenerator.ApacheLogFaker;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.WebClient;
@@ -22,8 +24,6 @@ import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
-import org.opensearch.dataprepper.plugins.source.loggenerator.ApacheLogFaker;
 import org.opensearch.search.SearchHits;
 import org.opensearch.search.builder.SearchSourceBuilder;
 
@@ -40,12 +40,14 @@ import java.util.stream.Collectors;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.not;
 
-public class EndToEndLogPeerForwarderTest {
-
+public class EndToEndPeerForwarderTest {
     private static final int HTTP_SOURCE_PORT = 2021;
-    private static final String TEST_INDEX_NAME = "test-grok-index";
+    private static final String TEST_INDEX_NAME = "test-peer-forwarder-index";
+    private static final String SOURCE_IP = "12.12.12.12";
 
     private final ApacheLogFaker apacheLogFaker = new ApacheLogFaker();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -53,14 +55,14 @@ public class EndToEndLogPeerForwarderTest {
     @Test
     public void testPipelineEndToEnd() throws JsonProcessingException {
         // Send data to http source
-        sendHttpRequestToSource(HTTP_SOURCE_PORT, generateRandomApacheLogHttpData(2));
-        sendHttpRequestToSource(HTTP_SOURCE_PORT, generateRandomApacheLogHttpData(3));
+        sendHttpRequestToSource(HTTP_SOURCE_PORT, generateRandomApacheLogHttpData("13.13.13.13"));
+        sendHttpRequestToSource(HTTP_SOURCE_PORT, generateRandomApacheLogHttpData("14.14.14.14"));
 
         // Verify data in OpenSearch backend
         final RestHighLevelClient restHighLevelClient = prepareOpenSearchRestHighLevelClient();
         final List<Map<String, Object>> retrievedDocs = new ArrayList<>();
         // Wait for data to flow through pipeline and be indexed by ES
-        await().atMost(10, TimeUnit.SECONDS).untilAsserted(
+        await().atMost(60, TimeUnit.SECONDS).untilAsserted(
                 () -> {
                     refreshIndices(restHighLevelClient);
                     final SearchRequest searchRequest = new SearchRequest(TEST_INDEX_NAME);
@@ -69,13 +71,14 @@ public class EndToEndLogPeerForwarderTest {
                     );
                     final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
                     final List<Map<String, Object>> foundSources = getSourcesFromSearchHits(searchResponse.getHits());
-                    Assert.assertEquals(5, foundSources.size());
+                    Assert.assertEquals(2, foundSources.size());
                     retrievedDocs.addAll(foundSources);
                 }
         );
         // Verify original and grokked keys from retrieved docs
         final List<String> expectedDocKeys = Arrays.asList(
-                "date", "log", "clientip", "ident", "auth", "timestamp", "verb", "request", "httpversion", "response", "bytes");
+                "date", "log", "sourceIp", "destinationIp", "verb", "bytes"
+        );
         retrievedDocs.forEach(expectedDoc -> {
             for (String key: expectedDocKeys) {
                 assertThat(expectedDoc, hasKey(key));
@@ -126,13 +129,21 @@ public class EndToEndLogPeerForwarderTest {
         restHighLevelClient.indices().refresh(requestAll, RequestOptions.DEFAULT);
     }
 
-    private HttpData generateRandomApacheLogHttpData(final int numLogs) throws JsonProcessingException {
+    private HttpData generateRandomApacheLogHttpData(final String destinationIp) throws JsonProcessingException {
+        final int numLogs = 2;
         final List<Map<String, Object>> jsonArray = new ArrayList<>();
         for (int i = 0; i < numLogs; i++) {
-            final Map<String, Object> logObj = new HashMap<String, Object>() {{
-                put("date", System.currentTimeMillis());
-                put("log", apacheLogFaker.generateRandomExtendedApacheLog());
-            }};
+            final Map<String, Object> logObj = new HashMap<>();
+                logObj.put("date", System.currentTimeMillis());
+                logObj.put("log", apacheLogFaker.generateRandomExtendedApacheLog());
+                logObj.put("sourceIp", SOURCE_IP);
+                logObj.put("destinationIp", destinationIp);
+                if (i%2 == 0) {
+                    logObj.put("verb", "POST");
+                }
+                else {
+                    logObj.put("bytes", "412");
+                }
             jsonArray.add(logObj);
         }
         final String jsonData = objectMapper.writeValueAsString(jsonArray);

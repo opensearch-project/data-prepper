@@ -1,9 +1,11 @@
+apply plugin: DockerRemoteApiPlugin
+
+
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
 
-apply plugin: DockerRemoteApiPlugin
 
 import com.bmuschko.gradle.docker.DockerRemoteApiPlugin
 import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
@@ -28,7 +30,7 @@ task removeDataPrepperNetwork(type: DockerRemoveNetwork) {
     networkId = createDataPrepperNetwork.getNetworkId()
 }
 
-def AGGREGATE_PIPELINE_YAML = "aggregate-e2e-pipeline.yaml"
+def BASIC_AGGREGATE_PIPELINE_YAML = "basic-aggregate-e2e-pipeline.yml"
 
 /**
  * DataPrepper Docker tasks
@@ -39,7 +41,7 @@ task createDataPrepperDockerFile(type: Dockerfile) {
     from(dataPrepperBaseImage)
     workingDir("/app/data-prepper")
     copyFile("${dataPrepperJarFilepath}", "/app/data-prepper/lib")
-    copyFile("src/integrationTest/resources/${AGGREGATE_PIPELINE_YAML}", "/app/data-prepper/pipelines/pipelines.yaml")
+    copyFile("src/integrationTest/resources/${BASIC_AGGREGATE_PIPELINE_YAML}", "/app/data-prepper/pipelines/pipelines.yaml")
     copyFile("src/integrationTest/resources/data_prepper.yml", "/app/data-prepper/config/data-prepper-config.yaml")
     defaultCommand('java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute')
 }
@@ -48,17 +50,18 @@ task buildDataPrepperDockerImage(type: DockerBuildImage) {
     dependsOn createDataPrepperDockerFile
     inputDir  = file(".")
     dockerFile  = file("build/docker/Dockerfile")
-    images.add("e2e-test-peer-forwarder-log-pipeline-image")
+    images.add("e2e-test-log-pipeline-image")
 }
 
 def createDataPrepperDockerContainer(final String taskBaseName, final String dataPrepperName, final int sourcePort,
-                                     final int serverPort) {
+                                     final int serverPort, final int peerForwarderPort) {
     return tasks.create("create${taskBaseName}", DockerCreateContainer) {
         dependsOn buildDataPrepperDockerImage
         dependsOn createDataPrepperNetwork
         containerName = dataPrepperName
         exposePorts("tcp", [2021, 4900])
-        hostConfig.portBindings = [String.format('%d:2021', sourcePort), String.format('%d:4900', serverPort)]
+//        hostConfig.hos
+        hostConfig.portBindings = [String.format('%d:2021', sourcePort), String.format('%d:4900', serverPort), String.format('%d:4994', peerForwarderPort)]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
         cmd = ['java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute']
         targetImageId buildDataPrepperDockerImage.getImageId()
@@ -123,11 +126,11 @@ task stopOpenSearchDockerContainer(type: DockerStopContainer) {
  * End to end test. Spins up OpenSearch and DataPrepper docker containers, then runs the integ test
  * Stops the docker containers when finished
  */
-task peerForwarderEndToEndTest(type: Test) {
+task basicLogEndToEndTest(type: Test) {
     dependsOn build
     dependsOn startOpenSearchDockerContainer
     def createDataPrepperTask = createDataPrepperDockerContainer(
-            "basicLogDataPrepper", "dataprepper", 2021, 4900)
+            "basicLogDataPrepper", "dataprepper", 2021, 4900, 4994)
     def startDataPrepperTask = startDataPrepperDockerContainer(createDataPrepperTask as DockerCreateContainer)
     dependsOn startDataPrepperTask
     startDataPrepperTask.mustRunAfter 'startOpenSearchDockerContainer'
@@ -142,7 +145,7 @@ task peerForwarderEndToEndTest(type: Test) {
     classpath = sourceSets.integrationTest.runtimeClasspath
 
     filter {
-        includeTestsMatching "org.opensearch.dataprepper.integration.peerforwarder.EndToEndLogPeerForwarderTest.testPipelineEndToEnd*"
+        includeTestsMatching "org.opensearch.dataprepper.integration.peerforwarder.EndToEndPeerForwarderTest.testPipelineEndToEnd*"
     }
 
     finalizedBy stopOpenSearchDockerContainer

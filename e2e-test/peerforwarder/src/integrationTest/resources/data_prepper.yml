@@ -1,0 +1,4 @@
+ssl: false
+peer_forwarder:
+  port: 4994
+  discovery_mode: local_node
