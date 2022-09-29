@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.linecorp.armeria.client.Endpoint;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 
 import java.util.Collections;

@@ -5,15 +5,15 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
-import com.amazon.dataprepper.metrics.MetricNames;
-import com.amazon.dataprepper.metrics.MetricsTestUtil;
-import com.amazon.dataprepper.metrics.PluginMetrics;
-import com.amazon.dataprepper.model.CheckpointState;
-import com.amazon.dataprepper.model.configuration.PluginModel;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.log.Log;
-import com.amazon.dataprepper.model.plugin.PluginFactory;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.log.Log;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.record.Record;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.ResponseTimeoutException;
 import com.linecorp.armeria.client.WebClient;

@@ -5,7 +5,7 @@
 
 package com.amazon.dataprepper.plugins.prepper.peerforwarder;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate.CertificateProviderConfig;
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.certificate.CertificateProviderFactory;
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery.PeerListProvider;

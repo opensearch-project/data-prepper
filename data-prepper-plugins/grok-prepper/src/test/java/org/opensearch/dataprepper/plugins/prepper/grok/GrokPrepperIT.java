@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.prepper.grok;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

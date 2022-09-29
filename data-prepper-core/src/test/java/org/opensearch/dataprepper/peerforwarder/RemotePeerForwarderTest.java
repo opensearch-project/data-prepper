@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
-import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.event.JacksonEvent;
-import com.amazon.dataprepper.model.log.JacksonLog;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.record.Record;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import io.micrometer.core.instrument.Counter;

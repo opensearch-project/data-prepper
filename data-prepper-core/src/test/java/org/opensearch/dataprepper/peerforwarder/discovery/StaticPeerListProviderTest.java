@@ -5,15 +5,15 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
-import com.amazon.dataprepper.metrics.MetricNames;
-import com.amazon.dataprepper.metrics.MetricsTestUtil;
-import com.amazon.dataprepper.metrics.PluginMetrics;
 import io.micrometer.core.instrument.Measurement;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.peerforwarder.HashRing;
 
 import java.util.Arrays;

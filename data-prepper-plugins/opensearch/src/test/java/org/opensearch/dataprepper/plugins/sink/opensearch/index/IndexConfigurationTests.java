@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.junit.Test;
 
 import java.net.MalformedURLException;

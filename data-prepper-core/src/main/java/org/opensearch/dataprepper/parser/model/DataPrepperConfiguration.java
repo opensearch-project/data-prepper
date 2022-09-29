@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.parser.model;
 
-import com.amazon.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;

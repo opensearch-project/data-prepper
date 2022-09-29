@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.oteltrace;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 

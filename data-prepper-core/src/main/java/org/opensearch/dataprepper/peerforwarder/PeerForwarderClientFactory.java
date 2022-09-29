@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.peerforwarder;
 
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 import org.opensearch.dataprepper.peerforwarder.discovery.PeerListProvider;

@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.parser.config;
 
-import com.amazon.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import com.fasterxml.jackson.databind.module.SimpleModule;

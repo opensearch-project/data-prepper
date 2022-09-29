@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.drop;
 
-import com.amazon.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.Event;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import org.slf4j.Logger;
 

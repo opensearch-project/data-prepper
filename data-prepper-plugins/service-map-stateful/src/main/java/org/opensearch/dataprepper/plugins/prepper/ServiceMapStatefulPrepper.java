@@ -5,16 +5,16 @@
 
 package org.opensearch.dataprepper.plugins.prepper;
 
-import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
-import com.amazon.dataprepper.model.annotations.SingleThread;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.event.JacksonEvent;
-import com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding;
-import com.amazon.dataprepper.model.processor.AbstractProcessor;
-import com.amazon.dataprepper.model.processor.Processor;
-import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.SingleThread;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding;
+import org.opensearch.dataprepper.model.processor.AbstractProcessor;
+import org.opensearch.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.trace.Span;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.SignedBytes;

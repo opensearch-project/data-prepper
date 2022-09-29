@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.oteltracegroup;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;

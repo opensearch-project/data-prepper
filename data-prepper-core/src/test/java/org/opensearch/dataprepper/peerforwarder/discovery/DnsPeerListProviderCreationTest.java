@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
 import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroupBuilder;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +14,8 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 
 import java.util.concurrent.CompletableFuture;
 

@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.codec;
 
-import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.io.IOException;
 import java.io.InputStream;

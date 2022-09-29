@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -16,8 +16,8 @@ import java.util.Collections;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 

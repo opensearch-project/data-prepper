@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
-import com.amazon.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.source.codec.Codec;
 import org.opensearch.dataprepper.plugins.source.codec.NewlineDelimitedCodec;
 import org.opensearch.dataprepper.plugins.source.codec.NewlineDelimitedConfig;

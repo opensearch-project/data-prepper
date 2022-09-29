@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.expression;
 
-import com.amazon.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.Event;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.antlr.v4.runtime.Token;

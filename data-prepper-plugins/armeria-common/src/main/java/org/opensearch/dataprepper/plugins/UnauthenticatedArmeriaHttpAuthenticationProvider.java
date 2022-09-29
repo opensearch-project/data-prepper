@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins;
 
 import org.opensearch.dataprepper.armeria.authentication.ArmeriaHttpAuthenticationProvider;
-import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 
 /**
  * The plugin to use for unauthenticated access to Armeria servers. It

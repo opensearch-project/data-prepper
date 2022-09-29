@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.exception;
 
-import com.amazon.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

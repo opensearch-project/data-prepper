@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.prepper.grok;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
 import java.util.List;
 import java.util.Map;

@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
-import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.codec.Codec;
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.source.compression.GZipCompressionEngine;

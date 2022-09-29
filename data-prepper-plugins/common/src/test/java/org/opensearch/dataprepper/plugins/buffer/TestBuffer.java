@@ -5,12 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.buffer;
 
-import com.amazon.dataprepper.model.CheckpointState;
-import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
-import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;

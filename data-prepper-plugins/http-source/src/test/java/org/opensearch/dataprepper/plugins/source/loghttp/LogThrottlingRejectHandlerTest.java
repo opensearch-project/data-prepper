@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpRequest;
 import com.linecorp.armeria.common.HttpResponse;

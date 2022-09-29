@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.expression;
 
-import com.amazon.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.Event;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

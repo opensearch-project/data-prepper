@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.configuration.SqsOptions;

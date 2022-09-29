@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
-import com.amazon.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.event.Event;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

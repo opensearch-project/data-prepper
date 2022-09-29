@@ -5,7 +5,7 @@
 
 package com.amazon.dataprepper.plugins.processor.otelmetrics;
 
-import com.amazon.dataprepper.model.metric.Bucket;
+import org.opensearch.dataprepper.model.metric.Bucket;
 import com.google.protobuf.ByteString;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;

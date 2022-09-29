@@ -5,14 +5,14 @@
 
 package com.amazon.dataprepper.plugins.otel.codec;
 
-import com.amazon.dataprepper.model.trace.DefaultLink;
-import com.amazon.dataprepper.model.trace.DefaultSpanEvent;
-import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
-import com.amazon.dataprepper.model.trace.JacksonSpan;
-import com.amazon.dataprepper.model.trace.Link;
-import com.amazon.dataprepper.model.trace.Span;
-import com.amazon.dataprepper.model.trace.SpanEvent;
-import com.amazon.dataprepper.model.trace.TraceGroupFields;
+import org.opensearch.dataprepper.model.trace.DefaultLink;
+import org.opensearch.dataprepper.model.trace.DefaultSpanEvent;
+import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
+import org.opensearch.dataprepper.model.trace.JacksonSpan;
+import org.opensearch.dataprepper.model.trace.Link;
+import org.opensearch.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.model.trace.SpanEvent;
+import org.opensearch.dataprepper.model.trace.TraceGroupFields;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
@@ -41,7 +41,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * OTelProtoCodec is for encoding/decoding between {@link com.amazon.dataprepper.model.trace} and {@link io.opentelemetry.proto}.
+ * OTelProtoCodec is for encoding/decoding between {@link org.opensearch.dataprepper.model.trace} and {@link io.opentelemetry.proto}.
  */
 public class OTelProtoCodec {
     private static final ObjectMapper OBJECT_MAPPER =  new ObjectMapper();

@@ -5,10 +5,10 @@
 
 package com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery;
 
-import com.amazon.dataprepper.metrics.MetricNames;
-import com.amazon.dataprepper.metrics.MetricsTestUtil;
-import com.amazon.dataprepper.metrics.PluginMetrics;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.HashRing;
 import com.linecorp.armeria.client.Endpoint;
 import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
