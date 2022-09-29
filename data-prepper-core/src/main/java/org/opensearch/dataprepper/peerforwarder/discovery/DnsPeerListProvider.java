@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import com.google.common.base.Preconditions;
 import com.linecorp.armeria.client.Endpoint;
@@ -26,7 +27,7 @@ public class DnsPeerListProvider implements PeerListProvider {
 
     private final DnsAddressEndpointGroup endpointGroup;
 
-    public DnsPeerListProvider(final DnsAddressEndpointGroup endpointGroup) {
+    public DnsPeerListProvider(final DnsAddressEndpointGroup endpointGroup, final PluginMetrics pluginMetrics) {
         Objects.requireNonNull(endpointGroup);
 
         this.endpointGroup = endpointGroup;
@@ -38,9 +39,10 @@ public class DnsPeerListProvider implements PeerListProvider {
             throw new RuntimeException("Caught exception while querying DNS", e);
         }
 
+        pluginMetrics.gauge(PEER_ENDPOINTS, endpointGroup, group -> group.endpoints().size());
     }
 
-    static DnsPeerListProvider createPeerListProvider(PeerForwarderConfiguration peerForwarderConfiguration) {
+    static DnsPeerListProvider createPeerListProvider(final PeerForwarderConfiguration peerForwarderConfiguration, final PluginMetrics pluginMetrics) {
         final String domainName = peerForwarderConfiguration.getDomainName();
         Objects.requireNonNull(domainName, "Missing domain_name configuration value");
         Preconditions.checkState(DiscoveryUtils.validateEndpoint(domainName), "Invalid domain name: %s", domainName);
@@ -49,7 +51,7 @@ public class DnsPeerListProvider implements PeerListProvider {
                 .ttl(MIN_TTL, MAX_TTL)
                 .build();
 
-        return new DnsPeerListProvider(endpointGroup);
+        return new DnsPeerListProvider(endpointGroup, pluginMetrics);
     }
 
     @Override

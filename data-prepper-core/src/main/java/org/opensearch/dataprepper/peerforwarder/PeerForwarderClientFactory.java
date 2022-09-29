@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.peerforwarder;
 
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 import org.opensearch.dataprepper.peerforwarder.discovery.PeerListProvider;
@@ -16,18 +17,21 @@ public class PeerForwarderClientFactory {
     private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final PeerClientPool peerClientPool;
     private final CertificateProviderFactory certificateProviderFactory;
+    private final PluginMetrics pluginMetrics;
 
     public PeerForwarderClientFactory(final PeerForwarderConfiguration peerForwarderConfiguration,
                                       final PeerClientPool peerClientPool,
-                                      final CertificateProviderFactory certificateProviderFactory) {
+                                      final CertificateProviderFactory certificateProviderFactory,
+                                      final PluginMetrics pluginMetrics) {
         this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.peerClientPool = peerClientPool;
         this.certificateProviderFactory = certificateProviderFactory;
+        this.pluginMetrics = pluginMetrics;
     }
 
     public HashRing createHashRing() {
         final DiscoveryMode discoveryMode = peerForwarderConfiguration.getDiscoveryMode();
-        final PeerListProvider peerListProvider = discoveryMode.create(peerForwarderConfiguration);
+        final PeerListProvider peerListProvider = discoveryMode.create(peerForwarderConfiguration, pluginMetrics);
         return new HashRing(peerListProvider, NUM_VIRTUAL_NODES);
     }
 

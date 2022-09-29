@@ -5,8 +5,12 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
+import com.amazon.dataprepper.metrics.MetricNames;
+import com.amazon.dataprepper.metrics.MetricsTestUtil;
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.linecorp.armeria.client.Endpoint;
 import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
+import io.micrometer.core.instrument.Measurement;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -15,7 +19,9 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.opensearch.dataprepper.peerforwarder.HashRing;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.Assert.assertEquals;
@@ -33,6 +39,8 @@ public class DnsPeerListProviderTest {
             Endpoint.of(ENDPOINT_1),
             Endpoint.of(ENDPOINT_2)
     );
+    private static final String COMPONENT_SCOPE = "testComponentScope";
+    private static final String COMPONENT_ID = "testComponentId";
 
     @Mock
     private DnsAddressEndpointGroup dnsAddressEndpointGroup;
@@ -40,21 +48,25 @@ public class DnsPeerListProviderTest {
     @Mock
     private HashRing hashRing;
 
+    private PluginMetrics pluginMetrics;
+
     private CompletableFuture completableFuture;
 
     private DnsPeerListProvider dnsPeerListProvider;
 
     @Before
     public void setup() {
+        MetricsTestUtil.initMetrics();
         completableFuture = CompletableFuture.completedFuture(null);
         when(dnsAddressEndpointGroup.whenReady()).thenReturn(completableFuture);
 
-        dnsPeerListProvider = new DnsPeerListProvider(dnsAddressEndpointGroup);
+        pluginMetrics = PluginMetrics.fromNames(COMPONENT_ID, COMPONENT_SCOPE);
+        dnsPeerListProvider = new DnsPeerListProvider(dnsAddressEndpointGroup, pluginMetrics);
     }
 
     @Test(expected = NullPointerException.class)
     public void testDefaultListProviderWithNullHostname() {
-        new DnsPeerListProvider(null);
+        new DnsPeerListProvider(null, pluginMetrics);
     }
 
     @Test(expected = RuntimeException.class)
@@ -63,7 +75,7 @@ public class DnsPeerListProviderTest {
         when(mockFuture.get()).thenThrow(new InterruptedException());
         when(dnsAddressEndpointGroup.whenReady()).thenReturn(mockFuture);
 
-        new DnsPeerListProvider(dnsAddressEndpointGroup);
+        new DnsPeerListProvider(dnsAddressEndpointGroup, pluginMetrics);
     }
 
     @Test
@@ -75,6 +87,20 @@ public class DnsPeerListProviderTest {
         assertEquals(ENDPOINT_LIST.size(), results.size());
         assertTrue(results.contains(ENDPOINT_1));
         assertTrue(results.contains(ENDPOINT_2));
+    }
+
+    @Test
+    public void testActivePeerCounter() {
+        when(dnsAddressEndpointGroup.endpoints()).thenReturn(ENDPOINT_LIST);
+
+        final List<Measurement> endpointsMeasures = MetricsTestUtil.getMeasurementList(new StringJoiner(MetricNames.DELIMITER).add(COMPONENT_SCOPE).add(COMPONENT_ID)
+                .add(PeerListProvider.PEER_ENDPOINTS).toString());
+        assertEquals(1, endpointsMeasures.size());
+        final Measurement endpointsMeasure = endpointsMeasures.get(0);
+        assertEquals(2.0, endpointsMeasure.getValue(), 0);
+
+        when(dnsAddressEndpointGroup.endpoints()).thenReturn(Collections.singletonList(Endpoint.of(ENDPOINT_1)));
+        assertEquals(1.0, endpointsMeasure.getValue(), 0);
     }
 
     @Test

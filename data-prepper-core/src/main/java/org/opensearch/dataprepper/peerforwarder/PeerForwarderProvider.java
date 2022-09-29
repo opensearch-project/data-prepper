@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
@@ -19,15 +20,18 @@ public class PeerForwarderProvider {
     private final PeerForwarderClientFactory peerForwarderClientFactory;
     private final PeerForwarderClient peerForwarderClient;
     private final PeerForwarderConfiguration peerForwarderConfiguration;
+    private final PluginMetrics pluginMetrics;
     private final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> pipelinePeerForwarderReceiveBufferMap = new HashMap<>();
     private HashRing hashRing;
 
     PeerForwarderProvider(final PeerForwarderClientFactory peerForwarderClientFactory,
                           final PeerForwarderClient peerForwarderClient,
-                          final PeerForwarderConfiguration peerForwarderConfiguration) {
+                          final PeerForwarderConfiguration peerForwarderConfiguration,
+                          final PluginMetrics pluginMetrics) {
         this.peerForwarderClientFactory = peerForwarderClientFactory;
         this.peerForwarderClient = peerForwarderClient;
         this.peerForwarderConfiguration = peerForwarderConfiguration;
+        this.pluginMetrics = pluginMetrics;
     }
 
     public PeerForwarder register(final String pipelineName, final String pluginId, final Set<String> identificationKeys) {
@@ -43,7 +47,7 @@ public class PeerForwarderProvider {
                 hashRing = peerForwarderClientFactory.createHashRing();
             }
             return new RemotePeerForwarder(
-                    peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId, identificationKeys
+                    peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId, identificationKeys, pluginMetrics
             );
         }
         else {

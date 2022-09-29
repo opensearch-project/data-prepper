@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.client;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
 import com.amazon.dataprepper.model.log.JacksonLog;
@@ -20,6 +21,11 @@ import com.linecorp.armeria.common.HttpStatus;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.noop.NoopTimer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,8 +53,12 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
+import static org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient.REQUESTS;
+import static org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient.CLIENT_REQUEST_FORWARDING_LATENCY;
 
 @ExtendWith(MockitoExtension.class)
 class PeerForwarderClientTest {
@@ -58,27 +68,41 @@ class PeerForwarderClientTest {
     private static final String TEST_PIPELINE_NAME = "test_pipeline_name";
 
     private ObjectMapper objectMapper;
+    @Mock
+    private PluginMetrics pluginMetrics;
 
     @Mock
-    PeerForwarderConfiguration peerForwarderConfiguration;
+    private PeerForwarderConfiguration peerForwarderConfiguration;
 
     @Mock
-    PeerClientPool peerClientPool;
+    private PeerClientPool peerClientPool;
 
     @Mock
-    PeerForwarderClientFactory peerForwarderClientFactory;
+    private PeerForwarderClientFactory peerForwarderClientFactory;
+
+    @Mock
+    private Counter requestsCounter;
+    private NoopTimer clientRequestForwardingLatencyTimer;
 
     @BeforeEach
     void setUp() {
+        clientRequestForwardingLatencyTimer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
+        when(pluginMetrics.counter(REQUESTS)).thenReturn(requestsCounter);
+        when(pluginMetrics.timer(CLIENT_REQUEST_FORWARDING_LATENCY)).thenReturn(clientRequestForwardingLatencyTimer);
         objectMapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule());
 
         when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
     }
 
+    @AfterEach
+    void tearDown() {
+        verifyNoMoreInteractions(requestsCounter);
+    }
+
     private PeerForwarderClient createObjectUnderTest(final ObjectMapper objectMapper) {
         when(peerForwarderConfiguration.getClientThreadCount()).thenReturn(200);
-        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper);
+        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper, pluginMetrics);
     }
 
     @Test
@@ -102,6 +126,8 @@ class PeerForwarderClientTest {
         assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
         assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
         server.stop(0);
+
+        verify(requestsCounter).increment();
     }
 
     @Test

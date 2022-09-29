@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +48,9 @@ class PeerForwarderProviderTest {
     @Mock
     private HashRing hashRing;
 
+    @Mock
+    private PluginMetrics pluginMetrics;
+
     private String pipelineName;
     private String pluginId;
     private Set<String> identificationKeys;
@@ -64,7 +68,7 @@ class PeerForwarderProviderTest {
     }
 
     private PeerForwarderProvider createObjectUnderTest() {
-        return new PeerForwarderProvider(peerForwarderClientFactory, peerForwarderClient, peerForwarderConfiguration);
+        return new PeerForwarderProvider(peerForwarderClientFactory, peerForwarderClient, peerForwarderConfiguration, pluginMetrics);
     }
 
     @Test

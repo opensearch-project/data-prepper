@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.client;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -12,6 +13,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.UnprocessedRequestException;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.peerforwarder.PeerClientPool;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderClientFactory;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
@@ -32,20 +35,28 @@ import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguratio
 
 public class PeerForwarderClient {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderClient.class);
+    static final String REQUESTS = "requests";
+    static final String CLIENT_REQUEST_FORWARDING_LATENCY = "clientRequestForwardingLatency";
 
     private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final PeerForwarderClientFactory peerForwarderClientFactory;
     private final ObjectMapper objectMapper;
+    private final Counter requestsCounter;
+    private final Timer clientRequestForwardingLatencyTimer;
+
     private ExecutorService executorService;
     private PeerClientPool peerClientPool;
 
     public PeerForwarderClient(final PeerForwarderConfiguration peerForwarderConfiguration,
                                final PeerForwarderClientFactory peerForwarderClientFactory,
-                               final ObjectMapper objectMapper) {
+                               final ObjectMapper objectMapper,
+                               final PluginMetrics pluginMetrics) {
         this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.peerForwarderClientFactory = peerForwarderClientFactory;
         this.objectMapper = objectMapper;
         executorService = Executors.newFixedThreadPool(peerForwarderConfiguration.getClientThreadCount());
+        requestsCounter = pluginMetrics.counter(REQUESTS);
+        clientRequestForwardingLatencyTimer = pluginMetrics.timer(CLIENT_REQUEST_FORWARDING_LATENCY);
     }
 
     public AggregatedHttpResponse serializeRecordsAndSendHttpRequest(
@@ -60,8 +71,11 @@ public class PeerForwarderClient {
 
         final String serializedJsonString = getSerializedJsonString(records, pluginId, pipelineName);
 
-        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture =
-                processHttpRequest(client, serializedJsonString);
+        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture = clientRequestForwardingLatencyTimer.record(() ->
+            processHttpRequest(client, serializedJsonString)
+        );
+        requestsCounter.increment();
+
         return getAggregatedHttpResponse(aggregatedHttpResponseCompletableFuture);
     }
 

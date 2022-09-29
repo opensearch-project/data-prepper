@@ -5,10 +5,11 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 
 import java.util.Objects;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 public enum DiscoveryMode {
     STATIC(StaticPeerListProvider::createPeerListProvider),
@@ -16,9 +17,9 @@ public enum DiscoveryMode {
     AWS_CLOUD_MAP(AwsCloudMapPeerListProvider::createPeerListProvider),
     LOCAL_NODE(LocalPeerListProvider::createPeerListProvider);
 
-    private final Function<PeerForwarderConfiguration, PeerListProvider> creationFunction;
+    private final BiFunction<PeerForwarderConfiguration, PluginMetrics, PeerListProvider> creationFunction;
 
-    DiscoveryMode(final Function<PeerForwarderConfiguration, PeerListProvider> creationFunction) {
+    DiscoveryMode(final BiFunction<PeerForwarderConfiguration, PluginMetrics, PeerListProvider> creationFunction) {
         Objects.requireNonNull(creationFunction);
 
         this.creationFunction = creationFunction;
@@ -27,10 +28,11 @@ public enum DiscoveryMode {
     /**
      * Creates a new {@link PeerListProvider} for this discovery mode.
      *
-     * @param peerForwarderConfiguration The plugin settings
+     * @param peerForwarderConfiguration The peer forwarder configuration
+     * @param pluginMetrics The plugin metrics
      * @return The new {@link PeerListProvider} for this discovery mode
      */
-    public PeerListProvider create(PeerForwarderConfiguration peerForwarderConfiguration) {
-        return creationFunction.apply(peerForwarderConfiguration);
+    public PeerListProvider create(final PeerForwarderConfiguration peerForwarderConfiguration, final PluginMetrics pluginMetrics) {
+        return creationFunction.apply(peerForwarderConfiguration, pluginMetrics);
     }
 }
