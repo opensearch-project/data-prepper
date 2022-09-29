@@ -31,10 +31,10 @@ The `run-tarball-files-smoke-tests.sh` script will smoke test a given tar archiv
 To run automated smoke test on the default archive file you can use the following command:
 
 ```shell
-./release/smoke-tests/run-tarball-files-smoke-test.sh
+./release/smoke-tests/run-tarball-files-smoke-tests.sh
 ```
 
-You can also customize what it tests against. The `-b` parameter specifies a base Docker image. The `-t` parameter determines which tar archive file to use.
+You can also customize what it tests against. The `-i` parameter specifies a base Docker image. The `-t` parameter determines which tar archive file to use.
 The values for `-t` are `opensearch-data-prepper` or `opensearch-data-prepper-jdk`.
 
 ```shell
