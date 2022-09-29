@@ -112,11 +112,7 @@ function get_url_tar() {
 }
 
 function run_smoke_test() {
-    export FROM_IMAGE_NAME=$1
-    export FROM_IMAGE_TAG=$2
-    export NAME=$3
-
-    export BUILD_NAME="${NAME}-${DATA_PREPPER_VERSION}-linux-x64"
+    export BUILD_NAME="${TAR_NAME}-${DATA_PREPPER_VERSION}-linux-x64"
     export TAR_FILE="${BUILD_NAME}.tar.gz"
 
     case $TAR_SOURCE_TYPE in
@@ -132,8 +128,8 @@ function run_smoke_test() {
         exit 1
     fi
 
-    export SMOKE_IMAGE_NAME="${NAME}-smoke-test"
-    echo "Using Docker Image ${FROM_IMAGE_NAME}:${FROM_IMAGE_TAG} as base image"
+    export SMOKE_IMAGE_NAME="${TAR_NAME}-smoke-test"
+    echo "Using Docker Image ${FROM_IMAGE} as base image"
     eval "${DOCKER_FILE_DIR}/build.sh"
 
     local CURRENT_DIR
@@ -146,12 +142,14 @@ function run_smoke_test() {
     cd "${CURRENT_DIR}" || exit
 }
 
-while getopts "b:d:hn:u:v:" arg; do
+while getopts "b:d:hi:n:t:u:v:" arg; do
     case $arg in
         b) export BUCKET_NAME=$OPTARG;;
         d) export TAR_DIR=$OPTARG;;
         h) usage;;
+        i) export FROM_IMAGE=$OPTARG;;
         n) export BUILD_NUMBER=$OPTARG;;
+        t) export TAR_NAME=$OPTARG;;
         u) export BASE_URL=$OPTARG;;
         v) export DATA_PREPPER_VERSION=$OPTARG;;
         ?) invalid_args;;
@@ -193,7 +191,17 @@ else
     invalid_args
 fi
 
+if ! is_defined "${FROM_IMAGE}"
+then
+    export FROM_IMAGE="openjdk:11"
+fi
+
+if ! is_defined "${TAR_NAME}"
+then
+    export TAR_NAME="opensearch-data-prepper"
+fi
+
+
 echo -e "Using tarball source ${TAR_SOURCE_TYPE}"
 
-run_smoke_test "openjdk" "11" "opensearch-data-prepper"
-run_smoke_test "ubuntu" "latest" "opensearch-data-prepper-jdk"
+run_smoke_test

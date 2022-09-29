@@ -72,7 +72,17 @@ jobs:
           docker pull ${{ secrets.ECR_REPOSITORY_URL }}:${{ env.version }}-${{ github.run_number }}
           ./release/smoke-tests/run-smoke-tests.sh -v ${{ env.version }}-${{ github.run_number }} -i ${{ secrets.ECR_REPOSITORY_URL }}
 
-  validate-tarball:
+  validate-archive:
+    strategy:
+      matrix:
+        include:
+          - image : "openjdk:11"
+            archive: opensearch-data-prepper
+          - image : "openjdk:17"
+            archive: opensearch-data-prepper
+          - image : "ubuntu:latest"
+            archive: opensearch-data-prepper-jdk
+      fail-fast: false
     runs-on: ubuntu-latest
     needs: build
     timeout-minutes: 30
@@ -84,4 +94,4 @@ jobs:
         run:  grep '^version=' gradle.properties >> $GITHUB_ENV
 
       - name: Smoke Test Tarball Files
-        run: ./release/smoke-tests/run-tarball-files-smoke-tests.sh -v ${{ env.version }} -u ${{ secrets.ARCHIVES_PUBLIC_URL }} -n ${{ github.run_number }}
+        run: ./release/smoke-tests/run-tarball-files-smoke-tests.sh -v ${{ env.version }} -u ${{ secrets.ARCHIVES_PUBLIC_URL }} -n ${{ github.run_number }} -i ${{ matrix.image }} -t ${{ matrix.archive }}
