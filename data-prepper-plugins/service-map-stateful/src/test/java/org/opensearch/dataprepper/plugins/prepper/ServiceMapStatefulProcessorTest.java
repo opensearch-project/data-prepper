@@ -68,7 +68,7 @@ public class ServiceMapStatefulProcessorTest {
 
     public void resetServiceMapStatefulProcessorStatic() throws NoSuchFieldException, IllegalAccessException {
         reflectivelySetField(ServiceMapStatefulProcessor.class, "RELATIONSHIP_STATE", Sets.newConcurrentHashSet());
-        reflectivelySetField(ServiceMapStatefulProcessor.class, "preppersCreated", new AtomicInteger(0));
+        reflectivelySetField(ServiceMapStatefulProcessor.class, "processorsCreated", new AtomicInteger(0));
         reflectivelySetField(ServiceMapStatefulProcessor.class, "previousTimestamp", 0);
         reflectivelySetField(ServiceMapStatefulProcessor.class, "windowDurationMillis", 0);
         reflectivelySetField(ServiceMapStatefulProcessor.class, "dbPath", null);
