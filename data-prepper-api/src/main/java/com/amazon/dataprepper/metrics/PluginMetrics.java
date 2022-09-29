@@ -29,10 +29,17 @@ public class PluginMetrics {
         return PluginMetrics.fromNames(pluginSetting.getName(), pluginSetting.getPipelineName());
     }
 
-    public static PluginMetrics fromNames(final String name, final String pipelineName) {
+    /**
+     * Provides reference to APIs that register timer, counter, gauge into global registry.
+     *
+     * @param componentId It can be either pluginId or Data Prepper core component id
+     * @param componentScope It can be pipeline name or Data Prepper core component
+     * @return The {@link PluginMetrics}
+     */
+    public static PluginMetrics fromNames(final String componentId, final String componentScope) {
         return new PluginMetrics(new StringJoiner(MetricNames.DELIMITER)
-                .add(pipelineName)
-                .add(name).toString());
+                .add(componentScope)
+                .add(componentId).toString());
     }
 
     private  PluginMetrics(final String metricsPrefix) {

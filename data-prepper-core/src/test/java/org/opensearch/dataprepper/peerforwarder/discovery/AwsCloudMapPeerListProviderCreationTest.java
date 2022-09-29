@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,10 +29,12 @@ import static org.mockito.Mockito.when;
 class AwsCloudMapPeerListProviderCreationTest {
 
     private PeerForwarderConfiguration peerForwarderConfiguration;
+    private PluginMetrics pluginMetrics;
 
     @BeforeEach
     void setUp() {
         peerForwarderConfiguration = mock(PeerForwarderConfiguration.class);
+        pluginMetrics = mock(PluginMetrics.class);
 
         when(peerForwarderConfiguration.getAwsCloudMapNamespaceName()).thenReturn(UUID.randomUUID().toString());
         when(peerForwarderConfiguration.getAwsCloudMapServiceName()).thenReturn(UUID.randomUUID().toString());
@@ -41,7 +44,7 @@ class AwsCloudMapPeerListProviderCreationTest {
 
     @Test
     void createPeerListProvider_with_valid_configurations() {
-        final PeerListProvider result = AwsCloudMapPeerListProvider.createPeerListProvider(peerForwarderConfiguration);
+        final PeerListProvider result = AwsCloudMapPeerListProvider.createPeerListProvider(peerForwarderConfiguration, pluginMetrics);
 
         assertThat(result, instanceOf(AwsCloudMapPeerListProvider.class));
     }
@@ -51,7 +54,7 @@ class AwsCloudMapPeerListProviderCreationTest {
         when(peerForwarderConfiguration.getAwsCloudMapServiceName()).thenReturn(null);
 
         assertThrows(NullPointerException.class,
-                () -> AwsCloudMapPeerListProvider.createPeerListProvider(peerForwarderConfiguration));
+                () -> AwsCloudMapPeerListProvider.createPeerListProvider(peerForwarderConfiguration, pluginMetrics));
 
     }
 
@@ -60,7 +63,7 @@ class AwsCloudMapPeerListProviderCreationTest {
         when(peerForwarderConfiguration.getAwsCloudMapNamespaceName()).thenReturn(null);
 
         assertThrows(NullPointerException.class,
-                () -> AwsCloudMapPeerListProvider.createPeerListProvider(peerForwarderConfiguration));
+                () -> AwsCloudMapPeerListProvider.createPeerListProvider(peerForwarderConfiguration, pluginMetrics));
 
     }
 
@@ -69,7 +72,7 @@ class AwsCloudMapPeerListProviderCreationTest {
         when(peerForwarderConfiguration.getAwsRegion()).thenReturn(null);
 
         assertThrows(NullPointerException.class,
-                () -> AwsCloudMapPeerListProvider.createPeerListProvider(peerForwarderConfiguration));
+                () -> AwsCloudMapPeerListProvider.createPeerListProvider(peerForwarderConfiguration, pluginMetrics));
 
     }
 
@@ -78,7 +81,7 @@ class AwsCloudMapPeerListProviderCreationTest {
         when(peerForwarderConfiguration.getAwsCloudMapQueryParameters()).thenReturn(null);
 
         assertThrows(NullPointerException.class,
-                () -> AwsCloudMapPeerListProvider.createPeerListProvider(peerForwarderConfiguration));
+                () -> AwsCloudMapPeerListProvider.createPeerListProvider(peerForwarderConfiguration, pluginMetrics));
 
     }
 
@@ -87,7 +90,7 @@ class AwsCloudMapPeerListProviderCreationTest {
     void createPeerListProvider_with_all_current_regions(final Region region) {
         when(peerForwarderConfiguration.getAwsRegion()).thenReturn(String.valueOf(region));
 
-        final PeerListProvider result = AwsCloudMapPeerListProvider.createPeerListProvider(peerForwarderConfiguration);
+        final PeerListProvider result = AwsCloudMapPeerListProvider.createPeerListProvider(peerForwarderConfiguration, pluginMetrics);
 
         assertThat(result, instanceOf(AwsCloudMapPeerListProvider.class));
     }

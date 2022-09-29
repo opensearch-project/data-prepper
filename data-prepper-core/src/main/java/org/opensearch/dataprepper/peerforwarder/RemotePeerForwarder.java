@@ -5,9 +5,11 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.record.Record;
+import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.peerforwarder.discovery.StaticPeerListProvider;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
@@ -30,7 +32,12 @@ import java.util.Set;
 class RemotePeerForwarder implements PeerForwarder {
     private static final Logger LOG = LoggerFactory.getLogger(RemotePeerForwarder.class);
     private static final int READ_BATCH_DELAY = 3_000;
-
+    static final String RECORDS_ACTUALLY_PROCESSED_LOCALLY = "recordsActuallyProcessedLocally";
+    static final String RECORDS_TO_BE_PROCESSED_LOCALLY = "recordsToBeProcessedLocally";
+    static final String RECORDS_TO_BE_FORWARDED = "recordsToBeForwarded";
+    static final String RECORDS_FAILED_FORWARDING = "recordsFailedForwarding";
+    static final String RECORDS_RECEIVED_FROM_PEERS = "recordsReceivedFromPeers";
+    static final String REQUESTS_FAILED = "requestsFailed";
 
     private final PeerForwarderClient peerForwarderClient;
     private final HashRing hashRing;
@@ -38,19 +45,32 @@ class RemotePeerForwarder implements PeerForwarder {
     private final String pipelineName;
     private final String pluginId;
     private final Set<String> identificationKeys;
+    private final Counter recordsActuallyProcessedLocallyCounter;
+    private final Counter recordsToBeProcessedLocallyCounter;
+    private final Counter recordsToBeForwardedCounter;
+    private final Counter recordsFailedForwardingCounter;
+    private final Counter recordsReceivedFromPeersCounter;
+    private final Counter requestsFailedCounter;
 
     RemotePeerForwarder(final PeerForwarderClient peerForwarderClient,
                         final HashRing hashRing,
                         final PeerForwarderReceiveBuffer<Record<Event>> peerForwarderReceiveBuffer,
                         final String pipelineName,
                         final String pluginId,
-                        final Set<String> identificationKeys) {
+                        final Set<String> identificationKeys,
+                        final PluginMetrics pluginMetrics) {
         this.peerForwarderClient = peerForwarderClient;
         this.hashRing = hashRing;
         this.peerForwarderReceiveBuffer = peerForwarderReceiveBuffer;
         this.pipelineName = pipelineName;
         this.pluginId = pluginId;
         this.identificationKeys = identificationKeys;
+        recordsActuallyProcessedLocallyCounter = pluginMetrics.counter(RECORDS_ACTUALLY_PROCESSED_LOCALLY);
+        recordsToBeProcessedLocallyCounter = pluginMetrics.counter(RECORDS_TO_BE_PROCESSED_LOCALLY);
+        recordsToBeForwardedCounter = pluginMetrics.counter(RECORDS_TO_BE_FORWARDED);
+        recordsFailedForwardingCounter = pluginMetrics.counter(RECORDS_FAILED_FORWARDING);
+        recordsReceivedFromPeersCounter = pluginMetrics.counter(RECORDS_RECEIVED_FROM_PEERS);
+        requestsFailedCounter = pluginMetrics.counter(REQUESTS_FAILED);
     }
 
     public Collection<Record<Event>> forwardRecords(final Collection<Record<Event>> records) {
@@ -63,7 +83,9 @@ class RemotePeerForwarder implements PeerForwarder {
 
             if (isAddressDefinedLocally(destinationIp)) {
                 recordsToProcessLocally.addAll(entry.getValue());
+                recordsToBeProcessedLocallyCounter.increment(entry.getValue().size());
             } else {
+                recordsToBeForwardedCounter.increment(entry.getValue().size());
                 AggregatedHttpResponse httpResponse;
                 try {
                     httpResponse = peerForwarderClient.serializeRecordsAndSendHttpRequest(entry.getValue(),
@@ -75,9 +97,12 @@ class RemotePeerForwarder implements PeerForwarder {
 
                 if (httpResponse == null || httpResponse.status() != HttpStatus.OK) {
                     recordsToProcessLocally.addAll(entry.getValue());
+                    recordsFailedForwardingCounter.increment(entry.getValue().size());
+                    requestsFailedCounter.increment();
                 }
             }
         }
+        recordsActuallyProcessedLocallyCounter.increment(recordsToProcessLocally.size());
         return recordsToProcessLocally;
     }
 
@@ -92,6 +117,7 @@ class RemotePeerForwarder implements PeerForwarder {
         // Checkpoint the current batch read from the buffer after reading from buffer
         peerForwarderReceiveBuffer.checkpoint(checkpointState);
 
+        recordsReceivedFromPeersCounter.increment(records.size());
         return records;
     }
 

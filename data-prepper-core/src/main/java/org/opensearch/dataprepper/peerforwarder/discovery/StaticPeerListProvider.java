@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import com.google.common.base.Preconditions;
 import com.linecorp.armeria.client.Endpoint;
@@ -25,22 +26,24 @@ public class StaticPeerListProvider implements PeerListProvider {
 
     private final List<String> endpoints;
 
-    public StaticPeerListProvider(final List<String> dataPrepperEndpoints) {
+    public StaticPeerListProvider(final List<String> dataPrepperEndpoints, final PluginMetrics pluginMetrics) {
         if (dataPrepperEndpoints != null && !dataPrepperEndpoints.isEmpty()) {
             endpoints = Collections.unmodifiableList(dataPrepperEndpoints);
         } else {
             throw new RuntimeException("Peer endpoints list cannot be empty");
         }
         LOG.info("Found endpoints: {}", endpoints);
+
+        pluginMetrics.gauge(PEER_ENDPOINTS, endpoints, List::size);
     }
 
-    static StaticPeerListProvider createPeerListProvider(PeerForwarderConfiguration peerForwarderConfiguration) {
+    static StaticPeerListProvider createPeerListProvider(final PeerForwarderConfiguration peerForwarderConfiguration, final PluginMetrics pluginMetrics) {
         final List<String> endpoints = peerForwarderConfiguration.getStaticEndpoints();
         Objects.requireNonNull(endpoints, "Missing static_endpoints configuration value");
         final List<String> invalidEndpoints = endpoints.stream().filter(endpoint -> !DiscoveryUtils.validateEndpoint(endpoint)).collect(Collectors.toList());
         Preconditions.checkState(invalidEndpoints.isEmpty(), "Including invalid endpoints: %s", invalidEndpoints);
 
-        return new StaticPeerListProvider(endpoints);
+        return new StaticPeerListProvider(endpoints, pluginMetrics);
     }
 
     @Override

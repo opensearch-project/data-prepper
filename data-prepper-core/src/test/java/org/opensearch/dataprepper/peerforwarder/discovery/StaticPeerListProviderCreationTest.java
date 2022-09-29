@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,10 +27,12 @@ class StaticPeerListProviderCreationTest {
     private static final String INVALID_ENDPOINT = "INVALID_ENDPOINT_";
 
     private PeerForwarderConfiguration peerForwarderConfiguration;
+    private PluginMetrics pluginMetrics;
 
     @BeforeEach
     void setup() {
         peerForwarderConfiguration = mock(PeerForwarderConfiguration.class);
+        pluginMetrics = mock(PluginMetrics.class);
     }
 
     @Test
@@ -37,14 +40,14 @@ class StaticPeerListProviderCreationTest {
         when(peerForwarderConfiguration.getStaticEndpoints()).thenReturn(null);
 
         assertThrows(NullPointerException.class,
-                () -> StaticPeerListProvider.createPeerListProvider(peerForwarderConfiguration));
+                () -> StaticPeerListProvider.createPeerListProvider(peerForwarderConfiguration, pluginMetrics));
     }
 
     @Test
     void testCreateProviderStaticInstanceWithEndpoints() {
         when(peerForwarderConfiguration.getStaticEndpoints()).thenReturn(Collections.singletonList(ENDPOINT));
 
-        PeerListProvider result = StaticPeerListProvider.createPeerListProvider(peerForwarderConfiguration);
+        PeerListProvider result = StaticPeerListProvider.createPeerListProvider(peerForwarderConfiguration, pluginMetrics);
 
         assertThat(result, instanceOf(StaticPeerListProvider.class));
         assertEquals(1, result.getPeerList().size());
@@ -56,7 +59,7 @@ class StaticPeerListProviderCreationTest {
         when(peerForwarderConfiguration.getStaticEndpoints()).thenReturn(Arrays.asList(ENDPOINT, INVALID_ENDPOINT));
 
         assertThrows(IllegalStateException.class,
-                () -> StaticPeerListProvider.createPeerListProvider(peerForwarderConfiguration));
+                () -> StaticPeerListProvider.createPeerListProvider(peerForwarderConfiguration, pluginMetrics));
     }
 
 }

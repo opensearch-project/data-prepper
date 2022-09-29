@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
@@ -51,7 +52,8 @@ class PeerForwarderAppConfigTest {
         PeerForwarderClientFactory peerForwarderClientFactory = peerForwarderAppConfig.peerForwarderClientFactory(
                 mock(PeerForwarderConfiguration.class),
                 mock(PeerClientPool.class),
-                mock(CertificateProviderFactory.class)
+                mock(CertificateProviderFactory.class),
+                mock(PluginMetrics.class)
         );
 
         assertThat(peerForwarderClientFactory, notNullValue());
