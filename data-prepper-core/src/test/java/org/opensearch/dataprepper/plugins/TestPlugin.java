@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins;
 
-import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
-import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.plugin.TestPluggableInterface;
 import org.opensearch.dataprepper.plugin.TestPluginConfiguration;
 

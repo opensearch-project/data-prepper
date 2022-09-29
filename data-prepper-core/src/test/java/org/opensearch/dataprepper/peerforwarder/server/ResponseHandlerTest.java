@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.peerforwarder.server;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
-import com.amazon.dataprepper.model.buffer.SizeOverflowException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpResponse;
@@ -18,19 +16,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.peerforwarder.server.ResponseHandler.BAD_REQUESTS;
-import static org.opensearch.dataprepper.peerforwarder.server.ResponseHandler.REQUEST_TIMEOUTS;
 import static org.opensearch.dataprepper.peerforwarder.server.ResponseHandler.REQUESTS_TOO_LARGE;
 import static org.opensearch.dataprepper.peerforwarder.server.ResponseHandler.REQUESTS_UNPROCESSABLE;
+import static org.opensearch.dataprepper.peerforwarder.server.ResponseHandler.REQUEST_TIMEOUTS;
 
 @ExtendWith(MockitoExtension.class)
 class ResponseHandlerTest {

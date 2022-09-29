@@ -5,13 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.processor.oteltrace;
 
-import com.amazon.dataprepper.metrics.MetricsTestUtil;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
-import com.amazon.dataprepper.model.trace.JacksonSpan;
-import com.amazon.dataprepper.model.trace.Span;
-import com.amazon.dataprepper.model.trace.TraceGroupFields;
+import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
+import org.opensearch.dataprepper.model.trace.JacksonSpan;
+import org.opensearch.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.model.trace.TraceGroupFields;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.assertj.core.api.Assertions;

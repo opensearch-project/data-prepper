@@ -6,9 +6,9 @@
 package org.opensearch.dataprepper.pipeline.server.config;
 
 import org.opensearch.dataprepper.DataPrepper;
-import com.amazon.dataprepper.model.configuration.PluginModel;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.pipeline.server.DataPrepperCoreAuthenticationProvider;
 import org.opensearch.dataprepper.pipeline.server.HttpServerProvider;
 import org.opensearch.dataprepper.pipeline.server.ListPipelinesHandler;

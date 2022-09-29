@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
-import com.amazon.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.micrometer.core.instrument.util.StringUtils;
 import jakarta.validation.constraints.AssertTrue;

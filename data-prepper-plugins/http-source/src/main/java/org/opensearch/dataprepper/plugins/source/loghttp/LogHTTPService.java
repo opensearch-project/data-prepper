@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
-import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.log.JacksonLog;
-import com.amazon.dataprepper.model.log.Log;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.log.Log;
+import org.opensearch.dataprepper.model.record.Record;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.HttpData;
 import com.linecorp.armeria.common.HttpResponse;

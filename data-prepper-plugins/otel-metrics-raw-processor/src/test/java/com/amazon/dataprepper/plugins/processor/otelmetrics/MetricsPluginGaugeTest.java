@@ -5,9 +5,9 @@
 
 package com.amazon.dataprepper.plugins.processor.otelmetrics;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.metric.Metric;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.metric.Metric;
+import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;

@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.plugins;
 
-import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
-import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.Source;
 
 import java.util.Iterator;
 import java.util.List;

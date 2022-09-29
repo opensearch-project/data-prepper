@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.DataPrepper.getServiceNameForMetrics;
-import static com.amazon.dataprepper.metrics.MetricNames.SERVICE_NAME;
+import static org.opensearch.dataprepper.metrics.MetricNames.SERVICE_NAME;
 
 @Configuration
 public class MetricsConfig {

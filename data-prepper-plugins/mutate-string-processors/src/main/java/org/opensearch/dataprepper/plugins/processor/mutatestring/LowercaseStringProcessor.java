@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutatestring;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
-import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
-import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.processor.Processor;
 
 import java.util.Locale;
 

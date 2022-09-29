@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.peerforwarder.exception;
 
 /**
  * This exception is thrown when processor which doesn't implement
- * {@link com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding} interface is passed to
+ * {@link org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding} interface is passed to
  * {@link org.opensearch.dataprepper.peerforwarder.PeerForwardingProcessorDecorator}.
  *
  * @since 2.0

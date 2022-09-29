@@ -5,10 +5,10 @@
 
 package com.amazon.dataprepper.plugins.processor.otelmetrics;
 
-import com.amazon.dataprepper.model.metric.Bucket;
-import com.amazon.dataprepper.model.metric.DefaultBucket;
-import com.amazon.dataprepper.model.metric.DefaultQuantile;
-import com.amazon.dataprepper.model.metric.Quantile;
+import org.opensearch.dataprepper.model.metric.Bucket;
+import org.opensearch.dataprepper.model.metric.DefaultBucket;
+import org.opensearch.dataprepper.model.metric.DefaultQuantile;
+import org.opensearch.dataprepper.model.metric.Quantile;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.proto.common.v1.AnyValue;

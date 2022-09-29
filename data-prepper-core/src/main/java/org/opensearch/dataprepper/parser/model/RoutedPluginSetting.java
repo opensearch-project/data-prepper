@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.parser.model;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
 import java.util.Collection;
 import java.util.Map;

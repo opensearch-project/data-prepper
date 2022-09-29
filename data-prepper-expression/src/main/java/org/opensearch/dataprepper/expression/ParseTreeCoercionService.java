@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.expression;
 
-import com.amazon.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.Event;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 

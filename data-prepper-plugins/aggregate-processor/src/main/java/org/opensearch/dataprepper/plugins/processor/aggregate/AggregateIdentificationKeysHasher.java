@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
-import com.amazon.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.Event;
 
 import java.util.HashMap;
 import java.util.List;

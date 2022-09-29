@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.pipeline;
 
-import com.amazon.dataprepper.model.CheckpointState;
-import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.processor.Processor;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.pipeline.common.FutureHelper;
 import org.opensearch.dataprepper.pipeline.common.FutureHelperResult;
 import org.slf4j.Logger;

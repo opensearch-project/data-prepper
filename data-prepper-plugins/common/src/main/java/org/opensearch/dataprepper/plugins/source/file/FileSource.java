@@ -5,14 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.source.file;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
-import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
-import com.amazon.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.event.JacksonEvent;
-import com.amazon.dataprepper.model.plugin.PluginFactory;
-import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.Source;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 

@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.source.oteltrace;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
-import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.buffer.SizeOverflowException;
-import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.trace.Span;
 import com.amazon.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import io.grpc.Context;
 import io.grpc.Status;

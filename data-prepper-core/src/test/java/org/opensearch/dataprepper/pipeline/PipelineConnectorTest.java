@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.pipeline;
 
-import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.record.Record;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;

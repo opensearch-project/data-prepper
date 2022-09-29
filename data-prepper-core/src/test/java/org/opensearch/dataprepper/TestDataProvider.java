@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper;
 
-import com.amazon.dataprepper.model.configuration.PluginModel;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.configuration.SinkModel;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.SinkModel;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;

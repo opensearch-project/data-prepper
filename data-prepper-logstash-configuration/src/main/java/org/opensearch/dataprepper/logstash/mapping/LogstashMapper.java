@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper.logstash.mapping;
 
-import com.amazon.dataprepper.model.configuration.PipelineModel;
-import com.amazon.dataprepper.model.configuration.PluginModel;
-import com.amazon.dataprepper.model.configuration.SinkModel;
+import org.opensearch.dataprepper.model.configuration.PipelineModel;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.SinkModel;
 import org.opensearch.dataprepper.logstash.exception.LogstashMappingException;
 import org.opensearch.dataprepper.logstash.model.LogstashConfiguration;
 import org.opensearch.dataprepper.logstash.model.LogstashPlugin;

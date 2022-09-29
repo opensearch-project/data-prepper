@@ -5,15 +5,15 @@
 
 package org.opensearch.dataprepper.parser;
 
-import com.amazon.dataprepper.model.annotations.SingleThread;
-import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.configuration.PipelinesDataFlowModel;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding;
-import com.amazon.dataprepper.model.plugin.PluginFactory;
-import com.amazon.dataprepper.model.processor.Processor;
-import com.amazon.dataprepper.model.sink.Sink;
-import com.amazon.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.annotations.SingleThread;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.source.Source;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;

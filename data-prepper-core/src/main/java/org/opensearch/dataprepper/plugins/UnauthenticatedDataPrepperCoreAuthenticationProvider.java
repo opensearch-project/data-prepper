@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins;
 
-import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.pipeline.server.DataPrepperCoreAuthenticationProvider;
 import com.sun.net.httpserver.Authenticator;
 
