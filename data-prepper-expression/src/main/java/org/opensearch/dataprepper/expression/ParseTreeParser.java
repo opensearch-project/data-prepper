@@ -24,9 +24,10 @@ import java.util.Map;
 /**
  * Handles interaction with ANTLR generated parser and lexer classes and caches results.
  */
-@Named
+@Named(ParseTreeParser.SINGLE_THREAD_PARSER_NAME)
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 class ParseTreeParser implements Parser<ParseTree> {
+    static final String SINGLE_THREAD_PARSER_NAME = "singleThreadParser";
     private static final String MISSING_PARSER_ERROR_LISTENER_MESSAGE =
             "Expected DataPrepperExpressionParser to have error listener of type ParserErrorListener but none were found.";
     private final Map<String, ParseTree> cache = new HashMap<>();

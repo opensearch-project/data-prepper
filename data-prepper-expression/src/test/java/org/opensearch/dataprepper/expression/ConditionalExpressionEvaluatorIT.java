@@ -5,21 +5,31 @@
 
 package org.opensearch.dataprepper.expression;
 
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+import static org.awaitility.Awaitility.await;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -47,10 +57,23 @@ class ConditionalExpressionEvaluatorIT {
     }
 
     @Test
-    void testConditionalExpressionEvaluatorBeanNotSingleton() {
+    void testConditionalExpressionEvaluatorBeanSingleton() {
         final ConditionalExpressionEvaluator instanceA = applicationContext.getBean(ConditionalExpressionEvaluator.class);
         final ConditionalExpressionEvaluator instanceB = applicationContext.getBean(ConditionalExpressionEvaluator.class);
-        assertThat(instanceA, not(is(instanceB)));
+        assertThat(instanceA, sameInstance(instanceB));
+    }
+
+    @Test
+    void testParserBeanInstanceOfMultiThreadParser() {
+        final Parser instance = applicationContext.getBean(Parser.class);
+        assertThat(instance, instanceOf(MultiThreadParser.class));
+    }
+
+    @Test
+    void testSingleThreadParserBeanNotSingleton() {
+        final Parser instanceA = applicationContext.getBean(ParseTreeParser.SINGLE_THREAD_PARSER_NAME, Parser.class);
+        final Parser instanceB = applicationContext.getBean(ParseTreeParser.SINGLE_THREAD_PARSER_NAME, Parser.class);
+        assertThat(instanceA, not(sameInstance(instanceB)));
     }
 
     @ParameterizedTest
@@ -61,6 +84,29 @@ class ConditionalExpressionEvaluatorIT {
         final Boolean actual = evaluator.evaluate(expression, event);
 
         assertThat(actual, is(expected));
+    }
+
+    @ParameterizedTest
+    @MethodSource("validExpressionArguments")
+    void testConditionalExpressionEvaluatorWithMultipleThreads(final String expression, final Event event, final Boolean expected) {
+        final ConditionalExpressionEvaluator evaluator = applicationContext.getBean(ConditionalExpressionEvaluator.class);
+
+        final int numberOfThreads = 50;
+        final ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
+
+        List<Boolean> evaluationResults = Collections.synchronizedList(new ArrayList<>());
+
+        for (int i = 0; i < numberOfThreads; i++) {
+            executorService.execute(() -> evaluationResults.add(evaluator.evaluate(expression, event)));
+        }
+
+        await().atMost(5, TimeUnit.SECONDS)
+                .until(() -> evaluationResults.size() == numberOfThreads);
+
+        assertThat(evaluationResults.size(), equalTo(numberOfThreads));
+        for (Boolean evaluationResult : evaluationResults) {
+            assertThat(evaluationResult, equalTo(expected));
+        }
     }
 
     @ParameterizedTest
