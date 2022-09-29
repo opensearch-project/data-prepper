@@ -26,6 +26,8 @@ import org.opensearch.dataprepper.peerforwarder.PeerForwardingProcessorDecorator
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.PipelineConnector;
 import org.opensearch.dataprepper.plugins.MultiBufferDecorator;
+import org.opensearch.dataprepper.pipeline.router.Router;
+import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +59,7 @@ public class PipelineParser {
     private static final String PIPELINE_TYPE = "pipeline";
     private static final String ATTRIBUTE_NAME = "name";
     private final String pipelineConfigurationFileLocation;
+    private final RouterFactory routerFactory;
     private final DataPrepperConfiguration dataPrepperConfiguration;
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
     private final PluginFactory pluginFactory;
@@ -65,10 +68,12 @@ public class PipelineParser {
     public PipelineParser(final String pipelineConfigurationFileLocation,
                           final PluginFactory pluginFactory,
                           final PeerForwarderProvider peerForwarderProvider,
+                          final RouterFactory routerFactory,
                           final DataPrepperConfiguration dataPrepperConfiguration) {
         this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
+        this.routerFactory = routerFactory;
         this.dataPrepperConfiguration = Objects.requireNonNull(dataPrepperConfiguration);
     }
 
@@ -176,15 +181,17 @@ public class PipelineParser {
             final int readBatchDelay = pipelineConfiguration.getReadBatchDelay();
 
             LOG.info("Building sinks for the pipeline [{}]", pipelineName);
-            final List<Sink> sinks = pipelineConfiguration.getSinkPluginSettings().stream()
-                    .map(this::buildSinkOrConnector)
+            final List<DataFlowComponent<Sink>> sinks = pipelineConfiguration.getSinkPluginSettings().stream()
+                    .map(this::buildRoutedSinkOrConnector)
                     .collect(Collectors.toList());
 
             final List<Buffer> secondaryBuffers = getSecondaryBuffers();
             LOG.info("Constructing MultiBufferDecorator with [{}] secondary buffers for pipeline [{}]", secondaryBuffers.size(), pipelineName);
             final MultiBufferDecorator multiBufferDecorator = new MultiBufferDecorator(buffer, secondaryBuffers);
 
-            final Pipeline pipeline = new Pipeline(pipelineName, source, multiBufferDecorator, decoratedProcessorSets, sinks, processorThreads, readBatchDelay,
+            final Router router = routerFactory.createRouter(pipelineConfiguration.getRoutes());
+
+            final Pipeline pipeline = new Pipeline(pipelineName, source, multiBufferDecorator, decoratedProcessorSets, sinks, router, processorThreads, readBatchDelay,
                     dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
                     getPeerForwarderDrainTimeout(dataPrepperConfiguration));
             pipelineMap.put(pipelineName, pipeline);
@@ -239,7 +246,13 @@ public class PipelineParser {
         return Optional.empty();
     }
 
-    private Sink buildSinkOrConnector(final RoutedPluginSetting pluginSetting) {
+    private DataFlowComponent<Sink> buildRoutedSinkOrConnector(final RoutedPluginSetting pluginSetting) {
+        final Sink sink = buildSinkOrConnector(pluginSetting);
+
+        return new DataFlowComponent<>(sink, pluginSetting.getRoutes());
+    }
+
+    private Sink buildSinkOrConnector(final PluginSetting pluginSetting) {
         // TODO: This will return an object which can perform routing.
         LOG.info("Building [{}] as sink component", pluginSetting.getName());
         final Optional<String> pipelineNameOptional = getPipelineNameIfPipelineType(pluginSetting);
