@@ -20,7 +20,7 @@ public interface PluginProvider {
      * Finds the Java class for a specific plugin.
      *
      * @param pluginType The type of plugin which is being supported.
-     *                   e.g. {@link com.amazon.dataprepper.model.sink.Sink}.
+     *                   e.g. {@link org.opensearch.dataprepper.model.sink.Sink}.
      * @param pluginName The name of the plugin
      * @param <T> The type
      * @return An {@link Optional} Java class for this plugin

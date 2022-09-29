@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.pipeline;
 
-import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.processor.Processor;
-import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.model.sink.Sink;
-import com.amazon.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.source.Source;
 import com.google.common.base.Preconditions;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadFactory;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadPoolExecutor;

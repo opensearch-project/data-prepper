@@ -5,7 +5,7 @@
 
 package com.amazon.dataprepper.plugins.source.otelmetrics.certificate;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.acm.ACMCertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.file.FileCertificateProvider;

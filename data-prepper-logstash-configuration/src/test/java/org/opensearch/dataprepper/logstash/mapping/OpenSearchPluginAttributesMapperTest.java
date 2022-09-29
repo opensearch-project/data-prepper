@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.logstash.mapping;
 
-import com.amazon.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionContext;

@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import com.amazon.dataprepper.metrics.MetricNames;
-import com.amazon.dataprepper.metrics.MetricsTestUtil;
-import com.amazon.dataprepper.metrics.PluginMetrics;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import io.micrometer.core.instrument.Measurement;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.BeforeEach;

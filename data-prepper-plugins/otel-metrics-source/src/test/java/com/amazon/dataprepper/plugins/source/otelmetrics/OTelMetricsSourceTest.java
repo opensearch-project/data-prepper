@@ -7,11 +7,11 @@ package com.amazon.dataprepper.plugins.source.otelmetrics;
 
 
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
-import com.amazon.dataprepper.metrics.PluginMetrics;
-import com.amazon.dataprepper.model.configuration.PluginModel;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.plugin.PluginFactory;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.record.Record;
 
 import org.opensearch.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;

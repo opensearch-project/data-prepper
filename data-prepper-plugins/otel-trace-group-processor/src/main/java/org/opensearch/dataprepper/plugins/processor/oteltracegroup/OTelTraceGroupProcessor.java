@@ -5,14 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.processor.oteltracegroup;
 
-import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.processor.AbstractProcessor;
-import com.amazon.dataprepper.model.processor.Processor;
-import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
-import com.amazon.dataprepper.model.trace.Span;
-import com.amazon.dataprepper.model.trace.TraceGroupFields;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.processor.AbstractProcessor;
+import org.opensearch.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
+import org.opensearch.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.model.trace.TraceGroupFields;
 import com.google.common.base.Strings;
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.action.search.SearchRequest;

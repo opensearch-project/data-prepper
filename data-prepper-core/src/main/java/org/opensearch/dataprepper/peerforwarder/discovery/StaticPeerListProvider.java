@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import com.google.common.base.Preconditions;
 import com.linecorp.armeria.client.Endpoint;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

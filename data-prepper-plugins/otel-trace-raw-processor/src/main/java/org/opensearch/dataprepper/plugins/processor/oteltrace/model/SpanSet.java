@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.oteltrace.model;
 
-import com.amazon.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.model.trace.Span;
 import com.google.common.collect.Sets;
 
 import java.util.Set;

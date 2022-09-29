@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.sink;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.event.JacksonEvent;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.record.Record;
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;

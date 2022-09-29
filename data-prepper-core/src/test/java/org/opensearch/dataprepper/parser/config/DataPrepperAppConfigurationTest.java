@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.parser.config;
 
 import org.opensearch.dataprepper.TestDataProvider;
-import com.amazon.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;

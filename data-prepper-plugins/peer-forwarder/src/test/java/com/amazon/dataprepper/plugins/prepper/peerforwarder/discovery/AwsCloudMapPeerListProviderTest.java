@@ -5,7 +5,7 @@
 
 package com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import com.linecorp.armeria.client.Endpoint;
 import com.linecorp.armeria.client.retry.Backoff;
 import org.apache.commons.lang3.RandomStringUtils;

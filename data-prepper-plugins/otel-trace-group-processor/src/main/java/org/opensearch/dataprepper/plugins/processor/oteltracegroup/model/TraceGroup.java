@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.processor.oteltracegroup.model;
 
-import com.amazon.dataprepper.model.trace.Span;
-import com.amazon.dataprepper.model.trace.TraceGroupFields;
+import org.opensearch.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.model.trace.TraceGroupFields;
 
 import java.util.Objects;
 

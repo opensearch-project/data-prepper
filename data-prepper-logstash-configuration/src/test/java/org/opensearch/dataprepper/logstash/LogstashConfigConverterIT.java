@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.logstash;
 
-import com.amazon.dataprepper.model.configuration.PipelinesDataFlowModel;
+import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.jupiter.api.extension.ExtensionContext;

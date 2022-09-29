@@ -5,20 +5,20 @@
 
 package com.amazon.dataprepper.plugins.processor.otelmetrics;
 
-import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.metric.Gauge;
-import com.amazon.dataprepper.model.metric.Histogram;
-import com.amazon.dataprepper.model.metric.JacksonGauge;
-import com.amazon.dataprepper.model.metric.JacksonHistogram;
-import com.amazon.dataprepper.model.metric.JacksonSum;
-import com.amazon.dataprepper.model.metric.JacksonSummary;
-import com.amazon.dataprepper.model.metric.Metric;
-import com.amazon.dataprepper.model.metric.Sum;
-import com.amazon.dataprepper.model.metric.Summary;
-import com.amazon.dataprepper.model.processor.AbstractProcessor;
-import com.amazon.dataprepper.model.processor.Processor;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.metric.Gauge;
+import org.opensearch.dataprepper.model.metric.Histogram;
+import org.opensearch.dataprepper.model.metric.JacksonGauge;
+import org.opensearch.dataprepper.model.metric.JacksonHistogram;
+import org.opensearch.dataprepper.model.metric.JacksonSum;
+import org.opensearch.dataprepper.model.metric.JacksonSummary;
+import org.opensearch.dataprepper.model.metric.Metric;
+import org.opensearch.dataprepper.model.metric.Sum;
+import org.opensearch.dataprepper.model.metric.Summary;
+import org.opensearch.dataprepper.model.processor.AbstractProcessor;
+import org.opensearch.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.model.record.Record;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;

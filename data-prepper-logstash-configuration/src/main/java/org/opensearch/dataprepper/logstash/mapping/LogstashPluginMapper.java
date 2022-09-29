@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.logstash.mapping;
 
-import com.amazon.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.opensearch.dataprepper.logstash.exception.LogstashMappingException;

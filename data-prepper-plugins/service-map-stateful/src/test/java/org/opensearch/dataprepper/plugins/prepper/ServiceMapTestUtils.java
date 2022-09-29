@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.prepper;
 
-import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.model.trace.DefaultTraceGroupFields;
-import com.amazon.dataprepper.model.trace.JacksonSpan;
-import com.amazon.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
+import org.opensearch.dataprepper.model.trace.JacksonSpan;
+import org.opensearch.dataprepper.model.trace.Span;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -50,13 +50,13 @@ public class ServiceMapTestUtils {
     }
 
     /**
-     * Creates a {@link com.amazon.dataprepper.model.trace.Span} object with the given parameters
+     * Creates a {@link org.opensearch.dataprepper.model.trace.Span} object with the given parameters
      * @param serviceName Resource name for the ResourceSpans object
      * @param spanName Span name for the single span in the ResourceSpans object
      * @param spanId Span id for the single span in the ResourceSpans object
      * @param parentId Parent id for the single span in the ResourceSpans object
      * @param spanKind Span kind for the single span in the ResourceSpans object
-     * @return {@link com.amazon.dataprepper.model.trace.Span} object with a single span constructed according to the parameters
+     * @return {@link org.opensearch.dataprepper.model.trace.Span} object with a single span constructed according to the parameters
      */
     public static Span getSpan(final String serviceName, final String spanName, final String
             spanId, final String parentId, final String traceId, final io.opentelemetry.proto.trace.v1.Span.SpanKind spanKind) {

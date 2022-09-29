@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins;
 
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
-import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;

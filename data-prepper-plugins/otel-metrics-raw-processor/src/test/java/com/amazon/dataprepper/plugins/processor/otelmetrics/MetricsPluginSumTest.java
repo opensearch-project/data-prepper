@@ -5,9 +5,9 @@
 
 package com.amazon.dataprepper.plugins.processor.otelmetrics;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
@@ -109,7 +109,7 @@ public class MetricsPluginSumTest {
     }
 
     private void assertSumProcessing(Map map) {
-        assertThat(map).contains(entry("kind", com.amazon.dataprepper.model.metric.Metric.KIND.SUM.toString()));
+        assertThat(map).contains(entry("kind", org.opensearch.dataprepper.model.metric.Metric.KIND.SUM.toString()));
         assertThat(map).contains(entry("unit", "seconds"));
         assertThat(map).contains(entry("description", "description"));
         assertThat(map).contains(entry("name", "name"));

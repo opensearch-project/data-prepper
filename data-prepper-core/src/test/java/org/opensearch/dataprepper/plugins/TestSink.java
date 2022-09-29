@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper.plugins;
 
-import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
-import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.Sink;
 
 import java.util.ArrayList;
 import java.util.Collection;

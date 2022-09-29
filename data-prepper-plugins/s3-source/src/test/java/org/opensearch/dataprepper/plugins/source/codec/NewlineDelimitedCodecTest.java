@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.source.codec;
 
-import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.event.EventType;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
