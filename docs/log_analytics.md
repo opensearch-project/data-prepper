@@ -4,7 +4,7 @@
 
 Data Prepper is an extendable, configurable, and scalable solution for log ingestion into OpenSearch and Amazon OpenSearch Service.
 Currently, Data Prepper is focused on receiving logs from [FluentBit](https://fluentbit.io/) via the 
-[Http Source](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/http-source/README.md), and processing those logs with a [Grok Processor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/grok-prepper/README.md) before ingesting them into OpenSearch through the [OpenSearch sink](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/opensearch/README.md).
+[Http Source](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/http-source/README.md), and processing those logs with a [Grok Processor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/grok-processor/README.md) before ingesting them into OpenSearch through the [OpenSearch sink](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/opensearch/README.md).
 
 Here is all of the components for log analytics with FluentBit, Data Prepper, and OpenSearch:
 <br />
@@ -35,7 +35,7 @@ This source supports industry-standard encryption in the form of TLS/HTTPS and H
 
 ## Processor
 
-The Data Prepper 1.2 release will come with a [Grok Processor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/grok-prepper/README.md).
+The Data Prepper 1.2 release will come with a [Grok Processor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/grok-processor/README.md).
 The Grok Processor can be an invaluable tool to structure and extract important fields from your logs in order to make them more queryable.
 
 The Grok Processor comes with a wide variety of [default patterns](https://github.com/thekrakken/java-grok/blob/master/src/main/resources/patterns/patterns) that match against common log formats like apcahe logs or syslogs, 
