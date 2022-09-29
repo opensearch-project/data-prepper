@@ -5,15 +5,6 @@
 
 package com.amazon.dataprepper.plugins.prepper.peerforwarder;
 
-import org.opensearch.dataprepper.metrics.MetricNames;
-import org.opensearch.dataprepper.metrics.MetricsTestUtil;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
-import org.opensearch.dataprepper.model.trace.JacksonSpan;
-import org.opensearch.dataprepper.model.trace.Span;
-import com.amazon.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import io.grpc.Channel;
 import io.micrometer.core.instrument.Measurement;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
@@ -31,6 +22,15 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
+import org.opensearch.dataprepper.model.trace.JacksonSpan;
+import org.opensearch.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
@@ -48,7 +48,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static com.amazon.dataprepper.plugins.otel.codec.OTelProtoCodec.convertUnixNanosToISO8601;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,6 +58,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec.convertUnixNanosToISO8601;
 
 @RunWith(MockitoJUnitRunner.class)
 public class PeerForwarderTest {

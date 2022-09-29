@@ -3,16 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.plugins.otel.codec;
+package org.opensearch.dataprepper.plugins.otel.codec;
 
-import org.opensearch.dataprepper.model.trace.DefaultLink;
-import org.opensearch.dataprepper.model.trace.DefaultSpanEvent;
-import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
-import org.opensearch.dataprepper.model.trace.JacksonSpan;
-import org.opensearch.dataprepper.model.trace.Link;
-import org.opensearch.dataprepper.model.trace.Span;
-import org.opensearch.dataprepper.model.trace.SpanEvent;
-import org.opensearch.dataprepper.model.trace.TraceGroupFields;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
@@ -26,6 +18,14 @@ import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Status;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+import org.opensearch.dataprepper.model.trace.DefaultLink;
+import org.opensearch.dataprepper.model.trace.DefaultSpanEvent;
+import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
+import org.opensearch.dataprepper.model.trace.JacksonSpan;
+import org.opensearch.dataprepper.model.trace.Link;
+import org.opensearch.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.model.trace.SpanEvent;
+import org.opensearch.dataprepper.model.trace.TraceGroupFields;
 
 import java.io.UnsupportedEncodingException;
 import java.time.Instant;
