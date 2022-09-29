@@ -26,15 +26,21 @@ If all smoke tests complete successfully the last message printed will be "All s
 
 ## Running smoke tests on tarball files
 
-The `run-tarball-files-smoke-tests.sh` script will build the following docker images and test each using the `run-smoke-tests.sh` script.
-1. Data Prepper installed from tarball without JDK on a docker image with OpenJDK 11 installed
-2. Data Prepper installed from tarball without JDK on a docker image with OpenJDK 17 installed
-3. Data Prepper installed from tarball with JDK included on the latest Ubuntu docker image
+The `run-tarball-files-smoke-tests.sh` script will smoke test a given tar archive against Docker image. Internally it uses the `run-smoke-tests.sh` script.
 
-To run automated smoke test on all tarball files you can use the following command:
+To run automated smoke test on the default archive file you can use the following command:
 
 ```shell
-./release/smoke-tests/run-tarball-files-smoke-test.sh
+./release/smoke-tests/run-tarball-files-smoke-tests.sh
+```
+
+You can also customize what it tests against. The `-i` parameter specifies a base Docker image. The `-t` parameter determines which tar archive file to use.
+The values for `-t` are `opensearch-data-prepper` or `opensearch-data-prepper-jdk`.
+
+```shell
+./release/smoke-tests/run-tarball-files-smoke-tests.sh -i openjdk:11 -t opensearch-data-prepper
+./release/smoke-tests/run-tarball-files-smoke-tests.sh -i openjdk:17 -t opensearch-data-prepper
+./release/smoke-tests/run-tarball-files-smoke-tests.sh -i ubuntu:latest -t opensearch-data-prepper-jdk
 ```
 
 ## Troubleshooting smoke tests
