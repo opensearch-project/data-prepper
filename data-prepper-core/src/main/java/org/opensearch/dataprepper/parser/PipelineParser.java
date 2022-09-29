@@ -20,10 +20,12 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.parser.model.RoutedPluginSetting;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwardingProcessorDecorator;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.PipelineConnector;
+import org.opensearch.dataprepper.plugins.MultiBufferDecorator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +36,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -177,8 +180,13 @@ public class PipelineParser {
                     .map(this::buildSinkOrConnector)
                     .collect(Collectors.toList());
 
-            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, decoratedProcessorSets, sinks, processorThreads, readBatchDelay,
-                    dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout());
+            final List<Buffer> secondaryBuffers = getSecondaryBuffers();
+            LOG.info("Constructing MultiBufferDecorator with [{}] secondary buffers for pipeline [{}]", secondaryBuffers.size(), pipelineName);
+            final MultiBufferDecorator multiBufferDecorator = new MultiBufferDecorator(buffer, secondaryBuffers);
+
+            final Pipeline pipeline = new Pipeline(pipelineName, source, multiBufferDecorator, decoratedProcessorSets, sinks, processorThreads, readBatchDelay,
+                    dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
+                    getPeerForwarderDrainTimeout(dataPrepperConfiguration));
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
             //If pipeline construction errors out, we will skip that pipeline and proceed
@@ -305,5 +313,19 @@ public class PipelineParser {
         String getName() {
             return name;
         }
+    }
+
+    Duration getPeerForwarderDrainTimeout(final DataPrepperConfiguration dataPrepperConfiguration) {
+        return Optional.ofNullable(dataPrepperConfiguration)
+                .map(DataPrepperConfiguration::getPeerForwarderConfiguration)
+                .map(PeerForwarderConfiguration::getDrainTimeout)
+                .orElse(Duration.ofSeconds(0));
+    }
+
+    List<Buffer> getSecondaryBuffers() {
+        return peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap().entrySet().stream()
+                .flatMap(entry -> entry.getValue().entrySet().stream())
+                .map(innerEntry -> innerEntry.getValue())
+                .collect(Collectors.toList());
     }
 }
