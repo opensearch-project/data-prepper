@@ -47,7 +47,7 @@ public class DefaultPluginFactory implements PluginFactory {
 
         if(pluginProviders.isEmpty()) {
             throw new RuntimeException("Data Prepper requires at least one PluginProvider. " +
-                    "Your Data Prepper configuration may be missing the com.amazon.dataprepper.plugin.PluginProvider file.");
+                    "Your Data Prepper configuration may be missing the org.opensearch.dataprepper.plugin.PluginProvider file.");
         }
     }
 

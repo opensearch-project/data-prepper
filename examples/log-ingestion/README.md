@@ -61,7 +61,7 @@ docker run --name data-prepper -v /full/path/to/log_pipeline.yaml:/usr/share/dat
 If Data Prepper is running correctly, you should see something similar to the following line as the latest output in your terminal.
 
 ```
-INFO  com.amazon.dataprepper.pipeline.ProcessWorker - log-pipeline Worker: No records received from buffer
+INFO  org.opensearch.dataprepper.pipeline.ProcessWorker - log-pipeline Worker: No records received from buffer
 ```
 
 ### Apache Log Generator
@@ -122,7 +122,7 @@ fluent-bit  | [2021/10/30 17:16:39] [ info] [output:http:http.0] host.docker.int
 The following Data Prepper output indicates that Data Prepper is successfully processing logs from FluentBit
 
 ```
-2021-10-30T12:17:17,474 [log-pipeline-prepper-worker-1-thread-1] INFO  com.amazon.dataprepper.pipeline.ProcessWorker -  log-pipeline Worker: Processing 2 records from buffer
+2021-10-30T12:17:17,474 [log-pipeline-prepper-worker-1-thread-1] INFO  org.opensearch.dataprepper.pipeline.ProcessWorker -  log-pipeline Worker: Processing 2 records from buffer
 ```
 
 Finally, head into OpenSearch Dashboards ([http://localhost:5601](http://localhost:5601)) to view your processed logs.

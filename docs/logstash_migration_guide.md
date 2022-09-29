@@ -37,5 +37,5 @@ You can find the converted `logstash.yaml` in the same directory where you place
 The following output in your terminal indicates Data Prepper is running correctly:
 
 ```
-INFO  com.amazon.dataprepper.pipeline.ProcessWorker - log-pipeline Worker: No records received from buffer
+INFO  org.opensearch.dataprepper.pipeline.ProcessWorker - log-pipeline Worker: No records received from buffer
 ```
