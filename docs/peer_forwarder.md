@@ -94,7 +94,7 @@ IAM policy shows the necessary permissions.
 ### SSL
 The SSL configuration for setting up trust manager for peer forwarding client to connect to other Data Prepper instances.
 
-* `ssl`(Optional) : A `boolean` that enables TLS/SSL. Default value is `false`.
+* `ssl`(Optional) : A `boolean` that enables TLS/SSL. Default value is `true`.
 * `ssl_certificate_file`(Optional) : A `String` representing the SSL certificate chain file path or AWS S3 path. S3 path example `s3://<bucketName>/<path>`. Required if `ssl` is set to `true`.
 * `ssl_key_file`(Optional) : A `String` represents the SSL key file path or AWS S3 path. S3 path example `s3://<bucketName>/<path>`. Required if `ssl` is set to `true`.
 * `ssl_insecure_disable_verification`(Optional) : A `boolean` that disables the verification of server's TLS certificate chain. Default value is `false`.

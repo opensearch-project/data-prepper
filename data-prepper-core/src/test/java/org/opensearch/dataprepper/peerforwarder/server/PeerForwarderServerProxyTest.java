@@ -28,6 +28,9 @@ class PeerForwarderServerProxyTest {
     private Server server;
 
     @Mock
+    private PeerForwarderHttpServerProvider peerForwarderHttpServerProvider;
+
+    @Mock
     private PeerForwarderConfiguration peerForwarderConfiguration;
 
     @Mock
@@ -37,11 +40,12 @@ class PeerForwarderServerProxyTest {
     CompletableFuture<Void> completableFuture;
 
     PeerForwarderServerProxy createObjectUnderTest() {
-        return new PeerForwarderServerProxy(peerForwarderConfiguration, server, peerForwarderProvider);
+        return new PeerForwarderServerProxy(peerForwarderHttpServerProvider, peerForwarderConfiguration, peerForwarderProvider);
     }
 
     @Test
     void start_should_start_server_if_peers_are_registered() throws ExecutionException, InterruptedException {
+        when(peerForwarderHttpServerProvider.get()).thenReturn(server);
         when(server.start()).thenReturn(completableFuture);
         when(completableFuture.get()).thenReturn(mock(Void.class));
         when(peerForwarderProvider.isPeerForwardingRequired()).thenReturn(true);
@@ -68,6 +72,7 @@ class PeerForwarderServerProxyTest {
 
     @Test
     void stop_should_stop_server_if_server_started() throws ExecutionException, InterruptedException {
+        when(peerForwarderHttpServerProvider.get()).thenReturn(server);
         when(server.start()).thenReturn(completableFuture);
         when(server.stop()).thenReturn(completableFuture);
         when(completableFuture.get()).thenReturn(mock(Void.class));
