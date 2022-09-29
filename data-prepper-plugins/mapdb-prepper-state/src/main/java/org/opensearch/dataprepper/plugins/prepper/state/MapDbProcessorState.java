@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 
-public class MapDbPrepperState<V> implements ProcessorState<byte[], V> {
+public class MapDbProcessorState<V> implements ProcessorState<byte[], V> {
 
 
     private static class SignedByteArraySerializer extends SerializerByteArray {
@@ -36,7 +36,7 @@ public class MapDbPrepperState<V> implements ProcessorState<byte[], V> {
     private final BTreeMap<byte[], V> map;
     private final File dbFile;
 
-    public MapDbPrepperState(final File dbPath, final String dbName, final int concurrencyScale) {
+    public MapDbProcessorState(final File dbPath, final String dbName, final int concurrencyScale) {
         // TODO: Cleanup references to file-based map
         this.dbFile = new File(String.join("/", dbPath.getPath(), dbName));
         map =

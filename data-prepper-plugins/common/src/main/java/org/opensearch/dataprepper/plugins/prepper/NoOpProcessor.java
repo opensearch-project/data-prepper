@@ -13,9 +13,9 @@ import org.opensearch.dataprepper.model.record.Record;
 import java.util.Collection;
 
 @DataPrepperPlugin(name = "no-op", pluginType = Processor.class)
-public class NoOpPrepper implements Processor<Record<Event>, Record<Event>> {
+public class NoOpProcessor implements Processor<Record<Event>, Record<Event>> {
 
-    public NoOpPrepper() {
+    public NoOpProcessor() {
 
     }
 

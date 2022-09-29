@@ -20,7 +20,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class StringPrepperTests {
+public class StringProcessorTests {
 
     private final String TEST_EVENT_TYPE = "test_event_type";
     private final String TEST_KEY = "test_key";
@@ -39,23 +39,23 @@ public class StringPrepperTests {
                     .build()
     );
     private final List<Record<Event>> TEST_RECORDS = Arrays.asList(TEST_RECORD_1, TEST_RECORD_2);
-    private StringPrepper.Configuration configuration;
+    private StringProcessor.Configuration configuration;
 
     @BeforeEach
     void setUp() {
-        configuration = new StringPrepper.Configuration();
+        configuration = new StringProcessor.Configuration();
     }
 
-    private StringPrepper createObjectUnderTest() {
-        return new StringPrepper(configuration);
+    private StringProcessor createObjectUnderTest() {
+        return new StringProcessor(configuration);
     }
 
     @Test
     public void testStringPrepperDefault() {
 
-        final StringPrepper stringPrepper = createObjectUnderTest();
-        final List<Record<Event>> modifiedRecords = (List<Record<Event>>) stringPrepper.execute(TEST_RECORDS);
-        stringPrepper.shutdown();
+        final StringProcessor stringProcessor = createObjectUnderTest();
+        final List<Record<Event>> modifiedRecords = (List<Record<Event>>) stringProcessor.execute(TEST_RECORDS);
+        stringProcessor.shutdown();
 
         final List<Event> modifiedRecordEvents = modifiedRecords.stream().map(Record::getData).collect(Collectors.toList());
 
@@ -73,9 +73,9 @@ public class StringPrepperTests {
     @Test
     public void testStringPrepperLowerCase() {
         configuration.setUpperCase(false);
-        final StringPrepper stringPrepper = createObjectUnderTest();
-        final List<Record<Event>> modifiedRecords = (List<Record<Event>>) stringPrepper.execute(TEST_RECORDS);
-        stringPrepper.shutdown();
+        final StringProcessor stringProcessor = createObjectUnderTest();
+        final List<Record<Event>> modifiedRecords = (List<Record<Event>>) stringProcessor.execute(TEST_RECORDS);
+        stringProcessor.shutdown();
 
         final List<Event> modifiedRecordEvents = modifiedRecords.stream().map(Record::getData).collect(Collectors.toList());
 
@@ -93,9 +93,9 @@ public class StringPrepperTests {
     @Test
     public void testStringPrepperUpperCase() {
         configuration.setUpperCase(true);
-        final StringPrepper stringPrepper = createObjectUnderTest();
-        final List<Record<Event>> modifiedRecords = (List<Record<Event>>) stringPrepper.execute(TEST_RECORDS);
-        stringPrepper.shutdown();
+        final StringProcessor stringProcessor = createObjectUnderTest();
+        final List<Record<Event>> modifiedRecords = (List<Record<Event>>) stringProcessor.execute(TEST_RECORDS);
+        stringProcessor.shutdown();
 
         final List<Event> modifiedRecordEvents = modifiedRecords.stream().map(Record::getData).collect(Collectors.toList());
 
@@ -112,11 +112,11 @@ public class StringPrepperTests {
 
     @Test
     public void testPrepareForShutdown() {
-        final StringPrepper stringPrepper = createObjectUnderTest();
+        final StringProcessor stringProcessor = createObjectUnderTest();
 
-        stringPrepper.prepareForShutdown();
+        stringProcessor.prepareForShutdown();
 
-        assertThat(stringPrepper.isReadyForShutdown(), equalTo(true));
+        assertThat(stringProcessor.isReadyForShutdown(), equalTo(true));
     }
 
 }

@@ -16,14 +16,14 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.BiFunction;
 
-public class MapDbPrepperStateTest extends ProcessorStateTest {
+public class MapDbProcessorStateTest extends ProcessorStateTest {
 
     @Rule
     public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Override
     public void setProcessorState() throws Exception {
-        this.processorState = new MapDbPrepperState<>(temporaryFolder.newFolder(), "testDb", 16);
+        this.processorState = new MapDbProcessorState<>(temporaryFolder.newFolder(), "testDb", 16);
     }
 
     @Test

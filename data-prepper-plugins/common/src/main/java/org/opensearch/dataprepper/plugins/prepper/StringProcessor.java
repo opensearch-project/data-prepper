@@ -27,9 +27,9 @@ import java.util.stream.Collectors;
  * A simple String implementation of {@link Processor} which generates new Records with uppercase or lowercase content. The current
  * simpler implementation does not handle errors (if any).
  */
-@DataPrepperPlugin(name = "string_converter", pluginType = Processor.class, pluginConfigurationType = StringPrepper.Configuration.class)
-public class StringPrepper implements Processor<Record<Event>, Record<Event>> {
-    private static Logger LOG = LoggerFactory.getLogger(StringPrepper.class);
+@DataPrepperPlugin(name = "string_converter", pluginType = Processor.class, pluginConfigurationType = StringProcessor.Configuration.class)
+public class StringProcessor implements Processor<Record<Event>, Record<Event>> {
+    private static Logger LOG = LoggerFactory.getLogger(StringProcessor.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final TypeReference<Map<String, Object>> mapTypeReference = new TypeReference<Map<String, Object>>() {};
 
@@ -51,14 +51,14 @@ public class StringPrepper implements Processor<Record<Event>, Record<Event>> {
 
     /**
      * Mandatory constructor for Data Prepper Component - This constructor is used by Data Prepper
-     * runtime engine to construct an instance of {@link StringPrepper} using an instance of {@link PluginSetting} which
+     * runtime engine to construct an instance of {@link StringProcessor} using an instance of {@link PluginSetting} which
      * has access to pluginSetting metadata from pipeline
      * pluginSetting file.
      *
      * @param configuration instance with metadata information from pipeline pluginSetting file.
      */
     @DataPrepperPluginConstructor
-    public StringPrepper(final Configuration configuration) {
+    public StringProcessor(final Configuration configuration) {
         this.upperCase = configuration.getUpperCase();
     }
 

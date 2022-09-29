@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.SignedBytes;
 import org.apache.commons.codec.binary.Hex;
-import org.opensearch.dataprepper.plugins.prepper.state.MapDbPrepperState;
+import org.opensearch.dataprepper.plugins.prepper.state.MapDbProcessorState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,21 +51,21 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
     private static final Integer TO_MILLIS = 1_000;
 
     // TODO: This should not be tracked in this class, move it up to the creator
-    private static final AtomicInteger preppersCreated = new AtomicInteger(0);
+    private static final AtomicInteger processorsCreated = new AtomicInteger(0);
     private static long previousTimestamp;
     private static long windowDurationMillis;
     private static CyclicBarrier allThreadsCyclicBarrier;
 
-    private static volatile MapDbPrepperState<ServiceMapStateData> previousWindow;
-    private static volatile MapDbPrepperState<ServiceMapStateData> currentWindow;
-    private static volatile MapDbPrepperState<String> previousTraceGroupWindow;
-    private static volatile MapDbPrepperState<String> currentTraceGroupWindow;
+    private static volatile MapDbProcessorState<ServiceMapStateData> previousWindow;
+    private static volatile MapDbProcessorState<ServiceMapStateData> currentWindow;
+    private static volatile MapDbProcessorState<String> previousTraceGroupWindow;
+    private static volatile MapDbProcessorState<String> currentTraceGroupWindow;
     //TODO: Consider keeping this state in a db
     private static final Set<ServiceMapRelationship> RELATIONSHIP_STATE = Sets.newConcurrentHashSet();
     private static File dbPath;
     private static Clock clock;
 
-    private final int thisPrepperId;
+    private final int thisProcessorId;
 
     public ServiceMapStatefulProcessor(final PluginSetting pluginSetting) {
         this(pluginSetting.getIntegerOrDefault(ServiceMapProcessorConfig.WINDOW_DURATION, ServiceMapProcessorConfig.DEFAULT_WINDOW_DURATION) * TO_MILLIS,
@@ -83,17 +83,17 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
         super(pluginSetting);
 
         ServiceMapStatefulProcessor.clock = clock;
-        this.thisPrepperId = preppersCreated.getAndIncrement();
+        this.thisProcessorId = processorsCreated.getAndIncrement();
 
         if (isMasterInstance()) {
             previousTimestamp = ServiceMapStatefulProcessor.clock.millis();
             ServiceMapStatefulProcessor.windowDurationMillis = windowDurationMillis;
             ServiceMapStatefulProcessor.dbPath = createPath(databasePath);
 
-            currentWindow = new MapDbPrepperState<>(dbPath, getNewDbName(), processWorkers);
-            previousWindow = new MapDbPrepperState<>(dbPath, getNewDbName() + EMPTY_SUFFIX, processWorkers);
-            currentTraceGroupWindow = new MapDbPrepperState<>(dbPath, getNewTraceDbName(), processWorkers);
-            previousTraceGroupWindow = new MapDbPrepperState<>(dbPath, getNewTraceDbName() + EMPTY_SUFFIX, processWorkers);
+            currentWindow = new MapDbProcessorState<>(dbPath, getNewDbName(), processWorkers);
+            previousWindow = new MapDbProcessorState<>(dbPath, getNewDbName() + EMPTY_SUFFIX, processWorkers);
+            currentTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName(), processWorkers);
+            previousTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName() + EMPTY_SUFFIX, processWorkers);
 
             allThreadsCyclicBarrier = new CyclicBarrier(processWorkers);
         }
@@ -176,8 +176,8 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
         try {
             final Collection<Record<Event>> serviceDependencyRecords = new HashSet<>();
 
-            serviceDependencyRecords.addAll(iteratePrepperState(previousWindow));
-            serviceDependencyRecords.addAll(iteratePrepperState(currentWindow));
+            serviceDependencyRecords.addAll(iterateProcessorState(previousWindow));
+            serviceDependencyRecords.addAll(iterateProcessorState(currentWindow));
             LOG.info("Done evaluating service map edges");
 
             // Wait for all workers before rotating windows
@@ -196,11 +196,11 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
         }
     }
 
-    private Collection<Record<Event>> iteratePrepperState(final MapDbPrepperState<ServiceMapStateData> prepperState) {
+    private Collection<Record<Event>> iterateProcessorState(final MapDbProcessorState<ServiceMapStateData> processorState) {
         final Collection<Record<Event>> serviceDependencyRecords = new HashSet<>();
 
-        if (prepperState.getAll() != null && !prepperState.getAll().isEmpty()) {
-            prepperState.getIterator(preppersCreated.get(), thisPrepperId).forEachRemaining(entry -> {
+        if (processorState.getAll() != null && !processorState.getAll().isEmpty()) {
+            processorState.getIterator(processorsCreated.get(), thisProcessorId).forEachRemaining(entry -> {
                 final ServiceMapStateData child = entry.getValue();
 
                 if (child.parentSpanId == null) {
@@ -287,12 +287,12 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
 
 
     /**
-     * Rotate windows for prepper state
+     * Rotate windows for processor state
      */
     private void rotateWindows() throws InterruptedException {
         LOG.info("Rotating service map windows at " + clock.instant().toString());
 
-        MapDbPrepperState tempWindow = previousWindow;
+        MapDbProcessorState tempWindow = previousWindow;
         previousWindow = currentWindow;
         currentWindow = tempWindow;
         currentWindow.clear();
@@ -351,7 +351,7 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
      * @return Boolean indicating whether this object is the master ServiceMapStatefulProcessor instance
      */
     private boolean isMasterInstance() {
-        return thisPrepperId == 0;
+        return thisProcessorId == 0;
     }
 
     @Override
