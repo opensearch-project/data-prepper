@@ -71,6 +71,8 @@ public class TestDataProvider {
     public static final String VALID_PEER_FORWARDER_DATA_PREPPER_CONFIG_FILE = "src/test/resources/valid_data_prepper_config_wth_peer_forwarder_config.yml";
     public static final String VALID_PEER_FORWARDER_CONFIG_WITHOUT_SSL_FILE = "src/test/resources/valid_peer_forwarder_without_ssl_config.yml";
     public static final String VALID_PEER_FORWARDER_CONFIG_FILE = "src/test/resources/valid_peer_forwarder_config.yml";
+    public static final String VALID_PEER_FORWARDER_CONFIG_WITH_DRAIN_TIMEOUT_FILE = "src/test/resources/valid_peer_forwarder_config_with_drain_timeout.yml";
+    public static final String VALID_PEER_FORWARDER_CONFIG_WITH_ISO8601_DRAIN_TIMEOUT_FILE = "src/test/resources/valid_peer_forwarder_config_with_iso8601_drain_timeout.yml";
     public static final String INVALID_PEER_FORWARDER_WITH_PORT_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_port_config.yml";
     public static final String INVALID_PEER_FORWARDER_WITH_THREAD_COUNT_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_thread_count_config.yml";
     public static final String INVALID_PEER_FORWARDER_WITH_CONNECTION_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_connection_config.yml";
@@ -85,6 +87,8 @@ public class TestDataProvider {
     public static final String INVALID_PEER_FORWARDER_WITH_CLOUD_MAP_WITHOUT_REGION_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_cloud_map_without_region_config.yml";
     public static final String INVALID_PEER_FORWARDER_WITH_DNS_WITHOUT_DOMAIN_NAME_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_dns_without_domain_name_config.yml";
     public static final String INVALID_PEER_FORWARDER_WITH_SSL = "src/test/resources/invalid_peer_forwarder_with_ssl.yml";
+    public static final String INVALID_PEER_FORWARDER_WITH_BAD_DRAIN_TIMEOUT = "src/test/resources/invalid_peer_forwarder_with_bad_drain_timeout.yml";
+    public static final String INVALID_PEER_FORWARDER_WITH_NEGATIVE_DRAIN_TIMEOUT = "src/test/resources/invalid_peer_forwarder_with_negative_drain_timeout.yml";
     public static final String VALID_PEER_FORWARDER_WITH_ACM_SSL_CONFIG_FILE = "src/test/resources/valid_peer_forwarder_config_with_acm_ssl.yml";
 
 

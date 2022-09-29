@@ -5,26 +5,39 @@
 
 package org.opensearch.dataprepper.parser;
 
+import com.amazon.dataprepper.model.buffer.Buffer;
+import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.plugin.PluginFactory;
+import com.amazon.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.TestDataProvider;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.Mock;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.stream.Stream;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -38,6 +51,10 @@ class PipelineParserTests {
 
     @Mock
     private DataPrepperConfiguration dataPrepperConfiguration;
+    @Mock
+    private PeerForwarderConfiguration peerForwarderConfiguration;
+    @Mock
+    private PeerForwarderReceiveBuffer buffer;
 
     private PluginFactory pluginFactory;
 
@@ -166,6 +183,7 @@ class PipelineParserTests {
 
     @Test
     void parseConfiguration_from_directory_with_multiple_files_creates_the_correct_pipelineMap() {
+        mockDataPrepperConfigurationAccesses();
         final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.MULTI_FILE_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
         final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
@@ -174,6 +192,7 @@ class PipelineParserTests {
 
     @Test
     void parseConfiguration_from_directory_with_single_file_creates_the_correct_pipelineMap() {
+        mockDataPrepperConfigurationAccesses();
         final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.SINGLE_FILE_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
         final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
@@ -188,9 +207,38 @@ class PipelineParserTests {
                 String.format("Pipelines configuration file not found at %s", TestDataProvider.EMPTY_PIPELINE_DIRECTOTRY)));
     }
 
+    @Test
+    void getPeerForwarderDrainDuration_peerForwarderConfigurationNotSet() {
+        when(dataPrepperConfiguration.getPeerForwarderConfiguration()).thenReturn(null);
+
+        final PipelineParser pipelineParser =
+                new PipelineParser(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+        final Duration result = pipelineParser.getPeerForwarderDrainTimeout(dataPrepperConfiguration);
+        assertThat(result, is(Duration.ofSeconds(0)));
+
+        verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
+    }
+
+    @Test
+    void getPeerForwarderDrainDuration_IsSet() {
+        final Duration expectedResult = Duration.ofSeconds(Math.abs(new Random().nextInt()));
+        when(dataPrepperConfiguration.getPeerForwarderConfiguration()).thenReturn(peerForwarderConfiguration);
+        when(peerForwarderConfiguration.getDrainTimeout()).thenReturn(expectedResult);
+
+        final PipelineParser pipelineParser =
+                new PipelineParser(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+        final Duration result = pipelineParser.getPeerForwarderDrainTimeout(dataPrepperConfiguration);
+        assertThat(result, is(expectedResult));
+
+        verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
+        verify(peerForwarderConfiguration).getDrainTimeout();
+    }
+
     private void mockDataPrepperConfigurationAccesses() {
         when(dataPrepperConfiguration.getProcessorShutdownTimeout()).thenReturn(Duration.ofSeconds(Math.abs(new Random().nextInt())));
         when(dataPrepperConfiguration.getSinkShutdownTimeout()).thenReturn(Duration.ofSeconds(Math.abs(new Random().nextInt())));
+        when(dataPrepperConfiguration.getPeerForwarderConfiguration()).thenReturn(peerForwarderConfiguration);
+        when(peerForwarderConfiguration.getDrainTimeout()).thenReturn(Duration.ofSeconds(Math.abs(new Random().nextInt())));
     }
 
     private void verifyDataPrepperConfigurationAccesses() {
@@ -200,5 +248,51 @@ class PipelineParserTests {
     private void verifyDataPrepperConfigurationAccesses(final int times) {
         verify(dataPrepperConfiguration, times(times)).getProcessorShutdownTimeout();
         verify(dataPrepperConfiguration, times(times)).getSinkShutdownTimeout();
+        verify(dataPrepperConfiguration, times(times)).getPeerForwarderConfiguration();
+        verify(peerForwarderConfiguration, times(times)).getDrainTimeout();
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideGetSecondaryBufferArgs")
+    void getSecondaryBuffers(final int outerMapEntryCount, final int innerMapEntryCount) {
+        final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> bufferMap = generateBufferMap(outerMapEntryCount, innerMapEntryCount);
+        when(peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap()).thenReturn(bufferMap);
+
+        final PipelineParser pipelineParser =
+                new PipelineParser(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+        final List<Buffer> secondaryBuffers = pipelineParser.getSecondaryBuffers();
+        assertThat(secondaryBuffers.size(), is(outerMapEntryCount * innerMapEntryCount));
+        secondaryBuffers.forEach(retrievedBuffer -> assertThat(retrievedBuffer, is(buffer)));
+
+        verify(peerForwarderProvider).getPipelinePeerForwarderReceiveBufferMap();
+    }
+
+    private static Stream<Arguments> provideGetSecondaryBufferArgs() {
+        return Stream.of(
+                Arguments.of(0, 0),
+                Arguments.of(0, 1),
+                Arguments.of(0, 2),
+                Arguments.of(0, 3),
+                Arguments.of(1, 0),
+                Arguments.of(1, 1),
+                Arguments.of(1, 2),
+                Arguments.of(1, 3),
+                Arguments.of(2, 2),
+                Arguments.of(new Random().nextInt(5) + 3, new Random().nextInt(5) + 1)
+        );
+    }
+
+    private Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> generateBufferMap(final int outerMapEntryCount, final int innerMapEntryCount) {
+        final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> bufferMap = new HashMap<>();
+        for (int i = 0; i < outerMapEntryCount; i++) {
+            final Map<String, PeerForwarderReceiveBuffer<Record<Event>>> innerMap = new HashMap<>();
+            for (int j = 0; j < innerMapEntryCount; j++) {
+                innerMap.put(UUID.randomUUID().toString(), buffer);
+            }
+
+            bufferMap.put(UUID.randomUUID().toString(), innerMap);
+        }
+
+        return bufferMap;
     }
 }
