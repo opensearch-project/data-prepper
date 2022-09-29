@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
 import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroupBuilder;
@@ -38,6 +39,7 @@ class DnsPeerListProviderCreationTest {
     private DnsAddressEndpointGroup dnsAddressEndpointGroup;
 
     private PeerForwarderConfiguration peerForwarderConfiguration;
+    private PluginMetrics pluginMetrics;
 
     private CompletableFuture completableFuture;
 
@@ -47,6 +49,7 @@ class DnsPeerListProviderCreationTest {
         completableFuture = CompletableFuture.completedFuture(null);
 
         peerForwarderConfiguration = mock(PeerForwarderConfiguration.class);
+        pluginMetrics = mock(PluginMetrics.class);
     }
 
     @Test
@@ -60,7 +63,7 @@ class DnsPeerListProviderCreationTest {
         try (MockedStatic<DnsAddressEndpointGroup> armeriaMock = Mockito.mockStatic(DnsAddressEndpointGroup.class)) {
             armeriaMock.when(() -> DnsAddressEndpointGroup.builder(anyString())).thenReturn(dnsAddressEndpointGroupBuilder);
 
-            PeerListProvider result = DnsPeerListProvider.createPeerListProvider(peerForwarderConfiguration);
+            PeerListProvider result = DnsPeerListProvider.createPeerListProvider(peerForwarderConfiguration, pluginMetrics);
 
             assertThat(result, instanceOf(DnsPeerListProvider.class));
         }
@@ -69,7 +72,7 @@ class DnsPeerListProviderCreationTest {
     @Test
     void testCreateProviderDnsInstanceWithNoHostname() {
         assertThrows(NullPointerException.class,
-                () -> DnsPeerListProvider.createPeerListProvider(peerForwarderConfiguration));
+                () -> DnsPeerListProvider.createPeerListProvider(peerForwarderConfiguration, pluginMetrics));
     }
 
     @Test
@@ -77,7 +80,7 @@ class DnsPeerListProviderCreationTest {
         when(peerForwarderConfiguration.getDomainName()).thenReturn(INVALID_ENDPOINT);
 
         assertThrows(IllegalStateException.class,
-                () -> DnsPeerListProvider.createPeerListProvider(peerForwarderConfiguration));
+                () -> DnsPeerListProvider.createPeerListProvider(peerForwarderConfiguration, pluginMetrics));
     }
 
 }

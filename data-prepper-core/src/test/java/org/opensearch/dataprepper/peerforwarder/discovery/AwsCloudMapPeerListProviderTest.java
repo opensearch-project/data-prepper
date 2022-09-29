@@ -85,7 +85,7 @@ class AwsCloudMapPeerListProviderTest {
 
     private AwsCloudMapPeerListProvider createObjectUnderTest() {
         final AwsCloudMapPeerListProvider objectUnderTest =
-                new AwsCloudMapPeerListProvider(awsServiceDiscovery, namespaceName, serviceName, queryParameters, timeToRefreshSeconds, backoff);
+                new AwsCloudMapPeerListProvider(awsServiceDiscovery, namespaceName, serviceName, queryParameters, timeToRefreshSeconds, backoff, pluginMetrics);
         objectsToClose.add(objectUnderTest);
         return objectUnderTest;
     }

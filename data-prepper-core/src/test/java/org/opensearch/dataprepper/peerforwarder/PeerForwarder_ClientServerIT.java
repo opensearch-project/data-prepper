@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import com.amazon.dataprepper.model.CheckpointState;
 import com.amazon.dataprepper.model.event.Event;
 import com.amazon.dataprepper.model.event.JacksonEvent;
@@ -65,6 +66,7 @@ class PeerForwarder_ClientServerIT {
     private String pluginId;
     private List<Record<Event>> outgoingRecords;
     private Set<String> expectedMessages;
+    private PluginMetrics pluginMetrics;
 
     @BeforeEach
     void setUp() {
@@ -78,6 +80,8 @@ class PeerForwarder_ClientServerIT {
         pipelineName = UUID.randomUUID().toString();
         pluginId = UUID.randomUUID().toString();
 
+        pluginMetrics = PluginMetrics.fromNames(pluginId, pipelineName);
+
         expectedMessages = outgoingRecords.stream()
                 .map(Record::getData)
                 .map(e -> e.get("message", String.class))
@@ -88,7 +92,7 @@ class PeerForwarder_ClientServerIT {
             final PeerForwarderConfiguration peerForwarderConfiguration,
             final CertificateProviderFactory certificateProviderFactory,
             final PeerForwarderProvider peerForwarderProvider) {
-        final PeerForwarderHttpService peerForwarderHttpService = new PeerForwarderHttpService(new ResponseHandler(), peerForwarderProvider, peerForwarderConfiguration, objectMapper);
+        final PeerForwarderHttpService peerForwarderHttpService = new PeerForwarderHttpService(new ResponseHandler(pluginMetrics), peerForwarderProvider, peerForwarderConfiguration, objectMapper, pluginMetrics);
         Objects.requireNonNull(peerForwarderConfiguration, "Nested classes must supply peerForwarderConfiguration");
         Objects.requireNonNull(certificateProviderFactory, "Nested classes must supply certificateProviderFactory");
         final PeerForwarderHttpServerProvider serverProvider = new PeerForwarderHttpServerProvider(peerForwarderConfiguration,
@@ -104,8 +108,8 @@ class PeerForwarder_ClientServerIT {
             final CertificateProviderFactory certificateProviderFactory) {
         final PeerForwarderClient clientForProvider = createClient(peerForwarderConfiguration);
         final PeerClientPool peerClientPool = new PeerClientPool();
-        final PeerForwarderClientFactory clientFactoryForProvider = new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory);
-        return new PeerForwarderProvider(clientFactoryForProvider, clientForProvider, peerForwarderConfiguration);
+        final PeerForwarderClientFactory clientFactoryForProvider = new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory, pluginMetrics);
+        return new PeerForwarderProvider(clientFactoryForProvider, clientForProvider, peerForwarderConfiguration, pluginMetrics);
     }
 
     private PeerForwarderClient createClient(
@@ -113,9 +117,9 @@ class PeerForwarder_ClientServerIT {
         Objects.requireNonNull(peerForwarderConfiguration, "Nested classes must supply peerForwarderConfiguration");
         final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
         final PeerClientPool peerClientPool = new PeerClientPool();
-        final PeerForwarderClientFactory peerForwarderClientFactory = new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory);
+        final PeerForwarderClientFactory peerForwarderClientFactory = new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory, pluginMetrics);
         peerForwarderClientFactory.setPeerClientPool();
-        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper);
+        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper, pluginMetrics);
     }
 
     private Collection<Record<Event>> getServerSideRecords(final PeerForwarderProvider peerForwarderProvider) {

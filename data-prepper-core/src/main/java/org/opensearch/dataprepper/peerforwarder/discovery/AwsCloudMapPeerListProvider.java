@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.discovery;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import com.linecorp.armeria.client.Endpoint;
 import com.linecorp.armeria.client.endpoint.DynamicEndpointGroup;
@@ -57,7 +58,8 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
             final String serviceName,
             final Map<String, String> queryParameters,
             final int timeToRefreshSeconds,
-            final Backoff backoff) {
+            final Backoff backoff,
+            final PluginMetrics pluginMetrics) {
         this.awsServiceDiscovery = Objects.requireNonNull(awsServiceDiscovery);
         this.namespaceName = Objects.requireNonNull(namespaceName);
         this.serviceName = Objects.requireNonNull(serviceName);
@@ -75,9 +77,11 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
         endpointGroup = new AwsCloudMapDynamicEndpointGroup();
 
         domainName = serviceName + "." + namespaceName;
+
+        pluginMetrics.gauge(PEER_ENDPOINTS, endpointGroup, group -> group.endpoints().size());
     }
 
-    static AwsCloudMapPeerListProvider createPeerListProvider(final PeerForwarderConfiguration peerForwarderConfiguration) {
+    static AwsCloudMapPeerListProvider createPeerListProvider(final PeerForwarderConfiguration peerForwarderConfiguration, final PluginMetrics pluginMetrics) {
         final String awsRegion = peerForwarderConfiguration.getAwsRegion();
         Objects.requireNonNull(awsRegion, "Missing aws_region configuration value");
         final String namespace = peerForwarderConfiguration.getAwsCloudMapNamespaceName();
@@ -101,7 +105,8 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
                 serviceName,
                 queryParameters,
                 timeToRefreshSeconds,
-                standardBackoff);
+                standardBackoff,
+                pluginMetrics);
     }
 
 

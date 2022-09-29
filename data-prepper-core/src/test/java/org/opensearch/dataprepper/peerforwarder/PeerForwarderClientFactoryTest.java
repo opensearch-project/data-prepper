@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.amazon.dataprepper.metrics.PluginMetrics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,8 +44,11 @@ class PeerForwarderClientFactoryTest {
     @Mock
     CertificateProviderFactory certificateProviderFactory;
 
+    @Mock
+    PluginMetrics pluginMetrics;
+
     private PeerForwarderClientFactory createObjectUnderTest() {
-        return new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory);
+        return new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory, pluginMetrics);
     }
 
     @Test
