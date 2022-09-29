@@ -5,14 +5,6 @@
 
 package com.amazon.dataprepper.plugins.prepper.peerforwarder;
 
-import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.processor.AbstractProcessor;
-import org.opensearch.dataprepper.model.processor.Processor;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.trace.Span;
-import com.amazon.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import com.amazon.dataprepper.plugins.prepper.peerforwarder.discovery.StaticPeerListProvider;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
@@ -20,6 +12,14 @@ import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import org.apache.commons.codec.DecoderException;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.processor.AbstractProcessor;
+import org.opensearch.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
