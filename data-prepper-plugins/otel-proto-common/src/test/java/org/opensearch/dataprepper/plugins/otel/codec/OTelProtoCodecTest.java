@@ -3,16 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.plugins.otel.codec;
+package org.opensearch.dataprepper.plugins.otel.codec;
 
-import org.opensearch.dataprepper.model.trace.DefaultLink;
-import org.opensearch.dataprepper.model.trace.DefaultSpanEvent;
-import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
-import org.opensearch.dataprepper.model.trace.JacksonSpan;
-import org.opensearch.dataprepper.model.trace.Link;
-import org.opensearch.dataprepper.model.trace.Span;
-import org.opensearch.dataprepper.model.trace.SpanEvent;
-import org.opensearch.dataprepper.model.trace.TraceGroupFields;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +24,14 @@ import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.trace.DefaultLink;
+import org.opensearch.dataprepper.model.trace.DefaultSpanEvent;
+import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
+import org.opensearch.dataprepper.model.trace.JacksonSpan;
+import org.opensearch.dataprepper.model.trace.Link;
+import org.opensearch.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.model.trace.SpanEvent;
+import org.opensearch.dataprepper.model.trace.TraceGroupFields;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -50,12 +50,12 @@ import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class OTelProtoCodecTest {
