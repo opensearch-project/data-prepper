@@ -12,7 +12,7 @@ import java.util.Set;
 
 /**
  * Represents a part of the pipeline through which data flows. This includes
- * {@link com.amazon.dataprepper.model.sink.Sink} and {@link com.amazon.dataprepper.model.processor.Processor}.
+ * {@link org.opensearch.dataprepper.model.sink.Sink} and {@link org.opensearch.dataprepper.model.processor.Processor}.
  *
  * @param <T> The type of component.
  */
