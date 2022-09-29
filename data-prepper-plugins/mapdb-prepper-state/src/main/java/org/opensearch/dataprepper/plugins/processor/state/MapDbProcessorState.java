@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.prepper.state;
+package org.opensearch.dataprepper.plugins.processor.state;
 
 import org.opensearch.dataprepper.processor.state.ProcessorState;
 import com.google.common.primitives.SignedBytes;

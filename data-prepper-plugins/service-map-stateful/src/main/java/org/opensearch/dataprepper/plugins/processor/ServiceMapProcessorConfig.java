@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.prepper;
+package org.opensearch.dataprepper.plugins.processor;
 
 public class ServiceMapProcessorConfig {
     static final String WINDOW_DURATION = "window_duration";

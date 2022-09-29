@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.prepper.grok;
+package org.opensearch.dataprepper.plugins.processor.grok;
 
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;

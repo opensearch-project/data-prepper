@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.prepper.grok;
+package org.opensearch.dataprepper.plugins.processor.grok;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -51,7 +51,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.prepper.grok.GrokProcessor.EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT;
+import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessor.EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT;
 import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTimestamp;
 
 

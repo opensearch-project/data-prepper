@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.prepper.grok;
+package org.opensearch.dataprepper.plugins.processor.grok;
 
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -25,7 +25,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.opensearch.dataprepper.plugins.prepper.grok.GrokProcessorTests.buildRecordWithEvent;
+import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorTests.buildRecordWithEvent;
 
 public class GrokProcessorIT {
     private PluginSetting pluginSetting;

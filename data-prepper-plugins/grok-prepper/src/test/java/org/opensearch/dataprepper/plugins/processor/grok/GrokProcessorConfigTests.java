@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.prepper.grok;
+package org.opensearch.dataprepper.plugins.processor.grok;
 
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.junit.jupiter.api.BeforeAll;
@@ -18,12 +18,12 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
-import static org.opensearch.dataprepper.plugins.prepper.grok.GrokProcessorConfig.DEFAULT_BREAK_ON_MATCH;
-import static org.opensearch.dataprepper.plugins.prepper.grok.GrokProcessorConfig.DEFAULT_KEEP_EMPTY_CAPTURES;
-import static org.opensearch.dataprepper.plugins.prepper.grok.GrokProcessorConfig.DEFAULT_NAMED_CAPTURES_ONLY;
-import static org.opensearch.dataprepper.plugins.prepper.grok.GrokProcessorConfig.DEFAULT_PATTERNS_FILES_GLOB;
-import static org.opensearch.dataprepper.plugins.prepper.grok.GrokProcessorConfig.DEFAULT_TARGET_KEY;
-import static org.opensearch.dataprepper.plugins.prepper.grok.GrokProcessorConfig.DEFAULT_TIMEOUT_MILLIS;
+import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.DEFAULT_BREAK_ON_MATCH;
+import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.DEFAULT_KEEP_EMPTY_CAPTURES;
+import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.DEFAULT_NAMED_CAPTURES_ONLY;
+import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.DEFAULT_PATTERNS_FILES_GLOB;
+import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.DEFAULT_TARGET_KEY;
+import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.DEFAULT_TIMEOUT_MILLIS;
 
 public class GrokProcessorConfigTests {
     private static final String PLUGIN_NAME = "grok";

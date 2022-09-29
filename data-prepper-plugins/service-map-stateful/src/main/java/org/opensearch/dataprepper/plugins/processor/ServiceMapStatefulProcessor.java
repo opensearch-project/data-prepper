@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.prepper;
+package org.opensearch.dataprepper.plugins.processor;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
 import com.google.common.primitives.SignedBytes;
 import org.apache.commons.codec.binary.Hex;
-import org.opensearch.dataprepper.plugins.prepper.state.MapDbProcessorState;
+import org.opensearch.dataprepper.plugins.processor.state.MapDbProcessorState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

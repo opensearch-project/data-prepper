@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.prepper.state;
+package org.opensearch.dataprepper.plugins.processor.state;
 
 import org.junit.Assert;
 import org.junit.Rule;

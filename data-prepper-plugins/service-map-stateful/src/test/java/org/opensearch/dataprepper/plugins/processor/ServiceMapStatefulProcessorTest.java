@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.prepper;
+package org.opensearch.dataprepper.plugins.processor;
 
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
