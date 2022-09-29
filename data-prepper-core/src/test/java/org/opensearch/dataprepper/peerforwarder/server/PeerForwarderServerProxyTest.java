@@ -52,6 +52,7 @@ class PeerForwarderServerProxyTest {
 
         final PeerForwarderServerProxy objectUnderTest = createObjectUnderTest();
         objectUnderTest.start();
+        verify(peerForwarderHttpServerProvider).get();
         verify(server).start();
     }
 
@@ -81,6 +82,7 @@ class PeerForwarderServerProxyTest {
         final PeerForwarderServerProxy objectUnderTest = createObjectUnderTest();
         objectUnderTest.start();
         objectUnderTest.stop();
+        verify(peerForwarderHttpServerProvider).get();
         verify(server).stop();
     }
 
