@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -22,6 +23,7 @@ import java.util.Map;
  */
 public class PeerForwarderConfiguration {
     public static final String DEFAULT_PEER_FORWARDING_URI = "/event/forward";
+    public static final Duration DEFAULT_DRAIN_TIMEOUT = Duration.ofSeconds(10L);
     private static final String S3_PREFIX = "s3://";
 
     private Integer serverPort = 4994;
@@ -50,6 +52,7 @@ public class PeerForwarderConfiguration {
     private Integer batchSize = 48;
     private Integer bufferSize = 512;
     private boolean sslCertAndKeyFileInS3 = false;
+    private Duration drainTimeout = DEFAULT_DRAIN_TIMEOUT;
 
     public PeerForwarderConfiguration() {}
 
@@ -79,7 +82,8 @@ public class PeerForwarderConfiguration {
             @JsonProperty("static_endpoints") final List<String> staticEndpoints,
             @JsonProperty("client_thread_count") final Integer clientThreadCount,
             @JsonProperty("batch_size") final Integer batchSize,
-            @JsonProperty("buffer_size") final Integer bufferSize
+            @JsonProperty("buffer_size") final Integer bufferSize,
+            @JsonProperty("drain_timeout") final Duration drainTimeout
     ) {
         setServerPort(serverPort);
         setRequestTimeout(requestTimeout);
@@ -106,6 +110,7 @@ public class PeerForwarderConfiguration {
         setClientThreadCount(clientThreadCount);
         setBatchSize(batchSize);
         setBufferSize(bufferSize);
+        setDrainTimeout(drainTimeout);
         checkForCertAndKeyFileInS3();
         validateSslAndAuthentication();
     }
@@ -196,6 +201,10 @@ public class PeerForwarderConfiguration {
 
     public int getBufferSize() {
         return bufferSize;
+    }
+
+    public Duration getDrainTimeout() {
+        return drainTimeout;
     }
 
     private void setServerPort(final Integer serverPort) {
@@ -431,5 +440,14 @@ public class PeerForwarderConfiguration {
     private void validateSslAndAuthentication() {
         if(authentication == ForwardingAuthentication.MUTUAL_TLS && !ssl)
             throw new IllegalArgumentException("Mutual TLS is only available when SSL is enabled.");
+    }
+
+    private void setDrainTimeout(final Duration drainTimeout) {
+        if (drainTimeout != null) {
+            if (drainTimeout.isNegative()) {
+                throw new IllegalArgumentException("Peer forwarder drain timeout must be non-negative.");
+            }
+            this.drainTimeout = drainTimeout;
+        }
     }
 }

@@ -48,11 +48,13 @@ class PipelineTests {
     private Pipeline testPipeline;
     private Duration processorShutdownTimeout;
     private Duration sinkShutdownTimeout;
+    private Duration peerForwarderDrainTimeout;
 
     @BeforeEach
     void setup() {
         processorShutdownTimeout = Duration.ofSeconds(Math.abs(new Random().nextInt(10)));
         sinkShutdownTimeout = Duration.ofSeconds(Math.abs(new Random().nextInt(10)));
+        peerForwarderDrainTimeout = Duration.ofSeconds(Math.abs(new Random().nextInt(10)));
     }
 
     @AfterEach
@@ -68,7 +70,7 @@ class PipelineTests {
         final TestSink testSink = new TestSink();
         final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
                 Collections.emptyList(), Collections.singletonList(testSink), TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
-                processorShutdownTimeout, sinkShutdownTimeout);
+                processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
         assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
         assertThat("Pipeline is expected to have a default buffer", testPipeline.getBuffer(), notNullValue());
         assertTrue("Pipeline processors should be empty", testPipeline.getProcessorSets().isEmpty());
@@ -87,7 +89,7 @@ class PipelineTests {
         final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
                 Collections.singletonList(Collections.singletonList(testProcessor)),
                 Collections.singletonList(testSink),
-                TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout);
+                TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
         assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
         assertThat("Pipeline is expected to have a default buffer", testPipeline.getBuffer(), notNullValue());
         assertEquals("Pipeline processorSets size should be 1", 1, testPipeline.getProcessorSets().size());
@@ -107,7 +109,7 @@ class PipelineTests {
         final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
                 Collections.singletonList(Collections.singletonList(testProcessor)),
                 Collections.singletonList(testSink),
-                TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout);
+                TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
         assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
         assertThat("Pipeline is expected to have a default buffer", testPipeline.getBuffer(), notNullValue());
         assertEquals("Pipeline processorSets size should be 1", 1, testPipeline.getProcessorSets().size());
@@ -126,7 +128,7 @@ class PipelineTests {
         try {
             final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
                     Collections.emptyList(), Collections.singletonList(testSink), TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
-                    processorShutdownTimeout, sinkShutdownTimeout);
+                    processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
             testPipeline.execute();
         } catch (Exception ex) {
             assertThat("Incorrect exception message", ex.getMessage().contains("Source is expected to fail"));
@@ -142,7 +144,7 @@ class PipelineTests {
         try {
             testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
                     Collections.emptyList(), Collections.singletonList(testSink), TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
-                    processorShutdownTimeout, sinkShutdownTimeout);
+                    processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
             testPipeline.execute();
             Thread.sleep(TEST_READ_BATCH_TIMEOUT);
         } catch (Exception ex) {
@@ -179,7 +181,7 @@ class PipelineTests {
         try {
             testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
                     Collections.singletonList(Collections.singletonList(testProcessor)), Collections.singletonList(testSink),
-                    TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout);
+                    TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
             testPipeline.execute();
             Thread.sleep(TEST_READ_BATCH_TIMEOUT);
         } catch (Exception ex) {
@@ -194,7 +196,7 @@ class PipelineTests {
         final TestSink testSink = new TestSink();
         final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
                 Collections.emptyList(), Collections.singletonList(testSink), TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
-                processorShutdownTimeout, sinkShutdownTimeout);
+                processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
 
         assertEquals(testSource, testPipeline.getSource());
     }
@@ -205,7 +207,7 @@ class PipelineTests {
         final TestSink testSink = new TestSink();
         final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
                 Collections.emptyList(), Collections.singletonList(testSink),
-                TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout);
+                TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
 
         assertEquals(1, testPipeline.getSinks().size());
         assertEquals(testSink, testPipeline.getSinks().iterator().next());
@@ -230,7 +232,7 @@ class PipelineTests {
 
         private Pipeline createObjectUnderTest() {
             return new Pipeline(TEST_PIPELINE_NAME, mock(Source.class), mock(Buffer.class), Collections.emptyList(),
-                    sinks, TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout);
+                    sinks, TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
         }
 
         @Test

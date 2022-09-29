@@ -22,7 +22,7 @@ import java.util.Map;
  * Class to hold configuration for DataPrepper, including server port and Log4j settings
  */
 public class DataPrepperConfiguration {
-    static final Duration DEFAULT_SHUTDOWN_DURATION = Duration.ofSeconds(10L);
+    static final Duration DEFAULT_SHUTDOWN_DURATION = Duration.ofSeconds(30L);
 
     static final int MAX_TAGS_NUMBER = 3;
     private static final List<MetricRegistryType> DEFAULT_METRIC_REGISTRY_TYPE = Collections.singletonList(MetricRegistryType.Prometheus);
