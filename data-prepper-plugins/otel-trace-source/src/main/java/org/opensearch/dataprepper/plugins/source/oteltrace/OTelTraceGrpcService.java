@@ -5,12 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.oteltrace;
 
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.trace.Span;
-import com.amazon.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import io.grpc.Context;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -20,6 +14,12 @@ import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
