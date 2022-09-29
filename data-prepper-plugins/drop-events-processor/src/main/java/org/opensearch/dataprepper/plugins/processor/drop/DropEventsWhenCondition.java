@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.drop;
 
-import com.amazon.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +51,7 @@ class DropEventsWhenCondition {
      * Checks if {@link DropEventsProcessor} when condition evaluates to false using event to resolve Json Pointers
      *
      * @param event Source for resolving Json Pointers
-     * @return if the event should proceed to next {@link com.amazon.dataprepper.model.processor.Processor}
+     * @return if the event should proceed to next {@link org.opensearch.dataprepper.model.processor.Processor}
      */
     public boolean isStatementFalseWith(final Event event) {
         try {

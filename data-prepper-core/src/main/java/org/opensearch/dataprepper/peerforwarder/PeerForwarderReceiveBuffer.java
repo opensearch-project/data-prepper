@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
-import com.amazon.dataprepper.model.CheckpointState;
-import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.buffer.SizeOverflowException;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
+import org.opensearch.dataprepper.model.record.Record;
 import com.google.common.base.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +26,7 @@ import java.util.concurrent.TimeoutException;
 import static java.lang.String.format;
 
 /**
- * Buffer created for each stateful processor which implements {@link com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding}
+ * Buffer created for each stateful processor which implements {@link org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding}
  * interface.
  *
  * @since 2.0

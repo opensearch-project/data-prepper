@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.buffer.blockingbuffer;
 
-import com.amazon.dataprepper.model.CheckpointState;
-import com.amazon.dataprepper.model.buffer.SizeOverflowException;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

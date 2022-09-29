@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.parser;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
 import org.apache.commons.collections.CollectionUtils;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.parser.model.RoutedPluginSetting;
 import org.slf4j.Logger;

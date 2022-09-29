@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import com.amazon.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.OpenSearchException;
 import org.opensearch.action.bulk.BackoffPolicy;

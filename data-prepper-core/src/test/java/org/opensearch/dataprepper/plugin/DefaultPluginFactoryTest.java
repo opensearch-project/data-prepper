@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper.plugin;
 
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.plugin.NoPluginFoundException;
-import com.amazon.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
+import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.plugins.TestSink;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;

@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
-import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.time.Duration;
 import java.util.ArrayList;

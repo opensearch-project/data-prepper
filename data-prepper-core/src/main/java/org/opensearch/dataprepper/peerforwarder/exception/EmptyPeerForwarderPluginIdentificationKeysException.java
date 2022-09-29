@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.peerforwarder.exception;
 
 /**
  * This exception is thrown when processor which implements
- * {@link com.amazon.dataprepper.model.peerforwarder.RequiresPeerForwarding} interface returns an empty set of identification keys.
+ * {@link org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding} interface returns an empty set of identification keys.
  *
  * @since 2.0
  */

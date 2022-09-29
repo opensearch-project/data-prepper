@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.prepper;
 
-import com.amazon.dataprepper.metrics.MetricNames;
-import com.amazon.dataprepper.metrics.MetricsTestUtil;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.trace.Span;
 import com.google.common.collect.Sets;
 import io.micrometer.core.instrument.Measurement;
 import org.apache.commons.codec.binary.Hex;

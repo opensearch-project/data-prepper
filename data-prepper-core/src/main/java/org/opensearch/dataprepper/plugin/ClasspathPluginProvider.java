@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
-import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.reflections.Reflections;
 import org.reflections.util.ConfigurationBuilder;
 

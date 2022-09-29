@@ -10,7 +10,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.opensearch.dataprepper.DataPrepper;
 import org.opensearch.dataprepper.meter.EMFLoggingMeterRegistry;
-import com.amazon.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.MetricRegistryType;
 import org.opensearch.dataprepper.pipeline.server.CloudWatchMeterRegistryProvider;

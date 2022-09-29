@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
-import com.amazon.dataprepper.model.CheckpointState;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.TestBuffer;
 import org.junit.After;
 import org.junit.Before;

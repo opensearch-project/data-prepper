@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
-import com.amazon.dataprepper.model.event.Event;
-import com.amazon.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.buffer.TestBuffer;
 import org.junit.Test;
 

@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper;
 
-import com.amazon.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.parser.PipelineParser;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServer;
 import org.opensearch.dataprepper.pipeline.Pipeline;

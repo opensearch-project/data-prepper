@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.expression;
 
-import com.amazon.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.Event;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
@@ -14,8 +14,8 @@ import javax.inject.Inject;
 import javax.inject.Named;
 
 /**
- * Public class that {@link com.amazon.dataprepper.model.processor.Processor},
- * {@link com.amazon.dataprepper.model.sink.Sink} and data-prepper-core objects can use to evaluate statements.
+ * Public class that {@link org.opensearch.dataprepper.model.processor.Processor},
+ * {@link org.opensearch.dataprepper.model.sink.Sink} and data-prepper-core objects can use to evaluate statements.
  */
 @Named
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)

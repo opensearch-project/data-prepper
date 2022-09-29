@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
-import com.amazon.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.Event;
 
 /**
  * Model class to be returned in {@link AggregateAction}. Contains the Event to be processed, which is null if no Event should be processed.

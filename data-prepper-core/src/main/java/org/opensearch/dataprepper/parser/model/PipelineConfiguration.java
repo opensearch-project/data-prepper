@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.parser.model;
 
-import com.amazon.dataprepper.model.configuration.PipelineModel;
-import com.amazon.dataprepper.model.configuration.PluginModel;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.configuration.SinkModel;
+import org.opensearch.dataprepper.model.configuration.PipelineModel;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.configuration.SinkModel;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 
 import java.util.Collections;

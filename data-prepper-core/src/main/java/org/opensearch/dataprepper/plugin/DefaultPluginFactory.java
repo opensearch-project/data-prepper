@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.plugin;
 
-import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
-import com.amazon.dataprepper.model.configuration.PluginSetting;
-import com.amazon.dataprepper.model.plugin.NoPluginFoundException;
-import com.amazon.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;

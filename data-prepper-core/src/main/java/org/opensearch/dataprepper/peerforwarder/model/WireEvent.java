@@ -11,7 +11,7 @@ import java.time.Instant;
 import java.util.Map;
 
 /**
- * A class for {@link com.amazon.dataprepper.model.event.EventType} and JSON representation of event data used by {@link PeerForwarder}
+ * A class for {@link org.opensearch.dataprepper.model.event.EventType} and JSON representation of event data used by {@link PeerForwarder}
  *
  * @since 2.0
  */

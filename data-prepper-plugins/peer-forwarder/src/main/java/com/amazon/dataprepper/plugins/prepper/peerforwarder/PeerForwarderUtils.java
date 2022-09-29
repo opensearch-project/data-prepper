@@ -5,7 +5,7 @@
 
 package com.amazon.dataprepper.plugins.prepper.peerforwarder;
 
-import com.amazon.dataprepper.model.trace.Span;
+import org.opensearch.dataprepper.model.trace.Span;
 
 import java.util.Collection;
 import java.util.List;

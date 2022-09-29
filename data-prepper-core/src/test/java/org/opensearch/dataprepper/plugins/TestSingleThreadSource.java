@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.plugins;
 
-import com.amazon.dataprepper.model.annotations.DataPrepperPlugin;
-import com.amazon.dataprepper.model.annotations.SingleThread;
-import com.amazon.dataprepper.model.buffer.Buffer;
-import com.amazon.dataprepper.model.record.Record;
-import com.amazon.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.SingleThread;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.Source;
 
 @SingleThread
 @DataPrepperPlugin(name = "test_sink_updated", pluginType = Source.class)

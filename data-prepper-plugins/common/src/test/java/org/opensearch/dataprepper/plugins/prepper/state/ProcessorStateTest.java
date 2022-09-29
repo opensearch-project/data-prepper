@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.prepper.state;
 
-import com.amazon.dataprepper.processor.state.ProcessorState;
+import org.opensearch.dataprepper.processor.state.ProcessorState;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.parser.config;
 
-import com.amazon.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
