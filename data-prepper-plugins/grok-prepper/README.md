@@ -1,9 +1,9 @@
-# Grok Prepper
+# Grok Processor
 
-This is a prepper that takes unstructured data and utilizes pattern matching
+This is a processor that takes unstructured data and utilizes pattern matching
 to structure and extract important keys and make data more structured and queryable.
 
-The Grok Prepper uses the [java-grok Library](https://github.com/thekrakken/java-grok) internally and supports all java-grok library compatible patterns. The java-grok library is built using the `java.util.regex` regular expression library.
+The Grok Processor uses the [java-grok Library](https://github.com/thekrakken/java-grok) internally and supports all java-grok library compatible patterns. The java-grok library is built using the `java.util.regex` regular expression library.
 
 The full set of default patterns can be found [here](https://github.com/thekrakken/java-grok/blob/master/src/main/resources/patterns/patterns). Custom patterns can be added through either the
 `patterns_definitions` or `patterns_directories` configuration settings. When debugging custom patterns, the [Grok Debugger](https://grokdebug.herokuapp.com/) 
@@ -231,7 +231,7 @@ The resulting grokked log will now look like this.
 All of the grok captures were wrapped in an outer key named `grokked`.<br></br>
 
 * `timeout_millis` (Optional): An `int` that specifies the maximum amount of time, in milliseconds, that matching will be performed on an individual Record before it times out and moves on to the next Record.
-Setting a `timeout_millis = 0` will make it so that matching a Record never times out. If a Record does time out, it will remain the same as it was when input to the grok prepper. Default value is `30,000`
+Setting a `timeout_millis = 0` will make it so that matching a Record never times out. If a Record does time out, it will remain the same as it was when input to the grok processor. Default value is `30,000`
 
 ## Metrics
 

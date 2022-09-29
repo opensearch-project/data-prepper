@@ -41,7 +41,7 @@ docker pull opensearchproject/data-prepper:latest
 ```
  
 2. Take a look at [log_pipeline.yaml](log_pipeline.yaml). This configuration will take logs sent to the [http source](../../data-prepper-plugins/http-source), 
-process them with the [Grok Prepper](../../data-prepper-plugins/grok-prepper) by matching against the `COMMONAPACHELOG` pattern, 
+process them with the [Grok Processor](../../data-prepper-plugins/grok-prepper) by matching against the `COMMONAPACHELOG` pattern, 
 and send the processed logs to a local [OpenSearch sink](../../data-prepper-plugins/opensearch) to an index named `apache_logs`.
 
 
