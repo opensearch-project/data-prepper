@@ -5,14 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.sink;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.apache.commons.io.FileUtils;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -26,7 +26,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class FileSinkTests {
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class FileSinkTests {
     private static String PLUGIN_NAME = "file";
 
     private File TEST_OUTPUT_FILE;
@@ -39,8 +43,8 @@ public class FileSinkTests {
     private final List<Record<Object>> TEST_STRING_RECORDS = Arrays.asList(TEST_STRING_RECORD_1, TEST_STRING_RECORD_2);
     private List<Record<Object>> TEST_RECORDS;
 
-    @Before
-    public void setUp() throws IOException {
+    @BeforeEach
+    void setUp() throws IOException {
         TEST_OUTPUT_FILE = Files.createTempFile("", "output.txt").toFile();
         TEST_RECORDS = new ArrayList<>();
 
@@ -56,50 +60,61 @@ public class FileSinkTests {
                 .build()));
     }
 
-    @After
-    public void tearDown() {
+    @AfterEach
+    void tearDown() {
         FileUtils.deleteQuietly(TEST_OUTPUT_FILE);
     }
 
-    @Test(expected = RuntimeException.class)
-    public void testInvalidFilePath() {
-        final FileSink fileSink = new FileSink(completePluginSettingForFileSink(""));
-        fileSink.output(TEST_STRING_RECORDS);
+    @Test
+    void testInvalidFilePath() {
+        assertThrows(RuntimeException.class, () -> new FileSink(completePluginSettingForFileSink("")));
     }
 
     // TODO: remove with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
     @Test
-    public void testValidFilePathStringRecord() throws IOException {
+    void testValidFilePathStringRecord() throws IOException {
         final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
         fileSink.output(TEST_STRING_RECORDS);
         fileSink.shutdown();
 
         final String outputData = readDocFromFile(TEST_OUTPUT_FILE);
-        Assert.assertTrue(outputData.contains(TEST_DATA_1));
-        Assert.assertTrue(outputData.contains(TEST_DATA_2));
+        Assertions.assertTrue(outputData.contains(TEST_DATA_1));
+        Assertions.assertTrue(outputData.contains(TEST_DATA_2));
     }
 
     // TODO: remove with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
     @Test
-    public void testValidFilePathCustomTypeRecord() throws IOException {
+    void testValidFilePathCustomTypeRecord() throws IOException {
         final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
         final TestObject testObject = new TestObject();
         fileSink.output(Collections.singleton(new Record<>(testObject)));
         fileSink.shutdown();
 
         final String outputData = readDocFromFile(TEST_OUTPUT_FILE);
-        Assert.assertTrue(outputData.contains(testObject.toString()));
+        Assertions.assertTrue(outputData.contains(testObject.toString()));
     }
 
     @Test
-    public void testValidFilePath() throws IOException {
+    void testValidFilePath() throws IOException {
         final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
         fileSink.output(TEST_RECORDS);
         fileSink.shutdown();
 
         final String outputData = readDocFromFile(TEST_OUTPUT_FILE);
-        Assert.assertTrue(outputData.contains(TEST_DATA_1));
-        Assert.assertTrue(outputData.contains(TEST_DATA_2));
+        Assertions.assertTrue(outputData.contains(TEST_DATA_1));
+        Assertions.assertTrue(outputData.contains(TEST_DATA_2));
+    }
+
+    @Test
+    void testMultipleCallsToOutput() throws IOException {
+        final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
+        fileSink.output(Collections.singletonList(TEST_RECORDS.get(0)));
+        fileSink.output(Collections.singletonList(TEST_RECORDS.get(1)));
+        fileSink.shutdown();
+
+        final String outputData = readDocFromFile(TEST_OUTPUT_FILE);
+        assertThat(outputData, containsString(TEST_DATA_1));
+        assertThat(outputData, containsString(TEST_DATA_2));
     }
 
     private PluginSetting completePluginSettingForFileSink(final String filepath) {
