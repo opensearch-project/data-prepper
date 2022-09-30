@@ -6,7 +6,7 @@ It is a great way to reduce unnecessary log volume and create aggregated logs ov
 ## Usage
 
 The following pipeline configuration will aggregate Events based on the entries with keys `sourceIp`, `destinationIp`, and `port`. It uses the [remove_duplicates](#remove_duplicates) action. 
-While not necessary, a great way to set up the Aggregate Processor [identification_keys](#identification_keys) is with the [Grok Processor](../grok-prepper/README.md) as shown below.
+While not necessary, a great way to set up the Aggregate Processor [identification_keys](#identification_keys) is with the [Grok Processor](../grok-processor/README.md) as shown below.
 ```yaml
   source:
     ...
