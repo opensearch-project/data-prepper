@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.peerforwarder.server;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import io.netty.handler.ssl.ClientAuth;
+import io.netty.handler.ssl.util.FingerprintTrustManagerFactory;
 import org.opensearch.dataprepper.peerforwarder.ForwardingAuthentication;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
@@ -61,10 +62,16 @@ public class PeerForwarderHttpServerProvider implements Provider<Server> {
             );
 
             if (peerForwarderConfiguration.getAuthentication() == ForwardingAuthentication.MUTUAL_TLS) {
-                sb.tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(
-                                new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8))
-                        )
-                        .clientAuth(ClientAuth.REQUIRE));
+                if (peerForwarderConfiguration.isSslFingerprintVerificationOnly()) {
+                    final FingerprintTrustManagerFactory fingerprintTrustManagerFactory = new FingerprintTrustManagerFactory(certificate.getFingerprint());
+                    sb.tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(fingerprintTrustManagerFactory)
+                            .clientAuth(ClientAuth.REQUIRE));
+                } else {
+                    sb.tlsCustomizer(sslContextBuilder -> sslContextBuilder.trustManager(
+                                    new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8))
+                            )
+                            .clientAuth(ClientAuth.REQUIRE));
+                }
             }
         } else {
             LOG.warn("Creating Peer Forwarder server without SSL/TLS. This is not secure.");
