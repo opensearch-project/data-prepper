@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -115,6 +116,18 @@ class FileSinkTests {
         final String outputData = readDocFromFile(TEST_OUTPUT_FILE);
         assertThat(outputData, containsString(TEST_DATA_1));
         assertThat(outputData, containsString(TEST_DATA_2));
+    }
+
+    @Test
+    void testCallingOutputAfterShutdownDoesNotWrite() throws IOException {
+        final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
+        fileSink.output(Collections.singletonList(TEST_RECORDS.get(0)));
+        fileSink.shutdown();
+        fileSink.output(Collections.singletonList(TEST_RECORDS.get(1)));
+
+        final String outputData = readDocFromFile(TEST_OUTPUT_FILE);
+        assertThat(outputData, containsString(TEST_DATA_1));
+        assertThat(outputData, not(containsString(TEST_DATA_2)));
     }
 
     private PluginSetting completePluginSettingForFileSink(final String filepath) {
