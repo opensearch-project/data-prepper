@@ -47,9 +47,11 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_ACTUALLY_PROCESSED_LOCALLY;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_FAILED_FORWARDING;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_RECEIVED_FROM_PEERS;
+import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_SUCCESSFULLY_FORWARDED;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_TO_BE_FORWARDED;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_TO_BE_PROCESSED_LOCALLY;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.REQUESTS_FAILED;
+import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.REQUESTS_SUCCESSFUL;
 
 @ExtendWith(MockitoExtension.class)
 class RemotePeerForwarderTest {
@@ -76,6 +78,9 @@ class RemotePeerForwarderTest {
     private Counter recordsToBeForwardedCounter;
 
     @Mock
+    private Counter recordsSuccessfullyForwardedCounter;
+
+    @Mock
     private Counter recordsFailedForwardingCounter;
 
     @Mock
@@ -83,6 +88,9 @@ class RemotePeerForwarderTest {
 
     @Mock
     private Counter requestsFailedCounter;
+
+    @Mock
+    private Counter requestsSuccessfulCounter;
 
     private String pipelineName;
     private String pluginId;
@@ -99,9 +107,11 @@ class RemotePeerForwarderTest {
         when(pluginMetrics.counter(RECORDS_TO_BE_PROCESSED_LOCALLY)).thenReturn(recordsToBeProcessedLocallyCounter);
         when(pluginMetrics.counter(RECORDS_ACTUALLY_PROCESSED_LOCALLY)).thenReturn(recordsActuallyProcessedLocallyCounter);
         when(pluginMetrics.counter(RECORDS_TO_BE_FORWARDED)).thenReturn(recordsToBeForwardedCounter);
+        when(pluginMetrics.counter(RECORDS_SUCCESSFULLY_FORWARDED)).thenReturn(recordsSuccessfullyForwardedCounter);
         when(pluginMetrics.counter(RECORDS_FAILED_FORWARDING)).thenReturn(recordsFailedForwardingCounter);
         when(pluginMetrics.counter(RECORDS_RECEIVED_FROM_PEERS)).thenReturn(recordsReceivedFromPeersCounter);
         when(pluginMetrics.counter(REQUESTS_FAILED)).thenReturn(requestsFailedCounter);
+        when(pluginMetrics.counter(REQUESTS_SUCCESSFUL)).thenReturn(requestsSuccessfulCounter);
     }
 
     @AfterEach
@@ -110,9 +120,11 @@ class RemotePeerForwarderTest {
                 recordsToBeProcessedLocallyCounter,
                 recordsActuallyProcessedLocallyCounter,
                 recordsToBeForwardedCounter,
+                recordsSuccessfullyForwardedCounter,
                 recordsFailedForwardingCounter,
                 recordsReceivedFromPeersCounter,
-                requestsFailedCounter
+                requestsFailedCounter,
+                requestsSuccessfulCounter
         );
     }
 
@@ -158,6 +170,8 @@ class RemotePeerForwarderTest {
         verify(recordsToBeProcessedLocallyCounter).increment(1.0);
         verify(recordsActuallyProcessedLocallyCounter).increment(1.0);
         verify(recordsToBeForwardedCounter).increment(1.0);
+        verify(requestsSuccessfulCounter).increment();
+        verify(recordsSuccessfullyForwardedCounter).increment(1.0);
     }
 
     @Test
