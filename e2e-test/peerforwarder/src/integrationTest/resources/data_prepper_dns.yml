@@ -1,0 +1,7 @@
+ssl: false
+peer_forwarder:
+  port: 4994
+  ssl: false
+  discovery_mode: dns
+  domain_name: "data-prepper.example.com"
+

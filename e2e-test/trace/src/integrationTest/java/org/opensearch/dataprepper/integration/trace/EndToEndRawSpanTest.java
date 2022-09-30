@@ -118,7 +118,7 @@ public class EndToEndRawSpanTest {
         builder.withPassword("admin");
         final RestHighLevelClient restHighLevelClient = builder.build().createClient();
         // Wait for data to flow through pipeline and be indexed by ES
-        await().atLeast(6, TimeUnit.SECONDS).atMost(20, TimeUnit.SECONDS).untilAsserted(
+        await().atLeast(3, TimeUnit.SECONDS).atMost(20, TimeUnit.SECONDS).untilAsserted(
                 () -> {
                     refreshIndices(restHighLevelClient);
                     final SearchRequest searchRequest = new SearchRequest(INDEX_NAME);

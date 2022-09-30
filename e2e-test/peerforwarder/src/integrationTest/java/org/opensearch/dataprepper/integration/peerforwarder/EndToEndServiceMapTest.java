@@ -3,8 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.integration.trace;
-
+package org.opensearch.dataprepper.integration.peerforwarder;
 
 import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import com.google.protobuf.ByteString;
@@ -60,7 +59,7 @@ public class EndToEndServiceMapTest {
     private static final String SERVICE_MAP_INDEX_NAME = "otel-v1-apm-service-map";
 
     @Test
-    public void testPipelineEndToEnd() {
+    public void testPipelineEndToEnd() throws IOException, InterruptedException {
         // Send test trace group 1
         final ExportTraceServiceRequest exportTraceServiceRequest11 = getExportTraceServiceRequest(
                 getResourceSpansBatch(TEST_TRACEID_1, TEST_TRACE_1_BATCH_1)
@@ -82,7 +81,7 @@ public class EndToEndServiceMapTest {
         builder.withPassword("admin");
         final RestHighLevelClient restHighLevelClient = builder.build().createClient();
 
-        // Wait for service map processor by 2 * window_duration
+        // Wait for service map prepper by 2 * window_duration
         await().atLeast(8, TimeUnit.SECONDS).atMost(20, TimeUnit.SECONDS).untilAsserted(
                 () -> {
                     final List<Map<String, Object>> foundSources = getSourcesFromIndex(restHighLevelClient, SERVICE_MAP_INDEX_NAME);
