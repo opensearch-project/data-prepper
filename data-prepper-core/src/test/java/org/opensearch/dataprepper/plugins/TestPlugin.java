@@ -12,7 +12,7 @@ import org.opensearch.dataprepper.plugin.TestPluginConfiguration;
 
 /**
  * Used for integration testing the plugin framework.
- * TODO: Move this into the com.amazon.dataprepper.plugin package once alternate packages are supported per #379.
+ * TODO: Move this into the org.opensearch.dataprepper.plugin package once alternate packages are supported per #379.
  */
 @DataPrepperPlugin(name = "test_plugin", pluginType = TestPluggableInterface.class, pluginConfigurationType = TestPluginConfiguration.class)
 public class TestPlugin implements TestPluggableInterface {
