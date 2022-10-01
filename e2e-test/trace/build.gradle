@@ -31,10 +31,6 @@ task removeDataPrepperNetwork(type: DockerRemoveNetwork) {
 }
 
 def RAW_SPAN_PIPELINE_YAML = "raw-span-e2e-pipeline.yml"
-// TODO: refactor this file once core-peerforwarder is ready
-def RAW_SPAN_PIPELINE_PEER_FORWARDER_YAML = "raw-span-e2e-pipeline-peer-forwarder.yml"
-// TODO: change or remove the file once core-peerforwarder is ready
-def RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML = "raw-span-e2e-pipeline-latest-release.yml"
 def SERVICE_MAP_PIPELINE_YAML = "service-map-e2e-pipeline.yml"
 def DATA_PREPPER_CONFIG_YAML = "data_prepper.yml"
 def DATA_PREPPER_CONFIG_STATIC_YAML = "data_prepper_static.yml"
@@ -96,24 +92,25 @@ def removeDataPrepperDockerContainer(final DockerStopContainer stopDataPrepperDo
     }
 }
 
-//task pullDataPrepperDockerImage(type: DockerPullImage) {
-//    image = 'opensearchproject/data-prepper:latest'
-//}
-//
-//def createDataPrepperDockerContainerFromPullImage(final String taskBaseName, final String dataPrepperName, final int grpcPort,
-//                                                  final int serverPort, final String pipelineConfigYAML) {
-//    return tasks.create("create${taskBaseName}", DockerCreateContainer) {
-//        dependsOn createDataPrepperNetwork
-//        dependsOn pullDataPrepperDockerImage
-//        containerName = dataPrepperName
-//        hostConfig.portBindings = [String.format('%d:21890', grpcPort), String.format('%d:4900', serverPort)]
-//        exposePorts('tcp', [21890, 4900])
-//        hostConfig.network = createDataPrepperNetwork.getNetworkName()
-//        hostConfig.binds = [(project.file(pipelineConfigYAML).toString()):"/usr/share/data-prepper/pipelines.yaml",
-//                            (project.file("src/integrationTest/resources/data_prepper.yml").toString()):"/usr/share/data-prepper/data-prepper-config.yaml"]
-//        targetImageId pullDataPrepperDockerImage.image
-//    }
-//}
+task pullDataPrepperDockerImage(type: DockerPullImage) {
+    image = 'opensearchproject/data-prepper:latest'
+}
+
+// TODO: Add back the compatibility tests for Data Prepper 2.1
+def createDataPrepperDockerContainerFromPullImage(final String taskBaseName, final String dataPrepperName, final int grpcPort,
+                                                  final int serverPort, final String pipelineConfigYAML) {
+    return tasks.create("create${taskBaseName}", DockerCreateContainer) {
+        dependsOn createDataPrepperNetwork
+        dependsOn pullDataPrepperDockerImage
+        containerName = dataPrepperName
+        hostConfig.portBindings = [String.format('%d:21890', grpcPort), String.format('%d:4900', serverPort)]
+        exposePorts('tcp', [21890, 4900])
+        hostConfig.network = createDataPrepperNetwork.getNetworkName()
+        hostConfig.binds = [(project.file(pipelineConfigYAML).toString()):"/usr/share/data-prepper/pipelines.yaml",
+                            (project.file("src/integrationTest/resources/data_prepper.yml").toString()):"/usr/share/data-prepper/data-prepper-config.yaml"]
+        targetImageId pullDataPrepperDockerImage.image
+    }
+}
 
 /**
  * OpenSearch Docker tasks

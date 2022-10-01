@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.integration.trace;
 
-
 import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import com.google.protobuf.ByteString;
 import com.linecorp.armeria.client.Clients;
