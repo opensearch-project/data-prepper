@@ -8,7 +8,7 @@ are created as Data Prepper plugins.
 Plugins are created as Java classes. They must conform to the following.
 
 * The class must be annotated with [`@DataPrepperPlugin`](../data-prepper-api/src/main/java/com/amazon/dataprepper/model/annotations/DataPrepperPlugin.java)
-* The class must be in the `com.amazon.dataprepper.plugins` package
+* The class must be in the `org.opensearch.dataprepper.plugins` package
 * The class must implement the required interface
 * The class must have a valid constructor (see below)
 
