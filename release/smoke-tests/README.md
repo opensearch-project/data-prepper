@@ -70,8 +70,8 @@ docker-compose logs -f data-prepper
 The Data Prepper container should show events being processed:
 ```
 ...
-data-prepper_1         | 2021-12-03T19:57:30,488 [service-map-pipeline-prepper-worker-3-thread-1] INFO  com.amazon.dataprepper.pipeline.ProcessWorker -  service-map-pipeline Worker: No records received from buffer
-data-prepper_1         | 2021-12-03T19:57:31,925 [grok-pipeline-prepper-worker-7-thread-1] INFO  com.amazon.dataprepper.pipeline.ProcessWorker -  grok-pipeline Worker: Processing 8 records from buffer
+data-prepper_1         | 2021-12-03T19:57:30,488 [service-map-pipeline-prepper-worker-3-thread-1] INFO  org.opensearch.dataprepper.pipeline.ProcessWorker -  service-map-pipeline Worker: No records received from buffer
+data-prepper_1         | 2021-12-03T19:57:31,925 [grok-pipeline-prepper-worker-7-thread-1] INFO  org.opensearch.dataprepper.pipeline.ProcessWorker -  grok-pipeline Worker: Processing 8 records from buffer
 ...
 ```
 ### 3. Confirm Open Search is running
