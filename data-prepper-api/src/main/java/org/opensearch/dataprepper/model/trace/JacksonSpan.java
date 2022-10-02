@@ -5,6 +5,11 @@
 
 package org.opensearch.dataprepper.model.trace;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -51,6 +56,10 @@ public class JacksonSpan extends JacksonEvent implements Span {
     private static final List<String>
             REQUIRED_NON_EMPTY_KEYS = Arrays.asList(TRACE_ID_KEY, SPAN_ID_KEY, NAME_KEY, KIND_KEY, START_TIME_KEY, END_TIME_KEY);
     private static final List<String> REQUIRED_NON_NULL_KEYS = Arrays.asList(DURATION_IN_NANOS_KEY, TRACE_GROUP_FIELDS_KEY);
+
+    private static final ObjectMapper mapper = new ObjectMapper()
+            .registerModule(new JavaTimeModule());
+    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() {};
 
     protected JacksonSpan(final Builder builder) {
         super(builder);
@@ -193,6 +202,31 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         @Override
         public Builder getThis() {
+            return this;
+        }
+
+        /**
+         * Sets the data of the event.
+         * @param data JSON representation of the data
+         * @since 2.0
+         */
+        public Builder withJsonData(final String data) {
+            try {
+                this.data.putAll(mapper.readValue(data, MAP_TYPE_REFERENCE));
+            } catch (final JsonProcessingException e) {
+                throw new RuntimeException(String.format("An exception occurred due to invalid JSON while reading event data: %s", data), e);
+            }
+            return this;
+        }
+
+        /**
+         * Sets the metadata.
+         * @param eventMetadata the metadata
+         * @since 2.0
+         */
+        @Override
+        public Builder withEventMetadata(final EventMetadata eventMetadata) {
+            super.withEventMetadata(eventMetadata);
             return this;
         }
 
@@ -381,6 +415,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * @return a JacksonSpan
          * @since 1.2
          */
+        @Override
         public JacksonSpan build() {
             validateParameters();
             checkAndSetDefaultValues();
