@@ -88,7 +88,7 @@ public class EndToEndRawSpanTest {
     private static final String INDEX_NAME = "otel-v1-apm-span-000001";
 
     @Test
-    public void testPipelineEndToEnd() throws InterruptedException {
+    public void testPipelineEndToEnd() {
         //Send data to otel trace source
         final ExportTraceServiceRequest exportTraceServiceRequestTrace1BatchWithRoot = getExportTraceServiceRequest(
                 getResourceSpansBatch(TEST_SPAN_SET_1_WITH_ROOT_SPAN)

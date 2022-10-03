@@ -1,4 +1,4 @@
-grok-pipeline:
+aggregate-pipeline:
   source:
     http:
   processor:

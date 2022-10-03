@@ -1,11 +1,9 @@
 apply plugin: DockerRemoteApiPlugin
 
-
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-
 
 import com.bmuschko.gradle.docker.DockerRemoteApiPlugin
 import com.bmuschko.gradle.docker.tasks.container.DockerCreateContainer
@@ -30,14 +28,9 @@ task removeDataPrepperNetwork(type: DockerRemoveNetwork) {
     networkId = createDataPrepperNetwork.getNetworkId()
 }
 
-//def RAW_SPAN_PIPELINE_YAML = "raw-span-e2e-pipeline.yml"
-//def RAW_SPAN_PIPELINE_PEER_FORWARDER_YAML = "raw-span-e2e-pipeline-peer-forwarder.yml"
-//def RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML = "raw-span-e2e-pipeline-latest-release.yml"
-//def SERVICE_MAP_PIPELINE_YAML = "service-map-e2e-pipeline.yml"
 def AGGREGATE_PIPELINE_YAML = "aggregate-e2e-pipeline.yml"
 def DATA_PREPPER_CONFIG_LOCAL_NODE = "data_prepper_local_node.yml"
 def DATA_PREPPER_CONFIG_STATIC = "data_prepper_static.yml"
-def DATA_PREPPER_CONFIG_DNS = "data_prepper_dns.yml"
 
 /**
  * DataPrepper Docker tasks
@@ -51,7 +44,6 @@ task createDataPrepperDockerFile(type: Dockerfile) {
     exposePort(4994)
     workingDir("/app/data-prepper")
     copyFile("${dataPrepperJarFilepath}", "/app/data-prepper/lib")
-//    copyFile("src/integrationTest/resources/${DATA_PREPPER_CONFIG_LOCAL_NODE}", "/app/data-prepper/config/data-prepper-config.yaml")
     copyFile("src/integrationTest/resources/default_certificate.pem", "/app/data-prepper/config/default_certificate.pem")
     copyFile("src/integrationTest/resources/default_private_key.pem", "/app/data-prepper/config/default_private_key.pem")
     defaultCommand('java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute')
@@ -70,7 +62,6 @@ def createDataPrepperDockerContainer(final String taskBaseName, final String dat
         dependsOn buildDataPrepperDockerImage
         dependsOn createDataPrepperNetwork
         containerName = dataPrepperName
-        hostConfig.dns = ["data-prepper.example.com"]
         hostConfig.portBindings = [String.format('%d:2021', sourcePort), String.format('%d:4900', serverPort), String.format('%d:4994', peerForwarderPort)]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
         hostConfig.binds = [(project.file("src/integrationTest/resources/${pipelineConfigYAML}").toString()):"/app/data-prepper/pipelines/pipelines.yaml",
@@ -174,9 +165,8 @@ def createEndToEndTest(final String testName, final String includeTestsMatchPatt
     }
 }
 
-// AGGREGATE
-// LOCAL_NODE
-def includeLocalAggregateTestsMatchPattern = "org.opensearch.dataprepper.integration.peerforwarder.EndToEndAggregatePeerForwarderTest.testAggregatePipelineWithSingleNodeEndToEnd*"
+// Discovery mode: LOCAL_NODE
+def includeLocalAggregateTestsMatchPattern = "org.opensearch.dataprepper.integration.peerforwarder.EndToEndPeerForwarderTest.testAggregatePipelineWithSingleNodeEndToEnd*"
 
 def createLocalAggregateDataPrepper1Task = createDataPrepperDockerContainer(
         "localAggregateDataPrepper1", "dataprepper1", 2021, 4900, 4994, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_LOCAL_NODE}")
@@ -186,56 +176,16 @@ def createLocalAggregateDataPrepper2Task = createDataPrepperDockerContainer(
 def localAggregateEndToEndTest = createEndToEndTest("localAggregateEndToEndTest", includeLocalAggregateTestsMatchPattern,
         createLocalAggregateDataPrepper1Task, createLocalAggregateDataPrepper2Task)
 
-// STATIC, SSL, mTLS
-def includeStaticRemoteAggregateTestsMatchPattern = "org.opensearch.dataprepper.integration.peerforwarder.EndToEndAggregatePeerForwarderTest.testAggregatePipelineWithMultipleNodesEndToEnd*"
+// Discovery mode: STATIC with SSL & mTLS
+def includeStaticAggregateTestsMatchPattern = "org.opensearch.dataprepper.integration.peerforwarder.EndToEndPeerForwarderTest.testAggregatePipelineWithMultipleNodesEndToEnd*"
 
-def createRemoteAggregateDataPrepper1Task = createDataPrepperDockerContainer(
-        "staticRemoteAggregateDataPrepper1", "node1.data-prepper.example.com", 2021, 4900, 4994, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC}")
-def createRemoteAggregateDataPrepper2Task = createDataPrepperDockerContainer(
-        "staticRemoteAggregateDataPrepper2", "node2.data-prepper.example.com", 2022, 4901, 4995, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC}")
+def createAggregateDataPrepper1Task = createDataPrepperDockerContainer(
+        "staticAggregateDataPrepper1", "node1.data-prepper.example.com", 2021, 4900, 4994, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC}")
+def createAggregateDataPrepper2Task = createDataPrepperDockerContainer(
+        "staticAggregateDataPrepper2", "node2.data-prepper.example.com", 2022, 4901, 4995, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC}")
 
-def staticRemoteAggregateEndToEndTest = createEndToEndTest("staticRemoteAggregateEndToEndTest", includeStaticRemoteAggregateTestsMatchPattern,
-        createRemoteAggregateDataPrepper1Task, createRemoteAggregateDataPrepper2Task)
-
-// DNS
-def includeDNSRemoteAggregateTestsMatchPattern = "org.opensearch.dataprepper.integration.peerforwarder.EndToEndAggregatePeerForwarderTest.testAggregatePipelineWithMultipleNodesEndToEnd*"
-
-def createDNSRemoteAggregateDataPrepper1Task = createDataPrepperDockerContainer(
-        "DNSRemoteAggregateDataPrepper1", "node1.data-prepper.example.com", 2021, 4900, 4994, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_DNS}")
-def createDNSRemoteAggregateDataPrepper2Task = createDataPrepperDockerContainer(
-        "DNSRemoteAggregateDataPrepper2", "node2.data-prepper.example.com", 2022, 4901, 4995, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_DNS}")
-
-def DNSRemoteAggregateEndToEndTest = createEndToEndTest("DNSRemoteAggregateEndToEndTest", includeDNSRemoteAggregateTestsMatchPattern,
-        createDNSRemoteAggregateDataPrepper1Task, createDNSRemoteAggregateDataPrepper2Task)
-
-//def includeRawSpanTestsMatchPattern = "org.opensearch.dataprepper.integration.trace.EndToEndRawSpanTest.testPipelineEndToEnd*"
-//
-//def createRawSpanDataPrepper1Task = createDataPrepperDockerContainer(
-//        "rawSpanDataPrepper1", "dataprepper1", 21890, 4900, "${RAW_SPAN_PIPELINE_YAML}")
-//def createRawSpanDataPrepper2Task = createDataPrepperDockerContainer(
-//        "rawSpanDataPrepper2", "dataprepper2", 21891, 4901, "${RAW_SPAN_PIPELINE_YAML}")
-//
-//def rawSpanEndToEndTest = createEndToEndTest("rawSpanEndToEndTest", includeRawSpanTestsMatchPattern,
-//        createRawSpanDataPrepper1Task, createRawSpanDataPrepper2Task)
-//
-//def rawSpanDataPrepperEventFromBuild = createDataPrepperDockerContainer(
-//        "rawSpanDataPrepperEventFromBuild", "dataprepper1", 21890, 4900, "${RAW_SPAN_PIPELINE_PEER_FORWARDER_YAML}")
-//def rawSpanDataPrepperLatestFromPull = createDataPrepperDockerContainer(
-//        "rawSpanDataPrepperLatestFromPull", "dataprepper2", 21891, 4901, "src/integrationTest/resources/${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}")
-//
-//def rawSpanLatestReleaseCompatibilityEndToEndTest = createEndToEndTest("rawSpanLatestReleaseCompatibilityEndToEndTest",
-//        includeRawSpanTestsMatchPattern,
-//        rawSpanDataPrepperEventFromBuild, rawSpanDataPrepperLatestFromPull)
-//
-//def includeServiceMapTestsMatchPattern = "org.opensearch.dataprepper.integration.trace.EndToEndServiceMapTest*"
-//
-//def createServiceMapDataPrepper1Task = createDataPrepperDockerContainer(
-//        "serviceMapDataPrepper1", "dataprepper1", 21890, 4900, "${SERVICE_MAP_PIPELINE_YAML}")
-//def createServiceMapDataPrepper2Task = createDataPrepperDockerContainer(
-//        "serviceMapDataPrepper2", "dataprepper2", 21891, 4901, "${SERVICE_MAP_PIPELINE_YAML}")
-//
-//def serviceMapEndToEndTest = createEndToEndTest("serviceMapEndToEndTest", includeServiceMapTestsMatchPattern,
-//        createServiceMapDataPrepper1Task, createServiceMapDataPrepper2Task)
+def staticAggregateEndToEndTest = createEndToEndTest("staticAggregateEndToEndTest", includeStaticAggregateTestsMatchPattern,
+        createAggregateDataPrepper1Task, createAggregateDataPrepper2Task)
 
 dependencies {
     integrationTestImplementation project(':data-prepper-api')

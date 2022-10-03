@@ -12,7 +12,7 @@ service-map-pipeline:
       name: "entry-pipeline"
   processor:
     - service_map_stateful:
-        window_duration: 4
+        window_duration: 6
   sink:
     - opensearch:
         hosts: ["https://node-0.example.com:9200"]

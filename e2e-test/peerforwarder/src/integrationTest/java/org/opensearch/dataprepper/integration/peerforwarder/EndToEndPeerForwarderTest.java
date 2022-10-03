@@ -26,8 +26,6 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguratio
 import org.opensearch.dataprepper.plugins.source.loggenerator.ApacheLogFaker;
 import org.opensearch.search.SearchHits;
 import org.opensearch.search.builder.SearchSourceBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -47,16 +45,15 @@ import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.not;
 
-public class EndToEndAggregatePeerForwarderTest {
-    private static final Logger LOG = LoggerFactory.getLogger(EndToEndAggregatePeerForwarderTest.class);
+public class EndToEndPeerForwarderTest {
     private static final int HTTP_SOURCE_PORT_1 = 2021;
     private static final int HTTP_SOURCE_PORT_2 = 2022;
     private static final String TEST_INDEX_NAME = "test-peer-forwarder-index";
     private static final String CUSTOM_KEY_1 = "verb";
     private static final String CUSTOM_KEY_2 = "bytes";
-    private static final String SOURCE_IP = "12.12.12.12";
-    private static final String DESTINATION_IP_1 = "13.13.13.13";
-    private static final String DESTINATION_IP_2 = "14.14.14.14";
+    private static final String SOURCE_IP = "127.0.0.1";
+    private static final String DESTINATION_IP_1 = "8.8.8.8";
+    private static final String DESTINATION_IP_2 = "12.12.13.13";
 
     private final ApacheLogFaker apacheLogFaker = new ApacheLogFaker();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -64,57 +61,25 @@ public class EndToEndAggregatePeerForwarderTest {
 
     @Test
     public void testAggregatePipelineWithSingleNodeEndToEnd() throws JsonProcessingException {
-        // Send data to http source
-        // [sourceIp, destinationIp1, key1]
-        // [sourceIp, destinationIp1, key2]
-        // [sourceIp, destinationIp2, key1]
-        // [sourceIp, destinationIp2, key2]
         sendHttpRequestToSource(HTTP_SOURCE_PORT_1, generateRandomApacheLogHttpData(DESTINATION_IP_1, CUSTOM_KEY_1, "POST"));
-        sendHttpRequestToSource(HTTP_SOURCE_PORT_1, generateRandomApacheLogHttpData(DESTINATION_IP_2, CUSTOM_KEY_1, "POST"));
+        sendHttpRequestToSource(HTTP_SOURCE_PORT_1, generateRandomApacheLogHttpData(DESTINATION_IP_2, CUSTOM_KEY_1, "GET"));
         sendHttpRequestToSource(HTTP_SOURCE_PORT_1, generateRandomApacheLogHttpData(DESTINATION_IP_1, CUSTOM_KEY_2, String.valueOf(random.nextInt())));
         sendHttpRequestToSource(HTTP_SOURCE_PORT_1, generateRandomApacheLogHttpData(DESTINATION_IP_2, CUSTOM_KEY_2, String.valueOf(random.nextInt())));
 
-        // Verify data in OpenSearch backend
-        final RestHighLevelClient restHighLevelClient = prepareOpenSearchRestHighLevelClient();
-        final List<Map<String, Object>> retrievedDocs = new ArrayList<>();
-        // Wait for data to flow through pipeline and be indexed by ES
-        await().atMost(60, TimeUnit.SECONDS).untilAsserted(
-                () -> {
-                    refreshIndices(restHighLevelClient);
-                    final SearchRequest searchRequest = new SearchRequest(TEST_INDEX_NAME);
-                    searchRequest.source(
-                            SearchSourceBuilder.searchSource().size(100)
-                    );
-                    final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-                    final List<Map<String, Object>> foundSources = getSourcesFromSearchHits(searchResponse.getHits());
-                    Assert.assertEquals(2, foundSources.size());
-                    retrievedDocs.addAll(foundSources);
-                }
-        );
-        // Verify original and aggregated keys from retrieved docs
-        final List<String> expectedDocKeys = Arrays.asList(
-                "date", "log", "sourceIp", "destinationIp", CUSTOM_KEY_1, CUSTOM_KEY_2
-        );
-        retrievedDocs.forEach(expectedDoc -> {
-            for (String key: expectedDocKeys) {
-                assertThat(expectedDoc, hasKey(key));
-            }
-        });
+        verifyDataInOpenSearch();
     }
 
     @Test
     public void testAggregatePipelineWithMultipleNodesEndToEnd() throws JsonProcessingException {
-        // Send data to http source
-        // node1 -> [sourceIp, destinationIp1, key1]
-        // node1 -> [sourceIp, destinationIp2, key2]
-        // node2 -> [sourceIp, destinationIp2, key1]
-        // node2 -> [sourceIp, destinationIp1, key2]
         sendHttpRequestToSource(HTTP_SOURCE_PORT_1, generateRandomApacheLogHttpData(DESTINATION_IP_1, CUSTOM_KEY_1, "POST"));
         sendHttpRequestToSource(HTTP_SOURCE_PORT_1, generateRandomApacheLogHttpData(DESTINATION_IP_2, CUSTOM_KEY_2, String.valueOf(random.nextInt())));
-
-        sendHttpRequestToSource(HTTP_SOURCE_PORT_2, generateRandomApacheLogHttpData(DESTINATION_IP_2, CUSTOM_KEY_1, "POST"));
         sendHttpRequestToSource(HTTP_SOURCE_PORT_2, generateRandomApacheLogHttpData(DESTINATION_IP_1, CUSTOM_KEY_2, String.valueOf(random.nextInt())));
+        sendHttpRequestToSource(HTTP_SOURCE_PORT_2, generateRandomApacheLogHttpData(DESTINATION_IP_2, CUSTOM_KEY_1, "GET"));
 
+        verifyDataInOpenSearch();
+    }
+
+    private void verifyDataInOpenSearch() {
         // Verify data in OpenSearch backend
         final RestHighLevelClient restHighLevelClient = prepareOpenSearchRestHighLevelClient();
         final List<Map<String, Object>> retrievedDocs = new ArrayList<>();
@@ -136,8 +101,7 @@ public class EndToEndAggregatePeerForwarderTest {
         Assert.assertEquals(2, retrievedDocs.size());
         // Verify original and aggregated keys from retrieved docs
         final List<String> expectedDocKeys = Arrays.asList(
-                "date", "log", "sourceIp", "destinationIp"
-                , CUSTOM_KEY_1, CUSTOM_KEY_2
+                "date", "log", "sourceIp", "destinationIp", CUSTOM_KEY_1, CUSTOM_KEY_2
         );
         retrievedDocs.forEach(expectedDoc -> {
             for (String key: expectedDocKeys) {
@@ -155,8 +119,6 @@ public class EndToEndAggregatePeerForwarderTest {
     }
 
     private void sendHttpRequestToSource(final int port, final HttpData httpData) {
-//        final SessionProtocol http = SessionProtocol.HTTP;
-//        final SessionProtocol https = SessionProtocol.HTTPS;
         WebClient.of().execute(RequestHeaders.builder()
                                 .scheme(SessionProtocol.HTTP)
                                 .authority(String.format("127.0.0.1:%d", port))
@@ -192,17 +154,15 @@ public class EndToEndAggregatePeerForwarderTest {
     }
 
     private HttpData generateRandomApacheLogHttpData(final String destinationIp, final String customKey, final String customValue) throws JsonProcessingException {
-        final int numLogs = 2;
         final List<Map<String, Object>> jsonArray = new ArrayList<>();
-        for (int i = 0; i < numLogs; i++) {
-            final Map<String, Object> logObj = new HashMap<>();
-            logObj.put("date", System.currentTimeMillis());
-            logObj.put("log", apacheLogFaker.generateRandomExtendedApacheLog());
-            logObj.put("sourceIp", SOURCE_IP);
-            logObj.put("destinationIp", destinationIp);
-            logObj.put(customKey, customValue);
-            jsonArray.add(logObj);
-        }
+        final Map<String, Object> logObj = new HashMap<>();
+        logObj.put("date", System.currentTimeMillis());
+        logObj.put("log", apacheLogFaker.generateRandomExtendedApacheLog());
+        logObj.put("sourceIp", SOURCE_IP);
+        logObj.put("destinationIp", destinationIp);
+        logObj.put(customKey, customValue);
+        jsonArray.add(logObj);
+
         final String jsonData = objectMapper.writeValueAsString(jsonArray);
         return HttpData.ofUtf8(jsonData);
     }

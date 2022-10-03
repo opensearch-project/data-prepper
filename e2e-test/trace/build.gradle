@@ -176,13 +176,13 @@ def createEndToEndTest(final String testName, final String includeTestsMatchPatt
             includeTestsMatching includeTestsMatchPattern
         }
 
-        finalizedBy stopOpenSearchDockerContainer
         def stopDataPrepper1Task = stopDataPrepperDockerContainer(startDataPrepper1Task as DockerStartContainer)
         def stopDataPrepper2Task = stopDataPrepperDockerContainer(startDataPrepper2Task as DockerStartContainer)
         finalizedBy stopDataPrepper1Task
         finalizedBy stopDataPrepper2Task
         finalizedBy removeDataPrepperDockerContainer(stopDataPrepper1Task as DockerStopContainer)
         finalizedBy removeDataPrepperDockerContainer(stopDataPrepper2Task as DockerStopContainer)
+        finalizedBy stopOpenSearchDockerContainer
         finalizedBy removeDataPrepperNetwork
     }
 }
@@ -207,16 +207,16 @@ def rawSpanPeerForwarderEndToEndTest = createEndToEndTest("rawSpanPeerForwarderE
         createRawSpanPeerForwarderDataPrepper1Task, createRawSpanPeerForwarderDataPrepper2Task)
 
 // service map e2e
-def includeServiceMapTestsMatchPattern = "org.opensearch.dataprepper.integration.trace.EndToEndServiceMapTest*"
+def includeServiceMapTestsMatchPattern = "org.opensearch.dataprepper.integration.trace.EndToEndServiceMapTest.testPipelineEndToEnd*"
 
 // service map with peer forwarding e2e test
-def createServiceMapDataPrepper1Task = createDataPrepperDockerContainer(
-        "serviceMapDataPrepper1", "dataprepper1", 21890, 4900, 4994, "${SERVICE_MAP_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
-def createServiceMapDataPrepper2Task = createDataPrepperDockerContainer(
-        "serviceMapDataPrepper2", "dataprepper2", 21891, 4901, 4995, "${SERVICE_MAP_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
+def createServiceMapPeerForwarderDataPrepper1Task = createDataPrepperDockerContainer(
+        "serviceMapPeerForwarderDataPrepper1", "dataprepper1", 21890, 4900, 4994, "${SERVICE_MAP_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
+def createServiceMapPeerForwarderDataPrepper2Task = createDataPrepperDockerContainer(
+        "serviceMapPeerForwarderDataPrepper2", "dataprepper2", 21891, 4901, 4995, "${SERVICE_MAP_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
 
-def serviceMapEndToEndTest = createEndToEndTest("serviceMapEndToEndTest", includeServiceMapTestsMatchPattern,
-        createServiceMapDataPrepper1Task, createServiceMapDataPrepper2Task)
+def serviceMapPeerForwarderEndToEndTest = createEndToEndTest("serviceMapPeerForwarderEndToEndTest", includeServiceMapTestsMatchPattern,
+        createServiceMapPeerForwarderDataPrepper1Task, createServiceMapPeerForwarderDataPrepper2Task)
 
 dependencies {
     integrationTestImplementation project(':data-prepper-api')
