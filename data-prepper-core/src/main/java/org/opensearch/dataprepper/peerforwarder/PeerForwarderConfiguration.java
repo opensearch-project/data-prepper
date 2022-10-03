@@ -24,6 +24,8 @@ import java.util.Map;
 public class PeerForwarderConfiguration {
     public static final String DEFAULT_PEER_FORWARDING_URI = "/event/forward";
     public static final Duration DEFAULT_DRAIN_TIMEOUT = Duration.ofSeconds(10L);
+    public static final String DEFAULT_CERTIFICATE_FILE_PATH = "config/default_certificate.pem";
+    public static final String DEFAULT_PRIVATE_KEY_FILE_PATH = "config/default_private_key.pem";
     private static final String S3_PREFIX = "s3://";
 
     private Integer serverPort = 4994;
@@ -32,8 +34,8 @@ public class PeerForwarderConfiguration {
     private Integer maxConnectionCount = 500;
     private Integer maxPendingRequests = 1024;
     private boolean ssl = true;
-    private String sslCertificateFile;
-    private String sslKeyFile;
+    private String sslCertificateFile = DEFAULT_CERTIFICATE_FILE_PATH;
+    private String sslKeyFile = DEFAULT_PRIVATE_KEY_FILE_PATH;
     private boolean sslDisableVerification = false;
     private boolean sslFingerprintVerificationOnly = false;
     private ForwardingAuthentication authentication = ForwardingAuthentication.UNAUTHENTICATED;
@@ -259,22 +261,14 @@ public class PeerForwarderConfiguration {
     }
 
     private void setSslCertificateFile(final String sslCertificateFile) {
-        if (ssl && !useAcmCertificateForSsl) {
-            if (StringUtils.isNotBlank(sslCertificateFile)) {
-                this.sslCertificateFile = sslCertificateFile;
-            } else {
-                throw new IllegalArgumentException("SSL certificate file path must be a valid file path when ssl is enabled and not using ACM.");
-            }
+        if (ssl && !useAcmCertificateForSsl && sslCertificateFile != null) {
+            this.sslCertificateFile = sslCertificateFile;
         }
     }
 
     private void setSslKeyFile(final String sslKeyFile) {
-        if (ssl && !useAcmCertificateForSsl) {
-            if (StringUtils.isNotBlank(sslKeyFile)) {
-                this.sslKeyFile = sslKeyFile;
-            } else {
-                throw new IllegalArgumentException("SSL key file path must be a valid file path when ssl is enabled and not using ACM.");
-            }
+        if (ssl && !useAcmCertificateForSsl && sslKeyFile != null) {
+            this.sslKeyFile = sslKeyFile;
         }
     }
 

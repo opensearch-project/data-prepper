@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PRIVATE_KEY_FILE_PATH;
 
 class PeerForwarderConfigurationTest {
     private static SimpleModule simpleModule = new SimpleModule().addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
@@ -132,7 +133,7 @@ class PeerForwarderConfigurationTest {
     }
 
     @Test
-    void testInvalidPeerForwarderConfig_with_bad_DrainTimeout() throws IOException {
+    void testInvalidPeerForwarderConfig_with_bad_DrainTimeout() {
         assertThrows(JsonMappingException.class, () -> makeConfig(TestDataProvider.INVALID_PEER_FORWARDER_WITH_BAD_DRAIN_TIMEOUT));
     }
 
@@ -144,12 +145,21 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.isUseAcmCertificateForSsl(), equalTo(true));
     }
 
+    @Test
+    void test_cert_paths_with_ssl() throws IOException {
+        final PeerForwarderConfiguration peerForwarderConfiguration = makeConfig(TestDataProvider.INVALID_PEER_FORWARDER_WITH_SSL_CONFIG_FILE);
+
+        assertThat(peerForwarderConfiguration.isSsl(), equalTo(true));
+        assertThat(peerForwarderConfiguration.getSslCertificateFile(), equalTo("invalid_path"));
+        assertThat(peerForwarderConfiguration.getSslKeyFile(), equalTo(DEFAULT_PRIVATE_KEY_FILE_PATH));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_PORT_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_THREAD_COUNT_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_CONNECTION_CONFIG_FILE,
-            TestDataProvider.INVALID_PEER_FORWARDER_WITH_SSL_CONFIG_FILE,
+//            TestDataProvider.INVALID_PEER_FORWARDER_WITH_SSL_CONFIG_FILE
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_DISCOVERY_MODE_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_BUFFER_SIZE_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_BATCH_SIZE_CONFIG_FILE,
@@ -159,7 +169,7 @@ class PeerForwarderConfigurationTest {
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_CLOUD_MAP_WITHOUT_NAMESPACE_NAME_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_CLOUD_MAP_WITHOUT_REGION_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_DNS_WITHOUT_DOMAIN_NAME_CONFIG_FILE,
-            TestDataProvider.INVALID_PEER_FORWARDER_WITH_SSL,
+//            TestDataProvider.INVALID_PEER_FORWARDER_WITH_SSL
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_NEGATIVE_DRAIN_TIMEOUT,
             "src/test/resources/invalid_peer_forwarder_config_with_many_authentication.yml",
             "src/test/resources/invalid_peer_forwarder_config_with_mutual_tls_not_ssl.yml"
