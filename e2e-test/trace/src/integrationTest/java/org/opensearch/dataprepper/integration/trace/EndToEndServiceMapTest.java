@@ -82,7 +82,7 @@ public class EndToEndServiceMapTest {
         final RestHighLevelClient restHighLevelClient = builder.build().createClient();
 
         // Wait for service map processor by 2 * window_duration
-        await().atMost(30, TimeUnit.SECONDS).untilAsserted(
+        await().atMost(45, TimeUnit.SECONDS).untilAsserted(
                 () -> {
                     final List<Map<String, Object>> foundSources = getSourcesFromIndex(restHighLevelClient, SERVICE_MAP_INDEX_NAME);
                     foundSources.forEach(source -> source.remove("hashId"));
