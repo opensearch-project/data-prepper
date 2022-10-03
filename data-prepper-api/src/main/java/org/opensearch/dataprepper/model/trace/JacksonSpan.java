@@ -214,7 +214,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
             try {
                 this.data.putAll(mapper.readValue(data, MAP_TYPE_REFERENCE));
             } catch (final JsonProcessingException e) {
-                throw new RuntimeException(String.format("An exception occurred due to invalid JSON while reading event data: %s", data), e);
+                throw new RuntimeException("An exception occurred due to invalid JSON while converting data to event");
             }
             return this;
         }
