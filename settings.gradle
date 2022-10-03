@@ -53,7 +53,5 @@ include 'release:archives'
 include 'release:archives:linux'
 include 'release:docker'
 include 'release:maven'
-include 'e2e-test:peer-forwarder'
 include 'e2e-test:peerforwarder'
-findProject(':e2e-test:peerforwarder')?.name = 'peerforwarder'
 
