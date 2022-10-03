@@ -39,7 +39,7 @@ dependencies {
     implementation project(':data-prepper-plugins:common')
     implementation "org.opensearch.client:opensearch-rest-high-level-client:${opensearchVersion}"
     implementation "org.opensearch.client:opensearch-rest-client:${opensearchVersion}"
-    implementation 'org.opensearch.client:opensearch-java:1.0.0'
+    implementation 'org.opensearch.client:opensearch-java:2.1.0'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
