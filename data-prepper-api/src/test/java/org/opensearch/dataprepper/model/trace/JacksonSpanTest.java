@@ -5,6 +5,9 @@
 
 package org.opensearch.dataprepper.model.trace;
 
+import org.junit.jupiter.api.Nested;
+import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -13,6 +16,7 @@ import com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
@@ -27,6 +31,8 @@ import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class JacksonSpanTest {
     private static final ObjectMapper mapper = new ObjectMapper();
@@ -257,7 +263,7 @@ public class JacksonSpanTest {
         assertThat(resultMap.containsKey("key2"), is(false));
         assertThat(resultMap.containsKey("attributes"), is(false));
     }
-    
+
     @Test
     public void testBuilder_withAllParameters_createsSpan() {
         final JacksonSpan result = JacksonSpan.builder()
@@ -472,5 +478,167 @@ public class JacksonSpanTest {
                 .withDurationInNanos(TEST_DURATION_IN_NANOS);
 
         assertThrows(NullPointerException.class, builder::build);
+    }
+
+    @Nested
+    class JacksonSpanBuilder {
+        @Test
+        void testWithJsonData_with_valid_json_data() {
+            final String data = "{\n" +
+                    "  \"traceId\": \"414243\",\n" +
+                    "  \"droppedLinksCount\": 0,\n" +
+                    "  \"kind\": \"SPAN_KIND_INTERNAL\",\n" +
+                    "  \"droppedEventsCount\": 0,\n" +
+                    "  \"traceGroupFields\": {\n" +
+                    "    \"endTime\": \"1970-01-01T00:00:00Z\",\n" +
+                    "    \"durationInNanos\": 0,\n" +
+                    "    \"statusCode\": 0\n" +
+                    "  },\n" +
+                    "  \"traceGroup\": \"FRUITS\",\n" +
+                    "  \"serviceName\": \"ServiceA\",\n" +
+                    "  \"parentSpanId\": \"\",\n" +
+                    "  \"spanId\": \"313030\",\n" +
+                    "  \"traceState\": \"\",\n" +
+                    "  \"name\": \"FRUITS\",\n" +
+                    "  \"startTime\": \"1970-01-01T00:00:00Z\",\n" +
+                    "  \"links\": [],\n" +
+                    "  \"endTime\": \"1970-01-01T00:00:00Z\",\n" +
+                    "  \"droppedAttributesCount\": 0,\n" +
+                    "  \"durationInNanos\": 0,\n" +
+                    "  \" events\": [],\n" +
+                    "  \"resource.attributes.service@name\": \"ServiceA\",\n" +
+                    "  \"status.code\": 0\n" +
+                    "}";
+            final JacksonSpan jacksonSpan = JacksonSpan.builder()
+                    .withJsonData(data)
+                    .build();
+
+            assertThat(jacksonSpan, is(notNullValue()));
+            assertThat(jacksonSpan.getTraceId(), equalTo("414243"));
+            assertThat(jacksonSpan.getSpanId(), equalTo("313030"));
+            assertThat(jacksonSpan.getTraceGroup(), equalTo("FRUITS"));
+            assertThat(jacksonSpan.getKind(), equalTo("SPAN_KIND_INTERNAL"));
+            assertThat(jacksonSpan.getEndTime(), equalTo("1970-01-01T00:00:00Z"));
+        }
+
+        @Test
+        void testBuilder_withJsonData_missingTraceGroupKey_throwsIllegalStateException() {
+            final String object = "{\"traceId\": \"414243\"}";
+            final JacksonSpan.Builder builder = JacksonSpan.builder()
+                    .withJsonData(object);
+
+            assertThrows(IllegalStateException.class, builder::build);
+        }
+
+        @Test
+        void testBuilder_withJsonData_missing_non_empty_keys_throwsNullPointerException() {
+            final String object = "{\"traceGroup\": \"FRUITS\"}";
+            final JacksonSpan.Builder builder = JacksonSpan.builder()
+                    .withJsonData(object);
+
+            assertThrows(NullPointerException.class, builder::build);
+        }
+
+        @Test
+        void testBuilder_withJsonData_with_empty_string_for_non_empty_key_throwsIllegalArgumentException() {
+            final String object = "{\n" +
+                    "  \"traceGroup\": \"FRUITS\",\n" +
+                    "  \"traceId\": \"\" \n" +
+                    "}";
+
+            final JacksonSpan.Builder builder = JacksonSpan.builder()
+                    .withJsonData(object);
+
+            assertThrows(IllegalArgumentException.class, builder::build);
+        }
+
+        @Test
+        void testBuilder_withJsonData_with_null_non_null_key_throwsNullPointerException() {
+            final String object = "{\n" +
+                    "  \"traceId\": \"414243\",\n" +
+                    "  \"traceGroup\": \"FRUITS\",\n" +
+                    "  \"kind\": \"SPAN_KIND_INTERNAL\",\n" +
+                    "  \"spanId\": \"313030\",\n" +
+                    "  \"name\": \"FRUITS\",\n" +
+                    "  \"startTime\": \"1970-01-01T00:00:00Z\",\n" +
+                    "  \"endTime\": \"1970-01-01T00:00:00Z\" " +
+                    "}";
+
+            final JacksonSpan.Builder builder = JacksonSpan.builder()
+                    .withJsonData(object);
+
+            assertThrows(NullPointerException.class, builder::build);
+        }
+
+        @Test
+        void testBuilder_withJsonData_with_invalid_json_data_should_throw() {
+            String invalidJsonData = "{\"traceGroup\": \"FRUITS}";
+            final JacksonSpan.Builder builder = JacksonSpan.builder();
+
+            assertThrows(RuntimeException.class, () -> builder.withJsonData(invalidJsonData));
+        }
+
+        @Test
+        void testBuilder_withEventMetadata_with_event_metadata_with_valid_metadata() {
+            final String data = "{\n" +
+                    "  \"traceId\": \"414243\",\n" +
+                    "  \"kind\": \"SPAN_KIND_INTERNAL\",\n" +
+                    "  \"traceGroupFields\": {\n" +
+                    "    \"endTime\": \"1970-01-01T00:00:00Z\",\n" +
+                    "    \"durationInNanos\": 0,\n" +
+                    "    \"statusCode\": 0\n" +
+                    "  },\n" +
+                    "  \"traceGroup\": \"FRUITS\",\n" +
+                    "  \"spanId\": \"313030\",\n" +
+                    "  \"name\": \"FRUITS\",\n" +
+                    "  \"startTime\": \"1970-01-01T00:00:00Z\",\n" +
+                    "  \"endTime\": \"1970-01-01T00:00:00Z\",\n" +
+                    "  \"durationInNanos\": 0" +
+                    "}";
+
+            EventMetadata eventMetadata = mock(EventMetadata.class);
+            final Instant now = Instant.now();
+            when(eventMetadata.getEventType()).thenReturn(String.valueOf(EventType.TRACE));
+            when(eventMetadata.getTimeReceived()).thenReturn(now);
+
+            final JacksonSpan jacksonSpan = JacksonSpan.builder()
+                    .withJsonData(data)
+                    .withEventMetadata(eventMetadata)
+                    .build();
+
+            assertThat(jacksonSpan, is(notNullValue()));
+            assertThat(jacksonSpan.getMetadata(), is(notNullValue()));
+            assertThat(jacksonSpan.getMetadata().getTimeReceived(), equalTo(now));
+        }
+
+        @Test
+        void testBuilder_withEventMetadata_with_event_invalid_event_metadata_should_throw() {
+            final String data = "{\n" +
+                    "  \"traceId\": \"414243\",\n" +
+                    "  \"kind\": \"SPAN_KIND_INTERNAL\",\n" +
+                    "  \"traceGroupFields\": {\n" +
+                    "    \"endTime\": \"1970-01-01T00:00:00Z\",\n" +
+                    "    \"durationInNanos\": 0,\n" +
+                    "    \"statusCode\": 0\n" +
+                    "  },\n" +
+                    "  \"traceGroup\": \"FRUITS\",\n" +
+                    "  \"spanId\": \"313030\",\n" +
+                    "  \"name\": \"FRUITS\",\n" +
+                    "  \"startTime\": \"1970-01-01T00:00:00Z\",\n" +
+                    "  \"endTime\": \"1970-01-01T00:00:00Z\",\n" +
+                    "  \"durationInNanos\": 0" +
+                    "}";
+
+            EventMetadata eventMetadata = mock(EventMetadata.class);
+            final Instant now = Instant.now();
+            when(eventMetadata.getEventType()).thenReturn(String.valueOf(EventType.LOG));
+            when(eventMetadata.getTimeReceived()).thenReturn(now);
+
+            final JacksonEvent.Builder builder = JacksonSpan.builder()
+                    .withJsonData(data)
+                    .withEventMetadata(eventMetadata);
+
+            assertThrows(IllegalArgumentException.class, builder::build);
+        }
     }
 }
