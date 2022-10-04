@@ -1,1 +1,5 @@
 ssl: false
+peer_forwarder:
+  ssl: false
+  discovery_mode: "dns"
+  domain_name: "prepper-cluster"

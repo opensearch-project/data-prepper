@@ -13,10 +13,6 @@ data:
           health_check_service: true
           ssl: false
       processor:
-        - peer_forwarder:
-            discovery_mode: "dns"
-            domain_name: "data-prepper-headless"
-            ssl: false
       sink:
         - pipeline:
             name: "raw-pipeline"
@@ -41,6 +37,10 @@ data:
         - stdout:
   data-prepper-config.yaml: |
     ssl: false
+    peer_forwarder:
+      ssl: false
+      discovery_mode: "dns"
+      domain_name: "data-prepper-headless"
 ---
 apiVersion: v1
 kind: Service

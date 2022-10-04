@@ -4,7 +4,7 @@ Data Prepper for Trace Analytics in v0.8.x supports both vertical and horizontal
 
 To scale vertically, simply adjust the size of your single Data Prepper instance to meet your workload's demands. 
 
-To scale horizontally, deploy multiple Data Prepper instances to form a cluster by using the [Peer Forwarder plugin](../data-prepper-plugins/peer-forwarder/README.md). This plugin enables Data Preppers to communicate with others in the cluster and is required for horizontally-scaling deployments.
+To scale horizontally, deploy multiple Data Prepper instances to form a cluster by using the [Core Peer Forwarder](https://github.com/opensearch-project/data-prepper/blob/main/docs/peer_forwarder.md). This enables Data Preppers to communicate with others in the cluster and is required for horizontally-scaling deployments.
 
 ## Scaling Tips
 

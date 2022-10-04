@@ -17,10 +17,10 @@ Contains a [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configm
 #### pipelines.yaml
 This file contains the standard Trace Analytics usecase pipeline configuration. A few adjustments are needed by the user:
 1. Replace the 2 `stdout` sinks with OpenSearch sinks to actually send data to OpenSearch.
-2. Optionally enable TLS by providing the necessary key files for the `otel_trace_source` and `peer_forwarder` plugins.
+2. Optionally enable TLS by providing the necessary key files for the `otel_trace_source` plugin.
 
 #### data-prepper-config.yaml
-This file disables TLS for the Data Prepper service APIs (e.g. /metrics), so please adjust this if you wish to enable encrpytion in transit.
+This file disables TLS for the Data Prepper service APIs (e.g. /metrics), so please adjust this if you wish to enable encryption in transit. It also provides peer forwarder configuration with dns discover mode. Optionally enable TLS and mTLS by providing the necessary certificate files for the peer forwarder. Find more information about core peer forwarder [here](https://github.com/opensearch-project/data-prepper/blob/main/docs/peer_forwarder.md).
 
 ### kind: Service
 Contains a headless [Service](https://kubernetes.io/docs/concepts/services-networking/service/) which enables Data Prepper pods to discover others pods in the cluster peers via periodic DNS lookups. No changes are required.
