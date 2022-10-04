@@ -212,13 +212,15 @@ class PipelineParserTests {
     void parseConfiguration_with_routes_creates_correct_pipeline() {
         mockDataPrepperConfigurationAccesses();
         final PipelineParser pipelineParser =
-                createObjectUnderTest("src/test/resources/valid_multiple_sinks.yml");
+                createObjectUnderTest("src/test/resources/valid_multiple_sinks_with_routes.yml");
         final Map<String, Pipeline> pipelineMap = pipelineParser.parseConfiguration();
         assertThat(pipelineMap.keySet().size(), equalTo(3));
         verifyDataPrepperConfigurationAccesses(pipelineMap.keySet().size());
 
         final Pipeline entryPipeline = pipelineMap.get("entry-pipeline");
         assertThat(entryPipeline, notNullValue());
+        assertThat(entryPipeline.getSinks(), notNullValue());
+        assertThat(entryPipeline.getSinks().size(), equalTo(2));
     }
 
     @Test

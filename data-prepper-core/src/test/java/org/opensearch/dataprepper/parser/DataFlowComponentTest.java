@@ -50,12 +50,12 @@ class DataFlowComponentTest {
     }
 
     @Test
-    void getComponent_returns_input_routes() {
+    void getRoutes_returns_input_routes() {
         assertThat(createObjectUnderTest().getRoutes(), equalTo(routes));
     }
 
     @Test
-    void getComponent_returns_input_routes_when_empty() {
+    void getRoutes_returns_input_routes_when_empty() {
         routes = Collections.emptySet();
         assertThat(createObjectUnderTest().getRoutes(), equalTo(routes));
     }

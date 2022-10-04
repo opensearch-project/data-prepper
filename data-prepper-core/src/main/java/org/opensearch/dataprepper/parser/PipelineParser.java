@@ -253,7 +253,6 @@ public class PipelineParser {
     }
 
     private Sink buildSinkOrConnector(final PluginSetting pluginSetting) {
-        // TODO: This will return an object which can perform routing.
         LOG.info("Building [{}] as sink component", pluginSetting.getName());
         final Optional<String> pipelineNameOptional = getPipelineNameIfPipelineType(pluginSetting);
         if (pipelineNameOptional.isPresent()) { //update to ifPresentOrElse when using JDK9

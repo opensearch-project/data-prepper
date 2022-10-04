@@ -7,8 +7,12 @@ entry-pipeline:
   sink:
     - pipeline:
         name: "raw-pipeline"
+        routes:
+          - raw
     - pipeline:
         name: "service-map-pipeline"
+        routes:
+          - service
 raw-pipeline:
   source:
     pipeline:
