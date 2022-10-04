@@ -47,7 +47,6 @@ task createDataPrepperDockerFile(type: Dockerfile) {
     exposePort(4994)
     workingDir("/app/data-prepper")
     copyFile("${dataPrepperJarFilepath}", "/app/data-prepper/lib")
-//    copyFile("src/integrationTest/resources/data_prepper.yml", "/app/data-prepper/config/data-prepper-config.yaml")
     defaultCommand('java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute')
 }
 
