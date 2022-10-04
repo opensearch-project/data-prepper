@@ -138,8 +138,6 @@ subprojects {
                 details.because 'Fixes CVE-2021-43797, CVE-2021-37136 and CVE-2021-37137. See https://netty.io/news/2021/09/09/4-1-68-Final.html'
             }
         }
-        exclude group: 'software.amazon.awssdk', module: 'netty-nio-client'
-        exclude group: 'software.amazon.awssdk', module: 'url-connection-client'
     }
 
     build.dependsOn test
