@@ -81,7 +81,7 @@ subprojects {
         }
     }
     dependencies {
-        implementation platform('com.fasterxml.jackson:jackson-bom:2.13.3')
+        implementation platform('com.fasterxml.jackson:jackson-bom:2.13.4')
         implementation platform('io.micrometer:micrometer-bom:1.9.3')
         implementation 'com.google.guava:guava:31.1-jre'
         implementation 'org.slf4j:slf4j-api:1.7.36'
