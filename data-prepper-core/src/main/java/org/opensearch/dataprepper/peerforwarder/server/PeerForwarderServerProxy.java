@@ -10,23 +10,24 @@ import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 
 public class PeerForwarderServerProxy implements PeerForwarderServer {
+    private final PeerForwarderHttpServerProvider peerForwarderHttpServerProvider;
     private final PeerForwarderConfiguration peerForwarderConfiguration;
-    private final Server server;
     private final PeerForwarderProvider peerForwarderProvider;
 
     private PeerForwarderServer peerForwarderServer;
 
-    public PeerForwarderServerProxy(final PeerForwarderConfiguration peerForwarderConfiguration,
-                                    final Server server,
+    public PeerForwarderServerProxy(final PeerForwarderHttpServerProvider peerForwarderHttpServerProvider,
+                                    final PeerForwarderConfiguration peerForwarderConfiguration,
                                     final PeerForwarderProvider peerForwarderProvider) {
+        this.peerForwarderHttpServerProvider = peerForwarderHttpServerProvider;
         this.peerForwarderConfiguration = peerForwarderConfiguration;
-        this.server = server;
         this.peerForwarderProvider = peerForwarderProvider;
     }
 
     @Override
     public void start() {
         if (peerForwarderProvider.isPeerForwardingRequired()) {
+            final Server server = peerForwarderHttpServerProvider.get();
             peerForwarderServer = new RemotePeerForwarderServer(peerForwarderConfiguration, server);
         }
         else {

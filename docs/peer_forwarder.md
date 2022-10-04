@@ -94,9 +94,9 @@ IAM policy shows the necessary permissions.
 ### SSL
 The SSL configuration for setting up trust manager for peer forwarding client to connect to other Data Prepper instances.
 
-* `ssl`(Optional) : A `boolean` that enables TLS/SSL. Default value is `false`.
-* `ssl_certificate_file`(Optional) : A `String` representing the SSL certificate chain file path or AWS S3 path. S3 path example `s3://<bucketName>/<path>`. Required if `ssl` is set to `true`.
-* `ssl_key_file`(Optional) : A `String` represents the SSL key file path or AWS S3 path. S3 path example `s3://<bucketName>/<path>`. Required if `ssl` is set to `true`.
+* `ssl`(Optional) : A `boolean` that enables TLS/SSL. Default value is `true`.
+* `ssl_certificate_file`(Optional) : A `String` representing the SSL certificate chain file path or AWS S3 path. S3 path example `s3://<bucketName>/<path>`. Defaults to `config/default_certificate.pem` which is default certificate file. Read more about how the certificate file is generated [here](https://github.com/opensearch-project/data-prepper/tree/main/examples/certificates).
+* `ssl_key_file`(Optional) : A `String` represents the SSL key file path or AWS S3 path. S3 path example `s3://<bucketName>/<path>`. Defaults to `config/default_private_key.pem` which is default private key file. Read more about how the private key file is generated [here](https://github.com/opensearch-project/data-prepper/tree/main/examples/certificates).
 * `ssl_insecure_disable_verification`(Optional) : A `boolean` that disables the verification of server's TLS certificate chain. Default value is `false`.
 * `ssl_fingerprint_verification_only`(Optional) : A `boolean` that disables the verification of server's TLS certificate chain and instead verifies only the certificate fingerprint. Default value is `false`.
 * `use_acm_certificate_for_ssl`(Optional) : A `boolean` that enables TLS/SSL using certificate and private key from AWS Certificate Manager (ACM). Default is `false`.
