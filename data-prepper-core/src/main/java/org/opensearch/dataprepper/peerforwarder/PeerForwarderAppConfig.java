@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.peerforwarder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.linecorp.armeria.server.Server;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
@@ -112,19 +111,12 @@ class PeerForwarderAppConfig {
                 certificateProviderFactory, peerForwarderHttpService);
     }
 
-    @Bean(name="peerForwarderHttpServer")
-    public Server server(
-            final PeerForwarderHttpServerProvider peerForwarderHttpServerProvider
-    ) {
-        return peerForwarderHttpServerProvider.get();
-    }
-
     @Bean
     public PeerForwarderServer peerForwarderServer(
-            @Qualifier("peerForwarderHttpServer") final Server peerForwarderServer,
+            final PeerForwarderHttpServerProvider peerForwarderHttpServerProvider,
             final PeerForwarderConfiguration peerForwarderConfiguration,
             final PeerForwarderProvider peerForwarderProvider) {
-        return new PeerForwarderServerProxy(peerForwarderConfiguration, peerForwarderServer, peerForwarderProvider);
+        return new PeerForwarderServerProxy(peerForwarderHttpServerProvider, peerForwarderConfiguration, peerForwarderProvider);
     }
 
 }
