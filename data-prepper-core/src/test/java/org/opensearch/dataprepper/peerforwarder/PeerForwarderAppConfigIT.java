@@ -14,6 +14,8 @@ import org.springframework.context.annotation.Configuration;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_CERTIFICATE_FILE_PATH;
+import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PRIVATE_KEY_FILE_PATH;
 
 class PeerForwarderAppConfigIT {
 
@@ -35,9 +37,9 @@ class PeerForwarderAppConfigIT {
         assertThat(objectUnderTest.getServerThreadCount(), equalTo(200));
         assertThat(objectUnderTest.getMaxConnectionCount(), equalTo(500));
         assertThat(objectUnderTest.getMaxPendingRequests(), equalTo(1024));
-        assertThat(objectUnderTest.isSsl(), equalTo(false));
-        assertThat(objectUnderTest.getSslCertificateFile(), equalTo(null));
-        assertThat(objectUnderTest.getSslKeyFile(), equalTo(null));
+        assertThat(objectUnderTest.isSsl(), equalTo(true));
+        assertThat(objectUnderTest.getSslCertificateFile(), equalTo(DEFAULT_CERTIFICATE_FILE_PATH));
+        assertThat(objectUnderTest.getSslKeyFile(), equalTo(DEFAULT_PRIVATE_KEY_FILE_PATH));
         assertThat(objectUnderTest.getDiscoveryMode(), equalTo(DiscoveryMode.LOCAL_NODE));
         assertThat(objectUnderTest.getClientThreadCount(), equalTo(200));
         assertThat(objectUnderTest.getBatchSize(), equalTo(48));
