@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.PipelineParser;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
+import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -20,11 +21,13 @@ public class PipelineParserConfiguration {
             final DataPrepperArgs dataPrepperArgs,
             final PluginFactory pluginFactory,
             final PeerForwarderProvider peerForwarderProvider,
+            final RouterFactory routerFactory,
             final DataPrepperConfiguration dataPrepperConfiguration
             ) {
         return new PipelineParser(dataPrepperArgs.getPipelineConfigFileLocation(),
                 pluginFactory,
                 peerForwarderProvider,
+                routerFactory,
                 dataPrepperConfiguration);
     }
 }

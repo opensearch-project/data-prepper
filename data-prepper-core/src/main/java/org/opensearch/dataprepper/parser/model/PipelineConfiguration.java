@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.parser.model;
 
+import org.opensearch.dataprepper.model.configuration.ConditionalRoute;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -13,9 +14,11 @@ import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class PipelineConfiguration {
@@ -28,8 +31,10 @@ public class PipelineConfiguration {
     private final PluginSetting bufferPluginSetting;
     private final List<PluginSetting> processorPluginSettings;
     private final List<RoutedPluginSetting> sinkPluginSettings;
+
     private final Integer workers;
     private final Integer readBatchDelay;
+    private final Set<ConditionalRoute> routes;
 
     public PipelineConfiguration(final PipelineModel pipelineModel) {
         this.sourcePluginSetting = getSourceFromPluginModel(pipelineModel.getSource());
@@ -38,6 +43,7 @@ public class PipelineConfiguration {
         this.sinkPluginSettings = getSinksFromPluginModel(pipelineModel.getSinks());
         this.workers = getWorkersFromPipelineModel(pipelineModel);
         this.readBatchDelay = getReadBatchDelayFromPipelineModel(pipelineModel);
+        routes = new HashSet<>(pipelineModel.getRoutes());
     }
 
     public PluginSetting getSourcePluginSetting() {
@@ -54,6 +60,10 @@ public class PipelineConfiguration {
 
     public List<RoutedPluginSetting> getSinkPluginSettings() {
         return sinkPluginSettings;
+    }
+
+    public Set<ConditionalRoute> getRoutes() {
+        return routes;
     }
 
     public Integer getWorkers() {
