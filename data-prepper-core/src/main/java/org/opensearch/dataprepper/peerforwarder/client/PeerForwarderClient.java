@@ -38,20 +38,18 @@ public class PeerForwarderClient {
     static final String REQUESTS = "requests";
     static final String CLIENT_REQUEST_FORWARDING_LATENCY = "clientRequestForwardingLatency";
 
-    private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final PeerForwarderClientFactory peerForwarderClientFactory;
     private final ObjectMapper objectMapper;
+    private final ExecutorService executorService;
     private final Counter requestsCounter;
     private final Timer clientRequestForwardingLatencyTimer;
 
-    private ExecutorService executorService;
     private PeerClientPool peerClientPool;
 
     public PeerForwarderClient(final PeerForwarderConfiguration peerForwarderConfiguration,
                                final PeerForwarderClientFactory peerForwarderClientFactory,
                                final ObjectMapper objectMapper,
                                final PluginMetrics pluginMetrics) {
-        this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.peerForwarderClientFactory = peerForwarderClientFactory;
         this.objectMapper = objectMapper;
         executorService = Executors.newFixedThreadPool(peerForwarderConfiguration.getClientThreadCount());
@@ -64,8 +62,11 @@ public class PeerForwarderClient {
             final String ipAddress,
             final String pluginId,
             final String pipelineName) {
-        // TODO: decide the default values of peer forwarder configuration and move the PeerClientPool to constructor
-        peerClientPool = peerForwarderClientFactory.setPeerClientPool();
+        // TODO: Initialize this in the constructor in future.
+        //  It doesn't work right now as default certificate and private key file paths are not valid while loading constructor.
+        if (peerClientPool == null) {
+            peerClientPool = peerForwarderClientFactory.setPeerClientPool();
+        }
 
         final WebClient client = peerClientPool.getClient(ipAddress);
 
