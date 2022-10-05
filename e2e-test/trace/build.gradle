@@ -208,7 +208,6 @@ def createRawSpanPeerForwarderDataPrepper2Task = createDataPrepperDockerContaine
 def rawSpanPeerForwarderEndToEndTest = createEndToEndTest("rawSpanPeerForwarderEndToEndTest", includeRawSpanTestsMatchPattern,
         createRawSpanPeerForwarderDataPrepper1Task, createRawSpanPeerForwarderDataPrepper2Task)
 
-// TODO: Add back the workflow file for this e2e test after Data prepper 2.0 release
 // raw span compatibility e2e test
 def rawSpanDataPrepperEventFromBuild = createDataPrepperDockerContainer(
         "rawSpanDataPrepperEventFromBuild", "dataprepper1", 21890, 4900, 4994, "${RAW_SPAN_PIPELINE_FROM_BUILD_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
