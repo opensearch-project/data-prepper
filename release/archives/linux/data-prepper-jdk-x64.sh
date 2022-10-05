@@ -24,8 +24,8 @@ else
     exit 1
 fi
 
-DATA_PREPPER_BIN=$(dirname "$(realpath "$0")")
-DATA_PREPPER_HOME=`realpath "$DATA_PREPPER_BIN/.."`
+DATA_PREPPER_BIN=$(dirname "$(readlink -f "$0")")
+DATA_PREPPER_HOME=`readlink -f "$DATA_PREPPER_BIN/.."`
 DATA_PREPPER_CLASSPATH="$DATA_PREPPER_HOME/lib/*"
 OPENJDK=$(ls -1 $DATA_PREPPER_HOME/openjdk/ 2>/dev/null)
 
