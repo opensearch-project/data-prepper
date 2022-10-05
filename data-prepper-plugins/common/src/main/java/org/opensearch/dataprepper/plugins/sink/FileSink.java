@@ -19,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static java.lang.String.format;
 
@@ -30,6 +31,8 @@ public class FileSink implements Sink<Record<Object>> {
     public static final String FILE_PATH = "path";
 
     private final String outputFilePath;
+    private final BufferedWriter writer;
+    private final ReentrantLock lock;
     private boolean isStopRequested;
 
     /**
@@ -51,17 +54,37 @@ public class FileSink implements Sink<Record<Object>> {
     public FileSink(final String outputFile) {
         this.outputFilePath = outputFile == null ? SAMPLE_FILE_PATH : outputFile;
         isStopRequested = false;
+        try {
+            writer = Files.newBufferedWriter(Paths.get(outputFilePath), StandardCharsets.UTF_8);
+        } catch (final IOException ex) {
+            throw new RuntimeException(format("Encountered exception opening/creating file %s", outputFilePath), ex);
+        }
+        lock = new ReentrantLock(true);
     }
 
     @Override
-    public void output(Collection<Record<Object>> records) {
-        try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(outputFilePath),
-                StandardCharsets.UTF_8)) {
+    public void output(final Collection<Record<Object>> records) {
+
+        lock.lock();
+        try {
+            if(isStopRequested)
+                return;
+
             for (final Record<Object> record : records) {
-                checkTypeAndWriteObject(record.getData(), writer);
+                try {
+                    checkTypeAndWriteObject(record.getData(), writer);
+                } catch (final IOException ex) {
+                    throw new RuntimeException(format("Encountered exception writing to file %s", outputFilePath), ex);
+                }
             }
-        } catch (IOException ex) {
-            throw new RuntimeException(format("Encountered exception opening/creating file %s", outputFilePath), ex);
+
+            try {
+                writer.flush();
+            } catch (final IOException ex) {
+                LOG.warn("Failed to flush for file {}", outputFilePath, ex);
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -79,6 +102,15 @@ public class FileSink implements Sink<Record<Object>> {
 
     @Override
     public void shutdown() {
-
+        isStopRequested = true;
+        lock.lock();
+        try {
+            writer.close();
+        } catch (final IOException ex) {
+            LOG.error("Failed to close file {}.", outputFilePath, ex);
+        } finally {
+            lock.unlock();
+        }
     }
+
 }
