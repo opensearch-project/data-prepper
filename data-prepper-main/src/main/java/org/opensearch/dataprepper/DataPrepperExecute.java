@@ -20,6 +20,7 @@ public class DataPrepperExecute {
 
     public static void main(final String ... args) {
         java.security.Security.setProperty("networkaddress.cache.ttl", "60");
+        System.setProperty("software.amazon.awssdk.http.service.impl", "software.amazon.awssdk.http.apache.ApacheSdkHttpService");
 
         final ContextManager contextManager;
         if (args.length == 0) {
