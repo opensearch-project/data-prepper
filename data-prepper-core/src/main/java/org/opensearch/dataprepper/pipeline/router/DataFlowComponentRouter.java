@@ -27,7 +27,9 @@ class DataFlowComponentRouter {
                    final BiConsumer<C, Collection<Record>> componentRecordsConsumer) {
 
         final Collection<Record> recordsForComponent;
-        if (dataFlowComponent.getRoutes().isEmpty()) {
+        final Set<String> dataFlowComponentRoutes =  dataFlowComponent.getRoutes();
+
+        if (dataFlowComponentRoutes.isEmpty()) {
             recordsForComponent = allRecords;
         } else {
             recordsForComponent = new ArrayList<>();
@@ -35,19 +37,10 @@ class DataFlowComponentRouter {
                 final Set<String> routesForEvent = recordsToRoutes
                         .getOrDefault(event, Collections.emptySet());
 
-                boolean routed = false;
-                for (String route : dataFlowComponent.getRoutes()) {
-                    if (routesForEvent.contains(route)) {
-                        routed = true;
-                        break;
-                    }
-                }
-
-                if (routed) {
+                if (routesForEvent.stream().anyMatch(dataFlowComponentRoutes::contains)) {
                     recordsForComponent.add(event);
                 }
             }
-
         }
         componentRecordsConsumer.accept(dataFlowComponent.getComponent(), recordsForComponent);
     }

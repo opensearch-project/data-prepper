@@ -40,36 +40,34 @@ class RouteEventEvaluator {
 
             final Object data = record.getData();
 
-            if(data instanceof Event) {
-
+            if (data instanceof Event) {
                 final Event event = (Event) data;
-
-                recordsToRoutes.put(record, new HashSet<>());
-
-                for (ConditionalRoute route : routes) {
-                    Boolean routed;
-                    try {
-                        routed = evaluator.evaluate(route.getCondition(), event);
-                    } catch (final Exception ex) {
-                        routed = false;
-                        LOG.error("Failed to evaluate route. This route will not be applied to any events.", ex);
-                    }
-                    if (routed) {
-                        recordsToRoutes
-                                .get(record)
-                                .add(route.getName());
-                    }
-                }
+                final Set<String> matchedRoutes = findMatchedRoutes(event);
+                recordsToRoutes.put(record, matchedRoutes);
             } else {
                 nonEventRecords++;
                 recordsToRoutes.put(record, Collections.emptySet());
             }
         }
 
-        if(nonEventRecords > 0) {
+        if (nonEventRecords > 0) {
             LOG.warn("Received {} records which are not events. These will have no routes applied.", nonEventRecords);
         }
 
         return recordsToRoutes;
+    }
+
+    private Set<String> findMatchedRoutes(final Event event) {
+        final Set<String> matchRoutes = new HashSet<>();
+        for (ConditionalRoute route : routes) {
+            try {
+                if (evaluator.evaluate(route.getCondition(), event)) {
+                    matchRoutes.add(route.getName());
+                }
+            } catch (final Exception ex) {
+                LOG.error("Failed to evaluate route. This route will not be applied to any events.", ex);
+            }
+        }
+        return matchRoutes;
     }
 }
