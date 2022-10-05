@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.pipeline.Pipeline;
+import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +37,7 @@ import java.util.stream.Stream;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -48,6 +50,9 @@ import static org.mockito.Mockito.times;
 @ExtendWith(MockitoExtension.class)
 class PipelineParserTests {
     private PeerForwarderProvider peerForwarderProvider;
+
+    @Mock
+    private RouterFactory routerFactory;
 
     @Mock
     private DataPrepperConfiguration dataPrepperConfiguration;
@@ -76,11 +81,15 @@ class PipelineParserTests {
         verifyNoMoreInteractions(dataPrepperConfiguration);
     }
 
+    private PipelineParser createObjectUnderTest(final String pipelineConfigurationFileLocation) {
+        return new PipelineParser(pipelineConfigurationFileLocation, pluginFactory, peerForwarderProvider, routerFactory, dataPrepperConfiguration);
+    }
+
     @Test
     void parseConfiguration_with_multiple_valid_pipelines_creates_the_correct_pipelineMap() {
         mockDataPrepperConfigurationAccesses();
         final PipelineParser pipelineParser =
-                new PipelineParser(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+                createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
         final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
         verifyDataPrepperConfigurationAccesses(actualPipelineMap.keySet().size());
@@ -89,7 +98,7 @@ class PipelineParserTests {
     @Test
     void parseConfiguration_with_invalid_root_pipeline_creates_empty_pipelinesMap() {
         final PipelineParser pipelineParser =
-                new PipelineParser(TestDataProvider.CONNECTED_PIPELINE_ROOT_SOURCE_INCORRECT, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+                createObjectUnderTest(TestDataProvider.CONNECTED_PIPELINE_ROOT_SOURCE_INCORRECT);
         final Map<String, Pipeline> connectedPipelines = pipelineParser.parseConfiguration();
         assertThat(connectedPipelines.size(), equalTo(0));
     }
@@ -98,7 +107,7 @@ class PipelineParserTests {
     void parseConfiguration_with_incorrect_child_pipeline_returns_empty_pipelinesMap() {
         mockDataPrepperConfigurationAccesses();
         final PipelineParser pipelineParser =
-                new PipelineParser(TestDataProvider.CONNECTED_PIPELINE_CHILD_PIPELINE_INCORRECT, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+                createObjectUnderTest(TestDataProvider.CONNECTED_PIPELINE_CHILD_PIPELINE_INCORRECT);
         final Map<String, Pipeline> connectedPipelines = pipelineParser.parseConfiguration();
         assertThat(connectedPipelines.size(), equalTo(0));
         verifyDataPrepperConfigurationAccesses();
@@ -108,7 +117,7 @@ class PipelineParserTests {
     void parseConfiguration_with_a_single_pipeline_with_empty_source_settings_returns_that_pipeline() {
         mockDataPrepperConfigurationAccesses();
         final PipelineParser pipelineParser =
-                new PipelineParser(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+                createObjectUnderTest(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
         final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
         assertThat(actualPipelineMap.keySet().size(), equalTo(1));
         verifyDataPrepperConfigurationAccesses();
@@ -117,7 +126,7 @@ class PipelineParserTests {
     @Test
     void parseConfiguration_with_cycles_in_multiple_pipelines_should_throw() {
         final PipelineParser pipelineParser =
-                new PipelineParser(TestDataProvider.CYCLE_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+                createObjectUnderTest(TestDataProvider.CYCLE_MULTIPLE_PIPELINE_CONFIG_FILE);
 
         final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
         assertThat(actualException.getMessage(),
@@ -128,7 +137,7 @@ class PipelineParserTests {
     @Test
     void parseConfiguration_with_incorrect_source_mapping_in_multiple_pipelines_should_throw() {
         final PipelineParser pipelineParser =
-                new PipelineParser(TestDataProvider.INCORRECT_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+                createObjectUnderTest(TestDataProvider.INCORRECT_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE);
 
         final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
         assertThat(actualException.getMessage(),
@@ -138,7 +147,7 @@ class PipelineParserTests {
     @Test
     void parseConfiguration_with_missing_pipeline_name_should_throw() {
         final PipelineParser pipelineParser =
-                new PipelineParser(TestDataProvider.MISSING_NAME_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+                createObjectUnderTest(TestDataProvider.MISSING_NAME_MULTIPLE_PIPELINE_CONFIG_FILE);
 
         final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
         assertThat(actualException.getMessage(),
@@ -149,7 +158,7 @@ class PipelineParserTests {
     @Test
     void parseConfiguration_with_missing_pipeline_name_in_multiple_pipelines_should_throw() {
         final PipelineParser pipelineParser =
-                new PipelineParser(TestDataProvider.MISSING_PIPELINE_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+                createObjectUnderTest(TestDataProvider.MISSING_PIPELINE_MULTIPLE_PIPELINE_CONFIG_FILE);
         final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
         assertThat(actualException.getMessage(), equalTo("Invalid configuration, no pipeline is defined with name test-pipeline-4"));
     }
@@ -158,7 +167,7 @@ class PipelineParserTests {
     void testMultipleSinks() {
         mockDataPrepperConfigurationAccesses();
         final PipelineParser pipelineParser =
-                new PipelineParser(TestDataProvider.VALID_MULTIPLE_SINKS_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+                createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_SINKS_CONFIG_FILE);
         final Map<String, Pipeline> pipelineMap = pipelineParser.parseConfiguration();
         assertThat(pipelineMap.keySet().size(), equalTo(3));
         verifyDataPrepperConfigurationAccesses(pipelineMap.keySet().size());
@@ -168,7 +177,7 @@ class PipelineParserTests {
     void testMultipleProcessors() {
         mockDataPrepperConfigurationAccesses();
         final PipelineParser pipelineParser =
-                new PipelineParser(TestDataProvider.VALID_MULTIPLE_PROCESSERS_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+                createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PROCESSERS_CONFIG_FILE);
         final Map<String, Pipeline> pipelineMap = pipelineParser.parseConfiguration();
         assertThat(pipelineMap.keySet().size(), equalTo(3));
         verifyDataPrepperConfigurationAccesses(pipelineMap.keySet().size());
@@ -176,7 +185,7 @@ class PipelineParserTests {
 
     @Test
     void parseConfiguration_with_a_configuration_file_which_does_not_exist_should_throw() {
-        final PipelineParser pipelineParser = new PipelineParser("file_does_no_exist.yml", pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+        final PipelineParser pipelineParser = createObjectUnderTest("file_does_no_exist.yml");
         final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
         assertThat(actualException.getMessage(), equalTo("Pipelines configuration file not found at file_does_no_exist.yml"));
     }
@@ -184,7 +193,7 @@ class PipelineParserTests {
     @Test
     void parseConfiguration_from_directory_with_multiple_files_creates_the_correct_pipelineMap() {
         mockDataPrepperConfigurationAccesses();
-        final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.MULTI_FILE_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+        final PipelineParser pipelineParser = createObjectUnderTest(TestDataProvider.MULTI_FILE_PIPELINE_DIRECTOTRY);
         final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
         verifyDataPrepperConfigurationAccesses(actualPipelineMap.keySet().size());
@@ -193,15 +202,30 @@ class PipelineParserTests {
     @Test
     void parseConfiguration_from_directory_with_single_file_creates_the_correct_pipelineMap() {
         mockDataPrepperConfigurationAccesses();
-        final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.SINGLE_FILE_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+        final PipelineParser pipelineParser = createObjectUnderTest(TestDataProvider.SINGLE_FILE_PIPELINE_DIRECTOTRY);
         final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
         verifyDataPrepperConfigurationAccesses(actualPipelineMap.keySet().size());
     }
 
     @Test
+    void parseConfiguration_with_routes_creates_correct_pipeline() {
+        mockDataPrepperConfigurationAccesses();
+        final PipelineParser pipelineParser =
+                createObjectUnderTest("src/test/resources/valid_multiple_sinks_with_routes.yml");
+        final Map<String, Pipeline> pipelineMap = pipelineParser.parseConfiguration();
+        assertThat(pipelineMap.keySet().size(), equalTo(3));
+        verifyDataPrepperConfigurationAccesses(pipelineMap.keySet().size());
+
+        final Pipeline entryPipeline = pipelineMap.get("entry-pipeline");
+        assertThat(entryPipeline, notNullValue());
+        assertThat(entryPipeline.getSinks(), notNullValue());
+        assertThat(entryPipeline.getSinks().size(), equalTo(2));
+    }
+
+    @Test
     void parseConfiguration_from_directory_with_no_yaml_files_should_throw() {
-        final PipelineParser pipelineParser = new PipelineParser(TestDataProvider.EMPTY_PIPELINE_DIRECTOTRY, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+        final PipelineParser pipelineParser = createObjectUnderTest(TestDataProvider.EMPTY_PIPELINE_DIRECTOTRY);
         final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
         assertThat(actualException.getMessage(), equalTo(
                 String.format("Pipelines configuration file not found at %s", TestDataProvider.EMPTY_PIPELINE_DIRECTOTRY)));
@@ -211,8 +235,7 @@ class PipelineParserTests {
     void getPeerForwarderDrainDuration_peerForwarderConfigurationNotSet() {
         when(dataPrepperConfiguration.getPeerForwarderConfiguration()).thenReturn(null);
 
-        final PipelineParser pipelineParser =
-                new PipelineParser(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+        final PipelineParser pipelineParser = createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
         final Duration result = pipelineParser.getPeerForwarderDrainTimeout(dataPrepperConfiguration);
         assertThat(result, is(Duration.ofSeconds(0)));
 
@@ -225,8 +248,7 @@ class PipelineParserTests {
         when(dataPrepperConfiguration.getPeerForwarderConfiguration()).thenReturn(peerForwarderConfiguration);
         when(peerForwarderConfiguration.getDrainTimeout()).thenReturn(expectedResult);
 
-        final PipelineParser pipelineParser =
-                new PipelineParser(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+        final PipelineParser pipelineParser = createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
         final Duration result = pipelineParser.getPeerForwarderDrainTimeout(dataPrepperConfiguration);
         assertThat(result, is(expectedResult));
 
@@ -258,8 +280,7 @@ class PipelineParserTests {
         final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> bufferMap = generateBufferMap(outerMapEntryCount, innerMapEntryCount);
         when(peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap()).thenReturn(bufferMap);
 
-        final PipelineParser pipelineParser =
-                new PipelineParser(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+        final PipelineParser pipelineParser = createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
         final List<Buffer> secondaryBuffers = pipelineParser.getSecondaryBuffers();
         assertThat(secondaryBuffers.size(), is(outerMapEntryCount * innerMapEntryCount));
         secondaryBuffers.forEach(retrievedBuffer -> assertThat(retrievedBuffer, is(buffer)));

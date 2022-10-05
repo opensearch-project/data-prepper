@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.parser.PipelineParser;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
+import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -34,6 +35,9 @@ class PipelineParserConfigurationTest {
     private PeerForwarderProvider peerForwarderProvider;
 
     @Mock
+    private RouterFactory routerFactory;
+
+    @Mock
     private DataPrepperConfiguration dataPrepperConfiguration;
 
     @Test
@@ -42,7 +46,8 @@ class PipelineParserConfigurationTest {
         when(args.getPipelineConfigFileLocation())
                 .thenReturn(pipelineConfigFileLocation);
 
-        final PipelineParser pipelineParser = pipelineParserConfiguration.pipelineParser(args, pluginFactory, peerForwarderProvider, dataPrepperConfiguration);
+        final PipelineParser pipelineParser = pipelineParserConfiguration.pipelineParser(
+                args, pluginFactory, peerForwarderProvider, routerFactory, dataPrepperConfiguration);
 
         assertThat(pipelineParser, is(notNullValue()));
         verify(args).getPipelineConfigFileLocation();

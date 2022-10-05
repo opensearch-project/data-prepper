@@ -11,8 +11,10 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
 import com.google.common.base.Preconditions;
+import org.opensearch.dataprepper.parser.DataFlowComponent;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadFactory;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadPoolExecutor;
+import org.opensearch.dataprepper.pipeline.router.Router;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +44,8 @@ public class Pipeline {
     private final Source source;
     private final Buffer buffer;
     private final List<List<Processor>> processorSets;
-    private final List<Sink> sinks;
+    private final List<DataFlowComponent<Sink>> sinks;
+    private final Router router;
     private final int processorThreads;
     private final int readBatchTimeoutInMillis;
     private final Duration processorShutdownTimeout;
@@ -75,7 +78,8 @@ public class Pipeline {
             @Nonnull final Source source,
             @Nonnull final Buffer buffer,
             @Nonnull final List<List<Processor>> processorSets,
-            @Nonnull final List<Sink> sinks,
+            @Nonnull final List<DataFlowComponent<Sink>> sinks,
+            @Nonnull final Router router,
             final int processorThreads,
             final int readBatchTimeoutInMillis,
             final Duration processorShutdownTimeout,
@@ -88,6 +92,7 @@ public class Pipeline {
         this.buffer = buffer;
         this.processorSets = processorSets;
         this.sinks = sinks;
+        this.router = router;
         this.processorThreads = processorThreads;
         this.readBatchTimeoutInMillis = readBatchTimeoutInMillis;
         this.processorShutdownTimeout = processorShutdownTimeout;
@@ -127,8 +132,11 @@ public class Pipeline {
     /**
      * @return {@link Sink} of this pipeline.
      */
+    // TODO: We can probably remove this
     public Collection<Sink> getSinks() {
-        return this.sinks;
+        return this.sinks.stream()
+                .map(DataFlowComponent::getComponent)
+                .collect(Collectors.toList());
     }
 
     public boolean isStopRequested() {
@@ -202,7 +210,9 @@ public class Pipeline {
         shutdownExecutorService(processorExecutorService, processorShutdownTimeout.toMillis());
 
         processorSets.forEach(processorSet -> processorSet.forEach(Processor::shutdown));
-        sinks.forEach(Sink::shutdown);
+        sinks.stream()
+                .map(DataFlowComponent::getComponent)
+                .forEach(Sink::shutdown);
 
         shutdownExecutorService(sinkExecutorService, sinkShutdownTimeout.toMillis());
     }
@@ -233,10 +243,9 @@ public class Pipeline {
     List<Future<Void>> publishToSinks(final Collection<Record> records) {
         final int sinksSize = sinks.size();
         final List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
-        for (int i = 0; i < sinksSize; i++) {
-            final int finalI = i;
-            sinkFutures.add(sinkExecutorService.submit(() -> sinks.get(finalI).output(records), null));
-        }
+        router.route(records, sinks, (sink, events) ->
+                sinkFutures.add(sinkExecutorService.submit(() -> sink.output(events), null))
+        );
         return sinkFutures;
     }
 }
