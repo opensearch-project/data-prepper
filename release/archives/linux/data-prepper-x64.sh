@@ -26,8 +26,8 @@ fi
 
 MIN_REQ_JAVA_VERSION=11
 MIN_REQ_OPENJDK_VERSION=11
-DATA_PREPPER_BIN=$(dirname "$(realpath "$0")")
-DATA_PREPPER_HOME=`realpath "$DATA_PREPPER_BIN/.."`
+DATA_PREPPER_BIN=$(dirname "$(readlink -f "$0")")
+DATA_PREPPER_HOME=`readlink -f "$DATA_PREPPER_BIN/.."`
 DATA_PREPPER_CLASSPATH="$DATA_PREPPER_HOME/lib/*"
 
 #check if java is installed
