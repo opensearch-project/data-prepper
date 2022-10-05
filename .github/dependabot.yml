@@ -107,11 +107,6 @@ updates:
     interval: monthly
 
 - package-ecosystem: gradle
-  directory: "/data-prepper-plugins/peer-forwarder"
-  schedule:
-    interval: monthly
-
-- package-ecosystem: gradle
   directory: "/data-prepper-plugins/service-map-stateful"
   schedule:
     interval: monthly

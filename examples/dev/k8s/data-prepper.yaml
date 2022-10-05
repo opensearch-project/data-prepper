@@ -8,7 +8,7 @@ data:
       sleep 1
     done
 
-    java -Xms128m -Xmx128m -jar /usr/share/data-prepper/data-prepper.jar /appconfig/trace_analytics_no_ssl.yml
+    java -Xms128m -Xmx128m -jar /usr/share/data-prepper/data-prepper.jar /appconfig/trace_analytics_no_ssl.yml /appconfig/data-prepper-config.yml
   trace_analytics_no_ssl.yml: |
     entry-pipeline:
       delay: "100"
@@ -16,10 +16,6 @@ data:
         otel_trace_source:
           ssl: false
       processor:
-        - peer_forwarder:
-            discovery_mode: "dns"
-            domain_name: "data-prepper-headless"
-            ssl: false
       sink:
         - pipeline:
             name: "raw-pipeline"
@@ -52,6 +48,12 @@ data:
             username: "admin"
             password: "admin"
             index_type: trace-analytics-service-map
+  data-prepper-config.yml: |
+    ssl: false
+    peer_forwarder:
+      ssl: false
+      discovery_mode: "dns"
+      domain_name: "data-prepper-headless"
 kind: ConfigMap
 metadata:
   creationTimestamp: "2020-12-11T18:07:51Z"

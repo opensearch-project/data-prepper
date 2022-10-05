@@ -6,10 +6,6 @@ entry-pipeline:
       sslKeyFile: /usr/share/data-prepper/demo-data-prepper.key
       sslKeyCertChainFile: /usr/share/data-prepper/demo-data-prepper.crt
   processor:
-    - peer_forwarder:
-        discovery_mode: "dns"
-        domain_name: "prepper-cluster"
-        ssl: false
   sink:
     - pipeline:
         name: "raw-pipeline"
