@@ -13,6 +13,17 @@ or from project root directory
 ./gradlew :e2e-test:trace:rawSpanEndToEndTest
 ```
 
+## Raw Span Ingestion Pipeline latest release compatibility End-to-end test
+
+Run from current directory
+```
+./gradlew :rawSpanLatestReleaseCompatibilityEndToEndTest
+```
+or from project root directory
+```
+./gradlew :e2e-test:trace:rawSpanLatestReleaseCompatibilityEndToEndTest
+```
+
 ## Raw Span Ingestion Pipeline End-to-end test using Core Peer Forwarder
 
 Run from current directory

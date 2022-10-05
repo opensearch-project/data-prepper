@@ -34,6 +34,8 @@ def RAW_SPAN_PIPELINE_YAML = "raw-span-e2e-pipeline.yml"
 def SERVICE_MAP_PIPELINE_YAML = "service-map-e2e-pipeline.yml"
 def DATA_PREPPER_CONFIG_YAML = "data_prepper.yml"
 def DATA_PREPPER_CONFIG_STATIC_YAML = "data_prepper_static.yml"
+def RAW_SPAN_PIPELINE_FROM_BUILD_YAML = "raw-span-e2e-pipeline-from-build.yml"
+def RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML = "raw-span-e2e-pipeline-latest-release.yml"
 
 /**
  * DataPrepper Docker tasks
@@ -95,18 +97,18 @@ task pullDataPrepperDockerImage(type: DockerPullImage) {
     image = 'opensearchproject/data-prepper:latest'
 }
 
-// TODO: Add back the compatibility tests for Data Prepper 2.1
 def createDataPrepperDockerContainerFromPullImage(final String taskBaseName, final String dataPrepperName, final int grpcPort,
-                                                  final int serverPort, final String pipelineConfigYAML) {
+                                                  final int serverPort, final int peerForwarderPort,
+                                                  final String pipelineConfigYAML, final String dataPrepperConfigYAML) {
     return tasks.create("create${taskBaseName}", DockerCreateContainer) {
         dependsOn createDataPrepperNetwork
         dependsOn pullDataPrepperDockerImage
         containerName = dataPrepperName
-        hostConfig.portBindings = [String.format('%d:21890', grpcPort), String.format('%d:4900', serverPort)]
-        exposePorts('tcp', [21890, 4900])
+        hostConfig.portBindings = [String.format('%d:21890', grpcPort), String.format('%d:4900', serverPort), String.format('%d:4994', peerForwarderPort)]
+        exposePorts('tcp', [21890, 4900, 4994])
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
         hostConfig.binds = [(project.file(pipelineConfigYAML).toString()):"/usr/share/data-prepper/pipelines.yaml",
-                            (project.file("src/integrationTest/resources/data_prepper.yml").toString()):"/usr/share/data-prepper/data-prepper-config.yaml"]
+                            (project.file(dataPrepperConfigYAML).toString()):"/usr/share/data-prepper/data-prepper-config.yaml"]
         targetImageId pullDataPrepperDockerImage.image
     }
 }
@@ -196,6 +198,7 @@ def createRawSpanDataPrepper2Task = createDataPrepperDockerContainer(
 
 def rawSpanEndToEndTest = createEndToEndTest("rawSpanEndToEndTest", includeRawSpanTestsMatchPattern,
         createRawSpanDataPrepper1Task, createRawSpanDataPrepper2Task)
+
 // raw span with peer forwarding e2e test
 def createRawSpanPeerForwarderDataPrepper1Task = createDataPrepperDockerContainer(
         "rawSpanPeerForwarderDataPrepper1", "dataprepper1", 21890, 4900, 4994, "${RAW_SPAN_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
@@ -204,6 +207,17 @@ def createRawSpanPeerForwarderDataPrepper2Task = createDataPrepperDockerContaine
 
 def rawSpanPeerForwarderEndToEndTest = createEndToEndTest("rawSpanPeerForwarderEndToEndTest", includeRawSpanTestsMatchPattern,
         createRawSpanPeerForwarderDataPrepper1Task, createRawSpanPeerForwarderDataPrepper2Task)
+
+// TODO: Add back the workflow file for this e2e test after Data prepper 2.0 release
+// raw span compatibility e2e test
+def rawSpanDataPrepperEventFromBuild = createDataPrepperDockerContainer(
+        "rawSpanDataPrepperEventFromBuild", "dataprepper1", 21890, 4900, 4994, "${RAW_SPAN_PIPELINE_FROM_BUILD_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
+def rawSpanDataPrepperLatestFromPull = createDataPrepperDockerContainerFromPullImage(
+        "rawSpanDataPrepperLatestFromPull", "dataprepper2", 21891, 4901, 4995, "${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
+
+def rawSpanLatestReleaseCompatibilityEndToEndTest = createEndToEndTest("rawSpanLatestReleaseCompatibilityEndToEndTest",
+        includeRawSpanTestsMatchPattern,
+        rawSpanDataPrepperEventFromBuild, rawSpanDataPrepperLatestFromPull)
 
 // service map e2e
 def includeServiceMapTestsMatchPattern = "org.opensearch.dataprepper.integration.trace.EndToEndServiceMapTest.testPipelineEndToEnd*"
