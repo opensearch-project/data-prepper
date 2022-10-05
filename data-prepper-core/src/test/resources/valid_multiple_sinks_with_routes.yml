@@ -21,8 +21,7 @@ raw-pipeline:
     - string_converter:
         upper_case: true
   sink:
-    - file:
-        someProperty: "someValue"
+    - stdout:
 service-map-pipeline:
   source:
     pipeline:
@@ -31,5 +30,4 @@ service-map-pipeline:
     - string_converter:
         upper_case: true
   sink:
-    - file:
-        someProperty: "someValue"
+    - stdout:
