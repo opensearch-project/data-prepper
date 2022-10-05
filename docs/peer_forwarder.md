@@ -101,6 +101,7 @@ The SSL configuration for setting up trust manager for peer forwarding client to
 * `ssl_fingerprint_verification_only`(Optional) : A `boolean` that disables the verification of server's TLS certificate chain and instead verifies only the certificate fingerprint. Default value is `false`.
 * `use_acm_certificate_for_ssl`(Optional) : A `boolean` that enables TLS/SSL using certificate and private key from AWS Certificate Manager (ACM). Default is `false`.
 * `acm_certificate_arn`(Optional) : A `String` represents the ACM certificate ARN. ACM certificate take preference over S3 or local file system certificate. Required if `use_acm_certificate_for_ssl` is set to `true`.
+* `acm_private_key_password`(Optional) : A `String` that represents the ACM private key password which that will be used to decrypt the private key. If it's not provided, a random password will be generated.
 * `acm_certificate_timeout_millis`(Optional) : An `int` representing the timeout in milliseconds for ACM to get certificates. Default value is `120000`.
 * `aws_region`(Optional) : A `String` represents the AWS region to use `ACM`, `S3` or `AWS Cloud Map`. Required if `use_acm_certificate_for_ssl` is set to `true` or `ssl_certificate_file` and `ssl_key_file` is `AWS S3` path or if `discovery_mode` is set to `aws_cloud_map`.
 

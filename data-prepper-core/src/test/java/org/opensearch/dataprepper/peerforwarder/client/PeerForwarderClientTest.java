@@ -5,6 +5,9 @@
 
 package org.opensearch.dataprepper.peerforwarder.client;
 
+import com.linecorp.armeria.common.HttpResponse;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -44,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -53,6 +57,7 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -66,6 +71,7 @@ class PeerForwarderClientTest {
     private static final String LOCAL_IP = "127.0.0.1";
     private static final String TEST_PLUGIN_ID = "test_plugin_id";
     private static final String TEST_PIPELINE_NAME = "test_pipeline_name";
+    private static final String TEST_ADDRESS = "test_address";
 
     private ObjectMapper objectMapper;
     @Mock
@@ -143,6 +149,29 @@ class PeerForwarderClientTest {
                 () -> objectUnderTest.serializeRecordsAndSendHttpRequest(records, "127.0.0.1", TEST_PLUGIN_ID, TEST_PIPELINE_NAME));
 
         assertThat(actualException.getCause(), instanceOf(JsonProcessingException.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 3})
+    void test_serializeRecordsAndSendHttpRequest_should_only_call_setPeerClientPool_once_even_with_multiple_calls(final int requestCount) {
+        when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
+
+        final WebClient webClient = mock(WebClient.class);
+        when(peerClientPool.getClient(anyString())).thenReturn(webClient);
+        when(webClient.post(anyString(), anyString())).thenReturn(HttpResponse.ofJson(CompletableFuture.class));
+
+        final PeerForwarderClient peerForwarderClient = createObjectUnderTest(objectMapper);
+        final Collection<Record<Event>> records = generateBatchRecords(1);
+
+        for (int i = 0; i < requestCount; i++) {
+            final AggregatedHttpResponse aggregatedHttpResponse = peerForwarderClient.serializeRecordsAndSendHttpRequest(records, TEST_ADDRESS, TEST_PLUGIN_ID, TEST_PIPELINE_NAME);
+            assertThat(aggregatedHttpResponse, notNullValue());
+            assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
+            assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
+        }
+
+        verify(requestsCounter, times(requestCount)).increment();
+        verify(peerForwarderClientFactory).setPeerClientPool();
     }
 
     private Collection<Record<Event>> generateBatchRecords(final int numRecords) {

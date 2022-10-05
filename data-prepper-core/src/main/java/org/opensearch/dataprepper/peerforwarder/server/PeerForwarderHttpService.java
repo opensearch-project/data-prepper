@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
  */
 public class PeerForwarderHttpService {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderHttpService.class);
+    private static final String TRACE_EVENT_TYPE = "TRACE";
     static final String SERVER_REQUEST_PROCESSING_LATENCY = "serverRequestProcessingLatency";
 
     private final ResponseHandler responseHandler;
@@ -113,7 +114,7 @@ public class PeerForwarderHttpService {
         final DefaultEventMetadata eventMetadata = getEventMetadata(wireEvent);
         Event event;
 
-        if (wireEvent.getEventType().equalsIgnoreCase("TRACE")) {
+        if (wireEvent.getEventType().equalsIgnoreCase(TRACE_EVENT_TYPE)) {
             event = JacksonSpan.builder()
                     .withJsonData(wireEvent.getEventData())
                     .withEventMetadata(eventMetadata)
