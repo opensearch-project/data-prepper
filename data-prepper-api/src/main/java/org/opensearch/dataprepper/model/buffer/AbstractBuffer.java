@@ -71,6 +71,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
             doWrite(record, timeoutInMillis);
             recordsWrittenCounter.increment();
             recordsInBuffer.incrementAndGet();
+            postProcess(recordsInBuffer.get());
         } catch (TimeoutException e) {
             writeTimeoutCounter.increment();
             throw e;
@@ -96,6 +97,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
             doWriteAll(records, timeoutInMillis);
             recordsWrittenCounter.increment(size);
             recordsInBuffer.addAndGet(size);
+            postProcess(recordsInBuffer.get());
         } catch (Exception e) {
             if (e instanceof TimeoutException) {
                 writeTimeoutCounter.increment();
@@ -119,6 +121,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         recordsReadCounter.increment(readResult.getKey().size() * 1.0);
         recordsInFlight.addAndGet(readResult.getValue().getNumRecordsToBeChecked());
         recordsInBuffer.addAndGet(-1 * readResult.getValue().getNumRecordsToBeChecked());
+        postProcess(recordsInBuffer.get());
         return readResult;
     }
 
@@ -163,4 +166,14 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     public abstract void doCheckpoint(CheckpointState checkpointState);
 
     public abstract boolean isEmpty();
+
+    /**
+     * This method is run after the core processing is complete in read, write, and writeAll. This is a hook
+     * provides the current recordsInBuffer. Default implementation is a no-op.
+     *
+     * @param recordsInBuffer the current number of records in the buffer
+     */
+    protected void postProcess(final Long recordsInBuffer) {
+
+    }
 }

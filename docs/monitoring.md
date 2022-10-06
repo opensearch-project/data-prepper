@@ -28,9 +28,11 @@ plugin types.
     - Counter
         - `recordsWritten`: number of records written into a buffer.
         - `recordsRead`: number of records read from a buffer.
-        - `recordsInFlight`: number of records read from a buffer and being processed by data-prepper downstreams (e.g. processor, sink).
         - `recordsProcessed`: number of records read from a buffer and marked as processed.
         - `writeTimeouts`: count of write timeouts in a buffer.
+    - Gauge
+        - `recordsInBuffer`: number of records in the buffer.
+        - `recordsInFlight`: number of records read from a buffer and being processed by data-prepper downstreams (e.g. processor, sink).
     - Timer
         - `readTimeElapsed`: time elapsed while reading from a buffer
         - `checkpointTimeElapsed`: time elapsed while checkpointing.
