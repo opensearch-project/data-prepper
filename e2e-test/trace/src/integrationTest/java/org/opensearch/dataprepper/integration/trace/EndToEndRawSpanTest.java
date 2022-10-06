@@ -88,7 +88,7 @@ public class EndToEndRawSpanTest {
     private static final String INDEX_NAME = "otel-v1-apm-span-000001";
 
     @Test
-    public void testPipelineEndToEnd() throws InterruptedException {
+    public void testPipelineEndToEnd() {
         //Send data to otel trace source
         final ExportTraceServiceRequest exportTraceServiceRequestTrace1BatchWithRoot = getExportTraceServiceRequest(
                 getResourceSpansBatch(TEST_SPAN_SET_1_WITH_ROOT_SPAN)
@@ -118,7 +118,7 @@ public class EndToEndRawSpanTest {
         builder.withPassword("admin");
         final RestHighLevelClient restHighLevelClient = builder.build().createClient();
         // Wait for data to flow through pipeline and be indexed by ES
-        await().atLeast(6, TimeUnit.SECONDS).atMost(20, TimeUnit.SECONDS).untilAsserted(
+        await().atLeast(3, TimeUnit.SECONDS).atMost(20, TimeUnit.SECONDS).untilAsserted(
                 () -> {
                     refreshIndices(restHighLevelClient);
                     final SearchRequest searchRequest = new SearchRequest(INDEX_NAME);

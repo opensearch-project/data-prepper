@@ -1,0 +1,15 @@
+aggregate-pipeline:
+  source:
+    http:
+  processor:
+    - aggregate:
+        identification_keys: [ "sourceIp", "destinationIp" ]
+        action:
+          put_all:
+        group_duration: "20s"
+  sink:
+    - opensearch:
+        hosts: [ "https://node-0.example.com:9200" ]
+        username: "admin"
+        password: "admin"
+        index: "test-peer-forwarder-index"
