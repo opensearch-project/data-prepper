@@ -84,10 +84,10 @@ public class GrokProcessorTests {
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private Counter grokProcessingMatchSuccessCounter;
+    private Counter grokProcessingMatchCounter;
 
     @Mock
-    private Counter grokProcessingMatchFailureCounter;
+    private Counter grokProcessingMismatchCounter;
 
     @Mock
     private Counter grokProcessingErrorsCounter;
@@ -115,8 +115,8 @@ public class GrokProcessorTests {
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
 
-        lenient().when(pluginMetrics.counter(GrokProcessor.GROK_PROCESSING_MATCH_SUCCESS)).thenReturn(grokProcessingMatchSuccessCounter);
-        lenient().when(pluginMetrics.counter(GrokProcessor.GROK_PROCESSING_MATCH_FAILURE)).thenReturn(grokProcessingMatchFailureCounter);
+        lenient().when(pluginMetrics.counter(GrokProcessor.GROK_PROCESSING_MATCH)).thenReturn(grokProcessingMatchCounter);
+        lenient().when(pluginMetrics.counter(GrokProcessor.GROK_PROCESSING_MISMATCH)).thenReturn(grokProcessingMismatchCounter);
         lenient().when(pluginMetrics.counter(GrokProcessor.GROK_PROCESSING_TIMEOUTS)).thenReturn(grokProcessingTimeoutsCounter);
         lenient().when(pluginMetrics.counter(GrokProcessor.GROK_PROCESSING_ERRORS)).thenReturn(grokProcessingErrorsCounter);
         lenient().when(pluginMetrics.timer(GrokProcessor.GROK_PROCESSING_TIME)).thenReturn(grokProcessingTime);
@@ -174,9 +174,9 @@ public class GrokProcessorTests {
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
         assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
-        verify(grokProcessingMatchSuccessCounter, times(1)).increment();
+        verify(grokProcessingMatchCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
-        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
+        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter, grokProcessingTimeoutsCounter);
     }
 
     @Test
@@ -208,9 +208,9 @@ public class GrokProcessorTests {
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
         assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
-        verify(grokProcessingMatchSuccessCounter, times(1)).increment();
+        verify(grokProcessingMatchCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
-        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
+        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter, grokProcessingTimeoutsCounter);
     }
 
     @Test
@@ -240,9 +240,9 @@ public class GrokProcessorTests {
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
         assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
-        verify(grokProcessingMatchSuccessCounter, times(1)).increment();
+        verify(grokProcessingMatchCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
-        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
+        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter, grokProcessingTimeoutsCounter);
     }
 
     @Test
@@ -271,9 +271,9 @@ public class GrokProcessorTests {
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
         assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
-        verify(grokProcessingMatchSuccessCounter, times(1)).increment();
+        verify(grokProcessingMatchCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
-        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
+        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter, grokProcessingTimeoutsCounter);
     }
 
     @Test
@@ -302,9 +302,9 @@ public class GrokProcessorTests {
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
         assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
-        verify(grokProcessingMatchSuccessCounter, times(1)).increment();
+        verify(grokProcessingMatchCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
-        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
+        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter, grokProcessingTimeoutsCounter);
     }
 
     @Test
@@ -338,9 +338,9 @@ public class GrokProcessorTests {
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
         assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
-        verify(grokProcessingMatchSuccessCounter, times(1)).increment();
+        verify(grokProcessingMatchCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
-        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
+        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter, grokProcessingTimeoutsCounter);
     }
 
     @Test
@@ -369,9 +369,9 @@ public class GrokProcessorTests {
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
         assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
-        verify(grokProcessingMatchSuccessCounter, times(1)).increment();
+        verify(grokProcessingMatchCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
-        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
+        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter, grokProcessingTimeoutsCounter);
     }
 
     @Test
@@ -424,9 +424,9 @@ public class GrokProcessorTests {
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
         assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
-        verify(grokProcessingMatchSuccessCounter, times(1)).increment();
+        verify(grokProcessingMatchCounter, times(1)).increment();
         verify(grokProcessingTime, times(1)).record(any(Runnable.class));
-        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
+        verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter, grokProcessingTimeoutsCounter);
     }
 
 
@@ -497,9 +497,9 @@ public class GrokProcessorTests {
             assertThat(grokkedRecords.size(), equalTo(1));
             assertThat(grokkedRecords.get(0), notNullValue());
             assertRecordsAreEqual(grokkedRecords.get(0), record);
-            verify(grokProcessingMatchFailureCounter, times(1)).increment();
+            verify(grokProcessingMismatchCounter, times(1)).increment();
             verify(grokProcessingTime, times(1)).record(any(Runnable.class));
-            verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchSuccessCounter, grokProcessingTimeoutsCounter);
+            verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchCounter, grokProcessingTimeoutsCounter);
         }
 
         @Test
@@ -533,9 +533,9 @@ public class GrokProcessorTests {
             assertThat(grokkedRecords.size(), equalTo(1));
             assertThat(grokkedRecords.get(0), notNullValue());
             assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
-            verify(grokProcessingMatchSuccessCounter, times(1)).increment();
+            verify(grokProcessingMatchCounter, times(1)).increment();
             verify(grokProcessingTime, times(1)).record(any(Runnable.class));
-            verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
+            verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter, grokProcessingTimeoutsCounter);
         }
 
         @Test
@@ -570,9 +570,9 @@ public class GrokProcessorTests {
             assertThat(grokkedRecords.size(), equalTo(1));
             assertThat(grokkedRecords.get(0), notNullValue());
             assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
-            verify(grokProcessingMatchSuccessCounter, times(1)).increment();
+            verify(grokProcessingMatchCounter, times(1)).increment();
             verify(grokProcessingTime, times(1)).record(any(Runnable.class));
-            verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchFailureCounter, grokProcessingTimeoutsCounter);
+            verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMismatchCounter, grokProcessingTimeoutsCounter);
         }
     }
 
