@@ -149,5 +149,3 @@ Core Peer Forwarder introduces the following custom metrics and all the metrics 
 ### Gauge
 
 - `peerEndpoints`: measures number of dynamically discovered peer data-prepper endpoints. For `static` mode, the size is fixed.
-
-
