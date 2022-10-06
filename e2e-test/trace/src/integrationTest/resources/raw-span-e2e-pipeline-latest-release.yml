@@ -3,10 +3,6 @@ entry-pipeline:
     otel_trace_source:
       ssl: false
   processor:
-    - peer_forwarder:
-        discovery_mode: "static"
-        static_endpoints: ["dataprepper1", "dataprepper2"]
-        ssl: false
   sink:
     - pipeline:
         name: "raw-pipeline"
@@ -15,7 +11,7 @@ raw-pipeline:
     pipeline:
       name: "entry-pipeline"
   processor:
-    - otel_trace_raw_prepper:
+    - otel_trace_raw:
         trace_flush_interval: 5
   sink:
     - opensearch:
