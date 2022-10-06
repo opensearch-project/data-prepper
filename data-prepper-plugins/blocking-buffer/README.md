@@ -15,7 +15,9 @@ buffer:
 - batch_size => An `int` representing max number of records the buffer returns on read. Default is `8`.
 
 ## Metrics
-This plugin inherits the common metrics defined in [AbstractBuffer](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/buffer/AbstractBuffer.java)
+This plugin inherits the common metrics defined in [AbstractBuffer](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/buffer/AbstractBuffer.java) and the additional customer metrics:
+- Gauge
+  - `bufferUsage`: percent usage of the `buffer_size` based on the `recordsInBuffer`.
 
 ## Developer Guide
 This plugin is compatible with Java 14. See 
