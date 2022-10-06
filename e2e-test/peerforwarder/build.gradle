@@ -40,8 +40,6 @@ task createDataPrepperDockerFile(type: Dockerfile) {
     destFile = project.file('build/docker/Dockerfile')
     from(dataPrepperBaseImage)
     exposePort(2021)
-    exposePort(4900)
-    exposePort(4994)
     workingDir("/app/data-prepper")
     copyFile("${dataPrepperJarFilepath}", "/app/data-prepper/lib")
     copyFile("src/integrationTest/resources/default_certificate.pem", "/app/data-prepper/config/default_certificate.pem")
@@ -57,12 +55,12 @@ task buildDataPrepperDockerImage(type: DockerBuildImage) {
 }
 
 def createDataPrepperDockerContainer(final String taskBaseName, final String dataPrepperName, final int sourcePort,
-                                     final int serverPort, final int peerForwarderPort, final String pipelineConfigYAML, final String dataPrepperConfigYAML) {
+                                     final String pipelineConfigYAML, final String dataPrepperConfigYAML) {
     return tasks.create("create${taskBaseName}", DockerCreateContainer) {
         dependsOn buildDataPrepperDockerImage
         dependsOn createDataPrepperNetwork
         containerName = dataPrepperName
-        hostConfig.portBindings = [String.format('%d:2021', sourcePort), String.format('%d:4900', serverPort), String.format('%d:4994', peerForwarderPort)]
+        hostConfig.portBindings = [String.format('%d:2021', sourcePort)]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
         hostConfig.binds = [(project.file("src/integrationTest/resources/${pipelineConfigYAML}").toString()):"/app/data-prepper/pipelines/pipelines.yaml",
                             (project.file("src/integrationTest/resources/${dataPrepperConfigYAML}").toString()):"/app/data-prepper/config/data-prepper-config.yaml"]
@@ -169,9 +167,9 @@ def createEndToEndTest(final String testName, final String includeTestsMatchPatt
 def includeLocalAggregateTestsMatchPattern = "org.opensearch.dataprepper.integration.peerforwarder.EndToEndPeerForwarderTest.testAggregatePipelineWithSingleNodeEndToEnd*"
 
 def createLocalAggregateDataPrepper1Task = createDataPrepperDockerContainer(
-        "localAggregateDataPrepper1", "dataprepper1", 2021, 4900, 4994, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_LOCAL_NODE}")
+        "localAggregateDataPrepper1", "dataprepper1", 2021, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_LOCAL_NODE}")
 def createLocalAggregateDataPrepper2Task = createDataPrepperDockerContainer(
-        "localAggregateDataPrepper2", "dataprepper2", 2022, 4901, 4995, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_LOCAL_NODE}")
+        "localAggregateDataPrepper2", "dataprepper2", 2022, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_LOCAL_NODE}")
 
 def localAggregateEndToEndTest = createEndToEndTest("localAggregateEndToEndTest", includeLocalAggregateTestsMatchPattern,
         createLocalAggregateDataPrepper1Task, createLocalAggregateDataPrepper2Task)
@@ -180,9 +178,9 @@ def localAggregateEndToEndTest = createEndToEndTest("localAggregateEndToEndTest"
 def includeStaticAggregateTestsMatchPattern = "org.opensearch.dataprepper.integration.peerforwarder.EndToEndPeerForwarderTest.testAggregatePipelineWithMultipleNodesEndToEnd*"
 
 def createAggregateDataPrepper1Task = createDataPrepperDockerContainer(
-        "staticAggregateDataPrepper1", "node1.data-prepper.example.com", 2021, 4900, 4994, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC}")
+        "staticAggregateDataPrepper1", "node1.data-prepper.example.com", 2021, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC}")
 def createAggregateDataPrepper2Task = createDataPrepperDockerContainer(
-        "staticAggregateDataPrepper2", "node2.data-prepper.example.com", 2022, 4901, 4995, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC}")
+        "staticAggregateDataPrepper2", "node2.data-prepper.example.com", 2022, "${AGGREGATE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC}")
 
 def staticAggregateEndToEndTest = createEndToEndTest("staticAggregateEndToEndTest", includeStaticAggregateTestsMatchPattern,
         createAggregateDataPrepper1Task, createAggregateDataPrepper2Task)

@@ -45,8 +45,6 @@ task createDataPrepperDockerFile(type: Dockerfile) {
     destFile = project.file('build/docker/Dockerfile')
     from(dataPrepperBaseImage)
     exposePort(21890)
-    exposePort(4900)
-    exposePort(4994)
     workingDir("/app/data-prepper")
     copyFile("${dataPrepperJarFilepath}", "/app/data-prepper/lib")
     defaultCommand('java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute')
@@ -59,13 +57,13 @@ task buildDataPrepperDockerImage(type: DockerBuildImage) {
     images.add("integ-test-pipeline-image")
 }
 
-def createDataPrepperDockerContainer(final String taskBaseName, final String dataPrepperName, final int grpcPort, final int serverPort,
-                                     final peerForwarderPort, final String pipelineConfigYAML, final String dataPrepperConfigYAML) {
+def createDataPrepperDockerContainer(final String taskBaseName, final String dataPrepperName, final int grpcPort,
+                                     final String pipelineConfigYAML, final String dataPrepperConfigYAML) {
     return tasks.create("create${taskBaseName}", DockerCreateContainer) {
         dependsOn buildDataPrepperDockerImage
         dependsOn createDataPrepperNetwork
         containerName = dataPrepperName
-        hostConfig.portBindings = [String.format('%d:21890', grpcPort), String.format('%d:4900', serverPort), String.format('%d:4994', peerForwarderPort)]
+        hostConfig.portBindings = [String.format('%d:21890', grpcPort)]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
         hostConfig.binds = [(project.file("src/integrationTest/resources/${pipelineConfigYAML}").toString()):"/app/data-prepper/pipelines/pipelines.yaml",
                             (project.file("src/integrationTest/resources/${dataPrepperConfigYAML}").toString()):"/app/data-prepper/config/data-prepper-config.yaml"]
@@ -98,17 +96,16 @@ task pullDataPrepperDockerImage(type: DockerPullImage) {
 }
 
 def createDataPrepperDockerContainerFromPullImage(final String taskBaseName, final String dataPrepperName, final int grpcPort,
-                                                  final int serverPort, final int peerForwarderPort,
                                                   final String pipelineConfigYAML, final String dataPrepperConfigYAML) {
     return tasks.create("create${taskBaseName}", DockerCreateContainer) {
         dependsOn createDataPrepperNetwork
         dependsOn pullDataPrepperDockerImage
         containerName = dataPrepperName
-        hostConfig.portBindings = [String.format('%d:21890', grpcPort), String.format('%d:4900', serverPort), String.format('%d:4994', peerForwarderPort)]
-        exposePorts('tcp', [21890, 4900, 4994])
+        hostConfig.portBindings = [String.format('%d:21890', grpcPort)]
+        exposePorts('tcp', [21890])
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
-        hostConfig.binds = [(project.file(pipelineConfigYAML).toString()):"/usr/share/data-prepper/pipelines.yaml",
-                            (project.file(dataPrepperConfigYAML).toString()):"/usr/share/data-prepper/data-prepper-config.yaml"]
+        hostConfig.binds = [(project.file("src/integrationTest/resources/${pipelineConfigYAML}").toString()):"/usr/share/data-prepper/pipelines.yaml",
+                            (project.file("src/integrationTest/resources/${dataPrepperConfigYAML}").toString()):"/usr/share/data-prepper/data-prepper-config.yaml"]
         targetImageId pullDataPrepperDockerImage.image
     }
 }
@@ -192,27 +189,27 @@ def createEndToEndTest(final String testName, final String includeTestsMatchPatt
 def includeRawSpanTestsMatchPattern = "org.opensearch.dataprepper.integration.trace.EndToEndRawSpanTest.testPipelineEndToEnd*"
 
 def createRawSpanDataPrepper1Task = createDataPrepperDockerContainer(
-        "rawSpanDataPrepper1", "dataprepper1", 21890, 4900, 4994, "${RAW_SPAN_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_YAML}")
+        "rawSpanDataPrepper1", "dataprepper1", 21890, "${RAW_SPAN_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_YAML}")
 def createRawSpanDataPrepper2Task = createDataPrepperDockerContainer(
-        "rawSpanDataPrepper2", "dataprepper2", 21891, 4901, 4995, "${RAW_SPAN_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_YAML}")
+        "rawSpanDataPrepper2", "dataprepper2", 21891, "${RAW_SPAN_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_YAML}")
 
 def rawSpanEndToEndTest = createEndToEndTest("rawSpanEndToEndTest", includeRawSpanTestsMatchPattern,
         createRawSpanDataPrepper1Task, createRawSpanDataPrepper2Task)
 
 // raw span with peer forwarding e2e test
 def createRawSpanPeerForwarderDataPrepper1Task = createDataPrepperDockerContainer(
-        "rawSpanPeerForwarderDataPrepper1", "dataprepper1", 21890, 4900, 4994, "${RAW_SPAN_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
+        "rawSpanPeerForwarderDataPrepper1", "dataprepper1", 21890, "${RAW_SPAN_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
 def createRawSpanPeerForwarderDataPrepper2Task = createDataPrepperDockerContainer(
-        "rawSpanPeerForwarderDataPrepper2", "dataprepper2", 21891, 4901, 4995, "${RAW_SPAN_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
+        "rawSpanPeerForwarderDataPrepper2", "dataprepper2", 21891, "${RAW_SPAN_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
 
 def rawSpanPeerForwarderEndToEndTest = createEndToEndTest("rawSpanPeerForwarderEndToEndTest", includeRawSpanTestsMatchPattern,
         createRawSpanPeerForwarderDataPrepper1Task, createRawSpanPeerForwarderDataPrepper2Task)
 
 // raw span compatibility e2e test
 def rawSpanDataPrepperEventFromBuild = createDataPrepperDockerContainer(
-        "rawSpanDataPrepperEventFromBuild", "dataprepper1", 21890, 4900, 4994, "${RAW_SPAN_PIPELINE_FROM_BUILD_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
+        "rawSpanDataPrepperEventFromBuild", "dataprepper1", 21890, "${RAW_SPAN_PIPELINE_FROM_BUILD_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
 def rawSpanDataPrepperLatestFromPull = createDataPrepperDockerContainerFromPullImage(
-        "rawSpanDataPrepperLatestFromPull", "dataprepper2", 21891, 4901, 4995, "${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
+        "rawSpanDataPrepperLatestFromPull", "dataprepper2", 21891, "${RAW_SPAN_PIPELINE_LATEST_RELEASE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
 
 def rawSpanLatestReleaseCompatibilityEndToEndTest = createEndToEndTest("rawSpanLatestReleaseCompatibilityEndToEndTest",
         includeRawSpanTestsMatchPattern,
@@ -223,9 +220,9 @@ def includeServiceMapTestsMatchPattern = "org.opensearch.dataprepper.integration
 
 // service map with peer forwarding e2e test
 def createServiceMapPeerForwarderDataPrepper1Task = createDataPrepperDockerContainer(
-        "serviceMapPeerForwarderDataPrepper1", "dataprepper1", 21890, 4900, 4994, "${SERVICE_MAP_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
+        "serviceMapPeerForwarderDataPrepper1", "dataprepper1", 21890, "${SERVICE_MAP_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
 def createServiceMapPeerForwarderDataPrepper2Task = createDataPrepperDockerContainer(
-        "serviceMapPeerForwarderDataPrepper2", "dataprepper2", 21891, 4901, 4995, "${SERVICE_MAP_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
+        "serviceMapPeerForwarderDataPrepper2", "dataprepper2", 21891, "${SERVICE_MAP_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_STATIC_YAML}")
 
 def serviceMapPeerForwarderEndToEndTest = createEndToEndTest("serviceMapPeerForwarderEndToEndTest", includeServiceMapTestsMatchPattern,
         createServiceMapPeerForwarderDataPrepper1Task, createServiceMapPeerForwarderDataPrepper2Task)

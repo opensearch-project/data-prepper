@@ -6,7 +6,7 @@ aggregate-pipeline:
         identification_keys: [ "sourceIp", "destinationIp" ]
         action:
           put_all:
-        group_duration: "30s"
+        group_duration: "20s"
   sink:
     - opensearch:
         hosts: [ "https://node-0.example.com:9200" ]

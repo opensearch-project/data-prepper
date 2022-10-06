@@ -74,7 +74,7 @@ public class EndToEndServiceMapTest {
         //Verify data in OpenSearch backend
         final List<EndToEndTestSpan> testDataSet1 = Stream.of(TEST_TRACE_1_BATCH_1, TEST_TRACE_1_BATCH_2)
                 .flatMap(Collection::stream).collect(Collectors.toList());
-        final List<Map<String, Object>> possibleEdges = getPossibleEdges(TEST_TRACEID_1, testDataSet1);
+        final List<Map<String, Object>> possibleEdges = getPossibleEdges(testDataSet1);
         final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(
                 Collections.singletonList("https://127.0.0.1:9200"));
         builder.withUsername("admin");
@@ -107,8 +107,8 @@ public class EndToEndServiceMapTest {
 
         final List<EndToEndTestSpan> testDataSet2 = Stream.of(TEST_TRACE_2_BATCH_1, TEST_TRACE_2_BATCH_2)
                 .flatMap(Collection::stream).collect(Collectors.toList());
-        possibleEdges.addAll(getPossibleEdges(TEST_TRACEID_2, testDataSet2));
-        // Wait for service map processor by 2 * window_duration
+        possibleEdges.addAll(getPossibleEdges(testDataSet2));
+
         await().atMost(60, TimeUnit.SECONDS).untilAsserted(
                 () -> {
                     final List<Map<String, Object>> foundSources = getSourcesFromIndex(restHighLevelClient, SERVICE_MAP_INDEX_NAME);
@@ -204,7 +204,7 @@ public class EndToEndServiceMapTest {
         return spansList;
     }
 
-    private List<Map<String, Object>> getPossibleEdges(final String traceId, final List<EndToEndTestSpan> data) {
+    private List<Map<String, Object>> getPossibleEdges(final List<EndToEndTestSpan> data) {
         final Map<String, EndToEndTestSpan> spanIdToServiceMapTestData = data.stream()
                 .collect(Collectors.toMap(endToEndTestSpan -> endToEndTestSpan.spanId, endToEndTestSpan -> endToEndTestSpan));
         final List<Map<String, Object>> possibleEdges = new ArrayList<>();
