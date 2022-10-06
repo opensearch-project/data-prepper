@@ -237,10 +237,10 @@ Setting a `timeout_millis = 0` will make it so that matching a Record never time
 
 Counter
 
-* `grokProcessingMatchFailure`: records the number of Records that did not match any of the patterns specified in the match field
+* `grokProcessingMismatch`: records the number of Records that did not match any of the patterns specified in the match field
   
 
-* `grokProcessingMatchSuccess`: records the number of Records that found at least one pattern match from the match field
+* `grokProcessingMatch`: records the number of Records that found at least one pattern match from the match field
   
 
 * `grokProcessingErrors`: records the total number of processing errors for Records

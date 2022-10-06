@@ -58,14 +58,14 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
     private static final Logger LOG = LoggerFactory.getLogger(GrokProcessor.class);
 
-    static final String GROK_PROCESSING_MATCH_SUCCESS = "grokProcessingMatchSuccess";
-    static final String GROK_PROCESSING_MATCH_FAILURE = "grokProcessingMatchFailure";
+    static final String GROK_PROCESSING_MATCH = "grokProcessingMatch";
+    static final String GROK_PROCESSING_MISMATCH = "grokProcessingMismatch";
     static final String GROK_PROCESSING_ERRORS = "grokProcessingErrors";
     static final String GROK_PROCESSING_TIMEOUTS = "grokProcessingTimeouts";
     static final String GROK_PROCESSING_TIME = "grokProcessingTime";
 
-    private final Counter grokProcessingMatchFailureCounter;
-    private final Counter grokProcessingMatchSuccessCounter;
+    private final Counter grokProcessingMismatchCounter;
+    private final Counter grokProcessingMatchCounter;
     private final Counter grokProcessingErrorsCounter;
     private final Counter grokProcessingTimeoutsCounter;
     private final Timer grokProcessingTime;
@@ -88,8 +88,8 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
         this.fieldToGrok = new LinkedHashMap<>();
         this.executorService = executorService;
 
-        grokProcessingMatchSuccessCounter = pluginMetrics.counter(GROK_PROCESSING_MATCH_SUCCESS);
-        grokProcessingMatchFailureCounter = pluginMetrics.counter(GROK_PROCESSING_MATCH_FAILURE);
+        grokProcessingMatchCounter = pluginMetrics.counter(GROK_PROCESSING_MATCH);
+        grokProcessingMismatchCounter = pluginMetrics.counter(GROK_PROCESSING_MISMATCH);
         grokProcessingErrorsCounter = pluginMetrics.counter(GROK_PROCESSING_ERRORS);
         grokProcessingTimeoutsCounter = pluginMetrics.counter(GROK_PROCESSING_TIMEOUTS);
         grokProcessingTime = pluginMetrics.timer(GROK_PROCESSING_TIME);
@@ -241,9 +241,9 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
         }
 
         if (grokkedCaptures.isEmpty()) {
-            grokProcessingMatchFailureCounter.increment();
+            grokProcessingMismatchCounter.increment();
         } else {
-            grokProcessingMatchSuccessCounter.increment();
+            grokProcessingMatchCounter.increment();
         }
     }
 
