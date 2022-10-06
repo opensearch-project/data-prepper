@@ -24,6 +24,9 @@ Sink in the output component of pipeline, it defines the one or more destination
 ### Processor
 Processor component of the pipeline, these are intermediary processing units using which users can filter, transform and enrich the records into desired format before publishing to the sink. The processor is an optional component of the pipeline, if not defined the records will be published in the format as defined in the source. You can have more than one processor, and they are executed in the order they are defined in the pipeline spec.
 
+### Route
+Data Prepper supports routes on events. These all pipeline authors to send only events matching certain conditions to different sinks.
+
 ### Prepper
 Preppers were renamed to Processors and are no longer supported starting in DataPrepper 2.0. Please see [Deprecated Pipeline Configuration Support](configuration.md#Deprecated Pipeline Configuration Support) section in the Configuration document for more details.
 
@@ -107,3 +110,63 @@ output-pipeline-2:
 ```
 
 The above configuration uses the Pipeline Connectors. `input-pipeline` is configured with `output-pipeline-1` and `output-pipeline-2` as sink. With the help of pipeline connectors we can read once from the input file and write upper case values to `output-1-file` and lower case values to `output-2-file`.
+
+## Conditional Routing
+
+In many situations, pipeline authors want to route some events to certain sinks. They can configure their pipeline to do this by using Data Prepper's route feature. The pipeline author
+first configures routes in `route:` part of the pipeline configuration.
+
+The following shows how this is configured. In the example below, `info_level` and `warn_and_above` are the names of two different routes. As a pipeline author, you can define these
+names to match your use-case. After the names of the routes, you can define the conditions that must apply to any route to make it applicable for any given event. For more information
+on how to define conditions see the [Data Prepper Expression Syntax](expression-syntax.md) guide.
+
+```
+route:
+  - info_level: '/loglevel == "INFO"'
+  - warn_and_above: '/loglevel == "WARN" or /loglevel == "ERROR"'
+```
+
+Now that you have defined some routes, you can define these routes in your sinks. You do this by adding the `routes:` property onto any sink that you want to have routing applied to.
+You can specify a list of routes. Any route that applies for an event will cause it to be routed to that sink. If you do not apply a route to a sink, then all events will go into that
+sink.
+
+The following shows a snippet of a sink that outputs events to a `file` sink. It will only output events which match the `info_level` or `warn_and_above` routes.
+
+```
+sink:
+  - file:
+      path: /usr/share/log-output-files/out-info-above.txt
+      routes:
+        - info_level
+        - warn_and_above
+```
+
+The following shows a full example pipeline. In this example, Data Prepper accepts log events from the `http` source, runs the `grok` processor to set the
+`loglevel` value, and then outputs to the sinks. The first sink (writing to `out-info-above.txt`) receives events matching either `info_level` or `warn_and_above`.
+The second sink (writing to `out-warn-above.txt`) only receives events matching `warn_and_above`. The last sink (writing to `out-all.txt`) receives all events.
+
+```
+application-log-pipeline:
+  source:
+    http:
+  processor:
+    - grok:
+        match:
+          log: [ "%{NOTSPACE:time} %{NOTSPACE:thread} %{NOTSPACE:loglevel}  %{NOTSPACE:class} - %{GREEDYDATA:message}" ]
+
+  route:
+    - info_level: '/loglevel == "INFO"'
+    - warn_and_above: '/loglevel == "WARN" or /loglevel == "ERROR"'
+  sink:
+    - file:
+        path: /usr/share/log-output-files/out-info-above.txt
+        routes:
+          - info_level
+          - warn_and_above
+    - file:
+        path: /usr/share/log-output-files/out-warn-above.txt
+        routes:
+          - warn_and_above
+    - file:
+        path: /usr/share/log-output-files/out-all.txt
+```
