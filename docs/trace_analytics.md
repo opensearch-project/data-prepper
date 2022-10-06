@@ -53,7 +53,7 @@ Example `otel-trace-source` with SSL and Basic Authentication enabled. Note that
 ```yaml
 source:
   otel_trace_source:
-    record_type: event
+    #record_type: event  # Add this when using Data Prepper 1.x. This option is removed in 2.0
     ssl: true
     sslKeyCertChainFile: "/full/path/to/certfile.crt"
     sslKeyFile: "/full/path/to/keyfile.key"
@@ -78,7 +78,7 @@ otel-trace-pipeline:
   delay: "100" 
   source:
     otel_trace_source:
-      record_type: event
+      #record_type: event  # Add this when using Data Prepper 1.x. This option is removed in 2.0
       ssl: false # Change this to enable encryption in transit
       authentication:
         unauthenticated:

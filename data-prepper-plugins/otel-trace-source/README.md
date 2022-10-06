@@ -4,7 +4,16 @@ This is a source which follows the [OTLP Protocol](https://github.com/open-telem
 
 
 ## Usages
-Example `.yaml` configuration:
+Example `.yaml` configuration for Data Prepper 2.0:
+
+```yaml
+source:
+  otel_trace_source:
+```
+
+
+Example `.yaml` configuration for Data Prepper 1.4 and above:
+
 ```yaml
 source:
   otel_trace_source:
@@ -13,8 +22,7 @@ source:
 
 ### Migrating to Data Prepper 2.0
 
-This documentation uses the `record_type: event` configuration which is compatible with Data Prepper 1.4 and above. For
-more information see _Migrating to Data Prepper 2.0_ in the 
+For more information on migrating from Data Prepper 1.x to Data Prepper 2.x, see _Migrating to Data Prepper 2.0_ in the 
 [Trace Analytics documentation](https://github.com/opensearch-project/data-prepper/blob/main/docs/trace_analytics.md).
 
 ## Configurations
