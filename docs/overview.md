@@ -118,7 +118,7 @@ first configures routes in `route:` part of the pipeline configuration.
 
 The following shows how this is configured. In the example below, `info_level` and `warn_and_above` are the names of two different routes. As a pipeline author, you can define these
 names to match your use-case. After the names of the routes, you can define the conditions that must apply to any route to make it applicable for any given event. For more information
-on how to define conditions see the [Data Prepper Expression Syntax](expression-syntax.md) guide.
+on how to define conditions see the [Data Prepper Expression Syntax](expression_syntax.md) guide.
 
 ```
 route:
