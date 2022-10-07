@@ -31,25 +31,12 @@ public abstract class AbstractStringProcessor<T> extends AbstractProcessor<Recor
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
-        final Collection<Record<Event>> modifiedRecords = new ArrayList<>(records.size());
         for(final Record<Event> record : records) {
-            final Event recordEvent = record.getData();
-            Map<String, Object> newData = null;
-	    try {
-		newData = recordEvent.toMap();
-	    } catch (Exception e) {
-                LOG.error("An exception occurred while doing event toMap [{}]", recordEvent, e);
-	    }
-	    final Event newRecordEvent;
-	    newRecordEvent = JacksonEvent.builder()
-                    .withEventMetadata(recordEvent.getMetadata())
-                    .withData(newData)
-                    .build();
-	    modifiedRecords.add(new Record<>(newRecordEvent));
-            performStringAction(newRecordEvent);
+	    final Event recordEvent = record.getData();
+            performStringAction(recordEvent);
         }
 
-        return modifiedRecords;
+        return records;
     }
 
     private void performStringAction(final Event recordEvent)
