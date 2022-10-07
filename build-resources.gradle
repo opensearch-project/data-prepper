@@ -11,7 +11,8 @@ ext.versionMap = [
         opensearchVersion : '1.3.5',
         armeria: '1.19.0',
         armeriaGrpc: '1.19.0',
-        protobufJavaUtil: '3.19.4'
+        protobufJavaUtil: '3.19.6',
+        protobufJava: '3.19.6'
 ]
 
 ext.coreProjects = [
