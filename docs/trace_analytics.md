@@ -53,6 +53,7 @@ Example `otel-trace-source` with SSL and Basic Authentication enabled. Note that
 ```yaml
 source:
   otel_trace_source:
+    #record_type: event  # Add this when using Data Prepper 1.x. This option is removed in 2.0
     ssl: true
     sslKeyCertChainFile: "/full/path/to/certfile.crt"
     sslKeyFile: "/full/path/to/keyfile.key"
@@ -77,6 +78,7 @@ otel-trace-pipeline:
   delay: "100" 
   source:
     otel_trace_source:
+      #record_type: event  # Add this when using Data Prepper 1.x. This option is removed in 2.0
       ssl: false # Change this to enable encryption in transit
       authentication:
         unauthenticated:
@@ -239,3 +241,17 @@ documents how to use OpenSearch Dashboards.
 
 The [Trace Tuning page](trace_tuning.md) has information to help you tune and scale Data Prepper for
 trace analytics use cases.
+
+## Migrating to Data Prepper 2.0
+
+Starting in Data Prepper 1.4, the trace processing uses Data Prepper's Event model. This allows
+pipeline authors the ability to configure other processors to modify spans or traces.
+
+To provide a migration path, Data Prepper 1.4 introduced the following changes.
+* The `otel_trace_source` has an optional parameter `record_type` which can be set to `event`. When configured, it will output event objects.
+* The `otel_trace_raw` replaces `otel_trace_raw_prepper` for event-based spans.
+* The `otel_trace_group` replaces `otel_trace_group_prepper` for event-based spans.
+
+In Data Prepper 2.0, the `otel_trace_source` will only output Events. Data Prepper 2.0 also removes
+`otel_trace_raw_prepper` and `otel_trace_group_prepper` entirely. To help migrate to 2.0,
+you can configure your trace pipeline using the Event model.
