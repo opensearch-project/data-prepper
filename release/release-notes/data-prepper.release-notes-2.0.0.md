@@ -1,4 +1,4 @@
-## 2022-10-23 Version 2.0.0
+## 2022-10-10 Version 2.0.0
 
 ---
 
@@ -6,20 +6,21 @@
 * Support conditional routing in sinks ([#1337](https://github.com/opensearch-project/data-prepper/issues/1337))
 * Support Core Peer Forwarder which replaces the peer forwarder processor plugin ([#700](https://github.com/opensearch-project/data-prepper/issues/700))
 * Support parsing CSV and TSV values in event fields using CSV processor ([#1081](https://github.com/opensearch-project/data-prepper/issues/1081))
+* Support decoding CSV or TSV S3 objects using CSV codec in S3 source  ([#1644](https://github.com/opensearch-project/data-prepper/pull/1644))
 * Support processing JSON values in event fields using JSON processor ([#831](https://github.com/opensearch-project/data-prepper/issues/831))
 * Support multi node aggregation using Core Peer Forwarder ([#978](https://github.com/opensearch-project/data-prepper/issues/978))
-* Support peer forwarding in service_map_stateful processor using Core Peer Forwarder ([#1765](https://github.com/opensearch-project/data-prepper/issues/1765))
-* Support peer forwarding in otel_trace_raw processor using Core Peer Forwarder ([#1766](https://github.com/opensearch-project/data-prepper/issues/1766))
-
+* Use peer forwarding in service_map_stateful processor using Core Peer Forwarder ([#1765](https://github.com/opensearch-project/data-prepper/issues/1765))
+* Use peer forwarding in otel_trace_raw processor using Core Peer Forwarder ([#1766](https://github.com/opensearch-project/data-prepper/issues/1766))
 
 ### Enhancements
 * Support concurrency in Data Prepper expression ([#1189](https://github.com/opensearch-project/data-prepper/issues/1189))
 * Support bulk create option in OpnSearch sink ([#1561](https://github.com/opensearch-project/data-prepper/pull/1561))
 * Added new metric to track utilization rate of buffer ([#1817](https://github.com/opensearch-project/data-prepper/issues/1817))
 * Support publishing metrics for Data Prepper core ([#1789](https://github.com/opensearch-project/data-prepper/issues/1789))
-* Support configurable timeouts for processors and sinks to flush the ata downstream before shutdown ([#1742](https://github.com/opensearch-project/data-prepper/issues/1742))
-* Support for consistent decoding of s3 events ([#1687](https://github.com/opensearch-project/data-prepper/issues/1687))
+* Support configurable timeouts for processors and sinks to flush the data downstream before shutdown ([#1742](https://github.com/opensearch-project/data-prepper/issues/1742))
+* Moved the fields from S3 JSON objects up to the root level of the object to promote consistency with other S3 codecs ([#1687](https://github.com/opensearch-project/data-prepper/issues/1687))
 * Support Duration in Data Prepper server configuration ([#1623](https://github.com/opensearch-project/data-prepper/issues/1623))
+* Fixed health check bug when Auth is enabled for HTTP and OTel trace source ([#1600](https://github.com/opensearch-project/data-prepper/issues/1600))
 * Enabled HTTP health check for OTel trace source and OTel metrics source ([#1546](https://github.com/opensearch-project/data-prepper/issues/1546))
 * Made Java 11 to be the baseline version for Data Prepper ([#1422](https://github.com/opensearch-project/data-prepper/issues/1422))
 * Updated HTTP source request timeout to use configured timeout ([#975](https://github.com/opensearch-project/data-prepper/issues/975))
@@ -29,7 +30,6 @@
 
 ### Bug Fixes
 * Fix a bug where file sink fails to write to output file with multiple pipeline threads ([#1843](https://github.com/opensearch-project/data-prepper/issues/1843))
-* Fixed health check bug when Auth is enabled for HTTP and OTel trace source ([#1600](https://github.com/opensearch-project/data-prepper/issues/1600))
 * Fixed a bug S3 source poll delay ([#1550](https://github.com/opensearch-project/data-prepper/issues/1550))
 * Fixed a bug where Data Prepper stops if there's an error reading S3 object ([#1544](https://github.com/opensearch-project/data-prepper/issues/1544))
 
@@ -46,8 +46,8 @@
 * Removed deprecated type property in DataPrepperPlugin annotation ([#1657](https://github.com/opensearch-project/data-prepper/issues/1657))
 * Removed deprecated trace_analytics_raw and trace_analytics_service_map values, index_type replaces them ([#1648](https://github.com/opensearch-project/data-prepper/issues/1648))
 * Removed deprecated PluginFactory ([#1584](https://github.com/opensearch-project/data-prepper/issues/1584))
-* Removed AWS SDK v1 from S3 source ([#1562](https://github.com/opensearch-project/data-prepper/issues/1562))
+* Removed AWS SDK v1 entirely from S3 source ([#1562](https://github.com/opensearch-project/data-prepper/issues/1562))
 * Updated Antlr to 4.10.1 ([#1513](https://github.com/opensearch-project/data-prepper/issues/1513))
 * Updated all existing prepper plugins to use only processor. ([#647](https://github.com/opensearch-project/data-prepper/issues/647))
 * Removed deprecated prepper plugin type from pipeline configuration. ([#619](https://github.com/opensearch-project/data-prepper/issues/619))
-* Updated package naming from `com.amazon` to `org.opensearch` ([#344](https://github.com/opensearch-project/data-prepper/issues/344))
+* Updated package naming to `org.opensearch` from `com.amazon` ([#344](https://github.com/opensearch-project/data-prepper/issues/344))
