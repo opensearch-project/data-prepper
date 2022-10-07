@@ -8,14 +8,20 @@ package org.opensearch.dataprepper.plugins.processor.mutatestring;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 public abstract class AbstractStringProcessor<T> extends AbstractProcessor<Record<Event>, Record<Event>> {
     private List<T> entries;
+    private static final Logger LOG = LoggerFactory.getLogger(AbstractStringProcessor.class);
 
     @DataPrepperPluginConstructor
     public AbstractStringProcessor(final PluginMetrics pluginMetrics, final StringProcessorConfig<T> config) {
@@ -25,12 +31,25 @@ public abstract class AbstractStringProcessor<T> extends AbstractProcessor<Recor
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
+        final Collection<Record<Event>> modifiedRecords = new ArrayList<>(records.size());
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
-            performStringAction(recordEvent);
+            Map<String, Object> newData = null;
+	    try {
+		newData = recordEvent.toMap();
+	    } catch (Exception e) {
+                LOG.error("An exception occurred while doing event toMap [{}]", recordEvent, e);
+	    }
+	    final Event newRecordEvent;
+	    newRecordEvent = JacksonEvent.builder()
+                    .withEventMetadata(recordEvent.getMetadata())
+                    .withData(newData)
+                    .build();
+	    modifiedRecords.add(new Record<>(newRecordEvent));
+            performStringAction(newRecordEvent);
         }
 
-        return records;
+        return modifiedRecords;
     }
 
     private void performStringAction(final Event recordEvent)

@@ -31,6 +31,8 @@ task removeDataPrepperNetwork(type: DockerRemoveNetwork) {
 }
 
 def BASIC_GROK_PIPELINE_YAML = "basic-grok-e2e-pipeline.yml"
+def PARALLEL_GROK_SUBSTITUTE_PIPELINE_YAML = "parallel-grok-substitute-e2e-pipeline.yml"
+def DATA_PREPPER_CONFIG_YAML = "data_prepper.yml"
 
 /**
  * DataPrepper Docker tasks
@@ -41,8 +43,6 @@ task createDataPrepperDockerFile(type: Dockerfile) {
     from(dataPrepperBaseImage)
     workingDir("/app/data-prepper")
     copyFile("${dataPrepperJarFilepath}", "/app/data-prepper/lib")
-    copyFile("src/integrationTest/resources/${BASIC_GROK_PIPELINE_YAML}", "/app/data-prepper/pipelines/pipelines.yaml")
-    copyFile("src/integrationTest/resources/data_prepper.yml", "/app/data-prepper/config/data-prepper-config.yaml")
     defaultCommand('java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute')
 }
 
@@ -54,13 +54,16 @@ task buildDataPrepperDockerImage(type: DockerBuildImage) {
 }
 
 def createDataPrepperDockerContainer(final String taskBaseName, final String dataPrepperName, final int sourcePort,
-                                     final int serverPort) {
+                                     final int serverPort, final String pipelineConfigYAML, final String dataPrepperConfigYAML) {
     return tasks.create("create${taskBaseName}", DockerCreateContainer) {
         dependsOn buildDataPrepperDockerImage
         dependsOn createDataPrepperNetwork
         containerName = dataPrepperName
         exposePorts("tcp", [2021, 4900])
         hostConfig.portBindings = [String.format('%d:2021', sourcePort), String.format('%d:4900', serverPort)]
+        hostConfig.binds = [(project.file("src/integrationTest/resources/${pipelineConfigYAML}").toString()):"/app/data-prepper/pipelines/pipelines.yaml",
+			    (project.file("/tmp/AAA.out").toString()):"/tmp/AAA.out",
+                            (project.file("src/integrationTest/resources/${dataPrepperConfigYAML}").toString()):"/app/data-prepper/config/data-prepper-config.yaml"]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
         cmd = ['java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute']
         targetImageId buildDataPrepperDockerImage.getImageId()
@@ -129,7 +132,7 @@ task basicLogEndToEndTest(type: Test) {
     dependsOn build
     dependsOn startOpenSearchDockerContainer
     def createDataPrepperTask = createDataPrepperDockerContainer(
-            "basicLogDataPrepper", "dataprepper", 2021, 4900)
+            "basicLogDataPrepper", "dataprepper", 2021, 4900, "${BASIC_GROK_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_YAML}")
     def startDataPrepperTask = startDataPrepperDockerContainer(createDataPrepperTask as DockerCreateContainer)
     dependsOn startDataPrepperTask
     startDataPrepperTask.mustRunAfter 'startOpenSearchDockerContainer'
@@ -145,6 +148,35 @@ task basicLogEndToEndTest(type: Test) {
 
     filter {
         includeTestsMatching "org.opensearch.dataprepper.integration.log.EndToEndBasicLogTest.testPipelineEndToEnd*"
+    }
+
+    finalizedBy stopOpenSearchDockerContainer
+    def stopDataPrepperTask = stopDataPrepperDockerContainer(startDataPrepperTask as DockerStartContainer)
+    finalizedBy stopDataPrepperTask
+    finalizedBy removeDataPrepperDockerContainer(stopDataPrepperTask as DockerStopContainer)
+    finalizedBy removeDataPrepperNetwork
+}
+
+task parallelGrokStringSubstiteTest(type: Test) {
+    dependsOn build
+    dependsOn startOpenSearchDockerContainer
+    def createDataPrepperTask = createDataPrepperDockerContainer(
+            "ParallelGrokSubstLogDataPrepper", "dataprepper", 2021, 4900, "${PARALLEL_GROK_SUBSTITUTE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_YAML}")
+    def startDataPrepperTask = startDataPrepperDockerContainer(createDataPrepperTask as DockerCreateContainer)
+    dependsOn startDataPrepperTask
+    startDataPrepperTask.mustRunAfter 'startOpenSearchDockerContainer'
+    // wait for data-preppers to be ready
+    doFirst {
+        sleep(15*1000)
+    }
+
+    description = 'Runs the parallel grok and string substitute end-to-end test.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    filter {
+        includeTestsMatching "org.opensearch.dataprepper.integration.log.ParallelGrokStringSubstituteLogTest.testPipelineEndToEnd*"
     }
 
     finalizedBy stopOpenSearchDockerContainer
