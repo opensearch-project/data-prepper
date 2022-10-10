@@ -1,9 +1,53 @@
 
+* __Increase the default buffer configurations by 25. Capacity to 12,800 and batch size to 200. (#1906) (#1907)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Mon, 10 Oct 2022 12:10:16 -0500
+    
+    EAD -&gt; refs/heads/2.0, refs/remotes/upstream/2.0, refs/remotes/origin/2.0
+    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    (cherry picked from commit 29a4a9750c5448cc7ecf27246f6565fb483fa724)
+     Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Conditional routing documentation (#1894) (#1905)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Mon, 10 Oct 2022 10:40:13 -0500
+    
+    
+    Add documentation for conditional routing. Resolves #1890
+     Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    (cherry picked from commit 11dd3a01b6e4f7f86e348a8dc5f9a205074e0f22)
+     Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Adds a stack-trace to failures from OpenSearch to help with debugging issues. (#1899) (#1902)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Mon, 10 Oct 2022 09:27:52 -0500
+    
+    
+    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    (cherry picked from commit bd8a7fa6950f954737c2a9c77875eaaa7b735872)
+     Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Added change log (#1901) (#1903)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Sat, 8 Oct 2022 12:56:59 -0500
+    
+    
+    Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+    (cherry picked from commit 6f0b7cf04b4f7a13603d0fdad956848b6d90ca55)
+     Co-authored-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+
+* __Update gradle version to 2.0.0 (#1900)__
+
+    [Hai Yan](mailto:8153134+oeyh@users.noreply.github.com) - Fri, 7 Oct 2022 18:28:50 -0500
+    
+    
+    Signed-off-by: Hai Yan &lt;oeyh@amazon.com&gt;
+
 * __Updated protobuf dependency (#1896)__
 
     [Asif Sohail Mohammed](mailto:nsifmoh@amazon.com) - Fri, 7 Oct 2022 11:45:19 -0500
     
-    EAD -&gt; refs/heads/change-log-2.0, refs/remotes/upstream/main, refs/remotes/upstream/2.0, refs/remotes/origin/main, refs/remotes/origin/HEAD, refs/heads/main
+    
     Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
 
 * __Updates Trace Analytics documentation for Data Prepper 2.0 (#1748)__
@@ -48,7 +92,7 @@
 
     [Asif Sohail Mohammed](mailto:nsifmoh@amazon.com) - Thu, 6 Oct 2022 11:22:53 -0500
     
-    efs/heads/change-log
+    
     * Added e2e tests for core peer forwarder
      Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
 
@@ -110,7 +154,7 @@
 
     [David Venable](mailto:dlv@amazon.com) - Wed, 5 Oct 2022 10:34:54 -0500
     
-    efs/heads/remove-prepper
+    
     Fixes Data Prepper with AWS services by setting the Java system property.
     Resolves #1876
      Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
@@ -557,7 +601,7 @@
 
     [David Venable](mailto:dlv@amazon.com) - Thu, 29 Sep 2022 09:01:34 -0500
     
-    efs/heads/cpf-metrics
+    
     Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
 
 * __Added metrics for peer forwarder (#1812)__
@@ -908,7 +952,7 @@
 
     [Asif Sohail Mohammed](mailto:nsifmoh@amazon.com) - Sat, 17 Sep 2022 19:14:43 -0500
     
-    efs/heads/ssl-default
+    
     * Added Java time module to object mapper
      Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
     
@@ -1324,7 +1368,7 @@
 
     [Asif Sohail Mohammed](mailto:nsifmoh@amazon.com) - Tue, 6 Sep 2022 12:48:35 -0500
     
-    efs/heads/event-metadata
+    efs/remotes/oeyh/main
     * Added peer forwarder server
      Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
 
