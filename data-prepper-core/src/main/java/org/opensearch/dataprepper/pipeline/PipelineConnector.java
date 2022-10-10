@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +57,19 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
     public void output(final Collection<T> records) {
         if (buffer != null && !isStopRequested.get()) {
             for (T record : records) {
-		if(record.getData() instanceof Event) {
+		if(record.getData() instanceof JacksonSpan) {
+		    try {
+		        final JacksonSpan span = (JacksonSpan)record.getData();
+			JacksonSpan newSpanEvent = JacksonSpan.builder()
+			          .withJsonData(span.toJsonString())
+				  .withEventMetadata(span.getMetadata())
+			          .build(); 
+			record = (T) (new Record<>(newSpanEvent));
+		    } catch (Exception ex) {
+                        LOG.error("PipelineConnector [{}-{}]:  exception while duplicating the event [{}]",
+                                sinkPipelineName, sourcePipelineName, ex);
+                    }
+		} else if(record.getData() instanceof Event) {
 		    try {
 		        final Event recordEvent = (Event)record.getData();
 			Event newRecordEvent = JacksonEvent.builder() 
@@ -64,7 +77,6 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
 				  .withEventMetadata(recordEvent.getMetadata()) 
 			          .build(); 
 			record = (T) (new Record<>(newRecordEvent));
-
 		    } catch (Exception ex) {
                         LOG.error("PipelineConnector [{}-{}]:  exception while duplicating the event [{}]",
                                 sinkPipelineName, sourcePipelineName, ex);
