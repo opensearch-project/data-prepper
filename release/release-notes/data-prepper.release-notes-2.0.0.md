@@ -2,6 +2,21 @@
 
 ---
 
+### Breaking Changes
+
+* Replaced the `data-prepper-tar-install.sh` script with `bin/data-prepper`
+* Replaced the single Jar file with a directory structure and the `bin/data-prepper` script.
+* Data Prepper pipelines no longer support `prepper:`. Use `processor:` instead.
+* Data Prepper now requires Java 11 or higher to run.
+* Removed properties from the `opensearch` sink: `trace_analytics_raw` and `trace_analytics_service_map`. Use the `index_type` instead.
+* Renamed two `grok` metric names. Renamed `grokProcessingMatchSuccess` to `grokProcessingMatch` and `grokProcessingMatchFailure` to `grokProcessingMismatch`.
+* Removed `record_type` from `otel_trace_source`.
+* Removed `otel_trace_raw_prepper` - use `otel_trace_raw` instead.
+* Removed `otel_trace_group_prepper` - use `otel_trace_group` instead.
+* Removed `peer-forwarder` processor plugin.
+* Incorrect HTTP methods were removed from Data Prepper core HTTP APIs.
+* All APIs have been renamed to use the `org.opensearch.dataprepper` package.
+
 ### Features
 * Support conditional routing in sinks ([#1337](https://github.com/opensearch-project/data-prepper/issues/1337))
 * Support Core Peer Forwarder which replaces the peer forwarder processor plugin ([#700](https://github.com/opensearch-project/data-prepper/issues/700))
@@ -13,6 +28,7 @@
 * Use peer forwarding in otel_trace_raw processor using Core Peer Forwarder ([#1766](https://github.com/opensearch-project/data-prepper/issues/1766))
 
 ### Enhancements
+* Updates default configurations for `bounded_buffer` - `buffer_size` is 12,800, `batch_size` is 200.
 * Support concurrency in Data Prepper expression ([#1189](https://github.com/opensearch-project/data-prepper/issues/1189))
 * Support bulk create option in OpnSearch sink ([#1561](https://github.com/opensearch-project/data-prepper/pull/1561))
 * Added new metric to track utilization rate of buffer ([#1817](https://github.com/opensearch-project/data-prepper/issues/1817))
