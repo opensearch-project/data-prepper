@@ -7,7 +7,7 @@
 * Replaced the `data-prepper-tar-install.sh` script with `bin/data-prepper`
 * Replaced the single Jar file with a directory structure and the `bin/data-prepper` script.
 * Data Prepper pipelines no longer support `prepper:`. Use `processor:` instead.
-* Data Prepper now requires Java 11 and higher to run.
+* Data Prepper now requires Java 11 or higher to run.
 * Removed properties from the `opensearch` sink: `trace_analytics_raw` and `trace_analytics_service_map`. Use the `index_type` instead.
 * Renamed two `grok` metric names. Renamed `grokProcessingMatchSuccess` to `grokProcessingMatch` and `grokProcessingMatchFailure` to `grokProcessingMismatch`.
 * Removed `record_type` from `otel_trace_source`.
