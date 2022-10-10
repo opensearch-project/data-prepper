@@ -43,8 +43,8 @@ import static java.lang.String.format;
 @DataPrepperPlugin(name = "bounded_blocking", pluginType = Buffer.class)
 public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(BlockingBuffer.class);
-    private static final int DEFAULT_BUFFER_CAPACITY = 512;
-    private static final int DEFAULT_BATCH_SIZE = 8;
+    private static final int DEFAULT_BUFFER_CAPACITY = 12_800;
+    private static final int DEFAULT_BATCH_SIZE = 200;
     private static final String PLUGIN_NAME = "bounded_blocking";
     private static final String ATTRIBUTE_BUFFER_CAPACITY = "buffer_size";
     private static final String ATTRIBUTE_BATCH_SIZE = "batch_size";
