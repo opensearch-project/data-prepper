@@ -220,6 +220,17 @@ public class JacksonSpan extends JacksonEvent implements Span {
         }
 
         /**
+         * Sets the data of the event.
+         * @param data the data
+         * @since 2.0
+         */
+        @Override
+        public Builder withData(final Object data) {
+            this.data.putAll(mapper.convertValue(data, Map.class));
+            return this;
+        }
+
+        /**
          * Sets the metadata.
          * @param eventMetadata the metadata
          * @since 2.0
@@ -420,6 +431,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
             validateParameters();
             checkAndSetDefaultValues();
             this.withData(data);
+            super.withData(data);
             this.withEventType(EventType.TRACE.toString());
             return new JacksonSpan(this);
         }

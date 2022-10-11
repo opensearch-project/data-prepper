@@ -16,6 +16,11 @@ import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
 import org.opensearch.dataprepper.model.trace.DefaultLink;
 import org.opensearch.dataprepper.model.trace.DefaultSpanEvent;
 
+
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.sameInstance;
+import static org.junit.Assert.assertThat;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -29,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.UUID;
 import java.util.Queue;
 import java.util.Map;
@@ -193,11 +199,11 @@ public class PipelineConnectorTest {
 	Map.Entry<Collection<Record<Event>>, CheckpointState> ent = eventBuffer.read(1);
 	ArrayList<Record<Event>> records = new ArrayList<>(ent.getKey());
 	// Make sure the records are different
-	Assertions.assertNotEquals(eventRecordList.get(0),  records.get(0));
+	assertThat(eventRecordList.get(0), not(sameInstance(records.get(0))));
 	// Make sure the events are different
 	Event event1 = eventRecordList.get(0).getData();
 	Event event2 = records.get(0).getData();
-	Assertions.assertNotEquals(event1, event2);
+	assertThat(event1, not(sameInstance(event2)));
 	event1.toMap().forEach((k, v)-> Assertions.assertEquals(event2.get(k, String.class), v));
 	event1.toMap().forEach((k, v)-> Assertions.assertEquals(k, testKey));
 	event1.toMap().forEach((k, v)-> Assertions.assertEquals(v, testValue));
@@ -213,11 +219,12 @@ public class PipelineConnectorTest {
 	Map.Entry<Collection<Record<JacksonSpan>>, CheckpointState> ent = spanBuffer.doRead(10000);
 	ArrayList<Record<JacksonSpan>> records = new ArrayList<>(ent.getKey());
 	// Make sure the records are different
-	Assertions.assertNotEquals(spanRecordList.get(0),  records.get(0));
+	assertThat(spanRecordList.get(0), not(sameInstance(records.get(0))));
 	// Make sure the spans are different
 	JacksonSpan span1 = spanRecordList.get(0).getData();
 	JacksonSpan span2 = records.get(0).getData();
-	Assertions.assertNotEquals(span1, span2);
+	assertThat(span1, not(sameInstance(span2)));
+	span1.toMap().forEach((k, v) -> Assertions.assertEquals(span2.toMap().get(k), v));
     }
 
     @Test
