@@ -31,7 +31,7 @@ public class DataPrepperDurationDeserializerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"6s1s", "60ms 100s", "20.345s", "0s", "-1s", "06s", "100m", "100sm", "100"})
+    @ValueSource(strings = {"6s1s", "60ms 100s", "20.345s", "-1s", "06s", "100m", "100sm", "100"})
     void invalidDurationStringsThrowIllegalArgumentException(String durationString) {
         assertThrows(IllegalArgumentException.class, () -> objectMapper.convertValue(durationString, Duration.class));
     }
@@ -41,6 +41,14 @@ public class DataPrepperDurationDeserializerTest {
         final String durationString = "PT15M";
         final Duration result = objectMapper.convertValue(durationString, Duration.class);
         assertThat(result, equalTo(Duration.ofMinutes(15)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0s", "0ms"})
+    void simple_duration_strings_of_0_return_correct_duration(String durationString) {
+        final Duration result = objectMapper.convertValue(durationString, Duration.class);
+
+        assertThat(result, equalTo(Duration.ofSeconds(0)));
     }
 
     @ParameterizedTest
