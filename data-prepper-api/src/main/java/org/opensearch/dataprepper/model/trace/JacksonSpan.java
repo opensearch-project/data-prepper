@@ -430,7 +430,6 @@ public class JacksonSpan extends JacksonEvent implements Span {
         public JacksonSpan build() {
             validateParameters();
             checkAndSetDefaultValues();
-            this.withData(data);
             super.withData(data);
             this.withEventType(EventType.TRACE.toString());
             return new JacksonSpan(this);
