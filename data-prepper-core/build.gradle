@@ -37,7 +37,7 @@ dependencies {
     implementation('org.springframework:spring-context:5.3.23') {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
-    implementation 'software.amazon.cloudwatchlogs:aws-embedded-metrics:2.0.0-beta-1'
+    implementation 'software.amazon.cloudwatchlogs:aws-embedded-metrics:4.0.2'
     testImplementation 'org.springframework:spring-test:5.3.23'
     implementation "com.linecorp.armeria:armeria:${versionMap.armeria}"
     implementation 'org.apache.commons:commons-lang3:3.12.0'
