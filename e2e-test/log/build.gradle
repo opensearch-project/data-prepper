@@ -157,11 +157,11 @@ task basicLogEndToEndTest(type: Test) {
     finalizedBy removeDataPrepperNetwork
 }
 
-task parallelGrokStringSubstiteTest(type: Test) {
+task parallelGrokStringSubstituteTest(type: Test) {
     dependsOn build
     dependsOn startOpenSearchDockerContainer
     def createDataPrepperTask = createDataPrepperDockerContainer(
-            "ParallelGrokSubstLogDataPrepper", "dataprepper", 2021, 4900, "${PARALLEL_GROK_SUBSTITUTE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_YAML}")
+            "ParallelGrokSubstLogDataPrepper", "dataprepper-pgsts-test", 2021, 4900, "${PARALLEL_GROK_SUBSTITUTE_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_YAML}")
     def startDataPrepperTask = startDataPrepperDockerContainer(createDataPrepperTask as DockerCreateContainer)
     dependsOn startDataPrepperTask
     startDataPrepperTask.mustRunAfter 'startOpenSearchDockerContainer'
