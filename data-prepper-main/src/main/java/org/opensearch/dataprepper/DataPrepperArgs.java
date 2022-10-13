@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.parser.config;
+package org.opensearch.dataprepper;
 
 import org.opensearch.dataprepper.logstash.LogstashConfigConverter;
+import org.opensearch.dataprepper.parser.config.FileStructurePathProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +17,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class DataPrepperArgs {
+class DataPrepperArgs implements FileStructurePathProvider {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperArgs.class);
     private static final Integer DATA_PREPPER_PIPELINE_CONFIG_POSITON = 0;
     private static final Integer DATA_PREPPER_CONFIG_POSITON = 1;
@@ -96,10 +97,12 @@ public class DataPrepperArgs {
         throw new IllegalArgumentException(msg);
     }
 
+    @Override
     public String getPipelineConfigFileLocation() {
         return pipelineConfigFileLocation;
     }
 
+    @Override
     @Nullable
     public String getDataPrepperConfigFileLocation() {
         return dataPrepperConfigFileLocation;
